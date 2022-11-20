@@ -13,7 +13,7 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
-Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
+\[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
 
 
