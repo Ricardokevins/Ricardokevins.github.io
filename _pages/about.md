@@ -8,6 +8,14 @@ redirect_from:
   - /about.html
 ---
 
-Welcome! I am a student pursuing Phd degree in Nanjing University. I earn my B.A in Nanjing University
+Currently, I am a Ph. D. student of Department of Computer Science and Technology in Nanjing University and a member of NJUNLP Group. Before that, I received the B.Sc. degree in Department of Computer Science and Technology in June 2022 from Nanjing University.
+
+
+News
+==========
+Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
+
+
+
 
 
