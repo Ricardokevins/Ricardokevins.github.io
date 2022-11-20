@@ -8,5 +8,4 @@ venue: 'AAAI-2023'
 paperurl: 'To be updated'
 citation: 'To be updated'
 ---
-This paper is about xxxxxx.
 
