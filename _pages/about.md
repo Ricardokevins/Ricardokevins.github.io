@@ -23,7 +23,7 @@ News
 
 
 # Academic Services
-- Reviewer for EMNLP,EACL
+- Reviewer for EMNLP, EACL
 
 # Competition and Reward
 - Rank Top1% in Global AI Innovation Contest (track3) held by Ali TIANCHI
