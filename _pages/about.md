@@ -24,6 +24,14 @@ News
 
 # Academic Services
 - Reviewer for EMNLP, EACL
+- Participating in the review for NIPS, ICLR
 
 # Competition and Reward
 - Rank Top1% in Global AI Innovation Contest (track3) held by Ali TIANCHI
+
+# OpenSource Project
+Received 360+ Stars
+
+Popular Repo
+- [Kevinpro-NLP-demo](https://github.com/Ricardokevins/Kevinpro-NLP-demo)
+- [Bert-In-Relation-Extraction](https://github.com/Ricardokevins/Bert-In-Relation-Extraction)
