@@ -7,7 +7,14 @@ excerpt: "This paper proposes an interesting and novel idea for using tweaked mo
 [Code](https://github.com/NJUNLP/CoP) [文字解读](https://mp.weixin.qq.com/s/c3Wvp3b5hqN5CFvl2o92PQ)" 
 date: 2022-11-19
 venue: 'AAAI-2023'
-paperurl: 'How To be updated'
-citation: 'To be updated'
+paperurl: 'https://arxiv.org/abs/2212.01611'
+citation: '@misc{she2022cop,
+      title={CoP: Factual Inconsistency Detection by Controlling the Preference}, 
+      author={Shuaijie She and Xiang Geng and Shujian Huang and Jiajun Chen},
+      year={2022},
+      eprint={2212.01611},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}'
 ---
 
