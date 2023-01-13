@@ -16,6 +16,8 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
+\[2023-01-13\] Github Stars reach 400~
+
 \[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
 
@@ -35,5 +37,6 @@ News
 <!--- <a href="https://github.com/anuraghazra/github-readme-stats"><img align="right" src="https://github-readme-stats.vercel.app/api?theme=vue&include_all_commits=true&username=Ricardokevins&show_icons=true&hide_border=true"></a> --->
 
 **Popular Repo**
-- [Kevinpro-NLP-demo](https://github.com/Ricardokevins/Kevinpro-NLP-demo)
+- [Kevinpro-NLP-demo](https://github.com/Ricardokevins/Kevinpro-NLP-demo) 
 - [Bert-In-Relation-Extraction](https://github.com/Ricardokevins/Bert-In-Relation-Extraction)
+  
