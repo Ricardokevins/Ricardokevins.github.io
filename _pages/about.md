@@ -25,8 +25,8 @@ News
 
 
 # Academic Services
-- Reviewer for EMNLP, EACL
-- Participating in the review for NIPS, ICLR
+- Reviewer for EACL23, ACL23
+- Participating in the review for NIPS22, ICLR23, IJCAI23
 
 # Competition and Reward
 - Rank Top1% in Global AI Innovation Contest (track3) held by Ali TIANCHI
