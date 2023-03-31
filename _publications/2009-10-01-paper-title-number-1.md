@@ -8,6 +8,6 @@ excerpt: "This paper proposes an interesting and novel idea for using tweaked mo
 date: 2022-11-19
 venue: 'AAAI-2023'
 paperurl: ''
-citation: ''
+citation: 'She S, Geng X, Huang S, et al. CoP: Factual Inconsistency Detection by Controlling the Preference[J]. arXiv preprint arXiv:2212.01611, 2022.'
 ---
 
