@@ -21,7 +21,7 @@ News
 
 \[2023-04-20\] Github Stars reach 500~
 
-\[2023-04-18\] At present, I am working as an intern in the fourth Paradigm, engaged in large model training.
+\[2023-04-18\] I am working as an intern in the [4paradigm](https://www.4paradigm.com/index.html), engaged in training LLM.
 
 \[2023-01-13\] Github Stars reach 400~
 
