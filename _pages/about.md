@@ -23,8 +23,6 @@ News
 
 \[2023-04-18\] I am working as an intern in the [4paradigm](https://www.4paradigm.com/index.html), engaged in training LLM.
 
-\[2023-01-13\] Github Stars reach 400~
-
 \[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
 
