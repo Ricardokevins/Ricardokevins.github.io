@@ -18,6 +18,7 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
+\[2023-11-01\] I have been awarded the 2022-2023 National Scholarship in China~
 
 \[2023-04-20\] Github Stars reach 500~
 
