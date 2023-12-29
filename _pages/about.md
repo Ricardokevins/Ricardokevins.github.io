@@ -28,17 +28,26 @@ News
 
 \[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
-# Publications
+# Publications 
 Exploring the Dialogue Comprehension Ability of Large Language Models
+
+
+
+CoP: Factual Inconsistency Detection by Controlling the Preference [Code](https://github.com/NJUNLP/CoP) [文字解读](https://mp.weixin.qq.com/s/c3Wvp3b5hqN5CFvl2o92PQ) [Paper preprint](https://arxiv.org/abs/2212.01611)'
+She S, Geng X, Huang S, et al. CoP: Factual Inconsistency Detection by Controlling the Preference[J]. arXiv preprint arXiv:2212.01611
+
+
 
 
 
 
 # Academic Services
-- Reviewer for EACL23, ACL23
+- Reviewer for EACL23, ACL23, EMNLP24
 - Participating in the review for NIPS22, ICLR23, IJCAI23
 
 # Competition and Reward
+- 2022-2023 National Scholarship in Ch
+- Nanjing University Outstanding Graduate Student of the Year 2023
 - Rank Top1% in Global AI Innovation Contest (track3) held by Ali TIANCHI
 
 # OpenSource Project
