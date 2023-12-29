@@ -18,6 +18,8 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
+\[2023-12-29\] Github Stars reach 700~
+
 \[2023-11-01\] I have been awarded the 2022-2023 National Scholarship in China~
 
 \[2023-04-20\] Github Stars reach 500~
@@ -25,6 +27,8 @@ News
 \[2023-04-18\] I am working as an intern in the [4paradigm](https://www.4paradigm.com/index.html), engaged in training LLM.
 
 \[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
+
+# Publications
 
 
 
