@@ -18,7 +18,7 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
-\[2023-12-29\] Github Stars reach 700~
+\[2023-11-16\] Our paper "Exploring the Dialogue Comprehension Ability of Large Language Models" has been published on arXiv.
 
 \[2023-11-01\] I have been awarded the 2022-2023 National Scholarship in China~
 
