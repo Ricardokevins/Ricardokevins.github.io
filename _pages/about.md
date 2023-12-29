@@ -29,7 +29,7 @@ News
 \[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
 # Publications
-
+Exploring the Dialogue Comprehension Ability of Large Language Models
 
 
 
