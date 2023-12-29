@@ -50,7 +50,7 @@ She S, Geng X, Huang S, et al. CoP: Factual Inconsistency Detection by Controlli
 - Participating in the review for NIPS22, ICLR23, IJCAI23
 
 # Competition and Reward
-- 2022-2023 National Scholarship in Ch
+- 2022-2023 National Scholarship in China
 - Nanjing University Outstanding Graduate Student of the Year 2023
 - Rank Top1% in Global AI Innovation Contest (track3) held by Ali TIANCHI
 
