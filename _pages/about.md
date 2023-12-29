@@ -31,9 +31,13 @@ News
 # Publications 
 Exploring the Dialogue Comprehension Ability of Large Language Models
 
+She S, Huang S, Wang X, et al. Exploring the Dialogue Comprehension Ability of Large Language Models[J]. arXiv preprint arXiv:2311.07194, 2023.
 
 
-CoP: Factual Inconsistency Detection by Controlling the Preference [Code](https://github.com/NJUNLP/CoP) [文字解读](https://mp.weixin.qq.com/s/c3Wvp3b5hqN5CFvl2o92PQ) [Paper preprint](https://arxiv.org/abs/2212.01611)'
+CoP: Factual Inconsistency Detection by Controlling the Preference 
+
+[Code](https://github.com/NJUNLP/CoP) [文字解读](https://mp.weixin.qq.com/s/c3Wvp3b5hqN5CFvl2o92PQ) [Paper preprint](https://arxiv.org/abs/2212.01611)' 
+
 She S, Geng X, Huang S, et al. CoP: Factual Inconsistency Detection by Controlling the Preference[J]. arXiv preprint arXiv:2212.01611
 
 
