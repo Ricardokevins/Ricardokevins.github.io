@@ -31,7 +31,7 @@ News
 
 
 # Academic Services
-- Reviewer for EACL23, ACL23, EMNLP24
+- Reviewer for EACL23, ACL23, EMNLP23
 - Participating in the review for NIPS22, ICLR23, IJCAI23
 
 # Competition and Reward
