@@ -28,8 +28,6 @@ News
 
 \[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
-
-
 # Academic Services
 - Reviewer for EACL23, ACL23, EMNLP23
 - Participating in the review for NIPS22, ICLR23, IJCAI23
