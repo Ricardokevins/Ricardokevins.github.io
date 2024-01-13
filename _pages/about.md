@@ -31,11 +31,11 @@ News
 
 ## Published Papers
 
-- Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search 
-  Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie** She, Wei Zou, Shimin Tao, Hao Yang, Jiajun Chen, Shujian Huang
-  **Wenhao Zhu**, Hao Zhou, Changjiang Gao, Sizhe Liu, Shujian Huang  
-  In the 21st China National Conference on Computational Linguistics (CCL), 2023  
-  [Paper](https://aclanthology.org/2023.ccl-2.3.pdf)
+Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search 
+
+Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie** She, Wei Zou, Shimin Tao, Hao Yang, Jiajun Chen, Shujian Huang
+
+EMNLP2023 [Paper](https://aclanthology.org/2023.ccl-2.3.pdf)
 
 
 
