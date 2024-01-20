@@ -18,6 +18,8 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
+\[2024-01-13\] Our paper "Question Translation Training for Better Multilingual Reasoning" has been published on arXiv.  
+
 \[2024-01-13\] Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been published on arXiv.  
 
 \[2023-12-10\] Our paper "Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search" has been accepted by EMNLP-23 
@@ -36,10 +38,12 @@ News
 
 
 # Publication
+- Question Translation Training for Better Multilingual Reasoning  
+Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 
 - MAPO: Advancing Multilingual Reasoning through Multilingual
 Alignment-as-Preference Optimization  
-**Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu
+**Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 
 - Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search [EMNLP2023] [[Paper]](https://aclanthology.org/2023.ccl-2.3.pdf)  
