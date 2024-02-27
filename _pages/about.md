@@ -42,7 +42,7 @@ News
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
-Alignment-as-Preference Optimization  [[Paper]](https://arxiv.org/abs/2401.06838) 
+Alignment-as-Preference Optimization  [[Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 
