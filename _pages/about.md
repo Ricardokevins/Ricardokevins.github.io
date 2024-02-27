@@ -38,13 +38,15 @@ News
 
 
 # Publication
-- 🔥 Question Translation Training for Better Multilingual Reasoning  [[Paper]](https://arxiv.org/abs/2401.07817)  
-Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
-
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
 Alignment-as-Preference Optimization  [[Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
+
+- 🔥 Question Translation Training for Better Multilingual Reasoning  [[Paper]](https://arxiv.org/abs/2401.07817)  
+Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
+
+
 
 - Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search [EMNLP2023] [[Paper]](https://aclanthology.org/2023.emnlp-main.764/)  
 Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Yang, Jiajun Chen, Shujian Huang  
