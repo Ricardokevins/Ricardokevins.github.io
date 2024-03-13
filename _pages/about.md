@@ -36,6 +36,9 @@ News
 
 
 # Publication
+- 🔥 Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models [NAACL2024] [[Paper]](https://arxiv.org/abs/2311.07194)  
+**Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
+
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
 Alignment-as-Preference Optimization  [[Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
@@ -51,8 +54,7 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
  
 
 
-- Exploring the Dialogue Comprehension Ability of Large Language Models [[Paper]](https://arxiv.org/abs/2311.07194)  
-**Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
+
  
 
 - CoP: Factual Inconsistency Detection by Controlling the Preference [AAAI2023] [[Paper]](https://aclanthology.org/2023.ccl-2.3.pdf)   
