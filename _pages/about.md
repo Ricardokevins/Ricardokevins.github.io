@@ -18,7 +18,7 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
-\[2024-04-20\] I am working as an intern in the [ByteDance AI Lab ](https://www.4paradigm.com/index.html), engaged in multilingual research.
+\[2024-04-20\] I am working as an intern in the ByteDance AI Lab, engaged in multilingual research.
 
 \[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024.  
 
