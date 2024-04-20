@@ -18,19 +18,17 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
+\[2024-04-20\] I am working as an intern in the [ByteDance AI Lab ](https://www.4paradigm.com/index.html), engaged in multilingual research.
+
 \[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024.  
 
 \[2024-01-13\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been published on arXiv.  
 
 \[2024-01-13\] 🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been published on arXiv.  
 
-\[2023-12-10\] Our paper "Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search" has been accepted by EMNLP 2023 
 
-\[2023-11-01\] I have been awarded the 2022-2023 National Scholarship in China
 
-\[2023-04-18\] I am working as an intern in the [4paradigm](https://www.4paradigm.com/index.html), engaged in training LLM.
 
-\[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
 
 
 
@@ -83,7 +81,16 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 
 # History
 
+\[2023-12-10\] Our paper "Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search" has been accepted by EMNLP 2023 
+
 \[2023-11-16\] Our paper "Exploring the Dialogue Comprehension Ability of Large Language Models" has been published on arXiv.
 
+\[2023-11-01\] I have been awarded the 2022-2023 National Scholarship in China
 
 \[2023-04-20\] Github Stars reach 500
+
+\[2023-04-18\] I am working as an intern in the [4paradigm](https://www.4paradigm.com/index.html), engaged in training LLM.
+
+\[2022-11-19\] Our paper "CoP: Factual Inconsistency Detection by Controlling the Preference" has been accepted by AAAI-23 
+
+
