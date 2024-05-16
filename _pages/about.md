@@ -18,20 +18,14 @@ Currently, I am a Ph. D. student of Department of Computer Science and Technolog
 
 News
 ==========
+
+\[2024-05-16\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
+
+\[2024-05-16\] 🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
+
 \[2024-04-20\] I start my internship in the ByteDance AI Lab, engaged in multilingual research.
 
-\[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024.  
-
-\[2024-01-13\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been published on arXiv.  
-
-\[2024-01-13\] 🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been published on arXiv.  
-
-
-
-
-
-
-
+\[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
 
 # Publication
 - 🔥 Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models [NAACL2024] [[Paper]](https://arxiv.org/abs/2311.07194)  
@@ -80,6 +74,10 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 - [Bert-In-Relation-Extraction](https://github.com/Ricardokevins/Bert-In-Relation-Extraction)
 
 # History
+
+\[2024-01-13\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been published on arXiv.  
+
+\[2024-01-13\] 🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been published on arXiv.  
 
 \[2023-12-10\] Our paper "Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search" has been accepted by EMNLP 2023 
 
