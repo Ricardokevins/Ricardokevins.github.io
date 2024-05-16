@@ -28,17 +28,16 @@ News
 \[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
 
 # Publication
-- 🔥 Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models [NAACL2024] [[Paper]](https://arxiv.org/abs/2311.07194)  
-**Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
-
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
-Alignment-as-Preference Optimization  [[Paper]](https://arxiv.org/abs/2401.06838)  
+Alignment-as-Preference Optimization  [ACL2024]  [[Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 
-- 🔥 Question Translation Training for Better Multilingual Reasoning  [[Paper]](https://arxiv.org/abs/2401.07817)  
+- 🔥 Question Translation Training for Better Multilingual Reasoning  [ACL2024]  [[Paper]](https://arxiv.org/abs/2401.07817)  
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 
+- 🔥 Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models [NAACL2024] [[Paper]](https://arxiv.org/abs/2311.07194)  
+**Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
 
 
 - Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search [EMNLP2023] [[Paper]](https://aclanthology.org/2023.emnlp-main.764/)  
