@@ -8,16 +8,14 @@ redirect_from:
   - /about.html
 ---
 
-Currently, I am a Ph. D. student of Department of Computer Science and Technology in Nanjing University and a member of [NJUNLP Group](http://nlp.nju.edu.cn/homepage). Before that, I received the B.Sc. degree in Department of Computer Science and Technology in June 2022 from Nanjing University.
-
-
-
-
-
-
+Currently,I am in the second year of a direct PhD program under the supervision of Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research mainly focuses on Multilingual, Alignment, and Reasoning. Meanwile, I am interning at ByteDance Research, focusing on Multilingual LLM Project.
 
 News
 ==========
+
+\[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM. ! Feel free to stop by and I’d love to chat!
+
+✨ If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
 
 \[2024-05-16\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
 
@@ -29,33 +27,30 @@ News
 
 # Publication
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
-Alignment-as-Preference Optimization  [ACL2024]  [[Paper]](https://arxiv.org/abs/2401.06838)  
+Alignment-as-Preference Optimization  *[ACL2024]*  [[Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 
-- 🔥 Question Translation Training for Better Multilingual Reasoning  [ACL2024]  [[Paper]](https://arxiv.org/abs/2401.07817)  
+- 🔥 Question Translation Training for Better Multilingual Reasoning  *[ACL2024]*  [[Paper]](https://arxiv.org/abs/2401.07817)  
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 
-- 🔥 Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models [NAACL2024] [[Paper]](https://arxiv.org/abs/2311.07194)  
+- Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models *[NAACL2024]* [[Paper]](https://arxiv.org/abs/2311.07194)  
 **Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
 
+- Multilingual Contrastive Decoding via Language-Agnostic Layers Skipping [[Paper]](https://arxiv.org/abs/2407.10795)   
+Wenhao Zhu, Sizhe Liu, Shujian Huang, **Shuaijie She**, Chris Wendler, Jiajun Chen 
 
-- Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search [EMNLP2023] [[Paper]](https://aclanthology.org/2023.emnlp-main.764/)  
+- Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search *[EMNLP2023]* [[Paper]](https://aclanthology.org/2023.emnlp-main.764/)  
 Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Yang, Jiajun Chen, Shujian Huang  
- 
 
-
-
- 
-
-- CoP: Factual Inconsistency Detection by Controlling the Preference [AAAI2023] [[Paper]](https://aclanthology.org/2023.ccl-2.3.pdf)   
+- CoP: Factual Inconsistency Detection by Controlling the Preference *[AAAI2023]* [[Paper]](https://aclanthology.org/2023.ccl-2.3.pdf)   
 **Shuaijie She**, Xiang Geng, Shujian Huang, Jiajun Chen  
 
 
 
 
 # Academic Services
-- Reviewer for EACL23, ACL23, EMNLP23
+- Reviewer for EACL23, ACL23, EMNLP23, ACL24
 - Participating in the review for NIPS22, ICLR23, IJCAI23
 
 # Competition and Reward
