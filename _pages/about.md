@@ -13,9 +13,7 @@ Currently,I am in the second year of a direct PhD program under the supervision 
 News
 ==========
 
-\[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM. ! Feel free to stop by and I’d love to chat!
-
-✨ If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
+\[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
 
 \[2024-05-16\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
 
