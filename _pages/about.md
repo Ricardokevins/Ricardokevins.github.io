@@ -78,9 +78,9 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 
 \[2023-11-16\] Our paper "Exploring the Dialogue Comprehension Ability of Large Language Models" has been published on arXiv.
 
-\[2023-11-01\] <font style="border-color: #0099CC;border-style:solid;border-width:0.5px;" color="#0099CC" face='Arial' size="2pt">&nbsp;Honor&nbsp;</font> I have been awarded the 2022-2023 National Scholarship in China
+\[2023-11-01\] I have been awarded the 2022-2023 National Scholarship in China
 
-\[2023-04-20\] <font style="border-color: #0099CC;border-style:solid;border-width:0.5px;" color="#0099CC" face='Arial' size="2pt">&nbsp;Honor&nbsp;</font> Github Stars reach 500
+\[2023-04-20\] Github Stars reach 500
 
 \[2023-04-18\] I am working as an intern in the [4paradigm](https://www.4paradigm.com/index.html), engaged in training LLM.
 
