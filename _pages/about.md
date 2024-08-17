@@ -14,15 +14,15 @@ News
 ==========
 
 
-\[2024-08-10\] <font style="border-color: #FFA500; border-style: solid; border-width: 0.5px;" color="#FFA500" face='Arial' size="2pt">&nbsp;Event&nbsp;</font> 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
+\[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
 
-\[2024-05-16\] <font style="border-color: #009966; border-style: solid; border-width: 0.5px;" color="#009966" face='Arial' size="2pt">&nbsp;Paper&nbsp;</font> 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
+\[2024-05-16\]  🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
 
-\[2024-05-16\] <font style="border-color: #009966; border-style: solid; border-width: 0.5px;" color="#009966" face='Arial' size="pt">&nbsp;Paper&nbsp;</font> 🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
+\[2024-05-16\]  🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
 
-\[2024-04-20\] <font style="border-color: #00008B; border-style: solid; border-width: 0.5px;" color="#00008B" face='Arial' size="2pt">&nbsp;Intern&nbsp;</font> I start my internship in the ByteDance AI Lab, engaged in multilingual research.
+\[2024-04-20\] I start my internship in the ByteDance AI Lab, engaged in multilingual research.
 
-\[2024-03-14\] <font style="border-color: #009966; border-style: solid; border-width: 0.5px;" color="#009966" face='Arial' size="2pt">&nbsp;Paper&nbsp;</font> 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
+\[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
 
 # 📰 Publication
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
