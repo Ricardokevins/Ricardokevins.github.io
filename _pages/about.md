@@ -10,7 +10,7 @@ redirect_from:
 
 Currently,I am in the second year of a direct PhD program under the supervision of Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research mainly focuses on Multilingual, Alignment, and Reasoning. Meanwile, I am interning at ByteDance Research, focusing on Multilingual LLM Project.
 
-News
+⭐ News
 ==========
 
 
@@ -20,7 +20,7 @@ News
 
 \[2024-05-16\]  🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
 
-\[2024-04-20\] I start my internship in the ByteDance AI Lab, engaged in multilingual research.
+\[2024-04-20\] I start my internship in the ByteDance Research, engaged in Multilingual LLM Project.
 
 \[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
 
