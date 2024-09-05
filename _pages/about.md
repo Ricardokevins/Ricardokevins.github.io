@@ -8,7 +8,7 @@ redirect_from:
   - /about.html
 ---
 
-Currently,I am in the second year of a direct PhD program under the supervision of Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research mainly focuses on Multilingual, Alignment, and Reasoning. Meanwile, I am interning at ByteDance Research, focusing on Multilingual LLM Project.
+I am a third-year PhD student under the supervision of Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research mainly focuses on Multilingual, Alignment, and Reasoning. Meanwhile, I am interning at ByteDance Research, focusing on Multilingual LLM Project.
 
 ⭐ News
 ==========
