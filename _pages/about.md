@@ -16,13 +16,13 @@ I am a third-year PhD student under the supervision of Professor [Shujian Huang]
 
 \[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
 
-\[2024-05-16\]  🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
+\[2024-05-16\]  Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
 
-\[2024-05-16\]  🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
+\[2024-05-16\]  Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
 
 \[2024-04-20\] I start my internship in the ByteDance Research, engaged in Multilingual LLM Project.
 
-\[2024-03-14\] 🔥 Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
+\[2024-03-14\] Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
 
 # 📰 Publication
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
@@ -36,7 +36,7 @@ Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Bi
 - Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;NAACL 2024&nbsp;</font> [[📄Paper]](https://arxiv.org/abs/2311.07194)  
 **Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
 
-- Multilingual Contrastive Decoding via Language-Agnostic Layers Skipping [[📄Paper]](https://arxiv.org/abs/2407.10795)   
+- Multilingual Contrastive Decoding via Language-Agnostic Layers Skipping <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP 2024&nbsp;</font> [[📄Paper]](https://arxiv.org/abs/2407.10795)   
 Wenhao Zhu, Sizhe Liu, Shujian Huang, **Shuaijie She**, Chris Wendler, Jiajun Chen 
 
 - Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP 2023&nbsp;</font> [[📄Paper]](https://aclanthology.org/2023.emnlp-main.764/)  
