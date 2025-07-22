@@ -12,25 +12,28 @@ I am a third-year PhD student under the supervision of Professor [Shujian Huang]
 
 ⭐ News
 ==========
+\[2025-07-18\] 🚀 We are excited to open-source **Seed-X**, a 7B-parameter multilingual translation LLM that delivers performance comparable to leading closed-source models like Gemini2.5-pro.
 
+\[2025-03-27\] 🚀 Our paper R-PRM: Reasoning-Driven Process Reward Modeling  has released!! 
 
 \[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
 
 \[2024-05-16\]  Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
 
-\[2024-05-16\]  Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
-
-\[2024-04-20\] I start my internship in the ByteDance Research, engaged in Multilingual LLM Project.
-
-\[2024-03-14\] Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
 
 # 📰 Publication
+- 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2507.13618)  
+**ByteDance Seed Team**
+
+- 🔥 R-PRM: Reasoning-Driven Process Reward Modeling <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2503.21295)  
+**Shuaijie She**, Junxiao Liu, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang
+
 - 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
 Alignment-as-Preference Optimization  <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL2024&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 
-- 🔥 Question Translation Training for Better Multilingual Reasoning  <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL2024&nbsp;</font> [[📄Paper]](https://arxiv.org/abs/2401.07817)  
+- Question Translation Training for Better Multilingual Reasoning  <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL2024&nbsp;</font> [[📄Paper]](https://arxiv.org/abs/2401.07817)  
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 
 - Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;NAACL 2024&nbsp;</font> [[📄Paper]](https://arxiv.org/abs/2311.07194)  
@@ -51,11 +54,11 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 - *2023.04 - 2024.04*, 4Paradigm, NLP Research Intern.
 
 # 📚 Academic Services
-- Reviewer for EACL23, ACL23, EMNLP23, ACL24
-- Participating in the review for NIPS22, ICLR23, IJCAI23
+- Reviewer for ACL, EMNLP, NAACL, NIPS, AAAI, etc.
 
 # 🎖 Competition and Reward
-- 2022-2023 National Scholarship in China
+- 2023-2024 **NR Scholarship**
+- 2022-2023 **National Scholarship** in China
 - Nanjing University Outstanding Graduate Student of the Year 2023
 - Rank Top1% in Global AI Innovation Contest (track3) held by Ali TIANCHI
 
@@ -69,10 +72,12 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 - [Bert-In-Relation-Extraction](https://github.com/Ricardokevins/Bert-In-Relation-Extraction)
 
 # History
+\[2024-05-16\]  Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
 
-\[2024-01-13\] 🔥 Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been published on arXiv.  
+\[2024-04-20\] I start my internship in the ByteDance Research, engaged in Multilingual LLM Project.
 
-\[2024-01-13\] 🔥 Our paper "Question Translation Training for Better Multilingual Reasoning" has been published on arXiv.  
+\[2024-03-14\] Our paper "Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models" has been accepted by NAACL 2024 Main.  
+
 
 \[2023-12-10\] Our paper "Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search" has been accepted by EMNLP 2023 
 
