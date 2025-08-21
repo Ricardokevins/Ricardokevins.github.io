@@ -12,7 +12,7 @@ I am a third-year PhD student under the supervision of Professor [Shujian Huang]
 
 ⭐ News
 ==========
-**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: `DuPO`, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
+**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: **DuPO**, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
 
 **\[2025-08-21\]** Our paper "R-PRM: Reasoning-Driven Process Reward Modeling" has been accepted on EMNLP2025 Main.  
 
