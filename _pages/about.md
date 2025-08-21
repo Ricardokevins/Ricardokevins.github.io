@@ -12,7 +12,7 @@ I am a third-year PhD student under the supervision of Professor [Shujian Huang]
 
 ⭐ News
 ==========
-**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: `DuPO`, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.
+**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: `DuPO`, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
 
 **\[2025-08-21\]** Our paper "R-PRM: Reasoning-Driven Process Reward Modeling" has been accepted on EMNLP2025 Main.  
 
@@ -21,7 +21,7 @@ I am a third-year PhD student under the supervision of Professor [Shujian Huang]
 
 
 # 📰 Publication
-- 🔥 DuPO: Reasoning-Driven Process Reward Modeling <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2508.14460)  
+- 🔥 DuPO: Enabling Reliable LLM Self-Verification via Dual Preference Optimization <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2508.14460)  
 **Shuaijie She**, Yu Bao, Yu Lu, Lu Xu, Tao Li, Wenhao Zhu, Shujian Huang, Shanbo Cheng, Lu Lu, Yuxuan Wang
 
 - 🔥 R-PRM: Reasoning-Driven Process Reward Modeling <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP2025&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2503.21295)  
