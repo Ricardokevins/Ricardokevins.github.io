@@ -12,23 +12,25 @@ I am a third-year PhD student under the supervision of Professor [Shujian Huang]
 
 ⭐ News
 ==========
-\[2025-07-18\] 🚀 We are excited to open-source **Seed-X**, a 7B-parameter multilingual translation LLM that delivers performance comparable to leading closed-source models like Gemini2.5-pro.
+**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: `DuPO`, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.
 
-\[2025-03-27\] 🚀 Our paper R-PRM: Reasoning-Driven Process Reward Modeling  has released!! 
+**\[2025-08-21\]** Our paper "R-PRM: Reasoning-Driven Process Reward Modeling" has been accepted on EMNLP2025 Main.  
 
-\[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
+**\[2025-07-18\]** We are excited to open-source **Seed-X**, a 7B-parameter multilingual translation LLM that delivers performance comparable to leading closed-source models like Gemini2.5-pro.
 
-\[2024-05-16\]  Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
 
 
 # 📰 Publication
-- 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2507.13618)  
-**ByteDance Seed Team**
+- 🔥 DuPO: Reasoning-Driven Process Reward Modeling <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2508.14460)  
+**Shuaijie She**, Yu Bao, Yu Lu, Lu Xu, Tao Li, Wenhao Zhu, Shujian Huang, Shanbo Cheng, Lu Lu, Yuxuan Wang
 
-- 🔥 R-PRM: Reasoning-Driven Process Reward Modeling <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2503.21295)  
+- 🔥 R-PRM: Reasoning-Driven Process Reward Modeling <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP2025&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2503.21295)  
 **Shuaijie She**, Junxiao Liu, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang
 
-- 🔥 MAPO: Advancing Multilingual Reasoning through Multilingual
+
+- 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Arxiv&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2507.13618)  
+**ByteDance Seed Team**
+- MAPO: Advancing Multilingual Reasoning through Multilingual
 Alignment-as-Preference Optimization  <font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL2024&nbsp;</font>  [[📄Paper]](https://arxiv.org/abs/2401.06838)  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
@@ -72,6 +74,13 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 - [Bert-In-Relation-Extraction](https://github.com/Ricardokevins/Bert-In-Relation-Extraction)
 
 # History
+\[2025-03-27\] 🚀 Our paper R-PRM: Reasoning-Driven Process Reward Modeling  has released!! 
+
+\[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
+
+
+\[2024-05-16\]  Our paper "MAPO: Advancing Multilingual Reasoning through Multilingual Alignment-as-Preference Optimization" has been accepted on ACL2024 Main.  
+
 \[2024-05-16\]  Our paper "Question Translation Training for Better Multilingual Reasoning" has been accepted on ACL2024 Finding.  
 
 \[2024-04-20\] I start my internship in the ByteDance Research, engaged in Multilingual LLM Project.
