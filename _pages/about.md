@@ -8,7 +8,7 @@ redirect_from:
   - /about.html
 ---
 
-I am a third-year PhD student under the supervision of Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research mainly focuses on Multilingual, Alignment, and Reasoning. Meanwhile, I am interning at ByteDance Research, focusing on Multilingual LLM Project.
+I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research focuses on LLM Reasoning, RL, and Multilingual LLM. Concurrently, I am a research intern at ByteDance Research.
 
 ⭐ News
 ==========
