@@ -52,7 +52,7 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 
 
 # 💻 Internship
-- *2023.04 - now*, Bytedance Research, NLP Research Intern.
+- *2024.04 - now*, Bytedance Research, NLP Research Intern.
 - *2023.04 - 2024.04*, 4Paradigm, NLP Research Intern.
 
 # 📚 Academic Services
