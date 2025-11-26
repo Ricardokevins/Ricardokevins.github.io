@@ -15,6 +15,7 @@ for i, line in enumerate(lines):
         paper_id = re.search(r'/([a-f0-9]{40})', line.strip()).group(1)
         for paper in me.papers:
             if paper.paperId == paper_id:
+                print(paper.citationCount)
                 lines[i] = re.sub(r'(citation-)\d+', f'citation-{paper.citationCount}', line)
-with open('index.md', 'w') as file:
+with open('./_pages/about.md', 'w') as file:
     file.writelines(lines)
