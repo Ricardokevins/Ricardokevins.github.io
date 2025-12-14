@@ -29,7 +29,7 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Preprint&nbsp;</font> 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters</div>    
 **ByteDance Seed Team**  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2507.13618)
-[![citation](https://img.shields.io/badge/citation-7-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
+[![citation](https://img.shields.io/badge/citation-8-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;AAAI 2026&nbsp;</font> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>   
 - Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen  
@@ -39,7 +39,7 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP 2025&nbsp;</font> R-PRM: Reasoning-Driven Process Reward Modeling</div>  
 **Shuaijie She**, Junxiao Liu, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2503.21295)
-[![citation](https://img.shields.io/badge/citation-20-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
+[![citation](https://img.shields.io/badge/citation-21-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2024&nbsp;</font> MAPO: Advancing Multilingual Reasoning through Multilingual</div>  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
