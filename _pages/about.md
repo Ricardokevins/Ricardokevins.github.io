@@ -29,12 +29,12 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Preprint&nbsp;</font> 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters</div>    
 **ByteDance Seed Team**  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2507.13618)
-[![citation](https://img.shields.io/badge/citation-8-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
+[![citation](https://img.shields.io/badge/citation-9-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;AAAI 2026&nbsp;</font> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>   
 - Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
-[![citation](https://img.shields.io/badge/citation-0-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
+[![citation](https://img.shields.io/badge/citation-1-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP 2025&nbsp;</font> R-PRM: Reasoning-Driven Process Reward Modeling</div>  
 **Shuaijie She**, Junxiao Liu, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang  
@@ -45,13 +45,13 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.06838)
-[![citation](https://img.shields.io/badge/citation-60-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
+[![citation](https://img.shields.io/badge/citation-63-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
 
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL2024&nbsp;</font> Question Translation Training for Better Multilingual Reasoning</div>   
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.07817)
-[![citation](https://img.shields.io/badge/citation-46-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
+[![citation](https://img.shields.io/badge/citation-47-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;NAACL 2024&nbsp;</font> Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models</div>  
 **Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen  
