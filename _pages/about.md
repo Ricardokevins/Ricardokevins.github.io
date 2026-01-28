@@ -12,16 +12,16 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 
 ⭐ News
 ==========
-**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: **DuPO**, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
+**\[2026-01-27\]** Our **DuPO** got accepted to ICLR 2026. Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
 
-**\[2025-08-21\]** Our paper "R-PRM: Reasoning-Driven Process Reward Modeling" has been accepted on EMNLP2025 Main.  
+**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: **DuPO**, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.]
 
 **\[2025-07-18\]** We are excited to open-source **Seed-X**, a 7B-parameter multilingual translation LLM that delivers performance comparable to leading closed-source models like Gemini2.5-pro.
 
 <!--  [![code](https://img.shields.io/badge/code-d6d6d6.svg?style=flat-square&logo=github&logoColor=181717)](https://github.com/MoonshotAI/Kimi-Linear) -->
 
 # 📰 Publication
-- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;Preprint&nbsp;</font> 🔥  DuPO: Enabling Reliable LLM Self-Verification via Dual Preference Optimization</div>  
+- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ICLR 2026&nbsp;</font> 🔥  DuPO: Enabling Reliable LLM Self-Verification via Dual Preference Optimization</div>  
 **Shuaijie She**, Yu Bao, Yu Lu, Lu Xu, Tao Li, Wenhao Zhu, Shujian Huang, Shanbo Cheng, Lu Lu, Yuxuan Wang  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2508.14460)
 [![citation](https://img.shields.io/badge/citation-1-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/DuPO%3A-Enabling-Reliable-LLM-Self-Verification-via-She-Bao/72cd4ae987f0f6c7a0406d9912dd232002159272)  
@@ -48,7 +48,7 @@ Xiang Liu, Xiang Geng, Jiajun Chen
 [![citation](https://img.shields.io/badge/citation-66-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
 
 
-- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL2024&nbsp;</font> Question Translation Training for Better Multilingual Reasoning</div>   
+- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2024&nbsp;</font> Question Translation Training for Better Multilingual Reasoning</div>   
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.07817)
 [![citation](https://img.shields.io/badge/citation-48-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
@@ -100,6 +100,8 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 - [Bert-In-Relation-Extraction](https://github.com/Ricardokevins/Bert-In-Relation-Extraction)
 
 # History
+\[2025-08-21\] Our paper "R-PRM: Reasoning-Driven Process Reward Modeling" has been accepted on EMNLP2025 Main.  
+
 \[2025-03-27\] 🚀 Our paper R-PRM: Reasoning-Driven Process Reward Modeling  has released!! 
 
 \[2024-08-10\] 🚀 I’ll be at ACL2024 in Bangkok presenting our work: MAPO during In-person Poster Session 3 on August 12 at 4:00 PM.! If you're interested in LLM / Multilingual / Alignment / Reasoning, feel free to stop by for a discussion🤝!
