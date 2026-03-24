@@ -14,7 +14,7 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 ==========
 **\[2026-01-27\]** Our **DuPO** got accepted to ICLR 2026. Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
 
-**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: **DuPO**, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.]
+**\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: **DuPO**, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.
 
 **\[2025-07-18\]** We are excited to open-source **Seed-X**, a 7B-parameter multilingual translation LLM that delivers performance comparable to leading closed-source models like Gemini2.5-pro.
 
