@@ -41,7 +41,7 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2503.21295)
 [![citation](https://img.shields.io/badge/citation-26-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
 
-- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2024&nbsp;</font> MAPO: Advancing Multilingual Reasoning through Multilingual</div>  
+- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2024&nbsp;</font> MAPO: Advancing Multilingual Reasoning through Multilingual-Alignment-as-Preference Optimization </div>  
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.06838)
