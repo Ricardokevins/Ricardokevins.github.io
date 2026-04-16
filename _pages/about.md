@@ -12,6 +12,8 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 
 ⭐ News
 ==========
+**\[2026-04-10\]** Our two new papers got accepted to ACL 2026.
+
 **\[2026-01-27\]** Our **DuPO** got accepted to ICLR 2026. Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
 
 **\[2025-08-21\]** We are thrilled to introduce our latest breakthroughs: **DuPO**, a new preference optimization framework that enables LLMs to perform reliable self-verification and improvement without human annotation or oracle labels.
@@ -20,7 +22,7 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 
 <!--  [![code](https://img.shields.io/badge/code-d6d6d6.svg?style=flat-square&logo=github&logoColor=181717)](https://github.com/MoonshotAI/Kimi-Linear) -->
 
-# 📰 Publication
+# 📰 Selected Publications
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ICLR 2026&nbsp;</font> 🔥  DuPO: Enabling Reliable LLM Self-Verification via Dual Preference Optimization</div>  
 **Shuaijie She**, Yu Bao, Yu Lu, Lu Xu, Tao Li, Wenhao Zhu, Shujian Huang, Shanbo Cheng, Lu Lu, Yuxuan Wang  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2508.14460)
@@ -30,11 +32,6 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 **ByteDance Seed Team**  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2507.13618)
 [![citation](https://img.shields.io/badge/citation-13-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
-
-- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;AAAI 2026&nbsp;</font> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>   
-- Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen  
-[![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
-[![citation](https://img.shields.io/badge/citation-3-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP 2025&nbsp;</font> R-PRM: Reasoning-Driven Process Reward Modeling</div>  
 **Shuaijie She**, Junxiao Liu, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang  
@@ -46,6 +43,24 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 Xiang Liu, Xiang Geng, Jiajun Chen  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.06838)
 [![citation](https://img.shields.io/badge/citation-74-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
+
+# Published Papers
+- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2026&nbsp;</font> Improving Long-Context Translation via Self-Supervised Dual Learning</div>   
+- Shanbo Cheng*, **Shuaijie She***, Yu Bao, Jianbing Zhang, Jiajun Chen, Shujian Huang
+<!--[![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
+[![citation](https://img.shields.io/badge/citation-3-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)-->
+
+
+- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2026&nbsp;</font> A Data-Efficient Path to Multilingual LLMs: Language Expansion via Post-training PARAM Integration into Upcycled MoE</div>   
+- Hao Zhou, Tianhao Li, Zhijun Wang, **Shuaijie She**, Linjuan Wu, Hao-Ran Wei, Baosong Yang, Jiajun Chen, Shujian Huang   
+[![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
+[![citation](https://img.shields.io/badge/citation-3-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
+
+
+- <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;AAAI 2026&nbsp;</font> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>   
+- Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen  
+[![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
+[![citation](https://img.shields.io/badge/citation-3-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
 
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2024&nbsp;</font> Question Translation Training for Better Multilingual Reasoning</div>   
@@ -63,12 +78,10 @@ Wenhao Zhu, Sizhe Liu, Shujian Huang, **Shuaijie She**, Chris Wendler, Jiajun Ch
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2407.10795)
 [![citation](https://img.shields.io/badge/citation-6-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Multilingual-Contrastive-Decoding-via-Layers-Zhu-Liu/44640b5f4efa8816a0fc81e1d5c1d171300d7e8e)
 
-
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;EMNLP 2023&nbsp;</font> Improved Pseudo Data for Machine Translation Quality Estimation with Constrained Beam Search</div>   
 Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Yang, Jiajun Chen, Shujian Huang  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://aclanthology.org/2023.emnlp-main.764/)
 [![citation](https://img.shields.io/badge/citation-2-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Improved-Pseudo-Data-for-Machine-Translation-with-Geng-Zhang/ee947cd0f25a99bc718a3339c2b3dfbfccf95e91)
-
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;AAAI 2023&nbsp;</font> CoP: Factual Inconsistency Detection by Controlling the Preference</div>  
 **Shuaijie She**, Xiang Geng, Shujian Huang, Jiajun Chen  
