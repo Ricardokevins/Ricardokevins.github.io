@@ -46,7 +46,7 @@ Xiang Liu, Xiang Geng, Jiajun Chen
 
 # Published Papers
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2026&nbsp;</font> Improving Long-Context Translation via Self-Supervised Dual Learning</div>   
-Shanbo Cheng \*, **Shuaijie She** \*, Yu Bao, Jianbing Zhang, Jiajun Chen, Shujian Huang
+Shanbo Cheng\*, **Shuaijie She**\*, Yu Bao, Jianbing Zhang, Jiajun Chen, Shujian Huang
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2026&nbsp;</font> A Data-Efficient Path to Multilingual LLMs: Language Expansion via Post-training PARAM Integration into Upcycled MoE</div>   
 Hao Zhou, Tianhao Li, Zhijun Wang, **Shuaijie She**, Linjuan Wu, Hao-Ran Wei, Baosong Yang, Jiajun Chen, Shujian Huang   
