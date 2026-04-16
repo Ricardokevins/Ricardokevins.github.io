@@ -52,10 +52,9 @@ Shanbo Cheng \*, **Shuaijie She** \*, Yu Bao, Jianbing Zhang, Jiajun Chen, Shuji
 Hao Zhou, Tianhao Li, Zhijun Wang, **Shuaijie She**, Linjuan Wu, Hao-Ran Wei, Baosong Yang, Jiajun Chen, Shujian Huang   
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;AAAI 2026&nbsp;</font> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>   
-- Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen  
+Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen  
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
 [![citation](https://img.shields.io/badge/citation-3-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
-
 
 - <div><font style="background: #8c0000" color="white" face='Arial' size="2pt">&nbsp;ACL 2024&nbsp;</font> Question Translation Training for Better Multilingual Reasoning</div>   
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch  
