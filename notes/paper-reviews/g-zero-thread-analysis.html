@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>G-Zero X 线程与论文深读</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1a16;
+      --muted: #6d675d;
+      --subtle: #8c8578;
+      --paper: #f7f2e8;
+      --panel: #fffdf8;
+      --panel-2: #f1eadf;
+      --line: #d8cdbb;
+      --line-strong: #a89b86;
+      --accent: #ad5a32;
+      --accent-soft: #f0d7c9;
+      --blue: #2f5f8e;
+      --blue-soft: #dbe8f2;
+      --green: #397261;
+      --green-soft: #dbe9e3;
+      --red: #9b3f34;
+      --red-soft: #efd8d2;
+      --gold: #9d6a22;
+      --gold-soft: #f3e2bf;
+      --shadow: 0 20px 54px rgba(51, 42, 30, 0.12);
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", system-ui, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(47, 95, 142, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(247, 242, 232, 0.92);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 760;
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--ink) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+      flex: 0 0 auto;
+    }
+    .brand span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.55);
+      color: var(--ink);
+    }
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.03fr) minmax(340px, 0.97fr);
+      gap: clamp(30px, 5vw, 70px);
+      align-items: end;
+      min-height: 84vh;
+      padding: clamp(56px, 9vw, 116px) clamp(20px, 5vw, 72px) 46px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(112deg, rgba(255, 253, 248, 0.98) 0 38%, rgba(255, 253, 248, 0.78) 39% 59%, rgba(240, 215, 201, 0.52) 60% 100%),
+        url("g-zero-thread-analysis-assets/intro.png") center right / contain no-repeat;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 40%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(247, 242, 232, 0));
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+    h1, h2, h3 {
+      margin: 0;
+      color: var(--ink);
+      letter-spacing: 0;
+      line-height: 1.12;
+    }
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(44px, 8vw, 86px);
+      font-weight: 760;
+    }
+    .subtitle {
+      max-width: 760px;
+      margin: 20px 0 0;
+      color: #39332b;
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.48;
+    }
+    .hero-side {
+      align-self: end;
+      display: grid;
+      gap: 14px;
+    }
+    .thesis {
+      padding: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+      box-shadow: var(--shadow);
+    }
+    .thesis strong { color: var(--accent); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.78);
+    }
+    .metric .num {
+      display: block;
+      font-family: var(--serif);
+      font-size: 28px;
+      font-weight: 760;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .metric .label {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.36;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 56px clamp(18px, 4vw, 44px) 90px;
+    }
+    section {
+      margin: 0 0 58px;
+      scroll-margin-top: 78px;
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.35fr) minmax(0, 0.65fr);
+      gap: 26px;
+      align-items: end;
+      margin-bottom: 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 48px);
+    }
+    h3 {
+      margin: 26px 0 8px;
+      font-size: 21px;
+    }
+    p {
+      margin: 12px 0;
+      color: #312c25;
+      font-size: 16px;
+    }
+    .lead {
+      font-size: 18px;
+      color: #2b261f;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .card, .callout, .quote, .formula, .figure, .codebox {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 8px 30px rgba(51, 42, 30, 0.06);
+    }
+    .card {
+      padding: 18px;
+    }
+    .card h3 {
+      margin-top: 0;
+      font-size: 19px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      margin: 0 6px 7px 0;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-soft), var(--panel) 45%);
+    }
+    .callout.green {
+      border-left-color: var(--green);
+      background: linear-gradient(90deg, var(--green-soft), var(--panel) 45%);
+    }
+    .callout.red {
+      border-left-color: var(--red);
+      background: linear-gradient(90deg, var(--red-soft), var(--panel) 45%);
+    }
+    .quote {
+      padding: 18px;
+      background: #fbf7ef;
+    }
+    .quote p {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+    .quote .source {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .flow {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 62px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+    }
+    .step-num {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border: 2px solid var(--ink);
+      color: var(--ink);
+      font-weight: 800;
+    }
+    .step h3 { margin: 0 0 6px; }
+    .formula {
+      margin: 18px 0;
+      padding: 18px 20px;
+      overflow-x: auto;
+      background: #fffaf1;
+    }
+    .formula .caption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid rgba(216, 205, 187, 0.58);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-weight: 800;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .good { color: var(--green); font-weight: 800; }
+    .bad { color: var(--red); font-weight: 800; }
+    .muted { color: var(--muted); }
+    .figure {
+      margin: 22px 0;
+      padding: 14px;
+      background: #fffdf8;
+    }
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(216, 205, 187, 0.7);
+      background: white;
+    }
+    .figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    code {
+      padding: 1px 5px;
+      border: 1px solid rgba(216, 205, 187, 0.85);
+      background: #f3eadc;
+      color: #5d321f;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+    pre {
+      margin: 0;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: #241f1a;
+      color: #f8efe3;
+      line-height: 1.55;
+    }
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+    }
+    .codebox { overflow: hidden; }
+    .compact-list {
+      margin: 12px 0;
+      padding-left: 20px;
+    }
+    .compact-list li {
+      margin: 7px 0;
+    }
+    .divider {
+      height: 1px;
+      margin: 24px 0;
+      background: var(--line);
+    }
+    .footer {
+      margin-top: 70px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 900px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+      .hero::before {
+        opacity: 0.18;
+        background-size: cover;
+      }
+      .section-head {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .grid, .grid.two, .metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark"></span><span>G-Zero / X Thread Analysis</span></div>
+    <nav class="nav" aria-label="目录">
+      <a href="#source">来源</a>
+      <a href="#claim">主张</a>
+      <a href="#method">方法</a>
+      <a href="#delta">Hint-δ</a>
+      <a href="#training">训练</a>
+      <a href="#evaluation">评估</a>
+      <a href="#results">结果</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">2026-05-15 阅读报告</div>
+      <h1>G-Zero：不用投票、Verifier 或 Judge 的开放式自我改进？</h1>
+      <p class="subtitle">
+        这条 X 帖的核心不是“又一个自博弈框架”，而是把开放式任务里的监督信号改写成模型自身的分布变化：
+        hint 让模型偏离自己无提示答案的幅度，既可训练 Proposer，也可筛选 DPO 数据。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis">
+        <strong>一句话 thesis：</strong>
+        G-Zero 的真正创新在于把“hint 是否有用”从主观质量判断转成可计算的 log-prob shift；
+        但它并没有证明“无需外部评价即可无限自进化”，更准确地说，它证明了在短轮次、小规模实验中，
+        intrinsic distributional signal 可以替代一部分 judge/verifier 的训练用途。
+      </div>
+      <div class="metrics">
+        <div class="metric"><span class="num">4</span><span class="label">作者主帖：原帖 + 3 条方法/结果补充</span></div>
+        <div class="metric"><span class="num">22p</span><span class="label">arXiv PDF 核验页数</span></div>
+        <div class="metric"><span class="num">2K</span><span class="label">默认每轮 Proposer 生成的问题/提示数</span></div>
+        <div class="metric"><span class="num">R=2</span><span class="label">论文报告主结果截止到两轮</span></div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div class="section-kicker">Source Map</div>
+        <h2>我读了哪些材料，怎么核验</h2>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>X 线程</h3>
+          <p>使用 OpenCLI 的 <code>twitter thread</code> 读取原帖、3 条作者补充和评论区回复。作者在帖中提出问题：开放式任务没有 majority vote、verifier 或 LLM judge 时，模型如何自我改进？</p>
+          <p class="muted">根帖时间：Tue May 12 18:40:32 +0000 2026。</p>
+        </div>
+        <div class="card">
+          <h3>论文与 HF 页面</h3>
+          <p>短链解析到 arXiv <code>2605.09959</code>，题名为 <em>G-Zero: Self-Play for Open-Ended Generation from Zero Data</em>，arXiv v1 提交时间为 2026-05-11。</p>
+          <p>Hugging Face Papers 页面同样指向该论文，并显示由 Chengsong Huang 于 2026-05-12 提交到 HF。</p>
+        </div>
+        <div class="card">
+          <h3>代码仓库</h3>
+          <p>短链解析到 <code>Chengsong-Huang/G-Zero</code>。我阅读了 README，以及 <code>hint_delta.py</code>、<code>phase2.py</code>、<code>phase3.py</code>、<code>config.py</code>、<code>prompts.py</code> 中与公式、数据过滤和 DPO 训练直接相关的实现。</p>
+          <p class="muted">GitHub REST API 本轮因 rate limit 返回 403，报告不使用 API star/fork 统计作为事实依据。</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>材料边界：</strong>
+        这不是独立复现实验；我没有运行 Tinker 训练，也没有重新评测 AIME/IFEval/AlpacaEval。
+        下文所有实验数字都来自论文和 README，判断重点是：机制是否讲得通、证据支撑到什么程度、推文是否夸大。
+      </div>
+    </section>
+
+    <section id="claim">
+      <div class="section-head">
+        <div class="section-kicker">Thread Claim</div>
+        <h2>这条 X 帖到底在说什么</h2>
+      </div>
+      <div class="quote">
+        <p><strong>原帖主张：</strong>开放式任务中没有多数投票、程序 verifier 或 LLM judge，因此他们构建了一个不依赖这些外部信号的 self-improvement 方法：G-Zero。</p>
+        <p class="source">线程中的核心链接分别指向 arXiv 论文、Hugging Face Papers 页面和 GitHub 代码仓库。</p>
+      </div>
+      <p class="lead">
+        作者用一个很现实的面试问题切入：像“写一封离职邮件”“给软件工程师解释 Kalman filter”这类任务，没有唯一正确答案，也没有可执行测试。
+        传统 RLVR 可以在数学/代码中用最终答案或单元测试打分，但开放式写作、解释、建议、对话更多依赖结构、风格、受众适配和细节组织。
+      </p>
+      <p>
+        G-Zero 的回应不是训练一个更强 judge，也不是让多个答案投票，而是让同一个 Solver 在两个上下文里看自己的无提示答案：
+        只给问题 \(q\) 时，它生成一个 <code>a_hard</code>；给问题和 hint \(h\) 时，再看它对同一个 <code>a_hard</code> 的 token log-prob 是否下降。
+        如果 hint 让原来的答案变得“不像自己在有 hint 时会写的答案”，就说明 hint 改变了模型的条件分布。
+      </p>
+      <div class="grid two">
+        <div class="card">
+          <h3>帖中最重要的判断</h3>
+          <p><span class="bad">High δ</span> 被作者解释为 answer leakage：hint 过度暴露答案，DPO 学到的是“从 hint 抄内容”，无 hint 测试时泛化差。</p>
+          <p><span class="good">Low δ</span> 被解释为 style / structure shift：hint 改变组织方式、推理结构或表达策略，而不是直接提供答案；这类改进更可能迁移到无 hint 推理。</p>
+        </div>
+        <div class="card">
+          <h3>推文结果摘要</h3>
+          <p>作者在帖中报告 Qwen3-8B-Base 与 Llama-3.1-8B-Instruct 上：AIME 平均提升约 +2.97 pp，IFEval 提升约 +1.22 pp，AlpacaEval LC 大体稳定；R1 捕获主要收益，R2 展示 Proposer 与 Solver 的共演右移。</p>
+          <p class="muted">这些数字需要回到论文表格看：不同模型、不同指标并非全部单调提升。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div class="section-kicker">Mechanism</div>
+        <h2>方法不是“自己奖励自己”，而是“用 hint 造成的分布差做训练信号”</h2>
+      </div>
+      <figure class="figure">
+        <img src="g-zero-thread-analysis-assets/method.png" alt="G-Zero method diagram" />
+        <figcaption>README / 论文中的方法图：上半部分训练 Proposer，下半部分用筛选后的 hint-assisted / unassisted 对训练 Generator。</figcaption>
+      </figure>
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Proposer / Challenger 生成开放式任务和 hint</h3>
+            <p>
+              Proposer 收到一个元提示，输出 <code>&lt;question&gt;</code> 和 <code>&lt;hint&gt;</code>。
+              任务分布被明确引导到写作、解释、建议、分析、代码、角色扮演、伦理/科学/日常问题等开放式任务；
+              数学/逻辑题允许出现，但提示中要求大约不超过六分之一。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>Solver 在无 hint 下先生成 <code>a_hard</code></h3>
+            <p>
+              这一步不是为了找“错答案”，而是获取当前模型在问题 \(q\) 上自然会写出的 baseline response。
+              后续的 δ 不是比较两个最终答案的语义质量，而是比较同一个 <code>a_hard</code> 在两个上下文下的平均 token log-prob。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>计算 Hint-δ：hint 是否显著改变模型分布</h3>
+            <p>
+              如果有 hint 时，模型对原始无 hint 答案的概率下降，说明 hint 让模型倾向于另一种回答轨迹。
+              δ 越大，偏移越强；但偏移强不等于训练价值高，因为强偏移可能来自答案泄漏。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>用 δ 奖励 Proposer，但用 lower-half δ 筛选 DPO 数据</h3>
+            <p>
+              这是 G-Zero 最容易误解的一点：Proposer 训练时希望生成能让 Solver 明显受影响的 hint，因此 reward 含 δ；
+              但 Generator 的 DPO 数据会保留每轮 δ 分布的下半部分，而不是最高 δ 样本。
+              作者认为 lower-half 更像结构性引导，upper-half 更容易泄漏答案或带来 off-manifold drift。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div>
+            <h3>DPO 训练 Solver，但 prompt 只保留问题 \(q\)</h3>
+            <p>
+              Phase 2 采样 <code>a_assisted ~ π(·|q,h)</code> 和 <code>a_hard ~ π(·|q)</code>。
+              Phase 3 训练时把 <code>a_assisted</code> 作为 chosen，把 <code>a_hard</code> 作为 rejected，但 DPO prompt 是 <code>q</code> 本身，不包含 hint。
+              目标是把 hint 带来的结构/表达策略蒸馏到无 hint 条件分布中。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="delta">
+      <div class="section-head">
+        <div class="section-kicker">Hint-δ</div>
+        <h2>δ 具体怎么算，为什么它不是质量分数</h2>
+      </div>
+      <p class="lead">
+        Hint-δ 的输入是三样东西：问题 \(q\)、hint \(h\)、以及 Solver 在无 hint 下已经生成的答案 \(a_{\text{hard}}\)。
+        它输出一个标量，表示“在有 hint 的上下文中，原本那条无 hint 答案变得多不自然”。
+      </p>
+      <div class="formula">
+        \[
+        \delta(q,h,a_{\text{hard}})=\frac{1}{T}\sum_{t=1}^{T}
+        \left[
+        \log \pi_G(a_t \mid q,a_{<t})
+        -
+        \log \pi_G(a_t \mid q,h,a_{<t})
+        \right]
+        \]
+        <div class="caption">
+          论文使用 per-token mean，而不是 sequence-level sum，避免 Proposer 只靠诱导更长答案来放大奖励。
+        </div>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>一个直觉例子</h3>
+          <p>如果问题是“给非营利组织写一封募资邮件”，无 hint 答案可能是通用模板；hint 要求“用故事/统计开头，把资助说成战略投资，给出可衡量结果”。</p>
+          <p>在有 hint 的上下文中，通用模板 <code>a_hard</code> 的 token 概率会下降，因为模型更倾向于写结构更明确的版本。这时 δ 为正。</p>
+        </div>
+        <div class="card">
+          <h3>为什么它不是 reward model</h3>
+          <p>δ 没有直接判断 <code>a_assisted</code> 是否真实更好，也不检查事实性、安全性或用户偏好。它只说：hint 是否让 Generator 的条件分布发生变化。</p>
+          <p>所以 δ 更像“自诊断扰动强度”，不是外部意义上的质量、真理或 helpfulness 分数。</p>
+        </div>
+      </div>
+      <div class="callout green">
+        <strong>我的理解：</strong>
+        G-Zero 的优点是把开放式任务里的“提示是否有指导价值”变成了无需标注的连续信号；
+        风险则是这个信号只和模型自身分布相关。如果模型的分布偏见很强，δ 会忠实地测到“偏离原模型”，但不保证偏离方向更符合人类价值或事实。
+      </div>
+    </section>
+
+    <section id="training">
+      <div class="section-head">
+        <div class="section-kicker">Training Flow</div>
+        <h2>训练数据如何从零生成到 DPO 对</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>输入</th>
+            <th>模型动作</th>
+            <th>输出</th>
+            <th>关键约束</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Phase 1 Proposer GRPO</td>
+            <td>固定元提示</td>
+            <td>生成 \(q,h\)，用当前 Generator 的 δ 做 reward</td>
+            <td>更会找盲点的 Proposer</td>
+            <td>6 steps、batch 128、group size 16；hint 超过 200 chars 有长度惩罚；BLEU cluster 惩罚防重复</td>
+          </tr>
+          <tr>
+            <td>Phase 2 DPO pool</td>
+            <td>每轮约 2,000 个 \(q,h\)</td>
+            <td>Solver 采样 <code>a_hard</code> 与 <code>a_assisted</code>，重新计算 δ</td>
+            <td><code>raw_pool.jsonl</code> 和筛选后的 <code>dpo_data.jsonl</code></td>
+            <td>默认保留 δ percentile [0,50]，再过滤过短/过长/重复/echo/role marker/长度膨胀样本</td>
+          </tr>
+          <tr>
+            <td>Phase 3 Solver DPO</td>
+            <td><code>prompt=q, chosen=a_assisted, rejected=a_hard</code></td>
+            <td>length-normalized DPO，reference 为本轮 DPO 开始前的 Solver snapshot</td>
+            <td>无 hint 条件下更接近 assisted 风格的 Generator</td>
+            <td>DPO β=2.0，LR=1e-5，max steps=50，LoRA rank=32</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="formula">
+        \[
+        \mathcal{L}_{\text{DPO}}^{\text{LN}}(\theta)=-
+        \mathbb{E}
+        \left[
+        \log\sigma\left(
+        \beta(\bar r_\theta(x,y_w)-\bar r_\theta(x,y_l))
+        \right)
+        \right],
+        \quad
+        \bar r_\theta(x,y)=\frac{1}{|y|}\log\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}
+        \]
+        <div class="caption">代码中的 <code>phase3.py</code> 对 chosen/rejected log-ratio 都做 token mask 平均，目的是降低 DPO 对长 chosen 的偏好。</div>
+      </div>
+      <div class="callout">
+        <strong>实现细节值得注意：</strong>
+        <code>prompts.py</code> 明确不给 Solver 加 system prompt，因为 README/代码注释说 Qwen3-8B-Base 会在部分 rollout 中 echo system message，污染 chosen/rejected 文本并伤害 IFEval。
+        这说明作者确实在处理 DPO 数据污染，而不是只提出一个高层概念。
+      </div>
+    </section>
+
+    <section id="evaluation">
+      <div class="section-head">
+        <div class="section-kicker">Evaluation</div>
+        <h2>评估到底测的是什么</h2>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>AIME24 / AIME25</h3>
+          <p><strong>测什么：</strong>竞赛数学推理。模型需要给出最终答案。</p>
+          <p><strong>指标：</strong>mean@32，即每题 temperature 0.7 独立采样 32 次，统计平均正确率。AIME 每年只有 30 道题，因此百分比波动很大。</p>
+        </div>
+        <div class="card">
+          <h3>IFEval</h3>
+          <p><strong>测什么：</strong>严格遵循格式、关键词、数量、语言等可规则验证的用户指令。</p>
+          <p><strong>指标：</strong>prompt-level / instruction-level 的 strict 与 loose accuracy。strict 更看精确遵循，loose 放宽部分格式约束。</p>
+        </div>
+        <div class="card">
+          <h3>AlpacaEval 2.0 LC</h3>
+          <p><strong>测什么：</strong>一般聊天/开放式助手回答的 pairwise 偏好。</p>
+          <p><strong>指标：</strong>length-controlled win rate，对回答长度做控制以减少“更长更好”的偏差。论文使用 Qwen3-235B-A22B-Instruct-2507 作为 judge。</p>
+        </div>
+      </div>
+      <div class="callout red">
+        <strong>常见误解：</strong>
+        G-Zero 训练阶段声称不用 LLM judge，但评估阶段仍然使用 judge 来评 AlpacaEval LC。
+        因此准确说法是：它不把 LLM judge 作为训练 reward，不是完全不使用任何外部评价工具。
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <div class="section-kicker">Results</div>
+        <h2>结果有意思，但不是“全面显著碾压”</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>配置</th>
+            <th>AlpLC</th>
+            <th>IFEval pS/pL/iS/iL</th>
+            <th>AIME24</th>
+            <th>AIME25</th>
+            <th>平均</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Qwen3-8B-Base</td>
+            <td>Base</td>
+            <td>8.94</td>
+            <td>43.07 / 50.28 / 56.00 / 61.75</td>
+            <td>10.42</td>
+            <td>7.19</td>
+            <td>33.95</td>
+          </tr>
+          <tr>
+            <td>Qwen3-8B-Base</td>
+            <td>G-Zero R2</td>
+            <td class="bad">8.47</td>
+            <td class="good">43.81 / 50.83 / 57.92 / 63.43</td>
+            <td class="good">11.15</td>
+            <td class="good">12.40</td>
+            <td class="good">35.43</td>
+          </tr>
+          <tr>
+            <td>Llama-3.1-8B-Instruct</td>
+            <td>Base</td>
+            <td>24.12</td>
+            <td>58.41 / 65.80 / 69.42 / 75.30</td>
+            <td>5.94</td>
+            <td>0.42</td>
+            <td>42.77</td>
+          </tr>
+          <tr>
+            <td>Llama-3.1-8B-Instruct</td>
+            <td>G-Zero R2</td>
+            <td class="good">27.86</td>
+            <td class="good">59.52 / 66.35 / 70.38 / 75.78</td>
+            <td class="good">6.77</td>
+            <td class="good">0.63</td>
+            <td class="good">43.90</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Qwen3-8B-Base 的主收益在 AIME25 和 IFEval strict instruction 上，但 AlpacaEval LC 从 8.94 降到 8.47。
+        Llama-3.1-8B-Instruct 的主收益在 AlpacaEval LC，从 24.12 到 27.86；数学提升较小。
+        这支持“不同 base 模型暴露不同 bottleneck”的说法，但不支持“所有能力均大幅提升”的强说法。
+      </p>
+      <div class="grid two">
+        <figure class="figure">
+          <img src="g-zero-thread-analysis-assets/scaling_dynamics.png" alt="Capability scaling dynamics" />
+          <figcaption>README 图：Math 在小 DPO pool 下迅速获得多数收益；IFEval 要到 R2 from-scratch 优化才明显恢复/提升；AlpLC 在 Qwen 上基本平或略降。</figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="g-zero-thread-analysis-assets/delta_per_round.png" alt="Hint delta distribution per round" />
+          <figcaption>README 图：R2 的 Hint-δ 分布右移。作者解释为 Solver 变强后，Proposer 必须生成更有冲击力的 hint 才能扰动它。</figcaption>
+        </figure>
+      </div>
+
+      <h3>δ filter 消融：lower-half 是“均衡选择”，不是绝对最优</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>δ percentile filter</th>
+            <th>Chat</th>
+            <th>IFEval</th>
+            <th>Math</th>
+            <th>Average</th>
+            <th>解释</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Base</td>
+            <td>8.94</td>
+            <td>52.78</td>
+            <td>8.81</td>
+            <td>33.95</td>
+            <td>未训练</td>
+          </tr>
+          <tr>
+            <td>[0,50] G-Zero</td>
+            <td>9.07</td>
+            <td>53.03</td>
+            <td>11.78</td>
+            <td>34.96</td>
+            <td>默认 bot50，平均最高</td>
+          </tr>
+          <tr>
+            <td>[20,80]</td>
+            <td>9.07</td>
+            <td>51.82</td>
+            <td class="good">12.54</td>
+            <td>34.40</td>
+            <td>Math 更高，但 IFEval 明显较低</td>
+          </tr>
+          <tr>
+            <td>[50,100]</td>
+            <td class="good">9.68</td>
+            <td>51.97</td>
+            <td>10.37</td>
+            <td>34.04</td>
+            <td>更像吸收 hint 内容，chat 提升但指令/数学折损</td>
+          </tr>
+          <tr>
+            <td>[0,100]</td>
+            <td>9.10</td>
+            <td class="good">53.08</td>
+            <td>10.58</td>
+            <td>34.65</td>
+            <td>不过滤也有效，但 Math 不如 bot50</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        这个表是我觉得最诚实的一块：作者没有把 [0,50] 说成对所有指标支配。
+        它是一个更均衡的默认点，而不是理论上唯一正确的 filter。
+      </p>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div class="section-kicker">Limits</div>
+        <h2>论文自己承认的限制，以及我额外看到的风险</h2>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>1. 单次运行，误差条不足</h3>
+          <p>论文明确说 Table 1 每个 cell 是一次 end-to-end run，因为总 Tinker compute 约 2,000 美元；三 seed 会大约三倍成本。</p>
+          <p>AIME24/25 只有 30 道题，论文指出在 \(p\approx0.3\) 附近 1σ 约 8 个百分点。因此 AIME 上几个百分点的提升，不能轻易当作统计稳健结论。</p>
+        </div>
+        <div class="card">
+          <h3>2. R3 collapse 说明共演并不天然稳定</h3>
+          <p>论文附录报告 Llama-3.1-8B-Instruct 的探索性 R3 collapse：Phase 2 filter 拒绝了全部 1,994 个 candidate pairs，因为 R2 Generator 收敛到过短回答，不满足 <code>chosen_min_chars</code>。</p>
+          <p>作者也承认 Proposer 可能继续最大化 δ，但生成越来越 idiosyncratic 的 hint，不再对应真正有信息的指导。</p>
+        </div>
+        <div class="card">
+          <h3>3. δ 只测分布变化，不测事实真伪</h3>
+          <p>如果 hint 把模型带向更自信但错误的写法，δ 仍可能为正。G-Zero 需要质量过滤和最终安全/事实评估来兜底。</p>
+        </div>
+        <div class="card">
+          <h3>4. “zero data” 不是“零先验”</h3>
+          <p>Proposer 的元提示、人为设计的任务类别、长度惩罚、BLEU 惩罚、DPO filter、评估集和 judge 都是人工注入的结构。它不使用人工标注样本训练，但不是无设计偏置。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div class="section-kicker">Insight</div>
+        <h2>我的判断：这是一个好信号设计，不是完整自我改进闭环</h2>
+      </div>
+      <p class="lead">
+        G-Zero 最值得学习的地方，不是“让模型自己训练自己”这个口号，而是它把开放式任务中的一个弱监督现象拆成了两个不同用途：
+        高 δ 用来驱动 Proposer 找盲点，低 δ 用来构造更适合 DPO 的细粒度 preference pair。
+      </p>
+      <div class="callout green">
+        <strong>真正有价值的 insight：</strong>
+        在开放式任务里，“答案好不好”难评，但“某个 hint 是否改变了模型原本的生成轨迹”可以直接从模型 log-prob 中测出来。
+        这是一种把不可验证任务转成可优化信号的工程桥接方式。
+      </div>
+      <p>
+        我认为这篇工作的强点是：训练信号非常便宜、与当前模型能力自适应、能避开 judge 能力上限和 judge reward hacking 的一部分问题；
+        代码也把关键工程问题做了出来，包括 per-token δ、长度惩罚、BLEU 去重、chosen/rejected 长度比过滤、zlib repetition filter、length-normalized DPO。
+      </p>
+      <p>
+        但它的弱点同样清楚：δ 不是价值函数，不能保证 truthfulness；R3 collapse 暴露了递归训练里的长度和 idiosyncratic hint hacking；
+        主结果还缺少 multi-seed 和更强模型/更大任务分布验证。
+        因此我会把它定位为“开放式自我改进的一种很有启发的 intrinsic signal”，而不是已经解决了 open-ended self-improvement。
+      </p>
+      <h3>如果要继续做，我会优先看三件事</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>为什么重要</th>
+            <th>建议实验</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>δ 与人类偏好/事实正确性的相关性</td>
+            <td>δ 只测分布位移，必须知道它何时对应真实质量提升。</td>
+            <td>抽样 lower/mid/high δ pairs，用独立人评或强 judge 标注质量、事实性、helpfulness，并画 calibration curve。</td>
+          </tr>
+          <tr>
+            <td>R3 以后如何稳定</td>
+            <td>如果只能两轮，continuous self-evolution 的 claim 会弱很多。</td>
+            <td>加入长度下界自适应、KL/entropy 监控、anti-shortness reward、Proposer novelty 与 usefulness 双目标。</td>
+          </tr>
+          <tr>
+            <td>不同任务族是否出现不同 filter 最优区间</td>
+            <td>Table 3 已显示 [20,80] 对 Math 更好，单一 bot50 可能不是通用选择。</td>
+            <td>按 writing/explain/advice/code/math 分桶做 percentile filter sweep，学习 task-conditional δ filter。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div class="section-kicker">Reproducibility</div>
+        <h2>本次材料获取与校验命令</h2>
+      </div>
+      <div class="codebox">
+        <pre><code>opencli list -f json | jq -r '.[] | select(.site=="twitter" or .domain=="x.com") | [.site,.name,.strategy,.description] | @tsv'
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/ChengsongH31219/status/2054270515708305844" --limit 80 -f json --trace retain-on-failure
+
+curl -Ls -o /dev/null -w '%{url_effective}\t%{http_code}\n' "https://t.co/TrvGb48W4d"
+curl -Ls -o /dev/null -w '%{url_effective}\t%{http_code}\n' "https://t.co/8guc5xSh3i"
+curl -Ls -o /dev/null -w '%{url_effective}\t%{http_code}\n' "https://t.co/G8mMm2I9h1"
+
+opencli web read --url "https://arxiv.org/abs/2605.09959" --stdout true --download-images false --wait 3 -f json --trace retain-on-failure
+opencli web read --url "https://huggingface.co/papers/2605.09959" --stdout true --download-images false --wait 5 -f json --trace retain-on-failure
+curl -L "https://arxiv.org/pdf/2605.09959" -o "/Users/bytedance/Downloads/g-zero-thread-analysis-assets/2605.09959.pdf"
+pdfinfo "/Users/bytedance/Downloads/g-zero-thread-analysis-assets/2605.09959.pdf"
+pdftotext -layout "/Users/bytedance/Downloads/g-zero-thread-analysis-assets/2605.09959.pdf" "/Users/bytedance/Downloads/g-zero-thread-analysis-assets/2605.09959.txt"</code></pre>
+      </div>
+      <p class="muted">
+        本报告生成后还执行了 HTML parser、核心章节、图片引用、Unicode replacement character、<code>pre code</code> 样式和 MathJax DOM 渲染检查。
+      </p>
+    </section>
+
+    <div class="footer">
+      <p>
+        本 HTML 报告由本地材料阅读生成。核心证据包括 X 线程、arXiv/HF 页面、PDF 全文、GitHub README 和关键实现文件。
+        文件路径：<code>/Users/bytedance/Downloads/g-zero-thread-analysis.html</code>。
+      </p>
+    </div>
+  </main>
+</body>
+</html>

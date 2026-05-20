@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memento / KV Cache X 帖深度解读</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1c1a17;
+      --muted: #6b6258;
+      --subtle: #8a8176;
+      --paper: #f7f1e7;
+      --panel: #fffdf7;
+      --line: #d9ccbb;
+      --line-strong: #a9947d;
+      --terracotta: #a4462c;
+      --terracotta-soft: #f0d8cb;
+      --blue: #2f5f86;
+      --blue-soft: #dce8f0;
+      --gold: #94680f;
+      --gold-soft: #f3e5c1;
+      --green: #3f6f58;
+      --green-soft: #dfeade;
+      --red: #963b32;
+      --red-soft: #efd8d4;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", Georgia, serif;
+      --shadow: 0 20px 56px rgba(45, 36, 25, 0.13);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(28,26,23,0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+        linear-gradient(0deg, rgba(28,26,23,0.026) 1px, transparent 1px) 0 0 / 32px 32px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(47, 95, 134, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(28,26,23,0.14);
+      background: rgba(247, 241, 231, 0.93);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 800;
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 39%, var(--ink) 40% 53%, transparent 54%),
+        linear-gradient(45deg, transparent 0 42%, var(--terracotta) 43% 58%, transparent 59%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+    .brand span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 999px;
+    }
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255,255,255,0.45);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+      gap: clamp(24px, 4vw, 48px);
+      padding: clamp(56px, 8vw, 96px) clamp(20px, 5vw, 72px) 44px;
+      max-width: 1280px;
+      margin: 0 auto;
+      min-height: 82vh;
+      align-items: center;
+    }
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--terracotta);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(40px, 7vw, 86px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+    .hero-lead {
+      max-width: 860px;
+      margin: 26px 0 0;
+      color: #352d26;
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.55;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 5px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.5);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+    }
+    .hero-side {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.86);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      border-radius: 8px;
+    }
+    .hero-side strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--terracotta);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .hero-side p {
+      margin: 0;
+      font-size: 16px;
+    }
+    .hero-side .metric {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+    .metric b {
+      font-family: var(--serif);
+      font-size: 30px;
+      line-height: 1.05;
+      color: var(--ink);
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 clamp(18px, 4vw, 48px) 80px;
+    }
+    section {
+      margin: 34px 0;
+      padding: clamp(24px, 4vw, 38px);
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.86);
+      border-radius: 8px;
+      box-shadow: 0 8px 30px rgba(45, 36, 25, 0.06);
+    }
+    .section-title {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 14px;
+      align-items: baseline;
+      margin-bottom: 18px;
+    }
+    .section-title span {
+      color: var(--terracotta);
+      font-weight: 850;
+      font-size: 13px;
+    }
+    h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(26px, 3.4vw, 42px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+    p {
+      margin: 12px 0;
+      font-size: 16px;
+    }
+    ul, ol {
+      padding-left: 22px;
+      margin: 12px 0;
+    }
+    li { margin: 8px 0; }
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: #efe4d4;
+      padding: 1px 4px;
+      border-radius: 4px;
+      color: #3a261b;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid #2f271f;
+      border-radius: 8px;
+      background: #201b16;
+      color: #f7efe2;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #fffaf0;
+      border-radius: 8px;
+    }
+    .card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .callout {
+      margin: 20px 0;
+      padding: 18px;
+      border-left: 4px solid var(--terracotta);
+      background: var(--terracotta-soft);
+      border-radius: 0 8px 8px 0;
+    }
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+    }
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+    .callout.gold {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+    .callout p:first-child { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .table-wrap {
+      margin: 20px 0;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f1e5d3;
+      color: #2a211a;
+      font-weight: 800;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .math-block {
+      margin: 18px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbf4e8;
+      overflow-x: auto;
+    }
+    .source-list {
+      list-style: none;
+      padding: 0;
+    }
+    .source-list li {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .source-list li:last-child { border-bottom: 0; }
+    .source-list b {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .source-list span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .flow-step {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+    }
+    .flow-step b {
+      color: var(--terracotta);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .flow-step p { margin: 0; }
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px clamp(18px, 4vw, 48px) 60px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        padding-top: 44px;
+      }
+      .grid, .two-col { grid-template-columns: 1fr; }
+      section { padding: 22px; }
+      .section-title { grid-template-columns: 1fr; gap: 4px; }
+      .flow-step { grid-template-columns: 1fr; }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span>Memento / KV Cache 深度解读</span></div>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#mechanism">机制</a>
+      <a href="#training">训练</a>
+      <a href="#evidence">证据</a>
+      <a href="#agent">Agent</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <p class="eyebrow">X Thread Reading · MEMENTO · KV Cache · Claude Code</p>
+      <h1>为什么“清掉 KV cache”不只是丢一点加速？</h1>
+      <p class="hero-lead">
+        DimitrisPapail 的这条 X 帖把 Claude Code idle 后的体验问题，连接到 MEMENTO 论文里一个更深的机制发现：
+        模型的可用上下文不只存在于可见文本，还部分存在于连续生成留下的 KV 表征里。
+      </p>
+      <div class="hero-meta">
+        <span class="pill">原帖：2026-04-08</span>
+        <span class="pill">补充讨论：2026-05-17</span>
+        <span class="pill">论文：MEMENTO arXiv 2604.09852</span>
+        <span class="pill">输出日期：2026-05-18</span>
+      </div>
+    </div>
+    <aside class="hero-side" aria-label="核心判断">
+      <strong>一句话 thesis</strong>
+      <p>如果一个长推理 session 被重启并只从文本摘要恢复，模型丢掉的可能是 summary token 的隐藏 KV state，而不只是一些旧 token。</p>
+      <div class="metric">
+        <b>15.3 pp</b>
+        <span>MEMENTO restart ablation 在 AIME24 上的 Pass@1 下降：同样 summary 文本，只重算 KV 后从 66.1% 降到 50.8%。</span>
+      </div>
+      <div class="metric">
+        <b>2-3x</b>
+        <span>论文报告对多种 uniform-attention 模型实现的 Peak KV cache reduction 量级。</span>
+      </div>
+    </aside>
+  </div>
+
+  <main>
+    <section id="source">
+      <div class="section-title"><span>01</span><h2>读了什么，怎么验证</h2></div>
+      <p>
+        原帖 <code>2041974013950373901</code> 的 OpenCLI 抓取结果显示正文只有一个 <code>t.co</code> 链接；短链解析到 X Article。
+        由于 <code>opencli twitter article</code> 对该 Article 返回 <code>Article not found</code>，本报告用 OpenCLI 线程、Microsoft Research 页面、项目 GitHub Pages 博客、GitHub README/vLLM README 和本地 PDF 文本交叉验证。
+      </p>
+      <div class="grid">
+        <div class="card">
+          <b>X thread</b>
+          <p>抓到原帖、作者回复、术语争议和关于 RoPE/restart/CLI agent 的讨论；主帖短链指向 X Article。</p>
+        </div>
+        <div class="card">
+          <b>论文与博客</b>
+          <p>MEMENTO: Teaching LLMs to Manage Their Own Context；Microsoft Research 文章和 GitHub Pages 博客提供方法、结果和实现说明。</p>
+        </div>
+        <div class="card">
+          <b>代码材料</b>
+          <p>GitHub README、data pipeline README 和 vLLM overlay README 用来核对特殊 token、物理 KV compaction 和运行参数。</p>
+        </div>
+      </div>
+      <ul class="source-list">
+        <li>
+          <b>本地抓取证据</b>
+          <span><code>memento-kv-cache-x/refs/thread-2041974013950373901.json</code>、<code>refs/memento.pdf</code>、<code>refs/memento.txt</code>、<code>refs/memento-blog.html</code>、<code>refs/memento-readme.md</code>。</span>
+        </li>
+        <li>
+          <b>边界声明</b>
+          <span>Claude Code idle 后是否真的以某种固定策略 flush KV cache，并没有来自 Anthropic 的官方技术文档；这里把它作为作者观察和使用者体验来解释，不当作已验证的产品事实。</span>
+        </li>
+      </ul>
+    </section>
+
+    <section id="problem">
+      <div class="section-title"><span>02</span><h2>问题不是“上下文太长”，而是模型不会自己管理中间状态</h2></div>
+      <p>
+        长 CoT 推理的基本矛盾很直接：模型通过生成大量 token 来做 test-time compute，但每个过去 token 的 key/value 向量都会留在 KV cache 里。
+        上下文越长、并发越高，KV cache 越容易成为显存和吞吐瓶颈。传统做法一般在模型外部加 summarizer、RAG memory 或 orchestration，把历史消息替换成压缩文本。
+      </p>
+      <div class="callout blue">
+        <p><b>MEMENTO 的问题设定更激进：</b>context management 不应该只是外部系统帮模型做的 housekeeping，而应该变成模型自己学会的 metacognitive skill：什么时候分段、压缩什么、忘掉什么、从什么状态继续。</p>
+      </div>
+      <p>
+        所以这条 X 帖的技术含义不是“KV cache 很贵”这个常识，而是：“重启 + 文本摘要恢复”可能破坏模型内部状态连续性。
+        MEMENTO 的实验恰好给了一个机制级解释：summary token 的 KV state 本身也在存信息。
+      </p>
+    </section>
+
+    <section id="mechanism">
+      <div class="section-title"><span>03</span><h2>Memento 怎么工作：block、summary 与 KV 驱逐</h2></div>
+      <p>
+        一个 Memento-trained 模型把自己的 reasoning 分成多个语义 block。每个 block 结束后，模型生成一个 memento：
+        这不是普通自然语言摘要，而是尽量短但足以继续推理的 state compression，保留公式、中间值、结论、被拒绝路线和下一步策略。
+      </p>
+      <pre><code>&lt;think&gt;
+&lt;|block_start|&gt; reasoning block T1 &lt;|block_end|&gt;
+&lt;|summary_start|&gt; memento M1 &lt;|summary_end|&gt;
+
+&lt;|block_start|&gt; reasoning block T2 &lt;|block_end|&gt;
+&lt;|summary_start|&gt; memento M2 &lt;|summary_end|&gt;
+...
+&lt;/think&gt;
+final answer</code></pre>
+      <p>
+        当 <code>&lt;|summary_end|&gt;</code> 生成后，前一个 reasoning block 对未来 token 不再可见。重要的是，MEMENTO 的 vLLM overlay 不是只做逻辑 attention mask，
+        而是把对应 block 的 KV entries 物理 compact/evict，释放 KV pool 空间。
+      </p>
+      <div class="flow">
+        <div class="flow-step"><b>生成 T_i</b><p>模型展开当前 reasoning block，此时 KV cache 正常增长。</p></div>
+        <div class="flow-step"><b>生成 M_i</b><p>模型在看见 T_i 的条件下生成 memento。M_i 的文本是摘要；M_i 的 KV state 是“看过 T_i 后”算出来的隐藏表征。</p></div>
+        <div class="flow-step"><b>驱逐 T_i</b><p>summary 完成后，vLLM 把 T_i 的 KV entries 物理移除，只保留 prompt、mementos 和当前 block。</p></div>
+        <div class="flow-step"><b>继续推理</b><p>未来 token attend 到 M_i；它看到的不只是 memento 文本，还包括 M_i KV state 里残留的原 block 信息。</p></div>
+      </div>
+      <div class="callout">
+        <p><b>线程里 masking / evict / flush 的争议：</b>作者在回复中承认不同 backend 下 masking 不一定总是物理 evict；但为了获得 MEMENTO 的 memory saving，他们的 vLLM 实现确实做了 KV eviction/compaction。因此可以把论文里的 “mask” 理解成语义上的不可见，把工程实现理解成物理 KV 驱逐。</p>
+      </div>
+    </section>
+
+    <section id="training">
+      <div class="section-title"><span>04</span><h2>数据与训练：复杂的是数据 pipeline，不是 loss</h2></div>
+      <p>
+        MEMENTO 构造了 OpenMementos：约 228K 条从 OpenThoughts-v3 派生的 reasoning traces，带 block segmentation 和 memento summaries。数据来源主要是 QwQ-32B 生成的高质量推理轨迹。
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>阶段</th><th>做什么</th><th>为什么这样做</th></tr></thead>
+          <tbody>
+            <tr><td>Seed selection</td><td>从 OpenThoughts-v3 选择 reasoning traces。</td><td>复用已有高质量 CoT，避免从零生成。</td></tr>
+            <tr><td>Sentence splitting</td><td>把 trace 切成句子、代码块、数学表达式等 atomic units。</td><td>避免在公式、代码或连续推导中间切断。</td></tr>
+            <tr><td>Boundary scoring</td><td>LLM judge 给相邻单元边界打 0-3 分。</td><td>把全局分段难题拆成局部判断。</td></tr>
+            <tr><td>DP segmentation</td><td>动态规划选择边界，奖励高分切点并惩罚 block size 不均。</td><td>LLM 不擅长一次性做全局组合优化，算法更稳。</td></tr>
+            <tr><td>Iterative summary</td><td>Compressor 生成 memento，Judge 六维评分，低于阈值则反馈重写。</td><td>单轮 summary 容易漏公式/数值；两轮反馈通过率从约 28% 到约 92%。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>两阶段 SFT</h3>
+      <div class="two-col">
+        <div class="card">
+          <b>Stage 1: Full Attention</b>
+          <p>标准 causal attention，loss 作用在所有 token 上。模型先学习 block/memento 格式和特殊 token 的使用。</p>
+        </div>
+        <div class="card">
+          <b>Stage 2: Memento Attention</b>
+          <p>每个 memento 完成后，前一个 thinking block 对后续 token 被 mask。模型被迫让 memento 足够自洽。</p>
+        </div>
+      </div>
+      <p>
+        这里没有引入复杂的新监督目标；训练目标仍是 next-token SFT。关键变化是第二阶段的 attention pattern，让训练条件和部署时 block masking 对齐。
+        作者在 X 回复中说“训练动态很像正常 SFT”就是这个意思：训练目标简单，但数据构造和推理引擎不简单。
+      </p>
+    </section>
+
+    <section id="evidence">
+      <div class="section-title"><span>05</span><h2>最强证据：同样 summary 文本，重算 KV 后性能大跌</h2></div>
+      <p>
+        如果 Memento 只是文本摘要，那么一种更简单的实现应该可行：每生成一个 summary，就重启一次 API call，用 prompt + summaries 重新 prefill。
+        论文专门做了 restart ablation 来测试这个想法。
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>推理模式</th><th>保持不变的部分</th><th>改变的部分</th><th>AIME24 Pass@1</th></tr></thead>
+          <tbody>
+            <tr><td>正常 Memento attention</td><td>M_i 文本、block/memento 结构</td><td>M_i KV 在看过 T_i 后保留</td><td>66.1%</td></tr>
+            <tr><td>Memento attention + restart</td><td>M_i 文本相同</td><td>丢弃 KV，重新 prefill prompt + M_1...M_i，M_i KV 不再包含 T_i 信息</td><td>50.8%</td></tr>
+            <tr><td>差距</td><td>文本相同</td><td>只隔离 KV 表征通道</td><td>-15.3 pp</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="math-block">
+        \[
+          \text{KV}_{M_i}^{\text{normal}} = f(M_i \mid T_i, M_{<i}, \text{prompt})
+          \quad \neq \quad
+          \text{KV}_{M_i}^{\text{restart}} = f(M_i \mid M_{<i}, \text{prompt})
+        \]
+      </div>
+      <p>
+        这个对照很干净：summary text 一样，差异来自 KV vectors 的计算条件。性能大跌说明 M_i 的 KV state 不是无关缓存，而是携带了下游推理会使用的信息。
+      </p>
+
+      <h3>Passcode probe：隐式通道里能恢复信息</h3>
+      <p>
+        论文进一步把随机 5 位 passcode 注入到真实 AIME25 trace 的某个 block 中，然后从后续 memento 的 KV state 训练 probe 预测这些数字。
+        在 masked 条件下，M3 不能直接看见被注入的 T2；如果仍能预测，说明信息通过 memento KV chain 传播了。
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>条件</th><th>含义</th><th>结果解释</th></tr></thead>
+          <tbody>
+            <tr><td>Direct</td><td>Probe M2 的 KV，M2 生成时能看见 T2。</td><td>能恢复约 60-70%，说明 KV state 包含比文本更多的信息。</td></tr>
+            <tr><td>Masked</td><td>Probe M3 的 KV，M3 不能直接看见 T2。</td><td>Qwen3-8B 约 26.7%、Qwen3-32B 约 23.0%，显著高于 10% chance。</td></tr>
+            <tr><td>Causal control</td><td>Probe T2 之前的 M1。</td><td>接近 10% chance，说明信号方向正确，不是 probe 作弊。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>主评估结果怎么读</h3>
+      <p>
+        MEMENTO 的主要评估不是通用聊天记忆，而是压缩自身 reasoning trace 后，在数学、科学、代码 benchmark 上能否保留解题能力并降低 KV 成本。
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>指标</th><th>定义</th><th>报告中的作用</th></tr></thead>
+          <tbody>
+            <tr><td>Pass@1 accuracy</td><td>每题多次采样后按单次正确率平均。</td><td>衡量压缩后单次解题稳定性。</td></tr>
+            <tr><td>Peak KV</td><td>请求期间 KV cache 峰值显存。</td><td>决定能否服务长上下文/高并发。</td></tr>
+            <tr><td>AUC KV</td><td>KV 占用随生成步数的曲线下面积。</td><td>衡量 memory-time cost；能揭示“峰值降了但生成变长”的失败模式。</td></tr>
+            <tr><td>Pass@64 / overlap</td><td>大量采样下能解出的题集重合度。</td><td>判断损失是 capability 下降还是 consistency 下降。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        论文里 Qwen3-32B 在 AIME26 上从 Base 75.2% 到 Memento 72.6%，只降 2.6 pp，同时显著降低 Peak KV。
+        Qwen3-8B 的 SFT gap 更大，但 RL 后 AIME26 从 57.3% 回到 64.9%，说明压缩造成的主要是单次采样一致性问题，而不是能力完全消失。
+      </p>
+    </section>
+
+    <section id="agent">
+      <div class="section-title"><span>06</span><h2>这对 Claude Code / CLI agent 意味着什么</h2></div>
+      <p>
+        Claude Code 这类 coding agent 的长会话不是单题数学推理，而是跨文件、跨命令、跨测试日志的状态累积。
+        它的“记忆”不仅包括 transcript 里的显式文本，还包括模型在连续推理中形成的中间表征。
+      </p>
+      <div class="callout green">
+        <p><b>关键区别：</b>保存 transcript 并不等于保存 session state。文本重放能恢复一部分显式信息，但不能恢复原来 token 生成时形成的 KV 表征，尤其不能恢复“summary token 看过完整上下文后”的隐藏状态。</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>长 agent session 里的状态</th><th>普通文本 memory 能否保存</th><th>KV 连续性可能保存什么</th></tr></thead>
+          <tbody>
+            <tr><td>已读文件、错误日志、用户约束</td><td>可以，但取决于是否完整记录/检索。</td><td>可能形成对当前任务状态的连续隐式压缩。</td></tr>
+            <tr><td>“我刚刚为什么放弃那条路线”</td><td>如果模型写出来就能保存；没写出来则丢失。</td><td>可能残留在当前 reasoning 状态中。</td></tr>
+            <tr><td>代码库局部结构的注意力焦点</td><td>摘要可能很粗糙。</td><td>KV state 可能携带更高带宽但不可解释的焦点信息。</td></tr>
+            <tr><td>长时间 idle 后恢复</td><td>通常依赖 transcript/prompt compaction。</td><td>如果 KV 被 flush，则这层状态消失。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        所以 Dimitris 的抱怨应该理解为：对长任务 agent 来说，idle 后清 cache 可能不只是性能优化策略，而是改变了模型继续工作的计算条件。
+        Memento 没有直接证明 Claude Code 的内部实现，但它证明了“flush KV 会丢隐式信息”在一个受控 reasoning setting 中是真实可测的。
+      </p>
+    </section>
+
+    <section id="limits">
+      <div class="section-title"><span>07</span><h2>不要过度解读的地方</h2></div>
+      <ul>
+        <li><b>没有 Claude Code 官方内部证据。</b>本报告不声称 Anthropic 的 idle 策略就是论文里的 restart mode；这里只说明 Memento 结果为这种体验提供了机制解释。</li>
+        <li><b>MEMENTO 主实验不是完整 agent benchmark。</b>它主要评估 math/science/code single-turn reasoning；CLI agent 只是作者认为自然的下一步。</li>
+        <li><b>普通模型不会自动会 Memento。</b>需要特殊数据和训练，让模型学会 block/memento 格式以及在 masked 条件下继续推理。</li>
+        <li><b>实现门槛很高。</b>要保留 KV 隐式通道并释放显存，需要 inference engine 支持 data-dependent physical KV compaction；纯 API 用户很难自己做。</li>
+        <li><b>压缩不总是降低总成本。</b>论文有例子显示 Memento 生成更多 token，Peak KV 降了但 AUC KV 反而上升。</li>
+        <li><b>RoPE/位置外推仍是开放问题。</b>线程讨论指出 Memento 保留原 position indices，极长 horizon 可能进入模型未训练过的位置范围；作者也承认这需要进一步测试。</li>
+      </ul>
+    </section>
+
+    <section id="insight">
+      <div class="section-title"><span>08</span><h2>我的判断：LLM 的上下文不是纯文本对象</h2></div>
+      <p>
+        MEMENTO 最重要的贡献不是省了多少 KV cache，而是把一个常被系统工程处理的问题变成了模型能力问题：
+        模型可以学会主动压缩自己的推理状态，而不是被外部 summarizer 被动改写历史。
+      </p>
+      <div class="callout gold">
+        <p>
+          更深的 insight 是：今天很多 agent framework 默认把“上下文”抽象成文本列表，所以可以随时裁剪、总结、重启、重放。
+          MEMENTO 说明这个抽象是有损的。连续生成中的 KV state 是一条高带宽、不可解释、但会影响结果的状态通道。
+        </p>
+      </div>
+      <p>
+        对工程实践来说，未来强长期 agent 很可能不会只靠一种 memory。更合理的结构是三层并存：
+        显式 transcript 负责可审计记录，外部 memory/RAG 负责跨会话长期知识，服务端 KV/state management 负责连续推理中的短期隐式状态。
+        “不要 flush KV”只是表层口号，真正的方向是：让模型和 serving system 共同学习如何压缩、迁移和保留有用状态。
+      </p>
+    </section>
+
+    <section id="commands">
+      <div class="section-title"><span>09</span><h2>复现命令记录</h2></div>
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com|web"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter article --help
+opencli twitter thread "2041974013950373901" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/lbjcGDxpJn"
+curl -L "https://raw.githubusercontent.com/microsoft/memento/main/docs/memento.pdf" -o "memento-kv-cache-x/refs/memento.pdf"
+pdfinfo "memento-kv-cache-x/refs/memento.pdf"
+pdftotext -layout "memento-kv-cache-x/refs/memento.pdf" "memento-kv-cache-x/refs/memento.txt"</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    Generated locally for SheSheBot research workflow. Project artifacts live under
+    <code>/Users/bytedance/Downloads/10_CodeRepos/SheSheBot/memento-kv-cache-x/</code>.
+  </footer>
+</body>
+</html>

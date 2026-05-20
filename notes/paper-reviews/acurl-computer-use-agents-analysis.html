@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACuRL X 线程与论文解读：Computer-use Agent 的自主持续学习</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f2e8;
+      --panel: #fffdf7;
+      --panel-strong: #f1e5d4;
+      --ink: #1f1b16;
+      --muted: #675f53;
+      --subtle: #8a7f70;
+      --line: #dacdbb;
+      --accent: #b65b32;
+      --accent-dark: #7f391d;
+      --accent-soft: #f4ddcf;
+      --blue: #315d89;
+      --blue-soft: #dde8f3;
+      --green: #3e7556;
+      --green-soft: #dce9df;
+      --red: #9b3f31;
+      --red-soft: #f2dad4;
+      --violet: #6a58a5;
+      --violet-soft: #e8e2f4;
+      --shadow: 0 18px 44px rgba(52, 43, 29, 0.13);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(31, 27, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(31, 27, 22, 0.026) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 93, 137, 0.35);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(31, 27, 22, 0.14);
+      background: rgba(247, 242, 232, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 760;
+      color: var(--ink);
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--ink) 43% 56%, transparent 57%),
+        linear-gradient(45deg, transparent 0 42%, var(--accent) 43% 56%, transparent 57%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 253, 247, 0.64);
+      color: var(--ink);
+    }
+
+    .hero {
+      min-height: 78vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.04fr) minmax(320px, 0.96fr);
+      gap: clamp(28px, 5vw, 70px);
+      align-items: end;
+      padding: clamp(56px, 8vw, 104px) clamp(20px, 5vw, 74px) 44px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent-dark);
+    }
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    h1 {
+      max-width: 900px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.2vw, 94px);
+      font-weight: 720;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.5vw, 56px);
+      font-weight: 720;
+    }
+    h3 {
+      font-size: clamp(20px, 2vw, 27px);
+      font-weight: 780;
+    }
+    .hero-lead {
+      max-width: 780px;
+      margin: 24px 0 0;
+      color: #342f28;
+      font-size: clamp(18px, 2.1vw, 23px);
+      line-height: 1.62;
+    }
+    .hero-side {
+      display: grid;
+      gap: 14px;
+      align-self: center;
+    }
+    .tweet-card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.94);
+      box-shadow: var(--shadow);
+    }
+    .tweet-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .tweet-text {
+      font-family: var(--serif);
+      font-size: 19px;
+      line-height: 1.55;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .metric b {
+      display: block;
+      color: var(--accent-dark);
+      font-size: 22px;
+      line-height: 1.1;
+    }
+    .metric span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    main {
+      width: min(var(--max), calc(100% - 36px));
+      margin: 0 auto;
+      padding: 54px 0 86px;
+    }
+    section {
+      margin: 0 0 70px;
+      scroll-margin-top: 82px;
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.72fr) minmax(320px, 0.28fr);
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+    .section-kicker {
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .section-note {
+      color: var(--muted);
+      font-size: 15px;
+    }
+    p { margin: 12px 0 0; }
+    .lead {
+      color: #332f29;
+      font-size: 19px;
+      line-height: 1.7;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.9);
+      padding: 20px;
+    }
+    .card h3 { margin-bottom: 10px; }
+    .card p, .card li { color: #39332b; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      margin-bottom: 12px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: var(--panel-strong);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .claim {
+      border-left: 4px solid var(--accent);
+      padding: 18px 20px;
+      background: var(--accent-soft);
+      color: #342318;
+      font-size: 18px;
+      line-height: 1.62;
+    }
+    .blue { background: var(--blue-soft); border-left-color: var(--blue); }
+    .green { background: var(--green-soft); border-left-color: var(--green); }
+    .red { background: var(--red-soft); border-left-color: var(--red); }
+    .violet { background: var(--violet-soft); border-left-color: var(--violet); }
+
+    .steps {
+      display: grid;
+      gap: 14px;
+      counter-reset: step;
+    }
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--ink);
+      color: var(--accent-dark);
+      font-weight: 820;
+      background: var(--paper);
+    }
+    .step h3 {
+      margin-bottom: 6px;
+      font-size: 21px;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 14px;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(31, 27, 22, 0.12);
+      background: #fff;
+    }
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 15px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 11px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      color: var(--accent-dark);
+      background: var(--panel-strong);
+      font-weight: 800;
+    }
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+
+    code, pre, .mono {
+      font-family: var(--mono);
+    }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #efe5d7;
+      color: #56341f;
+      font-size: 0.92em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 16px 0 0;
+      padding: 16px;
+      border: 1px solid #c8baa5;
+      background: #29251f;
+      color: #f7ead8;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+    }
+    ul {
+      padding-left: 20px;
+      margin: 10px 0 0;
+    }
+    li { margin: 7px 0; }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .source-item {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 16px;
+    }
+    .source-item b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .source-item span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .aside {
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      background: rgba(241, 229, 212, 0.8);
+      color: #3c3328;
+    }
+
+    @media (max-width: 880px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .hero, .section-head, .grid-2, .grid-3, .source-list {
+        grid-template-columns: 1fr;
+      }
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: auto;
+      }
+      .nav {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><i class="mark"></i><span>ACuRL Reading Report</span></div>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#reward">Reward</a>
+      <a href="#training">训练</a>
+      <a href="#evidence">实验</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X thread + paper + code analysis</div>
+      <h1>ACuRL：Computer-use Agent 的自主持续学习</h1>
+      <p class="hero-lead">
+        这条 X 线程介绍的不是一个新的桌面 Agent benchmark，而是一套“让 agent 在目标软件环境里自己产生训练任务、自己获得 reward、自己做 RL 适配”的工程与算法框架。核心价值在于把 computer-use agent 从静态训练集思路，推进到面向软件更新、平台迁移和新应用的持续适配。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="tweet-card">
+        <div class="tweet-meta">
+          <span>@xue_tianci</span>
+          <span>2026-02-20</span>
+        </div>
+        <div class="tweet-text">
+          “Computer-use agents are deployed into dynamic ecosystems, but trained as if the world were static.”
+        </div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric"><b>8</b><span>OpenCLI 抓取到的线程条目</span></div>
+        <div class="metric"><b>28</b><span>arXiv v2 PDF 页数</span></div>
+        <div class="metric"><b>93.7%</b><span>论文报告的 CUAJudge-human agreement</span></div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Source Map</div>
+          <h2>我读了什么，以及如何核验</h2>
+        </div>
+        <p class="section-note">线程本身是摘要，真正需要核对的是论文和代码仓库：推文里的数字基本都来自论文实验和 README 的性能展示。</p>
+      </div>
+      <div class="source-list">
+        <div class="source-item">
+          <b>X 线程</b>
+          <span>使用 <code>opencli twitter thread</code> 读取 <code>2024880742333820980</code>，共 8 条，包含论文链接、代码链接与 7 张图。</span>
+        </div>
+        <div class="source-item">
+          <b>论文</b>
+          <span>arXiv <code>2602.10356</code>，标题核验为《Autonomous Continual Learning for Environment Adaptation of Computer-Use Agents》，本地 PDF 元数据为 28 页。</span>
+        </div>
+        <div class="source-item">
+          <b>代码</b>
+          <span>GitHub 仓库 <code>OSU-NLP-Group/ACuRL</code>，README 给出环境部署、CUAJudge、训练与评估脚本说明。</span>
+        </div>
+        <div class="source-item">
+          <b>作者 profile</b>
+          <span>OpenCLI 读取到作者 Tianci Xue profile：Ohio State University 一年级 PhD student；这一点只用于身份背景，不参与技术结论。</span>
+        </div>
+      </div>
+      <figure>
+        <img src="acurl-report-assets/thread-1-overview.jpg" alt="ACuRL 线程首图" />
+        <figcaption>线程首图给出的项目定位：computer-use agents 在动态软件生态中需要 continual learning，ACuRL 试图用自主探索、课程任务生成和自动评估闭环解决这个问题。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Problem</div>
+          <h2>它到底要解决什么问题</h2>
+        </div>
+        <p class="section-note">不要把它理解成“再做一个 UI agent”。它关心的是 agent 面对环境变化时如何继续学习。</p>
+      </div>
+      <p class="lead">
+        Computer-use agent 的输入通常是任务描述和屏幕观察，输出是点击、键盘、滚动、等待等动作。现有训练范式大多默认环境是静态的：训练时见过某个软件版本、某种分辨率、某些网页或桌面状态，评估时也尽量保持类似。但现实里的软件并不静态：菜单会改、按钮会换位置、系统平台会迁移、分辨率会变化，甚至用户打开的是模型从未见过的小众专业软件。
+      </p>
+      <div class="grid-3">
+        <div class="card">
+          <span class="tag">Static assumption</span>
+          <h3>训练覆盖不可能完整</h3>
+          <p>桌面和网页应用数量巨大，靠人工收集所有软件、所有版本、所有初始状态的专家轨迹不可扩展。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Distribution shift</span>
+          <h3>环境变化会导致崩塌</h3>
+          <p>论文展示了 LibreOffice 版本更新、Ubuntu 到 Windows 迁移、低分辨率设置等变化会让同一任务集上的成功率明显下降。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Reward problem</span>
+          <h3>多步任务没有天然可验证 reward</h3>
+          <p>数学题能用答案判对错，代码题能跑测试；但“把幻灯片格式调好”这类任务必须看完整轨迹、最终状态和任务关键点。</p>
+        </div>
+      </div>
+      <div class="claim">
+        论文的核心问题可以压成一句话：如果一个 computer-use agent 被部署到一个新的或更新后的软件环境里，能不能在没有人工标注轨迹的情况下，自己生成可训练任务、自己判断任务是否成功，并通过 RL 逐轮适配？
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Mechanism</div>
+          <h2>ACuRL 的完整流程</h2>
+        </div>
+        <p class="section-note">ACuRL = Autonomous Curriculum Reinforcement Learning。它不是单个模型结构，而是任务生成、自动评估、在线 RL、环境编排四件事的闭环。</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>环境探索：先让 agent 摸清软件</h3>
+            <p>系统把目标软件环境打开，让当前 agent 在其中自主探索，记录观察和动作序列。这个轨迹不一定完成具体任务，它的作用是让后续任务生成器知道软件界面里有什么、哪些按钮可用、常见状态长什么样。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>上下文 review：把真实内容放进软件</h3>
+            <p>对文档、邮件、幻灯片、表格等环境，作者会从 web 收集多样化上下文材料，让 agent 只读浏览这些材料，形成 <code>context trajectories</code>。这样生成的任务不只是“点击菜单 A”，而是“基于这份具体文档/表格做某种编辑”。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>Iteration 0：先生成一批基础任务测能力</h3>
+            <p>零人工数据意味着一开始连训练任务都没有。ACuRL 先让生成器根据探索轨迹和上下文轨迹合成一批基础任务，用来评估当前 agent 对目标软件的初始能力；这些 iteration 0 任务不直接训练，而是为后面的课程生成提供反馈。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>能力评估：每个任务跑多次 rollout</h3>
+            <p>对每个任务采样多条执行轨迹，用 CUAJudge 判断成功或失败，然后计算该任务的平均成功率。这个成功率就是课程生成器判断“太简单 / 正合适 / 太难”的依据。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>课程生成：按照当前能力调难度</h3>
+            <p>成功率高于 70% 的任务被认为 agent 已基本掌握，下一轮生成更复杂、更长、更组合的任务；30%-70% 的任务继续换上下文和场景练同类技能；低于 30% 的任务会被拆成更简单的子任务，降低学习门槛。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>多轮 RL：用成功/失败 reward 更新策略</h3>
+            <p>每轮基于新生成的任务做 GRPO 类在线强化学习。每条轨迹得到一个二值 reward，组内归一化成 advantage，再把同一个 trajectory-level advantage 分配给这条轨迹里的每个动作 token。</p>
+          </div>
+        </div>
+      </div>
+      <figure>
+        <img src="acurl-report-assets/thread-2-framework.jpg" alt="ACuRL 方法框架图" />
+        <figcaption>推文第 2 条的框架图：先收集环境经验，再根据 CUAJudge 反馈生成不同难度课程任务，最后进入 iterative RL。</figcaption>
+      </figure>
+    </section>
+
+    <section id="reward">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Reward</div>
+          <h2>CUAJudge：为什么它是关键</h2>
+        </div>
+        <p class="section-note">ACuRL 最脆弱也最关键的地方是自动 reward。reward 如果错，RL 就会学会钻 evaluator 的空子。</p>
+      </div>
+      <p class="lead">
+        CUAJudge 的目标是判断一条多步 computer-use 轨迹是否完成任务。它不是只看最后一张截图，也不是简单问模型“成功了吗”。论文把它拆成三个阶段：从任务描述抽取关键点，挑出轨迹中的关键截图，再结合任务、关键点、截图和动作历史做 outcome judgment。
+      </p>
+      <div class="grid-2">
+        <div class="card">
+          <span class="tag">State difference</span>
+          <h3>初始状态 vs 最终状态</h3>
+          <p>很多桌面任务的核心不是某一步点击是否正确，而是最终文件、表格、幻灯片是否发生了符合要求的变化。CUAJudge 显式比较初始和最终状态，降低长轨迹噪声。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Evidence grounded</span>
+          <h3>每个关键点都要证据</h3>
+          <p>它要求对每个成功关键点给出支持截图和动作证据。这样做的意义是减少 false positive：不能因为界面看起来差不多就判成功。</p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>验证对象</th>
+            <th>论文报告的结果</th>
+            <th>应该如何理解</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1,444 条公开 OSWorld 轨迹，对比 rule-based evaluator</td>
+            <td>CUAJudge 总体 agreement 87.5%，高于 WebJudge 的 85.6%；论文按四类 agent 轨迹报告 precision，并总结 CUAJudge 相比 WebJudge 平均提升约 4.1 个百分点。</td>
+            <td>它在公开轨迹上更保守一些，尤其降低 false positive；但 O3 轨迹上的 precision 仍只有 42.1%，说明 evaluator 不是完美 oracle。</td>
+          </tr>
+          <tr>
+            <td>训练过程中的 288 条 on-policy 轨迹，对比人工判断</td>
+            <td>总体 precision 94.5%，recall 93.8%，agreement 93.7%。</td>
+            <td>这是推文里“93% human agreement”的来源，范围是论文抽样的 6 个环境和 3 个迭代，不应外推为所有软件环境都 93%。</td>
+          </tr>
+          <tr>
+            <td>去掉 state difference 的消融</td>
+            <td>overall agreement 从 87.5% 降到 86.0%，部分 agent 上 recall 下降明显。</td>
+            <td>状态差异分析不是装饰模块，它确实帮助判断桌面任务是否真的改变了最终状态。</td>
+          </tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="acurl-report-assets/thread-3-cuajudge-a.png" alt="CUAJudge 可靠性图 A" />
+        <figcaption>线程第 3 条强调 CUAJudge 的两个机制：state-difference outcome judgment 和 evidence-grounded key-point verification。</figcaption>
+      </figure>
+    </section>
+
+    <section id="training">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Training</div>
+          <h2>训练到底怎么做</h2>
+        </div>
+        <p class="section-note">这部分决定了 ACuRL 是否可复现，也决定了“zero human data”的真实含义。</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <span class="tag">Base agents</span>
+          <h3>底座模型</h3>
+          <p>论文主要用 UI-TARS-1.5-7B 和 Qwen3-VL-8B-Instruct 做 base agent。UI-TARS 用于考察 GUI agent 的持续适配；Qwen3-VL-8B 则用于展示更强 VLM 底座也能受益。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Task generation</span>
+          <h3>每轮任务数量</h3>
+          <p>每个环境每轮生成 256 个任务。默认 task generator 使用 GPT-5；附录显示用 Qwen3-VL-8B 替代生成器时，Impress iteration 1 仍有 29.5% 成功率，略低于 GPT-5 的 30.8%。</p>
+        </div>
+        <div class="card">
+          <span class="tag">RL setup</span>
+          <h3>在线 RL 设置</h3>
+          <p>严格 on-policy，3 个 iteration，每个 iteration 75 step，总计 225 RL step；batch size 16，group size 8，learning rate 1e-6，基于 VeRL 实现 GRPO。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Infrastructure</span>
+          <h3>环境编排成本</h3>
+          <p>训练用 8 张 H100；环境 host 推荐 96 CPU cores 和 384GB RAM，可稳定承载 128 个虚拟环境。README 明确提供环境创建/删除 API、异步预加载和异步评估，以减少 GPU 等待。</p>
+        </div>
+      </div>
+      <div class="claim blue">
+        “Zero human data”不是“没有外部模型、没有自动评估、没有生成器”。它准确地说是：训练数据不来自人工标注的 expert trajectories；任务生成和 reward 主要由模型与环境交互自动产生。
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Evidence</div>
+          <h2>实验评估了什么，结果有多强</h2>
+        </div>
+        <p class="section-note">评估对象是任务成功率，不是聊天质量、不是截图理解准确率，也不是用户满意度。</p>
+      </div>
+      <p class="lead">
+        论文覆盖 6 个代表性环境：LibreOffice Impress、Writer、Calc，Thunderbird，KAlgebra，Celestia。任务来自 OSWorld、OfficeWorld 和 ScienceBoard。核心指标是 success rate，也就是 benchmark 的 rule-based protocol 或少量 LLM-as-judge protocol 判定 agent 是否完成任务。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>实验</th>
+            <th>报告结果</th>
+            <th>我的解读</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>单环境持续学习</td>
+            <td>目标环境逐轮提升约 3-29 个百分点；例如 UI-TARS 在 Impress 上 31.1% 到 40.7%，Qwen3-VL 在 Impress 上 27.0% 到 39.2%。</td>
+            <td>提升是真实且有意义的，特别是低基线环境；但很多最终成功率仍低于 50%，所以它解决的是“适配增益”，不是“桌面 agent 已可靠可用”。</td>
+          </tr>
+          <tr>
+            <td>跨环境持续学习</td>
+            <td>UI-TARS Base overall 19.5，到 Impress → KAlgebra → Calc 后 25.9；Qwen3-VL Base overall 22.0，到五环境序列后 31.7。</td>
+            <td>这说明训练一个环境不必然造成灾难性遗忘，甚至可能学到可迁移的界面操作策略；但表中仍有个别环境分数回落，需要看任务级分布。</td>
+          </tr>
+          <tr>
+            <td>环境变化适配</td>
+            <td>Calc 在版本更新、Windows 迁移、低分辨率变化下有明显掉分；ACuRL 训练后报告最高 145% 相对恢复。</td>
+            <td>这是论文最贴近产品部署的一组实验：真实软件更新会破坏 agent，持续适配能把部分性能拉回来。</td>
+          </tr>
+          <tr>
+            <td>组件消融</td>
+            <td>Impress 上完整方法 Iter 3 为 40.7；去掉 iterative training 降到 32.6，去掉 curriculum learning 降到 36.4。</td>
+            <td>结论比较清楚：只在固定任务池上继续训练会过拟合；不根据成功率调节任务难度，收益也会变小。</td>
+          </tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="acurl-report-assets/thread-5-results.jpg" alt="ACuRL 单环境实验结果" />
+        <figcaption>线程第 5 条展示单环境持续学习结果：Impress 从 Iter 1 到 Iter 3 有连续提升，并声称对其他环境遗忘很小。</figcaption>
+      </figure>
+      <figure>
+        <img src="acurl-report-assets/thread-6-results.png" alt="ACuRL 跨环境实验结果" />
+        <figcaption>线程第 6 条展示跨环境持续学习结果：从 Base 到多环境序列学习，overall 分数提升，但不同环境之间的迁移强弱并不均匀。</figcaption>
+      </figure>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Limitations</div>
+          <h2>哪些地方不能过度解读</h2>
+        </div>
+        <p class="section-note">这篇工作很有启发，但仍不是“agent 自主变强”的完整答案。</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <span class="tag">Not fully self-contained</span>
+          <h3>依赖强外部模型</h3>
+          <p>默认任务生成器是 GPT-5，CUAJudge outcome 判断也依赖 GPT-5-mini 或混合 VLM/API。它减少了人工标注，但没有消除外部模型服务和 API 成本。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Judge risk</span>
+          <h3>自动 reward 仍可能被 hack</h3>
+          <p>CUAJudge-human agreement 很高，但不是 100%。RL 一旦针对 evaluator 优化，仍可能学到 evaluator 偏好而非真实任务完成，尤其在更开放的软件环境里。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Scale cost</span>
+          <h3>工程成本不轻</h3>
+          <p>8×H100、96 CPU cores、384GB RAM、128 VM 并发环境，这不是轻量实验。它证明了路线可行，但离个人开发者可随手复现还有距离。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Remaining gap</span>
+          <h3>最终能力仍不高</h3>
+          <p>论文自己的 failure analysis 表明，大量失败来自知识/规划不足、过早结束、重复动作循环。也就是说，ACuRL 改善了适配，但底座 agent 的长程规划和自检仍是瓶颈。</p>
+        </div>
+      </div>
+      <figure>
+        <img src="acurl-report-assets/thread-7-parameters.jpg" alt="ACuRL 参数更新稀疏性图" />
+        <figcaption>参数更新稀疏性是一个有趣解释：论文观察到约 80% 参数保持近似不变，因此 RL 适配可能天然较少遗忘。但这是相关性解释，不是严格因果证明。</figcaption>
+      </figure>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Insight</div>
+          <h2>我认为这条线真正重要在哪里</h2>
+        </div>
+        <p class="section-note">它的价值不只在分数提升，而在把 CUA 训练范式改成一个可持续闭环。</p>
+      </div>
+      <div class="claim green">
+        ACuRL 最重要的 insight 是：computer-use agent 的训练对象不应只是“历史任务集合”，而应是“环境本身”。环境会变化，所以训练系统也必须能重新进入环境、产生任务、验证结果、继续学习。
+      </div>
+      <p class="lead">
+        从产品角度看，这比单纯提高某个 benchmark 的 SOTA 更有现实意义。真实部署里，agent 的失败常常不是因为它不会推理，而是因为它对当前版本的软件、当前用户文件、当前平台状态没有足够具体的环境知识。ACuRL 把这个问题形式化成持续学习：每当环境变了，就让 agent 重新收集环境经验，生成贴近当前环境的课程任务，用自动 evaluator 产生 reward，再小步 RL 适配。
+      </p>
+      <div class="grid-3">
+        <div class="card">
+          <span class="tag">For research</span>
+          <h3>下一步应评 reward robustness</h3>
+          <p>真正关键的 follow-up 不是再多跑几个软件，而是 adversarially test CUAJudge：让 agent 学会 exploit evaluator 后，human agreement 是否保持。</p>
+        </div>
+        <div class="card">
+          <span class="tag">For systems</span>
+          <h3>环境编排会成为 CUA 基础设施</h3>
+          <p>大规模可重置、多版本、多分辨率、多平台的软件环境池，可能会像 RLHF 的数据管线一样成为 agent lab 的核心资产。</p>
+        </div>
+        <div class="card">
+          <span class="tag">For agents</span>
+          <h3>持续学习需要安全边界</h3>
+          <p>如果 agent 可以在真实环境里探索和训练，必须有只读探索、隔离沙箱、权限控制和状态回滚。否则“自主学习”很容易变成“自主破坏”。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Commands</div>
+          <h2>本次获取与验证命令</h2>
+        </div>
+        <p class="section-note">保留最小可复现路径。</p>
+      </div>
+      <pre><code>opencli twitter thread "https://x.com/xue_tianci/status/2024880742333820980" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/0CxgsTZ4HA"
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/ypZ7JrwBJn"
+curl -L "https://arxiv.org/pdf/2602.10356" -o "/tmp/acurl-2602.10356.pdf"
+pdfinfo "/tmp/acurl-2602.10356.pdf"
+pdftotext -layout "/tmp/acurl-2602.10356.pdf" "/tmp/acurl-2602.10356.txt"
+opencli web read --url "https://github.com/OSU-NLP-Group/ACuRL" --stdout true --download-images false -f json</code></pre>
+      <div class="aside">
+        报告生成日期：2026-05-15。最终 HTML 路径：<code>/Users/bytedance/Downloads/acurl-computer-use-agents-analysis.html</code>。图片资源目录：<code>/Users/bytedance/Downloads/acurl-report-assets/</code>。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unmasking On-Policy Distillation 论文精读</title>
+  <style>
+    :root {
+      --bg: #faf7f2;
+      --paper: #fffdf8;
+      --ink: #2b2925;
+      --muted: #6f6860;
+      --line: #e4d8ca;
+      --soft: #f4eadf;
+      --accent: #c15f3c;
+      --accent-2: #8a4b2d;
+      --bad: #a0443e;
+      --good: #6f5b2d;
+      --code: #f2e7db;
+      --code-ink: #3a3129;
+      --code-dark: #2d2924;
+      --code-dark-ink: #fff7ed;
+      --shadow: 0 18px 45px rgba(74, 55, 39, 0.09);
+      --max: 1120px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(244,234,223,0.92), rgba(250,247,242,0) 380px),
+        var(--bg);
+      line-height: 1.72;
+    }
+
+    a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+    .shell {
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 48px 0 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 850px;
+      margin: 22px 0 0;
+      color: #474039;
+      font-size: 20px;
+      line-height: 1.62;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .meta {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.66);
+      padding: 14px 16px;
+      border-radius: 8px;
+    }
+
+    .meta b {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .meta span { font-size: 14px; color: var(--ink); }
+
+    main {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 36px;
+      padding: 34px 0 80px;
+      align-items: start;
+    }
+
+    nav {
+      position: sticky;
+      top: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      border-radius: 8px;
+      padding: 16px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+
+    nav .nav-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    nav a {
+      display: block;
+      padding: 7px 0;
+      color: #4a4038;
+      font-size: 14px;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(228,216,202,0.7);
+    }
+
+    nav a:hover { color: var(--accent); }
+
+    article {
+      min-width: 0;
+    }
+
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 28px;
+      line-height: 1.22;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 19px;
+      line-height: 1.32;
+      letter-spacing: 0;
+    }
+
+    p { margin: 12px 0; }
+
+    .lead {
+      font-size: 18px;
+      color: #3d362f;
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      padding: 16px 18px;
+      border-radius: 6px;
+      margin: 18px 0;
+    }
+
+    .warning {
+      border-left-color: var(--accent-2);
+      background: #f8efe4;
+    }
+
+    .danger {
+      border-left-color: var(--bad);
+      background: #f8e8e2;
+    }
+
+    .good {
+      border-left-color: var(--good);
+      background: #f4edda;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 18px 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fffaf3;
+    }
+
+    .box h3, .box h4 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .box h4 {
+      font-size: 15px;
+      color: var(--accent);
+    }
+
+    ul, ol { padding-left: 22px; }
+    li { margin: 6px 0; }
+
+    code, .formula {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background: var(--code);
+      color: var(--code-ink);
+      border-radius: 5px;
+      padding: 2px 5px;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      background: var(--code-dark);
+      color: var(--code-dark-ink);
+      padding: 16px;
+      border-radius: 8px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      border-radius: 0;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    .math-block {
+      overflow-x: auto;
+      margin: 16px 0;
+      padding: 18px 20px;
+      border: 1px solid #dfcfbd;
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: #fbf1e6;
+      color: #2e2822;
+      font-family: ui-serif, Georgia, "Times New Roman", "Noto Serif SC", serif;
+      font-size: 20px;
+      line-height: 1.7;
+      white-space: nowrap;
+    }
+
+    .math-block .label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .math-block sub,
+    .math-block sup,
+    .inline-math sub,
+    .inline-math sup {
+      font-size: 0.68em;
+      line-height: 0;
+    }
+
+    .inline-math {
+      font-family: ui-serif, Georgia, "Times New Roman", "Noto Serif SC", serif;
+      font-style: italic;
+      color: #3a2f27;
+    }
+
+    .sum {
+      display: inline-block;
+      font-size: 1.25em;
+      vertical-align: -0.06em;
+      margin: 0 0.1em;
+    }
+
+    .frac {
+      display: inline-grid;
+      grid-template-rows: auto auto;
+      vertical-align: middle;
+      text-align: center;
+      margin: 0 0.15em;
+      line-height: 1.15;
+    }
+
+    .frac > span:first-child {
+      border-bottom: 1px solid currentColor;
+      padding: 0 0.18em 0.1em;
+    }
+
+    .frac > span:last-child {
+      padding: 0.1em 0.18em 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 11px;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      text-align: left;
+      font-weight: 800;
+    }
+
+    .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+      margin: 20px 0;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      background: #fffaf3;
+      border-radius: 8px;
+      padding: 14px;
+      position: relative;
+      min-height: 126px;
+    }
+
+    .step b {
+      display: inline-flex;
+      width: 26px;
+      height: 26px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+
+    .step strong {
+      display: block;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .scale {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .scale .box {
+      min-height: 125px;
+    }
+
+    .negative { border-top: 5px solid var(--bad); }
+    .neutral { border-top: 5px solid #7d8178; }
+    .positive { border-top: 5px solid var(--good); }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--soft);
+      color: var(--accent);
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 920px) {
+      .meta-grid, .grid-2, .grid-3, .flow, .scale, .source-list {
+        grid-template-columns: 1fr;
+      }
+
+      main {
+        display: block;
+      }
+
+      nav {
+        position: static;
+        margin-bottom: 20px;
+      }
+
+      section {
+        padding: 22px;
+      }
+    }
+
+    @media print {
+      body { background: #fff; }
+      nav { display: none; }
+      main { display: block; }
+      section { box-shadow: none; break-inside: avoid; }
+      .shell { width: auto; margin: 0 24px; }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header>
+    <div class="shell">
+      <div class="eyebrow">Paper Reading Report · arXiv:2605.10889v1</div>
+      <h1>Unmasking On-Policy Distillation</h1>
+      <p class="subtitle">这篇论文把 on-policy distillation 从“teacher 最终能不能涨分”的宏观问题，拆成“每个 token 上的 teacher gradient 是否真的指向成功”的局部诊断问题。</p>
+      <div class="meta-grid">
+        <div class="meta"><b>论文题名</b><span>Where It Helps, Where It Hurts, and Why</span></div>
+        <div class="meta"><b>作者 / 机构</b><span>Mohammadreza Armandpour 等，Apple</span></div>
+        <div class="meta"><b>版本</b><span>arXiv v1 · 2026-05-11 · 23 页</span></div>
+        <div class="meta"><b>报告生成</b><span>2026-05-13 · 中文精读 HTML</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <main>
+      <nav aria-label="目录">
+        <div class="nav-title">目录</div>
+        <a href="#thesis">核心判断</a>
+        <a href="#sources">Source Map</a>
+        <a href="#problem">问题背景</a>
+        <a href="#terms">术语表</a>
+        <a href="#method">方法机制</a>
+        <a href="#algorithm">Targeted Rollout</a>
+        <a href="#evaluation">评估设置</a>
+        <a href="#results">关键结果</a>
+        <a href="#meaning">结果含义</a>
+        <a href="#limits">局限</a>
+        <a href="#insight">我的 Insight</a>
+        <a href="#next">实践建议</a>
+      </nav>
+
+      <article>
+        <section id="thesis">
+          <h2>核心判断</h2>
+          <p class="lead">这篇论文最重要的贡献不是提出一个新的训练算法，而是提出了一个很清楚的诊断框架：<strong>把 teacher 在每个 token 上给出的蒸馏梯度，和“真正能提高 student 最终成功率”的 ideal gradient 做方向比较。</strong></p>
+          <div class="callout good">
+            <p><strong>一句话：</strong>OPD 的问题不是没有 dense signal，而是 dense signal 太混杂。teacher 可能在纠正推理错误，也可能只是在教风格，甚至可能把 student 推向失败分支。</p>
+          </div>
+          <div class="grid-3">
+            <div class="box">
+              <h4>它回答什么</h4>
+              <p>某个 teacher/context 在某个 token 上是否真的帮助 student 更可能答对。</p>
+            </div>
+            <div class="box">
+              <h4>它不是什么</h4>
+              <p>不是直接可部署的低成本训练方法；它主要是离线诊断和研究工具。</p>
+            </div>
+            <div class="box">
+              <h4>最有用结论</h4>
+              <p>错误 rollout 上蒸馏信号更可靠；正确 rollout 上很多 teacher 分歧只是风格噪声。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="sources">
+          <h2>Source Map：读了什么，怎么核验</h2>
+          <div class="source-list">
+            <div class="box">
+              <h3>主源</h3>
+              <p>arXiv HTML 与 PDF：<code>2605.10889v1</code>。PDF 元数据核验显示题名、作者、页数均匹配：23 页，作者为 Mohammadreza Armandpour 等。</p>
+            </div>
+            <div class="box">
+              <h3>辅助源</h3>
+              <p>Hugging Face paper page 用于确认论文摘要和社区页信息；最终技术解读以 arXiv 正文和 PDF 为准。</p>
+            </div>
+            <div class="box">
+              <h3>本地沉淀</h3>
+              <p>Obsidian PaperNotes 已同步：<code>26-05-13 Unmasking On-Policy Distillation.md</code>。</p>
+            </div>
+            <div class="box">
+              <h3>核验边界</h3>
+              <p>本报告解读的是 arXiv v1。论文没有展示用该诊断框架直接训练后的新 benchmark SOTA，因此不能把它当作完整训练 recipe 评估。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="problem">
+          <h2>1. 论文在解决什么问题？</h2>
+          <p>On-policy distillation 的吸引力很明确：student 先在自己的当前策略下生成 rollout，然后 teacher 在 student 自己访问到的状态上给逐 token 分布监督。这样它同时具备两个优点：</p>
+          <ol>
+            <li><strong>On-policy：</strong>训练状态来自 student 自己，降低 off-policy SFT / teacher-forcing 的分布错位。</li>
+            <li><strong>Dense signal：</strong>teacher 对每个 token 都能给概率分布，比 RL 只有最终对错 reward 更密集。</li>
+          </ol>
+          <p>但 dense token-level supervision 有一个被低估的问题：teacher 和 student 在某个 token 上不一致，并不代表 teacher 正在纠正推理错误。它可能只是偏好另一种格式、符号或表达方式。</p>
+          <div class="callout warning">
+            <p>标准蒸馏 loss 通常把所有 teacher-student disagreement 都当成训练信号。于是“把 <code>four</code> 改成 <code>4</code>”和“把 <code>3 + 4</code> 改成 <code>3 x 4</code>”都会产生梯度，但前者多半只是风格，后者才影响最终答案。</p>
+          </div>
+          <p>所以论文真正关心的是：<strong>teacher 的 token-level signal 是否和最终成功率有关？</strong>这件事不能只看 teacher 概率本身，因为 teacher 很自信也可能自信地推向失败分支。</p>
+        </section>
+
+        <section id="terms">
+          <h2>2. 术语表</h2>
+          <table>
+            <thead>
+              <tr><th>术语</th><th>含义</th><th>为什么重要</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>OPD</td><td>On-policy distillation。student 先生成自己的 rollout，再由 teacher 在这些 rollout 上提供 token-level 监督。</td><td>减少训练 / 推理分布错位，同时保留 dense supervision。</td></tr>
+              <tr><td>Self-distillation</td><td>同一模型在不同上下文下扮演 student 和 teacher；teacher 看到正确示范等 privileged context。</td><td>避免外部大模型，但 context 设计会强烈影响信号质量。</td></tr>
+              <tr><td>Generation tree</td><td>多条 student rollout 共享前缀合并成树，节点是 token 前缀，边是 next-token choice。</td><td>把 token 选择和最终答案是否正确连接起来。</td></tr>
+              <tr><td><code>P_succ^k</code></td><td>在节点 <code>u</code> 选择 token <code>k</code> 后，最终答对的经验概率。</td><td>定义 ideal gradient 的关键变量。</td></tr>
+              <tr><td>Ideal gradient</td><td>最大化 student 从当前节点继续生成并答对的 logit 更新方向。</td><td>作为 teacher distillation gradient 的 oracle 参照。</td></tr>
+              <tr><td>Gradient alignment</td><td><code>cos(g_ideal, g_distill)</code>。</td><td>判断 teacher signal 是帮助、无关，还是有害。</td></tr>
+              <tr><td>Comprehensibility</td><td>teacher signal 是否处于 student 能理解的 reasoning style / context 范围内。</td><td>解释小模型为什么不一定适合更强外部 teacher。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="method">
+          <h2>3. 方法机制：从 rollout 到梯度对齐</h2>
+          <div class="flow" aria-label="方法流程">
+            <div class="step"><b>1</b><strong>采样 student rollout</strong><span>同一问题下采样多条推理路径，记录最终答案对错。</span></div>
+            <div class="step"><b>2</b><strong>构建 generation tree</strong><span>共享前缀合并成树，节点是 token 状态，边是候选 token。</span></div>
+            <div class="step"><b>3</b><strong>估计 P_succ</strong><span>统计选择某个 token 后最终答对的概率。</span></div>
+            <div class="step"><b>4</b><strong>构造 ideal gradient</strong><span>提高高成功率 token，降低低成功率 token。</span></div>
+            <div class="step"><b>5</b><strong>比较 teacher gradient</strong><span>用 cosine similarity 判断 teacher 是否同向。</span></div>
+          </div>
+
+          <h3>3.1 用 P_succ 定义“真正应该学什么”</h3>
+          <p>对某个节点 <code>u</code>，student 有一组候选 next token。论文估计每个 token 对应的下游成功率：</p>
+          <div class="math-block">
+            <span class="label">Branch success probability</span>
+            P<sub>succ</sub><sup>k</sup> = Pr(最终答对 | 在节点 u 选择 token k)
+          </div>
+          <p>然后定义当前节点的 ideal objective：</p>
+          <div class="math-block">
+            <span class="label">Ideal objective at node u</span>
+            L<sub>ideal</sub>(u) = <span class="sum">∑</span><sub>k</sub> P<sub>θ</sub><sup>k</sup> · P<sub>succ</sub><sup>k</sup>
+          </div>
+          <p>这个式子就是 student 当前 token 分布下的 expected success。最大化它，就等价于把概率质量从低成功率 token 挪到高成功率 token。</p>
+
+          <h3>3.2 Ideal per-node gradient 的直觉</h3>
+          <p>对 logit <code>z_j</code> 求导后，论文得到：</p>
+          <div class="math-block">
+            <span class="label">Ideal per-node logit gradient</span>
+            <span class="frac"><span>∂L<sub>ideal</sub></span><span>∂z<sub>j</sub></span></span>
+            = P<sub>θ</sub><sup>j</sup> · (P<sub>succ</sub><sup>j</sup> − P̄<sub>succ</sub>)
+          </div>
+          <p>其中 <span class="inline-math">P̄<sub>succ</sub> = <span class="sum">∑</span><sub>k</sub> P<sub>θ</sub><sup>k</sup> · P<sub>succ</sub><sup>k</sup></span>。这个公式的含义很直接：</p>
+          <ul>
+            <li>如果 token <code>j</code> 的成功率高于平均值，就提高它的 logit。</li>
+            <li>如果 token <code>j</code> 的成功率低于平均值，就降低它的 logit。</li>
+            <li>前面的 <code>P_theta^j</code> 表示 student 本来几乎不会选的 token，单步梯度也很小。</li>
+          </ul>
+          <div class="callout">
+            <p>这说明 distillation 更擅长放大学生已经有一点概率的正确方向，而不是从零注入完全陌生的 reasoning path。这也是“小模型不一定学得动强 teacher”的机制解释之一。</p>
+          </div>
+
+          <h3>3.3 Dr. GRPO / GKD / MiniLLM 的共同结构</h3>
+          <p>论文推导出一个统一形式：Dr. GRPO、GKD、single-sample GKD estimator、MiniLLM 都可以写成类似的局部 logit 梯度结构：</p>
+          <div class="math-block">
+            <span class="label">Shared local gradient form</span>
+            <span class="frac"><span>∂L</span><span>∂z<sub>j</sub></span></span>
+            = P<sub>θ</sub><sup>j</sup> · (f<sub>j</sub> − f̄)
+          </div>
+          <p>区别只在于 <code>f_j</code> 来自哪里：</p>
+          <table>
+            <thead>
+              <tr><th>方法</th><th><code>f_j</code> 的含义</th><th>训练信号来源</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Dr. GRPO / ideal reference</td><td><code>P_succ^j</code></td><td>下游成功概率 / outcome reward</td></tr>
+              <tr><td>GKD</td><td>student-teacher log probability ratio</td><td>teacher token distribution</td></tr>
+              <tr><td>Single-sample GKD</td><td>采样 token 上的 importance-weighted estimator</td><td>只需 sampled token 的 teacher/student logprob</td></tr>
+              <tr><td>MiniLLM</td><td>trajectory-dependent reward-to-go</td><td>后续 token 的 teacher/student logprob 累积</td></tr>
+            </tbody>
+          </table>
+          <p>这个统一形式让论文可以直接比较 reward-based ideal gradient 和 distillation gradient 的方向。</p>
+
+          <h3>3.4 Gradient alignment score</h3>
+          <div class="math-block">
+            <span class="label">Gradient alignment score</span>
+            Align(u) = cos(g<sub>u</sub><sup>ideal</sup>, g<sub>u</sub><sup>distill</sup>)
+          </div>
+          <div class="scale">
+            <div class="box negative">
+              <h3>Align &lt; 0</h3>
+              <p>teacher gradient 把 student 推向更低成功率 token，是有害信号。</p>
+            </div>
+            <div class="box neutral">
+              <h3>Align ≈ 0</h3>
+              <p>teacher disagreement 与成功率无关，常见于风格、格式或低 stakes token。</p>
+            </div>
+            <div class="box positive">
+              <h3>Align &gt; 0</h3>
+              <p>teacher gradient 与提高成功率的 ideal gradient 同向，是有帮助的蒸馏信号。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="algorithm">
+          <h2>4. Targeted-rollout：怎样把 P_succ 算得起</h2>
+          <p>难点是估计 <code>P_succ^k</code> 很贵：vocab 可能有 150K，序列可能从几百 token 到几万 token。论文没有穷举所有 token，而是做 targeted enrichment。</p>
+          <ol>
+            <li>每个问题先采样 <code>G = 200</code> 条 student initial rollouts。</li>
+            <li>构建 generation tree，找 branching nodes。</li>
+            <li>优先补采 teacher-student 分歧大、GKD 梯度幅度大的 token。</li>
+            <li>对访问不足的 token，强制构造 <code>prompt + prefix_to_u + token_k</code>，再让 student 继续生成到结束。</li>
+            <li>一次 targeted rollout 会同时丰富目标节点、祖先节点和后续节点。</li>
+            <li>按指数深度窗口分配预算，例如 <code>1-50</code>、<code>51-150</code>、<code>151-350</code>。</li>
+            <li>所有 teacher 共享同一棵 enriched tree，因为 <code>P_succ</code> 只依赖 student rollout 和最终 outcome。</li>
+          </ol>
+          <table>
+            <thead>
+              <tr><th>项目</th><th>论文设置</th><th>含义</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>重要 token 条件</td><td><code>P_theta^k &gt; 0.02</code> 或 <code>P_teacher^k &gt; 0.02</code></td><td>只关注能实际影响梯度的 token。</td></tr>
+              <tr><td>补采目标</td><td><code>N_min = 100</code> visits</td><td>每个重要 token 尽量补到 100 次访问。</td></tr>
+              <tr><td>主实验保留条件</td><td><code>N_sig = 20</code> visits per child</td><td>BoolQ / MMLU 上用于保留统计可靠节点。</td></tr>
+              <tr><td>AIME 保留条件</td><td><code>N_sig = 40</code></td><td>长链数学更稀疏，所以要求更高访问数。</td></tr>
+              <tr><td>计算规模</td><td>每问题约 <code>45K-200K</code> targeted rollouts</td><td>说明它主要是离线诊断，不是便宜在线训练信号。</td></tr>
+              <tr><td>总计算</td><td>约 <code>72 A100-days</code></td><td>全实验套件计算成本较高。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="evaluation">
+          <h2>5. 评估设置：到底评的是什么？</h2>
+          <h3>5.1 Student 和 teacher</h3>
+          <p>论文评估两个 student scale：<strong>Qwen3-0.6B</strong> 和 <strong>Qwen3-1.7B</strong>。每个 student 搭配 8 种 teacher/context 配置。</p>
+          <table>
+            <thead>
+              <tr><th>类别</th><th>配置</th><th>解释</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Self</td><td>Self-1C</td><td>同一模型作为 teacher，但上下文放 1 个正确解答。</td></tr>
+              <tr><td>Self</td><td>Self-Sum-1C</td><td>正确解答先由 Qwen3-32B 摘要成关键步骤。</td></tr>
+              <tr><td>Self</td><td>Self-1C1W</td><td>放 1 个正确示范 + 1 个错误示范，并提示错误不要模仿。</td></tr>
+              <tr><td>Self</td><td>Self-Sum-1C1W</td><td>正确和错误示范都先摘要化。</td></tr>
+              <tr><td>Self</td><td>Self-1C (32B)</td><td>正确示范由 Qwen3-32B 生成，再给 student-as-teacher 看。</td></tr>
+              <tr><td>External</td><td>Qwen3-4B / 8B / 14B</td><td>外部大模型 teacher，与 student 使用同样 prompt。</td></tr>
+            </tbody>
+          </table>
+
+          <h3>5.2 Benchmark</h3>
+          <table>
+            <thead>
+              <tr><th>数据集</th><th>任务类型</th><th>输入 / 输出</th><th>这里评估什么</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>BoolQ</td><td>阅读理解 True/False</td><td>输入问题和上下文，输出布尔答案，推理链较短。</td><td>短链 reasoning 下 teacher gradient 是否对齐成功方向。</td></tr>
+              <tr><td>MMLU</td><td>多选知识问答</td><td>输入题目和选项，输出 A/B/C/D，推理链中等。</td><td>知识与中等推理链场景下的 alignment。</td></tr>
+              <tr><td>AIME 2025</td><td>数学竞赛题</td><td>长链数学推理，输出数值答案。</td><td>只做 4 道题 case study，观察 5K-30K token 长链是否有相同规律。</td></tr>
+            </tbody>
+          </table>
+
+          <h3>5.3 指标</h3>
+          <table>
+            <thead>
+              <tr><th>指标</th><th>怎么算</th><th>怎么读</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Mean cosine</td><td>每个 branching node 上计算 <code>cos(g_ideal, g_distill)</code> 后聚合。</td><td>越高说明 teacher 越常把 student 推向成功 token。</td></tr>
+              <tr><td>Fraction positive</td><td>alignment 大于 0 的 decision points 比例。</td><td>高于 0.5 表示超过一半 token 位置上 teacher 信号有帮助。</td></tr>
+              <tr><td>Weighted cosine (SR range)</td><td>用分支成功率差距给 cosine 加权。</td><td>更重视 token 选择真正影响最终成败的高 stakes 节点。</td></tr>
+              <tr><td>Teacher advantage</td><td><code>E_teacher[P_succ] - E_student[P_succ]</code></td><td>teacher 分布本身是否比 student 更偏向成功 token。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="results">
+          <h2>6. 关键结果</h2>
+          <h3>6.1 错误 rollout 上蒸馏信号更可靠</h3>
+          <p>这是论文最稳定、也最有训练启发的结论：最终答错的路径上，teacher gradient 与 ideal gradient 的 alignment 更高。</p>
+          <table>
+            <thead>
+              <tr><th>Setting</th><th>Metric</th><th class="num">Correct</th><th class="num">Incorrect</th><th>解读</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0.6B BoolQ</td><td>Mean cosine</td><td class="num">0.011</td><td class="num">0.044</td><td>错误路径约 4 倍更高。</td></tr>
+              <tr><td>1.7B BoolQ</td><td>Mean cosine</td><td class="num">0.001</td><td class="num">0.058</td><td>正确路径几乎没有有用方向。</td></tr>
+              <tr><td>0.6B MMLU</td><td>Mean cosine</td><td class="num">0.009</td><td class="num">0.048</td><td>错误路径更适合纠偏。</td></tr>
+              <tr><td>1.7B MMLU</td><td>Mean cosine</td><td class="num">0.012</td><td class="num">0.028</td><td>mean gap 不显著，但关键节点仍显著。</td></tr>
+              <tr><td>0.6B BoolQ</td><td>Weighted cosine</td><td class="num">0.046</td><td class="num">0.110</td><td>高 stakes 节点差距更明显。</td></tr>
+              <tr><td>1.7B BoolQ</td><td>Weighted cosine</td><td class="num">0.010</td><td class="num">0.093</td><td>teacher 对错误轨迹的纠偏最强。</td></tr>
+              <tr><td>0.6B MMLU</td><td>Weighted cosine</td><td class="num">0.021</td><td class="num">0.118</td><td>高 stakes 错误节点信号很强。</td></tr>
+              <tr><td>1.7B MMLU</td><td>Weighted cosine</td><td class="num">0.034</td><td class="num">0.098</td><td>关键节点上错误路径优势仍成立。</td></tr>
+            </tbody>
+          </table>
+          <div class="callout good">
+            <p><strong>训练含义：</strong>OPD 更应该像修错机制，而不是对所有 rollout 做无差别 teacher imitation。failed rollouts、high-stakes branching nodes 应该得到更大权重。</p>
+          </div>
+
+          <h3>6.2 最佳 teacher 取决于 student 容量</h3>
+          <table>
+            <thead>
+              <tr><th>Teacher</th><th class="num">0.6B BoolQ</th><th class="num">0.6B MMLU</th><th class="num">1.7B BoolQ</th><th class="num">1.7B MMLU</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Self-1C</td><td class="num">0.047</td><td class="num">0.040</td><td class="num">0.028</td><td class="num">0.010</td></tr>
+              <tr><td>Self-1C (32B)</td><td class="num">0.047</td><td class="num">0.052</td><td class="num">0.020</td><td class="num">0.021</td></tr>
+              <tr><td>Self-Sum-1C</td><td class="num">0.041</td><td class="num">0.047</td><td class="num">0.050</td><td class="num">0.036</td></tr>
+              <tr><td>Self-Sum-1C1W</td><td class="num">0.016</td><td class="num">0.037</td><td class="num">0.008</td><td class="num">0.034</td></tr>
+              <tr><td>Self-1C1W</td><td class="num">0.019</td><td class="num">0.027</td><td class="num">0.002</td><td class="num">0.009</td></tr>
+              <tr><td>Qwen3-14B</td><td class="num">0.016</td><td class="num">0.015</td><td class="num">0.036</td><td class="num">0.017</td></tr>
+              <tr><td>Qwen3-8B</td><td class="num">0.018</td><td class="num">0.011</td><td class="num">0.053</td><td class="num">0.014</td></tr>
+              <tr><td>Qwen3-4B</td><td class="num">0.018</td><td class="num">0.000</td><td class="num">0.040</td><td class="num">0.017</td></tr>
+            </tbody>
+          </table>
+          <p>0.6B 上，Self-1C / Self-Sum-1C / Self-1C(32B) 明显优于外部大 teacher。1.7B BoolQ 上，Qwen3-8B 开始领先。这支持论文的 comprehensibility 假说：teacher signal 不只要强，还要处于 student 能理解的区域内。</p>
+
+          <h3>6.3 错误示范不是总有用</h3>
+          <p>BoolQ / MMLU 上，<code>1 correct + 1 wrong</code> 通常比只放正确示范差，说明错误示范在短链任务中常常是噪声。但 AIME case study 给出反例：在更难的数学题上，Self-1C1W 在 Q3 和 Q28 上成为最好 teacher。</p>
+          <div class="grid-2">
+            <div class="box">
+              <h4>短推理任务</h4>
+              <p>错误示范常常干扰上下文，让 student 看到不该模仿的路径，alignment 下降。</p>
+            </div>
+            <div class="box">
+              <h4>复杂数学任务</h4>
+              <p>常见错误可能提供可理解的 contrastive signal，帮助 student 避免具体陷阱。</p>
+            </div>
+          </div>
+
+          <h3>6.4 Oracle selective distillation 的上限很高</h3>
+          <p>如果训练时能神谕式知道哪些 token alignment 为正，只蒸馏这些 token，保留约一半 token 就能让 mean signal 提升约 10-15 倍。</p>
+          <table>
+            <thead>
+              <tr><th>Setting</th><th class="num">Full GKD</th><th class="num">Selective t=0</th><th class="num">保留 token</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0.6B BoolQ</td><td class="num">0.007</td><td class="num">0.070</td><td class="num">51.6%</td></tr>
+              <tr><td>1.7B BoolQ</td><td class="num">0.006</td><td class="num">0.093</td><td class="num">51.6%</td></tr>
+              <tr><td>0.6B MMLU</td><td class="num">0.005</td><td class="num">0.057</td><td class="num">51.7%</td></tr>
+              <tr><td>1.7B MMLU</td><td class="num">0.006</td><td class="num">0.077</td><td class="num">51.2%</td></tr>
+            </tbody>
+          </table>
+          <p>这不是可直接训练的结果，因为真实训练不知道 alignment。但它说明 OPD 的损失里存在大量可以被过滤掉的无效或有害 token。</p>
+        </section>
+
+        <section id="meaning">
+          <h2>7. 这些结果真正说明什么？</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Dense 不等于 clean</h3>
+              <p>token-level supervision 很密，但里面混着纠错、风格、格式和有害 teacher preference。平均蒸馏会把这些信号全部吃进去。</p>
+            </div>
+            <div class="box">
+              <h3>蒸馏更像修错</h3>
+              <p>错误 rollout 上 teacher 更可能提供和成功方向一致的纠偏；正确 rollout 上很多 teacher 差异只是模仿风格。</p>
+            </div>
+            <div class="box">
+              <h3>强 teacher 不一定好</h3>
+              <p>小 student 如果看不懂大 teacher 的 reasoning style，外部强 teacher 反而不如 self-demo。</p>
+            </div>
+            <div class="box">
+              <h3>context 需要按任务选</h3>
+              <p>summary、wrong demo、external teacher 是否有用，都取决于 student 容量和任务难度。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="limits">
+          <h2>8. 局限与失败模式</h2>
+          <ul>
+            <li><strong>不是直接训练算法：</strong>每个问题需要大量 targeted rollouts，更适合离线诊断。</li>
+            <li><strong>只覆盖采样到的局部空间：</strong>没被 student 或 targeted enrichment 访问到的 token 不能评估。</li>
+            <li><strong>依赖明确 verifier：</strong>BoolQ、MMLU、AIME 都有最终答案；开放式对话和 agentic tasks 的 success 更难定义。</li>
+            <li><strong>局部梯度不等于完整训练动态：</strong>真实训练还会受 optimizer、KL、数据混合、学习率和非线性迁移影响。</li>
+            <li><strong>AIME 只是 case study：</strong>4 道题能说明趋势，但不能当完整数学 benchmark 结论。</li>
+          </ul>
+        </section>
+
+        <section id="insight">
+          <h2>9. 我的 Insight</h2>
+          <div class="callout">
+            <p><strong>我认为这篇论文的长期价值在于：</strong>它把 OPD 从 recipe 层面的经验问题，推进到 token-level credit assignment 问题。它提醒我们，后训练不是“teacher 越强、token supervision 越密越好”，而是要问每个训练信号是否真的能改变最终成功率。</p>
+          </div>
+          <h3>9.1 OPD 应该少做全面模仿，多做失败修复</h3>
+          <p>正确 rollout 上继续模仿 teacher，经常是在教风格。错误 rollout 上 teacher 才更像 repair signal。实际训练里，我会优先尝试 failed rollout upweighting，而不是对所有生成 token 平均做 KL。</p>
+
+          <h3>9.2 可理解性比 teacher 强度更关键</h3>
+          <p>0.6B 更适合看自己风格的正确示范，而不是看 8B/14B 的外部 teacher。这说明小模型蒸馏应该先控制 reasoning style、步骤粒度、上下文长度，再谈 teacher scale。</p>
+
+          <h3>9.3 Divergence filter 只能做粗筛</h3>
+          <p>KL / JS divergence 的方向稳定但相关很弱。它能过滤掉“teacher 和 student 几乎一样”的 token，但不能判断高分歧是纠错还是误导。更有潜力的是学习一个近似 <code>P_succ</code> 的 lightweight gate。</p>
+
+          <h3>9.4 对 long-horizon agent 更有启发</h3>
+          <p>长周期 agent 的 teacher signal 更混杂：工具选择、错误恢复、探索路径、格式偏好、状态解释都会缠在一起。如果全量蒸馏，噪声会比数学题更严重。这篇论文给了一个很好的诊断方向：用小规模 targeted rollouts 或 value proxy 判断哪些动作/token 真正影响任务成功。</p>
+        </section>
+
+        <section id="next">
+          <h2>10. 实践建议</h2>
+          <ol>
+            <li><strong>先按 outcome 切分 rollout：</strong>failed rollout 的 OPD 权重应高于 successful rollout。</li>
+            <li><strong>降低 correct rollout 的全 token imitation：</strong>只在 high-stakes 或 high-divergence token 上蒸馏。</li>
+            <li><strong>对小模型优先 self-demo / intermediate teacher：</strong>不要默认强 teacher 最好。</li>
+            <li><strong>context 设计做任务级选择：</strong>summary 适合较大模型和简单可压缩推理；复杂数学可能需要完整 trace。</li>
+            <li><strong>wrong demo 谨慎使用：</strong>短任务容易变噪声，难任务可能提供有价值反例。</li>
+            <li><strong>把 divergence 当 cheap filter，而非 judge：</strong>低 divergence 可跳过，高 divergence 仍需 value / verifier / rollout 近似判断。</li>
+          </ol>
+          <p class="footer-note">本 HTML 报告基于 arXiv v1 论文正文、PDF 元数据核验结果和本地 Obsidian 精读笔记生成。最终文件路径：<code>/Users/bytedance/Downloads/unmasking-on-policy-distillation.html</code></p>
+        </section>
+      </article>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 010</div>
+        <div class="brand-title">统计推断：MLE/MAP、熵、KL 与 Monte Carlo</div>
+        <div class="brand-meta">估计 · 信息量 · 采样 · 把概率模型接到参数估计、交叉熵训练、KL 约束和随机模拟。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-010-1">学习目标与概念起点</a><a class="toc-link" href="#s-010-2">似然：从“参数生成数据”开始</a><a class="toc-link" href="#s-010-3">MLE：Bernoulli 成功率例题</a><a class="toc-link" href="#s-010-4">MAP：似然加先验</a><a class="toc-link" href="#s-010-5">熵、交叉熵与 KL</a><a class="toc-link" href="#s-010-6">LLM 为什么训练 NLL/CE</a><a class="toc-link" href="#s-010-7">Monte Carlo：通用但慢</a><a class="toc-link" href="#s-010-8">误区、面试连接与检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link current" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="009.html">← 009. 概率二：期望、方差、大数定律与中心极限定理</a><a href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="统计推断：MLE/MAP、熵、KL 与 Monte Carlo">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>把概率模型接到参数估计、交叉熵训练、KL 约束和随机模拟。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>，保持概念、例题和算法直觉连贯。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-distribution.svg" alt="统计推断：MLE/MAP、熵、KL 与 Monte Carlo 图示"></figure>
+          <h3 id="s-010-1"><a class="anchor-link" href="#s-010-1" aria-label="跳转到本节">#</a>学习目标与概念起点</h3>
+          <p>前两章主要回答“随机变量是什么、期望和方差怎么算”。本章开始回答统计推断问题：我们手上只有有限样本，想反推出背后的概率模型、比较两个分布的距离，并用随机模拟估计复杂数量。</p>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>学习目标</h4>
+              <p>读完后，你应该能解释 MLE 和 MAP 的区别，能手算 Bernoulli 成功率的 MLE/MAP，能读懂熵、交叉熵、KL 的公式，并能说明 Monte Carlo 为什么几乎哪里都能用但收敛慢。</p>
+            </div>
+            <div class="concept-card">
+              <h4>概念起点</h4>
+              <p>概率论通常是假设分布已知，然后计算事件概率；统计推断反过来：我们观察到数据 \(D\)，希望估计未知参数 \(\theta\)，例如硬币正面概率、模型权重、收益分布均值。</p>
+            </div>
+            <div class="concept-card">
+              <h4>面试主线</h4>
+              <p>MLE/MAP 连接参数估计和正则化；交叉熵/KL 连接 LLM 训练目标；Monte Carlo 连接量化风险模拟、模型评测和 RL rollout。</p>
+            </div>
+          </div>
+          <div class="formula-list">
+            <p><b>符号先读清楚：</b>\(D\) 表示观测数据集；\(\theta\) 表示模型参数；\(p(D\mid\theta)\) 读作“给定参数 \(\theta\) 时，看到数据 \(D\) 的概率”；\(p(\theta\mid D)\) 读作“看到数据 \(D\) 后，参数 \(\theta\) 的后验概率”。</p>
+            <p><b>为什么需要推断：</b>真实世界不会把分布参数直接交给我们。我们看到的是样本，例如 100 次点击里有 12 次点击、10 天收益、语料里的下一个 token。统计推断就是把样本变成可用参数，并知道这个参数有多不可靠。</p>
+          </div>
+
+          <h3 id="s-010-2"><a class="anchor-link" href="#s-010-2" aria-label="跳转到本节">#</a>似然：从“参数生成数据”开始</h3>
+          <p>似然不是一个新分布，而是把同一个公式换一个观察角度。若模型参数是 \(\theta\)，数据 \(D\) 出现的概率是 \(p(D\mid\theta)\)。当 \(D\) 已经固定时，我们把它看成关于 \(\theta\) 的函数，称为似然函数。</p>
+          <div class="math-display">\[
+L(\theta;D)=p(D\mid\theta)
+\]</div>
+          <p>这里 \(L\) 是 likelihood 的缩写。分号 \(;\) 用来提醒你：\(D\) 是已经观察到的固定数据，\(\theta\) 才是我们正在调的变量。这个区别很重要：概率分布要求对所有可能数据求和为 1，但似然函数不要求对所有参数求和为 1。</p>
+          <div class="intuition-box"><b>直觉</b><p>假设你看到一枚硬币 10 次里 7 次正面。参数 \(p=0.7\) 比 \(p=0.1\) 更能解释这组数据。MLE 的思想就是：在所有候选参数里，选“最像是能生成这组数据”的那个。</p></div>
+          <p>如果样本独立同分布，联合概率可以拆成乘积：</p>
+          <div class="math-display">\[
+p(D\mid\theta)=\prod_{i=1}^{n}p(x_i\mid\theta)
+\]</div>
+          <p>乘积在计算机里容易下溢，求导也麻烦，所以实际优化通常取对数。因为 \(\log\) 是单调递增函数，最大化 \(L(\theta;D)\) 和最大化 \(\log L(\theta;D)\) 得到同一个参数。</p>
+          <div class="math-display">\[
+\log L(\theta;D)=\sum_{i=1}^{n}\log p(x_i\mid\theta)
+\]</div>
+
+          <h3 id="s-010-3"><a class="anchor-link" href="#s-010-3" aria-label="跳转到本节">#</a>MLE：Bernoulli 成功率例题</h3>
+          <p>最大似然估计选择让观测数据出现概率最大的参数：</p>
+          <div class="math-display">\[
+\hat\theta_{MLE}=\arg\max_{\theta}p(D\mid\theta)
+=\arg\max_{\theta}\sum_{i=1}^{n}\log p(x_i\mid\theta)
+\]</div>
+          <p>\(\arg\max\) 读作“使右侧最大时的参数取值”。注意它返回的是参数，不是最大值本身。</p>
+          <div class="worked-example">
+            <div class="example-title">例题：Bernoulli MLE</div>
+            <p>一次 Bernoulli 试验只有两种结果：成功记为 1，失败记为 0。设成功概率为 \(p\)。现在观察到 10 次试验，其中成功 7 次、失败 3 次。求 \(p\) 的 MLE。</p>
+            <div class="solution">
+              <div class="example-title">完整解答</div>
+              <p>第一步，写出单个样本概率。若 \(x_i=1\)，概率是 \(p\)；若 \(x_i=0\)，概率是 \(1-p\)。这可以合成一个公式：</p>
+              <div class="math-display">\[
+P(X=x_i\mid p)=p^{x_i}(1-p)^{1-x_i}
+\]</div>
+              <p>第二步，写出 10 个独立样本的似然。成功 7 次给出 \(p^7\)，失败 3 次给出 \((1-p)^3\)：</p>
+              <div class="math-display">\[
+L(p)=p^7(1-p)^3
+\]</div>
+              <p>第三步，取对数，把乘法变成加法：</p>
+              <div class="math-display">\[
+\ell(p)=\log L(p)=7\log p+3\log(1-p)
+\]</div>
+              <p>第四步，求导并令导数为 0：</p>
+              <div class="math-display">\[
+\frac{d\ell}{dp}=\frac{7}{p}-\frac{3}{1-p}=0
+\]</div>
+              <p>把式子移项：</p>
+              <div class="math-display">\[
+\frac{7}{p}=\frac{3}{1-p}
+\quad\Longrightarrow\quad
+7(1-p)=3p
+\quad\Longrightarrow\quad
+p=0.7
+\]</div>
+              <p>所以 \(\hat p_{MLE}=0.7\)。一般地，若 \(n\) 次试验中成功 \(k\) 次，Bernoulli MLE 是 \(\hat p=k/n\)。</p>
+            </div>
+            <div class="intuition-box"><b>如何读这个答案</b><p>MLE 不是说真实成功率一定等于 0.7，而是说在没有额外先验信息时，0.7 是最能解释当前样本的点估计。样本越少，这个点估计越容易被偶然波动带偏。</p></div>
+          </div>
+
+          <h3 id="s-010-4"><a class="anchor-link" href="#s-010-4" aria-label="跳转到本节">#</a>MAP：似然加先验</h3>
+          <p>MLE 只看数据，不看参数本身是否合理。MAP 在 MLE 的基础上加入先验：参数在看到数据前就有一个信念 \(p(\theta)\)。根据 Bayes 公式：</p>
+          <div class="math-display">\[
+p(\theta\mid D)=\frac{p(D\mid\theta)p(\theta)}{p(D)}
+\]</div>
+          <p>做参数优化时，\(D\) 已经固定，分母 \(p(D)\) 不随 \(\theta\) 变化，所以 MAP 只需要最大化分子：</p>
+          <div class="math-display">\[
+\hat\theta_{MAP}=\arg\max_{\theta}p(\theta\mid D)
+=\arg\max_{\theta}p(D\mid\theta)p(\theta)
+\]</div>
+          <p>取 log 后，乘法变成加法：</p>
+          <div class="math-display">\[
+\hat\theta_{MAP}
+=\arg\max_{\theta}\left[\log p(D\mid\theta)+\log p(\theta)\right]
+\]</div>
+          <div class="worked-example">
+            <div class="example-title">例题：Bernoulli MAP</div>
+            <p>仍然是 10 次试验成功 7 次。现在加入先验 \(p\sim Beta(2,2)\)。这个先验的直觉是：在看到数据前，我们温和地相信硬币不要太偏向 0 或 1。求 MAP。</p>
+            <div class="solution">
+              <div class="example-title">完整解答</div>
+              <p>\(Beta(\alpha,\beta)\) 是 Bernoulli 成功率的常用先验。它的密度与下面这个量成正比：</p>
+              <div class="math-display">\[
+p^{\alpha-1}(1-p)^{\beta-1}
+\]</div>
+              <p>似然是 \(p^7(1-p)^3\)，先验是 \(p^{2-1}(1-p)^{2-1}\)。二者相乘得到后验的形状：</p>
+              <div class="math-display">\[
+p^{7}(1-p)^3\cdot p^{1}(1-p)^1
+=p^8(1-p)^4
+\]</div>
+              <p>这对应后验 \(Beta(9,5)\)。当 \(\alpha+k&gt;1\) 且 \(\beta+n-k&gt;1\) 时，Beta 后验的众数，也就是 MAP，为：</p>
+              <div class="math-display">\[
+\hat p_{MAP}
+=\frac{\alpha+k-1}{\alpha+\beta+n-2}
+=\frac{2+7-1}{2+2+10-2}
+=\frac{8}{12}
+=\frac{2}{3}
+\]</div>
+              <p>所以 MAP 是约 \(0.667\)，比 MLE 的 \(0.7\) 更靠近中间。</p>
+            </div>
+            <div class="intuition-box"><b>先验如何起作用</b><p>可以把 \(Beta(2,2)\) 粗略理解成“先看过 2 个成功和 2 个失败的温和经验”，它会把小样本估计往先验中心拉。样本很大时，似然项增长得更快，先验影响会变小。</p></div>
+          </div>
+          <div class="formula-list">
+            <p><b>MLE 与 MAP 的区别：</b>MLE 最大化 \(p(D\mid\theta)\)，只问“哪个参数最能生成数据”；MAP 最大化 \(p(D\mid\theta)p(\theta)\)，还问“这个参数本身在先验下是否合理”。</p>
+            <p><b>正则化连接：</b>如果先验是 Gaussian，\(\log p(\theta)\) 会产生类似 \(-\lambda\|\theta\|_2^2\) 的惩罚；如果先验是 Laplace，会产生类似 \(L_1\) 的惩罚。MAP 是点估计，不等于保留完整后验分布。</p>
+          </div>
+
+          <h3 id="s-010-5"><a class="anchor-link" href="#s-010-5" aria-label="跳转到本节">#</a>熵、交叉熵与 KL</h3>
+          <p>信息论指标常被背成公式，但它们其实都在回答一个问题：当我们用某个概率分布来描述或编码样本时，需要付出多少“惊讶程度”或编码代价。</p>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>熵 \(H(p)\)</h4>
+              <p>衡量真实分布 \(p\) 自己的不确定性。分布越平均，越难猜，熵越大；分布越集中，越容易猜，熵越小。</p>
+            </div>
+            <div class="concept-card">
+              <h4>交叉熵 \(H(p,q)\)</h4>
+              <p>样本来自真实分布 \(p\)，但你用模型分布 \(q\) 去编码它。模型给真实高频事件的概率越低，交叉熵越大。</p>
+            </div>
+            <div class="concept-card">
+              <h4>KL \(D_{KL}(p\|q)\)</h4>
+              <p>衡量用 \(q\) 代替 \(p\) 多付出的额外代价。它不是距离，因为通常不对称。</p>
+            </div>
+          </div>
+          <div class="math-display">\[
+H(p)=-\sum_x p(x)\log p(x)
+\]</div>
+          <p>这个公式读作：对每个可能结果 \(x\)，先看它在真实分布中的概率 \(p(x)\)，再乘上它的惊讶程度 \(-\log p(x)\)，最后对所有结果加权平均。</p>
+          <div class="math-display">\[
+H(p,q)=-\sum_x p(x)\log q(x)
+\]</div>
+          <p>交叉熵把惊讶程度里的 \(p(x)\) 换成了 \(q(x)\)：真实样本按 \(p\) 出现，但模型按 \(q\) 给概率。若模型对真实常见结果给很小概率，\(-\log q(x)\) 会很大。</p>
+          <div class="math-display">\[
+D_{KL}(p\|q)=\sum_x p(x)\log\frac{p(x)}{q(x)}
+\]</div>
+          <p>KL 可以拆成：</p>
+          <div class="math-display">\[
+H(p,q)=H(p)+D_{KL}(p\|q)
+\]</div>
+          <p>所以当真实分布 \(p\) 固定时，最小化交叉熵等价于最小化 \(D_{KL}(p\|q)\)。但要记住，KL 的方向有含义：\(D_{KL}(p\|q)\) 惩罚模型 \(q\) 漏掉真实分布 \(p\) 中高概率的地方。</p>
+          <div class="worked-example">
+            <div class="example-title">数字例题：交叉熵与 KL</div>
+            <p>设真实分布 \(p=(0.8,0.2)\)，模型分布 \(q=(0.6,0.4)\)。用自然对数计算 \(H(p)\)、\(H(p,q)\) 和 \(D_{KL}(p\|q)\)。</p>
+            <div class="solution">
+              <div class="example-title">完整解答</div>
+              <p>真实熵：</p>
+              <div class="math-display">\[
+H(p)=-0.8\log 0.8-0.2\log 0.2
+\approx -0.8(-0.2231)-0.2(-1.6094)
+\approx 0.5004
+\]</div>
+              <p>交叉熵：</p>
+              <div class="math-display">\[
+H(p,q)=-0.8\log 0.6-0.2\log 0.4
+\approx -0.8(-0.5108)-0.2(-0.9163)
+\approx 0.5919
+\]</div>
+              <p>KL：</p>
+              <div class="math-display">\[
+D_{KL}(p\|q)=H(p,q)-H(p)\approx 0.5919-0.5004=0.0915
+\]</div>
+              <p>也可以直接算：</p>
+              <div class="math-display">\[
+0.8\log\frac{0.8}{0.6}+0.2\log\frac{0.2}{0.4}
+\approx 0.8(0.2877)+0.2(-0.6931)
+\approx 0.0915
+\]</div>
+            </div>
+            <div class="intuition-box"><b>如何解释这个数</b><p>\(0.0915\) 不是准确率，也不是概率，而是用 \(q\) 代替 \(p\) 的额外平均 log 代价。模型 \(q=(0.6,0.4)\) 低估了第一类真实概率 0.8，所以会多付出编码代价。</p></div>
+          </div>
+
+          <h3 id="s-010-6"><a class="anchor-link" href="#s-010-6" aria-label="跳转到本节">#</a>LLM 为什么训练 NLL/CE</h3>
+          <p>语言模型训练的基本任务是：给定前文 \(x_{&lt;t}\)，预测下一个 token \(x_t\)。模型输出的是词表上每个 token 的概率 \(q_\theta(\cdot\mid x_{&lt;t})\)。训练数据告诉我们真实下一个 token 是哪个。</p>
+          <div class="math-display">\[
+\mathcal{L}_{NLL}(\theta)
+=-\sum_{t}\log q_\theta(x_t\mid x_{&lt;t})
+\]</div>
+          <p>NLL 是 negative log likelihood，读作负对数似然。最大化训练语料的条件似然：</p>
+          <div class="math-display">\[
+\max_\theta \sum_t \log q_\theta(x_t\mid x_{&lt;t})
+\]</div>
+          <p>等价于最小化负号后的 NLL。为什么又说它是交叉熵？因为在每个位置，训练标签通常是 one-hot 分布：真实 token 的概率是 1，其他 token 的概率是 0。交叉熵为：</p>
+          <div class="math-display">\[
+H(p,q_\theta)=-\sum_{v\in V}p(v)\log q_\theta(v\mid x_{&lt;t})
+\]</div>
+          <p>当 \(p\) 是 one-hot，只有真实 token \(x_t\) 那一项不为 0，于是：</p>
+          <div class="math-display">\[
+H(p,q_\theta)=-\log q_\theta(x_t\mid x_{&lt;t})
+\]</div>
+          <div class="worked-example">
+            <div class="example-title">小例子：一个位置的 CE</div>
+            <p>词表只有三个 token：A、B、C。真实下一个 token 是 B，所以标签分布是 \(p=(0,1,0)\)。模型给出的概率是 \(q=(0.2,0.7,0.1)\)。</p>
+            <div class="solution">
+              <div class="example-title">完整说明</div>
+              <div class="math-display">\[
+H(p,q)=-(0\log0.2+1\log0.7+0\log0.1)=-\log0.7\approx0.357
+\]</div>
+              <p>如果模型只给 B 概率 0.1，损失会变成 \(-\log0.1\approx2.303\)。所以 CE 对“把真实 token 概率给得很低”惩罚很重。</p>
+            </div>
+            <div class="intuition-box"><b>训练行为</b><p>LLM 的 CE/NLL 不是直接奖励“回答质量”，而是在每个 token 位置提高训练数据中真实 token 的概率。它学到语言、知识和格式，是因为这些都体现在大量 next-token 条件分布里。</p></div>
+          </div>
+
+          <h3 id="s-010-7"><a class="anchor-link" href="#s-010-7" aria-label="跳转到本节">#</a>Monte Carlo：通用但慢</h3>
+          <p>很多期望很难解析计算。例如复杂期权收益、策略回撤、模型多次采样表现、RL rollout 回报，都可以写成某个随机变量函数的期望：</p>
+          <div class="math-display">\[
+\mu=E[f(X)]
+\]</div>
+          <p>Monte Carlo 的核心做法非常朴素：从 \(X\) 的分布中抽样 \(X_1,\ldots,X_n\)，计算每个样本上的 \(f(X_i)\)，再用平均值近似期望。</p>
+          <div class="math-display">\[
+\hat\mu=\frac{1}{n}\sum_{i=1}^{n}f(X_i)
+\]</div>
+          <div class="worked-example">
+            <div class="example-title">小例子：估计一次收益为正的概率</div>
+            <p>假设某策略的日收益模拟结果为 \(-1\%, 2\%, 0.5\%, -0.3\%, 1.2\%\)。用 Monte Carlo 估计“日收益为正”的概率。</p>
+            <div class="solution">
+              <div class="example-title">完整解答</div>
+              <p>定义函数 \(f(r)=1\) 表示收益 \(r&gt;0\)，否则 \(f(r)=0\)。五个样本对应：</p>
+              <div class="math-display">\[
+0,\ 1,\ 1,\ 0,\ 1
+\]</div>
+              <p>样本平均为：</p>
+              <div class="math-display">\[
+\hat\mu=\frac{0+1+1+0+1}{5}=0.6
+\]</div>
+              <p>所以估计正收益概率为 60%。这只是基于 5 个样本的粗估计，样本量太小，误差会很大。</p>
+            </div>
+          </div>
+          <p>Monte Carlo 的通用性来自它只需要会采样、会计算 \(f(X)\)，不要求你把积分解析算出来。它的慢来自标准误差缩小速度：</p>
+          <div class="math-display">\[
+\operatorname{SE}(\hat\mu)=\frac{\sigma}{\sqrt n}
+\]</div>
+          <p>这里 \(\sigma\) 是 \(f(X)\) 的标准差。样本量增加 100 倍，标准误只缩小 10 倍；想把误差再砍半，通常需要 4 倍样本。这就是“通用但慢”的核心含义。</p>
+          <div class="table-wrap"><table><thead><tr><th>场景</th><th>随机样本是什么</th><th>估计的量</th><th>主要风险</th></tr></thead><tbody>
+            <tr><td>量化风险</td><td>价格路径或收益路径</td><td>VaR、CVaR、最大回撤</td><td>尾部样本稀少，分布假设错误</td></tr>
+            <tr><td>LLM 评测</td><td>多次采样回答</td><td>通过率、平均评分、pass@k</td><td>样本相关、prompt 泄漏、评分噪声</td></tr>
+            <tr><td>RL</td><td>环境 rollout</td><td>策略期望回报</td><td>方差高，探索不足，环境非平稳</td></tr>
+          </tbody></table></div>
+
+          <h3 id="s-010-8"><a class="anchor-link" href="#s-010-8" aria-label="跳转到本节">#</a>误区、面试连接与检查清单</h3>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>常见误区</h4>
+              <p>不要把 likelihood 当成参数上的概率分布；不要说 MAP 等于完整 Bayesian inference；不要把 KL 当成对称距离；不要以为 Monte Carlo 样本翻倍误差就减半。</p>
+            </div>
+            <div class="concept-card">
+              <h4>LLM 连接</h4>
+              <p>预训练的 NLL/CE 是 token-level MLE；KL 常出现在 RLHF/PPO/DPO 类方法里，用来约束新策略不要偏离参考模型太远；采样评测要报告样本量和方差。</p>
+            </div>
+            <div class="concept-card">
+              <h4>量化连接</h4>
+              <p>MLE 用于拟合收益分布或波动模型；MAP/正则化用于小样本稳定估计；KL 可比较预测分布和经验分布；Monte Carlo 用于复杂路径依赖风险。</p>
+            </div>
+          </div>
+          <div class="checkpoint-list">
+            <p><b>检查 1：</b>你能解释 \(p(D\mid\theta)\) 和 \(p(\theta\mid D)\) 的区别吗？前者是似然的核心，后者是后验。</p>
+            <p><b>检查 2：</b>你能从 \(L(p)=p^7(1-p)^3\) 推出 Bernoulli MLE 为 \(0.7\) 吗？关键步骤是取 log、求导、令导数为 0。</p>
+            <p><b>检查 3：</b>你能说明 \(Beta(2,2)\) 先验为什么把 MAP 从 \(0.7\) 拉到 \(2/3\) 吗？关键是先验提供了额外偏好。</p>
+            <p><b>检查 4：</b>你能说出 \(H(p,q)=H(p)+D_{KL}(p\|q)\) 的含义吗？当 \(p\) 固定时，最小化交叉熵就是降低额外编码代价。</p>
+            <p><b>检查 5：</b>你能解释 LLM 的 CE 为什么等于 one-hot 标签下的 NLL 吗？因为只有真实 token 那一项留下 \(-\log q_\theta(x_t\mid x_{&lt;t})\)。</p>
+            <p><b>检查 6：</b>你能解释 Monte Carlo 为什么慢吗？因为标准误通常按 \(1/\sqrt n\) 缩小，而不是按 \(1/n\) 缩小。</p>
+          </div>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="009.html">← 009. 概率二：期望、方差、大数定律与中心极限定理</a><a href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 原路径保留，内容按短教科书式复习结构组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RELEX / Minimal RLVR Training 深度解读</title>
+  <style>
+    :root {
+      --bg: #f7f1e8;
+      --paper: #fffaf2;
+      --paper-2: #f3eadf;
+      --ink: #221b15;
+      --muted: #6e6258;
+      --line: #d8cab8;
+      --accent: #b65a36;
+      --accent-2: #7c3f2c;
+      --good: #396f55;
+      --warn: #9a5b1f;
+      --bad: #8f3f31;
+      --code-bg: #211b17;
+      --code-fg: #f8efe1;
+      --shadow: 0 12px 36px rgba(64, 44, 30, 0.10);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    a { color: var(--accent-2); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      overflow-x: auto;
+      padding: 10px max(22px, calc((100vw - 1120px) / 2));
+      background: rgba(247, 241, 232, 0.94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    .topbar strong { color: var(--accent-2); }
+    .topbar a { color: var(--muted); text-decoration: none; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px 72px; }
+    header.hero {
+      min-height: 84vh;
+      display: grid;
+      align-content: center;
+      gap: 28px;
+      padding: 58px 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      color: var(--accent-2);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+    }
+    h1 {
+      margin: 0;
+      max-width: 930px;
+      font-size: clamp(34px, 6vw, 76px);
+      line-height: 1.03;
+      letter-spacing: 0;
+    }
+    .thesis {
+      max-width: 900px;
+      font-size: 21px;
+      line-height: 1.62;
+      color: #3d332b;
+      margin: 0;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 8px;
+    }
+    .stat-card, .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .stat-card .label { color: var(--muted); font-size: 13px; }
+    .stat-card .value { font-size: 24px; font-weight: 800; margin-top: 6px; }
+    section { padding: 46px 0 8px; }
+    h2 {
+      font-size: 30px;
+      line-height: 1.22;
+      margin: 0 0 18px;
+      letter-spacing: 0;
+    }
+    h3 { font-size: 21px; margin: 28px 0 10px; letter-spacing: 0; }
+    p { margin: 12px 0; }
+    .lead { font-size: 18px; color: #3b312a; }
+    .muted { color: var(--muted); }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .source-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 9px;
+      margin: 3px 5px 3px 0;
+      color: var(--accent-2);
+      background: #fff6ed;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #fff5ea;
+      padding: 14px 16px;
+      margin: 18px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .warn { border-left-color: var(--warn); background: #fff3df; }
+    .danger { border-left-color: var(--bad); background: #fff0ec; }
+    .ok { border-left-color: var(--good); background: #eff8f2; }
+    .formula {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      font-size: 18px;
+      line-height: 1.55;
+      margin: 14px 0;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: #efe3d4;
+      color: #4a281e;
+      border-radius: 4px;
+      padding: 0 4px;
+      font-size: 0.92em;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid #4d3d32;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    table { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--paper-2); color: #3a2d23; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    figure { margin: 20px 0; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+    figure img { display: block; width: 100%; height: auto; background: #fff; }
+    figcaption { padding: 12px 14px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+    ul, ol { padding-left: 22px; }
+    li { margin: 7px 0; }
+    .step {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .step:last-child { border-bottom: 0; }
+    .badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--accent);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .quote {
+      font-size: 20px;
+      line-height: 1.6;
+      color: #332820;
+      margin: 18px 0;
+      padding: 0 0 0 18px;
+      border-left: 4px solid var(--accent);
+    }
+    .small { font-size: 13px; }
+    footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    @media (max-width: 860px) {
+      .hero-grid, .grid-2, .grid-3, .source-grid { grid-template-columns: 1fr; }
+      header.hero { min-height: auto; padding-top: 44px; }
+      h1 { font-size: 42px; }
+      .thesis { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topbar">
+    <strong>RELEX 解读</strong>
+    <a href="#sources">来源</a>
+    <a href="#problem">问题</a>
+    <a href="#mechanism">机制</a>
+    <a href="#evaluation">评估</a>
+    <a href="#why">为什么有效</a>
+    <a href="#limits">边界</a>
+    <a href="#insight">Insight</a>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero">
+      <div class="eyebrow">X Thread + Notion Blog Reading Report · 2026-05-15</div>
+      <h1>RELEX：用早期 RLVR 轨迹外推未来 checkpoint，是真的省训练，还是一次漂亮的低秩巧合？</h1>
+      <p class="thesis">这条 X 线程的核心不是“又一个 RL 算法”，而是一个更像 checkpoint 后处理 / weight-space extrapolation 的观察：在作者实验的数学 RLVR 训练中，模型权重增量大部分能被每个 tensor 的 rank-1 方向解释，而该方向上的系数随训练步数近似线性增长；于是只训练前 15%-20%，就可以用线性外推构造后续 checkpoint。</p>
+      <div class="hero-grid">
+        <div class="stat-card"><div class="label">材料身份</div><div class="value">X 线程 + Notion</div></div>
+        <div class="stat-card"><div class="label">观察窗口</div><div class="value">15%-20%</div></div>
+        <div class="stat-card"><div class="label">训练设置</div><div class="value">GRPO / MATH</div></div>
+        <div class="stat-card"><div class="label">核心结构</div><div class="value">Rank-1 + Linear</div></div>
+      </div>
+    </header>
+
+    <section id="sources">
+      <h2>1. 我读了什么，以及哪些地方没有被验证</h2>
+      <div class="source-grid">
+        <div class="card">
+          <h3>已稳定获取的一手材料</h3>
+          <p>主材料来自 Zhepei Wei 在 X 上发布的 11 条 thread，以及同作者 Notion 博文 <em>You Only Need Minimal RLVR Training: Extrapolating LLMs via Rank-1 Trajectories</em>。我还用 OpenCLI 读取了作者 profile：Zhepei Wei，UVA CS PhD student，研究兴趣为 ML/NLP/LLM。</p>
+          <p><span class="tag">OpenCLI twitter thread</span><span class="tag">OpenCLI web read</span><span class="tag">作者 Notion</span><span class="tag">推文图表 OCR</span></p>
+          <p class="muted small">本地证据：X thread JSON 保存于 <code>tmp/relex_thread_2055034616180867536.json</code>；图表资源复制到 <code>/Users/bytedance/Downloads/relex-rlvr-thread-analysis-assets/</code>。</p>
+        </div>
+        <div class="card">
+          <h3>需要保留的边界</h3>
+          <p>推文里的 paper 短链 <code>tinyurl.com/minimal-rlvr</code> 在本机和 OpenCLI 浏览器中都返回连接重置；Grok/mcp-router 搜索没有结果；arXiv MCP 只命中一个无关的 <em>GLiNER-Relex</em> 论文；普通 web 搜索也没有发现同题名 arXiv 条目。</p>
+          <div class="callout warn"><strong>所以本文按“作者技术博文/预印本式说明”来解读，不把它表述成已经核验的 arXiv 论文。</strong>这会影响我们对 claim 的置信度：方法很有意思，但还需要完整 paper、代码和更多复现实验来判断稳健性。</div>
+        </div>
+      </div>
+      <figure>
+        <img src="relex-rlvr-thread-analysis-assets/01-overview.jpg" alt="RELEX overview figure from X thread">
+        <figcaption>作者线程首图：RELEX 的高层叙事是“只观察早期 RLVR checkpoint，然后外推未来 checkpoint”。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <h2>2. 它到底在解决什么问题？</h2>
+      <p class="lead">问题很直接：RLVR（Reinforcement Learning with Verifiable Rewards，用可验证奖励做强化学习）在数学、代码等任务上有效，但完整训练昂贵。作者问的是：如果训练早期已经暴露了模型要往哪里走，能不能不用跑完 RLVR，就预测后续 checkpoint？</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>RLVR 的常规成本</h3>
+          <p>在 RLVR 中，模型会对一道题生成多个答案，系统用可验证规则判断对错，例如数学最终答案是否匹配。GRPO 这类算法用同一题的一组 rollout 做相对优势估计，让正确或高奖励的输出概率上升。</p>
+          <p>这套流程的成本来自反复采样、打分、反向传播和保存 checkpoint。对 500 步训练来说，后 400 步仍要真实跑优化，即使早期趋势已经很清楚，也不能免费得到。</p>
+        </div>
+        <div class="card">
+          <h3>RELEX 的视角转换</h3>
+          <p>RELEX 不直接改 reward，不改 GRPO，也不训练一个新预测器。它把问题改写成：<strong>从早期 checkpoint 的权重增量轨迹中，估计一个主要更新方向，然后沿这个方向外推更远。</strong></p>
+          <p>这类似在权重空间里做“训练轨迹预测”。它关心的对象不是每道题的梯度、奖励或 token，而是每个 weight tensor 从初始模型到当前 checkpoint 的差值。</p>
+        </div>
+      </div>
+      <div class="quote">关键 insight：这项工作最重要的假设是“RLVR 的有效学习方向已经在早期显现，而且之后主要是在同一方向上继续放大”。如果这个假设成立，训练后期的很多计算就可能是可预测的。</div>
+    </section>
+
+    <section id="mechanism">
+      <h2>3. RELEX 方法一步一步怎么做</h2>
+      <p>先给直觉：把每个 checkpoint 看成从初始模型 <code>theta_0</code> 出发走到 <code>theta_t</code>。每一步的“走了多少”是权重增量 <code>Delta theta_t = theta_t - theta_0</code>。如果这些增量几乎都沿着同一条主方向变化，那么未来 checkpoint 可以用“方向不变，长度继续增长”来构造。</p>
+
+      <figure>
+        <img src="relex-rlvr-thread-analysis-assets/04-method.jpg" alt="RELEX method sketch">
+        <figcaption>作者给出的 RELEX 流程图：观察 prefix，估计 rank-1 方向，拟合系数直线，然后外推目标 step。</figcaption>
+      </figure>
+
+      <div class="card">
+        <div class="step"><div class="badge">1</div><div><strong>真实跑一个很短的 RLVR prefix。</strong><br>例如完整训练计划是 500 step，但只真实训练前 75、100 或 125 step。作者主结果中，Qwen2.5-Math-1.5B 和 Qwen3-4B-Base 用 15% prefix，Qwen3-8B-Base 用 20% prefix。</div></div>
+        <div class="step"><div class="badge">2</div><div><strong>对每个 weight tensor 计算 checkpoint delta。</strong><br>对第 <code>ell</code> 个 tensor，计算每个已观察 step 的差值：<code>Delta W_t^(ell) = W_t^(ell) - W_0^(ell)</code>。这一步把“模型训练过程”变成一串权重差值。</div></div>
+        <div class="step"><div class="badge">3</div><div><strong>把这些 delta 堆成轨迹矩阵并做 SVD。</strong><br>SVD（singular value decomposition，奇异值分解）会找出最能解释这些 delta 变化的主方向。RELEX 只取第一个方向，也就是 rank-1。</div></div>
+        <div class="step"><div class="badge">4</div><div><strong>把每个 step 的 delta 投影到 rank-1 方向，得到一个标量系数。</strong><br>原来一个 tensor 的变化有很多参数维度；投影后只剩一个数 <code>c_t^(ell)</code>，表示第 <code>t</code> 步沿主方向走了多远。</div></div>
+        <div class="step"><div class="badge">5</div><div><strong>对系数随 step 的变化拟合直线。</strong><br>作者观察到多数 tensor 的 rank-1 系数接近线性，很多 <code>R^2 >= 0.98</code>。于是用最小二乘拟合 <code>c_t ≈ a t + b</code>。</div></div>
+        <div class="step"><div class="badge">6</div><div><strong>外推未来 step 的系数并重建权重。</strong><br>对目标 step <code>T</code>，预测 <code>c_hat_T = aT + b</code>，再构造 <code>W_hat_T = W_0 + c_hat_T v_1</code>。所有 tensor 都这样做，最后拼回一个完整 checkpoint。</div></div>
+      </div>
+
+      <div class="formula">
+        对每个 tensor：Delta W_t = W_t - W_0；SVD 后取主方向 v_1；投影得到 c_t = &lt;Delta W_t, v_1&gt;；拟合 c_t ≈ a t + b；外推 W_hat_T = W_0 + (aT + b) v_1。
+      </div>
+
+      <h3>一个小例子</h3>
+      <p>假设某个小 tensor 的 RLVR delta 在前 3 个 checkpoint 上投影到主方向后的系数是 0.12、0.25、0.37，基本每 25 step 增加约 0.125。RELEX 做的不是继续训练到 500 step，而是拟合一条直线，然后直接推到 500 step 的系数，比如得到 2.50，再把 tensor 设置成 <code>W_0 + 2.50 * v_1</code>。真实系统里这对每个 tensor 分别做。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>4. 评估到底评了什么？</h2>
+      <p class="lead">作者的实验对象是数学推理 RLVR，而不是通用聊天质量、代码、工具调用或多领域 agent。训练任务是 MATH，优化算法是 GRPO，模型包括 Qwen2.5-Math-1.5B、Qwen3-4B-Base、Qwen3-8B-Base，完整 RLVR 训练为 500 step。</p>
+      <div class="grid-3">
+        <div class="card"><h3>输入</h3><p>数学题 prompt。模型需要生成推理和最终答案。</p></div>
+        <div class="card"><h3>训练信号</h3><p>可验证奖励：最终答案等是否正确。GRPO 用组内相对奖励更新模型。</p></div>
+        <div class="card"><h3>评分对象</h3><p>最终 checkpoint 在数学 benchmark 上的 accuracy，不是训练 loss，也不是人类偏好。</p></div>
+      </div>
+
+      <h3>In-domain：MATH test set</h3>
+      <p>这个表衡量训练域内表现：训练和评估都围绕 MATH 数学题。RELEX 使用很少真实训练成本，但构造出的 checkpoint 在 MATH test 上接近完整 RLVR。</p>
+      <table>
+        <thead><tr><th>方法 / 训练成本</th><th class="num">Qwen2.5-Math-1.5B</th><th class="num">Qwen3-4B-Base</th><th class="num">Qwen3-8B-Base</th></tr></thead>
+        <tbody>
+          <tr><td>Base (0%)</td><td class="num">48.2</td><td class="num">64.0</td><td class="num">73.9</td></tr>
+          <tr><td>RLVR (100%)</td><td class="num">71.5</td><td class="num">85.5</td><td class="num"><strong>88.5</strong></td></tr>
+          <tr><td>RELEX (15%-20%)</td><td class="num"><strong>71.6</strong></td><td class="num"><strong>85.6</strong></td><td class="num">87.4</td></tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="relex-rlvr-thread-analysis-assets/05-indomain.jpg" alt="In-domain MATH results table">
+        <figcaption>推文图表 OCR 与 Notion 表格一致：RELEX 在两个较小模型上略高于完整 RLVR，在 Qwen3-8B-Base 上低 1.1 分。</figcaption>
+      </figure>
+
+      <h3>OOD：未见过的数学推理 benchmark</h3>
+      <p>作者还报告了 AIME25、AIME26、HMMT25、OlympBench、AMC23 的 OOD 结果。平均值上，RELEX 对 1.5B 和 4B 模型略高于完整 RLVR，对 8B 模型略低。</p>
+      <table>
+        <thead><tr><th>模型</th><th>方法</th><th class="num">AIME25</th><th class="num">AIME26</th><th class="num">HMMT25</th><th class="num">OlympBench</th><th class="num">AMC23</th><th class="num">Average</th></tr></thead>
+        <tbody>
+          <tr><td>Qwen2.5-Math-1.5B</td><td>Base</td><td class="num">4.2</td><td class="num">5.0</td><td class="num">0.8</td><td class="num">23.2</td><td class="num">33.1</td><td class="num">13.3</td></tr>
+          <tr><td>Qwen2.5-Math-1.5B</td><td>RLVR</td><td class="num">4.6</td><td class="num">7.9</td><td class="num">0.4</td><td class="num">31.5</td><td class="num">54.4</td><td class="num">19.8</td></tr>
+          <tr><td>Qwen2.5-Math-1.5B</td><td>RELEX 15%</td><td class="num">8.8</td><td class="num">10.0</td><td class="num">2.1</td><td class="num">31.4</td><td class="num">56.2</td><td class="num"><strong>21.7</strong></td></tr>
+          <tr><td>Qwen3-4B-Base</td><td>Base</td><td class="num">9.0</td><td class="num">8.8</td><td class="num">0.8</td><td class="num">31.6</td><td class="num">43.8</td><td class="num">18.6</td></tr>
+          <tr><td>Qwen3-4B-Base</td><td>RLVR</td><td class="num">23.8</td><td class="num">23.8</td><td class="num">10.0</td><td class="num">46.6</td><td class="num">64.1</td><td class="num">33.7</td></tr>
+          <tr><td>Qwen3-4B-Base</td><td>RELEX 15%</td><td class="num">23.8</td><td class="num">19.2</td><td class="num">14.6</td><td class="num">47.4</td><td class="num">67.2</td><td class="num"><strong>34.4</strong></td></tr>
+          <tr><td>Qwen3-8B-Base</td><td>Base</td><td class="num">10.0</td><td class="num">7.1</td><td class="num">2.9</td><td class="num">36.9</td><td class="num">53.8</td><td class="num">22.1</td></tr>
+          <tr><td>Qwen3-8B-Base</td><td>RLVR</td><td class="num"><strong>29.2</strong></td><td class="num"><strong>25.4</strong></td><td class="num"><strong>16.3</strong></td><td class="num">49.5</td><td class="num"><strong>73.8</strong></td><td class="num"><strong>38.8</strong></td></tr>
+          <tr><td>Qwen3-8B-Base</td><td>RELEX 20%</td><td class="num">27.5</td><td class="num">24.6</td><td class="num">15.4</td><td class="num"><strong>49.6</strong></td><td class="num">72.8</td><td class="num">38.0</td></tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="relex-rlvr-thread-analysis-assets/06-ood.jpg" alt="Out-of-domain math benchmark results">
+        <figcaption>OOD 图表：RELEX 没有只在 MATH 域内工作，至少在这些数学类外部 benchmark 上也保留了迁移收益。</figcaption>
+      </figure>
+    </section>
+
+    <section id="why">
+      <h2>5. 为什么这么简单的方法可能有效？</h2>
+      <p>作者给出两个核心发现：第一，RLVR 的 weight delta 很低秩；第二，投影到 rank-1 方向后的系数随训练步数近似线性。我的理解是：RELEX 成功的原因不是“线性模型很强”，而是 SVD 找到的方向把原始高维、带噪的训练轨迹压缩成了一个更平滑的主要信号。</p>
+      <div class="grid-2">
+        <div>
+          <figure>
+            <img src="relex-rlvr-thread-analysis-assets/02-rank1.jpg" alt="Rank-1 reconstruction result">
+            <figcaption>Finding 1：rank-1 重建能保留大部分 RLVR 性能。若这个现象泛化，说明有效更新集中在少数方向。</figcaption>
+          </figure>
+        </div>
+        <div>
+          <figure>
+            <img src="relex-rlvr-thread-analysis-assets/03-linear.jpg" alt="Rank-1 coefficient linearity">
+            <figcaption>Finding 2：rank-1 系数随 step 近似线性，很多 tensor 的线性拟合 R² ≥ 0.98。</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <h3>消融结果说明了什么</h3>
+      <table>
+        <thead><tr><th>设计选择</th><th>变体</th><th class="num">Step100</th><th class="num">Step200</th><th class="num">Step300</th><th class="num">Step400</th><th class="num">Step500</th><th>解释</th></tr></thead>
+        <tbody>
+          <tr><td>Weight space</td><td>SVD</td><td class="num">67.8</td><td class="num">70.0</td><td class="num">70.1</td><td class="num">70.9</td><td class="num">71.6</td><td>SVD 比 raw 稳，支持“谱降噪”说法。</td></tr>
+          <tr><td>Weight space</td><td>Raw</td><td class="num">67.4</td><td class="num">68.5</td><td class="num">69.8</td><td class="num">70.4</td><td class="num">70.7</td><td>直接在原始权重空间外推较差。</td></tr>
+          <tr><td>Rank</td><td>Rank-1</td><td class="num">67.8</td><td class="num">70.0</td><td class="num">70.1</td><td class="num">70.9</td><td class="num">71.6</td><td>默认 rank-1 足够。</td></tr>
+          <tr><td>Rank</td><td>Rank-5 / Rank-10</td><td class="num">67.0 / 67.4</td><td class="num">68.4 / 68.8</td><td class="num">69.9 / 69.6</td><td class="num">69.8 / 70.1</td><td class="num">70.6 / 70.5</td><td>更高 rank 引入更多噪声，不一定更好。</td></tr>
+          <tr><td>Function</td><td>Linear</td><td class="num">67.8</td><td class="num">70.0</td><td class="num">70.1</td><td class="num">70.9</td><td class="num">71.6</td><td>简单线性最稳定。</td></tr>
+          <tr><td>Function</td><td>Polynomial</td><td class="num">66.9</td><td class="num">17.8</td><td class="num">0.2</td><td class="num">0.2</td><td class="num">0.1</td><td>长外推灾难性崩溃，典型过拟合/外推不稳定。</td></tr>
+          <tr><td>Function</td><td>Neural network</td><td class="num">67.2</td><td class="num">69.5</td><td class="num">70.5</td><td class="num">70.5</td><td class="num">72.1</td><td>最后一步可能更高，但整体不如线性可控。</td></tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="relex-rlvr-thread-analysis-assets/07-ablations.png" alt="RELEX ablation table">
+        <figcaption>消融图：这张表很关键，因为它说明 RELEX 的卖点不是复杂预测器，而是找到合适表示后做最简单外推。</figcaption>
+      </figure>
+
+      <div class="callout ok"><strong>我的判断：</strong>RELEX 如果成立，它更像“训练动力学压缩”而不是“强化学习算法改进”。SVD 把高维权重变化投影到 dominant mode；线性外推只是在这个 mode 上延长训练时间。这个角度与 LoRA、低秩 adaptation、模型编辑中的低维有效子空间都有概念相通之处。</div>
+    </section>
+
+    <section id="long">
+      <h2>6. 长外推结果：最强也最需要谨慎的部分</h2>
+      <p>作者报告 RELEX 可以给定观察窗口后外推到 20 倍窗口，例如观察前 50 step 后外推到 1000 step。这个 claim 很抓人，但表格也显示长外推的稳定性明显依赖模型和窗口。</p>
+      <figure>
+        <img src="relex-rlvr-thread-analysis-assets/08-long-extrapolation.png" alt="Long-horizon extrapolation table">
+        <figcaption>长外推表：从 500 到 750、1000 step，部分模型/窗口继续改善，部分组合明显退化。</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card">
+          <h3>积极信号</h3>
+          <p>Qwen2.5-Math-1.5B 在 <code>Tcut=125</code> 时，外推到 750/1000 step 仍约 71.7/71.6；Qwen3-8B-Base 在 <code>Tcut=100</code> 时，1000 step 仍有 82.4，说明不是所有长外推都会马上崩。</p>
+        </div>
+        <div class="card">
+          <h3>风险信号</h3>
+          <p>Qwen3-4B-Base 在 <code>Tcut=125</code> 外推到 1000 step 只有 50.9；Qwen3-8B-Base 在 <code>Tcut=50</code> 外推到 1000 step 只有 22.7。这说明“越外推越好”不是普遍规律，窗口选择非常关键。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>7. 不能过度解读的地方</h2>
+      <div class="card">
+        <h3>限制一：任务范围还是数学 RLVR</h3>
+        <p>作者自己也提出后续问题：SFT 是否也有同样低秩线性结构？代码 RLVR 是否成立？非 verifiable reward 任务是否成立？当前证据主要支持“数学题 + 可验证奖励 + Qwen 系列 + GRPO”这个范围。</p>
+      </div>
+      <div class="card">
+        <h3>限制二：它节省的是后续训练，不是完全免费</h3>
+        <p>RELEX 仍然需要真实跑早期 RLVR prefix，并保存多个 checkpoint。还要对每个 tensor 做 SVD 和重建。相对完整 RLVR，这个成本可能很小；但它不是零成本启动，也不是不用 RLVR 数据。</p>
+      </div>
+      <div class="card">
+        <h3>限制三：accuracy 接近不等于行为完全等价</h3>
+        <p>RELEX checkpoint 可能在 benchmark accuracy 上接近 RLVR，但这不保证输出风格、错误类型、校准、长度、拒答行为或安全属性完全一致。尤其当外推超出观察窗口很多时，weight-space 行为边界需要更细评估。</p>
+      </div>
+      <div class="card">
+        <h3>限制四：缺少完整 paper/code 时，复现可信度有限</h3>
+        <p>目前可读材料是 X 线程和作者 Notion blog。我没有验证到 arXiv 正式版本，也没有看到公开代码仓库。因此对于 SVD 的具体实现细节，例如 tensor flatten 方式、checkpoint 采样密度、是否排除 embedding/lm head、不同 tensor 的符号对齐和数值精度处理，还需要完整实现确认。</p>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>8. 我的核心 insight</h2>
+      <p class="lead">这条 thread 真正有价值的地方，是把 RLVR 从“每一步都必须真实优化”的叙事，拉到“训练轨迹本身可能有可预测几何结构”的叙事。它没有证明 RLVR 可以被普遍替代，但它给了一个很强的研究问题：训练后期到底是在学习新东西，还是在沿早期已经找到的方向继续放大？</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>如果你做训练工程</h3>
+          <p>RELEX 可以作为 checkpoint extrapolation 的候选工具：先跑短 prefix，快速预测多个未来 step 的模型，做 early evaluation。如果预测可靠，可以少跑一些后续训练；如果不可靠，至少也能作为训练诊断，判断早期轨迹是否稳定。</p>
+        </div>
+        <div class="card">
+          <h3>如果你做研究</h3>
+          <p>我会优先验证三件事：第一，在 coding RLVR 上是否还 rank-1；第二，不同 random seed 的主方向是否一致；第三，RELEX checkpoint 与真实 RLVR checkpoint 的行为差异，而不只看平均 accuracy。</p>
+        </div>
+      </div>
+      <div class="callout danger"><strong>最重要的判断：</strong>这不是“RLVR 只需 20% 训练”的普遍结论，而是“在作者当前设置下，RLVR 的有效 weight delta 似乎被一个早期可估计的低秩方向主导”。前者是宣传语，后者才是科学命题。</div>
+    </section>
+
+    <section id="commands">
+      <h2>9. 复现本次读取的关键命令</h2>
+      <pre><code>opencli twitter thread "https://x.com/weizhepei/status/2055034616180867536" --limit 80 -f json --trace retain-on-failure
+opencli web read --url "https://weizhepei.notion.site/you-only-need-minimal-rlvr-training" --stdout true --download-images true --wait 8 -f json --trace retain-on-failure
+opencli twitter profile "weizhepei" -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}
+%{http_code}
+' "https://t.co/UWUJ1CB8tR"
+tesseract "tmp/relex-assets/05-indomain.jpg" stdout -l eng --psm 6</code></pre>
+    </section>
+
+    <footer>
+      <p>Generated on 2026-05-15. This report is based on the X thread, the author's Notion blog, downloaded tweet figures, OCR of key tables, OpenCLI source retrieval, and failed-but-recorded attempts to verify a canonical paper link.</p>
+    </footer>
+  </main>
+</body>
+</html>

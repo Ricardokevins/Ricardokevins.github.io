@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEMENTO 深度解读：教 LLM 管理自己的上下文</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1b1a17;
+      --muted: #6f6a60;
+      --subtle: #8b867c;
+      --paper: #f7f3ea;
+      --panel: #fffdf7;
+      --line: #d8d0c0;
+      --line-strong: #a89e8c;
+      --green: #26705c;
+      --green-soft: #dcebe5;
+      --red: #9f3b2f;
+      --red-soft: #f2ded7;
+      --blue: #315e8c;
+      --blue-soft: #dce7f2;
+      --gold: #b07922;
+      --gold-soft: #f5e6c7;
+      --violet: #6550a4;
+      --violet-soft: #e7e1f5;
+      --shadow: 0 18px 48px rgba(49, 43, 31, 0.12);
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(27,26,23,0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+        linear-gradient(0deg, rgba(27,26,23,0.025) 1px, transparent 1px) 0 0 / 32px 32px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+    }
+    a { color: var(--blue); text-decoration: none; border-bottom: 1px solid rgba(49,94,140,0.28); }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      min-height: 58px; padding: 10px clamp(18px,4vw,56px);
+      border-bottom: 1px solid rgba(27,26,23,0.14);
+      background: rgba(247,243,234,0.92); backdrop-filter: blur(14px);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 700; color: var(--ink); }
+    .mark {
+      width: 24px; height: 24px; border: 2px solid var(--ink);
+      background: linear-gradient(135deg, transparent 0 42%, var(--ink) 43% 57%, transparent 58%),
+                  linear-gradient(45deg, transparent 0 42%, var(--green) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+    }
+    .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav { display: flex; align-items: center; gap: 8px; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+    .nav a {
+      display: inline-flex; align-items: center; min-height: 34px; padding: 4px 10px;
+      border: 1px solid transparent; color: var(--muted); font-size: 13px; font-weight: 650;
+    }
+    .nav a:hover { border-color: var(--line); background: rgba(255,255,255,0.46); color: var(--ink); }
+
+    .hero {
+      position: relative; display: grid; grid-template-columns: minmax(0,1.15fr) minmax(280px,0.85fr);
+      gap: clamp(28px,5vw,64px); align-items: end; min-height: 82vh;
+      padding: clamp(50px,9vw,110px) clamp(20px,5vw,72px) 46px;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; z-index: -2;
+      background: linear-gradient(115deg, rgba(255,253,247,0.96) 0 40%, rgba(220,235,229,0.35) 80%);
+    }
+    .hero-title { font-family: var(--serif); font-size: clamp(28px,4.2vw,52px); font-weight: 800; line-height: 1.12; margin: 0 0 18px; }
+    .hero-thesis { font-size: clamp(15px,1.6vw,19px); color: var(--muted); line-height: 1.6; margin: 0 0 28px; max-width: 560px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px;
+      border-radius: 4px; font-size: 12px; font-weight: 650; letter-spacing: 0.02em;
+    }
+    .tag-green { background: var(--green-soft); color: var(--green); }
+    .tag-blue { background: var(--blue-soft); color: var(--blue); }
+    .tag-gold { background: var(--gold-soft); color: var(--gold); }
+    .tag-violet { background: var(--violet-soft); color: var(--violet); }
+    .tag-red { background: var(--red-soft); color: var(--red); }
+
+    .hero-aside {
+      display: flex; flex-direction: column; gap: 14px;
+      padding: 28px; border-radius: 8px; background: var(--panel);
+      border: 1px solid var(--line); box-shadow: var(--shadow);
+    }
+    .hero-aside h3 { margin: 0 0 6px; font-size: 14px; color: var(--subtle); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+    .hero-aside p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+    .hero-aside .kv { display: flex; gap: 8px; margin-bottom: 4px; }
+    .hero-aside .k { font-weight: 700; color: var(--ink); min-width: 72px; font-size: 13px; }
+    .hero-aside .v { font-size: 13px; color: var(--muted); }
+
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 clamp(18px,5vw,56px); }
+
+    section { padding: 56px 0 40px; border-bottom: 1px solid var(--line); }
+    section:last-of-type { border-bottom: none; }
+    h2 { font-family: var(--serif); font-size: clamp(22px,2.6vw,32px); font-weight: 800; margin: 0 0 18px; line-height: 1.18; }
+    h3 { font-size: 18px; font-weight: 750; margin: 28px 0 10px; }
+    h4 { font-size: 15px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); }
+    p { margin: 0 0 14px; }
+
+    .card {
+      padding: 22px 24px; margin: 16px 0; border-radius: 6px;
+      border: 1px solid var(--line); background: var(--panel);
+    }
+    .card-green { border-left: 4px solid var(--green); }
+    .card-blue { border-left: 4px solid var(--blue); }
+    .card-gold { border-left: 4px solid var(--gold); }
+    .card-red { border-left: 4px solid var(--red); }
+    .card-violet { border-left: 4px solid var(--violet); }
+    .card p { margin: 0 0 6px; font-size: 14.5px; }
+    .card p:last-child { margin-bottom: 0; }
+    .card-title { font-weight: 750; font-size: 15px; margin-bottom: 8px; color: var(--ink); }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--line-strong); font-weight: 750; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    tr:hover td { background: rgba(255,253,247,0.5); }
+    .num { font-family: var(--mono); font-size: 13px; }
+    .best { font-weight: 750; color: var(--green); }
+
+    .callout {
+      display: flex; gap: 14px; padding: 18px 22px; margin: 18px 0;
+      border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
+    }
+    .callout-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; }
+    .callout-icon.green { background: var(--green-soft); color: var(--green); }
+    .callout-icon.red { background: var(--red-soft); color: var(--red); }
+    .callout-icon.gold { background: var(--gold-soft); color: var(--gold); }
+    .callout-icon.blue { background: var(--blue-soft); color: var(--blue); }
+    .callout-body { flex: 1; font-size: 14.5px; }
+    .callout-body p { margin: 0 0 4px; }
+    .callout-body p:last-child { margin-bottom: 0; }
+
+    .step { display: flex; gap: 16px; margin: 18px 0; }
+    .step-num {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 15px; background: var(--blue-soft); color: var(--blue);
+    }
+    .step-body { flex: 1; }
+    .step-body h4 { margin: 0 0 4px; font-size: 15px; font-weight: 750; color: var(--ink); }
+    .step-body p { margin: 0 0 4px; font-size: 14.5px; color: var(--muted); }
+
+    .sawtooth {
+      display: flex; align-items: flex-end; gap: 2px; height: 80px; margin: 16px 0;
+    }
+    .sawtooth-bar {
+      flex: 1; background: linear-gradient(to top, var(--blue), var(--green));
+      border-radius: 2px 2px 0 0; min-width: 8px; position: relative;
+      transition: height 0.3s;
+    }
+    .sawtooth-label {
+      position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+      font-size: 9px; color: var(--subtle); white-space: nowrap;
+    }
+
+    .insight-box {
+      padding: 28px 30px; margin: 24px 0; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(220,235,229,0.35), rgba(245,230,199,0.25));
+      border: 1px solid var(--line);
+    }
+    .insight-box h3 { margin: 0 0 10px; font-family: var(--serif); font-size: 20px; color: var(--green); }
+    .insight-box p { margin: 0 0 8px; font-size: 15px; }
+
+    .footer {
+      padding: 36px 0; text-align: center; color: var(--subtle); font-size: 13px;
+      border-top: 1px solid var(--line);
+    }
+
+    code { font-family: var(--mono); font-size: 0.88em; padding: 2px 6px; border-radius: 3px; background: rgba(27,26,23,0.06); }
+    pre { padding: 16px 20px; border-radius: 6px; background: rgba(27,26,23,0.05); overflow-x: auto; margin: 14px 0; }
+    pre code { padding: 0; background: none; font-size: 13px; line-height: 1.6; }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; padding: 40px 20px 30px; }
+      .hero-aside { margin-top: 20px; }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+
+<div class="topbar">
+  <div class="brand"><div class="mark"></div><span>MEMENTO 深度解读</span></div>
+  <nav class="nav">
+    <a href="#problem">问题</a>
+    <a href="#mechanism">机制</a>
+    <a href="#data">数据</a>
+    <a href="#training">训练</a>
+    <a href="#accuracy">精度</a>
+    <a href="#dual-stream">双通道</a>
+    <a href="#inference">推理引擎</a>
+    <a href="#insight">Insight</a>
+  </nav>
+</div>
+
+<div class="hero">
+  <div>
+    <h1 class="hero-title">MEMENTO：<br>教 LLM 管理自己的上下文</h1>
+    <p class="hero-thesis">
+      让模型在推理过程中自主分段、压缩、丢弃已完成的思考块——KV cache 峰值降低 2–3 倍，吞吐量近乎翻倍，而"被删除"的信息竟通过 KV 隐式通道继续流传。
+    </p>
+    <div class="hero-meta">
+      <span class="tag tag-green">KV Cache 压缩</span>
+      <span class="tag tag-blue">推理时上下文管理</span>
+      <span class="tag tag-gold">SFT + RL</span>
+      <span class="tag tag-violet">隐式信息通道</span>
+      <span class="tag tag-red">vLLM 原生支持</span>
+    </div>
+  </div>
+  <div class="hero-aside">
+    <h3>来源</h3>
+    <div class="kv"><span class="k">论文</span><span class="v">MEMENTO (arXiv 2604.09852)</span></div>
+    <div class="kv"><span class="k">团队</span><span class="v">Microsoft Research AI Frontiers</span></div>
+    <div class="kv"><span class="k">一作</span><span class="v">Vasilis Kontonis, Yuchen Zeng, Shivam Garg, Lingjiao Chen</span></div>
+    <div class="kv"><span class="k">通讯</span><span class="v">Dimitris Papailiopoulos</span></div>
+    <div class="kv"><span class="k">发布</span><span class="v">2026 年 4 月</span></div>
+    <div class="kv"><span class="k">代码</span><span class="v"><a href="https://github.com/microsoft/memento">github.com/microsoft/memento</a></span></div>
+    <div class="kv"><span class="k">数据</span><span class="v"><a href="https://huggingface.co/datasets/microsoft/OpenMementos">OpenMementos (228K traces)</a></span></div>
+    <div class="kv"><span class="k">推文</span><span class="v"><a href="https://x.com/DimitrisPapail/status/2041974013950373901">@DimitrisPapail</a> (967 likes)</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ===== 问题 ===== -->
+<section id="problem">
+<h2>1. 问题：LLM 不会管理自己的上下文</h2>
+
+<p>推理模型（如 o1、DeepSeek-R1、QwQ）通过生成大量 token 来"思考"，单次推理可以产生数十万 token——相当于一本书的长度。所有这些 token 都驻留在 KV cache 中，被后续 attention 等权访问，无论它们是否还有用。</p>
+
+<p>模型没有内建机制来<strong>压缩已完成的推理、保留结论、继续前进</strong>。现有的上下文管理方案都是<strong>外部系统</strong>：</p>
+
+<div class="card card-red">
+  <div class="card-title">现有外部方案的局限</div>
+  <p><strong>独立摘要器</strong>：用另一个模型总结上下文，但摘要器不理解当前模型的内部状态</p>
+  <p><strong>重启 API 调用</strong>：用压缩后的文本重启推理，但丢失了 KV cache 中的隐式信息</p>
+  <p><strong>编排层</strong>：在模型外搭建逻辑来管理上下文，但增加了系统复杂度</p>
+  <p>这些方案都是"模型外挂"，而非模型自身学会的技能。</p>
+</div>
+
+<div class="callout">
+  <div class="callout-icon green">?</div>
+  <div class="callout-body">
+    <p><strong>Memento 的核心假设</strong>：决定"记住什么、忘记什么"应该是一种<strong>可训练的能力</strong>，而非外部系统逻辑。如果给模型正确的训练数据，它就能学会自主管理上下文。</p>
+  </div>
+</div>
+</section>
+
+<!-- ===== 机制 ===== -->
+<section id="mechanism">
+<h2>2. 机制：Memento 如何工作</h2>
+
+<p>Memento 的核心思想是让模型在推理过程中<strong>自主分段、压缩、丢弃</strong>。具体来说：</p>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h4>分段（Segment）</h4>
+    <p>模型将推理过程分成语义连贯的"思考块"（thinking block）。每个块包含一组相关的推理步骤。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h4>压缩（Compress）</h4>
+    <p>当一个块完成时，模型生成一个 <strong>memento</strong>——一个简洁、信息密集的压缩，包含该块的结论、关键中间值、公式和策略决策。可以把 memento 想象成一个<strong>引理（lemma）</strong>：后续推理所需的最小记录。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <h4>丢弃（Mask &amp; Evict）</h4>
+    <p>memento 生成后，前面的思考块从 attention 中被遮蔽（mask），其 KV cache 条目被物理清除（evict/flush）。此后模型只能看到过去的 memento + 当前正在工作的块。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <h4>继续推理</h4>
+    <p>模型从 memento 继续推理，开始下一个思考块。整个过程在<strong>单次生成调用</strong>内完成，无需重启或外部摘要器。</p>
+  </div>
+</div>
+
+<h3>锯齿形 KV Cache 模式</h3>
+<p>这产生了一个标志性的<strong>锯齿形（sawtooth）</strong>内存模式：推理块增长时 KV cache 上升，memento 生成并清除块后 KV cache 骤降，峰值始终保持在标准 CoT 的一小部分。</p>
+
+<div class="sawtooth">
+  <div class="sawtooth-bar" style="height:30%"></div>
+  <div class="sawtooth-bar" style="height:55%"></div>
+  <div class="sawtooth-bar" style="height:80%"></div>
+  <div class="sawtooth-bar" style="height:35%"></div>
+  <div class="sawtooth-bar" style="height:60%"></div>
+  <div class="sawtooth-bar" style="height:90%"></div>
+  <div class="sawtooth-bar" style="height:40%"></div>
+  <div class="sawtooth-bar" style="height:65%"></div>
+  <div class="sawtooth-bar" style="height:85%"></div>
+  <div class="sawtooth-bar" style="height:38%"></div>
+  <div class="sawtooth-bar" style="height:58%"></div>
+  <div class="sawtooth-bar" style="height:78%"></div>
+</div>
+<p style="font-size:13px;color:var(--subtle);text-align:center;margin-top:24px;">锯齿形 KV cache 示意：每次 memento 生成后内存骤降，峰值远低于标准 CoT</p>
+
+<div class="callout">
+  <div class="callout-icon blue">i</div>
+  <div class="callout-body">
+    <p><strong>关键区别</strong>：Memento 不是"先推理完再总结"，而是在推理过程中<strong>实时</strong>分段压缩。模型在生成 memento 时仍能看到当前块的全部内容，memento 的 KV 表示因此编码了块的信息——即使块后来被清除，信息仍通过 KV 隐式通道传递。</p>
+  </div>
+</div>
+</section>
+
+<!-- ===== 数据 ===== -->
+<section id="data">
+<h2>3. 数据生成：OpenMementos</h2>
+
+<p>教模型学会上下文管理需要特殊的训练数据：大规模、高质量的推理轨迹，被分段并配对 memento。这种数据不存在，需要从头构建。</p>
+
+<h3>3.1 为什么不能直接让 LLM 分段？</h3>
+
+<div class="card card-red">
+  <div class="card-title">直接分段失败的原因</div>
+  <p>把整条轨迹粘贴给前沿模型，让它一步完成分段+摘要——<strong>行不通</strong>。因为好的分段需要同时考虑块的语义连贯性、大小均衡和语义边界，这是一个<strong>组合优化问题</strong>，LLM 难以一步到位。</p>
+</div>
+
+<h3>3.2 分而治之的数据管线</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h4>基础轨迹选择</h4>
+    <p>基于 <strong>OpenThoughts-v3</strong>（QwQ-32B 生成的高质量推理轨迹，约 1.2M 条），省去从头生成。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h4>原子切分</h4>
+    <p>将轨迹切分为<strong>原子单元</strong>——句子、代码块、数学公式——不可再分的最小语义单元。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <h4>边界打分</h4>
+    <p>LLM 对每个句子间边界打 0–3 分：0 = 思路中间（差），3 = 重大转折（好）。这是<strong>局部问题</strong>，LLM 擅长处理。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <h4>动态规划分段</h4>
+    <p>用 DP 最大化边界质量分数，同时惩罚不均匀的块大小。全局优化交给算法，而非 LLM 零样本。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <h4>压缩生成 memento</h4>
+    <p>压缩 LLM 为每个块生成 memento。Prompt 明确要求<strong>状态压缩</strong>而非普通摘要：生成足够紧凑的内容，使模型仅凭 memento 就能继续推理，无需看到原始块。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-body">
+    <h4>迭代评审精炼</h4>
+    <p>评审 LLM 按多维度评分（公式提取、数值保留、方法命名、验证包含、无幻觉、结论优先结构）。不合格则给出<strong>具体可操作的反馈</strong>（如"缺少公式 K²−3K+3"），压缩器重试。<strong>单次通过率仅 28%，两轮反馈后升至 92%</strong>。</p>
+  </div>
+</div>
+
+<h3>3.3 OpenMementos 数据集统计</h3>
+
+<table>
+  <tr><th>指标</th><th>数学</th><th>代码</th><th>科学</th></tr>
+  <tr><td>样本占比</td><td>54%</td><td>19%</td><td>27%</td></tr>
+  <tr><td>每样本块数（中位数）</td><td>~9</td><td>~9</td><td>~7</td></tr>
+  <tr><td>块大小（字符）</td><td>~3.8K</td><td>~2.8K</td><td>~2.3K</td></tr>
+  <tr><td>memento 大小（字符）</td><td>~509–603</td><td>~509–603</td><td>~509–603</td></tr>
+  <tr><td>压缩比（中位数）</td><td>0.16</td><td>~0.20</td><td>~0.22</td></tr>
+</table>
+
+<p>总计 <strong>228K 条标注轨迹</strong>，约 11K token 推理压缩为不到 2K token memento（约 6 倍压缩）。所有 LLM 调用使用 GPT-5.x，但任何足够强的模型均可替代。</p>
+</section>
+
+<!-- ===== 训练 ===== -->
+<section id="training">
+<h2>4. 训练：课程学习至关重要</h2>
+
+<p>有了标注数据，如何 SFT？直觉上直接训练即可，但实际发现<strong>课程（curriculum）至关重要</strong>。</p>
+
+<h3>4.1 三种失败/次优方案</h3>
+
+<table>
+  <tr><th>方案</th><th>做法</th><th>问题</th></tr>
+  <tr>
+    <td><strong>正常因果 attention + 推理时 mask</strong></td>
+    <td>训练时全可见，推理时遮蔽块</td>
+    <td>训练时模型总可以 attend 到完整块，<strong>没有压力把信息压缩进 memento</strong></td>
+  </tr>
+  <tr>
+    <td><strong>从头就带 block masking</strong></td>
+    <td>训练一开始就遮蔽已完成块</td>
+    <td>模型同时学三件事（格式、压缩、仅靠 memento 推理），<strong>全部学不好</strong></td>
+  </tr>
+  <tr>
+    <td><strong>直接在 OpenMementos 上 SFT</strong></td>
+    <td>跳过基础推理 SFT</td>
+    <td>非推理基座模型（如 Qwen2.5-7B）<strong>大幅低于</strong>标准推理 SFT</td>
+  </tr>
+</table>
+
+<h3>4.2 成功方案：三阶段课程</h3>
+
+<div class="step">
+  <div class="step-num">S0</div>
+  <div class="step-body">
+    <h4>标准推理 SFT（仅非推理基座需要）</h4>
+    <p>在原始 OpenThoughts 上 SFT，让模型先学会推理。Qwen3、Olmo3、Phi-4-Reasoning 等已会推理的模型可跳过此步。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">S1</div>
+  <div class="step-body">
+    <h4>全可见注意力 + OpenMementos</h4>
+    <p>标准因果 attention，所有 token 参与计算 loss。模型学习<strong>格式</strong>：何时结束块、如何写 memento、结构长什么样。此时无压缩压力。</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">S2</div>
+  <div class="step-body">
+    <h4>Memento Attention + OpenMementos</h4>
+    <p>引入硬约束：memento 生成后，前面的思考块从后续 attention 中完全遮蔽。模型<strong>被迫</strong>把所有后续推理所需的信息压缩进 memento，因为原始块已经不可见了。这是<strong>真正学习发生的地方</strong>——类似 RL 的压力信号，推动模型实现自包含压缩。</p>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-icon gold">!</div>
+  <div class="callout-body">
+    <p><strong>数据效率</strong>：仅需 ~30K 样本（从 228K 池中抽取），每阶段 5 epoch，32K 序列长度，就足以让模型学会这项技能。Memento 不需要比标准推理 SFT 更多的数据，只是需要<strong>不同类型</strong>的数据。</p>
+  </div>
+</div>
+</section>
+
+<!-- ===== 精度 ===== -->
+<section id="accuracy">
+<h2>5. 精度分析：压缩的代价与恢复</h2>
+
+<h3>5.1 初始精度差距的来源</h3>
+
+<p>Memento 模型相比基座有精度下降，但作者发现差距的主要来源<strong>不是压缩本身</strong>：</p>
+
+<div class="card card-blue">
+  <div class="card-title">关键对照实验</div>
+  <p>训练数据来自 QwQ-32B 生成的轨迹，但微调的目标模型（Qwen3、Phi-4 等）可能比 QwQ 更强。仅在同一模型上做标准 SFT（无块结构、无 memento）就已经有精度损失——这是<strong>训练数据分布不匹配</strong>导致的。</p>
+  <p>当把 Memento 与这个"受控基线"比较时，压缩带来的<strong>额外</strong>精度下降很小，某些情况下可忽略。</p>
+</div>
+
+<h3>5.2 能力保留 vs. 一致性下降</h3>
+
+<p>在 AIME 2024/25/26 上生成 64 个补全，发现：</p>
+
+<div class="card card-green">
+  <div class="card-title">核心发现：能力保留</div>
+  <p>基座模型和 Memento 模型<strong>能解的题目重叠率平均 96.4%</strong>，某些设置下达 100%。模型保留了解题能力，下降的是<strong>单次尝试的一致性</strong>。</p>
+  <p>这意味着精度差距是<strong>可弥合的</strong>——多数投票 k=3 就足以让 Memento 匹配甚至超过原始基线。</p>
+</div>
+
+<h3>5.3 RL 恢复精度</h3>
+
+<p>用 <strong>CISPO</strong> 对 Qwen3-8B Memento checkpoint 做 RL 微调：</p>
+
+<table>
+  <tr><th>基准</th><th>Vanilla 基座</th><th>Memento (SFT)</th><th>Memento + RL</th></tr>
+  <tr><td>AIME'26</td><td>基线</td><td>略低</td><td class="best">恢复至基线 / 超越</td></tr>
+  <tr><td>GPQA-Diamond</td><td>基线</td><td>略低</td><td class="best">恢复至基线 / 超越</td></tr>
+</table>
+
+<p>RL 后 KV 节省仍然显著——精度恢复不以牺牲效率为代价。</p>
+
+<h3>5.4 规模效应</h3>
+
+<p>从 Qwen3-8B 到 32B，即使两者使用相同的 QwQ-32B 轨迹训练，精度差距也<strong>显著缩小</strong>。更大模型更优雅地处理分布不匹配和压缩影响。</p>
+
+<h3>5.5 吞吐量提升</h3>
+
+<table>
+  <tr><th>指标</th><th>Vanilla vLLM</th><th>Memento vLLM</th><th>提升</th></tr>
+  <tr><td>吞吐量（tok/s）</td><td>2,447</td><td>4,290</td><td class="best">1.75×</td></tr>
+  <tr><td>批次完成时间</td><td>1,096s</td><td>693s</td><td class="best">1.58×</td></tr>
+  <tr><td>峰值 KV cache</td><td>基线</td><td>~1/2–1/3</td><td class="best">2–3× 降低</td></tr>
+</table>
+<p>测试条件：单 B200 GPU，240 并发请求，Qwen3-8B，32K max tokens。</p>
+</section>
+
+<!-- ===== 双通道 ===== -->
+<section id="dual-stream">
+<h2>6. 双信息通道：被删除的信息并未消失</h2>
+
+<p>这是本文最令人惊讶的发现。</p>
+
+<h3>6.1 现象</h3>
+
+<p>当模型生成 memento 时，它<strong>仍然能看到当前思考块的全部内容</strong>。因此 memento token 的 KV 表示是在块内容可见的条件下计算的。即使块后来被遮蔽和清除，<strong>块的信息已经"泄漏"进了 memento 的 KV 表示</strong>。</p>
+
+<div class="callout">
+  <div class="callout-icon blue">i</div>
+  <div class="callout-body">
+    <p><strong>直觉</strong>：memento 的文本是"显式通道"——你能读到的压缩内容。memento 的 KV 表示是"隐式通道"——你看不到，但后续 attention 能访问到的、编码了原始块信息的向量。</p>
+  </div>
+</div>
+
+<h3>6.2 重启 vs. 保持的消融实验</h3>
+
+<p>对比两种推理模式：</p>
+
+<table>
+  <tr><th>模式</th><th>做法</th><th>AIME'24</th></tr>
+  <tr>
+    <td><strong>Keep（正常 Memento）</strong></td>
+    <td>遮蔽块但保留 memento 的 KV 状态</td>
+    <td class="best">66.1%</td>
+  </tr>
+  <tr>
+    <td><strong>Restart</strong></td>
+    <td>每个 memento 边界重启，重新计算 KV cache（memento 不再 attend 到块）</td>
+    <td>50.8%</td>
+  </tr>
+</table>
+
+<p><strong>15 个百分点的差距</strong>——这绝非噪声，强烈证明 KV 隐式通道对精度至关重要。</p>
+
+<h3>6.3 线性探针实验</h3>
+
+<p>更直接的验证：在目标块中注入一个随机 5 位数密码，遮蔽该块，然后在<strong>从未直接 attend 过该块的下游 memento</strong> 的 KV 状态上训练线性探针——能恢复密码吗？</p>
+
+<div class="card card-violet">
+  <div class="card-title">能！信息确实通过 KV 状态泄漏</div>
+  <p>探针能以远超随机的准确率重建密码。泄漏集中在<strong>更深层</strong>，随距目标块的距离衰减，但<strong>即使 7 个块之后仍可检测</strong>，且随模型容量增大而增强。</p>
+</div>
+
+<h3>6.4 为什么这是架构必然</h3>
+
+<p>在小规模受控 Transformer（4 层，810K 参数）上验证：泄漏量在训练过程中<strong>恒定不变</strong>（即使任务精度从 77% 提升到 95%）。这是<strong>残差连接 + 因果 attention + 原位遮蔽</strong>的架构后果，而非学习结果。</p>
+
+<div class="callout">
+  <div class="callout-icon gold">!</div>
+  <div class="callout-body">
+    <p><strong>与 InftyThink / Accordion-Thinking 的本质区别</strong>：这些方法丢弃原始 token 并仅从摘要文本重建上下文，<strong>完全丢失了隐式 KV 通道</strong>。Memento 保留了这个通道，这也是作者选择在 vLLM 中实现原生 block masking（而非简单重启）的核心原因。</p>
+  </div>
+</div>
+</section>
+
+<!-- ===== 推理引擎 ===== -->
+<section id="inference">
+<h2>7. vLLM 原生 Block Masking 实现</h2>
+
+<p>Memento 的 block masking 是<strong>数据依赖且动态变化</strong>的——哪些 token 被遮蔽取决于模型自己生成的内容。没有任何生产级推理框架原生支持这种模式。</p>
+
+<h3>关键设计选择</h3>
+
+<div class="card card-blue">
+  <div class="card-title">物理 KV cache 压缩（而非逻辑遮蔽）</div>
+  <p>当块完成时，其 KV 条目被<strong>物理驱逐</strong>，释放的 slot 返还给 KV 池。这意味着标准 FlashAttention 和 paged-attention 内核<strong>完全无需修改</strong>——它们永远不会看到被驱逐的 token。</p>
+  <p>实现完全在 vLLM Python 层面，可作为补丁安装在现有 vLLM 上。</p>
+</div>
+
+<p>这套基础设施也是 RL 训练的必要条件：生成 32K-token 的训练 rollout 需要在生成过程中动态 block masking，没有 vLLM fork，这个规模的 RL 不可行。</p>
+</section>
+
+<!-- ===== Insight ===== -->
+<section id="insight">
+<h2>8. 深层 Insight</h2>
+
+<div class="insight-box">
+  <h3>Insight 1：上下文管理是可训练的技能</h3>
+  <p>一个从未接触过"块"或"摘要"概念的模型，仅通过 ~30K 样例的 SFT，就能学会自主分段推理、压缩每段、从压缩版本继续推理。这涉及<strong>非因果的稀疏 attention、选择性遗忘、状态压缩</strong>——完全通过常规训练获得。这意味着<strong>还有大量非常规能力可以通过这种方式教给模型</strong>。</p>
+</div>
+
+<div class="insight-box">
+  <h3>Insight 2：KV cache 是第二条信息高速公路</h3>
+  <p>当你在一个前向传播内遮蔽一个块时，块的信息并未真正消失——它通过 memento 的 KV 表示持续传递。这既是<strong>有用的</strong>（提升精度），也是<strong>架构上不可避免的</strong>（残差连接的后果）。我们还不清楚这个隐式通道能被推多远，尤其配合 RL 之后。</p>
+</div>
+
+<div class="insight-box">
+  <h3>Insight 3：记忆管理应该是学习到的能力</h3>
+  <p>两个发现指向同一方向：<strong>记忆管理应该是学习到的能力，且模型学会它比我们预期的更容易</strong>。正如作者所说——"Stop flushing your KV cache. Your model remembers more than you think."</p>
+</div>
+
+<h3>局限与开放问题</h3>
+
+<table>
+  <tr><th>局限</th><th>说明</th></tr>
+  <tr><td>RoPE 位置编码越界</td><td>Memento 保留原始位置索引，超长推理时可能进入训练未见过的位置编码范围；而 compaction+重启 方案的位置索引始终在训练范围内（Grad62304977 与作者的讨论）</td></tr>
+  <tr><td>仅验证了单轮推理</td><td>当前实验限于数学/代码/科学推理，尚未在多轮 agent 场景中验证</td></tr>
+  <tr><td>RL 结果仍早期</td><td>仅 Qwen3-8B 做了 RL，更大模型的 RL 效果未知</td></tr>
+  <tr><td>压缩的额外计算</td><td>生成 memento 本身需要额外 decode 步骤，是否在所有场景下都净省计算尚未量化</td></tr>
+  <tr><td>隐式通道的双刃剑</td><td>信息泄漏是架构必然，但是否会导致不期望的信息泄露（如安全敏感场景）尚需研究</td></tr>
+</table>
+
+<h3>未来方向</h3>
+
+<div class="card card-green">
+  <div class="card-title">最令人兴奋的方向：Agent 场景</div>
+  <p>Memento 当前以数学/代码/科学推理为测试用例，但作者认为<strong>最有趣的应用是 agent</strong>。终端和 CLI agent 天然是多轮的，每个 action-observation 循环就是一个自然块，选择性地记住和遗忘正是当前 OSS agent 所缺少的。Anthropic 和 OpenAI 近期在 agent 上下文压缩上的工作也指向同一方向。</p>
+</div>
+
+<div class="card card-gold">
+  <div class="card-title">社区讨论中的有趣想法</div>
+  <p><strong>Grad62304977</strong>：能否给模型一个"遗忘工具"，让它传入 KV cache 索引直接丢弃？模型可以即时做稀疏 attention（作者认为可能太难学，但 RL 下或许可行）</p>
+  <p><strong>压缩 memento 的 memento</strong>：当 memento 本身积累过多时，是否可以再压缩？（作者确认是好主意）</p>
+  <p><strong>RL 训练稀疏 attention</strong>：用 RL 训练模型自发产生摘要和稀疏 attention 模式，而非通过 SFT 教格式（作者认为在正确 reward 下很可能可行，但路径更长）</p>
+</div>
+</section>
+
+</div>
+
+<div class="footer">
+  <p>MEMENTO 深度解读 · 基于 arXiv 2604.09852 及 @DimitrisPapail 推文线程 · 2026-05-18 生成</p>
+</div>
+
+</body>
+</html>

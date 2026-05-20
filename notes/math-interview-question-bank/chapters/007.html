@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>007. 线性代数三：特征值、SVD、PCA 与正定矩阵 - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 007</div>
+        <div class="brand-title">线性代数三：特征值、SVD、PCA 与正定矩阵</div>
+        <div class="brand-meta">谱结构 · 低秩近似 · 用谱分解理解主方向、低秩结构、PCA、协方差和数值稳定。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-007-1">学习目标与概念起点</a><a class="toc-link" href="#s-007-2">特征值与特征向量</a><a class="toc-link" href="#s-007-3">2x2 特征值完整例题</a><a class="toc-link" href="#s-007-4">对称矩阵与正交对角化</a><a class="toc-link" href="#s-007-5">正定、半正定与曲率</a><a class="toc-link" href="#s-007-6">SVD 与低秩近似</a><a class="toc-link" href="#s-007-7">PCA、协方差与主方向</a><a class="toc-link" href="#s-007-8">条件数与数值稳定</a><a class="toc-link" href="#s-007-9">LLM/量化面试连接</a><a class="toc-link" href="#s-007-10">常见误区与检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link current" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="006.html">← 006. 线性代数二：投影、最小二乘与正交分解</a><a href="008.html">008. 概率一：条件概率、随机变量与常见分布 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="algebra" data-title="线性代数三：特征值、SVD、PCA 与正定矩阵">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>007. 线性代数三：特征值、SVD、PCA 与正定矩阵</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>用谱分解理解主方向、低秩结构、PCA、协方差和数值稳定。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>，保持概念、例题和算法直觉连贯。</p></aside>
+          <figure class="visual-lead"><img src="../assets/linear-algebra-geometry.svg" alt="线性代数三：特征值、SVD、PCA 与正定矩阵 图示"></figure>
+          <h3 id="s-007-1"><a class="anchor-link" href="#s-007-1" aria-label="跳转到本节">#</a>学习目标与概念起点</h3>
+<p>这一章要回答一个核心问题：一个矩阵到底“主要在什么方向上起作用”？前两章把矩阵看成线性变换、子空间和投影；本章进一步把矩阵拆成若干个主方向。特征值、SVD、PCA、正定性和条件数看起来是不同术语，本质上都在讨论方向、缩放、曲率和信息强弱。</p>
+<div class="concept-grid">
+  <div class="concept-card">
+    <h4>学习目标</h4>
+    <ul>
+      <li>能解释 \(Av=\lambda v\) 的每个符号，并能手算简单 \(2\times2\) 矩阵的特征值和特征向量。</li>
+      <li>能说明为什么实对称矩阵特别好：特征值为实数，特征向量可以正交，能写成 \(Q\Lambda Q^T\)。</li>
+      <li>能区分正定和半正定，并把它们连接到协方差矩阵、Hessian 曲率和优化稳定性。</li>
+      <li>能读懂 \(A=U\Sigma V^T\)，知道奇异值、低秩近似和 PCA 的关系。</li>
+      <li>能说明条件数为什么会放大误差，以及它在最小二乘、协方差估计、训练稳定性里的意义。</li>
+    </ul>
+  </div>
+  <div class="concept-card">
+    <h4>概念起点</h4>
+    <p>矩阵乘向量 \(Ax\) 可以理解成把向量 \(x\) 变换到新位置。多数方向会被旋转、拉伸、压缩到另一个方向；但有些特殊方向经过变换后仍然沿着原来的直线，只是长度变了。这些方向就是特征向量，对应的缩放倍数就是特征值。</p>
+  </div>
+  <div class="concept-card">
+    <h4>为什么需要谱结构</h4>
+    <p>只看矩阵元素很难判断整体行为。谱结构把矩阵改写成“方向 + 强度”：哪些方向变化最大，哪些方向几乎没信息，哪些方向曲率很陡，哪些方向会导致数值不稳定。面试里很多问题都可以用这套语言解释。</p>
+  </div>
+</div>
+
+<h3 id="s-007-2"><a class="anchor-link" href="#s-007-2" aria-label="跳转到本节">#</a>特征值与特征向量</h3>
+<p>特征向量是矩阵变换下方向不变的非零向量。特征值是这个方向上的缩放倍数。公式写作：</p>
+<div class="math-display">\[
+Av=\lambda v,\qquad v\ne 0
+\]</div>
+<div class="formula-list">
+  <p><b>\(A\)：</b>一个方阵，因为输入和输出必须在同一个空间里，才谈得上“方向是否不变”。</p>
+  <p><b>\(v\)：</b>特征向量，是一个方向。它不能是零向量，因为零向量没有方向。</p>
+  <p><b>\(\lambda\)：</b>特征值，是缩放倍数。若 \(\lambda=3\)，这个方向长度变成 3 倍；若 \(\lambda=-1\)，方向翻转；若 \(\lambda=0\)，这个方向被压扁到零。</p>
+  <p><b>如何读公式：</b>\(Av=\lambda v\) 读成“矩阵 \(A\) 作用在方向 \(v\) 上，结果仍在 \(v\) 这条直线上，只是乘了 \(\lambda\)”。</p>
+</div>
+<p>求特征值的标准做法，是把 \(Av=\lambda v\) 改写成 \((A-\lambda I)v=0\)。如果存在非零解 \(v\)，那么矩阵 \(A-\lambda I\) 必须把某个非零方向压到零，这说明它不可逆，行列式为 0：</p>
+<div class="math-display">\[
+Av=\lambda v
+\Longleftrightarrow
+(A-\lambda I)v=0
+\Longrightarrow
+\det(A-\lambda I)=0
+\]</div>
+<p>这里 \(I\) 是单位矩阵，作用类似数字里的 1。公式 \(A-\lambda I\) 的意思是：从矩阵 \(A\) 的对角线上减去 \(\lambda\)。解出 \(\lambda\) 后，再把每个 \(\lambda\) 代回 \((A-\lambda I)v=0\) 求对应方向。</p>
+<div class="intuition-box">
+  <p><b>直觉：</b>特征值不是“矩阵里的某个元素”，而是矩阵对某些特殊方向的整体效果。面试中如果问“最大特征值代表什么”，不要只说“最大的根”，要说它代表矩阵在某个主方向上的最大伸缩、方差或曲率，具体含义取决于矩阵是什么。</p>
+</div>
+
+<h3 id="s-007-3"><a class="anchor-link" href="#s-007-3" aria-label="跳转到本节">#</a>2x2 特征值完整例题</h3>
+<div class="worked-example">
+  <h4>例题：求矩阵的特征值和特征向量</h4>
+  <p>给定矩阵：</p>
+  <div class="math-display">\[
+  A=\begin{bmatrix}2&1\\1&2\end{bmatrix}
+  \]</div>
+  <p>这个矩阵会把二维向量做线性变换。我们要找哪些方向经过 \(A\) 后仍然不改变方向，以及这些方向被放大多少。</p>
+</div>
+<div class="solution">
+  <p><b>第一步：写特征方程。</b></p>
+  <div class="math-display">\[
+  A-\lambda I=
+  \begin{bmatrix}2-\lambda&1\\1&2-\lambda\end{bmatrix}
+  \]</div>
+  <div class="math-display">\[
+  \det(A-\lambda I)=(2-\lambda)^2-1
+  \]</div>
+  <p>令行列式为 0：</p>
+  <div class="math-display">\[
+  (2-\lambda)^2-1=0
+  \Longleftrightarrow
+  (2-\lambda)=\pm 1
+  \]</div>
+  <div class="math-display">\[
+  \lambda_1=3,\qquad \lambda_2=1
+  \]</div>
+  <p><b>第二步：求 \(\lambda_1=3\) 的特征向量。</b>代回 \((A-3I)v=0\)：</p>
+  <div class="math-display">\[
+  A-3I=
+  \begin{bmatrix}-1&1\\1&-1\end{bmatrix}
+  \]</div>
+  <p>设 \(v=(x,y)^T\)，方程给出 \(-x+y=0\)，所以 \(y=x\)。可以取：</p>
+  <div class="math-display">\[
+  v_1=\begin{bmatrix}1\\1\end{bmatrix}
+  \]</div>
+  <p>检查一下：</p>
+  <div class="math-display">\[
+  A\begin{bmatrix}1\\1\end{bmatrix}
+  =
+  \begin{bmatrix}3\\3\end{bmatrix}
+  =
+  3\begin{bmatrix}1\\1\end{bmatrix}
+  \]</div>
+  <p><b>第三步：求 \(\lambda_2=1\) 的特征向量。</b>代回 \((A-I)v=0\)：</p>
+  <div class="math-display">\[
+  A-I=
+  \begin{bmatrix}1&1\\1&1\end{bmatrix}
+  \]</div>
+  <p>方程给出 \(x+y=0\)，所以 \(y=-x\)。可以取：</p>
+  <div class="math-display">\[
+  v_2=\begin{bmatrix}1\\-1\end{bmatrix}
+  \]</div>
+  <p>检查一下：</p>
+  <div class="math-display">\[
+  A\begin{bmatrix}1\\-1\end{bmatrix}
+  =
+  \begin{bmatrix}1\\-1\end{bmatrix}
+  =
+  1\begin{bmatrix}1\\-1\end{bmatrix}
+  \]</div>
+  <p><b>结论：</b>方向 \((1,1)\) 被放大 3 倍，方向 \((1,-1)\) 保持长度不变。这个矩阵沿着“两个坐标同涨同跌”的方向更强，沿着“一个涨一个跌”的方向较弱。</p>
+</div>
+<div class="intuition-box">
+  <p><b>连接到数据：</b>如果这个矩阵是协方差矩阵，那么 \((1,1)\) 是共同波动方向，方差更大；\((1,-1)\) 是相对价差方向，方差更小。如果它是 Hessian，那么 \((1,1)\) 方向的曲率更陡，优化时更容易因为步长过大而震荡。</p>
+</div>
+
+<h3 id="s-007-4"><a class="anchor-link" href="#s-007-4" aria-label="跳转到本节">#</a>对称矩阵与正交对角化</h3>
+<p>实对称矩阵满足 \(A=A^T\)。它是线性代数里最舒服的一类矩阵，因为它可以被一组互相正交的特征向量完全描述：</p>
+<div class="math-display">\[
+A=A^T
+\Longrightarrow
+A=Q\Lambda Q^T
+\]</div>
+<div class="formula-list">
+  <p><b>\(Q\)：</b>由单位特征向量组成的正交矩阵。正交意味着 \(Q^TQ=I\)，也就是这些方向两两垂直且长度为 1。</p>
+  <p><b>\(\Lambda\)：</b>对角矩阵，对角线上放着特征值 \(\lambda_1,\lambda_2,\dots,\lambda_n\)。</p>
+  <p><b>\(Q^T\)：</b>先把向量从原坐标系转到特征向量坐标系。</p>
+  <p><b>\(\Lambda\)：</b>在每个特征方向上分别缩放。</p>
+  <p><b>\(Q\)：</b>再把结果转回原坐标系。</p>
+</div>
+<p>所以 \(A=Q\Lambda Q^T\) 可以读成：“先换到主方向坐标系，在每个主方向上按特征值缩放，再换回来”。这就是谱分解。它把一个复杂矩阵变成了一组彼此独立的方向和强度。</p>
+<div class="intuition-box">
+  <p><b>为什么对称矩阵常见：</b>协方差矩阵 \(\Sigma\) 是对称的，因为 \(\operatorname{Cov}(X_i,X_j)=\operatorname{Cov}(X_j,X_i)\)；Hessian \(H\) 在常见光滑条件下也是对称的，因为二阶偏导顺序可以交换。于是 PCA、风险模型、二阶优化都大量使用对称矩阵的谱分解。</p>
+</div>
+
+<h3 id="s-007-5"><a class="anchor-link" href="#s-007-5" aria-label="跳转到本节">#</a>正定、半正定与曲率</h3>
+<p>正定性讨论的是二次型 \(x^TAx\) 的符号。这里 \(x^TAx\) 可以理解为：沿着方向 \(x\) 看矩阵 \(A\) 给出的“能量、方差或曲率”。</p>
+<div class="math-display">\[
+x^TAx>0\ (x\ne 0)\quad\text{称为正定}
+\]</div>
+<div class="math-display">\[
+x^TAx\ge 0\quad\text{称为半正定}
+\]</div>
+<p>如果 \(A\) 是对称矩阵，那么正定性可以直接看特征值：</p>
+<div class="formula-list">
+  <p><b>正定：</b>所有特征值都大于 0。</p>
+  <p><b>半正定：</b>所有特征值都大于等于 0，允许某些方向特征值为 0。</p>
+  <p><b>不定：</b>既有正特征值又有负特征值，说明某些方向向上弯，某些方向向下弯。</p>
+</div>
+<p>协方差矩阵一定半正定。设随机收益向量为 \(R\)，协方差矩阵为 \(\Sigma\)。任意权重 \(x\) 组成的组合收益是 \(x^TR\)，它的方差为：</p>
+<div class="math-display">\[
+x^T\Sigma x=\operatorname{Var}(x^TR)\ge 0
+\]</div>
+<p>方差不可能为负，所以协方差矩阵不会有负特征值。如果某个特征值为 0，表示存在一个线性组合完全没有波动，通常说明特征冗余、样本太少或资产之间存在精确线性关系。</p>
+<p>Hessian 也可以用正定性理解。对损失函数 \(L(w)\)，Hessian \(H\) 描述局部二阶曲率。若在某点 \(H\) 正定，附近像一个碗，通常是局部最小点；若半正定，则某些方向可能很平；若不定，则可能是鞍点。</p>
+<div class="math-display">\[
+L(w+\Delta w)\approx L(w)+\nabla L(w)^T\Delta w+\frac{1}{2}\Delta w^TH\Delta w
+\]</div>
+<div class="intuition-box">
+  <p><b>如何读 Taylor 里的 Hessian 项：</b>\(\Delta w^TH\Delta w\) 问的是“沿着参数变化方向 \(\Delta w\)，loss 会弯得多厉害”。Hessian 最大特征值对应最陡曲率方向，最小特征值对应最平坦方向。训练神经网络时，曲率很不均衡会让统一学习率变得难选。</p>
+</div>
+
+<h3 id="s-007-6"><a class="anchor-link" href="#s-007-6" aria-label="跳转到本节">#</a>SVD 与低秩近似</h3>
+<p>特征分解主要适用于方阵，尤其是对称方阵。但现实中很多矩阵不是方阵：样本数和特征数不同，用户数和物品数不同，token 数和 embedding 维度不同。SVD 解决的是“任意矩阵如何拆成主方向”的问题。</p>
+<div class="math-display">\[
+A=U\Sigma V^T
+\]</div>
+<div class="formula-list">
+  <p><b>\(A\)：</b>原矩阵，可以是 \(m\times n\)。</p>
+  <p><b>\(V^T\)：</b>把输入向量投到一组右奇异方向上。</p>
+  <p><b>\(\Sigma\)：</b>按奇异值 \(\sigma_1\ge\sigma_2\ge\cdots\ge 0\) 缩放。奇异值越大，说明这个方向的信息或能量越强。</p>
+  <p><b>\(U\)：</b>把缩放后的坐标放到输出空间的一组左奇异方向上。</p>
+</div>
+<p>如果 \(A\) 的大部分信息集中在前几个奇异值上，就可以只保留前 \(k\) 个方向，得到低秩近似：</p>
+<div class="math-display">\[
+A_k=\sum_{i=1}^{k}\sigma_i u_i v_i^T
+\]</div>
+<p>这里 \(u_i v_i^T\) 是一个 rank-1 矩阵，可以理解为“一个输出方向乘一个输入方向”。前 \(k\) 项相加，就是用 \(k\) 个最重要的方向近似原矩阵。</p>
+<div class="worked-example">
+  <h4>例题：为什么只保留最大奇异值可以压缩矩阵</h4>
+  <p>假设一个矩阵的奇异值是 \(10,2,0.5,0.1\)。这说明第一方向的强度远大于后面几个方向。如果只保留 rank-1 近似，就保留 \(\sigma_1=10\) 对应的 \(u_1v_1^T\)；如果保留 rank-2，就再加上 \(\sigma_2=2\) 对应的方向。</p>
+</div>
+<div class="solution">
+  <p>rank-1 近似为：</p>
+  <div class="math-display">\[
+  A_1=10u_1v_1^T
+  \]</div>
+  <p>rank-2 近似为：</p>
+  <div class="math-display">\[
+  A_2=10u_1v_1^T+2u_2v_2^T
+  \]</div>
+  <p>直观上，\(A_1\) 保留最大结构，\(A_2\) 再补一个次重要结构。较小奇异值对应的方向可能是细节、噪声或弱信号。截断 SVD 的关键性质是：在所有 rank-\(k\) 矩阵中，它给出平方误差意义下最好的近似。</p>
+</div>
+<div class="intuition-box">
+  <p><b>LoRA 连接：</b>LoRA 把大模型权重更新 \(\Delta W\) 限制成低秩形式，例如 \(\Delta W=BA\)，其中 \(B\) 和 \(A\) 的中间维度很小。它不是直接做 SVD，但思想相通：很多任务适配可能主要发生在少数重要方向上，不必更新完整高秩矩阵。</p>
+</div>
+
+<h3 id="s-007-7"><a class="anchor-link" href="#s-007-7" aria-label="跳转到本节">#</a>PCA、协方差与主方向</h3>
+<p>PCA 要解决的问题是：高维数据里哪些方向最能解释样本变化？做 PCA 前通常先中心化数据，也就是每一列减去均值。中心化后的数据矩阵记为 \(X\)，每一行是一个样本。样本协方差矩阵可以写成：</p>
+<div class="math-display">\[
+\Sigma=\frac{1}{n}X^TX
+\]</div>
+<p>协方差矩阵的特征向量就是数据的主方向，特征值就是这些方向上的方差。第一主成分定义为所有单位方向中投影方差最大的方向：</p>
+<div class="math-display">\[
+u_1=\arg\max_{\|u\|=1}u^T\Sigma u
+\]</div>
+<p>这个公式的读法是：从所有长度为 1 的方向 \(u\) 中，找一个方向，使数据投影到这个方向后的方差 \(u^T\Sigma u\) 最大。约束 \(\|u\|=1\) 很重要，否则把 \(u\) 任意放大，目标值也会被任意放大。</p>
+<div class="worked-example">
+  <h4>例题：从协方差矩阵看 PCA 主方向</h4>
+  <p>假设二维数据中心化后，协方差矩阵为：</p>
+  <div class="math-display">\[
+  \Sigma=\begin{bmatrix}2&1\\1&2\end{bmatrix}
+  \]</div>
+  <p>上一节已经算过，它的特征值是 \(3\) 和 \(1\)，对应方向分别是 \((1,1)\) 和 \((1,-1)\)。</p>
+</div>
+<div class="solution">
+  <p><b>第一主方向：</b>把 \((1,1)\) 单位化：</p>
+  <div class="math-display">\[
+  u_1=\frac{1}{\sqrt{2}}\begin{bmatrix}1\\1\end{bmatrix}
+  \]</div>
+  <p>该方向上的方差是 \(\lambda_1=3\)。这说明数据沿着“两个坐标一起增加或一起减少”的方向变化最大。</p>
+  <p><b>第二主方向：</b>把 \((1,-1)\) 单位化：</p>
+  <div class="math-display">\[
+  u_2=\frac{1}{\sqrt{2}}\begin{bmatrix}1\\-1\end{bmatrix}
+  \]</div>
+  <p>该方向上的方差是 \(\lambda_2=1\)。如果只用一维表示数据，PCA 会保留 \(u_1\)，因为它解释的方差更多。</p>
+  <p><b>解释方差比例：</b></p>
+  <div class="math-display">\[
+  \frac{\lambda_1}{\lambda_1+\lambda_2}=\frac{3}{4}=75\%
+  \]</div>
+  <p>所以第一主成分解释了总方差的 75%。这不是说它解释了所有语义，只是说它解释了线性方差中的 75%。</p>
+</div>
+<p>PCA 还有另一个等价解释：如果只能用 \(k\) 维子空间重构数据，PCA 选择让平方重构误差最小的子空间。因此 PCA 同时可以被看成“最大方差方向”和“最小重构误差方向”。</p>
+<div class="intuition-box">
+  <p><b>embedding 主方向：</b>在 embedding 或隐藏状态分析里，PCA 可以找出激活变化最大的方向。例如某些主方向可能对应长度、频率、语种、主题或数据集偏差。但 PCA 只发现线性方差结构，不自动保证这些方向有清晰语义，解释时必须结合样本投影和对照实验。</p>
+</div>
+
+<h3 id="s-007-8"><a class="anchor-link" href="#s-007-8" aria-label="跳转到本节">#</a>条件数与数值稳定</h3>
+<p>条件数衡量一个矩阵对输入误差的放大程度。对可逆矩阵 \(A\)，常见的 2-范数条件数为：</p>
+<div class="math-display">\[
+\kappa(A)=\frac{\sigma_{\max}(A)}{\sigma_{\min}(A)}
+\]</div>
+<p>这里 \(\sigma_{\max}\) 是最大奇异值，\(\sigma_{\min}\) 是最小非零奇异值。条件数越大，说明矩阵在某些方向拉得很长，在另一些方向压得很扁。这样一来，反解问题会很敏感：输入里一点点噪声，可能在被压扁的方向上放大成很大的参数误差。</p>
+<div class="table-wrap"><table><thead><tr><th>情形</th><th>谱结构</th><th>后果</th></tr></thead><tbody>
+<tr><td>条件数接近 1</td><td>各方向缩放比较均衡</td><td>求解相对稳定，误差不容易被严重放大</td></tr>
+<tr><td>条件数很大</td><td>最大奇异值远大于最小奇异值</td><td>逆问题敏感，最小二乘系数可能剧烈变化</td></tr>
+<tr><td>最小奇异值接近 0</td><td>某些方向几乎被压扁</td><td>矩阵接近低秩，显式求逆风险很高</td></tr>
+</tbody></table></div>
+<p>在线性回归中，如果 \(X\) 的列高度相关，\(X^TX\) 会接近奇异，条件数变大。此时很小的数据扰动就可能导致系数大幅变化。ridge 正则化通过加上 \(\lambda I\) 改善谱结构：</p>
+<div class="math-display">\[
+X^TX+\lambda I
+\]</div>
+<p>这相当于把 \(X^TX\) 的每个特征值都往上抬 \(\lambda\)，让最小特征值不至于太接近 0，从而提升数值稳定性。代价是估计会带有偏差，但方差和不稳定性通常下降。</p>
+
+<h3 id="s-007-9"><a class="anchor-link" href="#s-007-9" aria-label="跳转到本节">#</a>LLM/量化面试连接</h3>
+<div class="concept-grid">
+  <div class="concept-card">
+    <h4>协方差矩阵与风险因子</h4>
+    <p>量化里，资产收益协方差矩阵的最大特征方向常对应市场共同波动，后续方向可能对应行业、风格或价差结构。半正定性是基本要求，因为任意组合的方差不能为负。</p>
+  </div>
+  <div class="concept-card">
+    <h4>Hessian 曲率与优化</h4>
+    <p>Hessian 的特征值描述 loss 在不同参数方向上的曲率。最大特征值大，说明有陡峭方向；最小特征值小，说明有平坦方向。曲率跨度大时，固定学习率很难同时适配所有方向。</p>
+  </div>
+  <div class="concept-card">
+    <h4>embedding 与激活主方向</h4>
+    <p>PCA/SVD 可以分析 embedding 或隐藏状态的主变化方向。它们能帮助发现各向异性、公共方向、batch 偏差或语义聚类，但不能单独证明因果语义。</p>
+  </div>
+  <div class="concept-card">
+    <h4>LoRA 与低秩更新</h4>
+    <p>LoRA 假设任务适配的有效更新可以被低秩矩阵表达。面试里可以把它解释成：不是所有权重方向都同等重要，少量方向可能已经能承载主要任务变化。</p>
+  </div>
+</div>
+<div class="worked-example">
+  <h4>面试追问：为什么 PCA 和 LoRA 都会提到“低秩”，但不是同一件事？</h4>
+</div>
+<div class="solution">
+  <p>PCA 是一种数据分析方法，通常从中心化数据的协方差矩阵或数据矩阵 SVD 中找最大方差方向，用来降维、可视化或压缩。LoRA 是一种参数高效微调方法，把权重更新限制为低秩乘积 \(\Delta W=BA\)，用更少参数学习任务适配。二者共享“很多有效变化集中在少数方向”的低秩直觉，但 PCA 是从数据中提取方向，LoRA 是给训练参数施加结构约束。</p>
+</div>
+
+<h3 id="s-007-10"><a class="anchor-link" href="#s-007-10" aria-label="跳转到本节">#</a>常见误区与检查清单</h3>
+<div class="table-wrap"><table><thead><tr><th>误区</th><th>为什么错</th><th>正确说法</th></tr></thead><tbody>
+<tr><td>特征向量就是任意被放大的向量</td><td>普通向量经过矩阵后通常会改变方向</td><td>特征向量要求方向不变，只允许缩放或翻转</td></tr>
+<tr><td>所有矩阵都能正交对角化</td><td>正交对角化需要很强条件</td><td>实对称矩阵可以正交对角化；一般矩阵更常用 SVD</td></tr>
+<tr><td>正定等于所有元素为正</td><td>元素正负不能直接决定二次型符号</td><td>对称矩阵正定要看 \(x^TAx>0\) 或所有特征值为正</td></tr>
+<tr><td>PCA 找到的一定是语义方向</td><td>PCA 最大化的是线性方差，不是语义可解释性</td><td>主方向需要结合样本、标签、干预或对照实验解释</td></tr>
+<tr><td>条件数只是数学细节</td><td>条件数大时，求逆和回归系数会对噪声非常敏感</td><td>条件数是判断数值稳定性和正则化必要性的核心指标</td></tr>
+</tbody></table></div>
+<div class="checkpoint-list">
+  <ul>
+    <li>我能把 \(Av=\lambda v\) 解释成“方向不变、长度缩放”，并说明 \(v\ne 0\) 的原因。</li>
+    <li>我能用 \(\det(A-\lambda I)=0\) 手算一个 \(2\times2\) 矩阵的特征值，再代回求特征向量。</li>
+    <li>我能说清楚对称矩阵为什么可以写成 \(Q\Lambda Q^T\)，以及 \(Q\)、\(\Lambda\)、\(Q^T\) 分别做什么。</li>
+    <li>我能区分正定和半正定，并能解释为什么协方差矩阵一定半正定。</li>
+    <li>我能把 Hessian 特征值解释成不同方向的 loss 曲率，而不是只背“二阶导矩阵”。</li>
+    <li>我能读懂 SVD 公式 \(A=U\Sigma V^T\)，并能解释奇异值越大代表该方向越重要。</li>
+    <li>我能说明 PCA 第一主成分是在单位方向中最大化投影方差，并能用特征值计算解释方差比例。</li>
+    <li>我能解释低秩近似和 LoRA 的共同直觉，也能说明 PCA 和 LoRA 的任务不同。</li>
+    <li>我能用 \(\kappa(A)=\sigma_{\max}/\sigma_{\min}\) 解释条件数大为什么会导致数值不稳定。</li>
+  </ul>
+</div>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="006.html">← 006. 线性代数二：投影、最小二乘与正交分解</a><a href="008.html">008. 概率一：条件概率、随机变量与常见分布 →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 原路径保留，内容按短教科书式复习结构组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

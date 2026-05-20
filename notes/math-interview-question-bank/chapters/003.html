@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>003. 微积分二：Taylor、链式法则与反向传播 - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 003</div>
+        <div class="brand-title">微积分二：Taylor、链式法则与反向传播</div>
+        <div class="brand-meta">局部近似 · 计算图 · 用 Taylor 展开理解一阶/二阶方法，用链式法则理解神经网络梯度。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-003-1">学习目标：本章要建立的三条主线</a><a class="toc-link" href="#s-003-2">概念起点：局部近似与影响传递</a><a class="toc-link" href="#s-003-3">Taylor 展开：用局部多项式代替复杂函数</a><a class="toc-link" href="#s-003-4">Taylor 数值例题：近似 \(e^{0.1}\) 与误差直觉</a><a class="toc-link" href="#s-003-5">多元 Taylor：梯度、Hessian 与优化步长</a><a class="toc-link" href="#s-003-6">链式法则：复合函数如何传递影响</a><a class="toc-link" href="#s-003-7">计算图例题：一步步做反向传播</a><a class="toc-link" href="#s-003-8">积分、密度与期望：连续版加权平均</a><a class="toc-link" href="#s-003-9">log-sum-exp 与 softmax 的稳定写法</a><a class="toc-link" href="#s-003-10">常见误区、面试连接与检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link current" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="002.html">← 002. 微积分一：极限、连续与导数</a><a href="004.html">004. 优化：Hessian、约束与数值稳定 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="calculus" data-title="微积分二：Taylor、链式法则与反向传播">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>003. 微积分二：Taylor、链式法则与反向传播</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>用 Taylor 展开理解一阶/二阶方法，用链式法则理解神经网络梯度。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="004.html">004. 优化：Hessian、约束与数值稳定</a>，保持概念、例题和算法直觉连贯。</p></aside>
+          <figure class="visual-lead"><img src="../assets/calculus-optimization.svg" alt="微积分二：Taylor、链式法则与反向传播 图示"></figure>
+          <h3 id="s-003-1"><a class="anchor-link" href="#s-003-1" aria-label="跳转到本节">#</a>学习目标：本章要建立的三条主线</h3>
+<p>这一章不是为了背几个公式，而是为了建立训练模型和做量化建模时反复出现的三种思维：在局部把复杂函数变简单，在复合函数中追踪影响如何传递，在连续分布上用积分和稳定计算把公式真正落地。</p>
+<div class="concept-grid">
+  <div class="concept-card"><b>局部近似</b><p>当函数整体很复杂时，先在当前点附近用直线、抛物线或更高阶多项式近似它。这就是 Taylor 展开的核心。</p></div>
+  <div class="concept-card"><b>影响传递</b><p>当 \(x\) 先影响 \(y\)，\(y\) 再影响 \(z\)，\(z\) 最后影响损失 \(L\)，链式法则告诉我们 \(x\) 对 \(L\) 的影响如何由每一段局部影响相乘得到。</p></div>
+  <div class="concept-card"><b>加权平均与稳定计算</b><p>积分和期望解释“对所有可能结果求平均”；log-sum-exp 和 softmax 稳定性解释为什么同一个数学公式在计算机里要换一种等价写法。</p></div>
+</div>
+<ul class="checkpoint-list">
+  <li>能读懂一元 Taylor 公式中 \(f(a)\)、\(f'(a)(x-a)\)、\(\frac{f''(a)}{2}(x-a)^2\) 各自表示什么。</li>
+  <li>能把多元 Taylor 写成 \(f(x+\Delta)\approx f(x)+\nabla f(x)^T\Delta+\frac{1}{2}\Delta^T H(x)\Delta\)，并解释梯度和 Hessian 的角色。</li>
+  <li>能用链式法则手算一个小计算图的反向传播。</li>
+  <li>能把期望 \(\mathbb{E}[g(X)]\) 理解成连续版加权平均，而不是一个抽象符号。</li>
+  <li>能解释为什么 softmax 要先减最大值，以及这个操作为什么不改变概率。</li>
+</ul>
+
+<h3 id="s-003-2"><a class="anchor-link" href="#s-003-2" aria-label="跳转到本节">#</a>概念起点：局部近似与影响传递</h3>
+<p>先看两个最朴素的问题。</p>
+<div class="intuition-box"><b>问题一：复杂函数能不能先看局部？</b><p>很多函数的全局形状很难分析，比如神经网络的 loss surface、期权价格关于波动率的变化、策略收益关于参数的变化。但优化算法每一步只需要回答一个局部问题：当前位置附近，往哪个方向动一点更好？因此我们需要一种“把复杂函数在当前点附近变简单”的工具，Taylor 展开就是这个工具。</p></div>
+<div class="intuition-box"><b>问题二：复合系统里谁影响了最终结果？</b><p>神经网络不是一个单独公式，而是很多层函数接起来：输入先经过线性变换，再经过激活函数，再经过注意力、归一化、输出层和损失函数。早期参数并不直接出现在最终 loss 的最后一行公式里，但它通过中间变量影响了 loss。链式法则就是沿着这条路径追踪影响。</p></div>
+<p>这两个问题合在一起，就是现代机器学习优化的基本语言：Taylor 展开让我们相信“小步更新”有局部依据，链式法则让我们知道每个参数该按什么方向更新。</p>
+<div class="table-wrap"><table><thead><tr><th>工具</th><th>解决的问题</th><th>一句话直觉</th><th>常见应用</th></tr></thead><tbody>
+  <tr><td>Taylor 展开</td><td>复杂函数局部如何变化</td><td>在一个点附近，用多项式替代复杂函数</td><td>梯度下降、Newton 法、二阶优化、误差估计</td></tr>
+  <tr><td>链式法则</td><td>复合函数的影响如何传递</td><td>总影响等于路径上局部影响的乘积</td><td>反向传播、自动微分、敏感度分析</td></tr>
+  <tr><td>积分/期望</td><td>连续分布上如何求平均</td><td>把函数值按概率密度加权求和</td><td>风险、收益、loss 的总体目标</td></tr>
+  <tr><td>log-sum-exp</td><td>指数和对数如何稳定计算</td><td>先平移再指数化，避免溢出</td><td>softmax、cross-entropy、log partition function</td></tr>
+</tbody></table></div>
+
+<h3 id="s-003-3"><a class="anchor-link" href="#s-003-3" aria-label="跳转到本节">#</a>Taylor 展开：用局部多项式代替复杂函数</h3>
+<p>先从一元函数开始。假设函数 \(f(x)\) 在 \(a\) 附近足够光滑，也就是能求多阶导数。Taylor 展开说，\(f(x)\) 在 \(a\) 附近可以写成：</p>
+<div class="math-display">\[f(x)\approx f(a)+f'(a)(x-a)+\frac{f''(a)}{2!}(x-a)^2+\frac{f'''(a)}{3!}(x-a)^3+\cdots\]</div>
+<p>公式看起来长，但读法很直接。</p>
+<ul class="formula-list">
+  <li>\(a\)：展开点，也叫 base point。你不是在全局近似函数，而是在 \(a\) 附近看函数。</li>
+  <li>\(x-a\)：离展开点有多远。离得越远，高阶项通常越重要，近似也越不可靠。</li>
+  <li>\(f(a)\)：函数在当前位置的高度。</li>
+  <li>\(f'(a)(x-a)\)：一阶变化，表示当前位置的斜率带来的线性变化。</li>
+  <li>\(\frac{f''(a)}{2!}(x-a)^2\)：二阶变化，表示曲率带来的修正。如果函数弯得厉害，只看直线会不够。</li>
+  <li>\(2!\)、\(3!\)：阶乘，\(2!=2\)，\(3!=6\)。它们来自多次求导后的系数校正。</li>
+</ul>
+<p>如果只保留到一阶，就得到局部线性近似：</p>
+<div class="math-display">\[f(x)\approx f(a)+f'(a)(x-a)\]</div>
+<p>如果保留到二阶，就得到局部二次近似：</p>
+<div class="math-display">\[f(x)\approx f(a)+f'(a)(x-a)+\frac{1}{2}f''(a)(x-a)^2\]</div>
+<div class="intuition-box"><b>为什么多项式有用？</b><p>多项式容易求值、容易求导、容易优化。复杂函数本身可能难以直接分析，但它在一个小邻域里经常可以被一个低阶多项式很好地替代。梯度下降用的是一阶近似，Newton 法进一步利用二阶近似。</p></div>
+
+<h3 id="s-003-4"><a class="anchor-link" href="#s-003-4" aria-label="跳转到本节">#</a>Taylor 数值例题：近似 \(e^{0.1}\) 与误差直觉</h3>
+<p>我们用 \(f(x)=e^x\) 在 \(a=0\) 处近似 \(e^{0.1}\)。因为 \(e^x\) 的每一阶导数还是 \(e^x\)，所以在 \(0\) 处：</p>
+<div class="math-display">\[f(0)=1,\qquad f'(0)=1,\qquad f''(0)=1,\qquad f'''(0)=1\]</div>
+<p>因此 \(e^x\) 在 \(0\) 附近的 Taylor 展开是：</p>
+<div class="math-display">\[e^x\approx 1+x+\frac{x^2}{2!}+\frac{x^3}{3!}\]</div>
+<div class="worked-example">
+  <b>例题：用三阶 Taylor 近似 \(e^{0.1}\)</b>
+  <p>令 \(x=0.1\)，计算：</p>
+  <div class="math-display">\[e^{0.1}\approx 1+0.1+\frac{0.1^2}{2}+\frac{0.1^3}{6}\]</div>
+  <div class="solution">
+    <p>逐项计算：</p>
+    <div class="math-display">\[1+0.1=1.1\]</div>
+    <div class="math-display">\[\frac{0.1^2}{2}=\frac{0.01}{2}=0.005\]</div>
+    <div class="math-display">\[\frac{0.1^3}{6}=\frac{0.001}{6}\approx 0.0001667\]</div>
+    <p>所以三阶近似为：</p>
+    <div class="math-display">\[e^{0.1}\approx 1.1051667\]</div>
+    <p>真实值约为 \(1.1051702\)，误差约为 \(0.0000035\)。为什么这么准？因为 \(0.1\) 离展开点 \(0\) 很近，高阶项 \(0.1^4/24\)、\(0.1^5/120\) 很小。</p>
+  </div>
+</div>
+<div class="worked-example">
+  <b>同一个展开点，为什么 \(e^1\) 的近似差一些？</b>
+  <p>如果仍然只保留到三阶，把 \(x=1\) 代入：</p>
+  <div class="math-display">\[e^1\approx 1+1+\frac{1}{2}+\frac{1}{6}=2.6667\]</div>
+  <div class="solution">
+    <p>真实的 \(e\approx 2.7183\)，误差约为 \(0.0516\)，明显比 \(e^{0.1}\) 的误差大。原因不是 Taylor 展开失效，而是 \(x=1\) 离展开点 \(0\) 更远，高阶项不再可以随便忽略。优化里学习率过大时容易 loss spike，本质上也有类似问题：你走出了局部近似可信的范围。</p>
+  </div>
+</div>
+
+<h3 id="s-003-5"><a class="anchor-link" href="#s-003-5" aria-label="跳转到本节">#</a>多元 Taylor：梯度、Hessian 与优化步长</h3>
+<p>机器学习和量化里更常见的是多元函数。参数不是一个数，而是向量 \(x\in\mathbb{R}^d\)。如果当前位置是 \(x\)，计划移动一个小向量 \(\Delta\)，多元 Taylor 的二阶形式是：</p>
+<div class="math-display">\[f(x+\Delta)\approx f(x)+\nabla f(x)^T\Delta+\frac{1}{2}\Delta^T H(x)\Delta\]</div>
+<p>逐个读这个公式：</p>
+<ul class="formula-list">
+  <li>\(x\)：当前参数向量，例如模型的所有权重。</li>
+  <li>\(\Delta\)：你准备移动的方向和步长，例如梯度下降里的 \(-\eta\nabla f(x)\)。</li>
+  <li>\(\nabla f(x)\)：梯度向量，告诉你每个坐标单独增加一点时，函数最初会如何变化。</li>
+  <li>\(\nabla f(x)^T\Delta\)：一阶变化，把梯度和移动方向做内积；如果是负数，局部看函数会下降。</li>
+  <li>\(H(x)\)：Hessian 矩阵，由所有二阶偏导数组成，描述函数在不同方向上的曲率。</li>
+  <li>\(\frac{1}{2}\Delta^T H(x)\Delta\)：二阶曲率修正，告诉你沿着 \(\Delta\) 方向走时，函数是否弯得很厉害。</li>
+</ul>
+<div class="worked-example">
+  <b>例题：二维二次函数的 Taylor 展开</b>
+  <p>设 \(f(x,y)=x^2+3y^2\)，在点 \((1,2)\) 附近移动 \(\Delta=(\Delta_x,\Delta_y)=(-0.1,0.2)\)。求二阶 Taylor 近似。</p>
+  <div class="solution">
+    <p>先算函数值：</p>
+    <div class="math-display">\[f(1,2)=1^2+3\cdot 2^2=13\]</div>
+    <p>梯度为：</p>
+    <div class="math-display">\[\nabla f(x,y)=\begin{bmatrix}2x\\6y\end{bmatrix},\qquad \nabla f(1,2)=\begin{bmatrix}2\\12\end{bmatrix}\]</div>
+    <p>一阶项为：</p>
+    <div class="math-display">\[\nabla f(1,2)^T\Delta=2(-0.1)+12(0.2)=2.2\]</div>
+    <p>Hessian 为：</p>
+    <div class="math-display">\[H=\begin{bmatrix}2&0\\0&6\end{bmatrix}\]</div>
+    <p>二阶项为：</p>
+    <div class="math-display">\[\frac{1}{2}\Delta^T H\Delta=\frac{1}{2}\left(2\cdot 0.1^2+6\cdot 0.2^2\right)=\frac{1}{2}(0.02+0.24)=0.13\]</div>
+    <p>所以：</p>
+    <div class="math-display">\[f((1,2)+\Delta)\approx 13+2.2+0.13=15.33\]</div>
+    <p>因为这个函数本身就是二次函数，二阶 Taylor 在这里不是近似，而是精确值。直接代入 \((0.9,2.2)\) 得 \(0.81+3\cdot 4.84=15.33\)。</p>
+  </div>
+</div>
+<div class="intuition-box"><b>为什么大模型很少显式用完整 Hessian？</b><p>Hessian 是 \(d\times d\) 矩阵。如果模型有十亿参数，完整 Hessian 的元素数量是 \(10^{18}\) 级别，存储和求逆都不可行。但二阶思想仍然有价值：学习率、预条件、Adam 的二阶矩估计、曲率诊断，都在用不同方式近似或绕开完整 Hessian。</p></div>
+
+<h3 id="s-003-6"><a class="anchor-link" href="#s-003-6" aria-label="跳转到本节">#</a>链式法则：复合函数如何传递影响</h3>
+<p>复合函数的典型形式是：\(x\) 先进入函数 \(g\)，得到 \(y=g(x)\)；然后 \(y\) 再进入函数 \(h\)，得到 \(L=h(y)\)。也就是：</p>
+<div class="math-display">\[L=h(g(x))\]</div>
+<p>链式法则说：</p>
+<div class="math-display">\[\frac{dL}{dx}=\frac{dL}{dy}\frac{dy}{dx}\]</div>
+<p>这个式子的读法是：\(x\) 改变一点，会先让 \(y\) 改变 \(\frac{dy}{dx}\) 倍；\(y\) 的改变又会让 \(L\) 改变 \(\frac{dL}{dy}\) 倍。两段影响相乘，就是 \(x\) 对 \(L\) 的总影响。</p>
+<div class="worked-example">
+  <b>例题：手算一个复合函数导数</b>
+  <p>设 \(y=3x+1\)，\(L=y^2\)。求 \(x=2\) 时 \(\frac{dL}{dx}\)。</p>
+  <div class="solution">
+    <p>先看每一段局部导数：</p>
+    <div class="math-display">\[\frac{dy}{dx}=3,\qquad \frac{dL}{dy}=2y\]</div>
+    <p>当 \(x=2\) 时，\(y=3\cdot 2+1=7\)，所以：</p>
+    <div class="math-display">\[\frac{dL}{dx}=\frac{dL}{dy}\frac{dy}{dx}=2y\cdot 3=2\cdot 7\cdot 3=42\]</div>
+    <p>如果直接展开 \(L=(3x+1)^2\)，导数是 \(2(3x+1)\cdot 3\)，在 \(x=2\) 时同样等于 \(42\)。链式法则的好处是不用把所有层都展开，尤其适合很深的计算图。</p>
+  </div>
+</div>
+<p>如果中间变量更多，例如：</p>
+<div class="math-display">\[x\rightarrow y\rightarrow z\rightarrow L\]</div>
+<p>那么：</p>
+<div class="math-display">\[\frac{dL}{dx}=\frac{dL}{dz}\frac{dz}{dy}\frac{dy}{dx}\]</div>
+<p>反向传播不是新定理，而是链式法则在计算图上的高效实现。它从最终损失 \(L\) 出发，反向经过每个节点，把“当前节点对损失的梯度”传给前面的节点。</p>
+
+<h3 id="s-003-7"><a class="anchor-link" href="#s-003-7" aria-label="跳转到本节">#</a>计算图例题：一步步做反向传播</h3>
+<p>下面做一个完整的小计算图。设输入 \(x=2\)，参数 \(w=3\)、\(b=1\)，中间变量和损失为：</p>
+<div class="math-display">\[u=wx+b,\qquad a=u^2,\qquad L=(a-10)^2\]</div>
+<p>这个例子很像一个极小神经网络：线性层 \(u=wx+b\)，非线性变换 \(a=u^2\)，再接一个平方损失。</p>
+<div class="worked-example">
+  <b>第一步：前向传播</b>
+  <div class="solution">
+    <p>先从输入往输出算所有中间值：</p>
+    <div class="math-display">\[u=3\cdot 2+1=7\]</div>
+    <div class="math-display">\[a=7^2=49\]</div>
+    <div class="math-display">\[L=(49-10)^2=39^2=1521\]</div>
+    <p>这些中间值必须保存下来，因为反向传播会用到它们。</p>
+  </div>
+</div>
+<div class="worked-example">
+  <b>第二步：反向传播到 \(w\)、\(b\)、\(x\)</b>
+  <div class="solution">
+    <p>从最后一层开始：</p>
+    <div class="math-display">\[\frac{dL}{da}=2(a-10)=2\cdot 39=78\]</div>
+    <p>再经过 \(a=u^2\)：</p>
+    <div class="math-display">\[\frac{da}{du}=2u=14\]</div>
+    <p>所以：</p>
+    <div class="math-display">\[\frac{dL}{du}=\frac{dL}{da}\frac{da}{du}=78\cdot 14=1092\]</div>
+    <p>接着经过 \(u=wx+b\)。对三个输入分别求局部导数：</p>
+    <div class="math-display">\[\frac{\partial u}{\partial w}=x=2,\qquad \frac{\partial u}{\partial b}=1,\qquad \frac{\partial u}{\partial x}=w=3\]</div>
+    <p>于是：</p>
+    <div class="math-display">\[\frac{\partial L}{\partial w}=\frac{dL}{du}\frac{\partial u}{\partial w}=1092\cdot 2=2184\]</div>
+    <div class="math-display">\[\frac{\partial L}{\partial b}=\frac{dL}{du}\frac{\partial u}{\partial b}=1092\]</div>
+    <div class="math-display">\[\frac{\partial L}{\partial x}=\frac{dL}{du}\frac{\partial u}{\partial x}=1092\cdot 3=3276\]</div>
+    <p>这就是反向传播的核心：每个节点只需要知道两件事，一是从后面传来的梯度，二是自己对输入的局部导数。</p>
+  </div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>节点</th><th>前向值</th><th>局部导数</th><th>反向得到的梯度</th></tr></thead><tbody>
+  <tr><td>\(L=(a-10)^2\)</td><td>\(1521\)</td><td>\(\frac{dL}{da}=78\)</td><td>从 \(L\) 开始</td></tr>
+  <tr><td>\(a=u^2\)</td><td>\(49\)</td><td>\(\frac{da}{du}=14\)</td><td>\(\frac{dL}{du}=1092\)</td></tr>
+  <tr><td>\(u=wx+b\)</td><td>\(7\)</td><td>\(\frac{\partial u}{\partial w}=2\)，\(\frac{\partial u}{\partial b}=1\)</td><td>\(\frac{\partial L}{\partial w}=2184\)，\(\frac{\partial L}{\partial b}=1092\)</td></tr>
+</tbody></table></div>
+<div class="intuition-box"><b>反向传播为什么高效？</b><p>如果每个参数都单独从头推一遍导数，会重复大量计算。反向传播把共享的中间梯度缓存起来，例如先算出 \(\frac{dL}{du}\)，再同时用于 \(w\)、\(b\)、\(x\)。深度学习框架中的 autograd 本质上就是自动构建计算图并执行这套缓存复用。</p></div>
+
+<h3 id="s-003-8"><a class="anchor-link" href="#s-003-8" aria-label="跳转到本节">#</a>积分、密度与期望：连续版加权平均</h3>
+<p>积分可以先理解成“连续版求和”。离散情形下，如果结果 \(x_i\) 出现概率为 \(p_i\)，函数 \(g(x)\) 的期望是：</p>
+<div class="math-display">\[\mathbb{E}[g(X)]=\sum_i g(x_i)p_i\]</div>
+<p>连续情形下，随机变量可能取一个区间里的任意值，单个点的概率通常是 \(0\)，所以我们不用点概率，而用概率密度 \(p(x)\)。期望变成：</p>
+<div class="math-display">\[\mathbb{E}[g(X)]=\int g(x)p(x)\,dx\]</div>
+<p>这个公式的读法是：对每个可能的 \(x\)，先计算函数值 \(g(x)\)，再乘上这个位置的权重 \(p(x)\)，最后把所有位置的贡献连续地加起来。</p>
+<ul class="formula-list">
+  <li>\(X\)：随机变量，例如明天的收益率、一个样本的特征、模型输出的 token。</li>
+  <li>\(g(X)\)：你关心的函数，例如收益、平方损失、效用、风险惩罚。</li>
+  <li>\(p(x)\)：概率密度。它不是“点 \(x\) 的概率”，而是附近小区间概率的密度。</li>
+  <li>\(dx\)：一个很小的宽度，可以直觉理解为把连续区间切成很多小段。</li>
+</ul>
+<div class="worked-example">
+  <b>例题：均匀分布上的期望</b>
+  <p>设 \(X\) 在 \([0,1]\) 上均匀分布，所以 \(p(x)=1\)。求 \(\mathbb{E}[X^2]\)。</p>
+  <div class="solution">
+    <p>代入期望公式：</p>
+    <div class="math-display">\[\mathbb{E}[X^2]=\int_0^1 x^2\cdot 1\,dx\]</div>
+    <p>计算积分：</p>
+    <div class="math-display">\[\int_0^1 x^2\,dx=\left.\frac{x^3}{3}\right|_0^1=\frac{1}{3}\]</div>
+    <p>所以 \(\mathbb{E}[X^2]=\frac{1}{3}\)。这不是说 \(X^2\) 总等于 \(\frac{1}{3}\)，而是说在无限多次抽样的平均意义下，\(X^2\) 的平均值趋近 \(\frac{1}{3}\)。</p>
+  </div>
+</div>
+<div class="intuition-box"><b>和机器学习有什么关系？</b><p>真实训练目标通常是总体风险 \(R(\theta)=\mathbb{E}_{(x,y)\sim P}[\ell(f_\theta(x),y)]\)。但真实分布 \(P\) 不可完全枚举，所以训练时用 mini-batch 平均近似这个期望。量化里，平均收益、波动率、VaR、CVaR 也都可以看成对收益分布的函数做期望或尾部条件期望。</p></div>
+
+<h3 id="s-003-9"><a class="anchor-link" href="#s-003-9" aria-label="跳转到本节">#</a>log-sum-exp 与 softmax 的稳定写法</h3>
+<p>softmax 把一组实数 logits 转成概率：</p>
+<div class="math-display">\[\operatorname{softmax}(x)_i=\frac{e^{x_i}}{\sum_j e^{x_j}}\]</div>
+<p>log-sum-exp 是 softmax 背后的核心表达式：</p>
+<div class="math-display">\[\operatorname{LSE}(x)=\log\sum_i e^{x_i}\]</div>
+<p>问题在于，指数函数增长太快。比如 \(e^{1000}\) 在普通浮点数里会直接溢出。稳定写法是先取最大值 \(m=\max_i x_i\)，然后写成：</p>
+<div class="math-display">\[\operatorname{LSE}(x)=m+\log\sum_i e^{x_i-m},\qquad m=\max_i x_i\]</div>
+<p>为什么可以这样做？因为：</p>
+<div class="math-display">\[\log\sum_i e^{x_i}=\log\left(e^m\sum_i e^{x_i-m}\right)=m+\log\sum_i e^{x_i-m}\]</div>
+<p>减去最大值后，最大的 \(x_i-m\) 等于 \(0\)，所以最大的指数是 \(e^0=1\)，不会溢出。</p>
+<div class="worked-example">
+  <b>例题：稳定计算 softmax</b>
+  <p>设 logits 为 \(x=[1000,1001,1002]\)。直接算 \(e^{1000}\)、\(e^{1001}\)、\(e^{1002}\) 会溢出。取 \(m=1002\)，得到平移后的 logits：</p>
+  <div class="math-display">\[x-m=[-2,-1,0]\]</div>
+  <div class="solution">
+    <p>softmax 变成：</p>
+    <div class="math-display">\[\operatorname{softmax}(x)=\operatorname{softmax}(x-m)\]</div>
+    <div class="math-display">\[\left[\frac{e^{-2}}{e^{-2}+e^{-1}+1},\frac{e^{-1}}{e^{-2}+e^{-1}+1},\frac{1}{e^{-2}+e^{-1}+1}\right]\]</div>
+    <p>因为 \(e^{-2}\approx 0.1353\)，\(e^{-1}\approx 0.3679\)，分母约为 \(1.5032\)，所以概率约为：</p>
+    <div class="math-display">\[[0.0900,0.2447,0.6652]\]</div>
+    <p>注意：平移没有改变 softmax。对任意常数 \(c\)：</p>
+    <div class="math-display">\[\frac{e^{x_i-c}}{\sum_j e^{x_j-c}}=\frac{e^{x_i}e^{-c}}{e^{-c}\sum_j e^{x_j}}=\frac{e^{x_i}}{\sum_j e^{x_j}}\]</div>
+  </div>
+</div>
+<div class="intuition-box"><b>为什么这不只是工程细节？</b><p>数学公式默认实数运算无限精确，但计算机使用有限精度浮点数。训练大模型时 logits 可能很大或很小，如果 softmax 和 cross-entropy 没有稳定实现，loss 会出现 \(\infty\)、NaN 或错误梯度。数值稳定性是数学公式进入真实系统前必须补上的一层。</p></div>
+
+<h3 id="s-003-10"><a class="anchor-link" href="#s-003-10" aria-label="跳转到本节">#</a>常见误区、面试连接与检查清单</h3>
+<div class="table-wrap"><table><thead><tr><th>常见误区</th><th>正确理解</th><th>面试中怎么说更稳</th></tr></thead><tbody>
+  <tr><td>把 Taylor 展开当成全局等式</td><td>它通常是展开点附近的局部近似，离展开点越远越要关心余项</td><td>强调“局部”“光滑”“保留到几阶”和“误差来自高阶项”</td></tr>
+  <tr><td>只背 \(\nabla f\)，不解释方向</td><td>梯度给当前位置最陡上升方向，\(-\nabla f\) 是一阶近似下最快下降方向</td><td>用 \(\nabla f(x)^T\Delta\) 解释为什么负梯度会让一阶项下降</td></tr>
+  <tr><td>把 Hessian 说成一定能直接用于大模型训练</td><td>完整 Hessian 维度太大，但二阶曲率思想仍然影响优化器设计</td><td>区分“数学上有用”和“工程上可存储、可求逆”</td></tr>
+  <tr><td>认为反向传播是独立于链式法则的新算法</td><td>反向传播是链式法则在计算图上的动态规划实现</td><td>说清楚“保存前向中间值，反向复用局部导数”</td></tr>
+  <tr><td>把概率密度 \(p(x)\) 当成点概率</td><td>连续变量单点概率通常为 \(0\)，密度要乘区间宽度才对应概率</td><td>用 \(\int_a^b p(x)\,dx\) 表示区间概率</td></tr>
+  <tr><td>直接计算 softmax 指数</td><td>要先减最大 logit，避免溢出且不改变概率</td><td>证明常数平移在分子分母中抵消</td></tr>
+</tbody></table></div>
+<div class="concept-grid">
+  <div class="concept-card"><b>LLM 面试连接</b><p>反向传播解释了 loss 如何传到 embedding、attention、MLP 和输出层；Taylor 解释了小学习率更新为什么有局部依据；log-sum-exp 是 softmax、cross-entropy 和语言模型 token 概率的稳定实现基础。</p></div>
+  <div class="concept-card"><b>量化面试连接</b><p>Taylor 展开对应希腊字母中的 Delta/Gamma 近似，也对应策略参数扰动的局部敏感度；链式法则用于风险因子到组合收益的敏感度传递；期望和积分是收益、方差、尾部风险估计的基础。</p></div>
+  <div class="concept-card"><b>算法直觉连接</b><p>梯度下降相信一阶 Taylor，Newton 法相信二阶 Taylor，autograd 依赖链式法则，稳定 softmax 依赖等价变形而不是改变模型含义。</p></div>
+</div>
+<ul class="checkpoint-list">
+  <li>我能解释 Taylor 展开的展开点 \(a\) 是什么，以及为什么只在 \(a\) 附近可信。</li>
+  <li>我能从 \(e^x\) 在 \(0\) 处的展开算出 \(e^{0.1}\approx 1.1051667\)，并说明误差为什么很小。</li>
+  <li>我能把多元二阶 Taylor 中的 \(\nabla f(x)^T\Delta\) 读成一阶方向变化，把 \(\Delta^T H(x)\Delta\) 读成曲率修正。</li>
+  <li>我能用链式法则手算 \(u=wx+b\)、\(a=u^2\)、\(L=(a-10)^2\) 的 \(\frac{\partial L}{\partial w}\) 和 \(\frac{\partial L}{\partial b}\)。</li>
+  <li>我能说明反向传播为什么要保存前向中间值，以及它如何避免重复计算。</li>
+  <li>我能把 \(\mathbb{E}[g(X)]=\int g(x)p(x)\,dx\) 解释成连续版加权平均。</li>
+  <li>我能证明 softmax 减去同一个常数不改变概率，并解释为什么通常减最大值。</li>
+  <li>我能把本章概念连接到 LLM 的 cross-entropy 训练、梯度更新、数值稳定，以及量化里的敏感度和风险期望。</li>
+</ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="002.html">← 002. 微积分一：极限、连续与导数</a><a href="004.html">004. 优化：Hessian、约束与数值稳定 →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 原路径保留，内容按短教科书式复习结构组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

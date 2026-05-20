@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rosinality X 帖与 Proxy Metrics 论文深读</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1a16;
+      --muted: #6b655c;
+      --subtle: #8b8175;
+      --paper: #f7f1e7;
+      --panel: #fffdf8;
+      --panel-2: #f1e7d8;
+      --line: #d8cbbb;
+      --line-strong: #aa9b87;
+      --accent: #a84f2b;
+      --accent-soft: #f0d8c7;
+      --blue: #285d82;
+      --blue-soft: #dbe8ef;
+      --green: #35705e;
+      --green-soft: #dce9df;
+      --violet: #5f557f;
+      --violet-soft: #e5e0ef;
+      --code-bg: #241f1a;
+      --code-fg: #f4eadc;
+      --shadow: 0 18px 50px rgba(55, 45, 31, 0.12);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(40, 93, 130, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 58px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(247, 241, 231, 0.92);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 40%, var(--accent) 41% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--blue) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+    }
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.52);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      align-items: end;
+      gap: clamp(28px, 5vw, 72px);
+      min-height: 86vh;
+      padding: clamp(54px, 8vw, 110px) clamp(20px, 5vw, 76px) 44px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(115deg, rgba(255, 253, 248, 0.98) 0 38%, rgba(255, 253, 248, 0.72) 40% 58%, rgba(240, 216, 199, 0.36) 59% 100%),
+        url("rosinality-proxy-metrics-assets/method-figure.jpg") center right / contain no-repeat;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 48%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(247, 241, 231, 0));
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.08; letter-spacing: 0; }
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.7vw, 104px);
+      font-weight: 760;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.6vw, 58px);
+      font-weight: 760;
+    }
+    h3 {
+      font-size: clamp(20px, 2.2vw, 28px);
+      font-weight: 760;
+    }
+    .hero-lead {
+      max-width: 800px;
+      margin: 24px 0 0;
+      color: #3a342d;
+      font-size: clamp(18px, 2.1vw, 24px);
+      line-height: 1.62;
+    }
+    .hero-side {
+      align-self: center;
+      display: grid;
+      gap: 14px;
+      padding-top: 110px;
+    }
+    .thesis-card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(10px);
+    }
+    .thesis-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .thesis-card p {
+      margin: 0;
+      color: #312d27;
+      font-size: 16px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .meta {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.78);
+      padding: 13px 14px;
+    }
+    .meta span {
+      display: block;
+      color: var(--subtle);
+      font-size: 12px;
+      font-weight: 740;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .meta b {
+      display: block;
+      margin-top: 4px;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 clamp(18px, 4vw, 36px) 70px;
+    }
+    section {
+      padding: clamp(52px, 8vw, 90px) 0;
+      border-bottom: 1px solid rgba(29, 26, 22, 0.12);
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.62fr);
+      gap: clamp(20px, 4vw, 52px);
+      align-items: end;
+      margin-bottom: 28px;
+    }
+    .section-kicker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .section-kicker::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      max-width: 160px;
+      background: var(--line-strong);
+    }
+    .section-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .two {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.78);
+      padding: 20px;
+      min-height: 100%;
+    }
+    .card h3 { margin-bottom: 12px; }
+    .card p, .card li {
+      color: #3c372f;
+      font-size: 16px;
+    }
+    .card p { margin: 0 0 12px; }
+    .card p:last-child { margin-bottom: 0; }
+    ul, ol { margin: 14px 0 0; padding-left: 21px; }
+    li + li { margin-top: 8px; }
+    .callout {
+      border-left: 5px solid var(--accent);
+      background: rgba(240, 216, 199, 0.42);
+      padding: 18px 20px;
+      margin: 22px 0;
+      color: #332c25;
+      font-size: 17px;
+    }
+    .callout strong {
+      color: var(--accent);
+    }
+    .blue { border-left-color: var(--blue); background: rgba(219, 232, 239, 0.58); }
+    .green { border-left-color: var(--green); background: rgba(220, 233, 223, 0.62); }
+    .violet { border-left-color: var(--violet); background: rgba(229, 224, 239, 0.58); }
+
+    .figure {
+      margin: 24px 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 12px 30px rgba(55, 45, 31, 0.08);
+      overflow: hidden;
+    }
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: white;
+    }
+    .figure figcaption {
+      padding: 12px 16px 14px;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+    }
+    .figure.small img {
+      max-height: 640px;
+      object-fit: contain;
+    }
+
+    .equation {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 18px 20px;
+      margin: 18px 0;
+      overflow-x: auto;
+    }
+    .equation .tex {
+      margin-top: 8px;
+      color: var(--subtle);
+      font-family: var(--mono);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    code {
+      padding: 0.12em 0.34em;
+      border: 1px solid rgba(216, 203, 187, 0.8);
+      background: #f4eadc;
+      color: #5d3424;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+    pre {
+      margin: 18px 0 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid #3b3128;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: #2f2a23;
+      background: rgba(241, 231, 216, 0.72);
+      font-weight: 760;
+    }
+    td { color: #3a352e; }
+    tr:last-child td { border-bottom: 0; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 2px 9px;
+      border: 1px solid var(--line-strong);
+      color: #4a4036;
+      background: rgba(255, 253, 248, 0.72);
+      font-size: 12px;
+      font-weight: 740;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .insight-board {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+    .big-quote {
+      border: 1px solid var(--line);
+      background: #251f19;
+      color: #f7eadb;
+      padding: 28px;
+      font-family: var(--serif);
+      font-size: clamp(25px, 3.4vw, 42px);
+      line-height: 1.24;
+    }
+    .big-quote span {
+      display: block;
+      margin-top: 18px;
+      color: #ceb99f;
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-head,
+      .two,
+      .insight-board {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: auto;
+        padding-top: 68px;
+      }
+      .hero-side { padding-top: 0; }
+      .grid { grid-template-columns: 1fr; }
+      .meta-grid { grid-template-columns: 1fr; }
+      h1 { font-size: clamp(38px, 12vw, 70px); }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .nav { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="mark"></div><span>rosinality / Proxy Metrics</span></div>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#experiments">实验</a>
+      <a href="#insight">Insight</a>
+      <a href="#limits">边界</a>
+      <a href="#commands">证据</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Thread Deep Reading</div>
+      <h1>用专家轨迹里的 token 统计，提前预测模型能力</h1>
+      <p class="hero-lead">
+        rosinality 转发的这篇论文真正有价值的地方，不是又提出一个新 benchmark，而是把“模型最终能不能答对”拆成专家解题轨迹上成百上千个局部预测事件：候选模型看到专家前缀时，是否把专家下一步 token 放在高位、是否在关键位置不确定、是否只会预测常见 token。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis-card">
+        <strong>一句话 thesis</strong>
+        <p>它把 evaluation 从昂贵、稀疏、早期全是噪声的最终正确率，变成一次 forward pass 就能得到的、任务条件化的密集 proxy signal。</p>
+      </div>
+      <div class="meta-grid">
+        <div class="meta"><span>X 原帖</span><b>@rosinality, 2026-05-20 抓取</b></div>
+        <div class="meta"><span>论文</span><b>arXiv:2605.18607, 31 pages</b></div>
+        <div class="meta"><span>作者</span><b>Arkil Patel, Siva Reddy, Marius Mosbach, Dzmitry Bahdanau</b></div>
+        <div class="meta"><span>代码</span><b>McGill-NLP/proxy-metrics</b></div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">01 · Source Map</div>
+          <h2>这条 X 帖到底指向什么</h2>
+        </div>
+        <p class="section-copy">
+          原帖不是长线程，只有一条主帖；短链之一解析到 arXiv 论文，另一条是配图页。因此解读重点应放在论文方法本身，以及 rosinality 为什么强调 token-level statistics、expert trajectories 和 smooth predictive power。
+        </p>
+      </div>
+
+      <div class="two">
+        <div class="card">
+          <h3>X 原帖内容</h3>
+          <p>rosinality 的核心评论是：用 expert trajectories 上的 token-level statistics 来衡量模型能力，而且这些统计量带权重聚合后，比传统指标更平滑、预测力更强，可能非常有用。</p>
+          <p>这里的关键词有三个：<code>token-level statistics</code>、<code>weight on expert trajectories</code>、<code>smooth predictive power</code>。它们对应论文的核心机制，而不是社交媒体上的泛泛赞美。</p>
+        </div>
+        <figure class="figure small">
+          <img src="rosinality-proxy-metrics-assets/paper-title-abstract.jpg" alt="论文标题和摘要截图" />
+          <figcaption>原帖配图之一：论文首页，标题为 Forecasting Downstream Performance of LLMs With Proxy Metrics。</figcaption>
+        </figure>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>材料</th><th>获取方式</th><th>用于报告中的作用</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>X 原帖</td>
+              <td><code>opencli twitter thread</code> 抓取 JSON，确认只有 1 条主帖和 2 张媒体图</td>
+              <td>确定 rosinality 的关注点：用专家轨迹上的 token 统计做能力度量</td>
+            </tr>
+            <tr>
+              <td>arXiv 论文</td>
+              <td>解析短链到 <a href="https://arxiv.org/abs/2605.18607">arXiv:2605.18607</a>，下载 PDF 并用 <code>pdfinfo</code> 核验 31 页</td>
+              <td>读取方法、公式、实验设置、结果和限制</td>
+            </tr>
+            <tr>
+              <td>GitHub README</td>
+              <td>读取 <a href="https://github.com/McGill-NLP/proxy-metrics">McGill-NLP/proxy-metrics</a> README</td>
+              <td>核对可复现 pipeline：生成 expert trajectories、计算 proxy metrics、拟合 RankSVM 或 sparse proxy</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">02 · Problem</div>
+          <h2>它要解决的不是“怎么评模型”，而是“怎么提前做研发决策”</h2>
+        </div>
+        <p class="section-copy">
+          模型研发里很多决策必须在目标模型完全训练好之前做：选架构、选预训练数据、选 post-training recipe、是否继续烧算力。但常用信号有明显缺陷。
+        </p>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Cross-entropy loss 太泛</h3>
+          <p>普通预训练 loss 很平滑，适合看训练是否正常，但它衡量的是模型对通用文本分布的平均拟合，不一定反映数学、代码、科学推理这些 downstream 能力。</p>
+          <p>两个模型 loss 很接近，可能在实际推理任务上差很多。</p>
+        </div>
+        <div class="card">
+          <h3>直接 benchmark 太贵也太稀疏</h3>
+          <p>目标 benchmark 可能需要专家判分、代码执行、长环境交互，成本高；早期 checkpoint 或小 proxy model 还没能力答对，准确率可能长期接近随机水平。</p>
+          <p>这时 accuracy 不提供稳定排序信号。</p>
+        </div>
+        <div class="card">
+          <h3>下游 scaling law 也不稳</h3>
+          <p>把 downstream accuracy 直接对 compute 或 loss 拟合，在很多任务上外推并不可靠。原因是 accuracy 是阈值化结果，容易突然跳变；loss 又太 task-agnostic。</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>这篇论文的转向：</strong>不要等模型自己生成最终答案，也不要只看通用 loss；拿一条高质量专家解题轨迹，强制候选模型沿着这条轨迹做 next-token prediction，从每个 token 的预测分布里读出“它是否跟得上专家”。
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">03 · Mechanism</div>
+          <h2>方法一步一步拆开</h2>
+        </div>
+        <p class="section-copy">
+          输入不是模型自由生成的答案，而是 task instance 加专家轨迹。候选模型只做 teacher-forced forward pass：给它专家前缀，看它下一 token 的分布。
+        </p>
+      </div>
+
+      <figure class="figure">
+        <img src="rosinality-proxy-metrics-assets/method-figure.jpg" alt="论文 Figure 2 方法图" />
+        <figcaption>论文 Figure 2：对专家轨迹每个 token，读取候选模型 next-token distribution，计算 core metric 和 weighting scheme，再聚合成 proxy metric。</figcaption>
+      </figure>
+
+      <div class="two">
+        <div class="card">
+          <h3>输入与中间对象</h3>
+          <ol>
+            <li>有一个任务实例 \(x^{(i)}\)，例如一道 AIME 数学题或 USACO 编程题。</li>
+            <li>有专家轨迹 \(y^{(i)}\)，可以是人类解法，也可以是强开源/闭源模型写出的 reasoning trace。</li>
+            <li>候选模型 \(M\) 在每个位置 \(t\) 看到 \(x^{(i)}\) 和专家前缀 \(y_{&lt;t}^{(i)}\)，输出下一个 token 的分布 \(p_M(\cdot \mid x^{(i)}, y_{&lt;t}^{(i)})\)。</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>为什么这比最终答题更早有信号</h3>
+          <p>小模型可能无法从头生成完整正确解，但当专家已经给出前文时，它可能能识别下一步应该是某个变量名、公式、关键数字或推理连接词。</p>
+          <p>这种“跟得上专家轨迹”的能力，比最后是否一次性答对更连续、更密集，也更适合早期 checkpoint 和小 proxy model。</p>
+        </div>
+      </div>
+
+      <div class="equation">
+        \[
+        \Phi_j(M; x^{(i)}, y^{(i)}) =
+        \frac{\sum_{t=1}^{T^{(i)}} s_j \cdot m_{j,t}^{(i)} \cdot w_{j,t}^{(i)}}{\sum_{t=1}^{T^{(i)}} w_{j,t}^{(i)}}
+        \]
+        <div class="tex">含义：第 j 个 proxy metric = 每个 token 的核心统计量 m 乘以 token 权重 w，再按权重平均；符号 s 保证“越大越好”。</div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>组成部分</th><th>具体怎么计算</th><th>直觉解释</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Core metrics</td>
+              <td>cross-entropy、top-k accuracy、entropy、expert token rank、reciprocal rank、margin、wrong-confidence mass 等</td>
+              <td>问的是：模型是不是把专家 token 放在高位？分布是很确定还是很散？如果错了，是不是错得很自信？</td>
+            </tr>
+            <tr>
+              <td>Weighting schemes</td>
+              <td>uniform、probability、expert-disagreement、entropy、inverse entropy、frequency、inverse frequency、Gaussian-NLL kernel</td>
+              <td>问的是：哪些 token 更值得看？常见标点和功能词通常没区分度，稀有变量名、关键术语、高不确定位置更可能暴露能力差异。</td>
+            </tr>
+            <tr>
+              <td>80 个 proxy metrics</td>
+              <td>10 类 core metrics × 8 类权重</td>
+              <td>不是押注单一指标，而是形成一个低维指标库，再根据任务/模型群体选择或学习组合。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout green">
+        论文实践细节也重要：他们默认只用 expert trajectory 的最后 1000 个 token，且不滤掉错误轨迹，以模拟现实中的 imperfect expert；多专家时对专家和实例取平均。
+      </div>
+    </section>
+
+    <section id="experiments">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">04 · Evidence</div>
+          <h2>三组实验分别评的是什么</h2>
+        </div>
+        <p class="section-copy">
+          论文不是只在一个场景上展示相关性，而是把 proxy metrics 放进模型选择、数据选择、训练外推三个研发决策场景里测试。
+        </p>
+      </div>
+
+      <figure class="figure">
+        <img src="rosinality-proxy-metrics-assets/page-02.jpg" alt="论文 Figure 1 页面截图" />
+        <figcaption>Figure 1 页面：左侧展示跨模型排序的相关性，右侧展示 DataDecide 数据选择的 compute/decision-accuracy Pareto 前沿。</figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>实验</th><th>评估对象</th><th>指标</th><th>主要结果</th><th>它证明了什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>跨模型家族排序</td>
+              <td>18 个 reasoning-capable 模型，覆盖 6 个 base families 和 6 种 post-training recipes；任务包括 AIME、HMMT、GPQA、USACO、MMLU-Pro、SuperGPQA</td>
+              <td>Spearman rank correlation \( \rho \)：proxy 排名和真实 downstream accuracy 排名是否一致</td>
+              <td>FineWeb CE loss 平均 \( \rho=0.36 \)；univariate proxy \(0.54\)；3-sparse proxy \(0.78\)；linear/RBF RankSVM \(0.81\)</td>
+              <td>专家轨迹上的 token 统计，比通用 loss 更能排序异构 reasoning 模型。</td>
+            </tr>
+            <tr>
+              <td>预训练数据选择</td>
+              <td>DataDecide 的 25 个候选 corpus；用 4M 到 90M 小 proxy models 预测 1B target model 的 OLMES 表现排序</td>
+              <td>Decision accuracy：任意两个 corpus 的优劣顺序是否预测正确</td>
+              <td>best proxy 在约 \(10^{-5}\) target compute 下达到 0.85 以上 decision accuracy；要用小模型直接 downstream evaluation 达到类似效果，需要约 \(10^4\) 倍更多 compute</td>
+              <td>即使小模型还答不对题，也能通过“是否跟得上 expert CoT”判断哪个 corpus 更好。</td>
+            </tr>
+            <tr>
+              <td>训练中外推</td>
+              <td>OLMo-3-7B pretraining checkpoints 和 OLMo-3-7B-Think post-training checkpoints</td>
+              <td>NMAE/RMSE：用早期 checkpoint 拟合 proxy 或 loss，再预测后期 downstream accuracy 的误差</td>
+              <td>proxy-to-accuracy fit 在 18× compute horizon 上平均 RMSE 0.024，约为 CE loss 0.059 和 compute 0.055 的一半</td>
+              <td>proxy 既有 loss 的平滑性，又因为专家轨迹而带任务条件化，外推漂移更小。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two">
+        <figure class="figure">
+          <img src="rosinality-proxy-metrics-assets/page-05.jpg" alt="论文 Table 2 页面截图" />
+          <figcaption>Table 2 附近页面：跨模型家族排序中，RankSVM proxy 明显强于 FineWeb CE loss 和 rBridge。</figcaption>
+        </figure>
+        <figure class="figure">
+          <img src="rosinality-proxy-metrics-assets/page-08.jpg" alt="论文 Table 3 和 Figure 4 页面截图" />
+          <figcaption>Table 3/Figure 4 附近页面：用 proxy 外推 HellaSwag 等 OLMES downstream accuracy，误差显著低于 validation CE loss fit。</figcaption>
+        </figure>
+      </div>
+
+      <div class="callout blue">
+        <strong>为什么 rosinality 说 smooth：</strong>最终 accuracy 是离散的，尤其在 hard benchmark 上早期经常全是 0 或接近随机；但每个 expert token 的 rank、top-k 命中、entropy 是连续变化的。训练推进时，这些局部统计可以形成更平滑的曲线。
+      </div>
+    </section>
+
+    <section id="interpretation">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">05 · How To Read It</div>
+          <h2>这套指标到底在测什么，不在测什么</h2>
+        </div>
+        <p class="section-copy">
+          它不是在评“模型自由解题能力”的完整替代品，而是在测一个更细的东西：候选模型在被放到专家解题路径上时，局部预测分布是否像一个懂这类任务的模型。
+        </p>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <span class="badge">测得到</span>
+          <h3>局部 reasoning compatibility</h3>
+          <p>如果专家下一步是关键变量、定理名称、代码 token 或数值，强模型应该更容易把它排到 top-k 或给更合理概率。这个信号和“会不会跟着专家走”有关。</p>
+        </div>
+        <div class="card">
+          <span class="badge">部分测到</span>
+          <h3>任务条件化能力</h3>
+          <p>因为统计是在目标任务的 expert trajectories 上算的，所以比 FineWeb loss 更接近任务。但它仍依赖 expert trace 是否代表真实任务能力。</p>
+        </div>
+        <div class="card">
+          <span class="badge">测不到完整</span>
+          <h3>自由生成与探索能力</h3>
+          <p>teacher forcing 条件下“能预测下一 token”，不等于模型自己能从空白状态规划、探索、纠错并完成任务。它更像诊断信号，不是最终验收。</p>
+        </div>
+      </div>
+
+      <div class="callout violet">
+        一个容易误解的点：proxy metric 不是“让模型学习专家轨迹”的训练 loss，而是“用专家轨迹读取模型状态”的评估/预测工具。它可以帮助选模型、选数据、判断训练是否值得继续，但不能单独证明模型在真实部署中已经可靠。
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">06 · Insight</div>
+          <h2>我的判断：它最有价值的是把 eval 变成“可早期读出的能力显微镜”</h2>
+        </div>
+        <p class="section-copy">
+          这篇工作的实用意义不在于某一个具体 proxy metric，比如 inverse-frequency top-1 accuracy，而在于它提供了一个非常可扩展的评估范式。
+        </p>
+      </div>
+
+      <div class="insight-board">
+        <div class="big-quote">
+          最终答案是一个低带宽信号；专家轨迹上的 token 分布是一条高带宽诊断曲线。
+          <span>这解释了为什么它能在小模型、早期 checkpoint、昂贵 benchmark 不可用时提供排序信号。</span>
+        </div>
+        <div class="card">
+          <h3>真正的新意</h3>
+          <p>过去很多 proxy 要么看通用 loss，要么看小模型直接 benchmark accuracy，要么要求访问 teacher/expert 的 logprobs。这里更灵活：只需要专家写出的离散 token，所以人类专家、闭源强模型、领域专家与 AI 协作生成的轨迹都能成为信号源。</p>
+          <p>这对前沿模型研发很重要：最稀缺的不是“再跑一个完整 benchmark”，而是在昂贵决策前获得足够早、足够细、足够任务相关的反馈。</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>适合用的场景</th><th>不该过度外推的场景</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>比较多个 candidate checkpoint、recipe、数据混合方案，尤其目标 benchmark 昂贵或早期准确率无信号时</td>
+              <td>把 proxy score 当成最终线上质量、可靠性或安全性的充分证明</td>
+            </tr>
+            <tr>
+              <td>有高质量专家轨迹的数学、代码、科学推理、专业任务</td>
+              <td>专家轨迹质量很差、风格单一，或任务强依赖自由探索和环境互动的 agentic setting</td>
+            </tr>
+            <tr>
+              <td>训练中 monitoring：观察某个 downstream 能力相关 proxy 是否沿平滑曲线改善</td>
+              <td>跨架构、跨规模、跨 MoE 系统直接套用同一个 proxy metric，而不做 held-in calibration</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">07 · Limits</div>
+          <h2>论文自己的边界也要读清楚</h2>
+        </div>
+        <p class="section-copy">
+          结果很有启发，但还不是“一个 proxy 预测所有能力”的定理。作者在限制部分给了几个关键边界。
+        </p>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>没有 universal proxy</h3>
+          <p>不同场景选出的最佳 proxy 不一样。跨模型排序、数据选择、具体 benchmark 外推，各自依赖不同 core metric 和 weighting scheme。</p>
+        </div>
+        <div class="card">
+          <h3>训练外推证据范围窄</h3>
+          <p>training-time forecasting 主要基于 OLMo-3-7B 和 OLMo-3-7B-Think 的公开 checkpoint。是否对更多架构、规模、MoE 成立仍需要实证。</p>
+        </div>
+        <div class="card">
+          <h3>任务覆盖还不完整</h3>
+          <p>跨模型排序是 hard reasoning；数据选择和 downstream extrapolation 用 OLMES 多选任务。论文没有证明 open-ended writing、long-context retrieval、agentic evaluation 都适用。</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>实践建议：</strong>把它当作研发决策中的 ranking/forecasting instrument，而不是最终 evaluation 的替代。最好保留少量 held-in downstream scores 来选择 proxy 或拟合 ranker，再在 held-out 任务上验证泛化。
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">08 · Reproducibility</div>
+          <h2>本次读取与校验证据</h2>
+        </div>
+        <p class="section-copy">
+          本报告用 OpenCLI 读取 X 原帖，用 arXiv 官方页面/PDF 与 GitHub README 交叉核验。可复现材料保存在 SheSheBot 仓库的 results 目录。
+        </p>
+      </div>
+
+      <pre><code>opencli twitter thread "https://x.com/rosinality/status/2056644552375632273" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/1o4icqBadt"
+curl -L -o results/rosinality-thread-2056644552375632273/2605.18607.pdf "https://arxiv.org/pdf/2605.18607"
+pdfinfo results/rosinality-thread-2056644552375632273/2605.18607.pdf
+pdftotext -layout results/rosinality-thread-2056644552375632273/2605.18607.pdf results/rosinality-thread-2056644552375632273/2605.18607.txt</code></pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>本地文件</th><th>内容</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>results/rosinality-thread-2056644552375632273/thread-2056644552375632273.json</code></td><td>X 原帖 JSON</td></tr>
+            <tr><td><code>results/rosinality-thread-2056644552375632273/2605.18607.pdf</code></td><td>arXiv PDF，31 页，标题和作者已核验</td></tr>
+            <tr><td><code>results/rosinality-thread-2056644552375632273/2605.18607.clean.txt</code></td><td>PDF 抽取清理文本，用于检索方法和实验</td></tr>
+            <tr><td><code>results/rosinality-thread-2056644552375632273/github-proxy-metrics-readme.md</code></td><td>GitHub README，说明 score/proxy/ranker pipeline</td></tr>
+            <tr><td><code>/Users/bytedance/Downloads/rosinality-proxy-metrics-assets/</code></td><td>报告使用的本地图片资源</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

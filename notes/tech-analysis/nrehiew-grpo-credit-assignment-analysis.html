@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GRPO 之后：Dense Credit Assignment 的下一步</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f2e8;
+      --panel: #fffdf7;
+      --ink: #1d1a16;
+      --muted: #6d665b;
+      --subtle: #91897c;
+      --line: #d8cdbb;
+      --line-strong: #a89781;
+      --accent: #9f4a2f;
+      --accent-soft: #f2dfd6;
+      --blue: #315f8f;
+      --blue-soft: #dce7f2;
+      --gold: #aa7626;
+      --gold-soft: #f3e3bf;
+      --green: #416f5a;
+      --green-soft: #dfe9e1;
+      --red: #9b3e33;
+      --red-soft: #f0ddd8;
+      --shadow: 0 18px 48px rgba(58, 48, 35, 0.11);
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 95, 143, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(247, 242, 232, 0.93);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 760;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 41%, var(--ink) 42% 56%, transparent 57%),
+        linear-gradient(45deg, transparent 0 41%, var(--accent) 42% 56%, transparent 57%);
+      transform: rotate(-4deg);
+      flex: none;
+    }
+
+    .brand span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      background: rgba(255, 253, 247, 0.62);
+      border-color: var(--line);
+    }
+
+    .hero {
+      min-height: 78vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+      gap: clamp(30px, 5vw, 70px);
+      align-items: end;
+      padding: clamp(58px, 9vw, 110px) clamp(20px, 5vw, 74px) 46px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.72);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin-top: 18px;
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 86px);
+      font-weight: 780;
+    }
+
+    .lede {
+      max-width: 760px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.65;
+    }
+
+    .hero-card {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 18px;
+    }
+
+    .thesis {
+      border: 1px solid var(--line-strong);
+      background: var(--panel);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .thesis-label {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .thesis p {
+      margin: 10px 0 0;
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .meta {
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.74);
+    }
+
+    .meta strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .meta span {
+      font-size: 14px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 54px clamp(18px, 4vw, 52px) 76px;
+    }
+
+    section {
+      margin-top: 64px;
+      scroll-margin-top: 78px;
+    }
+
+    section:first-child { margin-top: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.72fr) minmax(260px, 0.28fr);
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.2vw, 52px);
+    }
+
+    .section-note {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    h3 {
+      margin-top: 28px;
+      font-size: 22px;
+    }
+
+    p { margin: 14px 0 0; }
+    strong { font-weight: 780; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 20px;
+      min-width: 0;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      margin: 0 6px 8px 0;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.76);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .callout {
+      margin: 24px 0;
+      padding: 20px 22px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .callout.gold {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+
+    .callout p:first-child { margin-top: 0; }
+
+    figure {
+      margin: 22px 0 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 12px;
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(29, 26, 22, 0.12);
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--ink);
+      background: rgba(216, 205, 187, 0.32);
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .num {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      color: var(--ink);
+      font-weight: 820;
+      font-family: var(--mono);
+      background: var(--gold-soft);
+    }
+
+    .step h3 {
+      margin: 0 0 6px;
+      font-size: 19px;
+    }
+
+    .formula {
+      margin: 16px 0 0;
+      padding: 14px 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: #1f1b16;
+      color: #f8efe0;
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: rgba(216, 205, 187, 0.42);
+      color: #4b3328;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: #1f1b16;
+      color: #f8efe0;
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source {
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .source strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .footer {
+      margin-top: 70px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .hero, .section-head, .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .hero { min-height: auto; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .nav { width: 100%; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span>nrehiew_ thread analysis</span></div>
+    <nav class="nav" aria-label="sections">
+      <a href="#source">来源</a>
+      <a href="#thesis">主判断</a>
+      <a href="#axis">技术轴线</a>
+      <a href="#methods">方法对照</a>
+      <a href="#insight">Insight</a>
+      <a href="#commands">证据</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow">X thread · GRPO · credit assignment</div>
+      <h1>GRPO 之后，真正的突破可能不是“更会打分”，而是“更会分配责任”</h1>
+      <p class="lede">
+        nrehiew_ 这条帖子判断：下一代可扩展训练算法可能仍在 GRPO/on-policy RL 的框架之上，但要把只有最终答案的稀疏 outcome reward，变成更密、更局部、同时偏差更低的 credit assignment。
+      </p>
+    </div>
+    <aside class="hero-card">
+      <div class="thesis">
+        <div class="thesis-label">一句话结论</div>
+        <p>
+          这条帖子的关键不是预测某一篇论文赢，而是在识别一个收敛中的算法形状：<strong>保留 on-policy 数据，获得接近 distillation 的稠密训练信号，同时避免 teacher / critic 带来的系统性偏差。</strong>
+        </p>
+      </div>
+      <div class="meta-grid">
+        <div class="meta"><strong>原帖时间</strong><span>2026-05-19 15:00 UTC</span></div>
+        <div class="meta"><strong>线程条数</strong><span>OpenCLI 抓取 12 条</span></div>
+        <div class="meta"><strong>核心对象</strong><span>GRPO 后的 RLVR 训练</span></div>
+        <div class="meta"><strong>输出</strong><span>Self-contained 中文阅读报告</span></div>
+      </div>
+    </aside>
+  </div>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Source Map</div>
+          <h2>我读了哪些材料</h2>
+        </div>
+        <p class="section-note">先用 OpenCLI 读取 X 原帖，再补读帖子涉及的代表方法。主帖短链实际指向配图页，不是外部论文。</p>
+      </div>
+
+      <div class="source-list">
+        <div class="source">
+          <strong>1. X 原帖与回复</strong>
+          原帖：<a href="https://x.com/nrehiew_/status/2056751826356297834">nrehiew_ / status 2056751826356297834</a>。OpenCLI 返回根帖、作者自回复和若干讨论回复。作者补充说，很多团队沿着同一轴线做类似事情，说明可能接近一个和 GRPO 影响相当的突破；但也提醒现有方法可能最后不会被采用，类似 reasoning 中 MCTS 的命运。
+        </div>
+        <div class="source">
+          <strong>2. 主配图</strong>
+          原帖配图的观点是：OPD 和 RL 都指向 on-policy data 的重要性；另一个关键旋钮是 credit assignment。它想要的算法具备三种性质：distillation 的信号密度、RL 的低偏差、二者共有的 on-policy 属性。
+        </div>
+        <div class="source">
+          <strong>3. 代表方法材料</strong>
+          Pedagogical RL 博客：<a href="https://noahziems.com/pedagogical-rl">noahziems.com/pedagogical-rl</a>；OPSD 论文：<a href="https://arxiv.org/abs/2601.18734">arXiv:2601.18734</a>；ECHO 论文：<a href="https://arxiv.org/abs/2601.06794">arXiv:2601.06794</a>；Composer 2 技术报告：<a href="https://arxiv.org/abs/2603.24477">arXiv:2603.24477</a>。
+        </div>
+      </div>
+
+      <figure>
+        <img src="nrehiew-grpo-credit-assignment-assets/root-image.png" alt="nrehiew_ thread attached image about on-policy distillation, RL, and credit assignment" />
+        <figcaption>原帖配图的技术重点：OPD/RL 让 on-policy data 的地位更清楚，下一步需要同时追求 dense signal、low bias 和 on-policy。</figcaption>
+      </figure>
+    </section>
+
+    <section id="thesis">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Main Thesis</div>
+          <h2>这条推文到底在说什么</h2>
+        </div>
+        <p class="section-note">它不是在说“GRPO 已经过时”，而是在说 GRPO 的 outcome-level credit 太粗，下一步要解决局部责任归因。</p>
+      </div>
+
+      <div class="callout">
+        <p><strong>把它翻译成算法语言：</strong>当前 GRPO/RLVR 的优点是 on-policy，也就是模型在自己真实会遇到的状态分布上采样；缺点是奖励通常只在最终答案或最终任务成功处出现，导致整段推理、工具调用或 agent rollout 共享一个很粗的 advantage。下一步突破要在不破坏 on-policy 的前提下，把最终结果的责任更细地分配给 token、step、turn、环境反馈或 critic 指导。</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>为什么 GRPO 还重要</h3>
+          <p>GRPO 的核心价值不是“最精细的 credit”，而是把 RLVR 做成可扩展的 on-policy group comparison。它让模型从自己生成的候选中学习，减少 SFT/off-policy distillation 的训练-推理分布错位。</p>
+        </div>
+        <div class="card">
+          <h3>为什么 outcome reward 不够</h3>
+          <p>如果一个 20k token 的 reasoning trace 或 100 轮 agent 任务最后失败，终局 reward 只能说“整条轨迹不好”，却不能指出是第 3 个工具调用、某个错误中间结论，还是一次坏 summary 导致失败。</p>
+        </div>
+        <div class="card">
+          <h3>为什么 dense signal 有风险</h3>
+          <p>Teacher logit distillation、PRM、critic 都能提供更密信号，但密不等于真。teacher 可能看到了 privileged answer，critic 可能过期或奖励 hacking，PRM 标签可能带来偏差。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="axis">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Technical Axis</div>
+          <h2>同一轴线：更密的责任分配，但别牺牲低偏差</h2>
+        </div>
+        <p class="section-note">帖子提到的 ECHO、Composer2、self-distillation、OPD/OPSD，可以放到同一张图里理解。</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>方法线索</th>
+            <th>它试图变密的对象</th>
+            <th>主要收益</th>
+            <th>主要风险</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GRPO / RLVR</td>
+            <td>同一 prompt 下多个完整回答的 outcome reward</td>
+            <td>on-policy，直接优化最终可验证目标，工程上可扩展</td>
+            <td>token/step 都共享终局 advantage；全对/全错时梯度弱或消失</td>
+          </tr>
+          <tr>
+            <td>OPD / OPSD</td>
+            <td>学生自己 rollout 上的每个 token 分布差异</td>
+            <td>保持 on-policy，同时给 dense token-level feedback</td>
+            <td>teacher conditioning 带来 bias；KL 信号可能被风格 token 主导，需要 clipping</td>
+          </tr>
+          <tr>
+            <td>Pedagogical RL</td>
+            <td>成功轨迹是否既正确又在学生当前分布附近</td>
+            <td>把 privileged information 用来采样“可学的成功轨迹”，而不只是评分</td>
+            <td>仍是早期结果；learnability score 的定义会影响最终行为</td>
+          </tr>
+          <tr>
+            <td>ECHO</td>
+            <td>agent rollout 的诊断反馈和 refinement gain</td>
+            <td>critic 和 policy 同步演化，避免固定 critic 在 on-policy drift 中过期</td>
+            <td>依赖外部 reward/evaluator 的质量；critic 可能学习 evaluator artifact</td>
+          </tr>
+          <tr>
+            <td>Composer 2</td>
+            <td>真实 coding agent 长轨迹中的 actions、summaries、tool use</td>
+            <td>训练 harness 贴近真实 Cursor 使用，长任务 reward 覆盖实际 agent 行为</td>
+            <td>报告显示仍大量使用最终 reward；credit 分配仍偏粗，但在工程上处理长 horizon</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout blue">
+        <p><strong>我的理解：</strong>这些工作共享一个目标：不再把“最终答对/答错”粗暴广播给整条轨迹。它们的分歧在于信号从哪里来：来自 teacher 分布、来自 privileged answer、来自可学习性打分、来自 co-evolving critic，还是来自真实 agent 环境中的最终状态。</p>
+      </div>
+    </section>
+
+    <section id="methods">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Mechanisms</div>
+          <h2>几个代表方法一步步讲清楚</h2>
+        </div>
+        <p class="section-note">这里不做完整论文精读，只解释它们为什么被原帖放在同一类技术趋势里。</p>
+      </div>
+
+      <div class="timeline">
+        <div class="step">
+          <div class="num">1</div>
+          <div>
+            <h3>OPSD：同一个模型，一边当学生，一边带答案当老师</h3>
+            <p>OPSD 的输入是一组题目和 privileged solution，例如正确答案或参考推理。训练时，学生策略只看题目并生成自己的 rollout；老师策略是同一个模型，但额外看到正确答案或参考轨迹。然后两者在学生已经生成的 prefix 上计算下一 token 分布，训练目标是让学生靠近老师分布。</p>
+            <p>这就把“最终答对才有 reward”改成“每个 token 都能拿到老师分布给出的方向”。论文把它解释为 dense token-level reward：老师比学生更偏好的学生 token，会获得更高局部信号。</p>
+            <div class="formula">r<sub>n</sub> = log p<sub>T</sub>(student token | question, privileged answer, prefix) - log p<sub>S</sub>(student token | question, prefix)</div>
+            <p>注意它不是无偏 RL。它牺牲了一部分无偏性，因为老师看到了 privileged answer；但它换来了更密、更省 token 的训练信号。论文中 Qwen3-1.7B 的平均结果从 base 37.1、GRPO 37.7 提到 OPSD 43.4，且作者强调 GRPO 在早期会因为 reward diversity collapse 而停滞。</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="num">2</div>
+          <div>
+            <h3>Pedagogical RL：不是让老师给答案，而是让老师采样“学生能学会的成功轨迹”</h3>
+            <p>Pedagogical RL 的问题更尖锐：如果 teacher 看到了答案，它可能产生一种正确但学生几乎不可能自己走到的捷径轨迹。这样轨迹虽然 answer-correct，却不是 teachable。它提出的理想分布是 student policy conditioned on success，也就是离学生当前能力最近的成功样本。</p>
+            <p>方法上，先训练 privileged self-teacher，让它最大化“成功 reward × learnability score”。learnability score 用学生当前模型对每个 token 的 surprisal 来衡量，并特别惩罚单个极端突兀 token 的 spike。然后再用 surprisal-gated imitation 把 teacher 轨迹蒸馏给学生：学生已经觉得合理的 token 权重大，过于震惊的 token 权重小。</p>
+            <p>这个方法很接近原帖说的目标：它既想要比 outcome reward 更密的训练信号，也明确意识到 teacher bias，尝试用“学生可学习性”来约束偏差。</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="num">3</div>
+          <div>
+            <h3>ECHO：credit 不一定给 token，也可以给“哪条 critique 真让策略变好”</h3>
+            <p>ECHO 面向 open-world agent learning。问题是：很多 critique-guided RL 使用固定 critic 或离线 critic，但 policy 会随着 on-policy RL 改变，错误类型也会变。早期可能犯粗糙流程错，后期可能只剩细微规划错；固定 critic 会变 stale。</p>
+            <p>ECHO 的训练循环是：policy 先生成 initial rollout，reward model 打分；critic 生成多条诊断反馈；policy 基于每条 critique 生成 refined rollout；reward model 再打分；critic 的 reward 来自 refinement 造成的增益，policy 的 reward 来自 refined rollout 分数。然后 policy 和 critic 通过 dual-track GRPO 同步更新。</p>
+            <p>它在原帖里的意义：credit assignment 被转移到了“哪条诊断/哪次环境反馈真正带来改进”。这是一种 agentic 场景的局部 credit，不只是 token 级。</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="num">4</div>
+          <div>
+            <h3>Composer 2：真实 coding agent 的长 horizon 让 credit assignment 无法回避</h3>
+            <p>Composer 2 报告不是一个专门的 credit assignment 论文，但它说明了为什么这个问题在 coding agent 里会变得迫切。一个 coding agent rollout 包括读文件、改代码、跑测试、总结状态、处理工具输出，最终 reward 基于代码正确性、简洁性和工程原则。</p>
+            <p>报告中明确说，Composer 2 通过 continued pretraining 和大规模 RL 训练 agentic software engineering；其 RL pipeline 是异步的，并尽量减少 samples 变得 off-policy。它还使用 self-summary 处理长 horizon：一个训练 rollout 可以包含多次 generation 和 summary，最终 reward 会给链条中所有 model-produced tokens，包括 agent response 和 self-summary。</p>
+            <p>这说明当前工程最前沿并不总是先发明精细 credit；很多时候是先把真实长轨迹环境跑起来，再逐步修补 bias、off-policy drift、length bias、summary credit 这些问题。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Caveats</div>
+          <h2>这条判断有什么边界</h2>
+        </div>
+        <p class="section-note">原帖的判断很有洞察，但不能把它理解为已有方法已经稳定收敛。</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>“Dense” 不自动等于“正确”</h3>
+          <p>每个 token 都有信号只是训练更容易，并不保证信号对最终能力是无偏的。OPSD 需要 KL clipping，Pedagogical RL 要定义 learnability，ECHO 依赖 reward model 校准，这些都是引入 bias 的位置。</p>
+        </div>
+        <div class="card">
+          <h3>“On-policy” 也不是银弹</h3>
+          <p>on-policy 保证训练样本来自当前策略分布，但如果奖励太稀疏，采样仍然昂贵；如果 rollout 过长，单条轨迹内部的责任仍然难分；如果训练异步，样本仍可能部分 off-policy。</p>
+        </div>
+        <div class="card">
+          <h3>Agentic RL 的粒度和 reasoning RL 不同</h3>
+          <p>数学推理里常见粒度是 token/step；agent 任务里更自然的粒度可能是 turn、tool call、environment feedback、summary、critic feedback。把 reasoning 的 token credit 直接搬到 agent 上通常不够。</p>
+        </div>
+        <div class="card">
+          <h3>现有证据仍偏早期</h3>
+          <p>Pedagogical RL 是早期博客实验；ECHO 在若干 open-world environments 上有效，但依赖 evaluator；Composer 2 是产品级技术报告，很多训练细节无法完全复现。原帖更像趋势判断，不是定论。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Insight</div>
+          <h2>我的判断：突破点在“找到可学习的成功”，不是“奖励更花哨”</h2>
+        </div>
+        <p class="section-note">如果只记一个点，记这个。</p>
+      </div>
+
+      <div class="callout green">
+        <p><strong>最重要的 insight：</strong>下一代训练算法可能不是简单把 outcome reward 改成 process reward，也不是简单把 teacher logits 当 dense reward。真正困难的是在三个目标之间找平衡：样本必须来自模型真实会访问的状态分布，信号必须足够密以解决长 horizon credit，信号又不能因为 teacher/critic/privileged context 而把模型拖向不可学的捷径。</p>
+      </div>
+
+      <p>这也是为什么 Pedagogical RL 的“nearest successes”概念很关键。它把问题从“怎样从正确答案学习”改成“怎样找到当前学生最可能学会的正确轨迹”。这比一般 distillation 更细，因为它意识到 correctness 和 learnability 是两个约束；也比一般 RL 更细，因为它不等模型盲采到成功，而是用 privileged information 主动提高采样命中率。</p>
+
+      <p>从工程角度看，ECHO 和 Composer 2 提醒我们，agentic setting 里 credit 可能不该只停留在 token。一个失败的 agent 可能不是某个 token 错，而是：读错环境反馈、summary 丢了约束、critic 只给泛泛建议、早期工具调用把状态改坏、异步 rollout 的 policy 已经 stale。下一代算法要能把这些结构性对象纳入 credit，而不只是把最终分数广播回所有 token。</p>
+
+      <div class="callout gold">
+        <p><strong>所以我会这样理解原帖：</strong>GRPO 类方法证明了 on-policy RLVR 可以规模化；OPD/OPSD 证明了 dense token feedback 可以更省样本；ECHO/Pedagogical RL 这类方法开始意识到 dense feedback 必须受“是否可学习、是否随 policy 演化、是否低偏差”的约束。真正的突破，很可能是这些线索的组合，而不是单篇方法的直接胜出。</p>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Provenance</div>
+          <h2>本地证据与命令</h2>
+        </div>
+        <p class="section-note">下面列出主要抓取与校验路径，便于复查。</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>本地材料</h3>
+          <p><code>results/nrehiew-grpo-credit-assignment-x/thread-2056751826356297834.json</code></p>
+          <p><code>results/nrehiew-grpo-credit-assignment-x/refs/pedagogical-rl.md</code></p>
+          <p><code>results/nrehiew-grpo-credit-assignment-x/refs/2601.06794-echo.pdf</code></p>
+          <p><code>results/nrehiew-grpo-credit-assignment-x/refs/2601.18734-opsd.pdf</code></p>
+          <p><code>results/nrehiew-grpo-credit-assignment-x/refs/2603.24477-composer2.pdf</code></p>
+        </div>
+        <div class="card">
+          <h3>关键命令</h3>
+          <pre><code>opencli twitter thread "https://x.com/nrehiew_/status/2056751826356297834" --limit 80 -f json
+opencli web read --url "https://noahziems.com/pedagogical-rl" --stdout true -f plain
+curl -L "https://arxiv.org/pdf/2601.06794" -o echo.pdf
+curl -L "https://arxiv.org/pdf/2601.18734" -o opsd.pdf
+curl -L "https://arxiv.org/pdf/2603.24477" -o composer2.pdf
+pdftotext -layout echo.pdf echo.txt</code></pre>
+        </div>
+      </div>
+
+      <p class="small">
+        报告生成日期：2026-05-20。由于 X/thread 和近期论文材料会变动，本文对“最新趋势”的判断基于本次抓取时可访问的公开材料；方法效果应以后续论文版本、独立复现和更大规模实验证据为准。
+      </p>
+    </section>
+
+    <div class="footer">
+      <p>Generated locally for SheSheBot workspace. This report distinguishes X thread claims, linked-source claims, paper/report evidence, and interpretive judgment.</p>
+    </div>
+  </main>
+</body>
+</html>

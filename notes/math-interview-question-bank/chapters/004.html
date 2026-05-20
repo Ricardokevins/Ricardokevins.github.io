@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>004. 优化：Hessian、约束与数值稳定 - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 004</div>
+        <div class="brand-title">优化：Hessian、约束与数值稳定</div>
+        <div class="brand-meta">二阶信息 · 约束优化 · 从 Hessian、Lagrange/KKT、矩阵求导到学习率和条件数。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-004-1">学习目标：这一章要解决什么</a><a class="toc-link" href="#s-004-2">概念起点：从一阶导到二阶曲率</a><a class="toc-link" href="#s-004-3">Hessian、凸性与二次型</a><a class="toc-link" href="#s-004-4">例题一：用 Hessian 判断二次函数</a><a class="toc-link" href="#s-004-5">Lagrange 与 KKT：约束如何进入优化</a><a class="toc-link" href="#s-004-6">例题二：一个完整约束优化</a><a class="toc-link" href="#s-004-7">矩阵求导：把模型训练写成矩阵形式</a><a class="toc-link" href="#s-004-8">学习率、smoothness、条件数与稳定性</a><a class="toc-link" href="#s-004-9">面试连接、误区与检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link current" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="003.html">← 003. 微积分二：Taylor、链式法则与反向传播</a><a href="005.html">005. 线性代数一：向量空间、矩阵与秩 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="calculus" data-title="优化：Hessian、约束与数值稳定">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>004. 优化：Hessian、约束与数值稳定</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>从 Hessian、Lagrange/KKT、矩阵求导到学习率和条件数。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>，保持概念、例题和算法直觉连贯。</p></aside>
+          <figure class="visual-lead"><img src="../assets/calculus-optimization.svg" alt="优化：Hessian、约束与数值稳定 图示"></figure>
+          <h3 id="s-004-1"><a class="anchor-link" href="#s-004-1" aria-label="跳转到本节">#</a>学习目标：这一章要解决什么</h3>
+<p>前两章已经介绍了导数、Taylor 展开和反向传播。本章进一步回答一个更贴近训练和量化实战的问题：知道梯度之后，怎样判断一个点是不是最优？怎样处理预算、仓位、正则化这类约束？为什么同样是梯度下降，有的学习率稳定，有的会震荡或发散？</p>
+<div class="concept-grid">
+  <div class="concept-card"><b>二阶曲率</b><p>用 Hessian 描述函数在不同方向上弯曲得多快，判断局部极小、极大、鞍点和凸性。</p></div>
+  <div class="concept-card"><b>约束优化</b><p>用 Lagrange 乘子和 KKT 条件把“必须满足的限制”纳入最优性方程。</p></div>
+  <div class="concept-card"><b>矩阵求导</b><p>把最小二乘、ridge、组合优化和神经网络 loss 写成紧凑的向量/矩阵形式。</p></div>
+  <div class="concept-card"><b>数值稳定</b><p>理解学习率、smoothness、条件数和尺度不均为什么会决定训练是否稳定。</p></div>
+</div>
+<p>读完本章，你应该能做到三件事：第一，看到一个二次函数可以写出 Hessian 并判断凸性；第二，看到一个简单约束优化题可以列出 Lagrangian 并求解；第三，能把“学习率太大”“条件数太差”“矩阵接近奇异”翻译成具体数学问题，而不是只停留在经验说法。</p>
+
+<h3 id="s-004-2"><a class="anchor-link" href="#s-004-2" aria-label="跳转到本节">#</a>概念起点：从一阶导到二阶曲率</h3>
+<p>一阶导数回答“往哪边走会让函数下降或上升”。在一维里，导数 \(f'(x)\) 是斜率；在多维里，梯度 \(\nabla f(x)\) 是一个向量，它指向函数值增长最快的方向。梯度下降使用的就是这个信息：</p>
+<div class="math-display">\[x_{t+1}=x_t-\eta \nabla f(x_t)\]</div>
+<p>这个公式可以读作：当前位置 \(x_t\) 减去一小步梯度方向；\(\eta\) 叫学习率，控制这一步有多长。问题是，一阶信息只告诉你“当前坡度”，不告诉你“坡度接下来会变化多快”。如果地形很平缓，大步走通常没问题；如果地形突然变陡，同样的步长可能直接越过谷底。</p>
+<div class="intuition-box">
+  <p><b>为什么需要二阶信息？</b> 把 loss 地形想成山谷。一阶梯度告诉你脚下最陡的下坡方向；二阶曲率告诉你山谷是宽的还是窄的、直的还是弯的。优化算法真正难的地方往往不是“不知道往哪边下降”，而是“不知道该走多大一步”。</p>
+</div>
+<p>Taylor 展开把这个直觉写成公式。对多维函数 \(f(x)\)，从 \(x\) 移动一个小向量 \(\Delta\) 后：</p>
+<div class="math-display">\[f(x+\Delta)\approx f(x)+\nabla f(x)^T\Delta+\frac{1}{2}\Delta^T H(x)\Delta\]</div>
+<ul class="formula-list">
+  <li>\(f(x)\)：当前函数值。</li>
+  <li>\(\nabla f(x)^T\Delta\)：一阶变化，表示沿 \(\Delta\) 方向走一步会造成多少线性变化。</li>
+  <li>\(H(x)\)：Hessian 矩阵，由所有二阶偏导组成。</li>
+  <li>\(\Delta^T H(x)\Delta\)：二阶变化，表示这个方向上的弯曲程度。</li>
+</ul>
+<p>所以本章所有概念可以连成一句话：优化不是只看梯度大小，还要看梯度怎样变化、约束怎样限制可走方向、数值尺度怎样影响更新稳定性。</p>
+
+<h3 id="s-004-3"><a class="anchor-link" href="#s-004-3" aria-label="跳转到本节">#</a>Hessian、凸性与二次型</h3>
+<p>Hessian 是二阶偏导数组成的矩阵。如果 \(x=(x_1,x_2,\ldots,x_n)\)，那么 Hessian 的第 \(i\) 行第 \(j\) 列是：</p>
+<div class="math-display">\[H_{ij}(x)=\frac{\partial^2 f(x)}{\partial x_i\partial x_j}\]</div>
+<p>这个公式可以读作：先看 \(f\) 对第 \(j\) 个变量怎么变，再看这种变化对第 \(i\) 个变量又怎么变。对足够光滑的函数，混合偏导通常相等，所以 Hessian 是对称矩阵。对称矩阵很重要，因为它有实特征值，并且可以用特征向量分解不同方向的曲率。</p>
+<div class="table-wrap"><table><thead><tr><th>Hessian 情况</th><th>几何直觉</th><th>临界点含义</th></tr></thead><tbody>
+<tr><td>正定：所有特征值 \(>0\)</td><td>每个方向都向上弯，像碗</td><td>局部极小点</td></tr>
+<tr><td>负定：所有特征值 \(<0\)</td><td>每个方向都向下弯，像倒扣的碗</td><td>局部极大点</td></tr>
+<tr><td>不定：既有正特征值又有负特征值</td><td>有的方向上弯，有的方向下弯</td><td>鞍点</td></tr>
+<tr><td>半正定：所有特征值 \(\ge 0\)</td><td>不会向下弯，但可能有平坦方向</td><td>凸函数的典型条件</td></tr>
+</tbody></table></div>
+<p>这里的关键对象是二次型：</p>
+<div class="math-display">\[\Delta^T H\Delta\]</div>
+<p>它表示从当前位置沿方向 \(\Delta\) 走时，二阶项贡献多少。如果对所有非零方向 \(\Delta\)，都有 \(\Delta^T H\Delta>0\)，就说明所有方向都向上弯，\(H\) 正定。如果某个方向让它为负，说明至少沿这个方向函数像山顶一样向下弯。</p>
+<p>凸性是优化里最重要的“好地形”概念。一个可微函数是凸函数时，任意局部极小点也是全局极小点；如果 Hessian 处处半正定，函数就是凸的。面试中经常问凸性，不是为了背定义，而是为了判断一个优化问题是否容易求全局最优。</p>
+<div class="intuition-box">
+  <p><b>凸性解决什么问题？</b> 非凸函数可能有很多局部谷底和鞍点，算法停下来也不一定是全局最好；凸函数没有这种陷阱。线性回归的平方损失是凸的，所以理论上好处理；深度神经网络整体通常非凸，所以优化稳定性更依赖初始化、归一化、学习率调度和优化器设计。</p>
+</div>
+
+<h3 id="s-004-4"><a class="anchor-link" href="#s-004-4" aria-label="跳转到本节">#</a>例题一：用 Hessian 判断二次函数</h3>
+<div class="worked-example">
+  <p><b>题目。</b> 判断函数</p>
+  <div class="math-display">\[f(x,y)=x^2+2xy+3y^2-4x-6y\]</div>
+  <p>是否为凸函数，并求它的极小点。</p>
+</div>
+<div class="solution">
+  <p><b>第一步：求梯度。</b> 对 \(x\) 求偏导时，把 \(y\) 当常数；对 \(y\) 求偏导时，把 \(x\) 当常数。</p>
+  <div class="math-display">\[\frac{\partial f}{\partial x}=2x+2y-4,\qquad \frac{\partial f}{\partial y}=2x+6y-6\]</div>
+  <p>所以梯度是：</p>
+  <div class="math-display">\[\nabla f(x,y)=\begin{bmatrix}2x+2y-4\\2x+6y-6\end{bmatrix}\]</div>
+  <p><b>第二步：求 Hessian。</b> 再对梯度里的每个分量求一次偏导：</p>
+  <div class="math-display">\[H=\begin{bmatrix}\frac{\partial^2 f}{\partial x^2}&\frac{\partial^2 f}{\partial x\partial y}\\\frac{\partial^2 f}{\partial y\partial x}&\frac{\partial^2 f}{\partial y^2}\end{bmatrix}=\begin{bmatrix}2&2\\2&6\end{bmatrix}\]</div>
+  <p><b>第三步：判断正定。</b> 对 \(2\times 2\) 对称矩阵 \(\begin{bmatrix}a&b\\b&d\end{bmatrix}\)，常用正定判据是 \(a>0\) 且行列式 \(ad-b^2>0\)。这里：</p>
+  <div class="math-display">\[2>0,\qquad \det(H)=2\cdot 6-2\cdot 2=8>0\]</div>
+  <p>因此 \(H\) 正定，函数严格凸。严格凸意味着极小点唯一，解梯度为零即可得到全局极小点。</p>
+  <p><b>第四步：解驻点。</b></p>
+  <div class="math-display">\[\begin{cases}2x+2y-4=0\\2x+6y-6=0\end{cases}\quad \Longrightarrow\quad \begin{cases}x+y=2\\x+3y=3\end{cases}\]</div>
+  <p>两式相减得到 \(2y=1\)，所以 \(y=\frac{1}{2}\)，再代回 \(x+y=2\)，得到 \(x=\frac{3}{2}\)。因此全局极小点是：</p>
+  <div class="math-display">\[(x^*,y^*)=\left(\frac{3}{2},\frac{1}{2}\right)\]</div>
+</div>
+<p>这个例题体现了二阶方法的基本套路：先用梯度找候选点，再用 Hessian 判断这个候选点是什么类型。对二次函数来说，Hessian 是常数；对一般非线性函数，Hessian 会随着位置变化。</p>
+
+<h3 id="s-004-5"><a class="anchor-link" href="#s-004-5" aria-label="跳转到本节">#</a>Lagrange 与 KKT：约束如何进入优化</h3>
+<p>现实问题很少是“随便选 \(x\) 让目标最小”。量化里有预算约束、杠杆约束、做空限制；机器学习里有正则化、概率归一化、范数限制；系统优化里有资源容量限制。这些限制让可选点只落在某个集合里。</p>
+<p>先看等式约束。假设要最小化 \(f(x)\)，同时必须满足 \(g(x)=0\)。Lagrange 方法构造一个新函数：</p>
+<div class="math-display">\[\mathcal{L}(x,\lambda)=f(x)+\lambda g(x)\]</div>
+<ul class="formula-list">
+  <li>\(\mathcal{L}\)：Lagrangian，不是原始目标，而是把目标和约束合并后的辅助函数。</li>
+  <li>\(\lambda\)：Lagrange 乘子，可以理解为约束的“影子价格”。</li>
+  <li>\(\nabla_x \mathcal{L}=0\)：在可行约束面上已经没有可继续改进的一阶方向。</li>
+  <li>\(g(x)=0\)：最后仍然必须满足原约束。</li>
+</ul>
+<div class="math-display">\[\nabla f(x^*)+\lambda \nabla g(x^*)=0,\qquad g(x^*)=0\]</div>
+<p>几何上，最优点处目标函数等高线和约束曲线相切。若不相切，就还能沿约束曲线移动，让目标继续变小。</p>
+<p>KKT 条件处理不等式约束。把不等式写成 \(g_i(x)\le 0\)，KKT 的核心条件是：</p>
+<div class="math-display">\[\nabla f(x^*)+\sum_i \lambda_i\nabla g_i(x^*)=0,\qquad g_i(x^*)\le 0,\qquad \lambda_i\ge 0,\qquad \lambda_i g_i(x^*)=0\]</div>
+<p>最后一项叫互补松弛，读法是：每个约束和它的乘子不能同时“闲着又收费”。如果 \(g_i(x^*)<0\)，约束没有卡住，\(\lambda_i=0\)；如果 \(\lambda_i>0\)，说明这个约束确实卡在边界上，必须有 \(g_i(x^*)=0\)。</p>
+<div class="intuition-box">
+  <p><b>KKT 为什么重要？</b> 它把“边界是否起作用”变成了可检查的代数条件。组合优化里，仓位上限、非负权重、风险预算等约束是否 binding，往往决定最优解长什么样；模型训练里，带约束的投影、范数裁剪、最大熵问题也会用到同一套思想。</p>
+</div>
+
+<h3 id="s-004-6"><a class="anchor-link" href="#s-004-6" aria-label="跳转到本节">#</a>例题二：一个完整约束优化</h3>
+<div class="worked-example">
+  <p><b>题目。</b> 在直线 \(x+y=1\) 上，找到离原点最近的点。也就是求解：</p>
+  <div class="math-display">\[\min_{x,y}\; x^2+y^2\quad \text{s.t.}\quad x+y=1\]</div>
+</div>
+<div class="solution">
+  <p><b>第一步：理解目标和约束。</b> \(x^2+y^2\) 是点 \((x,y)\) 到原点距离的平方。因为平方函数单调，所以最小化距离等价于最小化距离平方。约束 \(x+y=1\) 表示点必须在一条直线上。</p>
+  <p><b>第二步：构造 Lagrangian。</b> 把约束写成 \(g(x,y)=x+y-1=0\)：</p>
+  <div class="math-display">\[\mathcal{L}(x,y,\lambda)=x^2+y^2+\lambda(x+y-1)\]</div>
+  <p><b>第三步：分别对 \(x,y,\lambda\) 求导并令其为零。</b></p>
+  <div class="math-display">\[\frac{\partial \mathcal{L}}{\partial x}=2x+\lambda=0,\qquad \frac{\partial \mathcal{L}}{\partial y}=2y+\lambda=0,\qquad \frac{\partial \mathcal{L}}{\partial \lambda}=x+y-1=0\]</div>
+  <p><b>第四步：解方程。</b> 前两个式子给出 \(2x+\lambda=2y+\lambda\)，所以 \(x=y\)。再代入 \(x+y=1\)，得到：</p>
+  <div class="math-display">\[x^*=y^*=\frac{1}{2}\]</div>
+  <p>最优点是 \(\left(\frac{1}{2},\frac{1}{2}\right)\)，最小目标值是：</p>
+  <div class="math-display">\[\left(\frac{1}{2}\right)^2+\left(\frac{1}{2}\right)^2=\frac{1}{2}\]</div>
+  <p><b>第五步：解释乘子。</b> 由 \(2x+\lambda=0\) 可得 \(\lambda=-1\)。这个值表示如果约束右端从 \(1\) 稍微变化，最优值会按相应方向变化。你不需要一开始就把它理解成经济学价格，但要知道它衡量“约束有多紧”。</p>
+</div>
+<p>这个例题的量化版本是最小方差组合：在权重之和为 \(1\) 的约束下，最小化组合方差 \(w^T\Sigma w\)。这里 \(w\) 是资产权重，\(\Sigma\) 是协方差矩阵，预算约束是 \(\mathbf{1}^T w=1\)。形式上它和上面的 \(x^2+y^2\) 问题同源，只是圆形距离变成了由协方差矩阵定义的风险。</p>
+
+<h3 id="s-004-7"><a class="anchor-link" href="#s-004-7" aria-label="跳转到本节">#</a>矩阵求导：把模型训练写成矩阵形式</h3>
+<p>矩阵求导的目标不是炫技，而是把很多变量同时写清楚。线性回归、ridge regression、最小方差组合、神经网络的一层线性变换，都可以用矩阵表达。这样做的好处是维度清晰、实现高效、推导更接近代码。</p>
+<p>最常用的例子是最小二乘。给定数据矩阵 \(A\)、参数向量 \(x\)、标签向量 \(b\)，预测误差是 \(Ax-b\)，平方损失是：</p>
+<div class="math-display">\[f(x)=\frac{1}{2}\|Ax-b\|_2^2\]</div>
+<p>这里 \(\|v\|_2^2=v^Tv\)，所以也可以写成：</p>
+<div class="math-display">\[f(x)=\frac{1}{2}(Ax-b)^T(Ax-b)\]</div>
+<p>它的梯度是：</p>
+<div class="math-display">\[\nabla_x f(x)=A^T(Ax-b)\]</div>
+<p>公式读法是：先算残差 \(Ax-b\)，再用 \(A^T\) 把残差从样本空间传回参数空间。这和神经网络反向传播的直觉一致：输出端的误差要通过局部线性映射转回参数或输入。</p>
+<div class="table-wrap"><table><thead><tr><th>表达式</th><th>导数</th><th>常见用途</th></tr></thead><tbody>
+<tr><td>\(a^Tx\)</td><td>\(a\)</td><td>线性打分、线性约束</td></tr>
+<tr><td>\(\frac{1}{2}\|Ax-b\|_2^2\)</td><td>\(A^T(Ax-b)\)</td><td>最小二乘、线性回归</td></tr>
+<tr><td>\(x^TAx\)</td><td>\((A+A^T)x\)</td><td>二次型、风险、能量函数</td></tr>
+<tr><td>\(\frac{1}{2}x^TAx\)，且 \(A=A^T\)</td><td>\(Ax\)</td><td>凸二次规划、Newton 局部模型</td></tr>
+</tbody></table></div>
+<div class="worked-example">
+  <p><b>小例子。</b> 若 \(A=\begin{bmatrix}1&2\\3&4\end{bmatrix}\)、\(x=\begin{bmatrix}1\\0\end{bmatrix}\)、\(b=\begin{bmatrix}0\\1\end{bmatrix}\)，求 \(\nabla_x \frac{1}{2}\|Ax-b\|^2\)。</p>
+</div>
+<div class="solution">
+  <p>先算预测：</p>
+  <div class="math-display">\[Ax=\begin{bmatrix}1\\3\end{bmatrix}\]</div>
+  <p>再算残差：</p>
+  <div class="math-display">\[Ax-b=\begin{bmatrix}1\\3\end{bmatrix}-\begin{bmatrix}0\\1\end{bmatrix}=\begin{bmatrix}1\\2\end{bmatrix}\]</div>
+  <p>最后乘 \(A^T\)：</p>
+  <div class="math-display">\[A^T(Ax-b)=\begin{bmatrix}1&3\\2&4\end{bmatrix}\begin{bmatrix}1\\2\end{bmatrix}=\begin{bmatrix}7\\10\end{bmatrix}\]</div>
+  <p>所以梯度是 \(\begin{bmatrix}7\\10\end{bmatrix}\)。这个结果和 \(x\) 一样是两维向量，维度检查通过。</p>
+</div>
+<p>面试里矩阵求导最常见的错误不是少背了某个公式，而是维度不一致。对 \(x\in\mathbb{R}^d\) 求导，梯度也必须是 \(d\) 维；如果推出来是样本数维度，通常说明少乘了一个 \(A^T\) 或把前向/反向方向弄反了。</p>
+
+<h3 id="s-004-8"><a class="anchor-link" href="#s-004-8" aria-label="跳转到本节">#</a>学习率、smoothness、条件数与稳定性</h3>
+<p>学习率 \(\eta\) 决定每次更新走多远。太小会慢，太大可能震荡或发散。判断“多大算太大”需要曲率信息。对一个梯度变化不太剧烈的函数，我们用 smoothness 描述：</p>
+<div class="math-display">\[\|\nabla f(x)-\nabla f(y)\|\le L\|x-y\|\]</div>
+<p>这个不等式读作：两点的梯度差不会超过两点距离的 \(L\) 倍。\(L\) 越大，说明梯度变化越快，地形越陡，稳定步长越小。对二次函数 \(f(x)=\frac{1}{2}x^THx\)，如果 \(H\) 正定，最大的特征值 \(\lambda_{\max}\) 就对应最陡方向的曲率，常常可视为 smoothness 常数。</p>
+<div class="math-display">\[\text{稳定步长通常需要和 } \frac{1}{L} \text{ 同量级，二次函数中常见条件是 } 0<\eta<\frac{2}{\lambda_{\max}}\]</div>
+<p>另一个关键量是条件数：</p>
+<div class="math-display">\[\kappa=\frac{\lambda_{\max}}{\lambda_{\min}}\]</div>
+<p>它衡量最陡方向和最平方向的曲率差距。若 \(\kappa\) 很大，函数像一个狭长山谷：横向很陡，纵向很平。梯度下降为了不在陡方向发散，只能选小学习率；但小学习率又会导致平方向前进很慢，于是训练表现为震荡、收敛慢、对尺度非常敏感。</p>
+<div class="concept-grid">
+  <div class="concept-card"><b>feature scaling</b><p>把输入特征缩放到相近尺度，减少某些方向过陡、某些方向过平的问题。</p></div>
+  <div class="concept-card"><b>LayerNorm / RMSNorm</b><p>在网络内部控制激活尺度，让梯度和激活更稳定，间接改善优化地形。</p></div>
+  <div class="concept-card"><b>Adam / Adagrad</b><p>按参数历史梯度大小调整更新尺度，可看成一种粗略的对角预条件。</p></div>
+  <div class="concept-card"><b>Newton / quasi-Newton</b><p>显式利用二阶曲率修正方向，但完整 Hessian 在大模型中太大，通常只能近似。</p></div>
+</div>
+<p>数值稳定还包括矩阵求逆和线性方程求解。比如正规方程 \(A^TAx=A^Tb\) 看起来能直接解最小二乘，但如果 \(A^TA\) 条件数很大，求逆会放大误差。工程上更常用 QR、SVD、正则化或迭代方法，不是因为公式错了，而是因为浮点数计算会把病态矩阵的问题放大。</p>
+<div class="intuition-box">
+  <p><b>一句话总结稳定性。</b> 数学公式默认精确实数，代码运行在有限精度浮点数上。条件数大、特征值跨度大、指数过大、矩阵接近奇异，都会让“理论上等价”的公式在计算机里表现得很不等价。</p>
+</div>
+
+<h3 id="s-004-9"><a class="anchor-link" href="#s-004-9" aria-label="跳转到本节">#</a>面试连接、误区与检查清单</h3>
+<p>在 LLM 训练里，Hessian 和条件数解释了很多优化现象：为什么 loss landscape 有鞍点，为什么学习率 warmup 能减少早期不稳定，为什么归一化层能改善训练，为什么完整 Newton 方法很少直接用于大模型。参数量达到几十亿时，完整 Hessian 的规模是参数量平方级，无法显式存储；但二阶思想仍然存在于预条件、曲率估计、Fisher 信息矩阵近似和优化器设计里。</p>
+<p>在量化面试里，这一章对应均值方差组合、风险预算、带约束的最优化和数值求解稳定性。组合方差 \(w^T\Sigma w\) 是典型二次型，\(\Sigma\) 的正定性决定风险是否良好定义；预算约束 \(\mathbf{1}^Tw=1\)、非负权重 \(w_i\ge 0\)、行业暴露上限等都会自然引出 Lagrange 和 KKT。若协方差矩阵条件数很差，最优权重会对微小估计误差极其敏感，这就是组合优化里常见的“看起来最优，实际很脆弱”。</p>
+<div class="table-wrap"><table><thead><tr><th>常见误区</th><th>正确理解</th></tr></thead><tbody>
+<tr><td>梯度为零就一定是最小点</td><td>还要看 Hessian；可能是极大点或鞍点。</td></tr>
+<tr><td>Hessian 正定只说明局部性质</td><td>在某点正定说明该点附近像碗；若处处半正定，才对应全局凸性。</td></tr>
+<tr><td>KKT 只是 Lagrange 的另一种写法</td><td>KKT 处理不等式约束，核心新增互补松弛和乘子非负条件。</td></tr>
+<tr><td>矩阵求导靠背公式即可</td><td>必须做维度检查，并理解残差如何通过转置矩阵传回参数空间。</td></tr>
+<tr><td>学习率不稳定只是调参问题</td><td>背后通常是曲率、smoothness、条件数和浮点数稳定性问题。</td></tr>
+<tr><td>矩阵求逆是求解线性系统的默认方式</td><td>工程上常避免显式求逆，优先用分解、正则化或稳定求解器。</td></tr>
+</tbody></table></div>
+<p><b>本章检查清单。</b></p>
+<ul class="checkpoint-list">
+  <li>我能解释梯度和 Hessian 分别描述什么：一个是一阶方向，一个是二阶曲率。</li>
+  <li>我能读懂 \(H_{ij}=\frac{\partial^2 f}{\partial x_i\partial x_j}\)，知道它表示两个变量之间的二阶变化关系。</li>
+  <li>我能用 \(2\times 2\) Hessian 的正定判据判断二次函数是否严格凸。</li>
+  <li>我知道凸函数为什么好：局部极小就是全局极小，优化不会被坏局部谷底困住。</li>
+  <li>我能列出等式约束优化的 Lagrangian，并对变量和乘子分别求导。</li>
+  <li>我能解释 KKT 的互补松弛：约束不紧时乘子为零，乘子非零时约束必须卡边界。</li>
+  <li>我能推或至少正确使用 \(\nabla_x \frac{1}{2}\|Ax-b\|^2=A^T(Ax-b)\)。</li>
+  <li>我会做维度检查：对哪个变量求导，结果就应该和哪个变量形状一致。</li>
+  <li>我能解释 smoothness 常数 \(L\) 为什么限制学习率，条件数 \(\kappa\) 为什么影响收敛速度。</li>
+  <li>我能把这些概念连接到 LLM 训练稳定性和量化组合优化的约束、风险、数值病态问题。</li>
+</ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="003.html">← 003. 微积分二：Taylor、链式法则与反向传播</a><a href="005.html">005. 线性代数一：向量空间、矩阵与秩 →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 原路径保留，内容按短教科书式复习结构组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visual Generation Unlocks Human-Like Reasoning through Multimodal World Models - 深度解读</title>
+  <style>
+    :root {
+      --ink: #171512;
+      --muted: #6f6659;
+      --paper: #f6f1e7;
+      --panel: #fffaf0;
+      --line: #d8c9af;
+      --teal: #0f766e;
+      --red: #b43f34;
+      --blue: #2f5f9f;
+      --green: #3f7a47;
+      --gold: #a66f17;
+      --shadow: 0 22px 70px rgba(54, 39, 18, 0.14);
+      --mono: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
+      --serif: Georgia, "Times New Roman", "Songti SC", "STSong", serif;
+      --sans: "Avenir Next", "Gill Sans", "Helvetica Neue", "PingFang SC", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(23, 21, 18, 0.05) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(180deg, rgba(15, 118, 110, 0.09), transparent 44rem),
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+    }
+
+    a {
+      color: var(--teal);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .shell {
+      width: min(1180px, calc(100vw - 40px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: 92vh;
+      display: grid;
+      align-items: end;
+      padding: 42px 0 58px;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: auto -8vw 10vh auto;
+      width: min(52vw, 620px);
+      aspect-ratio: 1;
+      background:
+        linear-gradient(145deg, rgba(15, 118, 110, 0.24), rgba(180, 63, 52, 0.1)),
+        repeating-linear-gradient(45deg, transparent 0 16px, rgba(23, 21, 18, 0.06) 16px 17px);
+      clip-path: polygon(10% 7%, 93% 18%, 82% 91%, 18% 78%);
+      transform: rotate(-8deg);
+      z-index: -1;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px 6px;
+      border: 1px solid var(--line);
+      background: rgba(255, 250, 240, 0.74);
+      color: var(--muted);
+      font: 700 12px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+      font-family: var(--serif);
+    }
+
+    h1 {
+      max-width: 1030px;
+      margin-top: 24px;
+      font-size: clamp(42px, 7vw, 92px);
+      font-weight: 700;
+    }
+
+    .subtitle {
+      max-width: 880px;
+      margin: 26px 0 0;
+      color: #4c463d;
+      font-size: clamp(19px, 2vw, 26px);
+      line-height: 1.55;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 28px;
+      align-items: end;
+      margin-top: 46px;
+    }
+
+    .thesis {
+      padding: 30px;
+      background: var(--ink);
+      color: #fff7e8;
+      box-shadow: var(--shadow);
+      border-radius: 4px;
+    }
+
+    .thesis strong {
+      color: #8ee1d7;
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .fact {
+      min-height: 116px;
+      padding: 17px;
+      background: rgba(255, 250, 240, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .fact span {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font: 700 12px/1.2 var(--mono);
+      text-transform: uppercase;
+    }
+
+    .fact b {
+      display: block;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 42px;
+      padding: 44px 0 90px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      padding: 18px;
+      background: rgba(255, 250, 240, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .toc h2 {
+      margin-bottom: 12px;
+      font: 800 14px/1.2 var(--mono);
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: block;
+      padding: 8px 0;
+      color: #3e392f;
+      font-size: 14px;
+      text-decoration: none;
+      border-top: 1px solid rgba(216, 201, 175, 0.7);
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    section {
+      padding: 46px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:first-child {
+      padding-top: 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      color: var(--panel);
+      background: var(--ink);
+      font: 800 18px/1 var(--mono);
+      border-radius: 50%;
+    }
+
+    h2 {
+      font-size: clamp(30px, 4vw, 52px);
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 27px;
+    }
+
+    p {
+      margin: 12px 0;
+      font-size: 17px;
+    }
+
+    .lead {
+      font-size: 21px;
+      line-height: 1.6;
+      color: #3f3931;
+    }
+
+    .note {
+      margin: 22px 0;
+      padding: 19px 22px;
+      background: #e9f3ef;
+      border-left: 6px solid var(--teal);
+      border-radius: 4px;
+    }
+
+    .warning {
+      background: #f5e6dc;
+      border-left-color: var(--red);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .panel,
+    .mini-card {
+      background: rgba(255, 250, 240, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(54, 39, 18, 0.08);
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    .mini-card {
+      padding: 18px;
+    }
+
+    .mini-card h3,
+    .panel h3 {
+      margin-top: 0;
+      font-family: var(--sans);
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 0 8px 8px 0;
+      padding: 4px 8px;
+      background: #efe2c9;
+      border: 1px solid #d6bf95;
+      border-radius: 999px;
+      color: #5b4a2f;
+      font: 700 12px/1.2 var(--mono);
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .step {
+      min-height: 170px;
+      padding: 17px;
+      color: #fbf6ea;
+      background: var(--ink);
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .step:nth-child(2) {
+      background: var(--teal);
+    }
+
+    .step:nth-child(3) {
+      background: var(--blue);
+    }
+
+    .step:nth-child(4) {
+      background: var(--red);
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 10px;
+      font: 800 13px/1 var(--mono);
+      text-transform: uppercase;
+    }
+
+    table {
+      width: 100%;
+      margin: 22px 0;
+      border-collapse: collapse;
+      background: rgba(255, 250, 240, 0.9);
+      border: 1px solid var(--line);
+      font-size: 15px;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: #efe2c9;
+      color: #3a3124;
+      font: 800 12px/1.2 var(--mono);
+      text-transform: uppercase;
+    }
+
+    .metric {
+      font-family: var(--mono);
+      color: var(--teal);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .figure {
+      margin: 30px 0;
+      padding: 14px;
+      background: #fffdf7;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(216, 201, 175, 0.9);
+    }
+
+    .caption {
+      margin: 12px 4px 2px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .verdict {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 20px;
+      align-items: stretch;
+      margin: 30px 0;
+    }
+
+    .score {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: #fff8e9;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.94), rgba(47, 95, 159, 0.9)),
+        var(--teal);
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .score .big {
+      font: 800 clamp(58px, 8vw, 112px)/0.95 var(--serif);
+    }
+
+    .score .label {
+      margin-top: 12px;
+      max-width: 360px;
+      font-weight: 700;
+    }
+
+    .quote {
+      padding: 24px;
+      background: #211d18;
+      color: #fff7e8;
+      border-radius: 4px;
+    }
+
+    .quote p {
+      font-size: 23px;
+      line-height: 1.45;
+      font-family: var(--serif);
+    }
+
+    .references {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    code {
+      padding: 1px 5px;
+      background: #efe2c9;
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    .footer {
+      padding: 34px 0 54px;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 920px) {
+      .hero-grid,
+      .layout,
+      .grid-2,
+      .grid-3,
+      .pipeline,
+      .verdict {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        width: min(100vw - 24px, 1180px);
+      }
+
+      .hero {
+        padding-top: 24px;
+      }
+
+      .facts {
+        grid-template-columns: 1fr;
+      }
+
+      .thesis,
+      .panel,
+      .mini-card {
+        padding: 18px;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header class="hero">
+    <div class="shell">
+      <span class="kicker">arXiv:2601.19834 · Paper Reading Report</span>
+      <h1>视觉生成，什么时候真的能提升推理？</h1>
+      <p class="subtitle">
+        对 <em>Visual Generation Unlocks Human-Like Reasoning through Multimodal World Models</em> 的结构化深读：
+        从 world model 理论、VisWorld-Eval 任务设计、SFT/RLVR 对照实验，到我对“视觉 CoT 是否有实际价值”的判断。
+      </p>
+      <div class="hero-grid">
+        <div class="thesis">
+          <p>
+            <strong>一句话结论：</strong>这篇论文最重要的贡献不是“让模型画图”，而是把图像生成放到
+            <strong>中间 world model</strong> 的位置：当任务状态是空间/物理的、难以用语言紧凑表达、且视觉预训练先验更贴近下游任务时，
+            interleaved verbal-visual CoT 会显著优于纯语言 CoT；但在 Maze 这类低维符号状态任务上，视觉生成反而可能只是额外负担。
+          </p>
+        </div>
+        <div class="facts">
+          <div class="fact"><span>论文类型</span><b>理论框架 + benchmark + 受控训练评估</b></div>
+          <div class="fact"><span>核心对象</span><b>统一多模态模型中的视觉 world model</b></div>
+          <div class="fact"><span>关键数据集</span><b>VisWorld-Eval：7 个空间/物理推理任务</b></div>
+          <div class="fact"><span>我的判断</span><b>强证据，但不是通用视觉 CoT 万能论</b></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell layout">
+    <aside class="toc" aria-label="页面目录">
+      <h2>目录</h2>
+      <a href="#problem">1. 论文在解决什么问题</a>
+      <a href="#framework">2. 理论框架</a>
+      <a href="#method">3. 三种 CoT 形式</a>
+      <a href="#eval">4. VisWorld-Eval</a>
+      <a href="#training">5. 训练与评估</a>
+      <a href="#results">6. 主要实验结果</a>
+      <a href="#boundary">7. 失败边界</a>
+      <a href="#insight">8. 我的 insight</a>
+      <a href="#use">9. 如何使用这个结论</a>
+    </aside>
+
+    <article class="content">
+      <section id="problem">
+        <div class="section-head">
+          <div class="num">01</div>
+          <div>
+            <h2>论文在解决什么问题</h2>
+            <p class="lead">
+              作者要回答的问题不是“多模态模型会不会生成图片”，而是“图像生成作为推理过程中的中间状态，什么时候能比纯文字思维链更有效”。
+            </p>
+          </div>
+        </div>
+        <p>
+          现有 LLM/VLM 的推理主要依赖 verbal chain-of-thought。数学题、代码题、逻辑题通常适合这种表示，因为中间状态本身就是符号、变量、约束和自然语言。
+          但折纸、球反弹、空间方位、三维视角重建这类任务不一样：真正困难的是维护一个随动作变化的空间状态。
+        </p>
+        <p>
+          纯文字当然可以描述空间状态，例如用坐标、矩阵、对象列表、方向关系。但这种描述经常遇到三个问题：
+          第一，状态写起来很长；第二，局部关系容易漏；第三，模型的语言预训练分布里未必有足够多“折纸每一步如何展开”的详细文本。
+          视觉生成则可能更自然：一张中间图可以同时承载轮廓、位置、遮挡、方向、对称和运动轨迹。
+        </p>
+        <div class="note">
+          <strong>关键转向：</strong>这篇论文把 visual generation 从“最终产出图像”转成“推理过程中的外化 world model”。
+          图像不是画给人看的装饰，而是模型下一步推理可以继续读取和使用的中间观察。
+        </div>
+      </section>
+
+      <section id="framework">
+        <div class="section-head">
+          <div class="num">02</div>
+          <div>
+            <h2>理论框架：world model 如何进入 CoT</h2>
+            <p class="lead">
+              论文用 multi-observable MDP 描述任务世界：真实状态隐藏在背后，模型只能通过不同模态、不同视角的 observation 来推理。
+            </p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>World reconstruction</h3>
+            <p>
+              从有限观察恢复当前世界结构，并生成未见过的新视角。例如从一个等轴视图和两个正交视图重建立方体堆叠，再想象背面视角能看到几个指定颜色的方块。
+            </p>
+            <span class="tag">novel view synthesis</span>
+            <span class="tag">mental rotation</span>
+            <span class="tag">partial observation</span>
+          </div>
+          <div class="panel">
+            <h3>World simulation</h3>
+            <p>
+              根据当前状态和动作预测未来观察。例如折纸一步步展开、球按镜面反射运动、物体场景经过多步操作后更新布局。
+            </p>
+            <span class="tag">state transition</span>
+            <span class="tag">physical dynamics</span>
+            <span class="tag">planning</span>
+          </div>
+        </div>
+        <p>
+          普通 CoT 可以写成一串文字步骤 <code>r1, r2, ...</code>。论文进一步把每一步写成 <code>(r_i, o_i)</code>：
+          <code>r_i</code> 是文字推理，<code>o_i</code> 是该步生成或维护的观察。观察可以是空的、文字的、符号矩阵的，也可以是图像。
+          这个抽象让“视觉生成”有了明确位置：它就是 <code>o_i</code>，即推理中的显式 visual observation。
+        </p>
+        <div class="figure">
+          <img src="visual-generation-world-models-assets/figure-visworld-eval.png" alt="论文中的 VisWorld-Eval 和 Table 1 页面截图">
+          <p class="caption">
+            原论文页面截图：这一页展示了 VisWorld-Eval 的任务构成和强模型零样本表现。HTML 使用本地 PDF 截图，方便离线核对。
+          </p>
+        </div>
+      </section>
+
+      <section id="method">
+        <div class="section-head">
+          <div class="num">03</div>
+          <div>
+            <h2>三种 CoT/world model 形式</h2>
+            <p class="lead">
+              论文的实验核心是控制变量：同一类任务、同一基座模型、不同中间状态表示方式。
+            </p>
+          </div>
+        </div>
+        <div class="pipeline">
+          <div class="step">
+            <b>输入</b>
+            初始图片、问题、可选文字指令。例如折纸图、球运动图、立方体堆叠视角图。
+          </div>
+          <div class="step">
+            <b>中间状态</b>
+            隐式状态、文字矩阵、坐标、符号表，或模型生成的中间图像。
+          </div>
+          <div class="step">
+            <b>推理更新</b>
+            按动作或视角变化更新 world model：展开纸、反弹球、旋转方块、移动相机。
+          </div>
+          <div class="step">
+            <b>答案</b>
+            输出短答案或选择项，用 answer accuracy 评估。
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>形式</th>
+              <th>中间 observation</th>
+              <th>优势</th>
+              <th>风险</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Implicit WM</strong></td>
+              <td><code>o_i = empty</code>，状态藏在 hidden states 中。</td>
+              <td>不引入显式生成错误；适合 Maze 这类低维坐标状态。</td>
+              <td>复杂状态难以稳定保存在内部表示里，学习难度高。</td>
+            </tr>
+            <tr>
+              <td><strong>Verbal WM</strong></td>
+              <td>文字、坐标、矩阵、对象列表、符号视图。</td>
+              <td>可读、可检查、对符号任务很自然。</td>
+              <td>表达空间几何、遮挡、轨迹和视角变化时会变长且易错。</td>
+            </tr>
+            <tr>
+              <td><strong>Visual WM</strong></td>
+              <td>文字步骤中插入生成图像，形成 interleaved verbal-visual CoT。</td>
+              <td>自然承载形状、位置、运动和遮挡；更接近视觉预训练先验。</td>
+              <td>图像生成本身可能 hallucinate，且计算成本更高。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note warning">
+          <strong>不要误解：</strong>这篇论文不是说“图片越多越好”。它强调的是 trade-off：
+          显式 world model 会降低推理不确定性，但也会引入 world-modeling error。任务越简单，显式视觉状态越可能不划算。
+        </div>
+      </section>
+
+      <section id="eval">
+        <div class="section-head">
+          <div class="num">04</div>
+          <div>
+            <h2>VisWorld-Eval：到底测什么</h2>
+            <p class="lead">
+              VisWorld-Eval 是一个问答式评测套件，答案短且可验证，核心指标是 accuracy。它不测图像美观度，也不是开放聊天。
+            </p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>任务</th>
+              <th>能力</th>
+              <th>训练/测试样本</th>
+              <th>为什么需要 world model</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Paper folding</td>
+              <td>Simulation</td>
+              <td><span class="metric">2,357 / 480</span></td>
+              <td>需要模拟折纸展开、孔洞镜像和形状计数。</td>
+            </tr>
+            <tr>
+              <td>Multi-hop manipulation</td>
+              <td>Simulation</td>
+              <td><span class="metric">2,000 / 480</span></td>
+              <td>多步添加、删除、换色、换形状后维护最终空间布局。</td>
+            </tr>
+            <tr>
+              <td>Ball tracking</td>
+              <td>Simulation</td>
+              <td><span class="metric">2,254 / 1,024</span></td>
+              <td>需要预测理想反射轨迹和首个进入的洞。</td>
+            </tr>
+            <tr>
+              <td>Maze</td>
+              <td>Simulation</td>
+              <td><span class="metric">8,448 / 480</span></td>
+              <td>状态只是 5x5 坐标和墙，低维符号表示已足够。</td>
+            </tr>
+            <tr>
+              <td>Sokoban</td>
+              <td>Simulation</td>
+              <td><span class="metric">7,715 / 480</span></td>
+              <td>需要维护玩家、箱子、目标位置和动作序列。</td>
+            </tr>
+            <tr>
+              <td>Cube 3-view projection</td>
+              <td>Reconstruction</td>
+              <td><span class="metric">2,500 / 480</span></td>
+              <td>从部分视角重建 3D 结构，再生成未见视角。</td>
+            </tr>
+            <tr>
+              <td>Real-world spatial reasoning</td>
+              <td>Reconstruction</td>
+              <td><span class="metric">10,661 / 522</span></td>
+              <td>从真实图片的有限视角判断相机、物体、区域方位。</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          评估协议很关键：论文主要评 post-trained UMM，而不是只看 base model 零样本。
+          这样做是为了减少“模型不会输出 interleaved 图文格式”的混杂因素，更接近回答“如果我们训练它使用视觉 scratchpad，它是否真的有收益”。
+        </p>
+      </section>
+
+      <section id="training">
+        <div class="section-head">
+          <div class="num">05</div>
+          <div>
+            <h2>训练与评估流程</h2>
+            <p class="lead">
+              主模型是 BAGEL。SFT 同时训练文字推理和视觉中间图；RLVR 阶段只直接优化文字生成，视觉生成通过 KL 约束保持稳定。
+            </p>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="mini-card">
+            <h3>SFT 数据</h3>
+            <p>规则模板、搜索算法、Seed/Gemini 改写与过滤，构造 implicit/verbal/visual 三种 CoT 格式。</p>
+          </div>
+          <div class="mini-card">
+            <h3>SFT 损失</h3>
+            <p>文字部分用 cross-entropy，视觉部分用 flow-matching/MSE 风格目标，CE:MSE loss weight 为 <code>1:10</code>。</p>
+          </div>
+          <div class="mini-card">
+            <h3>RLVR</h3>
+            <p>用 GRPO 根据最终可验证答案优化；视觉生成不直接吃 reward，而是用相对 SFT reference 的 KL 正则。</p>
+          </div>
+        </div>
+        <p>
+          这个训练设计让我比较信服的一点是：论文没有简单地把视觉中间图当成最终监督标签，而是把它放入推理轨迹中。
+          特别是 RLVR 结果显示，即便只直接优化文字生成，visual world modeling 的领先差距仍然存在，说明收益不只是“图片被单独训练得更像标签”。
+        </p>
+      </section>
+
+      <section id="results">
+        <div class="section-head">
+          <div class="num">06</div>
+          <div>
+            <h2>主要实验结果</h2>
+            <p class="lead">
+              视觉 world model 在 paper folding、multi-hop manipulation、ball tracking、cube 3-view、MMSI 指定子任务上有明显优势。
+            </p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>任务</th>
+              <th>Implicit WM</th>
+              <th>Verbal WM</th>
+              <th>Visual WM</th>
+              <th>我的解读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Paper folding</td>
+              <td>21.1</td>
+              <td>27.4</td>
+              <td><span class="metric">39.2</span></td>
+              <td>矩阵能记录孔洞，但很难自然表达纸张轮廓和连续镜像。</td>
+            </tr>
+            <tr>
+              <td>Multi-hop manipulation</td>
+              <td>40.0</td>
+              <td>不适用</td>
+              <td><span class="metric">66.6</span></td>
+              <td>多步空间布局更新更像“可视化状态追踪”，语言描述容易丢对象关系。</td>
+            </tr>
+            <tr>
+              <td>Ball tracking</td>
+              <td>40.7</td>
+              <td>不适用</td>
+              <td><span class="metric">57.6</span></td>
+              <td>反射轨迹天然适合图像/轨迹表示，纯文字很难精确维护几何路径。</td>
+            </tr>
+            <tr>
+              <td>Cube 3-view projection</td>
+              <td>60.2</td>
+              <td>63.7</td>
+              <td><span class="metric">76.8</span></td>
+              <td>视觉预训练中有大量旋转和视角变化先验，字符矩阵没有这种自然先验。</td>
+            </tr>
+            <tr>
+              <td>MMSI Cam.-Obj.</td>
+              <td>46.5</td>
+              <td>不适用</td>
+              <td><span class="metric">60.9</span></td>
+              <td>真实场景的新视角想象很难完全用文字描述，视觉生成提供 grounding。</td>
+            </tr>
+            <tr>
+              <td>MMSI Cam.-Reg.</td>
+              <td>37.3</td>
+              <td>不适用</td>
+              <td><span class="metric">54.4</span></td>
+              <td>提升明显，但整体真实场景仍受生成质量和方位理解限制。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="figure">
+          <img src="visual-generation-world-models-assets/figure-main-results.png" alt="论文 Figure 4 主要结果页面截图">
+          <p class="caption">
+            原论文页面截图：Figure 4 展示 SFT-trained UMM 在不同 world-model CoT 形式下的 accuracy。
+          </p>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>样本效率</h3>
+            <p>
+              Paper folding 中，visual world modeling 用超过 4 倍更少的 SFT 样本达到与 verbal world modeling 相近的表现。
+              这支持“视觉模态先验更贴近折纸动态”的解释。
+            </p>
+          </div>
+          <div class="panel">
+            <h3>中间 world model fidelity</h3>
+            <p>
+              Cube 3-view 中，视觉中间视图的结构 fidelity 明显高于字符矩阵，且在 stack size 6 的 OOD 设置仍保持优势。
+              这说明最终答案提升与中间状态质量相关，不只是答案格式碰巧正确。
+            </p>
+          </div>
+        </div>
+        <div class="figure">
+          <img src="visual-generation-world-models-assets/figure-analysis.png" alt="论文 Figure 6 和 Figure 7 分析实验页面截图">
+          <p class="caption">
+            原论文页面截图：Figure 6 包含样本效率、cube world-model fidelity、maze 隐式状态 probing；Figure 7 对照 Qwen2.5-VL。
+          </p>
+        </div>
+      </section>
+
+      <section id="boundary">
+        <div class="section-head">
+          <div class="num">07</div>
+          <div>
+            <h2>失败边界：什么时候视觉生成没用</h2>
+            <p class="lead">
+              Maze 和 Sokoban 是这篇论文里最重要的反例：它们证明 visual world model 不是万能增强器。
+            </p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>任务</th>
+              <th>Implicit WM</th>
+              <th>Verbal WM</th>
+              <th>Visual WM</th>
+              <th>原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Maze</td>
+              <td><span class="metric">77.0</span></td>
+              <td>73.1</td>
+              <td>70.6</td>
+              <td>5x5 坐标状态很小，模型 hidden states 已能隐式维护；画图增加生成错误。</td>
+            </tr>
+            <tr>
+              <td>Sokoban</td>
+              <td>29.6</td>
+              <td>36.8</td>
+              <td><span class="metric">39.3</span></td>
+              <td>视觉略好但不大，说明低维网格任务中符号状态已很有效。</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          论文用 probing 支持 Maze 结论：把 CoT 中的显式坐标 mask 掉，然后取 masked token 的 hidden representation，训练两层 MLP 预测真实坐标。
+          随机初始化模型失败，预训练 BAGEL 已有一定状态可预测性，SFT 后接近完美。这说明模型内部确实能隐式维护小迷宫状态。
+        </p>
+        <div class="note">
+          <strong>工程启发：</strong>当状态本来就是低维符号结构时，直接用坐标、表格、程序状态或搜索器通常更可靠。
+          不要为了“多模态”而强行生成中间图片。
+        </div>
+      </section>
+
+      <section id="insight">
+        <div class="section-head">
+          <div class="num">08</div>
+          <div>
+            <h2>我的 insight：这篇论文真正说明了什么</h2>
+            <p class="lead">
+              它最强的地方不是视觉生成本身，而是提出了“中间状态表示选择”这个问题。
+            </p>
+          </div>
+        </div>
+        <div class="verdict">
+          <div class="score">
+            <div class="big">A-</div>
+            <div class="label">概念框架和受控实验很强；真实通用系统落地仍需要更可靠的中间状态校验。</div>
+          </div>
+          <div class="quote">
+            <p>
+              未来的 CoT 不应只有一种形态。模型应根据任务选择 verbal、visual、symbolic、programmatic 或 simulator world model。
+            </p>
+          </div>
+        </div>
+        <h3>我认为成立的部分</h3>
+        <p>
+          论文的正反证据比较完整：视觉 world model 在复杂空间/物理任务上显著提升；在 Maze/Sokoban 上收益有限；样本效率、fidelity、VLM 对照和 RLVR 对照又从不同角度支持解释。
+          因此，“视觉生成在某些物理空间任务中作为 world model 有价值”这个结论是可信的。
+        </p>
+        <h3>我认为需要谨慎的部分</h3>
+        <p>
+          第一，实验主要是 task-specific post-training，不是证明现成通用模型零样本就自然会视觉思考。
+          第二，视觉 CoT 数据构造依赖规则模板、教师模型改写和过滤，成本不低。
+          第三，视觉中间图仍会 hallucinate；真实世界任务中还有模糊、颜色错误、方位误解和细节损坏。
+        </p>
+        <h3>最有价值的抽象</h3>
+        <p>
+          我会把这篇论文抽象为一句设计原则：<strong>推理系统的上限不只由模型大小和 reward 决定，也由中间状态的表示形式决定。</strong>
+          如果任务状态是几何的，就不要强行压成语言；如果任务状态是符号的，也不要强行画图。
+        </p>
+        <div class="figure">
+          <img src="visual-generation-world-models-assets/figure-rlvr.png" alt="论文 Figure 8 RLVR 页面截图">
+          <p class="caption">
+            原论文页面截图：Figure 8 展示 RLVR 后不同 CoT 形式的学习曲线。RL 提升各类 CoT，但没有消除 visual world modeling 的领先差距。
+          </p>
+        </div>
+      </section>
+
+      <section id="use">
+        <div class="section-head">
+          <div class="num">09</div>
+          <div>
+            <h2>如果要把它用于自己的研究/系统</h2>
+            <p class="lead">
+              这篇论文给出的不是一个单一 recipe，而是一套选择中间 world model 的判断准则。
+            </p>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="mini-card">
+            <h3>用 verbal/symbolic</h3>
+            <p>数学、代码、小网格、表格状态、坐标足够表达的任务。</p>
+          </div>
+          <div class="mini-card">
+            <h3>用 visual</h3>
+            <p>折叠、旋转、遮挡、轨迹、视角转换、真实空间方位任务。</p>
+          </div>
+          <div class="mini-card">
+            <h3>用 tool/simulator</h3>
+            <p>当任务有精确规则或安全要求时，程序化仿真通常比像素生成更可靠。</p>
+          </div>
+        </div>
+        <p>
+          我建议后续研究往三个方向推进：第一，做一个 router，让模型判断当前任务需要哪种 world model；
+          第二，对视觉中间状态做可验证检查，例如 self-consistency、多视角一致性、结构解析；
+          第三，把 visual world model 从普通像素图扩展到 sketch、scene graph、3D latent 或可执行 simulator state。
+        </p>
+        <div class="references">
+          <p>
+            本报告基于 arXiv PDF、官方 GitHub README、官方 VisWorld-Eval 数据说明和本地抽取文本整理。
+            本地参考文件位于 <code>../refs/2601.19834.pdf</code> 与 <code>../refs/2601.19834.txt</code>。
+          </p>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      生成日期：2026-05-12。页面为自包含静态 HTML，图片资源来自本地验证后的论文 PDF 截图。
+    </div>
+  </footer>
+</body>
+</html>

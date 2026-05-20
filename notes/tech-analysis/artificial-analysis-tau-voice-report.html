@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artificial Analysis 语音 Agent 评测解读：τ-Voice 与 S2S 客服任务</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f2e8;
+      --panel: #fffdf7;
+      --panel-strong: #f1e5d4;
+      --ink: #1e1b16;
+      --muted: #675f53;
+      --subtle: #8a7f70;
+      --line: #d9cdbc;
+      --line-strong: #a99580;
+      --accent: #b65f32;
+      --accent-dark: #7f391d;
+      --accent-soft: #f4ddcf;
+      --blue: #315d89;
+      --blue-soft: #dde8f3;
+      --green: #3d7555;
+      --green-soft: #dce9df;
+      --red: #993d31;
+      --red-soft: #f1dad4;
+      --violet: #6a58a5;
+      --violet-soft: #e7e2f4;
+      --shadow: 0 18px 44px rgba(52, 43, 29, 0.13);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(30, 27, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(30, 27, 22, 0.026) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 93, 137, 0.35);
+    }
+
+    a:hover {
+      border-bottom-color: currentColor;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(30, 27, 22, 0.14);
+      background: rgba(247, 242, 232, 0.93);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 760;
+      color: var(--ink);
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--ink) 43% 56%, transparent 57%),
+        linear-gradient(45deg, transparent 0 42%, var(--accent) 43% 56%, transparent 57%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 253, 247, 0.64);
+      color: var(--ink);
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: clamp(28px, 5vw, 72px);
+      align-items: end;
+      min-height: 84vh;
+      padding: clamp(56px, 9vw, 116px) clamp(20px, 5vw, 74px) 44px;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(115deg, rgba(255, 253, 247, 0.98) 0 38%, rgba(255, 253, 247, 0.76) 39% 62%, rgba(244, 221, 207, 0.55) 63% 100%),
+        url("artificial-analysis-tau-voice-report-assets/agentic-performance-tau-voice.jpg") center right / contain no-repeat;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 44%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(247, 242, 232, 0));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent-dark);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.8vw, 106px);
+      font-weight: 720;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.6vw, 58px);
+      font-weight: 720;
+    }
+
+    h3 {
+      font-size: clamp(20px, 2.1vw, 28px);
+      font-weight: 780;
+    }
+
+    .hero-lead {
+      max-width: 780px;
+      margin: 24px 0 0;
+      color: #342f28;
+      font-size: clamp(18px, 2.2vw, 24px);
+      line-height: 1.62;
+    }
+
+    .hero-side {
+      align-self: center;
+      display: grid;
+      gap: 14px;
+      padding-top: 120px;
+    }
+
+    .thesis-card {
+      padding: 18px 20px;
+      border: 1px solid rgba(169, 149, 128, 0.68);
+      background: rgba(255, 253, 247, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .thesis-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .thesis-card p {
+      margin: 0;
+      color: #332d25;
+      font-size: 17px;
+      line-height: 1.62;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 16px;
+      border: 1px solid rgba(217, 205, 188, 0.9);
+      background: rgba(255, 253, 247, 0.82);
+    }
+
+    .metric .value {
+      display: block;
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: 34px;
+      font-weight: 730;
+      line-height: 1;
+    }
+
+    .metric .label {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    main {
+      padding: 0 clamp(18px, 4.5vw, 70px) 80px;
+    }
+
+    section {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: clamp(54px, 8vw, 88px) 0;
+      border-bottom: 1px solid rgba(217, 205, 188, 0.75);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.78fr) minmax(280px, 0.62fr);
+      gap: clamp(24px, 5vw, 64px);
+      align-items: end;
+      margin-bottom: 30px;
+    }
+
+    .section-kicker {
+      margin: 0 0 10px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 820;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .prose {
+      max-width: 880px;
+    }
+
+    .prose p {
+      margin: 0 0 18px;
+      font-size: 17px;
+    }
+
+    .prose strong {
+      font-weight: 820;
+    }
+
+    .source-grid,
+    .card-grid,
+    .two-col,
+    .three-col {
+      display: grid;
+      gap: 16px;
+    }
+
+    .source-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .card-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .two-col {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .three-col {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card,
+    .source-card,
+    .callout,
+    .step,
+    .quote-card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.88);
+      box-shadow: 0 10px 28px rgba(52, 43, 29, 0.07);
+    }
+
+    .card,
+    .source-card {
+      padding: 18px;
+    }
+
+    .source-card .tag,
+    .card .tag,
+    .step .tag {
+      display: inline-flex;
+      margin-bottom: 10px;
+      padding: 3px 8px;
+      border: 1px solid rgba(182, 95, 50, 0.32);
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 820;
+      line-height: 1.35;
+    }
+
+    .source-card h3,
+    .card h3 {
+      margin-bottom: 10px;
+      font-family: var(--sans);
+      font-size: 19px;
+      line-height: 1.25;
+    }
+
+    .source-card p,
+    .card p,
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.62;
+    }
+
+    .callout {
+      margin: 26px 0;
+      padding: 18px 20px;
+      border-left: 5px solid var(--accent);
+      background: linear-gradient(90deg, rgba(244, 221, 207, 0.7), rgba(255, 253, 247, 0.9));
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: linear-gradient(90deg, rgba(221, 232, 243, 0.78), rgba(255, 253, 247, 0.9));
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: linear-gradient(90deg, rgba(220, 233, 223, 0.78), rgba(255, 253, 247, 0.9));
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: linear-gradient(90deg, rgba(241, 218, 212, 0.78), rgba(255, 253, 247, 0.9));
+    }
+
+    .callout h3 {
+      margin-bottom: 8px;
+      font-family: var(--sans);
+      font-size: 20px;
+    }
+
+    .callout p {
+      margin: 0;
+      color: #3b342c;
+      font-size: 16px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .step {
+      min-height: 190px;
+      padding: 16px;
+    }
+
+    .step .num {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 12px;
+      border: 1px solid var(--line-strong);
+      background: var(--panel-strong);
+      color: var(--ink);
+      font-weight: 820;
+    }
+
+    .figure {
+      margin: 28px 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: white;
+    }
+
+    .figcaption {
+      padding: 13px 16px 15px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .table-wrap {
+      margin: 24px 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      overflow-x: auto;
+      box-shadow: 0 10px 28px rgba(52, 43, 29, 0.06);
+    }
+
+    table {
+      width: 100%;
+      min-width: 820px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid rgba(217, 205, 188, 0.78);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 58px;
+      z-index: 5;
+      background: #efe2d1;
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(247, 242, 232, 0.55);
+    }
+
+    .score {
+      font-weight: 820;
+      color: var(--accent-dark);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border: 1px solid rgba(169, 149, 128, 0.66);
+      background: rgba(255, 253, 247, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .quote-card {
+      padding: 18px 20px;
+      background: #2b251e;
+      color: #fff7eb;
+    }
+
+    .quote-card p {
+      margin: 0;
+      color: #fff0df;
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    .quote-card .source {
+      margin-top: 10px;
+      color: #d9c7b2;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    code {
+      padding: 2px 5px;
+      border: 1px solid rgba(169, 149, 128, 0.4);
+      background: #f2e6d8;
+      color: #46372c;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line-strong);
+      background: #29241d;
+      color: #f7eadb;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+
+    .footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 0 0;
+      color: var(--subtle);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-side {
+        padding-top: 0;
+      }
+
+      .source-grid,
+      .card-grid,
+      .two-col,
+      .three-col,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .hero {
+        min-height: auto;
+        padding-top: 48px;
+      }
+
+      h1 {
+        font-size: clamp(40px, 13vw, 58px);
+      }
+
+      main {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <span>τ-Voice / Speech-to-Speech Agent Benchmark</span>
+    </div>
+    <nav class="nav" aria-label="报告目录">
+      <a href="#source">来源</a>
+      <a href="#problem">背景</a>
+      <a href="#setup">设定</a>
+      <a href="#results">结果</a>
+      <a href="#interpretation">解读</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Artificial Analysis X Thread · 2026-05-12</div>
+      <h1>语音 Agent 终于开始被按“能不能办成事”评测</h1>
+      <p class="hero-lead">
+        这条帖子宣布 Artificial Analysis 为 Speech-to-Speech 模型新增
+        <strong>Agentic Performance</strong> 评测：让模型在模拟客服电话中多轮对话、遵守业务政策、调用工具，
+        最后用确定性的数据库终态检查它是否真的解决了用户问题。
+      </p>
+      <div class="pill-row" aria-label="关键词">
+        <span class="pill">Speech-to-Speech</span>
+        <span class="pill">Full-duplex voice agent</span>
+        <span class="pill">τ-Voice</span>
+        <span class="pill">τ²-bench</span>
+        <span class="pill">pass@1 task completion</span>
+        <span class="pill">customer service tools</span>
+      </div>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis-card">
+        <strong>核心判断</strong>
+        <p>
+          这不是一个“谁声音更自然”的榜单，而是一个更接近生产系统的问题：
+          语音模型在真实电话约束下，能不能把用户的事情办完。
+        </p>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="value">52.1%</span>
+          <span class="label">Grok Voice Think Fast 1.0 总体任务完成率，榜首</span>
+        </div>
+        <div class="metric">
+          <span class="value">39.8%</span>
+          <span class="label">GPT-Realtime-2 High，总体第二</span>
+        </div>
+        <div class="metric">
+          <span class="value">278</span>
+          <span class="label">Airline / Retail / Telecom 三域客服场景总数</span>
+        </div>
+        <div class="metric">
+          <span class="value">3x</span>
+          <span class="label">Artificial Analysis 分数通常取三次独立 pass@1 平均</span>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Source Map</p>
+          <h2>我读了哪些材料</h2>
+        </div>
+        <p>
+          原帖来自 X，但解释它不能只看推文文案。这个报告把原帖、两张图、Artificial Analysis 榜单与方法页、
+          τ-Voice 论文和 Sierra 背景说明放在一起读。
+        </p>
+      </div>
+
+      <div class="source-grid">
+        <article class="source-card">
+          <span class="tag">X 原帖</span>
+          <h3>Artificial Analysis 公告</h3>
+          <p>
+            使用 <code>opencli twitter thread</code> 读取原帖、图表帖和回复。原帖宣布新增 S2S agentic performance benchmarking。
+          </p>
+        </article>
+        <article class="source-card">
+          <span class="tag">官方榜单</span>
+          <h3>Speech-to-Speech Leaderboard</h3>
+          <p>
+            Artificial Analysis 的 S2S 页面给出 Speech Reasoning、Conversational Dynamics、Agentic Performance、TTFA 和价格维度。
+          </p>
+        </article>
+        <article class="source-card">
+          <span class="tag">方法页</span>
+          <h3>Benchmarking Methodology</h3>
+          <p>
+            说明 Agentic Performance 基于 τ-Voice，指标为 Task Completion pass@1，按最终数据库状态判定成功。
+          </p>
+        </article>
+        <article class="source-card">
+          <span class="tag">论文</span>
+          <h3>τ-Voice arXiv:2603.13686</h3>
+          <p>
+            Ray、Dhandhania、Barres、Narasimhan 2026 年论文，定义 full-duplex voice agent 的真实客服任务评测。
+          </p>
+        </article>
+        <article class="source-card">
+          <span class="tag">厂商说明</span>
+          <h3>xAI Grok Voice Think Fast 1.0</h3>
+          <p>
+            用作模型背景参考。厂商自述需要和第三方榜单分开看，不能直接当作独立评测证据。
+          </p>
+        </article>
+      </div>
+
+      <div class="callout blue">
+        <h3>读取方式</h3>
+        <p>
+          本报告的主材料通过 OpenCLI 读取 X 线程和网页；短链解析到 <code>https://artificialanalysis.ai/speech-to-speech</code>。
+          原帖的 methodology 短链跳转到旧路径后返回 404，因此以实际可访问的
+          <code>/methodology/speech-to-speech-benchmarking</code> 页面为准。
+        </p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Problem & Context</p>
+          <h2>它真正关心的不是“会说话”，而是“能办事”</h2>
+        </div>
+        <p>
+          语音模型以前常被拆成几类能力来测：听写、音色、推理题、对话自然度、延迟。
+          这些都重要，但都不能直接回答客服系统最关心的问题。
+        </p>
+      </div>
+
+      <div class="two-col">
+        <div class="prose">
+          <p>
+            传统语音系统通常可以被拆成 <strong>ASR → LLM → TTS</strong>：先把用户语音转文字，再让语言模型推理和调用工具，最后再把回答转成语音。
+            原生 Speech-to-Speech 模型试图把这些环节更深地合在一起，直接接收音频、直接输出音频。
+          </p>
+          <p>
+            这带来一个很诱人的产品承诺：更低延迟、更自然打断、更少工程拼接、更像真人通话。但问题也随之变复杂。
+            一旦模型听错口音、漏掉账单号、在用户停顿时抢话、错误调用工具、或没有遵守退款政策，最终表现不是“声音稍差”，而是用户问题没有解决。
+          </p>
+        </div>
+        <div class="quote-card">
+          <p>
+            这条帖子的关键转向是：voice agent 不应该只按“语音智力”或“自然对话”排名，而要按真实任务闭环能力排名。
+          </p>
+          <div class="source">Interpretation · 本报告总结</div>
+        </div>
+      </div>
+
+      <div class="card-grid">
+        <article class="card">
+          <span class="tag">Speech Reasoning</span>
+          <h3>音频推理题答得对不对</h3>
+          <p>
+            Artificial Analysis 的 Big Bench Audio 用 1,000 道音频题测模型能否理解并回答推理问题。它测智力，但不是完整客服流程。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Conversational Dynamics</span>
+          <h3>对话节奏是否自然</h3>
+          <p>
+            Full Duplex Bench 子集测停顿、轮次、打断、backchannel。它测“会不会聊天”，但不保证工具和业务状态正确。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Agentic Performance</span>
+          <h3>问题是否被端到端解决</h3>
+          <p>
+            τ-Voice 让模型扮演客服 agent，使用工具和政策文档处理真实域任务，最终按数据库状态判定成功。
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="setup">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Evaluation Setup</p>
+          <h2>具体评测到底在测什么</h2>
+        </div>
+        <p>
+          这个评测的对象不是单轮问答，而是一个语音客服闭环：用户带着目标来电，模型要多轮沟通并操作后台系统。
+        </p>
+      </div>
+
+      <div class="flow" aria-label="τ-Voice 评测流程">
+        <div class="step">
+          <div class="num">1</div>
+          <span class="tag">Scenario</span>
+          <p>从 Airline、Retail、Telecom 三个域中抽取一个具体客服场景，例如改签航班、争议收费、排查通信服务问题。</p>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <span class="tag">Voice User</span>
+          <p>模拟用户带着目标来电。语音由合成声音生成，包含不同 persona、口音、背景噪声和网络丢包条件。</p>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <span class="tag">Agent Prompt</span>
+          <p>被测模型被提示为客服 agent，拿到领域政策文档和可调用工具，需要边听边说、持续推进任务。</p>
+        </div>
+        <div class="step">
+          <div class="num">4</div>
+          <span class="tag">Tool Use</span>
+          <p>模型不能只口头安抚用户，还要查询、修改或确认后台状态，正确填参数、遵守业务规则。</p>
+        </div>
+        <div class="step">
+          <div class="num">5</div>
+          <span class="tag">Evaluator</span>
+          <p>评估器检查最终动作和数据库终态是否等于唯一 ground truth。成功就是通过，失败就是没有完成。</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>本评测中的含义</th>
+              <th>为什么重要</th>
+              <th>常见误解</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>任务类型</strong></td>
+              <td>真实客服复刻任务，覆盖航空、零售、电信。</td>
+              <td>比开放闲聊更接近企业语音客服。</td>
+              <td>不是简单语音问答题，也不是声音质量测试。</td>
+            </tr>
+            <tr>
+              <td><strong>输入</strong></td>
+              <td>模拟用户的多轮语音通话，包含口音、噪声、丢包等现实扰动。</td>
+              <td>真实电话渠道不会给模型干净文本。</td>
+              <td>不是把文字 benchmark 直接喂给模型。</td>
+            </tr>
+            <tr>
+              <td><strong>输出</strong></td>
+              <td>模型以语音客服形式回复，同时调用工具改变后台状态。</td>
+              <td>客服系统的产物是业务状态改变，不只是回复文本。</td>
+              <td>说“我帮你处理了”不等于真的处理成功。</td>
+            </tr>
+            <tr>
+              <td><strong>指标</strong></td>
+              <td>Task Completion / pass@1：单次尝试中成功解决场景的比例。</td>
+              <td>接近真实线上一次通话的成功率。</td>
+              <td>不是 best-of-n，也不是人工主观满意度。</td>
+            </tr>
+            <tr>
+              <td><strong>判分对象</strong></td>
+              <td>最终动作和数据库状态是否匹配 ground truth。</td>
+              <td>比 LLM judge 对回答“听起来不错”的判断更硬。</td>
+              <td>它不能完整衡量语气、同理心、品牌体验。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout green">
+        <h3>关键设定</h3>
+        <p>
+          τ-Voice 的难点在于“多种能力叠加”：听懂脏音频、保持长程状态、遵守政策、正确调用工具、处理用户纠正、在自然对话节奏下推进流程。
+          任何一个环节失败，最终都可能被算作任务失败。
+        </p>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Evidence & Results</p>
+          <h2>榜单结果说明什么</h2>
+        </div>
+        <p>
+          结果最值得看的不是“谁第一”本身，而是最高分只有 52.1%：
+          这说明目前最强语音 agent 在现实客服条件下也仍未达到稳定自动化。
+        </p>
+      </div>
+
+      <figure class="figure">
+        <img src="artificial-analysis-tau-voice-report-assets/agentic-performance-tau-voice.jpg" alt="Artificial Analysis τ-Voice agentic performance 图表，展示总体成功率与按域成功率。" />
+        <figcaption class="figcaption">
+          图 1：Artificial Analysis 原帖图。上半部分是总体 Agentic Performance；下半部分按 Airline、Retail、Telecom 拆分。
+          最高的 Grok Voice Think Fast 1.0 为 52.1%，但仍远未接近“可靠自动客服”的水平。
+        </figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>排名</th>
+              <th>模型</th>
+              <th>总体任务完成率</th>
+              <th>一句话解读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Grok Voice Think Fast 1.0</td>
+              <td class="score">52.1%</td>
+              <td>明显领先，但绝对成功率仍意味着大量场景需要 fallback 或人工接管。</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>GPT-Realtime-2 High</td>
+              <td class="score">39.8%</td>
+              <td>强语音模型，但在端到端客服闭环上和榜首差距明显。</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>GPT-Realtime-1.5</td>
+              <td class="score">38.8%</td>
+              <td>接近 GPT-Realtime-2 High，说明版本/配置差异不能只按新旧判断。</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Gemini 3.1 Flash Live Preview - High</td>
+              <td class="score">37.7%</td>
+              <td>接近 OpenAI 高配模型，但不同域表现仍需拆开看。</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>GPT-Realtime-2 Medium</td>
+              <td class="score">37.4%</td>
+              <td>与 High 接近，提示配置成本和成功率之间需要单独权衡。</td>
+            </tr>
+            <tr>
+              <td>6-12</td>
+              <td>GPT-Realtime-2 Minimal / GPT Realtime / GPT-4o Realtime / Grok Voice Agent / Gemini Minimal / Gemini 2.5 / GPT Realtime Mini</td>
+              <td class="score">30.8% → 15.1%</td>
+              <td>低配、旧模型或非专门优化版本在真实任务闭环中衰减更明显。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <span class="tag">Domain Split</span>
+          <h3>按业务域拆分比总分更有用</h3>
+          <p>
+            Grok Voice Think Fast 1.0 在 Airline / Retail / Telecom 上分别约为 58% / 44% / 54%。
+            GPT-Realtime-2 High 的 Airline 约 63%，但 Retail 和 Telecom 明显低很多。总分会掩盖业务域弱点。
+          </p>
+        </div>
+        <div class="card">
+          <span class="tag">Production Meaning</span>
+          <h3>52.1% 是领先，不是解决</h3>
+          <p>
+            如果一个客服系统一半任务仍失败，它必须有人工接管、二线升级、任务分流和高风险操作确认。
+            榜首只说明相对领先，不代表可以无兜底上线。
+          </p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="artificial-analysis-tau-voice-report-assets/conversation-duration.jpg" alt="Artificial Analysis τ-Voice 平均对话时长图表。" />
+        <figcaption class="figcaption">
+          图 2：平均对话音频时长。Gemini 2.5 Flash Native Audio Preview 最短约 2.4 分钟，Grok Voice Think Fast 1.0 约 5.6 分钟，
+          GPT Realtime Mini 约 6.4 分钟。时长本身不能单独判断好坏，需要和成功率、成本、用户体验一起看。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="interpretation">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Interpretation</p>
+          <h2>为什么语音 Agent 会比文本 Agent 难这么多</h2>
+        </div>
+        <p>
+          文本 agent 的输入通常是干净、完整、可回看、可截断重试的文字；语音 agent 需要在时间、音频质量和交互节奏压力下做同一件事。
+        </p>
+      </div>
+
+      <div class="card-grid">
+        <article class="card">
+          <span class="tag">Audio Robustness</span>
+          <h3>脏音频会污染任务状态</h3>
+          <p>
+            口音、噪声、丢包不是独立的 ASR 错误。一个航班号或账单金额听错，会直接传导到工具参数和最终数据库状态。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Turn Control</span>
+          <h3>对话节奏会影响信息收集</h3>
+          <p>
+            模型抢话、误判停顿、把 backchannel 当新请求，都会导致信息缺失或流程跑偏。自然对话不是装饰能力。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Long-Horizon State</span>
+          <h3>多轮状态不能丢</h3>
+          <p>
+            客服任务常要跨多轮记住身份、订单、政策限制、用户更正和工具返回。任何一次状态漂移都可能导致失败。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Policy Adherence</span>
+          <h3>不能为了用户满意而越权</h3>
+          <p>
+            改签、退款、账单争议都有规则。模型要在用户压力下坚持政策，而不是生成看似友好的错误承诺。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Tool Reliability</span>
+          <h3>工具调用是硬门槛</h3>
+          <p>
+            真实客服不是只回答问题。模型必须选对工具、填对参数、解释工具返回，并在失败时恢复。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Cost & Latency</span>
+          <h3>成功率之外还有运营账</h3>
+          <p>
+            高成功率但对话过长会增加成本；短对话但快速失败也不可接受。生产系统需要联合优化。
+          </p>
+        </article>
+      </div>
+
+      <div class="callout">
+        <h3>一个更准确的读法</h3>
+        <p>
+          Grok 这次领先，说明它在“真实语音 + 多轮客服 + 工具调用 + 政策约束”的组合任务上表现更稳定。
+          但它并不证明 Grok 在所有语音体验、所有行业、所有生产指标上都最好。
+        </p>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Limitations</p>
+          <h2>这类评测的边界在哪里</h2>
+        </div>
+        <p>
+          τ-Voice 比传统语音榜单更接近生产，但仍然不是生产环境本身。
+          读榜单时要把“方向性信号”和“可上线结论”分开。
+        </p>
+      </div>
+
+      <div class="three-col">
+        <article class="card">
+          <span class="tag">Domain Bound</span>
+          <h3>只覆盖三个客服域</h3>
+          <p>
+            Airline、Retail、Telecom 很有代表性，但医疗、金融、销售、教育和个人助理的失败模式会不同。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Simulated Users</span>
+          <h3>模拟用户不等于真人用户</h3>
+          <p>
+            模拟能保证可复现和可控扰动，但真人会有更复杂的情绪、犹豫、跨语言混说、恶意试探和非线性表达。
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Metric Bound</span>
+          <h3>数据库终态不是全部体验</h3>
+          <p>
+            最终状态很硬，适合测任务完成；但它不完整衡量同理心、语气、解释质量、合规风险和品牌体验。
+          </p>
+        </article>
+      </div>
+
+      <div class="callout red">
+        <h3>不要过度外推</h3>
+        <p>
+          如果要为真实业务选型，应该在自己的任务、政策、工具、用户口音分布、网络环境和失败成本上重新评测。
+          这个榜单是高质量起点，不是采购结论。
+        </p>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Insight & Implications</p>
+          <h2>它对后续语音 Agent 研发意味着什么</h2>
+        </div>
+        <p>
+          这条帖子真正有价值的地方，是把语音模型竞争从“体验型 demo”拉回“任务型可靠性”。
+        </p>
+      </div>
+
+      <div class="prose">
+        <p>
+          我的判断是，下一阶段 voice agent 的核心评估框架应该从单一榜单变成四张表：
+          <strong>Audio Intelligence</strong> 看能不能理解和推理；
+          <strong>Conversational Dynamics</strong> 看能不能自然地轮次交互；
+          <strong>Agentic Task Completion</strong> 看能不能通过工具把任务完成；
+          <strong>Production Economics</strong> 看成本、时长、延迟、失败恢复和人工接管率。
+        </p>
+        <p>
+          这条帖子新增的是第三张表，而且它对客服、运营、售后、预约、金融服务这类场景最关键。
+          因为用户最终买的不是“模型说话像真人”，而是“我的问题被解决了，而且没有违反业务规则”。
+        </p>
+      </div>
+
+      <div class="two-col">
+        <div class="callout green">
+          <h3>对研发的启发</h3>
+          <p>
+            语音 agent 不能只优化声音和低延迟，还要在工具 schema、状态跟踪、政策检索、错误恢复、人工接管协议上做系统设计。
+            benchmark 里的失败大概率不是单一模型分数能修掉的，而是端到端系统工程问题。
+          </p>
+        </div>
+        <div class="callout blue">
+          <h3>对产品的启发</h3>
+          <p>
+            现阶段更合理的上线方式是任务分级：低风险、规则简单、可快速恢复的任务让 voice agent 自动处理；
+            高风险、长链路、强合规任务保留确认、审计和人工兜底。
+          </p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>如果你要落地 Voice Agent</th>
+              <th>应该额外测什么</th>
+              <th>原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>客服自动化</td>
+              <td>本业务真实历史工单、真实政策、真实工具 sandbox、人工接管率</td>
+              <td>τ-Voice 是通用复刻场景，不能代表你的业务尾部 case。</td>
+            </tr>
+            <tr>
+              <td>高风险操作</td>
+              <td>身份核验、越权拒绝、用户诱导、合规话术、审计日志</td>
+              <td>成功完成任务不等于合规完成任务。</td>
+            </tr>
+            <tr>
+              <td>全球用户</td>
+              <td>本地口音、弱网、电话压缩、多语言混说、背景噪声</td>
+              <td>语音鲁棒性高度依赖用户分布。</td>
+            </tr>
+            <tr>
+              <td>成本敏感业务</td>
+              <td>平均通话时长、TTFA、输出音频价格、失败后人工成本</td>
+              <td>更高成功率可能伴随更长通话和更高单位成本。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Acquisition Notes</p>
+          <h2>本次材料获取命令摘要</h2>
+        </div>
+        <p>
+          这里保留可复现路径，方便之后继续追踪该 benchmark 或更新榜单。
+        </p>
+      </div>
+
+      <pre><code>opencli twitter thread "https://x.com/ArtificialAnlys/status/2054234919887573292?s=20" --limit 80 -f json --trace retain-on-failure
+opencli twitter profile "ArtificialAnlys" -f json --trace retain-on-failure
+opencli web read --url "https://artificialanalysis.ai/speech-to-speech" --stdout true --download-images false --wait 8 --wait-until networkidle -f json
+opencli web read --url "https://artificialanalysis.ai/methodology/speech-to-speech-benchmarking" --stdout true --download-images false --wait 8 --wait-until networkidle -f json</code></pre>
+
+      <div class="footer">
+        生成日期：2026-05-13。报告文件：
+        <code>/Users/bytedance/Downloads/artificial-analysis-tau-voice-report.html</code>。
+        证据图资源目录：
+        <code>/Users/bytedance/Downloads/artificial-analysis-tau-voice-report-assets/</code>。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

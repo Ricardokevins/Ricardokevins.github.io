@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching） - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 88</div>
+        <div class="brand-title">KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</div>
+        <div class="brand-meta">5. 训练、推理与系统工程 · 第 7 步 · 训练/推理/系统</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-1463">一、高频问题速览</a>
+<a class="toc-link" href="#h-1464">二、逐题详细解答</a>
+<a class="toc-link" href="#h-1465">307. KV cache 为什么比模型权重更容易成为显存瓶颈？</a>
+<a class="toc-link" href="#h-1466" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1467" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1468">308. H2O（Heavy Hitter Oracle）的核心假设是什么？为什么只保留 heavy hitter 就够了？</a>
+<a class="toc-link" href="#h-1469" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1470" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1471">309. SnapKV 与 H2O 的关键差异是什么？为什么说 SnapKV 更&quot;主动&quot;？</a>
+<a class="toc-link" href="#h-1472" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1473" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1474">310. StreamingLLM 如何实现&quot;理论上无限长序列&quot;？sink token 是什么？</a>
+<a class="toc-link" href="#h-1475" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1476" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1477">311. Prefix Caching（vLLM 等）的原理是什么？如何复用已计算前缀？</a>
+<a class="toc-link" href="#h-1478" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1479" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1480">312. KV cache 量化与权重量化有何本质不同？为什么 KV cache 量化更难？</a>
+<a class="toc-link" href="#h-1481" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1482" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1483">313. KV cache 压缩方法的选型维度有哪些？如何为业务选最合适的方法？</a>
+<a class="toc-link" href="#h-1484" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1485" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1486">314. 多头注意力下 KV cache 的共享策略（MHA vs GQA vs MQA）如何影响压缩空间？</a>
+<a class="toc-link" href="#h-1487" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1488" style="padding-left:18px">详细解答</a>
+<a class="toc-link" href="#h-1489">315. 长上下文推理中，KV cache 的带宽瓶颈和显存瓶颈哪个先到来？</a>
+<a class="toc-link" href="#h-1490" style="padding-left:18px">知识点</a>
+<a class="toc-link" href="#h-1491" style="padding-left:18px">详细解答</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link current" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="027.html">← 27. 训练系统备考顺序</a><a href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析） →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-1462" data-category="engineering" data-title="KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）">
+<h2 id="h-1462"><a class="anchor-link" href="#h-1462" aria-label="跳转到本节">#</a>KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>先理解分布式训练和显存优化，再看推理系统里的 KV cache、continuous batching、投机解码。平台岗和推理工程岗应重点读。</p></aside>
+<p>前面的题库已经覆盖了 KV cache 的基本概念、GQA/MQA 压缩和 PagedAttention 的分页管理，但随着上下文长度从 4K 扩展到 128K 甚至 1M，KV cache 的显存占用已经成为推理系统的头号瓶颈。这一节专门补齐 <strong>KV cache 压缩与动态驱逐</strong> 这条知识线，把"知道 KV cache 会爆显存"推进到"能系统讲清各种压缩方法的假设、机制、局限和选型"。</p>
+<p>对于推理优化岗和算法岗，这一块是 2025-2026 年面试中极高频的追问方向。</p>
+<h3 id="h-1463"><a class="anchor-link" href="#h-1463" aria-label="跳转到本节">#</a>一、高频问题速览</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>编号</th>
+<th>问题</th>
+<th>核心考点</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>307</td>
+<td>KV cache 为什么比模型权重更容易成为显存瓶颈？</td>
+<td>线性增长、并发叠加、不可压缩性</td>
+</tr>
+<tr>
+<td>308</td>
+<td>H2O（Heavy Hitter Oracle）的核心假设是什么？为什么只保留 heavy hitter 就够了？</td>
+<td>注意力稀疏性、累积分数、淘汰策略</td>
+</tr>
+<tr>
+<td>309</td>
+<td>SnapKV 与 H2O 的关键差异是什么？为什么说 SnapKV 更"主动"？</td>
+<td>观察窗口、关键 KV 对识别、压缩率</td>
+</tr>
+<tr>
+<td>310</td>
+<td>StreamingLLM 如何实现"理论上无限长序列"？sink token 是什么？</td>
+<td>注意力汇聚、sink tokens、滑动窗口、长度无关</td>
+</tr>
+<tr>
+<td>311</td>
+<td>Prefix Caching（vLLM 等）的原理是什么？如何复用已计算前缀？</td>
+<td>前缀哈希、Page 复用、RadixAttention</td>
+</tr>
+<tr>
+<td>312</td>
+<td>KV cache 量化与权重量化有何本质不同？为什么 KV cache 量化更难？</td>
+<td>动态范围、outlier、per-token 分布</td>
+</tr>
+<tr>
+<td>313</td>
+<td>KV cache 压缩方法的选型维度有哪些？如何为业务选最合适的方法？</td>
+<td>压缩率、质量损失、实现复杂度、兼容性</td>
+</tr>
+<tr>
+<td>314</td>
+<td>多头注意力下 KV cache 的共享策略（MHA vs GQA vs MQA）如何影响压缩空间？</td>
+<td>头数差异、缓存冗余、压缩基线</td>
+</tr>
+<tr>
+<td>315</td>
+<td>长上下文推理中，KV cache 的带宽瓶颈和显存瓶颈哪个先到来？</td>
+<td>HBM 容量 vs HBM 带宽、decode 阶段特征</td>
+</tr>
+<tr>
+<td>316</td>
+<td>如果 KV cache 压缩后模型效果下降，如何定位是"压缩过头"还是"压缩错了位置"？</td>
+<td>消融分析、注意力图可视化、分层诊断</td>
+</tr>
+</tbody></table></div>
+<h3 id="h-1464"><a class="anchor-link" href="#h-1464" aria-label="跳转到本节">#</a>二、逐题详细解答</h3>
+<h3 id="h-1465"><a class="anchor-link" href="#h-1465" aria-label="跳转到本节">#</a>307. KV cache 为什么比模型权重更容易成为显存瓶颈？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">Attention 数据流</div>
+        <p class="inline-enhancement-note">放在 Self-Attention / FlashAttention / KV cache 相关小节附近，帮助把 Q/K/V、softmax 和输出向量串起来。</p>
+        <div class="visual-grid"><div class="visual-card"><b>Scaled Attention 结构图</b><img src="../assets/attention-flow.svg" alt="Scaled Attention 结构图"><p>从 Q/K/V 到 softmax 再到输出向量的核心数据流。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>Scaled Dot-Product Attention</b><div class="math-display">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><p>缩放项控制点积方差，softmax 后得到对 V 的加权。</p></div><div class="formula-card"><b>KV Cache 显存估算</b><div class="math-display">\[\mathrm{KVCache}\approx 2 \times B \times L \times H_{kv} \times d_h \times N_{layer} \times \mathrm{bytes}\]</div><p>2 表示 K 和 V；长上下文下主要随 batch、序列长度和层数线性增长。</p></div></div>
+      </aside>
+<h4 id="h-1466"><a class="anchor-link" href="#h-1466" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>KV cache 与序列长度、batch size、层数、head 数成正比
+</li>
+<li>模型权重是常量，KV cache 随生成长度线性增长
+</li>
+<li>并发请求下多个请求的 KV cache 同时驻留
+</li>
+<li>decode 阶段的 memory-bound 特性
+</li>
+</ul>
+<h4 id="h-1467"><a class="anchor-link" href="#h-1467" aria-label="跳转到本节">#</a>详细解答</h4>
+<p>KV cache 成为显存瓶颈的核心原因是<strong>它的增长维度与模型权重完全不同</strong>。</p>
+<p><strong>模型权重</strong>的显存占用是固定的。一个 70B 模型的 FP16 权重约占 140GB，无论输入多长、生成多少 token，这个数字不变（量化后会更小）。</p>
+<p><strong>KV cache</strong> 的显存占用公式为：</p>
+<pre><code class="language-text">KV_cache_size = 2 × batch_size × seq_len × num_layers × num_kv_heads × head_dim × sizeof(dtype)</code></pre>
+<p>其中 <code>2</code> 是因为 K 和 V 各一份。关键变量是 <code>seq_len</code>：生成越长，cache 越大；而且<strong>它是累加的</strong>——每生成一个新 token，就要在已有 cache 后面追加一对 K/V。</p>
+<p>假设一个 32B 模型（40 层、8 个 KV head、head_dim=128、FP16），batch_size=1，seq_len=32K：</p>
+<pre><code class="language-text">KV cache = 2 × 1 × 32768 × 40 × 8 × 128 × 2 bytes ≈ 5.4 GB</code></pre>
+<p>但如果 seq_len 提升到 128K：</p>
+<pre><code class="language-text">KV cache = 2 × 1 × 131072 × 40 × 8 × 128 × 2 bytes ≈ 21.5 GB</code></pre>
+<p>这还只是单个请求。如果并发 8 个请求，每个都生成到 128K，KV cache 总量就是 172 GB——已经超过很多单机的 HBM 容量。</p>
+<p>更深层的矛盾在于：<strong>decode 阶段是 memory-bound 的</strong>。每生成一个 token，GPU 的算力利用率很低，大部分时间花在从 HBM 读取 KV cache 和权重上。这意味着 KV cache 不仅吃显存，还吃带宽。</p>
+<p>所以面试里高分回答要同时提到两个维度：</p>
+<ol>
+<li><strong>显存容量维度</strong>：KV cache 随长度和并发线性增长，权重固定；
+</li>
+<li><strong>带宽维度</strong>：decode 阶段算力利用率低，KV cache 读取成为带宽瓶颈。
+</li>
+</ol>
+<hr>
+<h3 id="h-1468"><a class="anchor-link" href="#h-1468" aria-label="跳转到本节">#</a>308. H2O（Heavy Hitter Oracle）的核心假设是什么？为什么只保留 heavy hitter 就够了？</h3>
+<h4 id="h-1469"><a class="anchor-link" href="#h-1469" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>注意力分布的稀疏性（sparsity）
+</li>
+<li>累积注意力分数（cumulative attention score）
+</li>
+<li>Heavy Hitter：被频繁关注的 KV 对
+</li>
+<li>局部性假设：近期 token 更重要
+</li>
+<li>渐进式淘汰（eviction）策略
+</li>
+</ul>
+<h4 id="h-1470"><a class="anchor-link" href="#h-1470" aria-label="跳转到本节">#</a>详细解答</h4>
+<p><strong>H2O</strong> 由 Zhang 等人于 2023 年提出，核心假设非常简洁：<strong>在自回归生成中，大多数历史 token 对当前 token 的注意力贡献微乎其微，真正"重要"的历史 KV 只占一小部分。</strong></p>
+<p>具体而言，H2O 基于两个观察：</p>
+<p><strong>观察一：注意力高度稀疏</strong></p>
+<p>在标准 attention 中，当前 token 对历史 token 的注意力权重分布通常呈现"少数几个高点 + 大量接近零"的模式。也就是说，当前 token 真正"看"的历史 token 可能只有 5-10%，其余 90% 以上的 KV 对最终输出影响极小。</p>
+<p><strong>观察二：重要性可以累积评估</strong></p>
+<p>H2O 不只看当前步的注意力分数，而是维护一个<strong>累积注意力分数</strong>（cumulative attention score）：每个历史 token 的 KV 被所有后续生成 token 关注的总得分。得分高的就是 "heavy hitter"，得分低的就可以被淘汰。</p>
+<p><strong>具体做法</strong>：</p>
+<ol>
+<li>设定一个缓存预算（budget），例如只保留最近 <code>local</code> 个 token 的 KV + 额外 <code>heavy</code> 个 heavy hitter 的 KV。
+</li>
+<li>在生成过程中，实时计算每个历史 token 被当前 token 关注的注意力分数，并累加到该 token 的累积分数上。
+</li>
+<li>当缓存满时，淘汰累积分数最低的 token（在保留的 <code>local</code> 窗口之外）。
+</li>
+</ol>
+<p><strong>为什么只保留 heavy hitter 就够了？</strong></p>
+<p>因为注意力机制本身就是一种"选择性读取"。如果某个历史 token 从来没有被后续 token 高概率关注过，说明它的信息要么已经被其他 token 继承，要么对当前任务根本不重要。把这些"冷数据"驱逐掉，模型输出几乎不受影响。</p>
+<p><strong>局限性</strong>：</p>
+<ul>
+<li>H2O 假设注意力稀疏性在长文本上依然成立，但某些任务（如全局摘要、多文档推理）可能需要真正"看全"所有 token。
+</li>
+<li>累积分数的计算本身需要额外计算和存储开销。
+</li>
+<li>对初始 prompt 中的关键信息（如指令、约束），如果被后续 token 分散注意力，可能误淘汰。
+</li>
+</ul>
+<hr>
+<h3 id="h-1471"><a class="anchor-link" href="#h-1471" aria-label="跳转到本节">#</a>309. SnapKV 与 H2O 的关键差异是什么？为什么说 SnapKV 更"主动"？</h3>
+<h4 id="h-1472"><a class="anchor-link" href="#h-1472" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>观察窗口（observation window）
+</li>
+<li>关键位置识别（key position detection）
+</li>
+<li>压缩策略：逐 token 淘汰 vs 提前筛选
+</li>
+<li>注意力模式聚合
+</li>
+<li>压缩率与质量权衡
+</li>
+</ul>
+<h4 id="h-1473"><a class="anchor-link" href="#h-1473" aria-label="跳转到本节">#</a>详细解答</h4>
+<p><strong>H2O 和 SnapKV 的共同目标</strong>都是压缩 KV cache，但两者的方法论有本质区别。</p>
+<p><strong>H2O 是"被动观察+渐进淘汰"</strong>：</p>
+<ul>
+<li>在生成过程中持续累积注意力分数；
+</li>
+<li>缓存满时淘汰累积分数最低的 token；
+</li>
+<li>是一种<strong>在线动态驱逐</strong>策略，不预先决定保留哪些 token。
+</li>
+</ul>
+<p><strong>SnapKV 是"主动观察+提前筛选"</strong>：</p>
+<ul>
+<li>用一个<strong>观察窗口</strong>（通常是 prompt 的最后几个 token 或生成的前几个 token）来"观察"模型会关注哪些历史位置；
+</li>
+<li>基于观察窗口内的注意力模式，<strong>一次性识别出对后续生成最关键的历史 KV 对</strong>；
+</li>
+<li>非关键位置的 KV 直接丢弃，关键位置的 KV 保留，后续不再做动态调整。
+</li>
+</ul>
+<p><strong>为什么说 SnapKV 更"主动"？</strong></p>
+<p>SnapKV 不是在生成过程中逐步决定淘汰谁，而是在<strong>生成开始前</strong>（或生成早期）就通过一小段观察来确定"哪些历史 token 会被后续 token 频繁关注"。这相当于：</p>
+<blockquote>"我先看一小段，判断模型会关注哪些位置，然后一次性决定保留策略。"</blockquote>
+<p>这种方法有几个优势：</p>
+<ol>
+<li><strong>决策更稳定</strong>：一次性筛选后不再变动，避免了 H2O 中频繁淘汰可能带来的抖动；
+</li>
+<li><strong>压缩率更高</strong>：SnapKV 可以达到 50% 甚至更高的压缩率而几乎不掉效果；
+</li>
+<li><strong>工程实现更简单</strong>：不需要维护复杂的累积分数和在线淘汰逻辑。
+</li>
+</ol>
+<p><strong>SnapKV 的具体做法</strong>：</p>
+<ol>
+<li>取观察窗口中的 token（如 prompt 最后 64 个 token），计算它们对所有历史 token 的注意力分数；
+</li>
+<li>对每个历史 token，聚合观察窗口中所有 token 对它的注意力分数；
+</li>
+<li>选择注意力分数最高的 Top-K 个历史 token 保留 KV，其余丢弃；
+</li>
+<li>后续生成只使用保留的 KV。
+</li>
+</ol>
+<p><strong>关键差异总结</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>H2O</th>
+<th>SnapKV</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>策略类型</td>
+<td>在线渐进淘汰</td>
+<td>离线一次性筛选</td>
+</tr>
+<tr>
+<td>决策时机</td>
+<td>生成过程中</td>
+<td>生成前/早期</td>
+</tr>
+<tr>
+<td>压缩率</td>
+<td>中等（通常 20-30%）</td>
+<td>更高（可达 50%+）</td>
+</tr>
+<tr>
+<td>实现复杂度</td>
+<td>需要维护累积分数</td>
+<td>只需一次注意力聚合</td>
+</tr>
+<tr>
+<td>适用场景</td>
+<td>流式生成、动态长度</td>
+<td>已知 prompt、批量推理</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h3 id="h-1474"><a class="anchor-link" href="#h-1474" aria-label="跳转到本节">#</a>310. StreamingLLM 如何实现"理论上无限长序列"？sink token 是什么？</h3>
+<h4 id="h-1475"><a class="anchor-link" href="#h-1475" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>注意力汇聚现象（attention sink）
+</li>
+<li>Sink tokens（前几个 token 的特殊性）
+</li>
+<li>滑动窗口注意力
+</li>
+<li>长度无关的推理
+</li>
+<li>与 H2O / SnapKV 的互补性
+</li>
+</ul>
+<h4 id="h-1476"><a class="anchor-link" href="#h-1476" aria-label="跳转到本节">#</a>详细解答</h4>
+<p><strong>StreamingLLM</strong> 由 Xiao 等人于 2023 年提出，核心发现是：<strong>在自回归 Transformer 中，模型对序列前几个 token（通常是初始的若干 token，如 BOS 或 system prompt）存在强烈的"注意力汇聚"现象。</strong></p>
+<p><strong>注意力汇聚（Attention Sink）现象</strong>：</p>
+<p>研究发现，无论序列多长，模型在生成每个新 token 时，都会把一部分注意力权重"固定"地分配给序列最前面的几个 token。这些 token 被称为 <strong>sink tokens</strong>（汇点 token）。</p>
+<p>为什么？因为在预训练时，模型学到的注意力模式里，前面几个 token（尤其是 BOS、system prompt 的开头）充当了"全局锚点"的角色。它们帮助模型维持对对话主题、任务类型、角色设定等全局信息的感知。如果把它们丢弃，模型的输出会迅速退化。</p>
+<p><strong>StreamingLLM 的具体做法</strong>：</p>
+<ol>
+<li><strong>始终保留 sink tokens</strong>：保留序列最前面几个 token（通常 4-8 个）的 KV cache，永远不做淘汰；
+</li>
+<li><strong>滑动窗口处理其余 token</strong>：对 sink tokens 之后的 token，只保留最近 <code>window_size</code> 个 token 的 KV cache，更老的 token 直接丢弃；
+</li>
+<li><strong>长度无关的推理</strong>：因为只保留固定数量的 KV（sink + window），所以无论输入多长，KV cache 的显存占用都是常量。
+</li>
+</ol>
+<p>这意味着 StreamingLLM 可以做到<strong>理论上无限长的序列处理</strong>——只要滑动窗口够大以覆盖局部上下文，同时 sink tokens 保证全局信息不丢失。</p>
+<p><strong>与其他方法的对比</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>保留策略</th>
+<th>是否长度无关</th>
+<th>全局信息保障</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>H2O</td>
+<td>累积分数高的 token</td>
+<td>否（cache 随长度增长）</td>
+<td>依赖分数累积</td>
+</tr>
+<tr>
+<td>SnapKV</td>
+<td>注意力分数高的 token</td>
+<td>否（一次性筛选后固定）</td>
+<td>观察窗口决定</td>
+</tr>
+<tr>
+<td>StreamingLLM</td>
+<td>sink tokens + 滑动窗口</td>
+<td><strong>是</strong>（固定大小）</td>
+<td>sink tokens 保障</td>
+</tr>
+</tbody></table></div>
+<p><strong>局限性</strong>：</p>
+<ul>
+<li>如果任务需要频繁回溯很远的特定信息（如"请总结文档第 3 章的内容"），滑动窗口可能已经把第 3 章的内容淘汰掉了；
+</li>
+<li>sink tokens 的数量需要调参，太少可能丢失全局信息，太多浪费显存；
+</li>
+<li>对代码补全等需要精确长距离引用的场景，效果可能不如完整 KV cache。
+</li>
+</ul>
+<hr>
+<h3 id="h-1477"><a class="anchor-link" href="#h-1477" aria-label="跳转到本节">#</a>311. Prefix Caching（vLLM 等）的原理是什么？如何复用已计算前缀？</h3>
+<h4 id="h-1478"><a class="anchor-link" href="#h-1478" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>前缀复用（prefix sharing）
+</li>
+<li>Page-based KV cache 管理
+</li>
+<li>RadixAttention（vLLM）
+</li>
+<li>计算-显存权衡
+</li>
+<li>多请求共享前缀场景
+</li>
+</ul>
+<h4 id="h-1479"><a class="anchor-link" href="#h-1479" aria-label="跳转到本节">#</a>详细解答</h4>
+<p><strong>Prefix Caching</strong> 解决的是另一个维度的 KV cache 问题：<strong>不是压缩单个请求的 cache，而是在多个请求之间复用公共前缀的 cache</strong>。</p>
+<p><strong>场景</strong>：假设一个系统服务中有大量请求共享相同的 system prompt（如 "你是一个专业的编程助手..."），或者多轮对话中历史轮次不变。如果每个请求都独立计算前缀的 KV，就会造成大量重复计算和重复显存占用。</p>
+<p><strong>核心思想</strong>：</p>
+<p>把 KV cache 按照 token 序列的前缀组织起来。如果两个请求的 token 序列有公共前缀，那么前缀部分的 KV 只需计算一次，后续请求直接复用。</p>
+<p><strong>vLLM 中的 RadixAttention 实现</strong>：</p>
+<p>vLLM 的 PagedAttention 把 KV cache 组织成固定大小的 "page"（块）。RadixAttention 在此基础上增加了一个<strong>前缀树（radix tree）</strong>索引：</p>
+<ol>
+<li>每个 page 有一个<strong>逻辑 token 序列标识</strong>；
+</li>
+<li>当新请求到来时，系统先在 radix tree 中查找其 token 序列的最长匹配前缀；
+</li>
+<li>如果找到匹配前缀，直接引用已计算的 KV page，无需重新计算；
+</li>
+<li>只有不匹配的后缀部分才需要新计算。
+</li>
+</ol>
+<p><strong>具体例子</strong>：</p>
+<ul>
+<li>请求 A："你是一个编程助手。请用 Python 写一个排序函数。"
+</li>
+<li>请求 B："你是一个编程助手。请用 Java 写一个排序函数。"
+</li>
+</ul>
+<p>两个请求的前缀 "你是一个编程助手。" 完全相同。使用 Prefix Caching 后：</p>
+<ul>
+<li>请求 A 需要完整计算前缀的 KV；
+</li>
+<li>请求 B 只需复用请求 A 的前缀 KV，只计算 "请用 Java 写一个排序函数。" 这部分。
+</li>
+</ul>
+<p><strong>工程收益</strong>：</p>
+<ol>
+<li><strong>首 token 延迟大幅降低</strong>：如果前缀很长（如 2K tokens 的 system prompt），复用后可省去 prefill 阶段的大量计算；
+</li>
+<li><strong>显存节省</strong>：公共前缀的 KV 只需存一份，多个请求共享；
+</li>
+<li><strong>吞吐提升</strong>：batch 中如果有共享前缀的请求，可以更高效地组织计算。
+</li>
+</ol>
+<p><strong>适用场景</strong>：</p>
+<ul>
+<li>多轮对话（每一轮共享历史对话前缀）；
+</li>
+<li>RAG 系统（多个 query 共享相同的 retrieved documents 前缀）；
+</li>
+<li>批量评测（评测集中大量样本使用相同的 system prompt）。
+</li>
+</ul>
+<p><strong>局限性</strong>：</p>
+<ul>
+<li>只有当请求间确实存在显著公共前缀时才有效，随机独立的请求无收益；
+</li>
+<li>radix tree 的查找和维护有一定开销；
+</li>
+<li>需要 KV page 的引用计数管理，避免过早释放还在被引用的前缀。
+</li>
+</ul>
+<hr>
+<h3 id="h-1480"><a class="anchor-link" href="#h-1480" aria-label="跳转到本节">#</a>312. KV cache 量化与权重量化有何本质不同？为什么 KV cache 量化更难？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">量化误差链路</div>
+        <p class="inline-enhancement-note">放在量化、GPTQ、AWQ、INT4/INT8 相关小节附近，解释精度损失来自哪里。</p>
+        <div class="visual-grid"><div class="visual-card"><b>量化误差来源图</b><img src="../assets/quantization-flow.svg" alt="量化误差来源图"><p>scale、round、clip 和 dequantization 共同决定误差。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>线性量化</b><div class="math-display">\[x_q=\mathrm{clip}\left(\mathrm{round}\left(\frac{x}{s}\right)+z\right),\qquad \hat{x}=s(x_q-z)\]</div><p>s 是 scale，z 是 zero point。</p></div><div class="formula-card"><b>权重显存粗估</b><div class="math-display">\[\mathrm{Memory}_{int4}\approx0.5P\ \mathrm{bytes},\qquad \mathrm{Memory}_{fp16}\approx2P\ \mathrm{bytes}\]</div><p>int4 权重本体约为 fp16 的四分之一。</p></div></div>
+      </aside>
+<h4 id="h-1481"><a class="anchor-link" href="#h-1481" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>权重量化：静态、离线、per-tensor/per-channel
+</li>
+<li>KV cache 量化：动态、在线、per-token
+</li>
+<li>Outlier 问题
+</li>
+<li>动态范围差异
+</li>
+<li>量化粒度选择
+</li>
+</ul>
+<h4 id="h-1482"><a class="anchor-link" href="#h-1482" aria-label="跳转到本节">#</a>详细解答</h4>
+<p><strong>权重量化</strong>和 <strong>KV cache 量化</strong> 虽然都叫"量化"，但面对的挑战完全不同。</p>
+<p><strong>权重量化的特征</strong>：</p>
+<ol>
+<li><strong>静态</strong>：模型权重在训练后就是固定的，可以离线统计每个 weight tensor 的 min/max，一次性确定缩放因子；
+</li>
+<li><strong>离线</strong>：量化可以在模型加载时完成，不影响推理过程；
+</li>
+<li><strong>per-tensor / per-channel</strong>：通常对一个完整的权重矩阵（或每行/每列）做统一缩放；
+</li>
+<li><strong>数值分布稳定</strong>：训练后的权重通常服从较规则的分布（如高斯分布），没有极端 outlier。
+</li>
+</ol>
+<p><strong>KV cache 量化的特征</strong>：</p>
+<ol>
+<li><strong>动态</strong>：KV cache 在推理过程中实时产生，每生成一个 token 就产生新的 K/V 向量，无法离线统计；
+</li>
+<li><strong>在线</strong>：必须在推理过程中实时决定缩放因子，不能预先计算；
+</li>
+<li><strong>per-token</strong>：每个 token 的 K/V 向量分布可能差异很大（比如某些 token 是 outlier，某些是常规值）；
+</li>
+<li><strong>数值分布不稳定</strong>：不同 token、不同层、不同 head 的 KV 分布差异巨大，某些位置存在强烈的 outlier。
+</li>
+</ol>
+<p><strong>为什么 KV cache 量化更难？</strong></p>
+<p><strong>原因一：动态范围不可预测</strong></p>
+<p>模型权重的数值范围在训练后基本固定，但 KV cache 中每个 token 的数值范围是实时变化的。某些 token（如标点符号、特殊标记）的 K/V 值可能非常小，而某些关键内容 token 的值可能非常大。如果用全局缩放因子，小值会被淹没；如果用 per-token 缩放，存储开销又太大。</p>
+<p><strong>原因二：Outlier 更频繁</strong></p>
+<p>在 attention 计算中，某些 token 会被后续大量 token 关注，其 KV 值在传播过程中被不断放大，形成 outlier。这些 outlier 如果用低精度表示（如 int8），会损失关键信息，导致生成质量明显下降。</p>
+<p><strong>原因三：精度要求更高</strong></p>
+<p>权重量化误差会被 FFN 的后续计算在一定程度上"稀释"，但 KV cache 量化误差会直接影响 attention 分数的计算。Attention 分数是 softmax 的输入，如果 KV 值被量化失真，softmax 的分布可能完全改变，导致模型"看错"上下文。</p>
+<p><strong>当前主流 KV cache 量化方法</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>策略</th>
+<th>特点</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>逐 token FP16-&gt;INT8</td>
+<td>每 token 独立缩放</td>
+<td>简单，但 outlier 处理差</td>
+</tr>
+<tr>
+<td>KV cache FP8（H100）</td>
+<td>e4m3 / e5m2</td>
+<td>硬件支持，但动态范围有限</td>
+</tr>
+<tr>
+<td>混合精度 KV</td>
+<td>outlier 用 FP16，其余 INT8</td>
+<td>精度好，但实现复杂</td>
+</tr>
+<tr>
+<td>Layer-wise 动态缩放</td>
+<td>每层维护独立缩放因子</td>
+<td>平衡精度和开销</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h3 id="h-1483"><a class="anchor-link" href="#h-1483" aria-label="跳转到本节">#</a>313. KV cache 压缩方法的选型维度有哪些？如何为业务选最合适的方法？</h3>
+<h4 id="h-1484"><a class="anchor-link" href="#h-1484" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>压缩率、质量损失、延迟、吞吐
+</li>
+<li>业务场景特征（对话、RAG、代码、摘要）
+</li>
+<li>方法兼容性（是否需改模型）
+</li>
+<li>工程落地难度
+</li>
+<li>组合策略
+</li>
+</ul>
+<h4 id="h-1485"><a class="anchor-link" href="#h-1485" aria-label="跳转到本节">#</a>详细解答</h4>
+<p>选型 KV cache 压缩方法时，不能只看"压缩了多少显存"，需要从<strong>六个维度</strong>系统评估。</p>
+<p><strong>维度一：压缩率</strong></p>
+<p>不同方法的压缩能力差异很大：</p>
+<ul>
+<li>GQA/MQA：通过减少 KV head 数压缩，压缩率固定（如 GQA 从 32 head 降到 8 head，压缩 4x）；
+</li>
+<li>H2O：通常压缩 20-30%；
+</li>
+<li>SnapKV：可达 50%+；
+</li>
+<li>StreamingLLM：长度无关，压缩率随序列长度提升而提升；
+</li>
+<li>KV cache 量化：通常 2x（FP16-&gt;INT8）或 4x（FP16-&gt;INT4）。
+</li>
+</ul>
+<p><strong>维度二：生成质量损失</strong></p>
+<p>压缩率越高，质量风险越大。关键是<strong>在业务任务上测</strong>：</p>
+<ul>
+<li>对话类任务通常对局部压缩容忍度较高；
+</li>
+<li>代码补全对精确引用容忍度低；
+</li>
+<li>长文档摘要需要全局信息，对淘汰策略敏感。
+</li>
+</ul>
+<p><strong>维度三：延迟与吞吐影响</strong></p>
+<ul>
+<li>有些压缩方法本身需要额外计算（如 H2O 的累积分数、SnapKV 的观察窗口），会增加 prefill 延迟；
+</li>
+<li>有些方法（如 StreamingLLM）几乎无额外开销；
+</li>
+<li>Prefix Caching 可以显著降低共享前缀场景的首 token 延迟。
+</li>
+</ul>
+<p><strong>维度四：是否需要修改模型</strong></p>
+<ul>
+<li><strong>无需改模型</strong>：H2O、SnapKV、StreamingLLM、Prefix Caching（纯推理优化）；
+</li>
+<li><strong>需要改模型结构</strong>：GQA/MQA（需要重新训练或微调）；
+</li>
+<li><strong>需要改模型量化</strong>：KV cache 量化（需要校准和可能的微调）。
+</li>
+</ul>
+<p><strong>维度五：与现有系统的兼容性</strong></p>
+<ul>
+<li>vLLM 已经原生支持 PagedAttention + Prefix Caching；
+</li>
+<li>StreamingLLM 可以和 PagedAttention 结合；
+</li>
+<li>H2O / SnapKV 需要额外集成到推理框架中。
+</li>
+</ul>
+<p><strong>维度六：业务场景的上下文特征</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>特征</th>
+<th>推荐方法</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>短对话（&lt;4K）</td>
+<td>KV cache 不大，压缩收益有限</td>
+<td>GQA/MQA 基础压缩即可</td>
+</tr>
+<tr>
+<td>长文档问答（&gt;32K）</td>
+<td>需要保留关键信息</td>
+<td>H2O / SnapKV</td>
+</tr>
+<tr>
+<td>流式输入（实时转录）</td>
+<td>长度无限增长</td>
+<td>StreamingLLM</td>
+</tr>
+<tr>
+<td>批量 API 服务</td>
+<td>大量共享 system prompt</td>
+<td>Prefix Caching</td>
+</tr>
+<tr>
+<td>代码补全</td>
+<td>精确引用关键</td>
+<td>慎用激进压缩，可尝试 Prefix Caching</td>
+</tr>
+<tr>
+<td>多轮对话</td>
+<td>历史轮次共享前缀</td>
+<td>Prefix Caching + GQA</td>
+</tr>
+</tbody></table></div>
+<p><strong>最佳实践：组合使用</strong></p>
+<p>实际系统中往往不是"选一个"，而是<strong>多层组合</strong>：</p>
+<ol>
+<li>模型层：用 GQA/MQA 减少基础 KV head 数；
+</li>
+<li>系统层：用 Prefix Caching 复用公共前缀；
+</li>
+<li>推理层：根据场景选择 H2O / SnapKV / StreamingLLM 做动态压缩；
+</li>
+<li>量化层：对保留的 KV 做 INT8/FP8 量化进一步节省显存。
+</li>
+</ol>
+<hr>
+<h3 id="h-1486"><a class="anchor-link" href="#h-1486" aria-label="跳转到本节">#</a>314. 多头注意力下 KV cache 的共享策略（MHA vs GQA vs MQA）如何影响压缩空间？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">MHA / GQA / MQA 结构差异</div>
+        <p class="inline-enhancement-note">放在多头注意力、GQA、MQA 相关小节附近，重点解释 KV 头共享为什么能省显存。</p>
+        <div class="visual-grid"><div class="visual-card"><b>MHA / GQA / MQA 对比图</b><img src="../assets/mha-gqa-mqa.svg" alt="MHA / GQA / MQA 对比图"><p>查询头与 KV 头的共享方式决定 decode 阶段 KV cache 的压力。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>KV 头数与缓存关系</b><div class="math-display">\[H_{kv}=H\;(\mathrm{MHA}),\quad H_{kv}=G\;(\mathrm{GQA}),\quad H_{kv}=1\;(\mathrm{MQA})\]</div><p>KV cache 显存与 KV 头数近似线性相关。</p></div></div>
+      </aside>
+<h4 id="h-1487"><a class="anchor-link" href="#h-1487" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>MHA（Multi-Head Attention）：每个 query head 有独立的 K/V head
+</li>
+<li>GQA（Grouped-Query Attention）：多个 query head 共享一组 K/V head
+</li>
+<li>MQA（Multi-Query Attention）：所有 query head 共享同一组 K/V
+</li>
+<li>缓存大小与 KV head 数成正比
+</li>
+<li>压缩基线差异
+</li>
+</ul>
+<h4 id="h-1488"><a class="anchor-link" href="#h-1488" aria-label="跳转到本节">#</a>详细解答</h4>
+<p>KV cache 压缩的"基线"首先取决于模型用了哪种注意力结构。理解这三种结构的差异，是评估压缩潜力的前提。</p>
+<p><strong>MHA（Multi-Head Attention）</strong>：</p>
+<ul>
+<li>每个 query head 对应独立的 K head 和 V head；
+</li>
+<li>如果模型有 32 个 query head，那么就有 32 个 K head 和 32 个 V head；
+</li>
+<li>KV cache 最大，但注意力表达能力最强（每个 head 独立看上下文）。
+</li>
+</ul>
+<p><strong>GQA（Grouped-Query Attention）</strong>：</p>
+<ul>
+<li>把 query head 分成若干组，每组共享一组 K/V head；
+</li>
+<li>例如 32 个 query head 分成 8 组，每组 4 个 query head 共享 1 个 K head 和 1 个 V head；
+</li>
+<li>KV head 数从 32 降到 8，KV cache 减少 4x。
+</li>
+</ul>
+<p><strong>MQA（Multi-Query Attention）</strong>：</p>
+<ul>
+<li>所有 query head 共享同一组 K/V head；
+</li>
+<li>32 个 query head 共享 1 个 K head 和 1 个 V head；
+</li>
+<li>KV cache 最小（相比 MHA 减少 32x），但表达能力损失最大。
+</li>
+</ul>
+<p><strong>如何影响压缩空间？</strong></p>
+<p>MHA 模型的 KV cache 最大，因此<strong>压缩空间也最大</strong>。但要注意：</p>
+<ol>
+<li><strong>MHA 的压缩不能损害多头独立性</strong>：如果在 MHA 上做 H2O/SnapKV 压缩，需要确保不同 head 的淘汰策略不会过度损害 head 间的表达分工。
+</li>
+<li><strong>GQA 已经做了"结构压缩"</strong>：GQA 的 KV cache 本身已经比 MHA 小很多，再叠加 H2O/SnapKV 的压缩，边际收益可能递减。
+</li>
+<li><strong>MQA 的缓存已经很小</strong>：MQA 模型（如 PaLM、Falcon）的 KV cache 本身就已经被大幅压缩，进一步做 token 级压缩的空间有限。
+</li>
+</ol>
+<p><strong>面试中常被追问的问题</strong>：</p>
+<ul>
+<li>"为什么 GQA 是工程上的最佳折中？" 
+<ul>
+<li>答：MQA 压缩太狠，质量下降明显；MHA 缓存太大；GQA 在 4x 压缩和可接受质量损失之间找到了工程平衡点。LLaMA 2/3、Qwen 等主流模型都选择了 GQA。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>"如果已经在用 GQA，还有必要做 H2O/SnapKV 吗？"
+<ul>
+<li>答：有必要。GQA 压缩的是 head 维度，H2O/SnapKV 压缩的是序列长度维度，两者正交。GQA 后的 KV cache 依然随长度线性增长，长序列下仍需要序列维度的压缩。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-1489"><a class="anchor-link" href="#h-1489" aria-label="跳转到本节">#</a>315. 长上下文推理中，KV cache 的带宽瓶颈和显存瓶颈哪个先到来？</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">RoPE 公式</div>
+        <p class="inline-enhancement-note">放在位置编码和长上下文外推小节附近，突出“旋转注入位置”和“相对位置性质”。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>RoPE 二维旋转</b><div class="math-display">\[\begin{bmatrix}x'_{2i}\\x'_{2i+1}\end{bmatrix}=\begin{bmatrix}\cos(m\theta_i)&-\sin(m\theta_i)\\\sin(m\theta_i)&\cos(m\theta_i)\end{bmatrix}\begin{bmatrix}x_{2i}\\x_{2i+1}\end{bmatrix}\]</div><p>位置不是加到 embedding 上，而是作为旋转注入 Q/K。</p></div><div class="formula-card"><b>相对位置性质</b><div class="math-display">\[\langle R_m q, R_n k\rangle=\langle q, R_{n-m}k\rangle\]</div><p>解释 RoPE 为什么天然把相对距离带进 attention score。</p></div></div>
+      </aside>
+<h4 id="h-1490"><a class="anchor-link" href="#h-1490" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>HBM 容量 vs HBM 带宽
+</li>
+<li>Prefill 阶段 vs Decode 阶段的不同瓶颈
+</li>
+<li>算力利用率（arithmetic intensity）
+</li>
+<li>Roofline 模型视角
+</li>
+<li>Batch size 的影响
+</li>
+</ul>
+<h4 id="h-1491"><a class="anchor-link" href="#h-1491" aria-label="跳转到本节">#</a>详细解答</h4>
+<p>这个问题没有一个固定答案，<strong>取决于推理阶段和并发配置</strong>。需要用 Roofline 模型的思路来分析。</p>
+<p><strong>Prefill 阶段（处理输入 prompt）</strong>：</p>
+<ul>
+<li>特点是<strong>计算密集</strong>：一次性处理整个 prompt，矩阵乘法规模大，算力利用率高；
+</li>
+<li>瓶颈通常是 <strong>GPU 算力</strong>（FLOPs），而不是显存或带宽；
+</li>
+<li>KV cache 在此阶段被"写入"，但读取压力不大。
+</li>
+</ul>
+<p><strong>Decode 阶段（逐个 token 生成）</strong>：</p>
+<ul>
+<li>特点是<strong>内存带宽密集</strong>：每步只处理一个新 token，矩阵乘法规模小，大部分时间花在从 HBM 读取 KV cache 和权重；
+</li>
+<li>瓶颈通常是 <strong>HBM 带宽</strong>；
+</li>
+<li>KV cache 在此阶段被"读取"，而且每步都要读全部历史 KV。
+</li>
+</ul>
+<p><strong>显存瓶颈 vs 带宽瓶颈的顺序</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>先到的瓶颈</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>单请求、短序列（&lt;8K）</td>
+<td>通常都不是瓶颈</td>
+<td>算力足够，cache 很小</td>
+</tr>
+<tr>
+<td>单请求、长序列（&gt;64K）</td>
+<td><strong>显存容量</strong>先爆</td>
+<td>KV cache 超出 HBM</td>
+</tr>
+<tr>
+<td>多并发、中等序列</td>
+<td><strong>显存容量</strong>先爆</td>
+<td>多个 cache 叠加</td>
+</tr>
+<tr>
+<td>单请求、超长序列但显存放得下</td>
+<td><strong>带宽</strong>先饱和</td>
+<td>每步读取大量 KV，GPU 算力利用率极低</td>
+</tr>
+<tr>
+<td>Batch size 极大</td>
+<td><strong>显存容量</strong>先爆</td>
+<td>batch 维度放大 cache</td>
+</tr>
+</tbody></table></div>
+<p><strong>关键洞察</strong>：</p>
+<ol>
+<li><strong>显存容量瓶颈</strong>通常在"能不能放下"这个门槛上出现。一旦超过 HBM 容量，推理直接失败（OOM）。
+</li>
+<li><strong>带宽瓶颈</strong>通常在"已经能放下但很慢"的场景出现。即使显存够，如果每步读取的 KV 太多，decode 速度会急剧下降。
+</li>
+<li><strong>Batch size 是显存瓶颈的放大器</strong>：batch_size=1 时 128K 序列可能刚好放下；batch_size=8 时同样的序列直接 OOM。
+</li>
+</ol>
+<p><strong>工程判断方法</strong>：</p>
+<ul>
+<li>如果推理报 OOM，先到的瓶颈是<strong>显存容量</strong>——需要压缩 KV cache 或减少 batch size；
+</li>
+<li>如果推理能跑但 decode 速度极慢（如每 token &gt;1s），先到的瓶颈是<strong>带宽</strong>——需要减少 KV 读取量（压缩、GQA、StreamingLLM）或提升带宽利用率（量化降低数据量）。
+</li>
+</ul>
+<hr>
+<h3 id="h-1492"><a class="anchor-link" href="#h-1492" aria-label="跳转到本节">#</a>316. 如果 KV cache 压缩后模型效果下降，如何定位是"压缩过头"还是"压缩错了位置"？</h3>
+<h4 id="h-1493"><a class="anchor-link" href="#h-1493" aria-label="跳转到本节">#</a>知识点</h4>
+<ul>
+<li>消融实验设计
+</li>
+<li>注意力图可视化
+</li>
+<li>分层诊断（layer-wise）
+</li>
+<li>Head-wise 分析
+</li>
+<li>压缩粒度控制
+</li>
+</ul>
+<h4 id="h-1494"><a class="anchor-link" href="#h-1494" aria-label="跳转到本节">#</a>详细解答</h4>
+<p>KV cache 压缩导致效果下降时，需要<strong>系统化诊断</strong>，而不是盲目调参。</p>
+<p><strong>第一步：确认下降是"压缩"导致的</strong></p>
+<ul>
+<li>先用无压缩版本跑相同输入，确认 baseline 效果正常；
+</li>
+<li>排除其他因素（如量化、温度参数、随机性）的干扰。
+</li>
+</ul>
+<p><strong>第二步：分层诊断——是哪一层/哪一类 token 出了问题</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>诊断手段</th>
+<th>做法</th>
+<th>能发现什么</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>逐层压缩对比</strong></td>
+<td>只在某些层做压缩，其他层保留完整 KV</td>
+<td>如果是某几层对压缩特别敏感，说明这些层负责的关键信息被压缩掉了</td>
+</tr>
+<tr>
+<td><strong>按 token 类型分析</strong></td>
+<td>分别测试 system prompt、user query、retrieved documents、model response 的压缩敏感度</td>
+<td>如果是 retrieved documents 被压缩后效果下降，说明 RAG 场景需要更保守的文档 KV 保留策略</td>
+</tr>
+<tr>
+<td><strong>按序列位置分析</strong></td>
+<td>分别测试压缩前半段、后半段、中间段</td>
+<td>如果压缩后半段（最新信息）导致效果下降，说明滑动窗口设太小了</td>
+</tr>
+</tbody></table></div>
+<p><strong>第三步：注意力图可视化</strong></p>
+<ul>
+<li>提取压缩前后的 attention map 对比；
+</li>
+<li>如果发现某些关键 token（如问题中的实体词、RAG 中的证据句）在压缩后的 attention 分数大幅下降，说明<strong>压缩错了位置</strong>——这些 token 的 KV 不该被淘汰；
+</li>
+<li>如果 attention map 整体变"模糊"（熵增加），说明<strong>压缩过头了</strong>——保留的 KV 不足以支撑精确的注意力分布。
+</li>
+</ul>
+<p><strong>第四步：调整策略</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>根因</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>压缩错了位置</td>
+<td>改用更智能的保留策略（如 SnapKV 替代随机淘汰）、增加 protected tokens（如 BOS、system prompt、检索结果）</td>
+</tr>
+<tr>
+<td>压缩过头了</td>
+<td>增加保留预算（budget）、减少压缩率、对某些层禁用压缩</td>
+</tr>
+<tr>
+<td>某些层特别敏感</td>
+<td>对敏感层保留完整 KV，只压缩其他层</td>
+</tr>
+<tr>
+<td>某些 head 特别敏感</td>
+<td>对敏感 head 保留完整 KV（MHA 场景）</td>
+</tr>
+</tbody></table></div>
+<p><strong>第五步：定量评估</strong></p>
+<ul>
+<li>在压缩后的模型上跑标准评测（perplexity、下游任务 accuracy）；
+</li>
+<li>比较不同压缩率下的"压缩率-质量"曲线，找到"拐点"（sweet spot）；
+</li>
+<li>记录不同场景（对话、RAG、代码）的最佳压缩配置。
+</li>
+</ul>
+<p><strong>面试中的高分表达</strong>：</p>
+<p>不要只说"压缩后效果差了我就减少压缩率"，而是要展示<strong>结构化诊断思路</strong>：</p>
+<ol>
+<li>先确认因果（确实是压缩导致）；
+</li>
+<li>再定位层次（哪层、哪类 token、哪个位置）；
+</li>
+<li>然后分析注意力图验证假设；
+</li>
+<li>最后针对性调整策略，而不是盲目全局放松。
+</li>
+</ol>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="027.html">← 27. 训练系统备考顺序</a><a href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析） →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

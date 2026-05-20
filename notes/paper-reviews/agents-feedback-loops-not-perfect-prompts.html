@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agents Need Feedback Loops 阅读分析</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1a16;
+      --muted: #6d665d;
+      --subtle: #8a8175;
+      --paper: #f6f1e8;
+      --panel: #fffdf8;
+      --panel-strong: #fff8ed;
+      --line: #d8cdbb;
+      --line-strong: #aa9b86;
+      --accent: #b65332;
+      --accent-soft: #f4ded4;
+      --blue: #2d5c82;
+      --blue-soft: #dbe8f1;
+      --green: #326f5b;
+      --green-soft: #dcebe4;
+      --gold: #a87322;
+      --gold-soft: #f2e3bf;
+      --red: #9c3e34;
+      --red-soft: #f1d9d4;
+      --shadow: 0 18px 42px rgba(52, 43, 31, 0.12);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(45, 92, 130, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(246, 241, 232, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .mark {
+      width: 25px;
+      height: 25px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 41%, var(--accent) 42% 58%, transparent 59%),
+        linear-gradient(45deg, transparent 0 42%, var(--green) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 253, 248, 0.68);
+      color: var(--ink);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: clamp(28px, 5vw, 72px);
+      align-items: end;
+      min-height: 86vh;
+      padding: clamp(58px, 9vw, 112px) clamp(20px, 5vw, 72px) 48px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 78% 22%, rgba(182, 83, 50, 0.14), transparent 34%),
+        linear-gradient(118deg, rgba(255, 253, 248, 0.96) 0 45%, rgba(255, 248, 237, 0.86) 46% 100%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.08; letter-spacing: 0; }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 8vw, 104px);
+      font-weight: 740;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.5vw, 58px);
+      font-weight: 720;
+    }
+
+    h3 {
+      font-size: clamp(20px, 2.4vw, 27px);
+      font-weight: 780;
+    }
+
+    .hero-lead {
+      max-width: 770px;
+      margin: 24px 0 0;
+      color: #3d372f;
+      font-size: clamp(18px, 2.15vw, 24px);
+      line-height: 1.62;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+      align-self: center;
+    }
+
+    .thesis-card, .source-card, .mini-card, .quote-card, .diagram, .check-card, .metric-card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .thesis-card {
+      padding: 22px;
+    }
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      background: rgba(255, 248, 237, 0.9);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .thesis-card p {
+      margin: 14px 0 0;
+      color: #332e28;
+      font-size: 17px;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 64px 0 90px;
+    }
+
+    section {
+      margin-top: 72px;
+      scroll-margin-top: 80px;
+    }
+
+    section:first-child { margin-top: 0; }
+
+    .section-head {
+      display: grid;
+      gap: 12px;
+      max-width: 900px;
+      margin-bottom: 28px;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .source-card, .mini-card, .quote-card, .check-card, .metric-card {
+      padding: 22px;
+      background: var(--panel);
+      box-shadow: none;
+    }
+
+    .source-card h3, .mini-card h3, .check-card h3, .metric-card h3 {
+      margin-bottom: 12px;
+      font-size: 21px;
+    }
+
+    .source-card p, .mini-card p, .quote-card p, .check-card p, .metric-card p {
+      margin: 0;
+      color: #3d372f;
+    }
+
+    .muted { color: var(--muted); }
+
+    .kicker {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .flow {
+      display: grid;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .num {
+      display: inline-grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      font-weight: 850;
+      font-size: 18px;
+    }
+
+    .step h3 { font-size: 20px; margin-bottom: 7px; }
+    .step p { margin: 0; color: #3d372f; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel-strong);
+      color: var(--ink);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .diagram {
+      padding: 24px;
+      background: var(--panel);
+      box-shadow: none;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .pipe-node {
+      position: relative;
+      min-height: 132px;
+      padding: 16px;
+      border: 1px solid var(--line-strong);
+      background: #fff9ef;
+    }
+
+    .pipe-node:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -12px;
+      width: 12px;
+      height: 2px;
+      background: var(--line-strong);
+    }
+
+    .pipe-node strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+    }
+
+    .pipe-node span {
+      color: #3d372f;
+      font-size: 14px;
+    }
+
+    .callout {
+      margin: 22px 0;
+      padding: 20px 22px;
+      border-left: 5px solid var(--accent);
+      background: var(--accent-soft);
+      color: #3a2b24;
+    }
+
+    .callout.blue { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.green { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.gold { border-left-color: var(--gold); background: var(--gold-soft); }
+    .callout.red { border-left-color: var(--red); background: var(--red-soft); }
+
+    .quote-card {
+      position: relative;
+      padding-left: 28px;
+      border-left: 5px solid var(--line-strong);
+    }
+
+    .quote-card p { font-size: 18px; }
+
+    .quote-card cite {
+      display: block;
+      margin-top: 12px;
+      color: var(--muted);
+      font-style: normal;
+      font-size: 14px;
+    }
+
+    ul, ol { padding-left: 1.25em; }
+    li { margin: 8px 0; }
+
+    code {
+      padding: 0.1em 0.34em;
+      border: 1px solid rgba(170, 155, 134, 0.5);
+      background: #fff4e4;
+      color: #4a3324;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #211d19;
+      color: #f5eadc;
+      font-family: var(--mono);
+      line-height: 1.6;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      background: #fff9ef;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .evidence-item {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .evidence-item strong { color: var(--accent); }
+    .evidence-item p { margin: 0; }
+
+    footer {
+      margin-top: 80px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 920px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .grid.two, .grid.three { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr; }
+      .pipe-node:not(:last-child)::after { display: none; }
+      .evidence-item { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .hero { padding-top: 48px; }
+      main { width: min(100% - 28px, 1180px); padding-top: 42px; }
+      section { margin-top: 52px; }
+      .step { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span>Agent Feedback Loops</span></div>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#system">系统</a>
+      <a href="#learning">学习机制</a>
+      <a href="#evidence">证据</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Article · Petra Donka · 2026-05-14</div>
+      <h1>Agents Need Feedback Loops, Not Perfect Prompts</h1>
+      <p class="hero-lead">这篇文章真正讲的不是“怎样写一个更好的 prompt”，而是怎样把团队日常判断变成 agent 可吸收、可审查、可回滚的长期记忆。</p>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis-card">
+        <span class="label">核心 thesis</span>
+        <p>对判断密集型工作，静态 prompt 会过时；生产级 agent 的关键能力是从团队已经发生的修正、选择和跳过行为中持续抽象原则。</p>
+      </div>
+      <div class="thesis-card">
+        <span class="label">一句话判断</span>
+        <p>这是一个很工程化的 self-improving agent 案例：不是让 agent 私自改自己，而是让它提出 skill diff，由人像 review 代码一样 review。</p>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div class="kicker">Source Map</div>
+        <h2>读了哪些材料，怎么确认</h2>
+        <p>原帖本身只有一个短链。短链解析到 X Article；回复区又给出作者公开的 GitHub Gist，里面是 Buzz 的 `reply-learning` skill。</p>
+      </div>
+      <div class="grid three">
+        <article class="source-card">
+          <h3>X status</h3>
+          <p>`opencli twitter thread` 读取到原 status：`petradonka/status/2054897826149101588`，正文是短链；同一线程包含作者回复、读者追问和 gist 链接。</p>
+          <div class="tag-row"><span class="tag">795 likes</span><span class="tag">75 retweets</span><span class="tag">2026-05-14</span></div>
+        </article>
+        <article class="source-card">
+          <h3>X Article</h3>
+          <p>短链 `t.co/kI2B1isN4N` 解析到 X Article；`opencli twitter article` 通过 status ID 成功抽取完整正文，标题为《Agents Need Feedback Loops, Not Perfect Prompts》。</p>
+          <div class="tag-row"><span class="tag">一手长文</span><span class="tag">OpenCLI extracted</span></div>
+        </article>
+        <article class="source-card">
+          <h3>GitHub Gist</h3>
+          <p>作者在回复中公开 `reply-learning` skill gist。raw 内容确认其目标是从反馈和例子中提取 durable patterns，并更新 `draft-warp-reply` skill。</p>
+          <div class="tag-row"><span class="tag">reply-learning</span><span class="tag">public gist</span></div>
+        </article>
+      </div>
+      <div class="callout blue">
+        注意：Grok-Search 对这次查询没有返回可用内容，因此本文使用 OpenCLI 对 X 的一手提取、Tavily 对 Gist/LinkedIn 镜像的检索，以及 GitHub raw gist 内容作为依据。
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div class="kicker">Problem</div>
+        <h2>问题不是 prompt 不够好，而是任务本身会变</h2>
+        <p>作者的切入点很准确：很多 agent demo 能做到“差不多能用”，但无法达到“可以信任地放进生产工作流”。这个 gap 不是再加十条规则就能补上的。</p>
+      </div>
+      <div class="grid two">
+        <article class="mini-card">
+          <h3>代码型 agent 有外部检查</h3>
+          <p>写代码时，agent 可以跑测试、build、浏览器检查和命令输出。失败信号相对明确，重试也便宜。</p>
+        </article>
+        <article class="mini-card">
+          <h3>判断型 agent 没有即时真值</h3>
+          <p>社媒回复、客户沟通、招聘消息、文档和 code review 评论都要求“知道什么时候说、说多少、何时不说”。不能先公开乱回一批，再用用户反应当 reward。</p>
+        </article>
+      </div>
+      <div class="quote-card" style="margin-top:18px;">
+        <p>真正的问题从“怎样写完美 prompt”变成“怎样构建一个上线后还能继续从团队学习的 agent”。</p>
+        <cite>对原文主旨的压缩概括</cite>
+      </div>
+    </section>
+
+    <section id="system">
+      <div class="section-head">
+        <div class="kicker">System</div>
+        <h2>Buzz 的工作流：人仍负责最终判断，agent 负责筛选和起草</h2>
+        <p>Buzz 是 Warp Developer Experience 团队用于处理社区提及的 agent。它不是替人公开发言，而是把分散平台上的 mentions 收敛到 Slack，并给出 triage 和 draft。</p>
+      </div>
+      <div class="diagram">
+        <div class="pipeline">
+          <div class="pipe-node"><strong>1. 监听</strong><span>Twitter、LinkedIn、Reddit、Bluesky 等渠道出现 Warp mention。</span></div>
+          <div class="pipe-node"><strong>2. 判断</strong><span>决定 reply、like、note、skip，核心是“是否值得团队注意”。</span></div>
+          <div class="pipe-node"><strong>3. 起草</strong><span>如果需要回复，生成 draft 并贴到 Slack，让团队不用从空白开始。</span></div>
+          <div class="pipe-node"><strong>4. 人审</strong><span>最终公开回复仍由人写或确认，保留品牌和关系判断。</span></div>
+          <div class="pipe-node"><strong>5. 学习</strong><span>每天收集 emoji、thread note、实际动作，提出 skill 更新 PR。</span></div>
+        </div>
+      </div>
+      <div class="callout green">
+        这里的关键设计是“最小额外反馈成本”：团队不需要进入一个专门标注系统，只需要在本来就使用的 Slack 里点 emoji 或补充 thread note。
+      </div>
+    </section>
+
+    <section id="learning">
+      <div class="section-head">
+        <div class="kicker">Mechanism</div>
+        <h2>从规则堆叠到原则学习：这一步最重要</h2>
+        <p>Buzz 的第一个失败模式很典型：prompt 里列满 case-by-case 规则，结果越来越长、越来越机器人、越来越脆。作者的修正是把规则压缩成可迁移原则，再给 agent 一个学习这些原则的方法。</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>层级</th><th>写法</th><th>问题/价值</th><th>例子</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>具体规则</td>
+              <td>遇到 A 就说 B；遇到 C 就不要说 D。</td>
+              <td>容易过拟合单个场景，prompt 变长，冲突规则越来越多。</td>
+              <td>“永远不要在第一句提价格。”</td>
+            </tr>
+            <tr>
+              <td>可迁移原则</td>
+              <td>描述判断方式，而不是固定动作。</td>
+              <td>能跨场景使用，适合判断密集型任务。</td>
+              <td>“用户在发泄时，先共情，不要先 pitch。”</td>
+            </tr>
+            <tr>
+              <td>学习原则的方法</td>
+              <td>从反馈中问 why，抽象 pattern，检查现有 skill，编辑/删除/新增。</td>
+              <td>防止 agent 把每次反馈机械地变成一个新规则。</td>
+              <td>`reply-learning` skill 的七步流程。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="flow">
+        <div class="step"><span class="num">1</span><div><h3>先定位具体偏差</h3><p>例如 draft 太像营销话术、编造了产品上下文、接受了竞争对手的 framing。这里不急着改 prompt，先写清楚错在哪里。</p></div></div>
+        <div class="step"><span class="num">2</span><div><h3>追问底层原因</h3><p>`reply-learning` gist 强调：具体失败只是症状。比如“编造已知 issue”背后可能是 agent 倾向于用 plausible filler 填补知识缺口。</p></div></div>
+        <div class="step"><span class="num">3</span><div><h3>判断是否可泛化</h3><p>作者给了一个很实用的 test：这个 principle 能不能改变 3 个以上不同场景里的行为？如果不能，它很可能只是规则。</p></div></div>
+        <div class="step"><span class="num">4</span><div><h3>检查已有原则</h3><p>正确动作不一定是新增。可能是 sharpen existing wording、删除误导性原则、合并重叠原则，避免 skill 持续膨胀。</p></div></div>
+        <div class="step"><span class="num">5</span><div><h3>以 PR 形式提交</h3><p>学习 agent 不直接改生产行为，而是提交 skill diff，列出它 review 了哪些反馈、想改什么原则、为什么改。</p></div></div>
+      </div>
+      <pre><code>Human correction / actual action
+        ↓
+Compare with agent recommendation
+        ↓
+Find failure cause or successful pattern
+        ↓
+Generalize into principle
+        ↓
+Edit skill file as code
+        ↓
+Open PR for human review</code></pre>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <div class="kicker">Evidence</div>
+        <h2>文章给出的效果证据是产品经验型，不是 benchmark 型</h2>
+        <p>这篇不是论文，没有对照实验、随机分组或标准指标。它的证据来自 Warp 的生产使用描述和系统形态，因此应该按工程 case study 理解。</p>
+      </div>
+      <div class="grid three">
+        <article class="metric-card">
+          <h3>规模</h3>
+          <p>文章称 Warp 社区每周产生超过一千条 mentions；Buzz 现在每月处理数千条 mentions。</p>
+        </article>
+        <article class="metric-card">
+          <h3>筛选价值</h3>
+          <p>约一半 mentions 不需要回复，因此 triage 本身就能减少团队注意力消耗。</p>
+        </article>
+        <article class="metric-card">
+          <h3>系统复杂度</h3>
+          <p>Buzz 约有 15 个 skills，覆盖 triage、drafting、learning、analytics、reporting，并由 Oz 负责管理和编排。</p>
+        </article>
+      </div>
+      <div class="evidence-list" style="margin-top:18px;">
+        <div class="evidence-item"><strong>可验证的强点</strong><p>闭环设计具体：Slack 反馈、每日归纳、skill 文件 diff、PR review、版本历史和 rollback。这些都是工程上能落地的约束。</p></div>
+        <div class="evidence-item"><strong>未证明的部分</strong><p>文章没有量化 reply 质量提升、误判率变化、人工节省时间、PR 被接受比例，也没有比较“原则学习”与“人工手写 prompt 迭代”的效果差异。</p></div>
+        <div class="evidence-item"><strong>最有价值的证据</strong><p>不是“Buzz 很强”，而是作者明确暴露了失败模式：反馈若不能泛化，会退化成 brittle exceptions。这个观察对很多 agent 系统都成立。</p></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div class="kicker">Limits</div>
+        <h2>这个方案的边界：反馈质量成为新的瓶颈</h2>
+        <p>它把系统瓶颈从“写 prompt 的人”移动到“团队能否持续产生高信号反馈”。这不是缺点，但需要承认。</p>
+      </div>
+      <div class="grid two">
+        <article class="check-card">
+          <h3>1. 反馈必须高信号</h3>
+          <p>如果团队 emoji 反应随意、thread note 不一致，agent 会把噪声也制度化。borancakir 在回复区也指出，loop 会 compound 周围的 supervision。</p>
+        </article>
+        <article class="check-card">
+          <h3>2. skill 需要保持短</h3>
+          <p>Gist 明确说每一行都要 justify its context window cost，`draft-warp-reply` 最好保持在约 200 行以下。否则原则也会变成另一种规则泥潭。</p>
+        </article>
+        <article class="check-card">
+          <h3>3. 需要 review 和 rollback</h3>
+          <p>如果 agent 可以无审查地改自己的生产 prompt，就是危险的自强化系统。文章的安全性来自“PR 而不是 silent write”。</p>
+        </article>
+        <article class="check-card">
+          <h3>4. 适合判断任务，不等于适合所有任务</h3>
+          <p>对有明确自动验证的任务，测试和环境反馈仍然更直接。这个方案最适合外部 reward 慢、贵、噪声大的任务。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div class="kicker">Insight</div>
+        <h2>真正的新意：把 taste 变成版本化资产</h2>
+        <p>这篇文章最值得带走的不是“给 agent 加反馈 loop”这个口号，而是一个更具体的架构判断：agent 的长期能力不只来自模型参数，也来自团队把判断沉淀成可维护 skill 的速度。</p>
+      </div>
+      <div class="callout gold">
+        很多团队把 prompt 当“配置文本”，所以 prompt 一旦变长就不可维护。Warp 这个案例把 prompt/skill 当“生产代码”：有单一职责、有 review、有 diff、有回滚、有上下文成本预算。这才是它能持续迭代的关键。
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>常见做法</th><th>这篇文章建议的做法</th><th>我的判断</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>不断调主 prompt</td><td>把任务拆成 triage、drafting、learning、analytics 等 skills</td><td>更符合单一职责，也更容易 review。</td></tr>
+            <tr><td>人工批注专门标注集</td><td>把 Slack 中已经发生的团队动作当低摩擦信号</td><td>更现实，但要防止低质量反馈进入系统。</td></tr>
+            <tr><td>错误来了就加规则</td><td>从错误中提取可迁移原则，必要时删除旧原则</td><td>这是避免 prompt rot 的核心。</td></tr>
+            <tr><td>agent 自己改自己</td><td>agent 提 PR，人类 review 后合入</td><td>保留 self-improvement 的效率，同时避免失控。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout red">
+        如果把这个方案搬到别的团队，第一步不是写 learning agent，而是先定义：哪些人类动作是可信反馈？哪些反馈只能作为候选，不得直接进入 skill？没有这个边界，反馈 loop 只会把组织里的噪声自动化。
+      </div>
+    </section>
+
+    <footer>
+      <p>生成时间：2026-05-15 11:24 CST。材料来源：OpenCLI `twitter thread` / `twitter article`，GitHub Gist raw content，Tavily search/extract。本文为中文阅读分析，不替代原文。</p>
+    </footer>
+  </main>
+</body>
+</html>

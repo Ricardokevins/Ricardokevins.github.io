@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>006. 线性代数二：投影、最小二乘与正交分解 - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 006</div>
+        <div class="brand-title">线性代数二：投影、最小二乘与正交分解</div>
+        <div class="brand-meta">投影 · 回归几何 · 用投影几何理解最小二乘、正规方程、正交性和过拟合风险。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-006-1">学习目标与概念起点</a><a class="toc-link" href="#s-006-2">内积、长度与角度</a><a class="toc-link" href="#s-006-3">正交与投影</a><a class="toc-link" href="#s-006-4">二维投影例题</a><a class="toc-link" href="#s-006-5">最小二乘与残差正交</a><a class="toc-link" href="#s-006-6">小数据最小二乘例题</a><a class="toc-link" href="#s-006-7">正规方程、QR 与数值稳定</a><a class="toc-link" href="#s-006-8">Ridge 正则化</a><a class="toc-link" href="#s-006-9">面试连接、误区与检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link current" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="005.html">← 005. 线性代数一：向量空间、矩阵与秩</a><a href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="algebra" data-title="线性代数二：投影、最小二乘与正交分解">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>006. 线性代数二：投影、最小二乘与正交分解</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>用投影几何理解最小二乘、正规方程、正交性和过拟合风险。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>，保持概念、例题和算法直觉连贯。</p></aside>
+          <figure class="visual-lead"><img src="../assets/linear-algebra-geometry.svg" alt="线性代数二：投影、最小二乘与正交分解 图示"></figure>
+          <h3 id="s-006-1"><a class="anchor-link" href="#s-006-1" aria-label="跳转到本节">#</a>学习目标与概念起点</h3>
+<p>本章要把“向量几何”和“线性回归”连成一条线：内积用来衡量方向关系，长度用来衡量误差大小，正交说明两个方向互不解释，投影是在一个子空间里找最近点，最小二乘就是把观测目标投影到特征列空间。掌握这条线以后，正规方程、QR 分解和 ridge 正则化都不再是孤立公式。</p>
+<div class="concept-grid">
+  <div class="concept-card">
+    <h4>学习目标</h4>
+    <ul>
+      <li>能读懂 \(x^Ty\)、\(\|x\|_2\)、\(x\perp y\)、\(\operatorname{col}(X)\) 的含义。</li>
+      <li>能解释为什么投影误差必须和被投影的空间正交。</li>
+      <li>能从残差正交推出最小二乘正规方程 \(X^TX\hat\beta=X^Ty\)。</li>
+      <li>知道 QR 为什么比显式求逆更适合数值求解。</li>
+      <li>能说明 ridge 为什么会牺牲一点无偏性来换稳定性。</li>
+    </ul>
+  </div>
+  <div class="concept-card">
+    <h4>概念起点</h4>
+    <p>如果只有一条直线，投影就是把一个点“垂直落到直线上”。如果有多列特征，直线变成由这些特征张成的平面或高维子空间。线性回归问的是：在所有形如 \(X\beta\) 的预测向量里，哪一个离真实 \(y\) 最近？</p>
+  </div>
+  <div class="concept-card">
+    <h4>符号读法</h4>
+    <p>\(X\) 是特征矩阵，列向量代表解释变量；\(\beta\) 是系数；\(X\beta\) 是预测值；\(y\) 是目标；\(r=y-X\hat\beta\) 是残差。读公式时先问每个对象的形状，再问它表达的是长度、方向还是误差。</p>
+  </div>
+</div>
+
+<h3 id="s-006-2"><a class="anchor-link" href="#s-006-2" aria-label="跳转到本节">#</a>内积、长度与角度</h3>
+<p>内积是线性代数里最常用的“相似度测量器”。对两个向量 \(x=(x_1,\dots,x_n)\) 和 \(y=(y_1,\dots,y_n)\)，标准内积写作 \(x^Ty\)，读作“\(x\) 转置乘 \(y\)”或“\(x\) 和 \(y\) 的点积”。它把两个向量逐项相乘再相加：</p>
+<div class="math-display">\[
+x^Ty=x_1y_1+x_2y_2+\cdots+x_ny_n
+\]</div>
+<p>为什么这件事有用？因为它同时编码了“长度”和“方向”。如果两个向量在多数维度上同向变化，乘积加起来通常为正；如果一个高的时候另一个低，乘积会抵消甚至为负；如果方向完全无关，在几何上就会得到 0。</p>
+<div class="formula-list">
+  <p><b>长度：</b>\(\|x\|_2=\sqrt{x^Tx}\)。例如 \(x=(3,4)\)，则 \(\|x\|_2=\sqrt{3^2+4^2}=5\)。</p>
+  <p><b>夹角：</b>\(x^Ty=\|x\|_2\|y\|_2\cos\theta\)。这里 \(\theta\) 是两个向量的夹角。</p>
+  <p><b>正交：</b>如果 \(x^Ty=0\)，就说 \(x\perp y\)。在二维里它就是垂直；在高维里它表示两个方向没有线性重叠。</p>
+  <p><b>单位向量：</b>如果 \(\|u\|_2=1\)，则 \(u\) 是单位向量。把方向变成单位长度以后，\(u^Ty\) 就是 \(y\) 在 \(u\) 方向上的有符号长度。</p>
+</div>
+<div class="intuition-box">
+  <p><b>公式怎么读：</b>\(x^Ty=\|x\|\|y\|\cos\theta\) 可以分成三部分：\(\|x\|\) 和 \(\|y\|\) 只负责“有多长”，\(\cos\theta\) 负责“方向有多一致”。所以检索系统里常用 cosine similarity，是因为它想淡化向量长度，主要比较方向是否相近。</p>
+</div>
+
+<h3 id="s-006-3"><a class="anchor-link" href="#s-006-3" aria-label="跳转到本节">#</a>正交与投影</h3>
+<p>投影要解决的问题是：给定一个向量 \(y\) 和一个子空间 \(S\)，在 \(S\) 里面找到离 \(y\) 最近的点 \(\hat y\)。这个 \(\hat y\) 叫 \(y\) 在 \(S\) 上的投影，记作 \(P_Sy\)。误差 \(r=y-\hat y\) 叫残差。</p>
+<div class="math-display">\[
+\hat y=P_Sy,\qquad r=y-\hat y,\qquad r\perp S
+\]</div>
+<p>“残差正交”是投影的核心。为什么？假设 \(r\) 还和子空间里的某个方向 \(v\) 有重叠，也就是 \(v^Tr\neq 0\)。那就说明我们还能沿着 \(v\) 的方向把 \(\hat y\) 往 \(y\) 推近一点，当前点就不是最近点。因此真正最近的时候，残差必须和子空间中每个方向都正交。</p>
+<p>如果子空间只由一个非零向量 \(a\) 张成，也就是 \(S=\{ca:c\in\mathbb R\}\)，投影形式是 \(\hat y=ca\)。为了让残差 \(y-ca\) 和 \(a\) 正交，有：</p>
+<div class="math-display">\[
+a^T(y-ca)=0
+\quad\Longrightarrow\quad
+c=\frac{a^Ty}{a^Ta}
+\quad\Longrightarrow\quad
+\operatorname{proj}_a(y)=\frac{a^Ty}{a^Ta}a
+\]</div>
+<p>这里 \(a^Ty\) 衡量 \(y\) 在 \(a\) 方向上的重叠，\(a^Ta\) 是 \(a\) 自己的长度平方。分母的作用是归一化：同一条直线可以用 \(a\) 或 \(2a\) 表示，投影点不应该因为基向量长度不同而改变。</p>
+
+<h3 id="s-006-4"><a class="anchor-link" href="#s-006-4" aria-label="跳转到本节">#</a>二维投影例题</h3>
+<div class="worked-example">
+  <h4>例题：把 \(y=(3,1)\) 投影到 \(a=(1,2)\) 张成的直线上</h4>
+  <p>我们要找直线上的点 \(\hat y=ca\)，使它离 \(y\) 最近。注意这里未知数不是二维点本身，而是一个系数 \(c\)：选定 \(c\) 后，直线上的点就是 \(c(1,2)\)。</p>
+</div>
+<div class="solution">
+  <p><b>第一步：计算投影系数。</b></p>
+  <div class="math-display">\[
+  a^Ty=1\cdot 3+2\cdot 1=5,\qquad a^Ta=1^2+2^2=5
+  \]</div>
+  <div class="math-display">\[
+  c=\frac{a^Ty}{a^Ta}=\frac{5}{5}=1
+  \]</div>
+  <p><b>第二步：得到投影点。</b></p>
+  <div class="math-display">\[
+  \hat y=ca=1\cdot(1,2)=(1,2)
+  \]</div>
+  <p><b>第三步：检查残差是否正交。</b></p>
+  <div class="math-display">\[
+  r=y-\hat y=(3,1)-(1,2)=(2,-1)
+  \]</div>
+  <div class="math-display">\[
+  a^Tr=1\cdot 2+2\cdot(-1)=0
+  \]</div>
+  <p>残差 \(r=(2,-1)\) 和直线方向 \(a=(1,2)\) 的内积为 0，所以残差垂直于直线。这个检查比计算本身更重要：它说明我们找的不是随便一个近点，而是几何意义上的最近点。</p>
+</div>
+<div class="intuition-box">
+  <p><b>面试里怎么说：</b>投影不是“把坐标截断”，而是在可选空间中找最接近原向量的表示。最近的证据是残差与可选空间正交。二维图像是垂线，高维图像还是同一件事，只是无法画出来。</p>
+</div>
+
+<h3 id="s-006-5"><a class="anchor-link" href="#s-006-5" aria-label="跳转到本节">#</a>最小二乘与残差正交</h3>
+<p>线性回归的训练数据可以写成矩阵形式。\(X\) 的每一行是一条样本，每一列是一种特征；\(y\) 是所有样本的目标值。线性模型预测为 \(X\beta\)，它一定落在 \(X\) 的列空间里：</p>
+<div class="math-display">\[
+\operatorname{col}(X)=\{X\beta:\beta\in\mathbb R^p\}
+\]</div>
+<p>最小二乘选择 \(\hat\beta\)，让预测向量 \(X\hat\beta\) 尽量接近目标向量 \(y\)：</p>
+<div class="math-display">\[
+\hat\beta=\arg\min_\beta \|X\beta-y\|_2^2
+\]</div>
+<p>这个目标里的 \(\|X\beta-y\|_2^2\) 是所有样本误差平方和。平方有两个作用：第一，正负误差不会互相抵消；第二，离得更远的点会被惩罚得更重。几何上，最小二乘就是把 \(y\) 投影到 \(\operatorname{col}(X)\)，预测值是投影点，残差是 \(y-X\hat\beta\)。</p>
+<div class="math-display">\[
+r=y-X\hat\beta,\qquad X^Tr=0
+\]</div>
+<p>为什么是 \(X^Tr=0\)？因为 \(X\) 的每一列都是列空间里的一个方向。残差要和整个列空间正交，就必须和每一列都正交。把 \(r=y-X\hat\beta\) 代入：</p>
+<div class="math-display">\[
+X^T(y-X\hat\beta)=0
+\quad\Longleftrightarrow\quad
+X^TX\hat\beta=X^Ty
+\]</div>
+<p>这就是正规方程。它不是凭空来的，而是“投影点的残差必须垂直于所有特征方向”的代数写法。</p>
+
+<h3 id="s-006-6"><a class="anchor-link" href="#s-006-6" aria-label="跳转到本节">#</a>小数据最小二乘例题</h3>
+<div class="worked-example">
+  <h4>例题：用一条过原点的直线拟合三个点</h4>
+  <p>给定三条样本：当特征 \(x\) 分别为 \(1,2,3\) 时，目标 \(y\) 分别为 \(1,2,2\)。我们用模型 \(\hat y=\beta x\) 拟合，不加截距。矩阵写法是：</p>
+  <div class="math-display">\[
+  X=\begin{bmatrix}1\\2\\3\end{bmatrix},
+  \qquad
+  y=\begin{bmatrix}1\\2\\2\end{bmatrix}
+  \]</div>
+</div>
+<div class="solution">
+  <p><b>第一步：写出正规方程。</b>这里 \(X\) 只有一列，所以 \(X^TX\) 是一个数，\(X^Ty\) 也是一个数。</p>
+  <div class="math-display">\[
+  X^TX=1^2+2^2+3^2=14
+  \]</div>
+  <div class="math-display">\[
+  X^Ty=1\cdot 1+2\cdot 2+3\cdot 2=11
+  \]</div>
+  <div class="math-display">\[
+  14\hat\beta=11
+  \quad\Longrightarrow\quad
+  \hat\beta=\frac{11}{14}
+  \]</div>
+  <p><b>第二步：计算预测值。</b></p>
+  <div class="math-display">\[
+  \hat y=X\hat\beta=
+  \begin{bmatrix}
+  1\\2\\3
+  \end{bmatrix}\frac{11}{14}
+  =
+  \begin{bmatrix}
+  11/14\\22/14\\33/14
+  \end{bmatrix}
+  \]</div>
+  <p><b>第三步：计算残差。</b></p>
+  <div class="math-display">\[
+  r=y-\hat y=
+  \begin{bmatrix}
+  1\\2\\2
+  \end{bmatrix}
+  -
+  \begin{bmatrix}
+  11/14\\22/14\\33/14
+  \end{bmatrix}
+  =
+  \begin{bmatrix}
+  3/14\\6/14\\-5/14
+  \end{bmatrix}
+  \]</div>
+  <p><b>第四步：检查残差正交。</b>残差要和特征列 \(X\) 正交：</p>
+  <div class="math-display">\[
+  X^Tr
+  =
+  1\cdot\frac{3}{14}
+  +2\cdot\frac{6}{14}
+  +3\cdot\left(-\frac{5}{14}\right)
+  =
+  \frac{3+12-15}{14}=0
+  \]</div>
+  <p>这说明拟合后的错误不是完全消失，而是已经不能再沿着特征 \(x\) 的方向继续减少。换句话说，模型已经把 \(y\) 中“能被 \(x\) 线性解释的部分”抽出来了，剩下的残差与 \(x\) 没有线性重叠。</p>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>样本</th><th>\(x\)</th><th>\(y\)</th><th>\(\hat y=\frac{11}{14}x\)</th><th>残差 \(r=y-\hat y\)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>1</td><td>1</td><td>\(11/14\)</td><td>\(3/14\)</td></tr>
+      <tr><td>2</td><td>2</td><td>2</td><td>\(22/14\)</td><td>\(6/14\)</td></tr>
+      <tr><td>3</td><td>3</td><td>2</td><td>\(33/14\)</td><td>\(-5/14\)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="s-006-7"><a class="anchor-link" href="#s-006-7" aria-label="跳转到本节">#</a>正规方程、QR 与数值稳定</h3>
+<p>如果 \(X^TX\) 可逆，正规方程给出闭式解：</p>
+<div class="math-display">\[
+\hat\beta=(X^TX)^{-1}X^Ty
+\]</div>
+<p>但“能写出逆矩阵”不等于“工程上应该求逆”。当特征高度相关时，\(X\) 的列几乎指向同一个方向，\(X^TX\) 会变得病态：目标 \(y\) 或数据中很小的噪声，都可能让 \(\hat\beta\) 大幅变化。更麻烦的是，形成 \(X^TX\) 往往会放大条件数，使数值误差更严重。</p>
+<p>QR 分解的思路是先把特征列改写成一组正交方向。设 \(X=QR\)，其中 \(Q\) 的列两两正交且长度为 1，\(R\) 是上三角矩阵：</p>
+<div class="math-display">\[
+X=QR,\qquad Q^TQ=I
+\]</div>
+<p>把它代入最小二乘：</p>
+<div class="math-display">\[
+\min_\beta \|X\beta-y\|_2^2
+=
+\min_\beta \|QR\beta-y\|_2^2
+\]</div>
+<p>因为 \(Q\) 的列是正交单位方向，先计算 \(Q^Ty\) 就是在这些正交方向上取坐标。正规方程可以简化为：</p>
+<div class="math-display">\[
+R\hat\beta=Q^Ty
+\]</div>
+<p>由于 \(R\) 是上三角矩阵，可以用回代求解，不需要显式计算 \((X^TX)^{-1}\)。这就是 QR 在数值最小二乘里常见的原因：它保留投影几何，又比直接求逆稳定。</p>
+<div class="intuition-box">
+  <p><b>Gram-Schmidt 的直觉：</b>如果第二个特征和第一个特征有重叠，就先从第二个特征里减掉它在第一个特征方向上的投影，剩下的新方向就和第一个正交。重复这个过程，就把互相纠缠的特征列整理成互不干扰的方向。</p>
+</div>
+
+<h3 id="s-006-8"><a class="anchor-link" href="#s-006-8" aria-label="跳转到本节">#</a>Ridge 正则化</h3>
+<p>最小二乘只关心训练误差。如果特征很多、样本少，或者特征之间高度共线，模型可能用很大的正负系数互相抵消，从而在训练集上拟合得很好，但对新数据非常不稳定。Ridge regression 在误差平方和之外加入参数长度惩罚：</p>
+<div class="math-display">\[
+\hat\beta_{\text{ridge}}
+=
+\arg\min_\beta
+\|X\beta-y\|_2^2+\lambda\|\beta\|_2^2,
+\qquad \lambda\ge 0
+\]</div>
+<p>\(\lambda\) 读作 lambda，是正则化强度。它越大，模型越不愿意使用大系数。对 ridge 求一阶条件可得：</p>
+<div class="math-display">\[
+(X^TX+\lambda I)\hat\beta_{\text{ridge}}=X^Ty
+\]</div>
+<div class="math-display">\[
+\hat\beta_{\text{ridge}}=(X^TX+\lambda I)^{-1}X^Ty
+\]</div>
+<p>和普通最小二乘相比，ridge 把 \(X^TX\) 替换成 \(X^TX+\lambda I\)。这个加到对角线上的 \(\lambda I\) 会让矩阵更容易求解，也会压小参数。它的代价是引入偏差：即使样本无限多，系数也会被往 0 拉一点；收益是方差下降，预测更稳定。</p>
+<div class="formula-list">
+  <p><b>\(\lambda=0\)：</b>退化成普通最小二乘。</p>
+  <p><b>\(\lambda\) 较小：</b>轻微抑制大系数，常用于缓解共线性。</p>
+  <p><b>\(\lambda\) 很大：</b>参数被明显压向 0，模型更稳定但可能欠拟合。</p>
+  <p><b>是否惩罚截距：</b>实践中通常不惩罚截距，因为截距只是基线水平，不代表某个特征方向的复杂度。</p>
+</div>
+
+<h3 id="s-006-9"><a class="anchor-link" href="#s-006-9" aria-label="跳转到本节">#</a>面试连接、误区与检查清单</h3>
+<div class="concept-grid">
+  <div class="concept-card">
+    <h4>线性回归</h4>
+    <p>线性回归的几何解释是把目标 \(y\) 投影到特征列空间。面试中如果被问“为什么正规方程成立”，不要只背公式；应说明最优残差必须和每个特征列正交，所以 \(X^T(y-X\hat\beta)=0\)。</p>
+  </div>
+  <div class="concept-card">
+    <h4>检索向量相似度</h4>
+    <p>Embedding 检索常比较内积或 cosine similarity。内积受长度和方向共同影响；cosine 更强调方向。归一化后的向量长度为 1，此时内积就等于 cosine，相似度可以理解为“查询向量在文档向量方向上的投影程度”。</p>
+  </div>
+  <div class="concept-card">
+    <h4>量化因子回归</h4>
+    <p>因子回归把收益 \(r\) 分解成可由因子解释的部分 \(X\hat\beta\) 和残差。残差正交意味着在样本内，剩余收益不能再被这些因子线性解释。多因子共线会让暴露估计不稳定，ridge 或 shrinkage 思想常用来换取更稳的估计。</p>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>常见误区</th><th>为什么错</th><th>正确理解</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>把正交理解成“统计独立”</td><td>内积为 0 只说明线性方向不重叠，不自动推出概率独立。</td><td>正交是几何和二阶矩意义的概念；独立是分布层面的更强条件。</td></tr>
+      <tr><td>认为最小二乘让每个残差都为 0</td><td>除非 \(y\) 完全落在列空间里，否则无法所有样本都拟合准确。</td><td>最优条件是残差向量整体与特征列空间正交。</td></tr>
+      <tr><td>看到 \((X^TX)^{-1}\) 就直接求逆</td><td>显式求逆数值不稳定，病态矩阵会放大误差。</td><td>工程上优先用 QR、Cholesky 或 SVD 求解线性系统。</td></tr>
+      <tr><td>认为 ridge 一定更准确</td><td>ridge 降低方差但引入偏差，\(\lambda\) 过大会欠拟合。</td><td>它适合共线、噪声和高维场景，强度需要验证集或交叉验证选择。</td></tr>
+      <tr><td>混淆投影系数和投影向量</td><td>\(\frac{a^Ty}{a^Ta}\) 是标量，不是最终投影点。</td><td>最终投影是 \(\frac{a^Ty}{a^Ta}a\)，必须乘回方向向量 \(a\)。</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="checkpoint-list">
+  <h4>最后检查清单</h4>
+  <ul>
+    <li>我能解释 \(x^Ty\) 是逐项相乘再相加，也能说出它和角度的关系。</li>
+    <li>我能用一句话说明：投影是在子空间里找离原向量最近的点。</li>
+    <li>我知道残差正交的含义：不能再沿任何可选方向减少误差。</li>
+    <li>我能从 \(X^T(y-X\hat\beta)=0\) 推到 \(X^TX\hat\beta=X^Ty\)。</li>
+    <li>我能完成一维投影例题，并检查 \(a^Tr=0\)。</li>
+    <li>我能完成小数据最小二乘例题，并检查 \(X^Tr=0\)。</li>
+    <li>我知道 QR 把特征列整理成正交方向，避免显式求逆。</li>
+    <li>我能说出 ridge 的目标函数、正规方程和偏差-方差权衡。</li>
+    <li>我能把本章概念连接到线性回归、向量检索和量化因子回归。</li>
+  </ul>
+</div>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="005.html">← 005. 线性代数一：向量空间、矩阵与秩</a><a href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵 →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 原路径保留，内容按短教科书式复习结构组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>24. 十八、分布式训练、并行策略与显存优化专项题库 - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 24</div>
+        <div class="brand-title">十八、分布式训练、并行策略与显存优化专项题库</div>
+        <div class="brand-meta">5. 训练、推理与系统工程 · 第 1 步 · 训练/推理/系统</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0185">1. 高频笔试题</a>
+<a class="toc-link" href="#h-0186" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0187">2. 高频面试题</a>
+<a class="toc-link" href="#h-0188" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0189">3. 并行策略到底在解决什么</a>
+<a class="toc-link" href="#h-0190">4. DP / TP / PP / FSDP / ZeRO 的一句话定位</a>
+<a class="toc-link" href="#h-0191">5. 高频追问：ZeRO-1/2/3 到底区别在哪</a>
+<a class="toc-link" href="#h-0192" style="padding-left:18px">稳定答法</a>
+<a class="toc-link" href="#h-0193">6. 高频追问：FSDP 为什么常拿来对比 ZeRO-3</a>
+<a class="toc-link" href="#h-0194">7. 显存优化的高频题</a>
+<a class="toc-link" href="#h-0195" style="padding-left:18px">高频笔试题</a>
+<a class="toc-link" href="#h-0196" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0197" style="padding-left:18px">高频面试题</a>
+<a class="toc-link" href="#h-0198" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0199">8. 一套稳妥的显存优化回答框架</a>
+<a class="toc-link" href="#h-0200">9. 通信与性能瓶颈专项</a>
+<a class="toc-link" href="#h-0201" style="padding-left:18px">高频面试题</a>
+<a class="toc-link" href="#h-0202" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0203" style="padding-left:18px">答题要点</a>
+<a class="toc-link" href="#h-0204">10. CUDA / kernel / 算子优化为什么会进入面试</a>
+<a class="toc-link" href="#h-0205" style="padding-left:18px">高频笔试题</a>
+<a class="toc-link" href="#h-0206" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0207" style="padding-left:18px">高频面试题</a>
+<a class="toc-link" href="#h-0208" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0209" style="padding-left:18px">就地速答</a>
+<a class="toc-link" href="#h-0210">11. kernel / CUDA 类问题的稳定答法</a>
+<a class="toc-link" href="#h-0211">12. 这一块到底在考什么</a>
+<a class="toc-link" href="#h-0212">13. 通信原语强化题单</a>
+<a class="toc-link" href="#h-0213" style="padding-left:18px">高频笔试题</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link current" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="023.html">← 23. 十七、手撕代码专项的复习顺序</a><a href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略） →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0184" data-category="engineering" data-title="十八、分布式训练、并行策略与显存优化专项题库">
+<h2 id="h-0184"><a class="anchor-link" href="#h-0184" aria-label="跳转到本节">#</a>十八、分布式训练、并行策略与显存优化专项题库</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>先理解分布式训练和显存优化，再看推理系统里的 KV cache、continuous batching、投机解码。平台岗和推理工程岗应重点读。</p></aside>
+<p>这一块是很多候选人“知道名词，但一追问就容易露馅”的区域。因为它横跨训练系统、通信、显存管理、并行切分与实现工程，不是只背 <code>DP/TP/PP</code> 三个缩写就够了。</p>
+<h3 id="h-0185"><a class="anchor-link" href="#h-0185" aria-label="跳转到本节">#</a>1. 高频笔试题</h3>
+<ol>
+<li>数据并行（<code>DP</code>）、张量并行（<code>TP</code>）、流水线并行（<code>PP</code>）的区别是什么？
+</li>
+<li><code>ZeRO-1/2/3</code> 分别切分了什么？
+</li>
+<li><code>FSDP</code> 和传统 <code>DDP</code> 的核心差别是什么？
+</li>
+<li>为什么大模型训练常常需要“混合并行”而不是单一并行策略？
+</li>
+<li>activation checkpointing（激活重计算）为什么能省显存？
+</li>
+<li>梯度累积（gradient accumulation）解决了什么问题？
+</li>
+<li><code>all-reduce</code>、<code>all-gather</code>、<code>reduce-scatter</code> 在训练里各常用在哪里？
+</li>
+<li>为什么 <code>MoE</code> 会把分布式通信问题进一步放大？
+</li>
+</ol>
+<h4 id="h-0186"><a class="anchor-link" href="#h-0186" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：数据并行（<code>DP</code>）、张量并行（<code>TP</code>）、流水线并行（<code>PP</code>）的区别是什么？
+<p>答：<code>DP</code> 是复制完整模型、切数据；<code>TP</code> 是切单层矩阵；<code>PP</code> 是按层切网络。三者分别在解决吞吐、单层放不下和整网过深过大的问题。</p>
+</li>
+<li>问：<code>ZeRO-1/2/3</code> 分别切分了什么？
+<p>答：核心就是“切得越来越多”。详见后文“### 31. <code>ZeRO-1/2/3</code> 的核心区别是什么？”。</p>
+</li>
+<li>问：<code>FSDP</code> 和传统 <code>DDP</code> 的核心差别是什么？
+<p>答：<code>DDP</code> 的前提是每张卡都能放下完整模型，核心是同步梯度；<code>FSDP</code> 则是把参数、梯度和优化器状态按 shard 分散到多卡上持有，在需要时再 <code>all-gather</code> 或聚合。详见后文“### 32. <code>FSDP</code> 和 <code>DDP</code> 最本质的差别是什么？”。</p>
+</li>
+<li>问：为什么大模型训练常常需要“混合并行”而不是单一并行策略？
+<p>答：因为单一并行策略通常只能解决一个维度的问题，不能同时兼顾显存、算力利用率和通信成本。详见后文“### 22. 为什么大模型训练通常要做混合并行，而不是只用一种并行？”。</p>
+</li>
+<li>问：activation checkpointing（激活重计算）为什么能省显存？
+<p>答：因为训练时显存大头之一是中间激活值。activation checkpointing 的做法是不把所有中间激活都存下来，而是只保留少量 checkpoint，反向传播时再重新计算缺失部分。详见后文“### 33. activation checkpointing 为什么能省显存？代价是什么？”。</p>
+</li>
+<li>问：梯度累积（gradient accumulation）解决了什么问题？
+<p>答：它让你在显存放不下大 batch 时，用多次小 batch 的前后向累计梯度，近似获得更大的有效 batch size。</p>
+</li>
+<li>问：<code>all-reduce</code>、<code>all-gather</code>、<code>reduce-scatter</code> 在训练里各常用在哪里？
+<p>答：<code>all-reduce</code> 是各卡先提交自己的张量做规约，再让每张卡都拿到完整结果；<code>all-gather</code> 是把各卡分片拼成完整结果；<code>reduce-scatter</code> 则是先规约再把结果按分片发回各卡。详见后文“### 39. <code>all-reduce</code>、<code>all-gather</code>、<code>reduce-scatter</code> 的区别是什么？”。</p>
+</li>
+<li>问：为什么 <code>MoE</code> 会把分布式通信问题进一步放大？
+<p>答：因为 token 需要按路由被派发到不同专家，而专家常常分散在不同卡上，dispatch 和 gather 会把跨卡通信显著放大。</p>
+</li>
+</ul>
+<h3 id="h-0187"><a class="anchor-link" href="#h-0187" aria-label="跳转到本节">#</a>2. 高频面试题</h3>
+<ol>
+<li>如果一个 <code>70B dense</code> 模型单卡放不下，你会如何组合 <code>TP/PP/DP</code>？
+</li>
+<li><code>ZeRO-3</code> 和 <code>FSDP</code> 都在做参数切分，它们在工程实现和性能特征上怎么比较？
+</li>
+<li>为什么有时多卡训练并没有线性加速，瓶颈通常卡在哪？
+</li>
+<li>什么情况下你会优先加 <code>PP</code>，什么情况下会优先加 <code>TP</code>？
+</li>
+<li>为什么说大模型训练经常不是“算力瓶颈”，而是“通信瓶颈”或“显存瓶颈”？
+</li>
+<li>如果 loss 不收敛，你如何判断问题来自学习率、数值稳定性、并行切分，还是通信错误？
+</li>
+<li>为什么 <code>activation checkpointing</code> 省显存但会拖慢训练？
+</li>
+<li>如果你要训练 <code>MoE</code>，专家并行（expert parallel）和普通 <code>TP/PP</code> 如何协同？
+</li>
+</ol>
+<h4 id="h-0188"><a class="anchor-link" href="#h-0188" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：如果一个 <code>70B dense</code> 模型单卡放不下，你会如何组合 <code>TP/PP/DP</code>？
+<p>答：常见做法是先在单机高速互联内用 <code>TP</code> 切宽层，再用 <code>PP</code> 按层切深度，最外层再叠 <code>DP/FSDP</code> 扩吞吐；核心原则是先保证放得下，再看通信是否可承受。</p>
+</li>
+<li>问：<code>ZeRO-3</code> 和 <code>FSDP</code> 都在做参数切分，它们在工程实现和性能特征上怎么比较？
+<p>答：两者都属于全分片思路，差别更多在框架实现与调度细节：<code>FSDP</code> 更偏 PyTorch 原生模块级 all-gather/reshard，<code>ZeRO-3</code> 更偏 DeepSpeed stage 化管理，真正快慢常取决于 overlap、粒度和互联。</p>
+</li>
+<li>问：为什么有时多卡训练并没有线性加速，瓶颈通常卡在哪？
+<p>答：常见瓶颈是梯度同步、参数 all-gather、数据加载、stage 不均衡和小 batch 下的调度开销，所以加卡只会放大系统短板，不会自动带来线性收益。</p>
+</li>
+<li>问：什么情况下你会优先加 <code>PP</code>，什么情况下会优先加 <code>TP</code>？
+<p>答：当模型按层切更自然、跨机互联较弱时更偏向 <code>PP</code>；当单层太宽、但设备间有很强高速互联时更偏向 <code>TP</code>。</p>
+</li>
+<li>问：为什么说大模型训练经常不是“算力瓶颈”，而是“通信瓶颈”或“显存瓶颈”？
+<p>答：因为理论 FLOPs 之外，真实训练还要同步梯度、聚合参数、存激活和优化器状态，很多时候 GPU 算得动，但系统被通信或显存卡住了。</p>
+</li>
+<li>问：如果 loss 不收敛，你如何判断问题来自学习率、数值稳定性、并行切分，还是通信错误？
+<p>答：先做最小复现：退回单卡/小模型确认算法本身，再逐步恢复混合精度、并行和通信；同时看梯度范数、是否出现 <code>NaN/Inf</code>、collective 是否一致、以及问题是否只在多卡规模下出现。</p>
+</li>
+<li>问：为什么 <code>activation checkpointing</code> 省显存但会拖慢训练？
+<p>答：因为训练时显存大头之一是中间激活值。activation checkpointing 的做法是不把所有中间激活都存下来，而是只保留少量 checkpoint，反向传播时再重新计算缺失部分。详见后文“### 33. activation checkpointing 为什么能省显存？代价是什么？”。</p>
+</li>
+<li>问：如果你要训练 <code>MoE</code>，专家并行（expert parallel）和普通 <code>TP/PP</code> 如何协同？
+<p>答：通常是 dense 主干继续走 <code>TP/PP</code>，专家层单独做 <code>EP</code>，最外层再配 <code>DP/FSDP</code>；这样既能让专家自然分布到多卡，也不会把所有层都强行塞进同一种并行策略。</p>
+</li>
+</ul>
+<h3 id="h-0189"><a class="anchor-link" href="#h-0189" aria-label="跳转到本节">#</a>3. 并行策略到底在解决什么</h3>
+<p>最稳的理解方式是把问题拆成三类：</p>
+<ol>
+<li><strong>模型放不下</strong>：这是参数/优化器状态/激活显存问题，通常需要 <code>TP</code>、<code>PP</code>、<code>FSDP/ZeRO-3</code>。
+</li>
+<li><strong>吞吐不够</strong>：这是并行规模和 pipeline 利用率问题，通常需要 <code>DP</code>、micro-batch、调度优化。
+</li>
+<li><strong>通信太重</strong>：这是网络与 collective 开销问题，需要更合理的切分方式和通信重叠。
+</li>
+</ol>
+<h3 id="h-0190"><a class="anchor-link" href="#h-0190" aria-label="跳转到本节">#</a>4. <code>DP / TP / PP / FSDP / ZeRO</code> 的一句话定位</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">分布式训练系统栈</div>
+        <p class="inline-enhancement-note">放在 ZeRO、FSDP、DP/TP/PP、pipeline 相关小节附近。</p>
+        <div class="visual-grid"><div class="visual-card"><b>训练/推理系统栈</b><img src="../assets/training-inference-stack.svg" alt="训练/推理系统栈"><p>并行、显存、通信和 serving 组件的关系。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>ZeRO 分片直觉</b><div class="math-display">\[\mathrm{per\ GPU\ state}\approx\frac{W+G+O}{N_{dp}} + A\]</div><p>不同 stage 分片对象不同，但核心都是降低每卡重复状态。</p></div><div class="formula-card"><b>Pipeline Bubble 近似</b><div class="math-display">\[\mathrm{bubble\ ratio}\approx\frac{p-1}{m+p-1}\]</div><p>p 是 stage 数，m 是 micro-batch 数。</p></div></div>
+      </aside>
+<ul>
+<li><code>DP</code>：每张卡放完整模型，切数据，主要问题是梯度同步。
+</li>
+<li><code>TP</code>：把单层大矩阵拆到多卡上算，主要问题是层内通信。
+</li>
+<li><code>PP</code>：按层切模型，主要问题是流水线气泡和 micro-batch 调度。
+</li>
+<li><code>FSDP</code>：把参数、梯度、优化器状态按 shard 方式切开，前向/反向按需聚合。
+</li>
+<li><code>ZeRO</code>：核心也是切状态，只是通常从 DeepSpeed 语境下按 stage 来讲更常见。
+</li>
+</ul>
+<h3 id="h-0191"><a class="anchor-link" href="#h-0191" aria-label="跳转到本节">#</a>5. 高频追问：<code>ZeRO-1/2/3</code> 到底区别在哪</h3>
+<h4 id="h-0192"><a class="anchor-link" href="#h-0192" aria-label="跳转到本节">#</a>稳定答法</h4>
+<ul>
+<li><code>ZeRO-1</code>：切优化器状态。
+</li>
+<li><code>ZeRO-2</code>：在 <code>ZeRO-1</code> 基础上再切梯度。
+</li>
+<li><code>ZeRO-3</code>：进一步连参数本身也切分。
+</li>
+</ul>
+<p>所以 stage 越高，静态显存越省，但前向/反向时需要更多参数聚合与通信。</p>
+<h3 id="h-0193"><a class="anchor-link" href="#h-0193" aria-label="跳转到本节">#</a>6. 高频追问：<code>FSDP</code> 为什么常拿来对比 <code>ZeRO-3</code></h3>
+<p>因为两者本质都在做“全分片”思路：把原本每卡都要完整持有的大模型状态改成分布式持有、按需聚合。</p>
+<p>面试里通常不用纠缠框架实现细节，但最好能说出：</p>
+<ul>
+<li>它们都想解决超大模型单卡放不下的问题；
+</li>
+<li>核心代价都是通信增加；
+</li>
+<li>是否好用、是否快，和模型结构、硬件互联、实现成熟度、是否能通信重叠强相关。
+</li>
+</ul>
+<h3 id="h-0194"><a class="anchor-link" href="#h-0194" aria-label="跳转到本节">#</a>7. 显存优化的高频题</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">参数量 / 显存速算</div>
+        <p class="inline-enhancement-note">放在参数量、复杂度、显存估算小节附近，作为面试快算公式。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>Transformer 单层参数近似</b><div class="math-display">\[P_{layer}\approx 4d^2 + 2d\,d_{ff}\approx 12d^2\quad(d_{ff}\approx4d)\]</div><p>用于快速估算 dense LLM 参数量；SwiGLU/GQA 会改变常数项。</p></div><div class="formula-card"><b>训练显存组成</b><div class="math-display">\[\mathrm{Memory}\approx W + G + O + A\]</div><p>W 是权重，G 是梯度，O 是优化器状态，A 是激活值。</p></div></div>
+      </aside>
+<h4 id="h-0195"><a class="anchor-link" href="#h-0195" aria-label="跳转到本节">#</a>高频笔试题</h4>
+<ol>
+<li>训练显存主要由哪几部分组成？
+</li>
+<li>哪些方法可以降低训练显存？
+</li>
+<li>为什么 <code>BF16/FP16</code> 能省显存？
+</li>
+<li>activation recomputation（激活重计算）会影响什么？
+</li>
+<li>optimizer state 为什么常常比你想象得更占显存？
+</li>
+</ol>
+<h4 id="h-0196"><a class="anchor-link" href="#h-0196" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：训练显存主要由哪几部分组成？
+<p>答：最常见的五块是参数、梯度、优化器状态、前向激活，以及临时通信/workspace buffer。</p>
+</li>
+<li>问：哪些方法可以降低训练显存？
+<p>答：常见手段包括低精度训练、activation checkpointing、缩短序列和 batch、<code>ZeRO/FSDP</code> 分片、<code>LoRA/QLoRA</code>、以及必要时的 CPU/NVMe offload。</p>
+</li>
+<li>问：为什么 <code>BF16/FP16</code> 能省显存？
+<p>答：因为每个元素的字节数比 <code>FP32</code> 少一半左右，所以参数、梯度、激活和部分优化器状态都会随之缩小。</p>
+</li>
+<li>问：activation recomputation（激活重计算）会影响什么？
+<p>答：它能显著省激活显存，但会增加重复前向计算，因此通常会让训练更慢。</p>
+</li>
+<li>问：optimizer state 为什么常常比你想象得更占显存？
+<p>答：因为像 <code>Adam</code> 这类优化器通常要额外保存一阶矩、二阶矩，很多实现还会保留 master weights，所以总开销往往能到参数本体的数倍。</p>
+</li>
+</ul>
+<h4 id="h-0197"><a class="anchor-link" href="#h-0197" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>如果你只有有限张 <code>A100/H100</code>，怎么训练更大的模型？
+</li>
+<li>显存不够时，你的优化顺序是什么？
+</li>
+<li>gradient checkpointing、<code>QLoRA</code>、<code>ZeRO-3</code>、offload、sequence parallel 分别适合什么阶段？
+</li>
+<li>为什么有时显存够了，训练速度却慢到不能接受？
+</li>
+</ol>
+<h4 id="h-0198"><a class="anchor-link" href="#h-0198" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：如果你只有有限张 <code>A100/H100</code>，怎么训练更大的模型？
+<p>答：优先组合低精度、分片并行、activation checkpointing 和更合理的 batch/序列长度；如果任务适合，再用 <code>LoRA/QLoRA</code> 避免全参训练。</p>
+</li>
+<li>问：显存不够时，你的优化顺序是什么？
+<p>答：先降精度，再看 batch/序列和 checkpointing，然后上 <code>ZeRO/FSDP</code> 或 PEFT，最后才考虑 offload，因为 offload 往往最伤吞吐。</p>
+</li>
+<li>问：gradient checkpointing、<code>QLoRA</code>、<code>ZeRO-3</code>、offload、sequence parallel 分别适合什么阶段？
+<p>答：<code>checkpointing</code> 适合激活过大，<code>QLoRA</code> 适合资源受限的微调，<code>ZeRO-3</code> 适合全参超大模型，<code>offload</code> 适合“先跑起来”，<code>sequence parallel</code> 则适合长序列下分摊激活压力。</p>
+</li>
+<li>问：为什么有时显存够了，训练速度却慢到不能接受？
+<p>答：因为省显存的方法常常在用计算、通信或存储 IO 做交换，比如重计算、offload、频繁 all-gather，都可能把吞吐拖下来。</p>
+</li>
+</ul>
+<h3 id="h-0199"><a class="anchor-link" href="#h-0199" aria-label="跳转到本节">#</a>8. 一套稳妥的显存优化回答框架</h3>
+<p>显存优化最好按这 5 层回答：</p>
+<ol>
+<li><strong>精度层</strong>：<code>FP32 -&gt; BF16/FP16 -&gt; INT8/INT4</code>
+</li>
+<li><strong>状态层</strong>：<code>ZeRO/FSDP</code> 切参数、梯度、优化器状态
+</li>
+<li><strong>激活层</strong>：checkpointing、sequence parallel、减少长序列
+</li>
+<li><strong>结构层</strong>：<code>LoRA/QLoRA</code>、更小 batch、更短上下文
+</li>
+<li><strong>存储层</strong>：CPU/NVMe offload
+</li>
+</ol>
+<p>这样答会显得你不是只会喊一个招，而是知道显存来源和对应打法。</p>
+<h3 id="h-0200"><a class="anchor-link" href="#h-0200" aria-label="跳转到本节">#</a>9. 通信与性能瓶颈专项</h3>
+<h4 id="h-0201"><a class="anchor-link" href="#h-0201" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>为什么大模型多机多卡训练常常扩到一定规模后效率骤降？
+</li>
+<li><code>all-reduce</code> 为什么会成为瓶颈？
+</li>
+<li>为什么 <code>TP</code> 往往更依赖高速互联？
+</li>
+<li><code>PP</code> 的 bubble（流水线气泡）是什么，怎么缓解？
+</li>
+<li>为什么 overlap communication and computation（通信计算重叠）这么重要？
+</li>
+</ol>
+<h4 id="h-0202"><a class="anchor-link" href="#h-0202" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：为什么大模型多机多卡训练常常扩到一定规模后效率骤降？
+<p>答：因为卡数越多，梯度同步、参数聚合、网络拓扑不均衡和慢节点效应都会被放大，最终通信时间占比越来越高。</p>
+</li>
+<li>问：<code>all-reduce</code> 为什么会成为瓶颈？
+<p>答：因为它要求所有参与设备都完成大规模归约与广播，消息大、同步强、最慢一张卡还会拖住全局。</p>
+</li>
+<li>问：为什么 <code>TP</code> 往往更依赖高速互联？
+<p>答：因为 <code>TP</code> 是在单层内部切分矩阵，意味着每一层前向和反向都可能跨卡交换中间结果。如果互联慢，层内通信开销会直接卡在主路径上，导致 GPU 算力吃不满。详见后文“### 35. 为什么说 <code>TP</code> 特别依赖高速互联？”。</p>
+</li>
+<li>问：<code>PP</code> 的 bubble（流水线气泡）是什么，怎么缓解？
+<p>答：pipeline bubble 指的是流水线并行中，一些 stage 在等待前后 stage 时出现的空转时间。它本质上代表 GPU 没有持续被有效计算填满。详见后文“### 43. pipeline bubble 是什么？”。</p>
+</li>
+<li>问：为什么 overlap communication and computation（通信计算重叠）这么重要？
+<p>答：因为它的目标不是减少通信量，而是把本来必须等的通信时间藏到计算背后，从而降低 step time 里的纯等待时间。</p>
+</li>
+</ul>
+<h4 id="h-0203"><a class="anchor-link" href="#h-0203" aria-label="跳转到本节">#</a>答题要点</h4>
+<ul>
+<li><code>DP</code> 主要痛在梯度同步；
+</li>
+<li><code>TP</code> 主要痛在层内频繁通信，因此更吃 <code>NVLink/NVSwitch</code>；
+</li>
+<li><code>PP</code> 主要痛在 stage 不均衡和 bubble；
+</li>
+<li>真正高性能训练往往靠的是“切得对 + 通信藏起来 + 负载均衡”。
+</li>
+</ul>
+<h3 id="h-0204"><a class="anchor-link" href="#h-0204" aria-label="跳转到本节">#</a>10. CUDA / kernel / 算子优化为什么会进入面试</h3>
+<p>因为训练和推理到最后都会落到 kernel 层。很多公司问这块，不是要求你现场写出最强 CUDA，而是看你是否理解：为什么同一个数学算子，不同实现速度差可以非常大。</p>
+<h4 id="h-0205"><a class="anchor-link" href="#h-0205" aria-label="跳转到本节">#</a>高频笔试题</h4>
+<ol>
+<li>算子融合为什么能提速？
+</li>
+<li>为什么 <code>FlashAttention</code> 主要优化的是 <code>IO</code> 而不是数学公式？
+</li>
+<li><code>RMSNorm</code>、<code>softmax</code>、<code>GEMM</code> 为什么经常是优化热点？
+</li>
+<li>什么是 memory coalescing（访存合并）？
+</li>
+<li>shared memory / register / global memory 的速度层次关系是什么？
+</li>
+</ol>
+<h4 id="h-0206"><a class="anchor-link" href="#h-0206" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：算子融合为什么能提速？
+<p>答：算子融合就是把原本多个相邻的小算子，合并成更少、更大的 kernel 来执行；它通常能提速，因为能减少 kernel launch 开销、减少中间结果反复写回显存，并提升整体访存效率。详见后文“### 37. 什么叫算子融合？为什么它能提速？”。</p>
+</li>
+<li>问：为什么 <code>FlashAttention</code> 主要优化的是 <code>IO</code> 而不是数学公式？
+<p>答：因为它没有把 attention 的理论复杂度从 <code>O(n^2)</code> 彻底变成别的量级，token 两两交互这件事仍然存在。详见后文“### 30. 为什么说 <code>FlashAttention</code> 的核心是 IO-aware，而不是 <code>O(n^2)</code> 变没了？”。</p>
+</li>
+<li>问：<code>RMSNorm</code>、<code>softmax</code>、<code>GEMM</code> 为什么经常是优化热点？
+<p>答：<code>GEMM</code> 是绝对大头，<code>softmax/RMSNorm</code> 虽然公式简单但调用频繁、常常受访存和同步限制，所以它们一起构成大模型里最值得抠性能的热点。</p>
+</li>
+<li>问：什么是 memory coalescing（访存合并）？
+<p>答：就是让相邻线程尽量访问连续内存地址，这样 GPU 能把多次小访问并成更高效的大访问。</p>
+</li>
+<li>问：shared memory / register / global memory 的速度层次关系是什么？
+<p>答：一般寄存器最快，其次是 shared memory / cache，global memory（HBM）最慢，所以高性能 kernel 都在想办法少碰 global memory。</p>
+</li>
+</ul>
+<h4 id="h-0207"><a class="anchor-link" href="#h-0207" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>为什么很多大模型算子优化最后都在做“减少 HBM 访问”？
+</li>
+</ol>
+<h4 id="h-0208"><a class="anchor-link" href="#h-0208" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：为什么很多大模型算子优化最后都在做“减少 HBM 访问”？
+<p>答：因为很多大模型算子真正慢的不是乘加本身，而是中间结果在高带宽显存和计算单元之间来回搬运。</p>
+</li>
+</ul>
+<ol>
+<li>什么叫算子融合？举一个 LLM 中的例子。
+</li>
+<li>为什么 <code>RMSNorm</code>、<code>softmax</code>、<code>attention</code> 这些看起来简单的算子，优化难度反而很高？
+</li>
+<li>你如何判断某个算子是 compute-bound 还是 memory-bound？
+</li>
+<li>为什么说 <code>FlashAttention</code> 成功的关键之一是“不要显式 materialize 整个 attention matrix”？
+</li>
+</ol>
+<h4 id="h-0209"><a class="anchor-link" href="#h-0209" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：为什么 <code>RMSNorm</code>、<code>softmax</code>、<code>attention</code> 这些看起来简单的算子，优化难度反而很高？
+<p>答：因为它们往往算术强度不高，却很吃访存模式、同步、数值稳定和 kernel 调度细节，简单公式并不等于容易写出高性能实现。</p>
+</li>
+<li>问：你如何判断某个算子是 compute-bound 还是 memory-bound？
+<p>答：最直接的判断方式，是看算子耗时到底更多花在乘加计算还是数据搬运上：如果提升算力利用率能明显加速，它更偏 compute-bound；如果主要在等显存读写和带宽，它更偏 memory-bound。详见后文“### 137. 怎么判断一个算子更偏 compute-bound 还是 memory-bound？”。</p>
+</li>
+<li>问：为什么说 <code>FlashAttention</code> 成功的关键之一是“不要显式 materialize 整个 attention matrix”？
+<p>答：因为一旦把完整 attention matrix 落到 HBM，中间结果的读写成本会非常夸张；不显式物化它，才能真正省掉大量显存带宽。</p>
+</li>
+</ul>
+<h3 id="h-0210"><a class="anchor-link" href="#h-0210" aria-label="跳转到本节">#</a>11. kernel / CUDA 类问题的稳定答法</h3>
+<p>回答这类题，最稳是围绕 4 个词：</p>
+<ol>
+<li><strong>访存</strong>：减少不必要的 global memory 往返；
+</li>
+<li><strong>并行度</strong>：让更多线程块 / warp 真正吃满设备；
+</li>
+<li><strong>融合</strong>：减少 kernel launch 和中间结果落地；
+</li>
+<li><strong>重叠</strong>：尽量让通信、拷贝、计算并行发生。
+</li>
+</ol>
+<h3 id="h-0211"><a class="anchor-link" href="#h-0211" aria-label="跳转到本节">#</a>12. 这一块到底在考什么</h3>
+<p>真正考的不是你能不能背完整框架图，而是：</p>
+<ol>
+<li>你是否知道大模型训练为什么必须分布式；
+</li>
+<li>你是否能分清显存瓶颈、通信瓶颈、算力瓶颈；
+</li>
+<li>你是否理解“放得下”和“跑得快”是两个不同问题；
+</li>
+<li>你是否能把并行策略、显存优化、kernel 优化串成一条完整链路。
+</li>
+</ol>
+<h3 id="h-0212"><a class="anchor-link" href="#h-0212" aria-label="跳转到本节">#</a>13. 通信原语强化题单</h3>
+<p>这一组题非常像训练系统岗和 infra 岗的面试风格，因为它们直接检查你是否理解 collective communication（集合通信）到底在训练图里扮演什么角色。</p>
+<h4 id="h-0213"><a class="anchor-link" href="#h-0213" aria-label="跳转到本节">#</a>高频笔试题</h4>
+<ol>
+<li><code>all-reduce</code>、<code>all-gather</code>、<code>reduce-scatter</code> 分别做什么？
+</li>
+<li>为什么 <code>reduce-scatter + all-gather</code> 常被拿来替代一次完整 <code>all-reduce</code> 语义链路？
+</li>
+<li><code>ring all-reduce</code> 和 <code>tree all-reduce</code> 各适合什么场景？
+</li>
+<li>为什么 <code>FSDP/ZeRO-3</code> 经常需要 <code>all-gather</code> 参数？
+</li>
+</ol>
+<h4 id="h-0214"><a class="anchor-link" href="#h-0214" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：<code>all-reduce</code>、<code>all-gather</code>、<code>reduce-scatter</code> 分别做什么？
+<p>答：<code>all-reduce</code> 是各卡先提交自己的张量做规约，再让每张卡都拿到完整结果；<code>all-gather</code> 是把各卡分片拼成完整结果；<code>reduce-scatter</code> 则是先规约再把结果按分片发回各卡。详见后文“### 39. <code>all-reduce</code>、<code>all-gather</code>、<code>reduce-scatter</code> 的区别是什么？”。</p>
+</li>
+<li>问：为什么 <code>reduce-scatter + all-gather</code> 常被拿来替代一次完整 <code>all-reduce</code> 语义链路？
+<p>答：因为很多分布式训练场景里，我们并不总需要“每一步立刻让每张卡都拿完整结果”。详见后文“### 40. 为什么 <code>reduce-scatter + all-gather</code> 经常一起出现？”。</p>
+</li>
+<li>问：<code>ring all-reduce</code> 和 <code>tree all-reduce</code> 各适合什么场景？
+<p>答：<code>ring</code> 往往更适合大消息、追求带宽利用率的场景；<code>tree</code> 往往更适合小消息或更关注低延迟的场景。</p>
+</li>
+<li>问：为什么 <code>FSDP/ZeRO-3</code> 经常需要 <code>all-gather</code> 参数？
+<p>答：因为每张卡平时只存参数分片，前向或反向真正算某一层之前，必须先把该层需要的完整参数临时拼出来。</p>
+</li>
+</ul>
+<h4 id="h-0215"><a class="anchor-link" href="#h-0215" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>反向传播中，哪些通信最容易与计算重叠，哪些最难？
+</li>
+<li>为什么有时候通信重叠做不好，反而会负优化？
+</li>
+<li>如果 <code>all-reduce</code> 很慢，你第一反应会排查什么？
+</li>
+<li>为什么 bucket size（分桶大小）会影响训练性能？
+</li>
+</ol>
+<h4 id="h-0216"><a class="anchor-link" href="#h-0216" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：反向传播中，哪些通信最容易与计算重叠，哪些最难？
+<p>答：梯度 bucket 的 <code>all-reduce/reduce-scatter</code> 往往更容易在反向分层完成时逐步重叠；整层参数 all-gather 或强同步点附近的通信通常更难完全藏住。</p>
+</li>
+<li>问：为什么有时候通信重叠做不好，反而会负优化？
+<p>答：因为 overlap 本身不是零成本的，它会引入额外 buffer、流调度、chunk 切分和竞争开销；如果通信量本来不大，或者切得太碎，反而可能把系统拖慢。详见后文“### 46. 为什么通信重叠有时会负优化？”。</p>
+</li>
+<li>问：如果 <code>all-reduce</code> 很慢，你第一反应会排查什么？
+<p>答：先看拓扑和带宽是否正常，再看 bucket 大小、是否有 straggler、是否被数据加载或其他流阻塞，最后再怀疑 NCCL 本身。</p>
+</li>
+<li>问：为什么 bucket size（分桶大小）会影响训练性能？
+<p>答：bucket 太大，通信启动晚，不利于尽早重叠；bucket 太小，又会让通信过碎，调度和 launch 开销上升。详见后文“### 47. 为什么 bucket size 会影响训练性能？”。</p>
+</li>
+</ul>
+<h4 id="h-0217"><a class="anchor-link" href="#h-0217" aria-label="跳转到本节">#</a>答题要点</h4>
+<ul>
+<li><code>all-reduce</code> 更像“大家先汇总再人人拿到完整结果”；
+</li>
+<li><code>all-gather</code> 更像“每张卡只拿一部分，但最后要把大家的碎片拼完整”；
+</li>
+<li><code>reduce-scatter</code> 更像“先汇总，再把汇总结果按 shard 分发”；
+</li>
+<li>真正高性能的系统常常不是少通信，而是把通信切碎、提前发、和计算重叠起来。
+</li>
+</ul>
+<h3 id="h-0218"><a class="anchor-link" href="#h-0218" aria-label="跳转到本节">#</a>14. expert parallel（专家并行）专项</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">MoE 路由与负载均衡</div>
+        <p class="inline-enhancement-note">放在 MoE / Expert / DeepSeekMoE 小节附近，区分总参数量、激活参数量和路由副作用。</p>
+        <div class="visual-grid"><div class="visual-card"><b>MoE Top-k 路由图</b><img src="../assets/moe-routing.svg" alt="MoE Top-k 路由图"><p>gate 选择 top-k expert，再做加权合并。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>MoE Top-k 输出</b><div class="math-display">\[y=\sum_{i\in \mathrm{TopK}(g(x))} g_i(x)\,E_i(x)\]</div><p>每个 token 只激活少量 expert。</p></div><div class="formula-card"><b>MoE 负载均衡直觉</b><div class="math-display">\[\mathcal{L}_{aux}\propto N\sum_{i=1}^{N} f_i\,p_i\]</div><p>避免所有 token 挤向少数 expert。</p></div></div>
+      </aside>
+<h4 id="h-0219"><a class="anchor-link" href="#h-0219" aria-label="跳转到本节">#</a>高频笔试题</h4>
+<ol>
+<li>expert parallel（<code>EP</code>）是什么？
+</li>
+<li>为什么 <code>MoE</code> 比 dense 模型更容易遇到负载不均问题？
+</li>
+<li>为什么 <code>EP</code> 通常要和 <code>DP/TP/PP</code> 混合使用？
+</li>
+</ol>
+<h4 id="h-0220"><a class="anchor-link" href="#h-0220" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：expert parallel（<code>EP</code>）是什么？
+<p>答：expert parallel（<code>EP</code>）是把不同专家分布到不同设备上，让 token 根据路由结果被派发到对应专家执行，从而把 <code>MoE</code> 的专家层并行展开。详见后文“### 14. expert parallel（专家并行）专项”。</p>
+</li>
+<li>问：为什么 <code>MoE</code> 比 dense 模型更容易遇到负载不均问题？
+<p>答：因为路由器可能把大量 token 挤到少数热门专家，导致有些卡过载、有些卡空闲，这种不均衡在 dense 模型里不会这么尖锐。</p>
+</li>
+<li>问：为什么 <code>EP</code> 通常要和 <code>DP/TP/PP</code> 混合使用？
+<p>答：因为 <code>EP</code> 只解决专家层的分布方式，不能单独处理 dense 主干、全局 batch 和整网放不下的问题，所以通常只能作为混合并行的一环。</p>
+</li>
+</ul>
+<h4 id="h-0221"><a class="anchor-link" href="#h-0221" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>为什么在 <code>MoE</code> 里很多时候优先考虑 <code>EP</code>，而不是简单把专家层继续做 <code>TP</code>？
+</li>
+<li>top-k 路由为什么会放大跨卡通信？
+</li>
+<li>capacity factor（容量因子）和 load balancing loss（负载均衡损失）分别在解决什么？
+</li>
+<li>如果某些 expert 特别热、某些 expert 几乎不被激活，你会怎么处理？
+</li>
+</ol>
+<h4 id="h-0222"><a class="anchor-link" href="#h-0222" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：为什么在 <code>MoE</code> 里很多时候优先考虑 <code>EP</code>，而不是简单把专家层继续做 <code>TP</code>？
+<p>答：因为专家天然就是可分区的独立子网络，用 <code>EP</code> 让“专家按卡分布”最符合结构本身；如果继续做 <code>TP</code>，专家内部通信往往会更重。</p>
+</li>
+<li>问：top-k 路由为什么会放大跨卡通信？
+<p>答：因为一个 batch 里的 token 可能要被分发到不同卡上的多个专家，top-k 越大，需要 dispatch 和 gather 的路径通常越复杂。</p>
+</li>
+<li>问：capacity factor（容量因子）和 load balancing loss（负载均衡损失）分别在解决什么？
+<p>答：<code>capacity factor</code> 控的是单个专家最多接多少 token，防止局部过载；<code>load balancing loss</code> 则是在训练时约束路由更均匀，减少热点专家塌缩。</p>
+</li>
+<li>问：如果某些 expert 特别热、某些 expert 几乎不被激活，你会怎么处理？
+<p>答：先看路由分布和熵，再调辅助负载均衡损失、capacity factor、router temperature/noise，必要时还要做专家复制、数据重配或路由正则。</p>
+</li>
+</ul>
+<h4 id="h-0223"><a class="anchor-link" href="#h-0223" aria-label="跳转到本节">#</a>答题要点</h4>
+<ul>
+<li><code>EP</code> 的核心是“专家按卡分布，token 按路由跨卡发往对应专家”；
+</li>
+<li>所以它最本质的问题不是参数存储，而是 token dispatch（分发）和 load balance（负载均衡）；
+</li>
+<li><code>MoE</code> 系统优化里，常见关键词就是：路由稳定、容量控制、热点 expert、跨卡交换、通信与计算重叠。
+</li>
+</ul>
+<h3 id="h-0224"><a class="anchor-link" href="#h-0224" aria-label="跳转到本节">#</a>15. pipeline bubble 与负载均衡专项</h3>
+<h4 id="h-0225"><a class="anchor-link" href="#h-0225" aria-label="跳转到本节">#</a>高频笔试题</h4>
+<ol>
+<li>pipeline bubble 是什么？
+</li>
+<li>为什么 micro-batch 数量会影响 pipeline 利用率？
+</li>
+<li>为什么 stage 切分不均会导致整体吞吐下降？
+</li>
+</ol>
+<h4 id="h-0226"><a class="anchor-link" href="#h-0226" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：pipeline bubble 是什么？
+<p>答：pipeline bubble 指的是流水线并行中，一些 stage 在等待前后 stage 时出现的空转时间。它本质上代表 GPU 没有持续被有效计算填满。详见后文“### 43. pipeline bubble 是什么？”。</p>
+</li>
+<li>问：为什么 micro-batch 数量会影响 pipeline 利用率？
+<p>答：因为 micro-batch 更多时，流水线更容易持续有活干，空转比例下降，所以 bubble 会更小。详见后文“### 44. 为什么增加 micro-batch 能减小 pipeline bubble，但不能无限增大？”。</p>
+</li>
+<li>问：为什么 stage 切分不均会导致整体吞吐下降？
+<p>答：因为 pipeline 的整体速度由最慢 stage 决定，慢 stage 会让其他设备排队或空转，吞吐自然掉下来。</p>
+</li>
+</ul>
+<h4 id="h-0227"><a class="anchor-link" href="#h-0227" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>如果 <code>PP</code> 训练很慢，你如何判断问题是 bubble 过大还是 stage 切分不均？
+</li>
+<li>为什么增加 micro-batch 能减轻 bubble，但不能无限增大？
+</li>
+<li>如果 embedding 层和最后输出头特别重，stage 应该如何切？
+</li>
+<li>什么叫 1F1B（one-forward-one-backward）调度？它为什么常见？
+</li>
+</ol>
+<h4 id="h-0228"><a class="anchor-link" href="#h-0228" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：如果 <code>PP</code> 训练很慢，你如何判断问题是 bubble 过大还是 stage 切分不均？
+<p>答：先看时间线：如果各 stage 周期性大段空闲，更像 bubble；如果某一两个 stage 持续显著更长，更像切分不均。</p>
+</li>
+<li>问：为什么增加 micro-batch 能减轻 bubble，但不能无限增大？
+<p>答：因为 micro-batch 更多时，流水线更容易持续有活干，空转比例下降，所以 bubble 会更小。详见后文“### 44. 为什么增加 micro-batch 能减小 pipeline bubble，但不能无限增大？”。</p>
+</li>
+<li>问：如果 embedding 层和最后输出头特别重，stage 应该如何切？
+<p>答：通常要把重头和较轻的中间层重新配平，必要时让 embedding/output head 单独成 stage，或与更少的 Transformer block 配对。</p>
+</li>
+<li>问：什么叫 1F1B（one-forward-one-backward）调度？它为什么常见？
+<p>答：就是流水线预热后按“一次前向、一次反向”交替推进 micro-batch，常见是因为它能在激活占用和 pipeline 利用率之间取得较好的折中。</p>
+</li>
+</ul>
+<h4 id="h-0229"><a class="anchor-link" href="#h-0229" aria-label="跳转到本节">#</a>答题要点</h4>
+<ul>
+<li>pipeline bubble 本质是：某些 stage 在等数据，GPU 有空转；
+</li>
+<li>micro-batch 越多，流水线越容易填满，但调度、显存和延迟成本也会上升；
+</li>
+<li><code>PP</code> 调优通常就是在 stage balance、micro-batch 数量和调度策略之间找折中。
+</li>
+</ul>
+<h3 id="h-0230"><a class="anchor-link" href="#h-0230" aria-label="跳转到本节">#</a>16. 通信重叠（communication overlap）专项</h3>
+<h4 id="h-0231"><a class="anchor-link" href="#h-0231" aria-label="跳转到本节">#</a>高频面试题</h4>
+<ol>
+<li>为什么训练系统总在强调 overlap communication and computation？
+</li>
+<li>PyTorch <code>DDP/FSDP</code> 里通信重叠通常是怎么发生的？
+</li>
+<li>为什么“计算太快、通信太小、显存太紧”时，通信重叠可能反而不划算？
+</li>
+<li>如果一个系统说自己做了 overlap，你怎么验证它不是 PPT 优化？
+</li>
+</ol>
+<h4 id="h-0232"><a class="anchor-link" href="#h-0232" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：为什么训练系统总在强调 overlap communication and computation？
+<p>答：因为真正拖慢 step 的常常是“计算完了还在等通信”，重叠的目标就是让 GPU 别闲着等网络。</p>
+</li>
+<li>问：PyTorch <code>DDP/FSDP</code> 里通信重叠通常是怎么发生的？
+<p>答：常见方式是把梯度分桶，某些层一反向完就异步触发对应 bucket 的 collective，让后续层计算和前面桶的通信并行进行。</p>
+</li>
+<li>问：为什么“计算太快、通信太小、显存太紧”时，通信重叠可能反而不划算？
+<p>答：因为重叠本身也要额外 buffer、调度和流管理，若通信量本来不大，额外复杂度和显存成本可能比收益还高。</p>
+</li>
+<li>问：如果一个系统说自己做了 overlap，你怎么验证它不是 PPT 优化？
+<p>答：直接看 profiler 时间线和 step breakdown：如果通信真的被藏到计算背后，NCCL 活动应该与 kernel 同时出现，而且总 step time 会实打实下降。</p>
+</li>
+</ul>
+<h4 id="h-0233"><a class="anchor-link" href="#h-0233" aria-label="跳转到本节">#</a>答题要点</h4>
+<ul>
+<li>通信重叠的目标不是减少通信量，而是隐藏通信时间；
+</li>
+<li>常见实现方式是在反向传播分层完成后，尽早触发该层梯度同步；
+</li>
+<li>但 overlap 不是总收益：调度开销、流竞争、额外 buffer、chunk 太碎，都可能让它失效。
+</li>
+</ul>
+<h3 id="h-0234"><a class="anchor-link" href="#h-0234" aria-label="跳转到本节">#</a>17. 训练系统岗最爱问的排障题</h3>
+<ol>
+<li>loss 抖得很厉害，但单卡小模型正常，你如何排查是并行切分问题还是数值问题？
+</li>
+<li>多机训练吞吐忽高忽低，你先看数据加载、NCCL、还是 stage balance？为什么？
+</li>
+<li>一换成 <code>ZeRO-3/FSDP</code> 就慢很多，你如何判断慢在参数 <code>all-gather</code>、offload、还是未重叠成功？
+</li>
+<li><code>MoE</code> 训练不稳定，是路由器、负载均衡，还是 expert capacity 设置问题？
+</li>
+</ol>
+<h4 id="h-0235"><a class="anchor-link" href="#h-0235" aria-label="跳转到本节">#</a>就地速答</h4>
+<ul>
+<li>问：loss 抖得很厉害，但单卡小模型正常，你如何排查是并行切分问题还是数值问题？
+<p>答：先固定随机种子和 batch，把单卡、多卡、混合精度、通信重叠逐项打开；若只在并行规模上坏掉，更像切分/通信问题，若单卡也出现 <code>NaN/Inf</code>，更像数值或学习率问题。</p>
+</li>
+<li>问：多机训练吞吐忽高忽低，你先看数据加载、NCCL、还是 stage balance？为什么？
+<p>答：我会先看数据加载和 GPU 利用率时间线，因为这是最常见也最便宜排除的外因；若数据稳定，再看 NCCL 与 stage 时间分布判断是通信还是切分。</p>
+</li>
+<li>问：一换成 <code>ZeRO-3/FSDP</code> 就慢很多，你如何判断慢在参数 <code>all-gather</code>、offload、还是未重叠成功？
+<p>答：先用 profiler 看 all-gather 时间占比和 CPU/磁盘等待，再看通信是否与反向重叠；如果 timeline 上出现长时间纯等待，多半就是 gather 或 offload 没藏住。</p>
+</li>
+<li>问：<code>MoE</code> 训练不稳定，是路由器、负载均衡，还是 expert capacity 设置问题？
+<p>答：先看路由分布、专家利用率、丢 token 比例和辅助损失走势；如果热点专家明显或大量 token 被截断，通常就是路由/容量设置先出问题。</p>
+</li>
+</ul>
+<h3 id="h-0236"><a class="anchor-link" href="#h-0236" aria-label="跳转到本节">#</a>18. 用“训练状态”把显存来源拆清楚</h3>
+<p>如果你想把这块讲细，最有效的方式不是直接背框架，而是先把训练时到底在存什么拆开。大模型训练显存通常由下面五块组成：</p>
+<ol>
+<li><strong>参数（parameters）</strong>：模型权重本身。
+</li>
+<li><strong>梯度（gradients）</strong>：反向传播后得到，与参数形状相同。
+</li>
+<li><strong>优化器状态（optimizer states）</strong>：以 <code>Adam</code> 为例，通常至少还有一阶、二阶矩，再加 master weights，往往比参数本身还大。
+</li>
+<li><strong>激活值（activations）</strong>：前向中间结果，反向要用。
+</li>
+<li><strong>临时通信 / workspace / buffer</strong>：例如 <code>all-gather</code>、<code>reduce-scatter</code>、kernel workspace、bucket buffer。
+</li>
+</ol>
+<p>这五块里，很多初学者最容易低估的是两点：</p>
+<ul>
+<li><strong>优化器状态</strong> 在全参数训练里可能非常重；
+</li>
+<li><strong>激活值</strong> 在长序列和大 batch 下会迅速成为主导。
+</li>
+</ul>
+<p>所以不同优化手段，本质上是在打不同对象：</p>
+<ul>
+<li><code>ZeRO/FSDP</code> 更偏切参数、梯度、优化器状态；
+</li>
+<li>checkpointing 更偏切激活；
+</li>
+<li><code>TP/PP</code> 更偏从结构上把模型放进更多卡；
+</li>
+<li>量化/低精度更偏整体缩小每个元素的字节数。
+</li>
+</ul>
+<p>如果你一上来就把这五块讲清楚，后面再讲任何并行策略，逻辑都会非常稳。</p>
+<h3 id="h-0237"><a class="anchor-link" href="#h-0237" aria-label="跳转到本节">#</a>19. 官方实现视角下，<code>FSDP2</code> 到底怎么工作</h3>
+<p>这一块如果只说“FSDP 会把参数切开”，其实还不够。按 PyTorch 官方 <code>FSDP2</code> 教程，更准确的工作流是：</p>
+<ol>
+<li><strong>前向 / 反向计算之外</strong>：参数是分片存储的，每张卡只持有一部分参数。
+</li>
+<li><strong>前向前</strong>：需要当前模块计算时，把这一层对应参数 <code>all-gather</code> 成完整权重。
+</li>
+<li><strong>前向后</strong>：如果配置为 <code>reshard_after_forward=True</code>，这一层算完又重新切回分片，以降低峰值显存。
+</li>
+<li><strong>反向时</strong>：每张卡先拿到本地未切分梯度，再通过 <code>reduce-scatter</code> 变回分片梯度。
+</li>
+<li><strong>优化器更新时</strong>：优化器只更新本 rank 持有的那部分参数和优化器状态。
+</li>
+</ol>
+<p>这就是为什么官方文档会说：<code>FSDP</code> 可以看作把 <code>DDP</code> 里那种“完整 all-reduce”拆解成了 <code>all-gather + reduce-scatter</code> 的组合。</p>
+<p>真正该记住的不是 API，而是这条因果链：</p>
+<ul>
+<li><code>DDP</code>：完整复制模型，最后同步梯度；
+</li>
+<li><code>FSDP2</code>：平时不保存完整参数，只在算某层前临时聚齐，算完再切开。
+</li>
+</ul>
+<p>这也是它能训练“单卡根本放不下”的模型的根本原因。</p>
+<h3 id="h-0238"><a class="anchor-link" href="#h-0238" aria-label="跳转到本节">#</a>20. 官方实现视角下，<code>TP</code> 为什么通常落在 <code>Linear/Embedding/Norm</code></h3>
+<p>PyTorch 官方 <code>Tensor Parallel</code> 教程给了一个非常好的理解框架：<code>TP</code> 不是随便切，而是优先切那些本来就是大矩阵乘法的层。</p>
+<p>最常见的是：</p>
+<ul>
+<li><code>ColwiseParallel</code>：把 <code>Linear</code> 的输出列方向切开；
+</li>
+<li><code>RowwiseParallel</code>：把 <code>Linear</code> 的输入行方向切开；
+</li>
+<li><code>SequenceParallel</code>：对 <code>LayerNorm/RMSNorm/Dropout</code> 等按序列维度分片，以省激活显存。
+</li>
+</ul>
+<p>为什么 <code>TP</code> 经常和 Transformer 的 <code>MLP + Attention</code> 一起讲？因为这些层的主干都是大矩阵乘法，最适合做切分。例如在 <code>MLP</code> 里：</p>
+<ul>
+<li>第一层投影 <code>w1/w3</code> 常做列切分；
+</li>
+<li>第二层投影 <code>w2</code> 常做行切分；
+</li>
+</ul>
+<p>这样中间只需要在关键位置做通信，而不是每一步都全量同步。</p>
+<p>所以面试里如果问“为什么 TP 适合 Transformer”，最好的回答不是“因为大家都这么做”，而是：</p>
+<ul>
+<li>Transformer 的计算热点天然集中在可分片的大矩阵乘法上；
+</li>
+<li>这些层切开以后，通信模式相对规则；
+</li>
+<li>再配合 <code>Sequence Parallel</code>，还能进一步压激活显存。
+</li>
+</ul>
+<h3 id="h-0239"><a class="anchor-link" href="#h-0239" aria-label="跳转到本节">#</a>21. <code>PP</code> 的本质不是切层，而是“调度 micro-batch”</h3>
+<p>很多人会把 <code>Pipeline Parallel</code> 简化成“把层切到不同 GPU 上”，但这只说对了一半。真正决定 <code>PP</code> 性能的，是 <strong>micro-batch 调度</strong>。</p>
+<p>按 PyTorch 和 DeepSpeed 的官方说明，<code>PP</code> 训练通常会把一个 batch 切成多个 micro-batch，然后让不同 stage 像流水线一样交替做前向和反向。于是性能上关键就不只是谁负责哪些层，还包括：</p>
+<ol>
+<li>一个 stage 是否足够忙；
+</li>
+<li>不同 stage 计算量是否平衡；
+</li>
+<li>micro-batch 数是否足够把流水线灌满；
+</li>
+<li>调度策略是 <code>GPipe</code> 还是 <code>1F1B</code>；
+</li>
+<li>激活通信和反向梯度通信是否平滑。
+</li>
+</ol>
+<p>所以 <code>PP</code> 的本质可以总结成：</p>
+<ul>
+<li><strong>空间上</strong>：切层；
+</li>
+<li><strong>时间上</strong>：切 batch；
+</li>
+<li><strong>系统上</strong>：靠调度把空转压小。
+</li>
+</ul>
+<p>这也是为什么面试官一提 <code>PP</code>，很快就会追问 <code>micro-batch</code>、bubble、1F1B，而不是只问“层怎么切”。</p>
+<h3 id="h-0240"><a class="anchor-link" href="#h-0240" aria-label="跳转到本节">#</a>22. <code>pipeline bubble</code> 怎么定量理解</h3>
+<p>如果你想把这块讲得比普通八股更像真做过，可以给一个简单的定量直觉。</p>
+<p>假设：</p>
+<ul>
+<li>流水线有 <code>p</code> 个 stage；
+</li>
+<li>一个大 batch 被切成 <code>m</code> 个 micro-batch；
+</li>
+</ul>
+<p>那么一个常见直觉是：<strong>micro-batch 越少，bubble 占比越大；micro-batch 越多，流水线越容易被填满</strong>。</p>
+<p>在很多介绍里，会把 bubble 理解成大约和 <code>(p-1)</code> 个空档相关，而总时长大约与 <code>(m + p - 1)</code> 同阶，所以常见口语化判断是：</p>
+<ul>
+<li><code>m</code> 太小，bubble 很明显；
+</li>
+<li><code>m</code> 增大后，bubble 相对占比下降；
+</li>
+<li>但 <code>m</code> 不可能无限增大，因为显存、调度和延迟会变差。
+</li>
+</ul>
+<p>面试里通常不要求你严丝合缝推公式，但如果你能讲出：</p>
+<p><code>PP</code> 的核心不是“有没有 bubble”，而是“bubble 占总时长比例能不能接受”</p>
+<p>这一层，就已经比只会背定义的人强很多。</p>
+<h3 id="h-0241"><a class="anchor-link" href="#h-0241" aria-label="跳转到本节">#</a>23. 一个更真实的 <code>70B</code> 训练方案怎么讲</h3>
+<p>如果面试官问“一个 <code>70B dense</code> 模型怎么训练”，只回答“用分布式”太空了。更稳的说法是分层判断：</p>
+<ol>
+<li><strong>先问单卡能不能放下</strong>：通常不能，所以单靠 <code>DP</code> 不够。
+</li>
+<li><strong>如果是单机 8 卡高速互联</strong>：优先考虑机内 <code>TP</code>，把最重的矩阵算子切开。
+</li>
+<li><strong>如果跨多机扩展</strong>：通常让 <code>TP</code> 尽量留在机内，跨机再叠 <code>FSDP</code> 或 <code>DP</code>，减少高频跨机层内通信。
+</li>
+<li><strong>如果层数很深或模型 stage 很自然</strong>：再考虑加 <code>PP</code>。
+</li>
+<li><strong>如果显存还是扛不住</strong>：叠加 mixed precision、checkpointing、<code>ZeRO/FSDP</code>、必要时 offload。
+</li>
+</ol>
+<p>所以一套比较真实的答法可能是：</p>
+<ul>
+<li>机内做 <code>TP/SP</code>；
+</li>
+<li>机间做 <code>FSDP</code>；
+</li>
+<li>如果规模再大，叠 <code>PP</code>；
+</li>
+<li>再用 checkpointing 和 mixed precision 控显存。
+</li>
+</ul>
+<p>这类回答的关键不是“唯一正确”，而是体现你知道：<strong>并行策略是按硬件拓扑分层落的，不是把名词乱拼起来。</strong></p>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="023.html">← 23. 十七、手撕代码专项的复习顺序</a><a href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略） →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

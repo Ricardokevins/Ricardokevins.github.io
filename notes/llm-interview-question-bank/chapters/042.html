@@ -1,0 +1,1740 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>42. 模块五：推理优化、Serving 与部署工程 - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 42</div>
+        <div class="brand-title">模块五：推理优化、Serving 与部署工程</div>
+        <div class="brand-meta">2. 核心题完整答案 · 第 5 步 · 训练/推理/系统</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0631">49. 什么是 KV cache？</a>
+<a class="toc-link" href="#h-0632" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0633" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0634">50. 为什么大模型推理时显存会越用越多？</a>
+<a class="toc-link" href="#h-0635" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0636" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0637">51. quantization（INT8 / INT4 / FP16 / BF16）的核心作用是什么？</a>
+<a class="toc-link" href="#h-0638" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0639" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0640">52. batching 为什么能提吞吐，但不一定能降延迟？</a>
+<a class="toc-link" href="#h-0641" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0642" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0643">53. speculative decoding 的基本思想是什么？</a>
+<a class="toc-link" href="#h-0644" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0645" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0646">54. continuous batching 和静态 batching 的区别是什么？</a>
+<a class="toc-link" href="#h-0647" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0648" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0649">55. 你详细讲一下 Prefill 和 Decode 两个阶段，瓶颈为什么不一样？</a>
+<a class="toc-link" href="#h-0650" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0651" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0652">56. KV cache 为什么既能提速又能成为显存灾难？你会怎么优化？</a>
+<a class="toc-link" href="#h-0653" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0654" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0655">57. vLLM、TGI、TensorRT-LLM、SGLang 这类推理引擎你怎么比较？</a>
+<a class="toc-link" href="#h-0656" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0657" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0658">58. 如果线上服务要求首 token 延迟很低，但吞吐也不能差，你会怎么折中？</a>
+<a class="toc-link" href="#h-0659" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0667">61. 什么是 Prefill/Decode 分离部署？它解决了什么问题，又引入了什么代价？</a>
+<a class="toc-link" href="#h-0668" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0669" style="padding-left:18px">深度解析</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link current" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="041.html">← 41. 模块四：SFT、PEFT 与对齐训练</a><a href="043.html">43. 模块六：RAG、检索、重排与知识增强 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0630" data-category="engineering" data-title="模块五：推理优化、Serving 与部署工程">
+<h2 id="h-0630"><a class="anchor-link" href="#h-0630" aria-label="跳转到本节">#</a>模块五：推理优化、Serving 与部署工程</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>本章是核心题完整答案层，承接 <a href="009.html">第 09 章</a> 的模块地图。建议按问题顺序精读；读完后用 <a href="053.html">第 53 章</a> 做知识点查漏。</p></aside>
+<h3 id="h-0631"><a class="anchor-link" href="#h-0631" aria-label="跳转到本节">#</a>49. 什么是 KV cache？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">Attention 数据流</div>
+        <p class="inline-enhancement-note">放在 Self-Attention / FlashAttention / KV cache 相关小节附近，帮助把 Q/K/V、softmax 和输出向量串起来。</p>
+        <div class="visual-grid"><div class="visual-card"><b>Scaled Attention 结构图</b><img src="../assets/attention-flow.svg" alt="Scaled Attention 结构图"><p>从 Q/K/V 到 softmax 再到输出向量的核心数据流。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>Scaled Dot-Product Attention</b><div class="math-display">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><p>缩放项控制点积方差，softmax 后得到对 V 的加权。</p></div><div class="formula-card"><b>KV Cache 显存估算</b><div class="math-display">\[\mathrm{KVCache}\approx 2 \times B \times L \times H_{kv} \times d_h \times N_{layer} \times \mathrm{bytes}\]</div><p>2 表示 K 和 V；长上下文下主要随 batch、序列长度和层数线性增长。</p></div></div>
+      </aside>
+<h4 id="h-0632"><a class="anchor-link" href="#h-0632" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>KV cache</code> 的本质，是把历史 token 在每一层算出来的 <code>K/V</code> 保留下来。这样在自回归生成下一个 token 时，不需要每一步都把整段历史重新做一遍 attention，而是只算新 token 对历史缓存的交互。</p>
+<p>它为什么重要？因为没有 <code>KV cache</code>，生成第 <code>t</code> 个 token 时要反复重算前 <code>t-1</code> 个 token 的表示，成本会非常高；有了 cache 之后，推理才真正具备可用速度。所以 <code>KV cache</code> 可以理解成 Decoder-only 推理高效化的核心基础设施。</p>
+<hr>
+<h4 id="h-0633"><a class="anchor-link" href="#h-0633" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. KV Cache 的具体工作原理（以单头为例）</strong></p>
+<p>假设正在生成第 5 个 token，前面已经生成了 4 个 token。</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阶段</th>
+<th>操作</th>
+<th>K/V 缓存状态</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>生成 token 1</td>
+<td>计算 token 1 的 K/V</td>
+<td>cache = {K1, V1}</td>
+</tr>
+<tr>
+<td>生成 token 2</td>
+<td>计算 token 2 的 K/V；attention 用 Q2 查 {K1,K2}</td>
+<td>cache = {K1,V1, K2,V2}</td>
+</tr>
+<tr>
+<td>生成 token 3</td>
+<td>计算 token 3 的 K/V；attention 用 Q3 查 {K1,K2,K3}</td>
+<td>cache = {K1,V1, K2,V2, K3,V3}</td>
+</tr>
+<tr>
+<td>生成 token 4</td>
+<td>计算 token 4 的 K/V；attention 用 Q4 查 {K1..K4}</td>
+<td>cache = {K1,V1, K2,V2, K3,V3, K4,V4}</td>
+</tr>
+<tr>
+<td>生成 token 5</td>
+<td>计算 token 5 的 K/V；attention 用 Q5 查 {K1..K5}</td>
+<td>cache = {K1,V1, K2,V2, K3,V3, K4,V4, K5,V5}</td>
+</tr>
+</tbody></table></div>
+<p>关键：每一步只需要计算<strong>当前新 token</strong>的 K/V，然后用这个新的 Q 去跟<strong>所有历史 K</strong>做点积。历史 K/V 不用重算。</p>
+<p><strong>2. 为什么不缓存 Q？</strong></p>
+<p>因为 Q 是"当前 token 想查什么"，每个新生成的 token 都有自己的 Q，不需要复用之前的。而 K/V 是"历史 token 能提供什么信息"，这些信息对后续所有 token 都有用，所以需要缓存。</p>
+<p>换个角度说：生成 token <code>t</code> 时，query 只有 <code>Q_t</code> 一个；但 key/value 有 <code>K_1...K_t</code> 和 <code>V_1...V_t</code> 共 <code>t</code> 个。缓存 K/V 是因为它们多且重复用，不缓存 Q 是因为它只有一个且只用一次。</p>
+<p><strong>3. Prefill vs Decode 阶段的 KV Cache 行为</strong></p>
+<ul>
+<li><strong>Prefill 阶段</strong>（处理输入 prompt）：一次性计算整个 prompt 中所有 token 的 K/V，把它们全部写入 cache。这是 cache 的"初始化"。
+</li>
+<li><strong>Decode 阶段</strong>（自回归生成）：每步只计算新 token 的 K/V，追加到 cache 末尾。cache 长度逐 token 增长。
+</li>
+</ul>
+<p>Prefill 阶段没有"历史缓存"可以利用，但可以利用矩阵乘法的并行性一次性算完；Decode 阶段算量小，但全靠 cache 避免重复计算。</p>
+<p><strong>4. KV Cache 的显存占用公式（再强调）</strong></p>
+<pre><code class="language-text">KV_cache_size = 2 × B × L × n_kv_heads × head_dim × seq_len × dtype_bytes</code></pre>
+<p>其中 <code>2</code> 是 K 和 V 两个矩阵。以 LLaMA-2 7B、batch=1、seq_len=4096、FP16 为例：</p>
+<ul>
+<li><code>2 × 1 × 32 × 32 × 128 × 4096 × 2 = 2.1 GB</code>
+</li>
+</ul>
+<p>如果 batch=16，就是 33.6 GB。一个 A100 80GB 卡，模型权重占 14GB，KV cache 占 33.6GB，只剩 32GB 给激活和系统开销，已经很紧张了。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"KV cache 可以量化吗？怎么量化？"</strong>
+<ul>
+<li>答：可以。常见的有 INT8 KV cache（把 FP16 的 K/V 压到 INT8，显存减半）和更激进的 4-bit 方案。量化 K/V 的挑战在于：K/V 的数值范围比权重更大（因为激活值分布更动态），需要 per-channel 或 per-token 的缩放因子。K cache 通常比 V cache 对量化更敏感。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 PagedAttention 能缓解 KV cache 的显存碎片问题？"</strong>
+<ul>
+<li>答：标准 KV cache 是连续分配的——每个请求按最大可能长度预分配一块连续显存。不同请求长度差异大，短请求结束后留下的空洞无法被长请求利用。PagedAttention 把 KV cache 分成固定大小的"页"（block），像操作系统虚拟内存一样非连续分配，显存利用率从 50-70% 提升到 90%+。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果用户输入 1000 token，输出 100 token，KV cache 的增长过程是怎样的？"</strong>
+<ul>
+<li>答：Prefill 阶段先一次性写入 1000 个 token 的 K/V；然后 decode 阶段每步追加 1 个，共追加 100 次，最终 cache 长度是 1100。Prefill 的 cache 初始化是"一次性 burst"，decode 是"线性增长"。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0634"><a class="anchor-link" href="#h-0634" aria-label="跳转到本节">#</a>50. 为什么大模型推理时显存会越用越多？</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">参数量 / 显存速算</div>
+        <p class="inline-enhancement-note">放在参数量、复杂度、显存估算小节附近，作为面试快算公式。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>Transformer 单层参数近似</b><div class="math-display">\[P_{layer}\approx 4d^2 + 2d\,d_{ff}\approx 12d^2\quad(d_{ff}\approx4d)\]</div><p>用于快速估算 dense LLM 参数量；SwiGLU/GQA 会改变常数项。</p></div><div class="formula-card"><b>训练显存组成</b><div class="math-display">\[\mathrm{Memory}\approx W + G + O + A\]</div><p>W 是权重，G 是梯度，O 是优化器状态，A 是激活值。</p></div></div>
+      </aside>
+<h4 id="h-0635"><a class="anchor-link" href="#h-0635" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>大模型推理显存会越用越多，核心原因不是权重在变大，而是生成过程中历史 <code>KV cache</code> 在持续累积。每多生成一个 token，每一层都要多存一份新的 <code>K/V</code>，所以上下文越长、输出越长，缓存就越涨。</p>
+<p>如果再叠加大 batch、多层网络、较多 <code>kv_heads</code>，显存压力会放大得很快。所以推理显存一定要分开看：静态部分是模型权重，动态部分是 <code>KV cache</code>、中间激活和调度开销。线上很多 OOM，根因其实都在动态缓存而不是模型文件本身。</p>
+<hr>
+<h4 id="h-0636"><a class="anchor-link" href="#h-0636" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 显存构成的具体分解</strong></p>
+<p>以 LLaMA-2 7B 模型、batch_size=8、seq_len=4096、FP16 推理为例：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>显存来源</th>
+<th>计算公式</th>
+<th>大小</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>模型权重</td>
+<td><code>7B × 2 bytes</code></td>
+<td>~14 GB</td>
+</tr>
+<tr>
+<td>KV Cache</td>
+<td><code>2 × 8 × 32 × 32 × 128 × 4096 × 2</code></td>
+<td>~16.8 GB</td>
+</tr>
+<tr>
+<td>中间激活</td>
+<td>取决于 batch 和序列长度</td>
+<td>~2-4 GB</td>
+</tr>
+<tr>
+<td>系统开销</td>
+<td>CUDA context、驱动等</td>
+<td>~1-2 GB</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td></td>
+<td><strong>~34-36 GB</strong></td>
+</tr>
+</tbody></table></div>
+<p>注意：KV cache（16.8 GB）已经超过了模型权重（14 GB）。这就是"推理显存越用越多"的核心原因。</p>
+<p><strong>2. 生成过程中显存增长的曲线</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>生成进度</th>
+<th>累计 token 数</th>
+<th>KV cache 大小</th>
+<th>总显存</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Prefill 完成</td>
+<td>4096</td>
+<td>16.8 GB</td>
+<td>~34 GB</td>
+</tr>
+<tr>
+<td>生成 500 token</td>
+<td>4596</td>
+<td>18.9 GB</td>
+<td>~36 GB</td>
+</tr>
+<tr>
+<td>生成 1000 token</td>
+<td>5096</td>
+<td>20.9 GB</td>
+<td>~38 GB</td>
+</tr>
+<tr>
+<td>生成 2000 token</td>
+<td>6096</td>
+<td>24.9 GB</td>
+<td>~42 GB</td>
+</tr>
+</tbody></table></div>
+<p>显存随输出长度线性增长。如果用户要求生成长文本（如写一篇 5000 字文章），显存可能从 34GB 涨到 50GB+。</p>
+<p><strong>3. 为什么权重不会增长，但 KV cache 会？</strong></p>
+<p>模型权重在推理前就已经全部加载到显存，之后不会再变。但 KV cache 每生成一个新 token 就要追加新的 K/V。</p>
+<p>形象比喻：权重是"厂房"（固定大小），KV cache 是"仓库里的货物"（越堆越多）。OOM 通常不是因为厂房太小，而是因为货物爆仓。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果显存已经不够了，除了减少 batch size，还有什么办法？"</strong>
+<ul>
+<li>答：按优先级：1）启用 GQA/MQA（如果还没用）；2）KV cache 量化到 INT8（显存减半）；3）限制最大生成长度；4）用 PagedAttention 提高显存利用率；5）分段生成（chunked generation），每段结束后释放 cache 重新 prefill。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Prefill 阶段和 Decode 阶段的显存占用有什么区别？"</strong>
+<ul>
+<li>答：Prefill 阶段需要存储整个输入序列的 KV cache（一次性 burst），同时中间激活也很大（因为并行计算 attention）。Decode 阶段中间激活很小（只算一个 token），但 KV cache 持续累积。Prefill 的峰值通常比单个 decode 步高，但 decode 的持续平均值更高。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 beam search 比 greedy 解码更耗显存？"</strong>
+<ul>
+<li>答：beam search 同时维护多个候选序列（如 beam_width=4），每个候选都有自己的 KV cache。所以显存占用是 greedy 的 beam_width 倍。这也是大模型推理中很少用大 beam 的原因之一。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0637"><a class="anchor-link" href="#h-0637" aria-label="跳转到本节">#</a>51. quantization（INT8 / INT4 / FP16 / BF16）的核心作用是什么？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">量化误差链路</div>
+        <p class="inline-enhancement-note">放在量化、GPTQ、AWQ、INT4/INT8 相关小节附近，解释精度损失来自哪里。</p>
+        <div class="visual-grid"><div class="visual-card"><b>量化误差来源图</b><img src="../assets/quantization-flow.svg" alt="量化误差来源图"><p>scale、round、clip 和 dequantization 共同决定误差。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>线性量化</b><div class="math-display">\[x_q=\mathrm{clip}\left(\mathrm{round}\left(\frac{x}{s}\right)+z\right),\qquad \hat{x}=s(x_q-z)\]</div><p>s 是 scale，z 是 zero point。</p></div><div class="formula-card"><b>权重显存粗估</b><div class="math-display">\[\mathrm{Memory}_{int4}\approx0.5P\ \mathrm{bytes},\qquad \mathrm{Memory}_{fp16}\approx2P\ \mathrm{bytes}\]</div><p>int4 权重本体约为 fp16 的四分之一。</p></div></div>
+      </aside>
+<h4 id="h-0638"><a class="anchor-link" href="#h-0638" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>量化的核心，不是“为了把数值变丑一点”，而是把权重、激活或者缓存用更低比特表示，从而减少显存占用、降低带宽压力，并在某些硬件上换到更高吞吐。对推理系统来说，这往往直接对应更低成本和更高并发。</p>
+<p>但量化一定有代价：数值表示变粗后，会引入近似误差，所以需要在资源收益和效果损失之间做权衡。也正因为如此，量化不是越低比特越好，而是看模型、任务、硬件和精度容忍度能接受到什么程度。</p>
+<hr>
+<h4 id="h-0639"><a class="anchor-link" href="#h-0639" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 四种精度格式的本质区别</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>格式</th>
+<th>比特数</th>
+<th>动态范围</th>
+<th>精度</th>
+<th>适用场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>FP32</strong></td>
+<td>32</td>
+<td>极大</td>
+<td>最高</td>
+<td>训练主权重（master weights）</td>
+</tr>
+<tr>
+<td><strong>FP16</strong></td>
+<td>16</td>
+<td>大</td>
+<td>高</td>
+<td>训练/推理，需配合 loss scaling</td>
+</tr>
+<tr>
+<td><strong>BF16</strong></td>
+<td>16</td>
+<td>极大（与 FP32 相同）</td>
+<td>中</td>
+<td>训练首选（不用 loss scaling）</td>
+</tr>
+<tr>
+<td><strong>INT8</strong></td>
+<td>8</td>
+<td>小</td>
+<td>低</td>
+<td>推理权重量化</td>
+</tr>
+<tr>
+<td><strong>INT4</strong></td>
+<td>4</td>
+<td>极小</td>
+<td>很低</td>
+<td>极端压缩（GPTQ/AWQ）</td>
+</tr>
+</tbody></table></div>
+<p><strong>BF16 vs FP16 的关键差异</strong>：</p>
+<ul>
+<li>FP16：1 位符号 + 5 位指数 + 10 位尾数 → 范围 ~6×10⁻⁵ 到 6×10⁴
+</li>
+<li>BF16：1 位符号 + 8 位指数 + 7 位尾数 → 范围与 FP32 相同，但精度更低
+</li>
+</ul>
+<p>BF16 的指数位数与 FP32 相同，所以<strong>不容易溢出</strong>，训练时不需要复杂的 loss scaling。这就是为什么现代大模型训练普遍用 BF16 而不是 FP16。</p>
+<p><strong>2. 量化的数学原理：对称 vs 非对称</strong></p>
+<ul>
+<li><strong>对称量化</strong>：<code>q = round(x / scale)</code>，零点为 0。适合权重分布以 0 为中心的情况。
+</li>
+<li><strong>非对称量化</strong>：<code>q = round((x - zero_point) / scale)</code>。适合激活值分布不关于 0 对称的情况。
+</li>
+</ul>
+<p>scale 的计算：<code>scale = (max - min) / (2^b - 1)</code>，其中 b 是比特数。</p>
+<p><strong>3. 主流量化方案对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方案</th>
+<th>量化对象</th>
+<th>方法</th>
+<th>精度损失</th>
+<th>推理加速</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>LLM.int8()</strong></td>
+<td>权重</td>
+<td>混合精度（大值 FP16，小值 INT8）</td>
+<td>很小</td>
+<td>一般</td>
+</tr>
+<tr>
+<td><strong>GPTQ</strong></td>
+<td>权重</td>
+<td>逐层量化 + 最小化输出误差</td>
+<td>小</td>
+<td>好</td>
+</tr>
+<tr>
+<td><strong>AWQ</strong></td>
+<td>权重</td>
+<td>保护"重要"权重通道（activation-aware）</td>
+<td>很小</td>
+<td>好</td>
+</tr>
+<tr>
+<td><strong>GGUF</strong></td>
+<td>权重</td>
+<td>多种量化组合（Q4_K_M, Q5_K_M 等）</td>
+<td>中</td>
+<td>很好</td>
+</tr>
+<tr>
+<td><strong>SmoothQuant</strong></td>
+<td>权重+激活</td>
+<td>将激活难度转移到权重</td>
+<td>小</td>
+<td>很好</td>
+</tr>
+</tbody></table></div>
+<p><strong>GPTQ 的核心思想</strong>：不是独立量化每个权重，而是逐层优化，让量化后的输出 <code>W_q @ x</code> 尽可能接近原输出 <code>W @ x</code>。通过贪心算法逐步量化并调整未量化权重来补偿误差。</p>
+<p><strong>AWQ 的核心洞察</strong>：不是所有权重通道同等重要。那些对应大激活值的权重通道更敏感，应该保留更高精度（如 FP16），其他通道可以大胆量化到 INT4。</p>
+<p><strong>4. 量化收益的定量感受</strong></p>
+<p>以 LLaMA-2 7B 为例：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>精度</th>
+<th>权重大小</th>
+<th>相对 FP16 显存节省</th>
+<th>推理速度</th>
+<th>效果损失（perplexity）</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>FP16</td>
+<td>13.5 GB</td>
+<td>0%</td>
+<td>1×</td>
+<td>基准</td>
+</tr>
+<tr>
+<td>INT8</td>
+<td>6.8 GB</td>
+<td>50%</td>
+<td>1.2-1.5×</td>
+<td>+0-2%</td>
+</tr>
+<tr>
+<td>INT4 (GPTQ)</td>
+<td>3.4 GB</td>
+<td>75%</td>
+<td>1.5-2×</td>
+<td>+2-5%</td>
+</tr>
+<tr>
+<td>INT4 (AWQ)</td>
+<td>3.4 GB</td>
+<td>75%</td>
+<td>1.5-2×</td>
+<td>+1-3%</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"为什么 KV cache 量化比权重量化更难？"</strong>
+<ul>
+<li>答：权重量化只发生在加载时，量化参数（scale, zero_point）可以离线计算好；KV cache 是动态生成的，每层的 KV 值分布随输入变化，需要在线统计或用运行时校准。而且 KV cache 的量化误差会逐层累积，对长序列影响更大。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"GPTQ 和 AWQ 的本质区别是什么？"</strong>
+<ul>
+<li>答：GPTQ 从"输出重建误差"角度出发，逐层优化量化后的权重，让 <code>W_q @ x</code> 接近 <code>W @ x</code>；AWQ 从"通道重要性"角度出发，发现某些权重通道（对应大激活值）更敏感，对这些通道保留高精度。GPTQ 是"全局补偿"，AWQ 是"重点保护"。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"INT4 量化后模型效果掉了 10%，可能是什么原因？"</strong>
+<ul>
+<li>答：1）量化方案不合适（如对敏感层用了太激进的量化）；2）校准数据分布和实际推理分布不匹配；3）模型本身对某些权重变化很敏感（如小模型比大模型更难量化）；4）任务本身对精度要求高（如数学推理 &gt; 创意写作）。解决：尝试 AWQ（保护重要通道）、混合精度（敏感层用 INT8）、或增加校准数据多样性。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0640"><a class="anchor-link" href="#h-0640" aria-label="跳转到本节">#</a>52. batching 为什么能提吞吐，但不一定能降延迟？</h3>
+<h4 id="h-0641"><a class="anchor-link" href="#h-0641" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>batching 能提吞吐，是因为 GPU 更擅长并行处理一批请求，而不是一个请求一个请求地喂。把多个请求合成 batch 后，硬件利用率会更高，单位时间能处理的 token 数也更大。</p>
+<p>但它不一定能降延迟，因为单个请求可能要先等待“凑批”，而且 batch 变大后，每一步计算时间也会变长。所以吞吐优化和延迟优化不是同一个目标，生产系统里经常要在二者之间折中，而不是默认 batch 越大越好。</p>
+<hr>
+<h4 id="h-0642"><a class="anchor-link" href="#h-0642" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 吞吐和延迟的数学关系</strong></p>
+<ul>
+<li><strong>吞吐 (Throughput)</strong>：单位时间处理的请求数或 token 数
+</li>
+<li><strong>延迟 (Latency)</strong>：单个请求从发送到收到完整响应的时间
+</li>
+</ul>
+<p>当 batch_size 增大时：</p>
+<ul>
+<li><code>Batch_time</code> 增加（每步算更多 token）
+</li>
+<li>但 <code>Throughput = Batch_size / Batch_time</code> 通常增加（GPU 利用率更高）
+</li>
+<li>单个请求的 <code>Queue_time</code> 可能增加（等凑批）
+</li>
+</ul>
+<p><strong>2. 具体数值感受</strong></p>
+<p>假设每个请求生成 100 token：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>Batch Size</th>
+<th>每步时间</th>
+<th>总时间</th>
+<th>吞吐 (token/s)</th>
+<th>单个请求延迟</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>10 ms</td>
+<td>1000 ms</td>
+<td>100</td>
+<td>1000 ms</td>
+</tr>
+<tr>
+<td>4</td>
+<td>15 ms</td>
+<td>1500 ms</td>
+<td>267</td>
+<td>1500 ms</td>
+</tr>
+<tr>
+<td>8</td>
+<td>25 ms</td>
+<td>2500 ms</td>
+<td>320</td>
+<td>2500 ms</td>
+</tr>
+<tr>
+<td>16</td>
+<td>50 ms</td>
+<td>5000 ms</td>
+<td>320</td>
+<td>5000 ms</td>
+</tr>
+</tbody></table></div>
+<p>batch=16 时吞吐和 batch=8 一样（GPU 已饱和），但延迟翻倍。</p>
+<p><strong>3. 为什么线上更关注延迟？</strong></p>
+<ul>
+<li>延迟 &lt; 200ms：用户感觉"即时"
+</li>
+<li>延迟 200ms-1s：用户感觉"快"
+</li>
+<li>延迟 1-3s：用户开始不耐烦
+</li>
+<li>延迟 &gt; 3s：用户可能放弃
+</li>
+</ul>
+<p>在线服务通常用较小 batch（4-8），牺牲一点吞吐换低延迟。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"Continuous batching 怎么解决 batch 大小的动态变化？"</strong>
+<ul>
+<li>答：continuous batching 允许请求随时加入和退出。调度器每轮重新组织活跃请求成新 batch。短请求完成后立刻退出，新请求马上加入。这样 GPU 几乎始终满负荷，吞吐比静态 batching 高 5-10 倍。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果有些请求很短（10 token）、有些很长（1000 token），batching 怎么处理？"</strong>
+<ul>
+<li>答：简单 batching 下短请求要等长请求完成，造成"尾部延迟"。解决方案：1）按长度分组；2）设置最大长度限制，超长请求拆分；3）用 continuous batching，短请求完成后立即释放资源。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0643"><a class="anchor-link" href="#h-0643" aria-label="跳转到本节">#</a>53. speculative decoding 的基本思想是什么？</h3>
+<h4 id="h-0644"><a class="anchor-link" href="#h-0644" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>speculative decoding 的思路可以概括成一句话：让便宜的小模型先打草稿，让昂贵的大模型负责验收。具体做法是小模型先一次提议多个 token，大模型再并行检查这些 token 是否能接受；如果大部分都通过，就相当于把原本大模型必须逐 token 做的工作，提前批量推进了。</p>
+<p>它能提速的前提，是小模型草稿质量足够高、通过率足够好。否则大模型总在否掉草稿，反而会增加额外开销。所以这类方法的关键不是“有个小模型就行”，而是草拟模型和目标模型之间要有合适的匹配度。</p>
+<hr>
+<h4 id="h-0645"><a class="anchor-link" href="#h-0645" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 数学原理：为什么 speculative decoding 不会改分布？</strong></p>
+<p>核心思想来自 rejection sampling：</p>
+<p>小模型（draft）生成 K 个候选 token：<code>d_1, d_2, ..., d_K</code> 大模型（target）并行计算这 K 个 token 的概率：<code>p_1, p_2, ..., p_K</code> 小模型对这 K 个 token 的概率：<code>q_1, q_2, ..., q_K</code></p>
+<p>对于每个位置 i，接受概率是 <code>min(1, p_i / q_i)</code>：</p>
+<ul>
+<li>如果 <code>p_i &gt;= q_i</code>，一定接受
+</li>
+<li>如果 <code>p_i &lt; q_i</code>，以 <code>p_i/q_i</code> 的概率接受
+</li>
+</ul>
+<p>如果拒绝，则从修正分布中采样替代 token。</p>
+<p>这个机制保证：最终输出的分布<strong>严格等于</strong>大模型自己逐 token 生成的分布。是<strong>无损加速</strong>。</p>
+<p><strong>2. 加速效果的关键：接受率</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>草稿长度 K</th>
+<th>接受率</th>
+<th>理论加速比</th>
+<th>实际加速比</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>80%</td>
+<td>3.2x</td>
+<td>~2.5x</td>
+</tr>
+<tr>
+<td>4</td>
+<td>60%</td>
+<td>2.4x</td>
+<td>~1.8x</td>
+</tr>
+<tr>
+<td>8</td>
+<td>80%</td>
+<td>6.4x</td>
+<td>~4x</td>
+</tr>
+</tbody></table></div>
+<p>草稿模型和目标模型越匹配，接受率越高。常见选择：目标 70B + 草稿 7B（同系列）。</p>
+<p><strong>3. 进阶方法：Medusa / EAGLE</strong></p>
+<ul>
+<li><strong>Medusa</strong>：在目标模型上加多个轻量"头"，每个头预测未来某个位置的 token，不需要额外模型。
+</li>
+<li><strong>EAGLE</strong>：用目标模型自身的浅层特征预测未来 token，比独立小模型更准确。
+</li>
+</ul>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"speculative decoding 的 overhead 在哪里？"</strong>
+<ul>
+<li>答：1）小模型生成草稿需要额外计算；2）大模型并行验证增加了每步矩阵乘法大小；3）接受率低时，拒绝后的重新采样增加了浪费。接受率 &lt; 50% 时，overhead 可能抵消加速收益。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 speculative decoding 只适合 decode 阶段？"</strong>
+<ul>
+<li>答：prefill 阶段是并行处理整个输入，没有逐 token 生成的串行瓶颈。speculative decoding 的核心价值是打破 decode 阶段的串行性。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0646"><a class="anchor-link" href="#h-0646" aria-label="跳转到本节">#</a>54. continuous batching 和静态 batching 的区别是什么？</h3>
+<h4 id="h-0647"><a class="anchor-link" href="#h-0647" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>静态 batching 更像“开整点班车”：先凑一车请求，再统一发车，中途不再变化。它实现简单，但在线场景下会浪费很多空闲，因为不同请求长度差异很大，短请求很快结束后，剩余算力不一定能及时被新请求补上。</p>
+<p>continuous batching 则更像”动态拼车”：请求可以随时进入，已完成的也随时退出，所以系统能更持续地填满 GPU。它更适合线上 serving，因为能显著提高利用率和吞吐，但调度器、cache 管理和请求状态管理也会复杂很多。</p>
+<hr>
+<h4 id="h-0648"><a class="anchor-link" href="#h-0648" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 静态 batching 的浪费到底有多少？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>请求</th>
+<th>输入长度</th>
+<th>输出长度</th>
+<th>在静态 batching 中的实际计算</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>10 tokens</td>
+<td>50 tokens</td>
+<td>需要等 B、C 全部完成（假设 max=200 tokens）</td>
+</tr>
+<tr>
+<td>B</td>
+<td>100 tokens</td>
+<td>150 tokens</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>C</td>
+<td>500 tokens</td>
+<td>200 tokens</td>
+<td>决定整批完成时间</td>
+</tr>
+</tbody></table></div>
+<p>假设 3 个请求同时到达：</p>
+<p><strong>关键问题</strong>：A 和 B 早就生成了 50/150 个 token，但 batch 里还有”空位”不能释放，直到 C 的 200 个 token 全部生成完。这些空位对应的 GPU 算力被浪费了。</p>
+<p><strong>2. continuous batching 的核心机制</strong></p>
+<pre><code class="language-text">时间线示意（每个格子代表一个 forward step）：
+
+静态 batching:
+├─ A: [PPPPPPPPPP][GGGGGGGGGG][      空位      ] ── 请求A完成，但batch不能释放
+├─ B: [PPPPPPPPPPPPPPPPPPPP][GGGGGG...150个...][  空位  ]
+└─ C: [PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP][GGGG...200个...]
+
+continuous batching:
+Step 1: A(prefill) + B(prefill) + C(prefill)  → 3个请求同时处理输入
+Step 2: A(decode_1) + B(decode_1) + C(decode_1) → 同时生成第一个token
+Step 3: A(decode_2) + B(decode_1) + C(decode_1) → A已结束，新请求D进来
+Step 4: B(decode_2) + C(decode_1) + D(prefill)   → D进来做prefill，其他decode</code></pre>
+<p><strong>核心调度规则</strong>：</p>
+<ul>
+<li>每个 forward step 前，调度器检查哪些请求已完成
+</li>
+<li>完成的请求释放 KV cache，新请求可以立即插入
+</li>
+<li><strong>Prefill 和 Decode 可以在同一个 batch 中混合</strong>（vLLM 的关键创新）
+</li>
+</ul>
+<p><strong>3. 量化收益：GPU 利用率提升多少？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>静态 batching GPU 利用率</th>
+<th>continuous batching GPU 利用率</th>
+<th>提升</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>短查询为主（&lt;50 tokens）</td>
+<td>40-60%</td>
+<td>75-90%</td>
+<td><strong>~50%</strong></td>
+</tr>
+<tr>
+<td>混合查询</td>
+<td>50-70%</td>
+<td>80-95%</td>
+<td><strong>~40%</strong></td>
+</tr>
+<tr>
+<td>长查询为主（&gt;1K tokens）</td>
+<td>70-85%</td>
+<td>85-98%</td>
+<td><strong>~20%</strong></td>
+</tr>
+</tbody></table></div>
+<p>利用率提升来自：</p>
+<ul>
+<li>没有”等待整批结束”的空转
+</li>
+<li>batch size 保持更稳定（新请求不断补位）
+</li>
+<li>memory 效率更高（PagedAttention 动态分配）
+</li>
+</ul>
+<p><strong>4. continuous batching 的实现复杂度</strong></p>
+<p>调度器需要处理：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>问题</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>KV cache 管理</strong></td>
+<td>PagedAttention：按 block 分配，请求完成即释放</td>
+</tr>
+<tr>
+<td><strong>不同长度请求的 attention mask</strong></td>
+<td>动态构造 causal mask，确保新请求看不到已生成 token</td>
+</tr>
+<tr>
+<td><strong>Prefill + Decode 混合</strong></td>
+<td>同一 batch 中，新请求做 full prefill，老请求只做 single decode</td>
+</tr>
+<tr>
+<td><strong>优先级/抢占</strong></td>
+<td>高优先级请求可抢占低优先级请求的 slot</td>
+</tr>
+<tr>
+<td><strong>内存不足保护</strong></td>
+<td>预留内存 buffer，避免 OOM 导致整批失败</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 静态 vs continuous：决策树</strong></p>
+<pre><code class="language-text">应用场景判断：
+├─ 离线批量推理（如 benchmark、数据处理）
+│   └── 静态 batching 更简单、可复现
+├─ 在线服务（如 chatbot、API）
+│   └── continuous batching 必须上，否则吞吐浪费严重
+└─ 实时性要求极高（如游戏 NPC）
+    └── continuous batching + 短请求优先队列</code></pre>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”continuous batching 里，Prefill 和 Decode 混合会不会互相拖慢？”</strong>
+<ul>
+<li>答：会。Prefill 是大矩阵乘法（compute-heavy），Decode 是小矩阵+KV cache读取（memory-heavy）。两者混合时，Prefill 的计算会”掩盖” Decode 的内存等待，反而提升整体利用率。但如果 Prefill 太长（如 10K+ tokens），会阻塞同一 batch 中其他请求的 Decode。解决方案：设置 prefill chunk size，超长 prefill 拆分到多个 step。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果一个请求生成了一半 OOM 了，怎么处理？”</strong>
+<ul>
+<li>答：continuous batching 需要实现”请求级隔离”。OOM 时只 kill 该请求，释放其 KV cache，其他请求继续。vLLM 通过 PagedAttention 的 block-level 管理实现这一点——每个请求有自己独立的 block table，不会互相污染。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”continuous batching 和 dynamic batching 有什么区别？”</strong>
+<ul>
+<li>答：dynamic batching 是在 batch 开始前动态组合请求（如把长度相近的请求放一起），但 batch 开始后不变；continuous batching 是 batch 运行过程中也能增删请求。前者是”动态组队”，后者是”动态拼车”。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0649"><a class="anchor-link" href="#h-0649" aria-label="跳转到本节">#</a>55. 你详细讲一下 Prefill 和 Decode 两个阶段，瓶颈为什么不一样？</h3>
+<h4 id="h-0650"><a class="anchor-link" href="#h-0650" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>Prefill 和 Decode 的差别，不能只理解成“一个在前一个在后”，而要理解成它们的硬件画像完全不同。Prefill 阶段要把整段输入上下文一次性过模型，所以矩阵计算多、并行度高，更偏 compute-heavy；Decode 阶段则是逐 token 生成，每一步算量没那么大，但高度串行，而且强依赖 <code>KV cache</code> 读取，所以更容易受显存带宽和调度影响。</p>
+<p>也正因为两者瓶颈不同，优化手段也不同：Prefill 更关注大矩阵算子效率、长上下文 attention 优化；Decode 更关注 cache 管理、batch 调度、prefix 复用、speculative decoding 等。所以面试里最好把它讲成”两个不同系统问题”。</p>
+<hr>
+<h4 id="h-0651"><a class="anchor-link" href="#h-0651" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 用 Roofline 模型理解两个阶段的瓶颈</strong></p>
+<p>Roofline 模型把性能瓶颈分为两类：</p>
+<ul>
+<li><strong>Compute-bound</strong>：算力是瓶颈，增加并行度能直接提速
+</li>
+<li><strong>Memory-bound</strong>：带宽是瓶颈，算力再强也喂不饱
+</li>
+</ul>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阶段</th>
+<th>计算特征</th>
+<th>瓶颈类型</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Prefill</td>
+<td>大矩阵乘法 <code>(seq_len, d) × (d, d)</code></td>
+<td><strong>Compute-bound</strong></td>
+<td>矩阵大，并行度高，GPU 浮点单元能饱和</td>
+</tr>
+<tr>
+<td>Decode</td>
+<td>小矩阵 <code>(1, d) × (d, d)</code> + KV cache 读取</td>
+<td><strong>Memory-bound</strong></td>
+<td>每步算量小，但要从显存读大量 K/V 缓存</td>
+</tr>
+</tbody></table></div>
+<p>Prefill 阶段就像一个”大数据中心”，数据量大、计算密集，GPU 能全力运转。 Decode 阶段就像一个”快递分拣站”，每次只处理一个小包裹，但要从大仓库（显存）频繁取货，取货速度成了瓶颈。</p>
+<p><strong>2. 具体数字感受</strong></p>
+<p>假设模型隐藏维度 <code>d=4096</code>，层数 <code>L=32</code>：</p>
+<p><strong>Prefill 阶段</strong>（输入 1024 token）：</p>
+<ul>
+<li>每层 Attention: <code>QK^T</code> 计算量 ≈ <code>2 × 1024² × 4096 ≈ 8.6 TFLOPs</code>
+</li>
+<li>每层 FFN: <code>≈ 16 × 1024 × 4096² ≈ 275 TFLOPs</code>
+</li>
+<li>总计: 大量浮点运算，GPU 计算单元忙
+</li>
+</ul>
+<p><strong>Decode 阶段</strong>（生成 1 个新 token）：</p>
+<ul>
+<li>每层 Attention: <code>QK^T</code> 计算量 ≈ <code>2 × 1 × 1024 × 4096 ≈ 8.4 GFLOPs</code>（比 Prefill 小 1000 倍）
+</li>
+<li>但 KV cache 读取: <code>2 × 32 × 1024 × 4096 × 2 bytes ≈ 512 MB</code> 要从显存读到 SM
+</li>
+<li>512 MB 数据搬运 vs 8 GFLOPs 计算 → <strong>明显的 memory-bound</strong>
+</li>
+</ul>
+<p><strong>3. 为什么 Prefill 可以并行，Decode 只能串行？</strong></p>
+<p>Prefill 处理的是已知的输入 prompt，所有 token 同时存在，可以并行计算它们的表示。这属于”前向传播”的标准模式。</p>
+<p>Decode 生成的是未知输出——第 <code>t+1</code> 个 token 是什么，取决于第 <code>t</code> 个 token 是什么。这种数据依赖性强制串行。除非用 speculative decoding（小模型先猜多个 token，大模型并行验证），否则无法打破串行性。</p>
+<p><strong>4. 两个阶段的优化策略差异</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>优化方向</th>
+<th>Prefill 阶段</th>
+<th>Decode 阶段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>核心问题</td>
+<td>大矩阵效率、长序列 attention</td>
+<td>显存带宽、cache 管理、调度</td>
+</tr>
+<tr>
+<td>关键技术</td>
+<td>FlashAttention、算子融合、TP 并行</td>
+<td>PagedAttention、continuous batching、GQA、量化</td>
+</tr>
+<tr>
+<td>吞吐指标</td>
+<td>tokens/sec (处理速度)</td>
+<td>tokens/sec (生成速度)</td>
+</tr>
+<tr>
+<td>延迟敏感</td>
+<td>首 token 延迟 (TTFT)</td>
+<td>每 token 延迟 (TBT)</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”为什么 Decode 阶段不能用更大的 batch 来提速？”</strong>
+<ul>
+<li>答：Decode 阶段 batching 确实能提升吞吐（多个请求同时生成），但有个关键约束：batch 中不同请求的序列长度不同，短的生成完了还要等长的。continuous batching（也叫 in-flight batching）解决这个问题——短请求结束后立刻把新请求塞进来，而不是等整批结束。vLLM 和 TGI 都用这个技术。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”TTFT (Time To First Token) 和 TPOT (Time Per Output Token) 分别由什么决定？”</strong>
+<ul>
+<li>答：TTFT 主要由 Prefill 阶段决定——输入 prompt 越长、模型越大，首 token 出来越慢。TPOT 主要由 Decode 阶段决定——每生成一个 token 的时间，受 KV cache 带宽、batch 大小、模型层数影响。用户体感”响应快”主要看 TTFT；”生成流畅”主要看 TPOT。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果线上既有短查询（10 token 输入）又有长查询（10K token 输入），你怎么调度？”</strong>
+<ul>
+<li>答：应该把长短请求分开处理。短查询的 Prefill 很快，可以走快速通道；长查询的 Prefill 慢，如果跟短查询混在一起，短查询会被长查询拖慢（head-of-line blocking）。常见做法是：设置输入长度阈值，超过阈值的请求走独立队列或拆分处理。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0652"><a class="anchor-link" href="#h-0652" aria-label="跳转到本节">#</a>56. KV cache 为什么既能提速又能成为显存灾难？你会怎么优化？</h3>
+<h4 id="h-0653"><a class="anchor-link" href="#h-0653" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>KV cache</code> 之所以既能提速又会变成显存灾难，是因为它解决的是“算太多”的问题，却引入了“存太多”的问题。缓存之后，历史 token 不用反复重算，所以 decode 速度显著提升；但代价是每层、每个历史 token 的 <code>K/V</code> 都要常驻显存，长度一上去就会很夸张。</p>
+<p>优化思路通常分几类：一类是直接减少 cache 体积，比如 cache 量化、<code>GQA/MQA</code>；一类是改善内存管理，比如 PagedAttention；还有一类是在系统层减少不必要的长上下文和无效 batch。面试时这样回答，能体现你知道”快”和”贵”其实是同一个机制的两面。</p>
+<hr>
+<h4 id="h-0654"><a class="anchor-link" href="#h-0654" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. KV Cache 优化的完整工具箱</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>优化方向</th>
+<th>方法</th>
+<th>原理</th>
+<th>收益</th>
+<th>代价</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>减少存储</strong></td>
+<td>GQA/MQA</td>
+<td>减少 K/V 头数</td>
+<td>显存降 1/4~1/32</td>
+<td>轻微效果损失</td>
+</tr>
+<tr>
+<td><strong>减少存储</strong></td>
+<td>Cache 量化 (INT8/INT4)</td>
+<td>降低 K/V 精度</td>
+<td>显存减半或更多</td>
+<td>效果损失（K 比 V 敏感）</td>
+</tr>
+<tr>
+<td><strong>内存管理</strong></td>
+<td>PagedAttention</td>
+<td>分页非连续分配</td>
+<td>显存利用率 50%→90%+</td>
+<td>实现复杂</td>
+</tr>
+<tr>
+<td><strong>内存管理</strong></td>
+<td>Prefix Caching</td>
+<td>缓存可复用前缀</td>
+<td>相同 system prompt 跳过 prefill</td>
+<td>需要前缀匹配</td>
+</tr>
+<tr>
+<td><strong>动态淘汰</strong></td>
+<td>H2O / SnapKV</td>
+<td>只保留重要 token 的 K/V</td>
+<td>长上下文显存降 30-50%</td>
+<td>需要重要性估计</td>
+</tr>
+<tr>
+<td><strong>系统层</strong></td>
+<td>Continuous Batching</td>
+<td>动态组合请求</td>
+<td>吞吐提升 10-20×</td>
+<td>实现复杂</td>
+</tr>
+<tr>
+<td><strong>系统层</strong></td>
+<td>请求路由</td>
+<td>短请求优先/分级</td>
+<td>降低长尾延迟</td>
+<td>需要调度策略</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. PagedAttention 的分页机制详解</strong></p>
+<p>标准 KV cache 分配的问题：每个请求按最大长度预分配连续显存。比如最大 8K，就分配 8K 空间，即使实际只生成了 100 token，剩下的 7.9K 也浪费了。多个请求并行时，这些碎片累积，显存利用率可能只有 50-70%。</p>
+<p>PagedAttention 的解决：把 KV cache 分成固定大小的 block（如每 block 16 个 token）。请求需要多少就分配多少 block，block 之间不连续。就像一个进程的虚拟内存——逻辑上连续，物理上不连续。</p>
+<p>额外收益：</p>
+<ul>
+<li><strong>Copy-on-Write</strong>：多个请求共享相同前缀（如 system prompt）时，可以共享 block，只在分叉后才复制。
+</li>
+<li><strong>快速清理</strong>：请求结束后只需释放 block，不需要整理碎片。
+</li>
+</ul>
+<p><strong>3. H2O（Heavy Hitter Oracle）的直觉</strong></p>
+<p>H2O 发现：在自回归生成中，只有约 20% 的历史 token 获得了大部分 attention 权重（”heavy hitters”），其余 80% 的 token 几乎被忽略。</p>
+<p>基于这个观察，H2O 只保留：</p>
+<ul>
+<li>最近的几个 token（局部上下文）
+</li>
+<li>历史上 attention 权重最高的少数 token（heavy hitters）
+</li>
+</ul>
+<p>丢弃其他 token 的 K/V，显存大幅减少，但效果损失很小。</p>
+<p>SnapKV 是类似思路的改进：在 prefill 阶段通过观察 attention 模式，提前决定哪些 token 的 K/V 值得保留。</p>
+<p><strong>4. 量化 KV Cache 的具体做法</strong></p>
+<p>KV cache 量化的挑战：K 和 V 的数值分布比权重更动态（per-token 差异大）。</p>
+<p>常见策略：</p>
+<ul>
+<li><strong>Per-channel 量化</strong>：对每个 head、每个维度独立计算缩放因子
+</li>
+<li><strong>Per-token 量化</strong>：对每个 token 的 K/V 向量单独量化
+</li>
+<li><strong>混合精度</strong>：K 用 INT8（更敏感），V 用 INT4 或 INT8
+</li>
+</ul>
+<p>实践经验：4-bit KV cache 通常可以承受，但某些层（如 early layers）对量化更敏感，可以保留 FP16。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”PagedAttention 的 block size 怎么选？大了好还是小了好？”</strong>
+<ul>
+<li>答：block 太小（如 1 token）→ 管理开销大，内存分配频繁；block 太大（如 1024 token）→ 内部碎片多（一个请求只用了 block 的前 10%）。通常选 16 或 32 token，在管理开销和碎片率之间平衡。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”Prefix Caching 怎么实现？什么场景收益最大？”</strong>
+<ul>
+<li>答：用哈希表缓存不同前缀（如 system prompt + few-shot examples）的 KV cache。新请求来时，先匹配前缀哈希，如果命中就直接复用缓存，跳过 prefill。收益最大的是：多轮对话（复用历史上下文）、批量相同 prompt（如批量代码生成）、Agent 循环（复用 system prompt 和工具定义）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果 KV cache 已经爆了，但用户还要求更长上下文，你能做什么？”</strong>
+<ul>
+<li>答：分层策略：1）先启用 cache 量化（INT8/INT4），显存减半；2）再启用 GQA（如果还没用），进一步降低；3）再用 H2O/SnapKV 淘汰低价值 token；4）如果还爆，考虑把长文档分段处理（chunked prefill）或用 RAG 减少输入长度；5）最后才考虑换更大显存的硬件。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0655"><a class="anchor-link" href="#h-0655" aria-label="跳转到本节">#</a>57. vLLM、TGI、TensorRT-LLM、SGLang 这类推理引擎你怎么比较？</h3>
+<h4 id="h-0656"><a class="anchor-link" href="#h-0656" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>比较 <code>vLLM</code>、<code>TGI</code>、<code>TensorRT-LLM</code>、<code>SGLang</code> 这类引擎时，不应该直接说谁最好，而要先讲比较维度：吞吐、首 token 时延、动态 batch 能力、<code>KV cache</code> 管理方式、量化支持、硬件绑定程度、部署和运维复杂度、生态成熟度。</p>
+<p>例如有的框架在 NVIDIA 生态上极致压榨性能，但部署链路更重；有的框架在线服务体验和兼容性更好，但极限性能未必最强。所以正确答法通常是：按模型规模、硬件条件、流量画像和团队维护能力去选，而不是做一个脱离场景的排名。</p>
+<hr>
+<h4 id="h-0657"><a class="anchor-link" href="#h-0657" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 四个引擎的核心差异</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>vLLM</th>
+<th>TGI</th>
+<th>TensorRT-LLM</th>
+<th>SGLang</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>核心创新</strong></td>
+<td>PagedAttention</td>
+<td>安全/易用/生态</td>
+<td>极致性能优化</td>
+<td>RadixAttention + 编译优化</td>
+</tr>
+<tr>
+<td><strong>KV Cache 管理</strong></td>
+<td>块级分页（物理块复用）</td>
+<td>传统连续分配</td>
+<td>优化内存布局</td>
+<td>RadixAttention（前缀树复用）</td>
+</tr>
+<tr>
+<td><strong>Continuous Batching</strong></td>
+<td>支持</td>
+<td>支持</td>
+<td>支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td><strong>量化支持</strong></td>
+<td>AWQ/GPTQ/FP8</td>
+<td>GPTQ/AWQ</td>
+<td>FP8/INT8/INT4（最强）</td>
+<td>基础支持</td>
+</tr>
+<tr>
+<td><strong>硬件绑定</strong></td>
+<td>NVIDIA/AMD</td>
+<td>NVIDIA</td>
+<td>NVIDIA only</td>
+<td>NVIDIA/AMD</td>
+</tr>
+<tr>
+<td><strong>易用性</strong></td>
+<td>中（需调参）</td>
+<td>高（HuggingFace 生态）</td>
+<td>低（需编译）</td>
+<td>中</td>
+</tr>
+<tr>
+<td><strong>适用场景</strong></td>
+<td>高并发在线服务</td>
+<td>快速原型/社区项目</td>
+<td>极致性能生产环境</td>
+<td>复杂程序推理（Agent/工具）</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. vLLM 的 PagedAttention 核心原理</strong></p>
+<p>传统推理系统为每个请求预先分配一块连续的 KV cache 内存（大小 = max_seq_len）。这导致两个问题：</p>
+<ul>
+<li><strong>内部碎片</strong>：请求实际生成长度 &lt; max_seq_len，预分配的空间浪费了
+</li>
+<li><strong>外部碎片</strong>：不同请求释放后留下不连续的小块，无法被大请求复用
+</li>
+</ul>
+<p>PagedAttention 把 KV cache 分成固定大小的 block（如 16 tokens），像操作系统的虚拟内存一样管理。请求的 KV cache 可以是不连续的 block 列表，通过 block table 映射。这消除了内部和外部碎片，允许：</p>
+<ul>
+<li>请求动态扩展（无需预先分配 max_seq_len）
+</li>
+<li>内存共享（copy-on-write，如 beam search 多个候选共享前缀）
+</li>
+<li>更高的 batch size（因为内存利用率高了 2-4 倍）
+</li>
+</ul>
+<p><strong>3. TensorRT-LLM 为什么能做到极致性能？</strong></p>
+<p>TensorRT-LLM 基于 NVIDIA TensorRT，核心优势：</p>
+<ul>
+<li><strong>Kernel 融合</strong>：把多个小 op 融合成一个大 kernel，减少 launch overhead
+</li>
+<li><strong>自定义 CUDA Kernel</strong>：针对特定模型架构手写最优 kernel（如 FlashAttention 变体）
+</li>
+<li><strong>量化深度优化</strong>：支持 FP8（Hopper 架构）、INT4/INT8，且与 Tensor Core 高度匹配
+</li>
+<li><strong>图优化</strong>：常量折叠、死代码消除、内存布局优化
+</li>
+</ul>
+<p>代价：模型需要编译（可能耗时数分钟到数小时），且每次改模型结构都要重新编译。灵活性远低于 vLLM/TGI。</p>
+<p><strong>4. SGLang 的 RadixAttention 是什么？</strong></p>
+<p>SGLang 的核心创新是 <strong>RadixAttention</strong>，它把 KV cache 组织成前缀树（Radix Tree）：</p>
+<ul>
+<li>多个请求如果前缀相同（如相同的 system prompt），可以共享前缀的 KV cache
+</li>
+<li>新请求只需计算不同的后缀部分
+</li>
+<li>在 Agent/多轮对话场景中，前缀共享率可达 80-90%，极大降低 prefill 成本
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果我的场景是单一模型、固定 batch、追求极致吞吐，选哪个？"</strong>
+<ul>
+<li>答：TensorRT-LLM。它在固定场景下 kernel 最优，量化支持最深，能压榨出硬件极限性能。但前提是模型不常变、团队有 CUDA 调优能力。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"vLLM 的 PagedAttention 和操作系统虚拟内存有什么区别？"</strong>
+<ul>
+<li>答：思想类似，但实现更简单：1）block size 固定（如 16 tokens），不像 OS 页大小可能变化；2）没有磁盘换出（GPU 无法换出到磁盘）；3）block table 由调度器管理，不需要硬件 MMU 支持。核心共同点：物理内存不连续、按需分配、copy-on-write 共享。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果团队没有 GPU 专家，但又需要高并发服务，选哪个？"</strong>
+<ul>
+<li>答：vLLM 或 TGI。vLLM 性能更强但需要调参（block size、调度策略）；TGI 更易用，HuggingFace 生态成熟，适合快速上线。如果追求"开箱即用"选 TGI，追求"性能天花板"选 vLLM。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0658"><a class="anchor-link" href="#h-0658" aria-label="跳转到本节">#</a>58. 如果线上服务要求首 token 延迟很低，但吞吐也不能差，你会怎么折中？</h3>
+<h4 id="h-0659"><a class="anchor-link" href="#h-0659" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>如果线上既要很低的首 token 延迟，又不能把吞吐做得太差，通常要靠调度层做折中，而不是指望一个单点技巧解决。常见做法包括：把短请求和长请求拆开处理、做分级路由、小模型优先返回、缓存可复用前缀、针对 prefill 和 decode 分别优化，必要时再引入 speculative decoding。</p>
+<p>这类问题最怕回答成“上大 batch 就好了”或者“把模型换小一点”。真正成熟的答法是说明：延迟和吞吐来自不同流量画像，需要用调度策略把不同请求分层，而不是用一个全局默认策略硬顶。</p>
+<hr>
+<h4 id="h-0660"><a class="anchor-link" href="#h-0660" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 首 token 延迟（TTFT）和吞吐（TPOT）的本质矛盾</strong></p>
+<ul>
+<li><strong>TTFT（Time To First Token）</strong>：从请求到达，到第一个输出生成的时间。主要由 <strong>prefill</strong> 阶段决定——模型需要一次性处理整个输入序列的 attention。
+</li>
+<li><strong>TPOT（Time Per Output Token）</strong>：生成每个后续 token 的时间。主要由 <strong>decode</strong> 阶段决定——逐 token 自回归生成。
+</li>
+</ul>
+<p>矛盾点：</p>
+<ul>
+<li><strong>降低 TTFT</strong>：需要小 batch、短输入、快速 prefill
+</li>
+<li><strong>提高吞吐</strong>：需要大 batch、充分利用 GPU 并行度
+</li>
+</ul>
+<p>两者不是完全对立，但优化方向不同。</p>
+<p><strong>2. 分层调度策略</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>策略</th>
+<th>原理</th>
+<th>效果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>请求分级</strong></td>
+<td>简单请求走小模型/缓存，复杂请求走大模型</td>
+<td>简单请求 TTFT 极低，复杂请求保证质量</td>
+</tr>
+<tr>
+<td><strong>长短分离</strong></td>
+<td>短请求（&lt;1K）快速通道，长请求排队批量处理</td>
+<td>短请求不被长请求阻塞</td>
+</tr>
+<tr>
+<td><strong>前缀缓存</strong></td>
+<td>相同 system prompt / 多轮对话前缀复用 KV cache</td>
+<td>prefill 时间降低 50-90%</td>
+</tr>
+<tr>
+<td><strong>prefill-decode 分离</strong></td>
+<td>prefill 和 decode 放在不同 GPU / 不同 batch</td>
+<td>各自优化，互不干扰</td>
+</tr>
+<tr>
+<td><strong>speculative decoding</strong></td>
+<td>小模型草拟、大模型验证</td>
+<td>降低 TPOT，对 TTFT 影响小</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 具体数值感受</strong></p>
+<p>假设 7B 模型，输入 2K tokens，输出 500 tokens：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>策略</th>
+<th>TTFT</th>
+<th>总延迟</th>
+<th>吞吐 (req/s)</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>基础配置（batch=1）</td>
+<td>200ms</td>
+<td>5.2s</td>
+<td>0.19</td>
+</tr>
+<tr>
+<td>batch=8</td>
+<td>200ms</td>
+<td>5.5s</td>
+<td>1.45</td>
+</tr>
+<tr>
+<td>前缀缓存（50% 命中）</td>
+<td>100ms</td>
+<td>5.0s</td>
+<td>0.20</td>
+</tr>
+<tr>
+<td>长短分离 + 缓存</td>
+<td>80ms</td>
+<td>4.8s</td>
+<td>1.60</td>
+</tr>
+<tr>
+<td>prefill-decode 分离</td>
+<td>60ms</td>
+<td>4.5s</td>
+<td>2.00</td>
+</tr>
+</tbody></table></div>
+<p>前缀缓存对 TTFT 改善最显著；prefill-decode 分离对整体吞吐提升最大。</p>
+<p><strong>4. 为什么 "prefill-decode 分离" 越来越流行？</strong></p>
+<p>Prefill 是 compute-bound（大矩阵乘法），decode 是 memory-bound（小矩阵、大量 KV cache 读取）。两者混在同一个 batch 中时：</p>
+<ul>
+<li>prefill 请求让 batch 变大，拖慢 decode
+</li>
+<li>decode 请求让 prefill 无法全力并行
+</li>
+</ul>
+<p>分离后：</p>
+<ul>
+<li><strong>Prefill 集群</strong>：大 batch、高并行、快速处理输入
+</li>
+<li><strong>Decode 集群</strong>：小 batch、低延迟、专注逐 token 生成
+</li>
+<li>中间通过 KV cache 传递状态
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果 TTFT 要求 &lt; 100ms，但模型 prefill 本身就需 300ms，怎么办？"</strong>
+<ul>
+<li>答：1）用更小的模型做首层路由/分类，把简单请求直接用小模型回答；2）前缀缓存（如果请求有共享前缀）；3）预加载常见查询的结果（缓存最终答案而非 KV cache）；4）如果以上都不行，考虑模型蒸馏，用 1-3B 小模型服务简单请求。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"前缀缓存和最终答案缓存有什么区别？"</strong>
+<ul>
+<li>答：前缀缓存复用的是 KV cache（中间状态），适用于"相同前缀、不同后缀"的场景（如多轮对话）；最终答案缓存复用的是完整输出，适用于"完全相同的请求"场景（如固定 FAQ）。前缀缓存粒度更细、命中率更高，但实现更复杂（需要维护 Radix Tree 或哈希表）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"speculative decoding 对 TTFT 有帮助吗？"</strong>
+<ul>
+<li>答：几乎没有。speculative decoding 加速的是 decode 阶段（逐 token 生成），而 TTFT 由 prefill 决定。它降低的是 TPOT 和总生成时间，不是首 token 时间。要降低 TTFT，需要优化 prefill（更短输入、前缀缓存、小模型 prefill）。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0661"><a class="anchor-link" href="#h-0661" aria-label="跳转到本节">#</a>59. 量化为什么有时几乎不掉效果，有时却会明显掉点？</h3>
+<h4 id="h-0662"><a class="anchor-link" href="#h-0662" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>量化有时几乎不掉效果，有时却掉得很明显，核心原因是不同模型、不同层、不同任务对数值误差的容忍度差很多。有些场景只要保持大体语义正确就行，比如常规聊天或简单分类，量化误差不容易被放大。</p>
+<p>但在代码、数学、长链推理、工具调用、长上下文这些任务里，小误差可能层层累积，最后放大成明显质量下降。所以量化效果不是一个统一常数，而是“模型结构 x 任务类型 x 量化方案”共同决定的。</p>
+<hr>
+<h4 id="h-0663"><a class="anchor-link" href="#h-0663" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 量化误差从何而来？</strong></p>
+<p>量化是把连续值映射到离散值的过程。例如 FP16 的权重 <code>w = 0.137</code>，量化到 INT8 后变成 <code>w_q = round(0.137 / scale) = 35</code>（假设 scale=0.004）。反量化时 <code>w' = 35 * 0.004 = 0.140</code>。</p>
+<p>误差：<code>|w - w'| = 0.003</code>。单个权重误差很小，但：</p>
+<ul>
+<li>一层有数百万权重，误差累积
+</li>
+<li>深层网络的误差会逐层放大（因为每层的输入已经带上了前层的量化误差）
+</li>
+<li>某些任务对数值精度极度敏感（如 <code>if (x == 0.5)</code> 这种边界判断）
+</li>
+</ul>
+<p><strong>2. 不同精度格式的对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>格式</th>
+<th>每参数字节</th>
+<th>7B 模型大小</th>
+<th>相对精度</th>
+<th>常见场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>FP32</td>
+<td>4</td>
+<td>28 GB</td>
+<td>最高</td>
+<td>训练</td>
+</tr>
+<tr>
+<td>FP16/BF16</td>
+<td>2</td>
+<td>14 GB</td>
+<td>高</td>
+<td>推理标准</td>
+</tr>
+<tr>
+<td>INT8</td>
+<td>1</td>
+<td>7 GB</td>
+<td>中高</td>
+<td>推理加速</td>
+</tr>
+<tr>
+<td>INT4/FP4</td>
+<td>0.5</td>
+<td>3.5 GB</td>
+<td>中</td>
+<td>边缘部署</td>
+</tr>
+<tr>
+<td>NF4 (QLoRA)</td>
+<td>~0.5</td>
+<td>~4 GB</td>
+<td>中高</td>
+<td>微调底座</td>
+</tr>
+</tbody></table></div>
+<p>BF16 和 FP16 都是 2 字节，但 BF16 用 8 位指数、7 位尾数；FP16 用 5 位指数、10 位尾数。BF16 范围更大（不容易溢出），FP16 精度更高。</p>
+<p><strong>3. 为什么不同任务对量化敏感度不同？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>任务</th>
+<th>敏感度</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>自由聊天</td>
+<td>低</td>
+<td>语义正确即可，小误差不影响理解</td>
+</tr>
+<tr>
+<td>分类/情感分析</td>
+<td>低-中</td>
+<td>决策边界附近可能受影响</td>
+</tr>
+<tr>
+<td>代码生成</td>
+<td>高</td>
+<td>变量名、语法结构需要精确</td>
+</tr>
+<tr>
+<td>数学计算</td>
+<td>高</td>
+<td>数值误差会传播放大</td>
+</tr>
+<tr>
+<td>长链推理</td>
+<td>高</td>
+<td>每步的小误差累积成大偏差</td>
+</tr>
+<tr>
+<td>工具调用</td>
+<td>高</td>
+<td>参数格式必须精确匹配 schema</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 量化方案的选择</strong></p>
+<ul>
+<li><strong>PTQ (Post-Training Quantization)</strong>：训练后直接量化，最简单，但效果损失较大
+</li>
+<li><strong>QAT (Quantization-Aware Training)</strong>：训练时模拟量化，让模型适应低精度，效果最好但成本高
+</li>
+<li><strong>GPTQ/AWQ</strong>：针对 LLM 优化的 PTQ 方法，通过分析权重的重要性做差异化量化（重要权重用更高精度）
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"GPTQ 和 AWQ 有什么区别？"</strong>
+<ul>
+<li>答：GPTQ 是基于 Optimal Brain Surgeon 框架，逐层量化权重，通过更新未量化的权重来补偿已量化部分的误差；AWQ（Activation-aware Weight Quantization）则认为"对激活值影响大的权重更重要"，给这些权重更高的量化精度。AWQ 通常比 GPTQ 更快、效果更稳。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"INT8 量化时，缩放因子怎么确定？"</strong>
+<ul>
+<li>答：常见策略：1）per-tensor：整个张量用一个缩放因子，简单但可能不够精细；2）per-channel：每个输出通道一个缩放因子，更精细；3）per-token：每个输入 token 一个缩放因子，适合动态激活。实践中 per-channel 对权重、per-token 对激活通常是最佳组合。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 4-bit 量化有时效果比 8-bit 还好？"</strong>
+<ul>
+<li>答：这种情况通常是因为 4-bit 用了更聪明的量化算法（如 GPTQ/AWQ），而 8-bit 用的是简单的逐张量化。4-bit 的"聪明"体现在：1）差异化处理重要权重；2）分组量化减少范围差异；3）补偿更新减少累积误差。所以如果 8-bit 是"笨方法"、4-bit 是"聪明方法"，确实可能出现 4-bit 反超。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0664"><a class="anchor-link" href="#h-0664" aria-label="跳转到本节">#</a>60. 如果你要给 7B、32B、70B 三个模型做路由和部署，你会怎样设计推理层？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">MoE 路由与负载均衡</div>
+        <p class="inline-enhancement-note">放在 MoE / Expert / DeepSeekMoE 小节附近，区分总参数量、激活参数量和路由副作用。</p>
+        <div class="visual-grid"><div class="visual-card"><b>MoE Top-k 路由图</b><img src="../assets/moe-routing.svg" alt="MoE Top-k 路由图"><p>gate 选择 top-k expert，再做加权合并。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>MoE Top-k 输出</b><div class="math-display">\[y=\sum_{i\in \mathrm{TopK}(g(x))} g_i(x)\,E_i(x)\]</div><p>每个 token 只激活少量 expert。</p></div><div class="formula-card"><b>MoE 负载均衡直觉</b><div class="math-display">\[\mathcal{L}_{aux}\propto N\sum_{i=1}^{N} f_i\,p_i\]</div><p>避免所有 token 挤向少数 expert。</p></div></div>
+      </aside>
+<h4 id="h-0665"><a class="anchor-link" href="#h-0665" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>给 <code>7B</code>、<code>32B</code>、<code>70B</code> 三个模型做路由时，核心目标不是让最大模型包打天下，而是让“请求价值”和“模型成本”匹配。常见设计是多级路由：简单问答、低风险请求先走 <code>7B</code>；中等复杂度请求升到 <code>32B</code>；真正高价值、长推理、复杂工具调用或疑难样本再交给 <code>70B</code>。</p>
+<p>系统层通常还要加上失败回退、缓存复用、成本预算、SLA 约束和灰度策略。这样设计的本质，是把大模型能力当成稀缺资源分配，而不是默认所有请求都值得烧最贵的算力。</p>
+<hr>
+<h4 id="h-0666"><a class="anchor-link" href="#h-0666" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 路由策略的具体实现</strong></p>
+<p><strong>方案 A：基于规则的路由</strong></p>
+<pre><code class="language-text">if 请求长度 &lt; 100 token and 不含专业术语:
+    route_to(7B)
+elif 请求包含代码 or 数学 or 工具调用:
+    route_to(70B)
+else:
+    route_to(32B)</code></pre>
+<p>优点：简单、可解释、延迟低 缺点：规则维护成本高、无法处理边界情况</p>
+<p><strong>方案 B：基于小模型分类的路由</strong> 用一个极小的模型（如 0.5B）做意图分类和复杂度评分，然后根据分数路由：</p>
+<ul>
+<li>复杂度 &lt; 0.3 → 7B
+</li>
+<li>0.3 &lt;= 复杂度 &lt; 0.7 → 32B
+</li>
+<li>复杂度 &gt;= 0.7 → 70B
+</li>
+</ul>
+<p>优点：自适应、可学习 缺点：增加一层延迟、分类器本身也需要维护</p>
+<p><strong>方案 C：级联路由（Cascade）</strong> 先走 7B，如果置信度低（如输出概率 entropy 高），再升级到 32B，仍不满足再升级到 70B。</p>
+<p>优点：简单请求成本低 缺点：长尾请求延迟高（要过多个模型）</p>
+<p><strong>2. 成本与效果的权衡</strong></p>
+<p>假设三个模型的成本和效果：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>模型</th>
+<th>每 1K token 成本</th>
+<th>通用问答准确率</th>
+<th>代码任务准确率</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>7B</td>
+<td>$0.001</td>
+<td>75%</td>
+<td>40%</td>
+</tr>
+<tr>
+<td>32B</td>
+<td>$0.01</td>
+<td>88%</td>
+<td>70%</td>
+</tr>
+<tr>
+<td>70B</td>
+<td>$0.05</td>
+<td>93%</td>
+<td>85%</td>
+</tr>
+</tbody></table></div>
+<p>如果 80% 的请求可以用 7B 处理，15% 用 32B，5% 用 70B：</p>
+<ul>
+<li>平均成本 = <code>0.8*0.001 + 0.15*0.01 + 0.05*0.05 = $0.0043</code>
+</li>
+<li>相比全部走 70B（$0.05），成本降低 91%
+</li>
+</ul>
+<p><strong>3. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"路由模型的分类准确率需要达到多少才值得部署？"</strong>
+<ul>
+<li>答：取决于路由错误的代价。如果把复杂请求错分给 7B，用户得到低质量回答，代价高；如果把简单请求错分给 70B，只是多花了钱，代价低。通常要求"复杂请求不能漏给大模型"的召回率 &gt; 95%，"简单请求不浪费"的精确率 &gt; 80% 就可以上线。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果 70B 模型挂了，系统怎么降级？"</strong>
+<ul>
+<li>答：1）自动切换到 32B（如果已加载）；2）如果所有大模型都不可用，返回 7B 的结果并标注"模型降级中"；3）如果完全不可用，返回缓存的相似历史回答；4）最终兜底：转人工或返回"服务暂时不可用"。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"怎么评估路由策略的效果？"</strong>
+<ul>
+<li>答：A/B 测试：一组用户走固定路由（对照组），一组走智能路由（实验组）。对比指标：1）平均成本；2）用户满意度；3）任务完成率；4）长尾延迟。理想情况下，实验组在保持同等满意度的同时，成本显著降低。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0667"><a class="anchor-link" href="#h-0667" aria-label="跳转到本节">#</a>61. 什么是 Prefill/Decode 分离部署？它解决了什么问题，又引入了什么代价？</h3>
+<h4 id="h-0668"><a class="anchor-link" href="#h-0668" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>Prefill/Decode</code> 分离部署，是把大模型推理的两个阶段拆到不同的执行资源上：<code>Prefill</code> 节点负责处理输入 prompt，一次性算出首批隐藏状态和 KV cache；<code>Decode</code> 节点负责后续逐 token 生成。这样做的核心原因是两个阶段的瓶颈不同：prefill 更偏 compute-bound，decode 更偏 memory-bandwidth-bound 和 KV cache 访问。</p>
+<p>它解决的是混部时的互相干扰问题。长 prompt 的 prefill 会拖慢正在生成的 decode；大量 decode 请求又会让 prefill 无法形成足够高效的大矩阵计算。分离后可以分别调度、分别扩容、分别优化 SLO，例如用 TTFT 约束 prefill，用 TPOT 约束 decode。</p>
+<p>代价也很明确：系统复杂度上升，需要跨节点传输 KV cache 或中间状态；调度器要决定 prefill/decode 资源比例；如果请求很短或输出很短，分离带来的通信和排队开销可能抵消收益。</p>
+<h4 id="h-0669"><a class="anchor-link" href="#h-0669" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么两个阶段瓶颈不同？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阶段</th>
+<th>主要工作</th>
+<th>典型瓶颈</th>
+<th>主要指标</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Prefill</strong></td>
+<td>一次性处理完整 prompt，生成初始 KV cache</td>
+<td>矩阵乘法算力、长输入带来的计算量</td>
+<td>TTFT、prefill 吞吐</td>
+</tr>
+<tr>
+<td><strong>Decode</strong></td>
+<td>每步生成一个 token，持续读取和追加 KV cache</td>
+<td>显存容量、内存带宽、调度开销</td>
+<td>TPOT、输出吞吐、尾延迟</td>
+</tr>
+</tbody></table></div>
+<p>这也是为什么只说“加 batch 提吞吐”不够。prefill 喜欢大 batch 和高算力利用；decode 的每步算子更小，常常卡在 KV cache 读写、调度和内存带宽上。两者混在同一批请求里，调度器很难同时满足首 token 延迟和持续生成吞吐。</p>
+<p><strong>2. 分离部署的基本数据流</strong></p>
+<pre><code class="language-text">request
+  -> prefill scheduler
+  -> prefill worker: compute prompt hidden states and KV cache
+  -> KV transfer / cache registration
+  -> decode scheduler
+  -> decode worker: autoregressive generation
+  -> streaming output</code></pre>
+<p>面试里要说清：中间传的不是最终答案，而是能让 decode 继续生成的状态，核心通常是 KV cache 或对 KV cache 的引用。因此分离部署和 prefix caching、KV cache 管理、路由调度天然绑在一起。</p>
+<p><strong>3. 什么时候值得做？</strong></p>
+<ul>
+<li><strong>长输入、长输出混合明显</strong>：例如 RAG、长文档总结、代码仓库问答，prefill 和 decode 的资源需求差异很大。
+</li>
+<li><strong>SLO 拆得很细</strong>：业务明确要求 TTFT、TPOT、吞吐和尾延迟都可控。
+</li>
+<li><strong>请求规模足够大</strong>：流量小的时候，复杂调度和跨节点传输不一定值得。
+</li>
+<li><strong>有稳定的 KV 管理能力</strong>：否则 KV 传输、生命周期、失败恢复会变成主要故障源。
+</li>
+</ul>
+<p><strong>4. 新代价和排障点</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>问题</th>
+<th>表现</th>
+<th>排查方向</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>KV 传输开销过高</td>
+<td>TTFT 下降不明显，总延迟反而上升</td>
+<td>检查网络带宽、KV 大小、是否能用同机/同节点亲和性</td>
+</tr>
+<tr>
+<td>资源比例不合适</td>
+<td>prefill 队列或 decode 队列单边堆积</td>
+<td>按输入长度、输出长度和 SLO 动态调 P/D worker 比例</td>
+</tr>
+<tr>
+<td>短请求被过度复杂化</td>
+<td>简单问答延迟变高</td>
+<td>短请求走一体化路径，长请求才进入分离路径</td>
+</tr>
+<tr>
+<td>失败恢复复杂</td>
+<td>prefill 成功但 decode 失败，cache 泄漏或请求丢失</td>
+<td>给 KV cache 生命周期加 request_id、TTL、引用计数和清理任务</td>
+</tr>
+</tbody></table></div>
+<p>一句话总结：Prefill/Decode 分离不是“更高级所以一定更好”，而是把两个瓶颈完全不同的阶段拆开治理。面试官真正想听的是你能否同时讲清收益、适用条件和新引入的系统复杂度。</p>
+<hr>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="041.html">← 41. 模块四：SFT、PEFT 与对齐训练</a><a href="043.html">43. 模块六：RAG、检索、重排与知识增强 →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-15。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

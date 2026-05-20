@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nitrobrew 推文与技术解读</title>
+  <style>
+    :root {
+      --paper: #f7f3ea;
+      --ink: #1f2523;
+      --muted: #65706b;
+      --line: #d9d0bf;
+      --panel: #fffaf0;
+      --panel-2: #eef5ef;
+      --accent: #be4b28;
+      --accent-2: #247f77;
+      --accent-3: #7357a6;
+      --code: #283735;
+      --code-bg: #e8dfcf;
+      --shadow: 0 18px 42px rgba(57, 44, 24, 0.12);
+      --radius: 8px;
+      --max: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(31, 37, 35, 0.035) 1px, transparent 1px) 0 0 / 28px 28px,
+        linear-gradient(rgba(31, 37, 35, 0.03) 1px, transparent 1px) 0 0 / 28px 28px,
+        var(--paper);
+      font-family: Charter, "Iowan Old Style", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      line-height: 1.72;
+    }
+
+    a {
+      color: var(--accent-2);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code, pre, .mono {
+      font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    .shell {
+      position: relative;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(31, 37, 35, 0.14);
+      background: rgba(247, 243, 234, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      width: min(var(--max), calc(100% - 36px));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--code);
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--code);
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      font-size: 20px;
+      line-height: 1;
+      background: var(--panel);
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px 16px;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 13px;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    .hero {
+      width: min(var(--max), calc(100% - 36px));
+      margin: 0 auto;
+      padding: 72px 0 38px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 34px;
+      align-items: end;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      background: rgba(255, 250, 240, 0.74);
+      color: var(--muted);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      color: var(--ink);
+      line-height: 1.12;
+    }
+
+    h1 {
+      max-width: 880px;
+      margin-top: 18px;
+      font-family: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(52px, 8vw, 104px);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    h1 span {
+      color: var(--accent);
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin: 22px 0 0;
+      color: #37413e;
+      font-size: 22px;
+      line-height: 1.52;
+    }
+
+    .hero-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .tweet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    }
+
+    .tweet-author {
+      font-weight: 700;
+      color: var(--code);
+    }
+
+    .tweet-date {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tweet-body {
+      padding: 18px;
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    .tweet-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--line);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    }
+
+    .tweet-stats div {
+      padding: 13px 14px;
+      border-right: 1px solid var(--line);
+    }
+
+    .tweet-stats div:last-child {
+      border-right: 0;
+    }
+
+    .tweet-stats b {
+      display: block;
+      color: var(--accent);
+      font-size: 21px;
+      line-height: 1;
+    }
+
+    .tweet-stats span {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .main {
+      width: min(var(--max), calc(100% - 36px));
+      margin: 0 auto 80px;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 36px;
+      align-items: start;
+    }
+
+    .toc {
+      position: sticky;
+      top: 82px;
+      border: 1px solid var(--line);
+      background: rgba(255, 250, 240, 0.78);
+      padding: 18px;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--code);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 7px 0;
+      border-top: 1px solid rgba(217, 208, 191, 0.7);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .toc a:hover {
+      color: var(--accent);
+    }
+
+    .content {
+      display: grid;
+      gap: 24px;
+    }
+
+    section {
+      padding: 28px;
+      border: 1px solid var(--line);
+      background: rgba(255, 250, 240, 0.72);
+      box-shadow: 0 8px 28px rgba(57, 44, 24, 0.06);
+    }
+
+    section.plain {
+      border: 0;
+      padding: 16px 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .section-kicker {
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-family: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", sans-serif;
+      font-size: clamp(32px, 4vw, 48px);
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      margin-top: 24px;
+      margin-bottom: 8px;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 20px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+
+    .lead {
+      font-size: 21px;
+      line-height: 1.58;
+      color: #303a37;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .note, .metric, .claim, .step, .source-box {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 16px;
+      border-radius: var(--radius);
+    }
+
+    .metric {
+      background: #f4ead7;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-family: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", sans-serif;
+      font-size: 38px;
+      line-height: 1;
+    }
+
+    .metric span, .claim span, .step span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .claim {
+      background: var(--panel-2);
+    }
+
+    .claim b {
+      color: var(--accent-2);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .math-band {
+      margin: 24px 0;
+      padding: 22px;
+      border: 2px solid var(--code);
+      background: #f1e7d7;
+      text-align: center;
+      font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      font-size: clamp(20px, 4vw, 35px);
+      line-height: 1.35;
+      color: var(--code);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0;
+    }
+
+    .flow .step {
+      min-height: 154px;
+      position: relative;
+      background: #fff7e8;
+    }
+
+    .flow .step::after {
+      content: ">";
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-weight: 700;
+    }
+
+    .flow .step:last-child::after {
+      display: none;
+    }
+
+    .step b {
+      display: block;
+      color: var(--code);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #ede2cf;
+      color: var(--code);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 3px 4px 3px 0;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      background: #fff8eb;
+      color: var(--muted);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 12px;
+      border-radius: 999px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 16px 0 0;
+      padding: 16px;
+      border: 1px solid #c9bea9;
+      background: var(--code-bg);
+      color: var(--code);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .insight {
+      border-left: 5px solid var(--accent);
+      background: #fff3df;
+    }
+
+    .insight h2 {
+      color: var(--accent);
+    }
+
+    .verdict {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .score {
+      display: grid;
+      place-items: center;
+      min-height: 230px;
+      border: 2px solid var(--code);
+      background: #eaf2ec;
+      text-align: center;
+    }
+
+    .score b {
+      display: block;
+      font-family: "Avenir Next Condensed", "DIN Condensed", "Arial Narrow", sans-serif;
+      font-size: 86px;
+      line-height: 0.95;
+      color: var(--accent-2);
+    }
+
+    .score span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .footer {
+      width: min(var(--max), calc(100% - 36px));
+      margin: 0 auto 42px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 13px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .source-box {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .source-box b {
+      display: block;
+      color: var(--code);
+    }
+
+    @media (max-width: 980px) {
+      .hero, .main, .verdict {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .flow, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .flow .step {
+        min-height: auto;
+      }
+
+      .flow .step::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 12px 0;
+      }
+
+      nav {
+        justify-content: flex-start;
+      }
+
+      .hero {
+        padding-top: 44px;
+      }
+
+      .subtitle, .lead, p {
+        font-size: 17px;
+      }
+
+      section {
+        padding: 20px;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand"><span class="brand-mark">~</span> Nitrobrew Technical Reading</div>
+        <nav aria-label="report navigation">
+          <a href="#summary">摘要</a>
+          <a href="#problem">问题</a>
+          <a href="#method">方法</a>
+          <a href="#evaluation">评估</a>
+          <a href="#insight">Insight</a>
+          <a href="#sources">来源</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="hero">
+        <div>
+          <div class="eyebrow">Tilde Research · X thread · 2026-04-28</div>
+          <h1>Nitrobrew：<span>不是新 loss，</span>是让 full-logit distillation 真正跑得动的系统技巧</h1>
+          <p class="subtitle">这份页面解读 Tilde Research 关于 Nitrobrew 的推文线程、官方长文、开源实现和 VeRL PR。重点是：它到底解决什么瓶颈，为什么 hidden state 可以替代 logits，chunked online KL 怎么省显存，以及哪些结论可以相信、哪些还只是合理推断。</p>
+        </div>
+        <aside class="hero-card" aria-label="tweet card">
+          <div class="tweet-head">
+            <div>
+              <div class="tweet-author">@tilderesearch</div>
+              <div class="tweet-date">Tue Apr 28 20:04:12 +0000 2026</div>
+            </div>
+            <div class="mono">1/8</div>
+          </div>
+          <div class="tweet-body">Distillation, especially on-policy distillation, has become a pivotal component of the post-training stack. To dramatically accelerate distillation at scale, Tilde open-sources Nitrobrew, a communication-efficient, fused strategy for logit distillation.</div>
+          <div class="tweet-stats">
+            <div><b>286</b><span>likes</span></div>
+            <div><b>41</b><span>retweets</span></div>
+            <div><b>14</b><span>items fetched</span></div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="main">
+        <aside class="toc">
+          <strong>阅读路径</strong>
+          <a href="#summary">1. 一句话结论</a>
+          <a href="#thread">2. 推文线程逐段拆解</a>
+          <a href="#problem">3. 真正的问题是什么</a>
+          <a href="#method">4. Nitrobrew 怎么做</a>
+          <a href="#topk">5. 为什么不是 top-k</a>
+          <a href="#evaluation">6. 评估与证据</a>
+          <a href="#implementation">7. 工程落地</a>
+          <a href="#insight">8. 我的判断</a>
+          <a href="#commands">9. 复现抓取命令</a>
+        </aside>
+
+        <div class="content">
+          <section id="summary" class="plain">
+            <div class="section-kicker">Executive summary</div>
+            <h2>一句话结论</h2>
+            <p class="lead">Nitrobrew 的核心价值不是提出一个新的蒸馏目标，而是把 full-vocabulary logit distillation 的通信和显存瓶颈重新参数化：老师不再传完整 logits，而是传最后 hidden state；loss 端用老师 unembedding 重建 logits，并按 vocabulary 分块流式计算 KL。</p>
+            <div class="grid-3">
+              <div class="metric"><b>60x</b><span>官方长文给出的 hidden-state 通信量下降上限，取决于 vocabulary size 与 d_model 的比例。</span></div>
+              <div class="metric"><b>37x</b><span>官方 TL;DR 中 online divergence 避免完整 logits 物化后的峰值内存下降量级。</span></div>
+              <div class="metric"><b>1.5-3x</b><span>Nemo-RL 与 VeRL 的 on-policy distillation 端到端吞吐提升范围；3x 是代表性 headline。</span></div>
+            </div>
+          </section>
+
+          <section id="thread">
+            <div class="section-kicker">Thread anatomy</div>
+            <h2>推文线程在讲什么</h2>
+            <p>线程共 8 段。它的叙事结构很清楚：先说 OPD 已经成为 post-training stack 的关键组件；再指出现有开源实现慢，常靠 top-k logits 截断省通信；然后提出 Nitrobrew 的两个步骤：传 hidden states、用 chunked online KL 算 divergence；最后给框架结果、开源仓库、VeRL PR 和官方长文。</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>段落</th><th>原推文主张</th><th>技术含义</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>1/8</td><td>Nitrobrew 让 logit distillation loss 计算快 100x、内存省 50%、OPD 快 3x。</td><td>这是 headline，具体成立条件要看 sequence length、vocab size、teacher/student 分布式拓扑。</td></tr>
+                  <tr><td>2/8</td><td>OPD 有前景，但现有实现慢；top-k truncation 会导致 pathological bias。</td><td>问题不是 KL 本身，而是完整 logits 的通信、显存和框架集成成本。</td></tr>
+                  <tr><td>3/8</td><td>unembedding matrix low-rank；Nitrobrew 发送 hidden states 作为 logits 的无损压缩。</td><td>logits 是 `W_U h`，当 `d_model << V` 时，传 `h` 比传 `z` 小很多。</td></tr>
+                  <tr><td>4/8</td><td>只传 residual stream 最后 hidden state，按需重算 logits；chunked online KL 让它 memory-efficient。</td><td>通信省在 `V -> d_model`，显存省在不物化 `[B,T,V]`。</td></tr>
+                  <tr><td>5/8</td><td>在 Nemo-RL 和 VeRL 的 Qwen OPD 上实现约 3x throughput。</td><td>这是系统吞吐评估，不是单独证明模型质量全面超过 top-k。</td></tr>
+                  <tr><td>6/8</td><td>探索 spectral compression。</td><td>进一步把 hidden state 从 `d_model` 压到更低 rank，但这一步不再严格 lossless。</td></tr>
+                  <tr><td>7/8</td><td>开源代码，提交 VeRL PR；DeepSeek-V4 独立发现类似核心 idea。</td><td>强调独立实现与开源框架集成，而不是声称唯一原创。</td></tr>
+                  <tr><td>8/8</td><td>给出完整博客和招聘链接。</td><td>长文包含算法、成本分解、profiling、training setup 和附录。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="problem">
+            <div class="section-kicker">Problem framing</div>
+            <h2>真正的问题：不是蒸馏不懂，而是 full logits 太贵</h2>
+            <p>知识蒸馏里，老师模型不仅给学生一个正确 token，还给学生整个 vocabulary 上的概率分布。这个分布比 hard label 更丰富，因为它包含老师的不确定性、校准和对候选 token 的相对偏好。logit distillation 通常让学生分布接近老师分布，常用 KL divergence。</p>
+            <p>问题是 vocabulary 太大。若 batch 为 `B`、序列长度为 `T`、词表大小为 `V`，完整 logits tensor 是 `[B,T,V]`。当 `V` 是 152k，`T` 是 8192 时，即使只算一次 loss，也会有巨大通信量和显存压力。</p>
+            <h3>OPD 为什么更痛</h3>
+            <p>On-policy distillation 的训练数据来自当前学生模型自己的 rollout。每一步大致是：学生生成回答，老师在这条学生轨迹上打分，学生用老师分布更新。因为 rollout 会随学生参数变化，老师打分不能完全离线预计算。</p>
+            <div class="flow" aria-label="opd flow">
+              <div class="step"><b>Prompt</b><span>从 prompt 数据集采样问题。</span></div>
+              <div class="step"><b>Student rollout</b><span>学生按当前策略生成回答 token。</span></div>
+              <div class="step"><b>Teacher scoring</b><span>老师对同一条学生生成轨迹输出分布。</span></div>
+              <div class="step"><b>KL loss</b><span>比较老师和学生在每个位置的 softmax 分布。</span></div>
+              <div class="step"><b>Update</b><span>学生沿 KL 梯度更新，下一轮 rollout 改变。</span></div>
+            </div>
+            <p>如果老师和学生在不同 GPU 或不同节点上，老师的完整 logits 必须传到 loss 所在设备。这里的瓶颈不是公式复杂，而是每个 token 传 `V` 个数这件事太笨重。</p>
+          </section>
+
+          <section id="method">
+            <div class="section-kicker">Mechanism</div>
+            <h2>Nitrobrew 的两个动作</h2>
+            <p class="lead">Nitrobrew 把“传完整 logits、存完整 logits、再算 KL”拆成两个更便宜的动作：传 hidden state；在本地按块重建 logits 并流式累加 KL。</p>
+            <div class="math-band">logits z = W<sub>U</sub> h<br><span style="font-size: 0.52em;">hidden state h 是 logits 的紧凑生成参数</span></div>
+            <div class="grid-2">
+              <div class="claim">
+                <b>动作一：传 h，不传 z</b>
+                <span>老师最后 hidden state `h_T` 的维度是 `d_model`；完整 logits `z_T` 的维度是 `V`。通常 `d_model << V`，所以传 `h_T` 可以显著少传数据。只要 loss 端有老师 unembedding `W_U^T`，就能重建 `z_T = W_U^T h_T`。</span>
+              </div>
+              <div class="claim">
+                <b>动作二：chunked online KL</b>
+                <span>不把 `[B,T,V]` logits 建出来，而是在 vocabulary 维度按块计算学生和老师 logits，用 online log-sum-exp 累加 partition function 和期望项。每块用完即丢。</span>
+              </div>
+            </div>
+            <pre><code>for each vocab block v0:v1:
+    z_student = h_student @ W_student[v0:v1].T
+    z_teacher = h_teacher @ W_teacher[v0:v1].T
+    update online softmax / log-sum-exp accumulators
+    update KL numerator terms
+discard this block and continue</code></pre>
+            <p>这就是为什么它可以同时解决通信和显存：通信从 `V` 维 logits 变成 `d_model` 维 hidden state；显存从完整 `[B,T,V]` 变成 `[B,T,chunk_V]` 的临时工作集。</p>
+          </section>
+
+          <section id="topk">
+            <div class="section-kicker">Why not top-k</div>
+            <h2>top-k 省钱，但改了问题本身</h2>
+            <p>top-k truncation 的诱惑很强：完整词表 152k，只传 top-128 或 top-512，通信量会大幅下降。但它是 lossy approximation，而且偏差不是随机噪声那么简单。</p>
+            <div class="grid-2">
+              <div class="note">
+                <h3>不连续截断</h3>
+                <p>第 k 名和第 k+1 名 token 的概率可能几乎一样，但 top-k 会完整保留一个、彻底丢弃另一个。很小的 logit 扰动就会让某个 token 从“没有任何训练信号”跳到“有训练信号”。</p>
+              </div>
+              <div class="note">
+                <h3>丢掉长尾校准</h3>
+                <p>老师分布尾部包含“哪些 token 不该选”“老师有多不确定”“候选答案的相对排序”等信息。top-k 只让学生看老师最自信的一小段，容易把蒸馏变成更硬的局部模仿。</p>
+              </div>
+            </div>
+            <p>所以 Nitrobrew 的立场是：如果能以可接受系统成本计算 full-vocabulary KL，就不应该默认接受 top-k 的分布偏差。它不是说 top-k 永远不能用，而是说 top-k 以前常常是被系统成本逼出来的选择。</p>
+          </section>
+
+          <section id="evaluation">
+            <div class="section-kicker">Evidence</div>
+            <h2>官方评估到底评了什么</h2>
+            <p>这里要把“系统效率评估”和“模型质量评估”分开看。Nitrobrew 的强证据主要在系统效率：loss computation、峰值内存、通信量、end-to-end step throughput。模型质量部分更谨慎：官方说在小规模 MATH OPD 上与 top-k baseline competitive，但 full-vocabulary 的长期收益更可能在更大规模上体现。</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>评估维度</th><th>设置/指标</th><th>结论含义</th><th>边界</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>通信成本</td>
+                    <td>每个 token 传输 floats 数：naive 是 `V`，Nitrobrew 是 `d_model`，SVD-Nitrobrew 是 rank `k`。</td>
+                    <td>当 vocabulary 远大于 hidden dimension，通信量大幅降低。</td>
+                    <td>跨节点训练收益最大；同节点 NVLink 场景可能没有这么痛。</td>
+                  </tr>
+                  <tr>
+                    <td>显存</td>
+                    <td>naive KL 需要 materialize teacher/student logits；Nitrobrew 只保留 vocab block 的 working set。</td>
+                    <td>把峰值工作集从 `O(BTV)` 降到 `O(BT·chunk_V)`。</td>
+                    <td>仍要有 unembedding、hidden states、模型权重和训练 activations 的其他成本。</td>
+                  </tr>
+                  <tr>
+                    <td>吞吐</td>
+                    <td>Nemo-RL、VeRL 中 Qwen student/teacher pairs；长上下文 OPD step time。</td>
+                    <td>官方报告 1.5-3x 常见端到端提升，部分配置更高。</td>
+                    <td>取决于模型大小、序列长度、框架 overhead 和硬件拓扑。</td>
+                  </tr>
+                  <tr>
+                    <td>训练质量</td>
+                    <td>Qwen3-1.7B/8B，MATH 约 7,500 problems，2 epochs，MATH-lighteval。</td>
+                    <td>Nitrobrew 与 top-k baselines 在小规模上 competitive。</td>
+                    <td>还不能直接推出 full-logit 在所有任务上显著优于 top-k。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="implementation">
+            <div class="section-kicker">Implementation reality</div>
+            <h2>工程落地：简单 idea，不等于简单集成</h2>
+            <p>开源仓库本身是一个 barebones implementation，核心函数是 `forward_kl` 和 `reverse_kl`。README 展示的输入包括学生 hidden states、老师 hidden states、学生 unembedding、老师 unembedding 和 temperature。梯度只流向学生 hidden state 和学生 unembedding，老师参数固定。</p>
+            <div class="grid-2">
+              <div class="note">
+                <h3>仓库实现</h3>
+                <p>实现用 `torch.compile` 包装 chunked forward/backward。forward KL 的梯度形式是 `p - q`，reverse KL 的梯度是 `p * (log p - log q - KL)`。这些都按 vocabulary block 重算，而不是保存完整 logits。</p>
+              </div>
+              <div class="note">
+                <h3>VeRL PR</h3>
+                <p>PR #6194 把 Nitrobrew 接入 VeRL 的 distillation trainer：新增 nitrobrew loss mode、teacher hidden states branch、teacher unembed 注册、FSDP/Megatron variant、Ray teacher worker 和测试。</p>
+              </div>
+            </div>
+            <pre><code>from nitrobrew import forward_kl, reverse_kl
+
+loss = forward_kl(
+    xs,  # student hidden states [B, T, D_s]
+    xt,  # teacher hidden states [B, T, D_t]
+    ws,  # student unembedding [V, D_s]
+    wt,  # teacher unembedding [V, D_t]
+    temperature=1.0,
+    reduction="mean",
+    chunk_V=2048,
+)</code></pre>
+            <p>因此，Nitrobrew 不是只改一个 loss 函数就结束。真正难点在训练框架：老师如何返回 hidden states、学生侧如何拿到老师 unembedding、tensor parallel 或 FSDP 下 unembedding 如何切分、Ray actor/vLLM 如何传输 `[S,d_comp]` hidden states、测试如何覆盖 CPU/GPU 与异步 teacher worker。</p>
+          </section>
+
+          <section id="insight" class="insight">
+            <div class="section-kicker">My insight</div>
+            <h2>我的判断：这是 post-training 基础设施层的关键小刀</h2>
+            <div class="verdict">
+              <div class="score"><div><b>A-</b><span>systems insight</span></div></div>
+              <div>
+                <p>我认为 Nitrobrew 最有价值的地方，是把一个“大家理论上想用 full distribution，但工程上被迫 top-k”的局面改写了。它没有试图发明更复杂的蒸馏目标，而是指出：logits 本来就是 hidden state 乘 unembedding 得来的，为什么要跨设备传 logits 本身？</p>
+                <p>这种 insight 典型地属于 ML systems：数学关系很朴素，但只有放进分布式 OPD 的通信路径里，才会变成数量级收益。它不是模型能力 breakthrough，却可能改变 post-training pipeline 的默认 baseline。</p>
+              </div>
+            </div>
+            <h3>我会怎么使用这个结论</h3>
+            <p>如果团队正在做 reasoning model post-training，且老师比学生大、rollout 长、vocab 大、跨节点通信明显，那么 Nitrobrew 值得优先集成或至少复现 benchmark。它最可能带来的是成本曲线变化：以前 full-logit KL 太贵，只能 top-k；现在 full-logit KL 可能成为默认可跑选项。</p>
+            <h3>我不会怎么过度解读</h3>
+            <p>我不会把它解读成“full-logit distillation 已经证明全面优于 top-k”。官方训练质量证据还相对有限，小规模 MATH 上更多是 competitive。真正的质量收益，尤其是校准、长尾、不确定性学习，仍需要更大规模、更长训练和更丰富任务来验证。</p>
+            <h3>最值得继续追的问题</h3>
+            <p>第一，full-vocabulary KL 对 reasoning 能力、拒答校准、长尾 token 行为到底有多大增益？第二，SVD/autoencoder 类 hidden-state compression 是否能在接近 lossless 的情况下进一步逼近 top-k 的通信成本？第三，不同 KL 方向在 OPD 中的稳定性和 hyperparameter 是否需要重新调？官方也提醒 full KL 和 top-k KL 是 qualitatively different loss functions，不能直接复用同一套超参。</p>
+          </section>
+
+          <section id="commands">
+            <div class="section-kicker">Reproducibility</div>
+            <h2>本次抓取和核对命令</h2>
+            <p>这条线程已经确认可以用 `opencli twitter thread` 稳定抓取；我也把这个流程写进了本目录的 AGENTS.md 与 CLAUDE.md。</p>
+            <pre><code>opencli twitter thread "2049218141730005127" --limit 80 -f json
+opencli twitter thread "https://x.com/tilderesearch/status/2049218141730005127" --limit 20 -f json
+
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/6eSTA0Z69E"
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/WtvIkaYSJc"
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/A0nSpZ5bw5"
+
+opencli web read --url "https://blog.tilderesearch.com/blog/nitrobrew" \
+  --stdout true --download-images false --wait 5 -f plain
+
+curl -LfsS "https://raw.githubusercontent.com/tilde-research/nitrobrew-release/main/README.md"</code></pre>
+          </section>
+
+          <section id="sources">
+            <div class="section-kicker">Sources</div>
+            <h2>来源与覆盖边界</h2>
+            <p>这份页面基于推文线程、官方长文、开源 README、核心实现文件和 VeRL PR。它不是独立复现实验报告；所有性能数字来自 Tilde 官方材料和 PR 描述，未在本机重新跑 GPU benchmark。</p>
+            <div class="source-list">
+              <div class="source-box"><b>X thread</b> https://x.com/tilderesearch/status/2049218141730005127</div>
+              <div class="source-box"><b>Official blog</b> https://blog.tilderesearch.com/blog/nitrobrew</div>
+              <div class="source-box"><b>GitHub repo</b> https://github.com/tilde-research/nitrobrew-release</div>
+              <div class="source-box"><b>VeRL PR</b> https://github.com/verl-project/verl/pull/6194</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      Generated locally on 2026-05-12 in /Users/bytedance/Downloads/10_CodeRepos/SheSheBot. Static HTML; no external assets required for layout.
+    </footer>
+  </div>
+</body>
+</html>

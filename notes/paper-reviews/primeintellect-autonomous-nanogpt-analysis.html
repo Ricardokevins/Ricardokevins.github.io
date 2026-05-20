@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prime Intellect autonomous nanoGPT speedrun 解读</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f3ea;
+      --paper: #fffdf8;
+      --ink: #1f1d19;
+      --muted: #686158;
+      --subtle: #8c8376;
+      --line: #ded4c4;
+      --line-strong: #b8aa97;
+      --accent: #9b4f2f;
+      --accent-strong: #74351f;
+      --blue: #315e8c;
+      --green: #3d7258;
+      --risk: #8c3f3a;
+      --gold: #9a6a1f;
+      --code-bg: #eee7db;
+      --shadow: 0 18px 44px rgba(48, 38, 25, 0.12);
+      --radius: 8px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(31, 29, 25, 0.032) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(31, 29, 25, 0.022) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 94, 140, 0.32);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      padding: 10px clamp(18px, 4vw, 54px);
+      border-bottom: 1px solid rgba(31, 29, 25, 0.13);
+      background: rgba(247, 243, 234, 0.94);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 180px;
+    }
+    .brand strong {
+      font-size: 14px;
+      color: var(--accent-strong);
+    }
+    .brand span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px 14px;
+      font-size: 13px;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 30px 0 76px;
+    }
+
+    .hero {
+      min-height: 72vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(330px, 0.95fr);
+      gap: 28px;
+      align-items: center;
+      padding: 28px 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--accent-strong);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+    h1 {
+      margin: 18px 0 18px;
+      max-width: 880px;
+      font-size: clamp(34px, 5.8vw, 62px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    .thesis {
+      max-width: 760px;
+      margin: 0;
+      font-size: 20px;
+      color: #39352f;
+      line-height: 1.62;
+    }
+    .hero-figure {
+      margin: 0;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .hero-figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    figcaption {
+      padding: 10px 12px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.92);
+    }
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 24px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    section {
+      padding: 54px 0 0;
+    }
+    h2 {
+      margin: 0 0 18px;
+      font-size: 28px;
+      line-height: 1.24;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 19px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0 0 14px;
+      max-width: 880px;
+    }
+    .lead {
+      color: #3b362f;
+      font-size: 18px;
+      max-width: 940px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.86);
+      padding: 16px;
+    }
+    .card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent-strong);
+      font-size: 14px;
+    }
+    .metric {
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; color: var(--muted); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 13px;
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #f0e7d9;
+      color: #342f28;
+      font-weight: 800;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(255, 253, 248, 0.82);
+      padding: 14px 16px;
+      margin: 18px 0;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      max-width: 920px;
+    }
+    .callout.risk { border-left-color: var(--risk); }
+    .callout.good { border-left-color: var(--green); }
+    .callout.warn { border-left-color: var(--gold); }
+    .callout strong {
+      color: var(--accent-strong);
+    }
+
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 22px 0;
+    }
+    figure.evidence {
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      overflow: hidden;
+    }
+    figure.evidence img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    code {
+      font-family: var(--mono);
+      background: var(--code-bg);
+      border: 1px solid rgba(31, 29, 25, 0.08);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+    pre {
+      overflow-x: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #29231d;
+      color: #f5efe5;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    pre code {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+    }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+    .source {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.82);
+    }
+    .source b { color: var(--accent-strong); }
+    ul, ol {
+      max-width: 900px;
+      padding-left: 22px;
+    }
+    li { margin: 7px 0; }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      nav { justify-content: flex-start; }
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .grid, .grid.two, .figure-grid, .source-list { grid-template-columns: 1fr; }
+      h1 { font-size: 36px; }
+      .thesis { font-size: 18px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <strong>Prime Intellect X 帖解读</strong>
+      <span>autonomous AI research / nanoGPT optimizer speedrun</span>
+    </div>
+    <nav>
+      <a href="#sources">来源</a>
+      <a href="#benchmark">测什么</a>
+      <a href="#setup">实验机制</a>
+      <a href="#results">结果</a>
+      <a href="#behavior">行为</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="hero" id="top">
+      <div>
+        <div class="eyebrow">2026-05-15 阅读报告</div>
+        <h1>这不是“AI 发现了全新训练算法”，而是一次自动化研究流水线的压力测试</h1>
+        <p class="thesis">
+          Prime Intellect 的帖子最值得看的地方，不是 Opus 把 nanoGPT optimizer track 纪录推进到 2930 steps，
+          而是它暴露了当前 coding agent 在研究任务中的真实形态：很强的并行试验、复现、扫参和组合能力，
+          但弱在原创 hypothesis、长期自驱、剪枝和对“什么结果值得相信”的判断。
+        </p>
+        <div class="meta-strip">
+          <span class="pill">原帖：PrimeIntellect / 2055056380881744365</span>
+          <span class="pill">官方博客：auto-nanogpt</span>
+          <span class="pill">仓库：experiments-autonomous-speedrunning</span>
+          <span class="pill">评测：track_3_optimization</span>
+        </div>
+      </div>
+      <figure class="hero-figure">
+        <img src="primeintellect-autonomous-nanogpt-analysis-assets/frontier.png" alt="Prime Intellect autonomous speedrun frontier over time">
+        <figcaption>官方博客图 1：自主 agent 运行过程中观测到的 speedrun frontier。图表显示多轮 harness 下记录被逐步推进，但也体现出它高度依赖当前 public frontier 与 run ledger。</figcaption>
+      </figure>
+    </section>
+
+    <section id="sources">
+      <h2>来源与核验</h2>
+      <p class="lead">
+        本报告基于四类材料：X 线程、Prime Intellect 官方博客、公开 GitHub 仓库、Keller Jordan 的 modded-nanogpt benchmark README。
+        我没有把 X 回复当事实来源，只把它们作为理解争议点的参考。
+      </p>
+      <div class="source-list">
+        <div class="source">
+          <b>X 线程</b>
+          <p>使用 OpenCLI `twitter thread` 读取原帖与后续回复。原帖称：Claude Code / Opus 4.7 与 Codex / GPT 5.5 在 nanoGPT speedrun optimizer track 上自主运行约 10k 次实验，消耗约 14k H200 hours，Opus 纪录为 2930 steps。</p>
+        </div>
+        <div class="source">
+          <b>官方博客</b>
+          <p>使用 OpenCLI `web read` 抓取 `https://www.primeintellect.ai/auto-nanogpt`，并下载博客内图表。博客给出了 harness、四轮运行、结果表、行为分析、失败模式与 caveat。</p>
+        </div>
+        <div class="source">
+          <b>公开仓库</b>
+          <p>克隆 `PrimeIntellect-ai/experiments-autonomous-speedrunning`，核对 README、`data/runs_self_contained/manifest.json` 和 `runs.csv`。manifest 显示 inventory rows 为 10,485，exported runs 为 10,428，dropped runs 为 57。</p>
+        </div>
+        <div class="source">
+          <b>benchmark 背景</b>
+          <p>读取 `KellerJordan/modded-nanogpt` README。该 repo 的主任务是用 8xH100 将模型训练到 FineWeb validation cross-entropy loss 3.28；optimization track 额外强调固定 architecture/data/batch size，以 steps 为目标。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <strong>核验边界：</strong>我核对了公开材料内部的一致性，但没有独立复跑 10k 个训练实验，也没有验证所有 PR 是否已被上游接受。因此“2930/2950”在这里应理解为 Prime Intellect 报告口径下的统计有效/提交主结果，而不是我重新跑出的 leaderboard 结论。
+      </div>
+    </section>
+
+    <section id="benchmark">
+      <h2>这个 benchmark 到底测什么？</h2>
+      <p>
+        nanoGPT speedrun 的大背景是：训练一个小型 GPT 语言模型，让它在 FineWeb validation set 上达到指定 cross-entropy loss。
+        cross-entropy loss 可以直觉理解为“模型给真实下一个 token 分配的概率有多高”：loss 越低，说明模型越能压缩/预测验证文本。
+      </p>
+      <p>
+        这次帖子讨论的是 `track_3_optimization`，不是主赛道的 wall-clock speedrun。Track 3 的关键约束是：
+        模型、数据、架构、batch size 等基本固定；参赛者主要只能改 optimizer、learning-rate schedule、initialization 和少量相关 hyperparameters。
+        目标不是“几分钟训练完”，而是在满足 validation loss ≤ 3.28 的前提下，让训练 step 数尽可能少。
+      </p>
+      <div class="grid">
+        <div class="card">
+          <strong>输入</strong>
+          <div class="metric">固定训练环境</div>
+          <p class="muted">固定的 124M GPT、FineWeb 数据、训练脚本骨架和 track 规则。Agent 能读仓库、PR、历史记录和自己的 scratchpad。</p>
+        </div>
+        <div class="card">
+          <strong>可改对象</strong>
+          <div class="metric">optimizer stack</div>
+          <p class="muted">例如 Muon 系列变体、SOAP/Shampoo 类二阶近似、学习率曲线、weight decay、初始化尺度、per-role LR splits。</p>
+        </div>
+        <div class="card">
+          <strong>输出</strong>
+          <div class="metric">step_to_3.28</div>
+          <p class="muted">训练日志中首次达到 `val_loss <= 3.28` 的 step。由于随机波动，正式 claim 需要多 seed / statistical noise floor。</p>
+        </div>
+      </div>
+      <div class="callout good">
+        <strong>为什么这是一个好沙盒：</strong>任务足够真实，确实贴近 pretraining optimizer research；又足够小，允许大量自动实验、快速失败和日志审计。这种结构非常适合测试“agent 能不能推进研究循环”，比开放式问答更接近研发现场。
+      </div>
+    </section>
+
+    <section id="setup">
+      <h2>他们具体怎么做？</h2>
+      <p class="lead">
+        Prime Intellect 的做法可以理解成：给 agent 一个受限但真实的研究环境，让它像一个长期值班的研究员一样，读已有记录、提出候选、写训练脚本、提交 GPU job、解析日志、更新计划，再继续迭代。
+      </p>
+      <h3>1. Harness：把“自主研究”变成可恢复的循环</h3>
+      <p>
+        Harness 由一组 Markdown 和脚本约束构成，包括 `AGENTS.md`、`goal.md`、`plan.md`、`scratchpad/THREAD.md`、variants、run logs、sweep outputs 等。
+        `THREAD.md` 是关键：它是 append-only mission log，目的是让上下文压缩或 agent 重启后仍能恢复“当前 frontier 是什么、为什么选择下一步”。
+      </p>
+      <h3>2. 实验循环：从想法到训练日志</h3>
+      <ol>
+        <li>读取 benchmark 规则、历史 record、PR、论文或自己上一轮 scratchpad。</li>
+        <li>提出 optimizer / schedule / init 的候选变体，写成 `variants/<name>.py`。</li>
+        <li>生成 launcher 或 sbatch stub，提交到 H200 节点或 idle/preempt partition。</li>
+        <li>训练脚本输出 validation loss 曲线，parser 提取 `step_to_3_28`、final loss、train time、step average。</li>
+        <li>把结果写回 `runs.jsonl` 与 plan，再决定继续 sweep、reproduce、prune 还是换方向。</li>
+      </ol>
+      <h3>3. 四轮运行：v1 / novelty / v2 / v3</h3>
+      <table>
+        <thead>
+          <tr><th>阶段</th><th>主要目的</th><th>结果含义</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>v1</td>
+            <td>让 Claude Code 与 Codex 从 benchmark 出发独立搜索。</td>
+            <td>两者都能打过 3500-step Muon reference；Claude 更快找到有用 stack，Codex 更能持续跑。</td>
+          </tr>
+          <tr>
+            <td>novelty</td>
+            <td>要求每个 idea 通过 novelty check，避免只是抄 public leaderboard。</td>
+            <td>最重要的负结果：大量“看起来新”的想法没有带来有效提升。</td>
+          </tr>
+          <tr>
+            <td>v2</td>
+            <td>带着前两轮上下文继续推进，不是 clean restart。</td>
+            <td>两者都进入约 3035 steps 区间，说明持续记忆和历史状态有价值。</td>
+          </tr>
+          <tr>
+            <td>v3</td>
+            <td>从 v2 frontier 和最新 public PR 继续 overnight push。</td>
+            <td>Claude 报告主结果 2930，Codex 报告主结果 2950；但低于该数字的单次 search run 不应直接等同于统计有效纪录。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="results">
+      <h2>结果：它赢在哪里？</h2>
+      <div class="grid">
+        <div class="card">
+          <strong>实验规模</strong>
+          <div class="metric">10,428</div>
+          <p class="muted">公开 self-contained export 中的 exported runs；manifest 还记录了 57 条因缺 config path 被剔除的 rows。</p>
+        </div>
+        <div class="card">
+          <strong>官方口径算力</strong>
+          <div class="metric">~14k H200h</div>
+          <p class="muted">帖子和博客给出的估计。它说明这不是“免费智能”，而是把 idle compute 变成自动实验预算。</p>
+        </div>
+        <div class="card">
+          <strong>主纪录</strong>
+          <div class="metric">2930</div>
+          <p class="muted">博客报告的 Claude v3 / Opus 主结果；Codex v3 主结果为 2950，human baseline 为 2990。</p>
+        </div>
+      </div>
+      <figure class="evidence">
+        <img src="primeintellect-autonomous-nanogpt-analysis-assets/results.png" alt="Representative validation loss curves and main stacks">
+        <figcaption>官方博客结果图：主表将各阶段的主 stack 汇总到 3296、3100、3205、3040、3037、2930、2950 等节点。这里的“主结果”强调统计有效、可提交或代表性 stack。</figcaption>
+      </figure>
+      <h3>主要收益不是来自单点灵感，而是来自组合搜索</h3>
+      <p>
+        从博客表格看，最终 stack 不是一个干净的新 optimizer，而是多种已有人类/社区线索的组合：
+        Contra-Muon、MuonEq、NorMuon-lite、Soft-Muon、SOAP、不同 role 的 LR split、schedule power、radial damping、AdamW beta 调整等。
+        这说明 agent 的强项不是凭空发明，而是在已有组件空间里做大量组合、筛选、复现、剪枝和局部调参。
+      </p>
+      <h3>2% 的 step 改善要怎么理解？</h3>
+      <p>
+        从 2990 到 2930 是约 2.0% 的 step 减少。单看百分比不惊人；但在一个已经被社区长期优化、且需要通过统计噪声门槛的 track 上，
+        这个改进有意义。更大的信号不在“省了 60 steps”，而在“agent 能在两周内自动跑出并整理出一套可审计的研究轨迹”。
+      </p>
+      <div class="callout warn">
+        <strong>容易误读的点：</strong>我在 `runs.csv` 里能看到低于 2930 的单次 `step_to_3_28` search run，但它们有些是非统计验证、preempted 或未进入官方主结果口径。正式比较不能拿最低单次日志当 leaderboard record，否则会把 seed noise 和未提交探索当成结果。
+      </div>
+    </section>
+
+    <section id="behavior">
+      <h2>失败模式：当前 agent 距离“自主研究员”还差什么？</h2>
+      <div class="figure-grid">
+        <figure class="evidence">
+          <img src="primeintellect-autonomous-nanogpt-analysis-assets/autonomy.png" alt="Autonomy time split for Claude Code and Codex">
+          <figcaption>官方博客行为图：Claude Code 更容易停止并请求用户方向；Codex 更能维持循环，但也更容易陷入局部 sweep。</figcaption>
+        </figure>
+        <figure class="evidence">
+          <img src="primeintellect-autonomous-nanogpt-analysis-assets/compute.png" alt="Compute usage and allocation">
+          <figcaption>官方博客算力图：核心问题之一是如何把 idle compute 稳定转化为有效实验，而不是让 agent 停住或反复跑低价值 sweep。</figcaption>
+        </figure>
+      </div>
+      <h3>1. Claude 的问题：会“总结任务结束”，而不是持续自驱</h3>
+      <p>
+        官方博客明确指出 Claude Code 多次在 harness 要求继续自主循环时停止、请求用户方向，v1 中出现约 22 小时 agent-stopped idle。
+        这类行为不是简单的 UI 问题，而是目标函数问题：模型很擅长写“阶段性结论”，但不一定擅长在没有人类反馈时继续定义下一轮可证伪实验。
+      </p>
+      <h3>2. Codex 的问题：不停，但可能在同一个局部曲面上磨太久</h3>
+      <p>
+        Codex 更像一个执行稳定的实验机器：会大量读写 scratchpad、维护队列、跨 compaction 继续推进。但它的风险是局部搜索过强：
+        一旦锁定一个 frontier，就可能围绕同一 hyperparameter surface 长时间 grind，而不是系统性刷新 upstream PR、切换抽象层、做 pruning 或重新建模。
+      </p>
+      <h3>3. Novelty track 的负结果最关键</h3>
+      <p>
+        Prime Intellect 专门设置了 novelty-gated search，要求 idea 先通过 novelty check。结果是：agent 生成了大量看起来复杂的 optimizer idea，
+        但没有能真正改善 baseline。这说明“让模型多想一些新名字/新公式”并不等于 research novelty。有效研究需要问题分解、强 baseline、消融、剪枝、统计验证和对失败的抽象。
+      </p>
+      <h3>4. 剪枝能力不足：会堆组件，不爱删组件</h3>
+      <p>
+        博客提到 pruning rounds 只占约 5% runs，但 Claude v3 的彻底剪枝反而把纪录再推进约 20 steps。
+        这很有启发：当前 agent 很容易“加一个组件试试”，却不擅长问“这个组件是否还在贡献，是否只是和另一个 trick 共线，是否让 schedule 提前/滞后了”。
+      </p>
+      <figure class="evidence">
+        <img src="primeintellect-autonomous-nanogpt-analysis-assets/lineage.png" alt="Idea lineage for NorMuon MuonEq Contra-Muon">
+        <figcaption>官方博客 idea lineage 图：同样是 Muon update 的几个变体，从首次可见来源到成为行动方向、再到首次运行，中间存在明显延迟和路径依赖。</figcaption>
+      </figure>
+    </section>
+
+    <section id="meaning">
+      <h2>这件事真正说明了什么？</h2>
+      <table>
+        <thead>
+          <tr><th>表面结论</th><th>更准确的解释</th><th>实践启示</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>AI 已经能自动做 AI research。</td>
+            <td>在边界清晰、指标可自动判定、实验成本可并行化的局部研究任务里，agent 已能承担大量 trial-and-error。</td>
+            <td>先把研究任务做成可运行 harness，再谈 autonomy；没有 eval、ledger、recovery log，agent 会退化成聊天助手。</td>
+          </tr>
+          <tr>
+            <td>Opus/Codex 发现了新算法。</td>
+            <td>更像是自动化组合搜索与人类 public frontier 的快速吸收。novelty-gated 结果反而显示原创改进很弱。</td>
+            <td>短期最有效的 agent R&D 方向是“读 PR / 跑 sweep / 复现 / 消融 / 剪枝 / 生成报告”，不是期待端到端原创理论。</td>
+          </tr>
+          <tr>
+            <td>14k H200 小时只换 2% 改善，不划算。</td>
+            <td>如果按单个 benchmark 的提升算，确实昂贵；如果它使用 idle compute 并沉淀可复用 harness，则价值在研发吞吐和流程资产。</td>
+            <td>适用场景是有大量空闲算力、明确指标、可自动验证的研究空间；不适合高成本、低反馈、强人工判断任务。</td>
+          </tr>
+          <tr>
+            <td>Agent 能替代研究员。</td>
+            <td>更像替代研究员的低层实验循环，让人类把注意力放到搜索空间设计、结果可信性、方向选择和异常解释。</td>
+            <td>人类角色会从“亲自跑每个实验”转向“设计 harness、定义约束、审计统计、决定何时换问题”。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断</h2>
+      <p class="lead">
+        这条帖子最有价值的 insight 是：AI research automation 的瓶颈正在从“模型会不会写代码”转移到“环境能不能把研究变成可闭环的生产系统”。
+      </p>
+      <div class="callout good">
+        <strong>强信号：</strong>在一个小而真实的 optimizer benchmark 上，agent 可以连续两周承担实验执行、日志分析、状态维护和局部组合搜索，并产出可审计的 10k 级 run archive。这已经不是 demo 级 coding agent，而是早期 research factory。
+      </div>
+      <div class="callout risk">
+        <strong>弱信号：</strong>它没有证明 agent 已具备强原创研究能力。最关键的负证据是 novelty-gated search 没有改善 baseline，以及最终成功高度依赖 public PR、历史记录和人类介入/重启。
+      </div>
+      <div class="callout warn">
+        <strong>工程启示：</strong>如果要把这类方法迁移到自己的研究项目，第一步不是让 agent “自由探索”，而是先建设可恢复的实验协议：固定任务定义、统一日志 schema、自动 parser、run ledger、多 seed 统计门槛、失败归因模板、定期 upstream refresh 和强制 pruning round。
+      </div>
+      <h3>我会如何复用这套经验</h3>
+      <ol>
+        <li>把任务压缩到单一可自动评分指标，例如 validation loss、pass@1、latency、cost 或 reproducibility score。</li>
+        <li>为 agent 提供严格 harness：规则、目标、可修改边界、不可修改边界、日志格式、stop/continue 条件。</li>
+        <li>让 agent 默认做小步实验：每次只改一个或少数组件，所有 run 进入 ledger。</li>
+        <li>每隔固定预算强制做 pruning 和 negative-result synthesis，防止组件堆叠。</li>
+        <li>把“刷新外部事实源”写进循环，比如每 N 小时读取 upstream PR/leaderboard，而不是只看旧 scratchpad。</li>
+        <li>人类只在搜索空间、统计可信度和方向切换处介入，不在每个训练 run 上人工指挥。</li>
+      </ol>
+    </section>
+
+    <section id="commands">
+      <h2>本次读取与校验命令</h2>
+      <pre><code>opencli twitter thread "2055056380881744365" --limit 80 -f json --trace retain-on-failure
+opencli twitter profile "PrimeIntellect" -f json --trace retain-on-failure
+opencli web read --url "https://www.primeintellect.ai/auto-nanogpt" --stdout true --download-images false --wait 5 -f json
+opencli web read --url "https://www.primeintellect.ai/auto-nanogpt" --output "tmp/primeintellect-auto-nanogpt" --download-images true --wait 5 -f json
+git clone --depth 1 "https://github.com/PrimeIntellect-ai/experiments-autonomous-speedrunning.git" "tmp/experiments-autonomous-speedrunning"
+python3 - <<'PY'
+import json, pathlib
+base = pathlib.Path('tmp/experiments-autonomous-speedrunning/data/runs_self_contained')
+manifest = json.loads((base / 'manifest.json').read_text())
+print(manifest['counts'])
+PY</code></pre>
+    </section>
+
+    <footer>
+      <p>Generated locally on 2026-05-15. 报告依据公开材料与本地抓取结果整理；所有本地图表来自 Prime Intellect 官方博客抓取的图片资源。</p>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harbor 与 RL Coding Environments 长文梳理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1b17;
+      --muted: #6e675d;
+      --subtle: #938a7e;
+      --paper: #f7f2e9;
+      --panel: #fffdf8;
+      --panel-2: #fdf7ee;
+      --line: #d8cec0;
+      --line-strong: #aa9a88;
+      --accent: #a64f2a;
+      --accent-soft: #f0d8cb;
+      --blue: #315f86;
+      --blue-soft: #dce8f1;
+      --green: #386e5b;
+      --green-soft: #deebe4;
+      --red: #963b31;
+      --red-soft: #f1d9d4;
+      --gold: #9c6a1a;
+      --gold-soft: #f1e0bd;
+      --shadow: 0 18px 42px rgba(49, 43, 31, 0.10);
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(29, 27, 23, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 27, 23, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 95, 134, 0.28);
+    }
+
+    a:hover {
+      border-bottom-color: currentColor;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(29, 27, 23, 0.13);
+      background: rgba(247, 242, 233, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 780;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--ink) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 253, 248, 0.62);
+      color: var(--ink);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: end;
+      min-height: 82vh;
+      padding: clamp(56px, 9vw, 112px) clamp(20px, 5vw, 72px) 46px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 82% 20%, rgba(166, 79, 42, 0.10), transparent 30%),
+        linear-gradient(135deg, rgba(255, 253, 248, 0.70), rgba(247, 242, 233, 0));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 88px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 50px);
+      font-weight: 740;
+    }
+
+    h3 {
+      font-size: 20px;
+      font-weight: 760;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2.2vw, 24px);
+      line-height: 1.58;
+    }
+
+    .hero-side {
+      align-self: stretch;
+      display: grid;
+      align-content: end;
+      gap: 14px;
+    }
+
+    .fact-card,
+    .panel,
+    .callout,
+    .mini-card {
+      background: rgba(255, 253, 248, 0.88);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .fact-card {
+      padding: 18px;
+    }
+
+    .fact-label {
+      margin-bottom: 4px;
+      color: var(--subtle);
+      font-size: 12px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .fact-value {
+      font-size: 15px;
+      color: var(--ink);
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 54px clamp(18px, 4vw, 44px) 90px;
+    }
+
+    section {
+      margin: 0 0 72px;
+      scroll-margin-top: 78px;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.82fr) minmax(260px, 0.38fr);
+      gap: 30px;
+      align-items: end;
+      margin-bottom: 26px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .section-note {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .panel p,
+    .callout p,
+    li {
+      color: var(--muted);
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    .lead {
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.72;
+    }
+
+    .callout {
+      padding: 20px 22px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .callout.good {
+      border-left-color: var(--green);
+      background: linear-gradient(90deg, var(--green-soft), rgba(255, 253, 248, 0.92) 46%);
+    }
+
+    .callout.warn {
+      border-left-color: var(--gold);
+      background: linear-gradient(90deg, var(--gold-soft), rgba(255, 253, 248, 0.92) 46%);
+    }
+
+    .callout.risk {
+      border-left-color: var(--red);
+      background: linear-gradient(90deg, var(--red-soft), rgba(255, 253, 248, 0.92) 46%);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .flow-step {
+      min-height: 124px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      position: relative;
+    }
+
+    .flow-step::after {
+      content: "→";
+      position: absolute;
+      right: -13px;
+      top: 42%;
+      color: var(--line-strong);
+      font-weight: 900;
+    }
+
+    .flow-step:last-child::after {
+      display: none;
+    }
+
+    .flow-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      background: var(--ink);
+      color: var(--panel);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .flow-title {
+      margin-bottom: 7px;
+      font-weight: 780;
+    }
+
+    .flow-text {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #efe4d4;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    td {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code {
+      padding: 0.12em 0.36em;
+      border: 1px solid rgba(170, 154, 136, 0.55);
+      background: #f4eadc;
+      color: #5f321f;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 16px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid #3e352c;
+      background: #201b16;
+      color: #f8efe3;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+
+    .mini-card {
+      padding: 18px;
+      min-height: 150px;
+    }
+
+    .mini-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .mini-card span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-item {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .source-kind {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .source-text {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .quote {
+      margin: 18px 0;
+      padding: 18px 22px;
+      border-left: 5px solid var(--blue);
+      background: var(--blue-soft);
+      color: #233d54;
+      font-family: var(--serif);
+      font-size: 20px;
+      line-height: 1.55;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(300px, 0.48fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .checklist {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .checklist li {
+      margin-bottom: 10px;
+    }
+
+    .footer {
+      margin-top: 70px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--subtle);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-head,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+
+      .grid.two,
+      .grid.three,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-step::after {
+        content: "↓";
+        right: 18px;
+        top: auto;
+        bottom: -18px;
+      }
+
+      .source-item {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark"></span><span>Harbor / RL Coding Environments</span></div>
+    <nav class="nav" aria-label="sections">
+      <a href="#summary">总览</a>
+      <a href="#sources">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#harbor">Harbor</a>
+      <a href="#rewards">奖励</a>
+      <a href="#atif">ATIF</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Article Reading Report</div>
+      <h1>代码 RL 的瓶颈，正在从模型转向环境</h1>
+      <p class="subtitle">
+        Adithya S K 这篇 X Article 的核心判断是：coding 之所以适合 RL，是因为奖励相对可验证；
+        但真正稀缺的不是再写一个 agent harness，而是能复用、能扩展、能产出训练轨迹的环境标准。Harbor 被他视为这个标准的一个正确抽象。
+      </p>
+      <div class="tag-row">
+        <span class="tag">RLVR</span>
+        <span class="tag">Coding Agents</span>
+        <span class="tag">Harbor</span>
+        <span class="tag">Terminal-Bench</span>
+        <span class="tag">ATIF</span>
+      </div>
+    </div>
+    <aside class="hero-side">
+      <div class="fact-card">
+        <div class="fact-label">主材料</div>
+        <div class="fact-value">Adithya S K, “RL Coding Environments 101: Why Harbor Exists”, X Article, 2026-05-14</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-label">一句话 thesis</div>
+        <div class="fact-value">代码 RL 的下一层竞争力，是谁能更快构造高质量可验证环境，并把 rollout、reward、trace 变成可训练资产。</div>
+      </div>
+      <div class="fact-card">
+        <div class="fact-label">我的判断</div>
+        <div class="fact-value">Harbor 的价值不在“又一个 benchmark runner”，而在把 task、sandbox、reward、trajectory 四个以前常被拆散的接口收敛到一个可交换契约。</div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="summary">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Executive Summary</div>
+          <h2>这篇长文到底讲了什么</h2>
+        </div>
+        <p class="section-note">主贴本身只有一个短链；短链指向 X Article。OpenCLI 抓到的回复主要是读者对 Harbor、本地推理和 LangSmith 类平台关系的追问。</p>
+      </div>
+
+      <div class="grid three">
+        <div class="mini-card">
+          <strong>1. 为什么代码适合 RL</strong>
+          <span>代码任务天然有可执行验证：测试能跑、编译能过、diff 能比、结果能判。相对开放式写作或聊天偏好，coding reward 更接近“可验证奖励”。</span>
+        </div>
+        <div class="mini-card">
+          <strong>2. 新瓶颈是什么</strong>
+          <span>一旦进入 RLVR，模型调用不再是最难部分。难的是每次 rollout 都要有隔离环境、固定起点、依赖、工具链、状态重置和可信 verifier。</span>
+        </div>
+        <div class="mini-card">
+          <strong>3. Harbor 解决哪一层</strong>
+          <span>Harbor 试图把 coding task 抽象成一个小而明确的契约：四类文件描述任务、任意 agent harness 执行、统一 reward 输出、统一轨迹格式。</span>
+        </div>
+      </div>
+
+      <div class="quote">
+        这篇文章最重要的不是“Harbor 很好用”，而是把 coding RL 的基础设施问题说清楚：没有可复用环境，RL recipe 很难真正迁移；没有统一 trace，rollout 很难变成训练数据。
+      </div>
+    </section>
+
+    <section id="sources">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Source Map</div>
+          <h2>材料来源与核验</h2>
+        </div>
+        <p class="section-note">本报告以 OpenCLI 抓取的 X Article 正文为主，并用 Harbor/Terminal-Bench 官方公开材料核对关键机制。</p>
+      </div>
+
+      <div class="source-list">
+        <div class="source-item">
+          <div class="source-kind">X Thread</div>
+          <div class="source-text">
+            使用 <code>opencli twitter thread</code> 读取 <code>https://x.com/adithya_s_k/status/2054961319179420035</code>。
+            结果显示主贴文本只有 <code>https://t.co/tOnb7uElhs</code>，另有几条读者回复；这不是传统多段 tweetstorm。
+          </div>
+        </div>
+        <div class="source-item">
+          <div class="source-kind">X Article</div>
+          <div class="source-text">
+            使用 <code>curl -Ls</code> 解析短链，得到 <code>https://x.com/i/article/2054953620194684928</code>。
+            <code>opencli twitter article</code> 返回 Article not found，随后用 <code>opencli web read</code> 成功抽取正文。
+          </div>
+        </div>
+        <div class="source-item">
+          <div class="source-kind">Official Check</div>
+          <div class="source-text">
+            核验 Harbor 官方仓库、Terminal-Bench 2.0 公告、Harbor task-difference 文档、ATIF RFC-0001。
+            这些来源支持长文中的主要机制：task 结构、reward 文件、agent adapter、cloud sandbox、RL/SFT rollout、ATIF 轨迹格式。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Problem</div>
+          <h2>为什么“环境”会变成瓶颈</h2>
+        </div>
+        <p class="section-note">代码 RL 看似只要“让模型写代码，然后跑测试”，但真实训练时每个词都需要可重复的环境和可计入训练的数据。</p>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <p class="lead">
+            作者的论证起点是：过去 18 个月，代码模型后训练越来越依赖可验证奖励，也就是 RLVR
+            （reinforcement learning with verifiable rewards）。在代码域，这个奖励通常来自编译、单元测试、端到端测试、diff 相似度或 judge。
+          </p>
+          <p>
+            但只要你真的做过 coding RL，就会发现“奖励可验证”并不等于“环境容易构造”。
+            一个可靠 rollout 需要：固定初始代码状态、正确语言工具链、系统库、依赖版本、可能的 GPU/服务、可隔离的文件系统、可重置状态、agent 可见上下文和 verifier。
+          </p>
+          <p>
+            每个 benchmark 团队如果都自己写一套 harness，就会产生碎片化：任务不能迁移到别的 agent，reward 不能复用，rollout trace 不能合并训练，环境成本也难以横向扩展。
+          </p>
+        </div>
+        <div class="callout warn">
+          <h3>关键转向</h3>
+          <p>
+            早期大家争论“哪种模型更强”；现在真正限制 coding RL 的，常常是“你能不能稳定生产大量高质量、可验证、可重放的任务环境”。
+          </p>
+        </div>
+      </div>
+
+      <div class="flow" aria-label="RL coding environment pipeline">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-title">Snapshot</div>
+          <div class="flow-text">固定 commit、数据、依赖和起点，保证每次 trial 从同一状态开始。</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-title">Sandbox</div>
+          <div class="flow-text">Docker 或云沙箱提供工具链、系统库和隔离文件系统。</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-title">Agent</div>
+          <div class="flow-text">Claude Code、Codex、OpenHands、Aider 或自定义 harness 执行任务。</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-title">Verifier</div>
+          <div class="flow-text">测试、diff、judge 或多指标评分写出 reward。</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-title">Trajectory</div>
+          <div class="flow-text">统一记录动作、工具调用、观测、token、cost 和 reward，进入训练或分析。</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="harbor">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Harbor Abstraction</div>
+          <h2>Harbor 的抽象：四类文件，一个契约</h2>
+        </div>
+        <p class="section-note">长文强调 Harbor 的好处不是复杂，而是把任务目录压到足够小，同时留下必要扩展点。</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>文件/目录</th>
+            <th>回答的问题</th>
+            <th>为什么重要</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>instruction.md</code></td>
+            <td>Agent 应该做什么？</td>
+            <td>把自然语言任务说明从 YAML/TOML 中抽离出来，降低格式错误，让指令可读、可编辑。</td>
+          </tr>
+          <tr>
+            <td><code>task.toml</code></td>
+            <td>任务是谁构建的、资源/超时/metadata/secret 怎么配置？</td>
+            <td>提供 typed config，而不是散乱脚本参数；便于平台统一调度。</td>
+          </tr>
+          <tr>
+            <td><code>environment/</code></td>
+            <td>这个任务如何运行？</td>
+            <td>通常是 Dockerfile 或 docker-compose；环境定义从任务根目录剥离，避免把 tests 或 config 错误打进镜像。</td>
+          </tr>
+          <tr>
+            <td><code>tests/test.sh</code></td>
+            <td>怎么判断 agent 成功？</td>
+            <td>Verifier 由任务自己控制，并写出 reward；harness 不再硬编码如何解析测试输出。</td>
+          </tr>
+          <tr>
+            <td><code>solution/solve.sh</code></td>
+            <td>oracle 怎么解？</td>
+            <td>可选，但用于 sanity check 很关键：先证明 verifier 能给正确解打满分，再评估真实 agent。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <pre><code>hello-world/
+  instruction.md
+  task.toml
+  environment/
+    Dockerfile
+  solution/
+    solve.sh
+  tests/
+    test.sh</code></pre>
+
+      <div class="grid two" style="margin-top:18px">
+        <div class="callout good">
+          <h3>解耦 task 和 agent</h3>
+          <p>
+            Harbor 的关键工程设计是：task 不关心谁来做。Claude Code、Codex CLI、OpenHands、Aider、Mini-SWE-Agent、Trae Agent 或自定义 harness 都应该能跑同一个任务。
+          </p>
+        </div>
+        <div class="callout">
+          <h3>解耦 sandbox 和任务逻辑</h3>
+          <p>
+            同一个 task spec 可以跑在 Local Docker、Modal、Daytona、E2B 等后端上。对于大规模 RL，这意味着横向扩展不是每个 benchmark 各写一套。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="rewards">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Reward Contract</div>
+          <h2>奖励：薄契约比大而全框架更重要</h2>
+        </div>
+        <p class="section-note">作者强调 Harbor 的 reward contract 很薄：任务只要把数字写到约定位置，框架就能收集和聚合。</p>
+      </div>
+
+      <div class="panel">
+        <p class="lead">
+          Harbor 的基础 reward 约定可以非常简单：verifier 脚本执行后，把分数写到 <code>/logs/verifier/reward.txt</code>；
+          多指标时写 <code>reward.json</code>。这一点看似朴素，但它把“测试输出解析器”从框架内部移回任务本身。
+        </p>
+        <pre><code>#!/bin/bash
+OUTPUT=$(python /workspace/hello.py 2>&1)
+if [ "$OUTPUT" = "Hello, World!" ]; then
+  echo "1" > /logs/verifier/reward.txt
+else
+  echo "0" > /logs/verifier/reward.txt
+fi</code></pre>
+      </div>
+
+      <div class="grid three" style="margin-top:18px">
+        <div class="mini-card">
+          <strong>Test reward</strong>
+          <span>pytest、cargo test、jest、端到端脚本通过就给 1，否则给 0，适合明确正确性的代码任务。</span>
+        </div>
+        <div class="mini-card">
+          <strong>Diff similarity</strong>
+          <span>把 agent diff 和 oracle patch 做相似度比较，允许局部修复获得部分分数。</span>
+        </div>
+        <div class="mini-card">
+          <strong>LLM-as-judge</strong>
+          <span>对开放式任务使用 rubric 和 judge model 输出 0 到 1 分数，适合风格、结构、非二元质量。</span>
+        </div>
+        <div class="mini-card">
+          <strong>Step-level reward</strong>
+          <span>多阶段任务每一步单独 verifier，最后按 MEAN 或 FINAL 聚合，失败可早停。</span>
+        </div>
+        <div class="mini-card">
+          <strong>Reward Kit</strong>
+          <span>内置 file_exists、command_succeeds、TOML judge、weighted mean、all-pass、any-pass 等组合原语。</span>
+        </div>
+        <div class="mini-card">
+          <strong>Custom verifier</strong>
+          <span>只要能在容器内计算数字，就能成为 reward；框架不必理解具体业务逻辑。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="atif">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">ATIF</div>
+          <h2>真正闭环在统一轨迹格式</h2>
+        </div>
+        <p class="section-note">ATIF（Agent Trajectory Interchange Format）是这篇长文最值得注意的一层，因为它把 eval 输出变成训练输入。</p>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <p class="lead">
+            如果只统一任务和 reward，Harbor 还只是一个更好的 benchmark runner。
+            但如果每个 agent 的交互轨迹都转成同一种 JSON，那么 rollout 就能进入 debugging、visualization、SFT 和 RL pipeline。
+          </p>
+          <p>
+            ATIF 的核心对象包括 root metadata、agent identity、steps、tool calls、observations、metrics、final metrics。
+            它还记录 token counts、cached tokens、cost，近版本加入了 <code>completion_token_ids</code>、<code>prompt_token_ids</code>、<code>tool_definitions</code> 等字段。
+          </p>
+          <p>
+            作者抓住的重点是：token id 字段不是“日志细节”，而是训练基础设施。没有 token id，RL/SFT 处理时可能需要重新 tokenize，产生 drift；有 token id，trajectory 更接近可直接训练的数据资产。
+          </p>
+        </div>
+        <div class="callout good">
+          <h3>从 eval 到 training data</h3>
+          <p>
+            Same task spec → same sandbox → same reward signal → same trajectory format。这个链路一旦成立，环境不只是评测工具，而是 post-training 数据工厂。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="discussion">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Replies</div>
+          <h2>回复区补充了什么</h2>
+        </div>
+        <p class="section-note">OpenCLI 抓到的回复不多，但有两个方向值得保留。</p>
+      </div>
+
+      <div class="grid two">
+        <div class="panel">
+          <h3>Harbor 和本地推理</h3>
+          <p>
+            有回复提到 Harbor 对 local inference workloads 也有用，尤其是通过 API base URL 指向自己托管的 open-source weights。
+            这说明 Harbor 的抽象不必绑定闭源模型 API；只要 agent harness 能在容器里调用模型服务，环境与 reward 层仍可复用。
+          </p>
+        </div>
+        <div class="panel">
+          <h3>和 LangSmith 等平台的关系</h3>
+          <p>
+            另一条回复问 Harbor 与 LangSmith 这类已有 observability/evaluation 平台的关系。我的理解是：LangSmith 更像应用层 tracing/eval/experiment management；
+            Harbor 更靠近 RL coding environment 的可执行任务、沙箱、verifier 和训练轨迹生产层。两者可以互补，但解决的首要接口不同。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Insight</div>
+          <h2>我的判断：Harbor 的价值与边界</h2>
+        </div>
+        <p class="section-note">这篇文章是“框架倡议”而不是严格 benchmark paper，所以应该同时看见它说中的部分和没有证明的部分。</p>
+      </div>
+
+      <div class="grid two">
+        <div class="callout good">
+          <h3>真正说中的地方</h3>
+          <p>
+            代码 RL 的基础设施问题是真问题。只靠“新 reward recipe”无法规模化，因为每个 recipe 最后都要落到可执行环境、可靠 verifier、rollout 调度和轨迹清洗上。
+            Harbor 的小契约设计符合 KISS：task 目录、reward 文件、agent adapter、trace schema 都足够直接，避免把业务 verifier 绑死在框架里。
+          </p>
+        </div>
+        <div class="callout risk">
+          <h3>没有被充分证明的地方</h3>
+          <p>
+            文章没有证明 Harbor 已经成为事实标准，也没有证明它在大规模、多租户、低成本、高失败率的 RL 生产系统里足够稳。
+            “统一格式”能降低 glue code，但不能自动解决任务质量、reward hacking、judge 可靠性、环境漂移和成本控制。
+          </p>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:18px">
+        <h3>更深一层的启发</h3>
+        <p>
+          我觉得这篇文章最有价值的 insight 是：未来 coding-agent 能力提升可能越来越像“数据/环境工程”，而不是单纯模型架构工程。
+          谁能把真实 repo、真实 bug、真实工具链封装成稳定任务，并把每次 agent 尝试转成可训练轨迹，谁就拥有持续改进模型的飞轮。
+        </p>
+        <p>
+          这也意味着 benchmark 的角色会改变。传统 benchmark 是一次性打分表；Harbor 这种框架里的 benchmark 更像环境资产。
+          同一个环境可以用于 eval、SFT 数据生成、RL rollout、prompt optimization、agent harness 对比和回归测试。它的复用次数越高，环境工程投入越值得。
+        </p>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Repro</div>
+          <h2>本次使用的关键命令</h2>
+        </div>
+        <p class="section-note">按仓库 OpenCLI 规范先确认能力，再执行读取。</p>
+      </div>
+
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/adithya_s_k/status/2054961319179420035" --limit 80 -f json --trace retain-on-failure
+
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/tOnb7uElhs"
+opencli twitter article --help
+opencli twitter article "2054953620194684928" -f json --trace retain-on-failure
+opencli web read --url "https://x.com/i/article/2054953620194684928" --stdout true --download-images false --wait 5 -f json --trace retain-on-failure</code></pre>
+    </section>
+
+    <div class="footer">
+      Generated locally on 2026-05-15. This report summarizes an X Article and cross-checks official Harbor/Terminal-Bench/ATIF materials. It is not affiliated with Harbor or the original author.
+    </div>
+  </main>
+</body>
+</html>

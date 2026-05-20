@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LCO-Embedding 论文深读报告</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        tags: 'ams'
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --ink: #171717;
+      --muted: #606975;
+      --line: #d9dde4;
+      --accent: #145f59;
+      --accent-2: #9a4a1f;
+      --soft: #f1f7f6;
+      --soft-2: #fff4ec;
+      --code: #f5f6f8;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.72;
+      font-size: 16px;
+    }
+    header {
+      background: #fbfbfc;
+      color: var(--ink);
+      padding: 44px 24px 30px;
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    h1 {
+      margin: 0 0 16px;
+      font-size: 34px;
+      line-height: 1.22;
+      letter-spacing: 0;
+      font-weight: 740;
+    }
+    .subtitle {
+      max-width: 900px;
+      font-size: 18px;
+      color: #333b45;
+      margin: 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: #303842;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    main { padding: 28px 24px 58px; }
+    nav {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 22px;
+    }
+    nav strong { display: block; margin-bottom: 8px; }
+    nav a {
+      display: inline-block;
+      color: var(--accent);
+      text-decoration: none;
+      margin: 5px 16px 5px 0;
+      font-size: 14px;
+    }
+    section {
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      padding: 26px 0;
+      margin: 0;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 24px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 19px;
+      line-height: 1.35;
+    }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 24px; }
+    li { margin: 7px 0; }
+    .lead {
+      font-size: 18px;
+      color: #26343f;
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      padding: 12px 16px;
+      margin: 14px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .warn {
+      border-left-color: var(--accent-2);
+      background: var(--soft-2);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: #fbfcfd;
+    }
+    .card strong { color: #0f403b; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #eef1f5;
+      font-weight: 700;
+    }
+    code {
+      background: var(--code);
+      border: 1px solid #e1e5eb;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 90%;
+    }
+    .equation {
+      background: #f8fafb;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      margin: 14px 0;
+    }
+    .math-source {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .small { color: var(--muted); font-size: 14px; }
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 12px 0 0;
+    }
+    @media (max-width: 760px) {
+      h1 { font-size: 30px; }
+      header { padding: 36px 18px 30px; }
+      main { padding: 20px 14px 44px; }
+      section { padding: 20px 18px; }
+      .grid { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header>
+    <div class="wrap">
+      <h1>《Scaling Language-Centric Omnimodal Representation Learning》深读报告</h1>
+      <p class="subtitle">这篇论文的核心不是“又训练了一个更大的多模态 embedding 模型”，而是提出一个更强的解释框架：MLLM 的生成式预训练已经在语言解码器内部形成隐式跨模态对齐，contrastive learning 主要是在激活和整理这个已有空间。</p>
+      <div class="meta">
+        <span class="pill">arXiv:2510.11693v1</span>
+        <span class="pill">NeurIPS 2025</span>
+        <span class="pill">LCO-Emb</span>
+        <span class="pill">GRSL</span>
+        <span class="pill">SeaDoc</span>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="wrap">
+      <nav>
+        <strong>目录</strong>
+        <a href="#source">材料核验</a>
+        <a href="#thesis">一句话理解</a>
+        <a href="#problem">问题背景</a>
+        <a href="#method">方法机制</a>
+        <a href="#metrics">评估到底测什么</a>
+        <a href="#results">主要结果</a>
+        <a href="#grsl">GRSL 理论</a>
+        <a href="#seadoc">SeaDoc</a>
+        <a href="#limits">局限</a>
+        <a href="#insight">我的判断</a>
+      </nav>
+
+      <section id="source">
+        <h2>1. 材料核验</h2>
+        <p>阅读对象为 Chenghao Xiao、Hou Pong Chan、Hao Zhang、Weiwen Xu、Mahani Aljunied、Yu Rong 的论文 <em>Scaling Language-Centric Omnimodal Representation Learning</em>，arXiv 编号 <code>2510.11693v1</code>，PDF 元数据核验为 25 页，题名与作者一致。论文页面标注为 NeurIPS 2025，官方资源包括 GitHub 仓库 <code>LCO-Embedding/LCO-Embedding</code> 与 Hugging Face 的 LCO-Embedding 组织和模型卡。</p>
+        <p>本报告主要依据本地 PDF 全文抽取文本和主文/附录表格：<code>language-centric-omnimodal-embedding-paper/refs/2510.11693.pdf</code> 与 <code>language-centric-omnimodal-embedding-paper/refs/2510.11693.txt</code>。</p>
+      </section>
+
+      <section id="thesis">
+        <h2>2. 一句话理解</h2>
+        <p class="lead">论文认为：MLLM 之所以适合作为多模态 embedding backbone，不是因为后续 contrastive learning 重新学会了所有跨模态对齐，而是因为生成式预训练已经让语言 decoder 学会把图像、视频、音频等信号投到一个可被语言消费的共享语义空间；后续轻量 LoRA + 对比学习更像是把这个空间整理成“适合相似度检索”的 embedding 空间。</p>
+        <div class="callout">
+          <strong>最重要的范式变化：</strong>传统 CLIP 路线把“跨模态对齐”主要寄托在海量图文对比学习上；这篇论文把“跨模态对齐”的主要来源前移到 MLLM 的生成式预训练，把 CL 降级为后处理式的 representation activation。
+        </div>
+      </section>
+
+      <section id="problem">
+        <h2>3. 论文要解决什么问题</h2>
+        <p>多模态 embedding 的目标是把文本、图像、视频、音频、文档页面或交错多模态输入编码成向量，使语义相近的输入在向量空间中距离更近。这个能力用于检索、分类、聚类、视觉文档问答、跨语言图像检索等任务。</p>
+        <p>传统路线是 CLIP-style：收集大量跨模态配对数据，例如图像-文本对，通过 contrastive learning 把匹配对拉近、不匹配对推远。这条路线在零样本分类、线性探测上很成功，但在更复杂任务上容易平台化，包括：</p>
+        <ul>
+          <li><strong>视觉文本表示：</strong>模型要读懂图片里的文字，而不是只理解自然图像语义。</li>
+          <li><strong>多语言图像检索：</strong>查询可能是低资源语言或跨语言文本。</li>
+          <li><strong>视觉文档检索：</strong>页面包含排版、表格、OCR、上下文结构。</li>
+          <li><strong>交错多模态输入：</strong>输入不是单张图或一句话，而是图文混合的复杂上下文。</li>
+        </ul>
+        <p>近年的 MLLM-based embedding 方法，例如 E5-V、VLM2Vec、GME、mmE5，把 autoregressive MLLM 当 backbone，再做对比学习，效果常常超过 CLIP-style 模型。但问题是：<strong>它们为什么更强？</strong>是因为后续 CL 数据更多、更好，还是因为 MLLM 的生成式预训练已经学到了某种隐含对齐？这篇论文的核心贡献就是回答这个机制问题。</p>
+      </section>
+
+      <section id="method">
+        <h2>4. 方法机制：LCO-Emb 到底怎么做</h2>
+        <h3>4.1 先证明 MLLM 内部已有 latent cross-modal alignment</h3>
+        <p>作者没有一开始就训练模型，而是先做诊断实验：从一个 MLLM 里把语言 decoder，也就是 LLM 部分，单独拿出来；只用文本 NLI 数据做 LoRA 对比学习；训练后把 LoRA 权重合并回语言 decoder，再把 decoder 插回原来的 MLLM。视觉、音频、视频 encoder 和 projector 都不训练。</p>
+        <p>如果只训练文本 decoder，却让图像、音频、视频 embedding 的几何性质也变好，那说明这些模态本来就和语言 decoder 的表示空间存在某种绑定关系。否则，文本训练不应该系统性改善非文本模态。</p>
+
+        <h3>4.2 诊断一：anisotropy</h3>
+        <p>Anisotropy 可以理解为“向量是否挤在同一个方向附近”。如果随机抽两个输入，它们的 cosine similarity 也很高，就说明 embedding 空间塌缩、区分性差。论文用随机样本两两余弦相似度的均值估计 anisotropy：</p>
+        <div class="equation">
+          \[
+          \operatorname{Anisotropy}
+          := \mathbb{E}_{\mathbf{h}_i,\mathbf{h}_j\sim\mathcal{D}}
+          [\cos(\theta_{ij})]
+          =
+          \mathbb{E}_{\mathbf{h}_i,\mathbf{h}_j\sim\mathcal{D}}
+          \left[
+          \frac{\mathbf{h}_i^\top \mathbf{h}_j}
+          {\|\mathbf{h}_i\|\,\|\mathbf{h}_j\|}
+          \right].
+          \]
+          <span class="math-source">TeX: \operatorname{Anisotropy} := \mathbb{E}_{\mathbf{h}_i,\mathbf{h}_j\sim\mathcal{D}}[\cos(\theta_{ij})] = \mathbb{E}[(\mathbf{h}_i^\top\mathbf{h}_j)/(\|\mathbf{h}_i\|\|\mathbf{h}_j\|)]</span>
+        </div>
+        <p>结果是：Qwen2.5-Omni-3B 原始表示在文本、图像、音频、视频上都有塌缩；只做文本 contrastive learning 后，非文本模态也变得更 isotropic。这里的关键不是“数值变好”本身，而是<strong>文本训练的几何改善迁移到了未直接训练的模态</strong>。</p>
+
+        <h3>4.3 诊断二：kernel-level similarity</h3>
+        <p>Kernel-level similarity 看的是“相似性结构是否一致”。举例：一批图像和对应 caption，如果图像 embedding 认为 A、B、C 彼此最相近，而文本 embedding 也认为对应 caption 的 A、B、C 最相近，那么图像空间和文本空间不只是单点对齐，而是在局部邻域结构上对齐。</p>
+        <p>论文用 mutual kNN：对每个样本，分别在图像特征集合和文本特征集合里找 top-k 最近邻，然后看两个最近邻集合的重合比例：</p>
+        <div class="equation">
+          \[
+          m_{\mathrm{NN}}(\phi_i,\psi_i)
+          =
+          \frac{1}{k}
+          \left|\mathcal{S}(\phi_i)\cap\mathcal{S}(\psi_i)\right|.
+          \]
+          <span class="math-source">TeX: m_{\mathrm{NN}}(\phi_i,\psi_i)=\frac{1}{k}|\mathcal{S}(\phi_i)\cap\mathcal{S}(\psi_i)|</span>
+        </div>
+        <p>结果显示，文本-only CL 后，Qwen2.5-VL 的 vision-language kernel alignment 提升；7B 比 3B 更强。这支持一个判断：更强/更大的 MLLM 更容易在生成式预训练中形成可迁移的跨模态结构。</p>
+
+        <h3>4.4 LCO-Emb 的训练流程</h3>
+        <ol>
+          <li><strong>选择 MLLM backbone：</strong>LLaVA-Next、Qwen2.5-VL、Qwen2.5-Omni。VL 主要支持图像/视频-文本，Omni 支持文本、图像、视频、音频。</li>
+          <li><strong>取语言 decoder 做 LoRA：</strong>text-only 版本冻结 modality encoder 和 projector，只对语言 decoder 做 LoRA 对比学习；训练后合并 LoRA 并插回 MLLM。</li>
+          <li><strong>构造训练对：</strong>all-NLI 使用 MNLI + SNLI，约 276k triplets，把 entailment 当 positive，contradiction 当 hard negative；Scale-1M 从 20M 多语言平行语料中采样 1M 句对。</li>
+          <li><strong>可选加入少量多模态数据：</strong>在 all-NLI 基础上加入约 94k 多模态 triplets，包括约 23k visual document、3k MS-COCO、若干 Scale-1M、多种合成 interleaved/instruction 数据，形成约 370k triplets。</li>
+          <li><strong>训练设置：</strong>AdamW，cosine learning-rate schedule，peak LR 4e-4，batch size 768，训练 2 epochs；text-only 默认 LoRA rank=64、alpha=16，multimodal 默认 rank=64、alpha=128。</li>
+        </ol>
+        <div class="callout">
+          <strong>为什么 LoRA 很关键：</strong>在这里 LoRA 不只是省显存，而是“少改一点，少忘一点”。如果 full finetune 过度改动 decoder，可能破坏预训练阶段形成的跨模态绑定；如果只加线性 projection，又太浅，不能真正激活 decoder 内部的语义结构。
+        </div>
+      </section>
+
+      <section id="metrics">
+        <h2>5. 评估到底测什么</h2>
+        <p>这篇论文的评估不只是“图文检索”。它主要使用 MIEB-Lite、MIEB-Sub18，以及音频/视频检索任务。</p>
+        <table>
+          <thead>
+            <tr><th>评估类别</th><th>输入/输出</th><th>指标含义</th><th>为什么重要</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Visual STS</td><td>把文本渲染成图片，比较图片中的文本语义相似度</td><td>Spearman correlation：模型相似度排序与人工相似度排序的一致性</td><td>测试模型是否真的能从视觉中读语义，而不是只识别自然图像类别</td></tr>
+            <tr><td>Visual Document Retrieval</td><td>给 query，检索包含答案或相关信息的文档页面图片</td><td>nDCG@5：正确页面排在前面得分更高，位置越靠前权重越大</td><td>测试 OCR、版面理解、图文交错对齐</td></tr>
+            <tr><td>Image Linear Probing</td><td>冻结 embedding，用少量标注训练线性分类器</td><td>Accuracy</td><td>衡量冻结视觉表示是否有可迁移判别信息</td></tr>
+            <tr><td>Compositionality</td><td>图像与细粒度 caption 互检索</td><td>Accuracy</td><td>测试对象、属性、关系组合是否精确对齐</td></tr>
+            <tr><td>Vision-centric QA</td><td>图像条件问题，检索正确答案</td><td>Accuracy</td><td>把 QA 转成 retrieval，测试视觉理解和推理表征</td></tr>
+            <tr><td>Multilingual Image Retrieval</td><td>多语言文本查询检索图像</td><td>nDCG@10</td><td>测试语言空间和图像空间在跨语言情况下是否对齐</td></tr>
+            <tr><td>Clustering</td><td>把图像 embedding 聚类</td><td>NMI：聚类结果与真实类别的一致性</td><td>看 embedding 空间的整体结构是否清晰</td></tr>
+            <tr><td>Audio/Video Retrieval</td><td>音频/视频和文本互检索</td><td>Recall@1：正确匹配是否排第 1</td><td>验证方法是否扩展到视觉之外的模态</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="results">
+        <h2>6. 主要实验结果</h2>
+        <h3>6.1 MIEB-Lite 主结果</h3>
+        <p>在 51 个 MIEB-Lite 任务上，LCO-Emb 多模态版本达到新的强结果。代表性均值如下：</p>
+        <table>
+          <thead><tr><th>模型</th><th>训练数据规模</th><th>Mean(en)</th><th>Mean(m)</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>GME 7B</td><td>8.0M</td><td>63.4</td><td>64.5</td><td>强 MLLM embedding baseline，数据量大</td></tr>
+            <tr><td>mmE5 11B</td><td>2.1M</td><td>57.7</td><td>61.8</td><td>多模态多语言 embedding baseline</td></tr>
+            <tr><td>LCO-Emb-VL 7B text-only</td><td>276k</td><td>57.5</td><td>60.4</td><td>仅文本对比学习就接近或超过多个强 baseline</td></tr>
+            <tr><td>LCO-Emb-VL 7B multimodal</td><td>370k</td><td>66.2</td><td>67.6</td><td>只加约 94k 多模态数据，显著校准任务格式</td></tr>
+            <tr><td>LCO-Emb-Omni 7B multimodal</td><td>370k</td><td>67.6</td><td>68.8</td><td>主表最好结果；比 GME 用少约 21 倍数据</td></tr>
+          </tbody>
+        </table>
+
+        <h3>6.2 MIEB-Sub18：text-only 版本也很强</h3>
+        <p>作者在 MIEB-Sub18 上专门看 text-only 版本，目的是证明“不是因为偷偷喂了大量图文数据”。论文报告 text-only LCO-Emb 相比 E5-V 和 Voyage Multimodal 3 的平均提升分别约 21.69 和 13.00 分；在线性探测、跨语言 Visual STS、多语言图像检索上提升尤其明显。</p>
+
+        <h3>6.3 all-NLI 与 Scale-1M 的互补性</h3>
+        <p>all-NLI 更擅长 Visual STS 和 Document Understanding，因为 NLI 训练强化了“语义相似/蕴含/矛盾”的判断；Scale-1M 更擅长 Linear Probing 和 Multilingual Image Retrieval，因为多语言描述性句对更像弱化版 caption pretraining。model soup 合并两个 checkpoint 后平均最好，说明不同文本数据激活的是不同能力侧面。</p>
+
+        <h3>6.4 训练策略消融：LoRA 明显优于替代方案</h3>
+        <table>
+          <thead><tr><th>Qwen2.5-VL-7B 策略</th><th>GPU Hours</th><th>Average</th><th>核心解释</th></tr></thead>
+          <tbody>
+            <tr><td>原始模型</td><td>n/a</td><td>52.92</td><td>原始 generative 表示不适合直接相似度匹配</td></tr>
+            <tr><td>CLIP-style CL on 800k PixmoCaps</td><td>约 550</td><td>50.02</td><td>贵且差，说明简单图文 CL 可能破坏或不能利用 MLLM 结构</td></tr>
+            <tr><td>Linear Projection text-only</td><td>约 8.8</td><td>56.22</td><td>浅层投影改进有限</td></tr>
+            <tr><td>Full Finetune text-only</td><td>约 17.3</td><td>66.49</td><td>有效但可能扰动过大</td></tr>
+            <tr><td>LoRA text-only</td><td>约 9.3</td><td>71.98</td><td>最佳，符合“保留预训练对齐 + 激活相似度空间”的解释</td></tr>
+          </tbody>
+        </table>
+        <p>LoRA 超参也体现这个逻辑：rank/alpha 没有全局最优；过大的 alpha 会让 compositionality 和 vision-centric QA 这类 OOD 能力下降；rank=256、alpha=512 出现不可恢复 loss spike。这说明“改得越多越强”并不成立。</p>
+      </section>
+
+      <section id="grsl">
+        <h2>7. Generation-Representation Scaling Law</h2>
+        <p>GRSL 是论文第二个大贡献：经过同样的轻量 contrastive learning 后，模型最终 representation 能力和它在 CL 前的 generative 能力正相关。作者在三类任务上观察这个关系：</p>
+        <ul>
+          <li><strong>OCR-based image-text：</strong>representation 用 Visual STS-English + Document Understanding；generation 用 TextVQA、DocVQA、OCRBench、ChartQA。</li>
+          <li><strong>Video-text：</strong>representation 用 MSR-VTT 与 ActivityNet 的 Recall@1；generation 用 Video-MME 和 MVBench。</li>
+          <li><strong>Audio-text：</strong>representation 用 Clotho 与 AudioCaps 的 Recall@1；generation 用 MMAU 和 VoiceBench。</li>
+        </ul>
+        <p>作者的理论解释用了 PAC-Bayes bound。可以把它翻译成三句话：</p>
+        <ol>
+          <li>预训练 MLLM 是 contrastive fine-tuning 的 prior；如果 prior 生成能力强，说明它捕获了更多输入 X 与输出 Y 的 mutual information。</li>
+          <li>InfoNCE 的经验损失可以被 \(\log N - I_P(X;Y) + \epsilon_P\) 上界控制；生成 prior 捕获的信息越多，理论上 contrastive 学习越容易做到低损失。</li>
+          <li>PAC-Bayes 还会惩罚 posterior Q 偏离 prior P 的程度，即 <code>KL(Q||P)</code>；LoRA 的好处是让 Q 离 P 近，保留强生成 prior 的优势。</li>
+        </ol>
+        <div class="equation">
+          \[
+          \mathbb{E}_{\theta\sim Q}
+          \left[L_c^{\mathrm{pop}}(\theta)\right]
+          \le
+          \log N - I_P(X;Y) + \epsilon_P
+          +
+          \sqrt{
+          \frac{\operatorname{KL}(Q\|P)+\log(1/\delta)}
+          {2n}
+          }.
+          \]
+          <span class="math-source">TeX: \mathbb{E}_{\theta\sim Q}[L_c^{\mathrm{pop}}(\theta)] \le \log N - I_P(X;Y)+\epsilon_P+\sqrt{(\operatorname{KL}(Q\|P)+\log(1/\delta))/(2n)}</span>
+        </div>
+        <p>这个 bound 不是严格证明“生成能力一定导致 embedding 更好”的因果定理，因为关键 Hypothesis 1 仍是假设；但它给出一个清晰解释：强生成模型提供 warm start，LoRA 控制别偏离太远，contrastive learning 负责把空间转成 similarity-matching 形式。</p>
+      </section>
+
+      <section id="seadoc">
+        <h2>8. SeaDoc：用低资源视觉文档检索验证 GRSL</h2>
+        <p>SeaDoc 是作者构造的低资源东南亚语言视觉文档检索 benchmark。任务是：给英文 query，从 5,055 页泰语、越南语、马来语、老挝语文档页面中检索对应页面。文档来自 29 本书，领域包括经济、自然科学、技术、历史、政治、艺术、心理、教育、国家报告等。</p>
+        <p>数据构造流程：</p>
+        <ol>
+          <li>用 Gemini-2.5-Flash 对每页做 OCR、英文翻译，并生成只能由该页回答的英文 query，得到 5,055 个初始 triplets。</li>
+          <li>用 Qwen2.5-7B-Instruct 过滤 title page、目录等功能页，剩 4,491 页内容页。</li>
+          <li>再用模型打 Quality 与 Groundedness 分，只保留质量 >= 9 且 groundedness = 10 的 query。</li>
+          <li>内部语言专家复核，最终得到 1,001 个高质量 query。</li>
+        </ol>
+        <p>为了验证“增强生成能力能提高 representation 上限”，作者先对 Qwen2.5-VL-3B 做 OCR-intensive generative SFT，再做同样的 CL。结果显示：只用低分辨率 SeaDoc OCR SFT 会造成能力坍塌；高分辨率训练能部分缓解；加入 PixmoCaps caption 后效果更好，因为通用 caption 数据帮助保留图文 latent alignment。这个实验很重要，因为它说明 GRSL 不是“随便做 SFT 就好”，而是要提升目标生成能力，同时不能破坏通用跨模态对齐。</p>
+      </section>
+
+      <section id="limits">
+        <h2>9. 局限与需要谨慎的地方</h2>
+        <ul>
+          <li><strong>因果性仍不完全：</strong>GRSL 的经验相关性很有启发，但严格因果还需要更干净的控制变量，例如同架构、同数据、只改变 generative loss 的系列模型。</li>
+          <li><strong>理论依赖强假设：</strong>PAC-Bayes bound 的核心 Hypothesis 1 把 warm start 写成经验损失上界，但这本身不是从基础假设推出的定理。</li>
+          <li><strong>benchmark 可能偏向 MLLM 能力：</strong>MIEB 中的文档理解、视觉文本、多语言、interleaved retrieval 本来就更接近 MLLM 预训练和指令能力，不能简单外推到所有视觉 representation 任务。</li>
+          <li><strong>少量多模态数据的配方很关键：</strong>论文强调大规模 visual document 数据若不平衡会伤 generalization；这意味着方法不是“随便加点多模态数据”就有效。</li>
+          <li><strong>生成能力与 embedding 能力的目标并不完全一致：</strong>一个会回答问题的模型不一定有好的全局度量空间；CL 仍然不可替代，只是角色变成校准和激活。</li>
+        </ul>
+      </section>
+
+      <section id="insight">
+        <h2>10. 我的判断</h2>
+        <p>这篇论文真正有价值的地方，是把 MLLM embedding 的成功从“经验 recipe”提升成一个相对统一的解释：<strong>生成式多模态模型先学会把多模态信息翻译成语言可用的 latent space，embedding 训练再把这个 latent space 改造成可排序、可检索的 metric space。</strong></p>
+        <p>我认为它对实践的启发很明确：</p>
+        <ul>
+          <li>如果你要做复杂多模态检索，优先选择 generative capability 强、目标模态理解好的 MLLM backbone，而不是只盯着 CL 数据规模。</li>
+          <li>后训练要保守，LoRA 这类小扰动方法在这里不是妥协，而是方法论核心。</li>
+          <li>训练数据不一定要大，但要能激活目标能力：NLI 激活语义相似判断，Scale-1M 激活多语言/描述性表示，少量 visual document/interleaved 数据校准下游格式。</li>
+          <li>如果目标任务是低资源 OCR 文档检索，先提升生成式 OCR/翻译/grounding 能力，再做 CL，比直接堆检索 triplet 更有潜力。</li>
+        </ul>
+        <div class="callout warn">
+          <strong>一句话评价：</strong>这篇论文的实验结果很强，但更值得记住的是它重新定义了 CL 在 MLLM embedding 中的角色：CL 不是主要知识来源，而是把生成模型已有的跨模态语义结构“投影成检索空间”的激活器。
+        </div>
+      </section>
+
+      <footer>
+        本报告生成于 2026-05-13。核心材料：arXiv PDF、arXiv HTML、OpenCLI arXiv 元数据、项目 GitHub/Hugging Face 页面。本地复现材料位于 SheSheBot 的 <code>language-centric-omnimodal-embedding-paper/</code>。
+      </footer>
+    </div>
+  </main>
+</body>
+</html>

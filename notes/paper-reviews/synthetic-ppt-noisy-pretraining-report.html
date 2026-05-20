@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synthetic Pre-Pre-Training Improves LM Robustness - 论文深度解读</title>
+  <style>
+    :root {
+      --ink: #191b18;
+      --muted: #636a5c;
+      --paper: #f4f1e8;
+      --panel: #fffdf6;
+      --panel-strong: #ebe6d7;
+      --line: #d2caba;
+      --green: #2f6f5f;
+      --blue: #284e7a;
+      --red: #9e3d33;
+      --gold: #9b6b1d;
+      --violet: #63507a;
+      --shadow: 0 18px 46px rgba(31, 33, 29, 0.11);
+      --serif: Georgia, "Times New Roman", "Songti SC", "STSong", serif;
+      --sans: "Avenir Next", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(25, 27, 24, 0.045) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(180deg, rgba(47, 111, 95, 0.12), transparent 36rem),
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.78;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      letter-spacing: 0;
+      font-family: var(--serif);
+      line-height: 1.12;
+    }
+
+    h1 {
+      max-width: 1120px;
+      margin-top: 24px;
+      font-size: clamp(42px, 7vw, 86px);
+      font-weight: 700;
+    }
+
+    h2 {
+      margin-bottom: 18px;
+      font-size: clamp(29px, 4.2vw, 50px);
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 25px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .shell {
+      width: min(1240px, calc(100vw - 42px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: 91vh;
+      display: grid;
+      align-items: end;
+      padding: 46px 0 56px;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      right: -12vw;
+      bottom: 10vh;
+      width: min(700px, 52vw);
+      aspect-ratio: 1;
+      background:
+        repeating-linear-gradient(30deg, rgba(255, 253, 246, 0.3) 0 12px, transparent 12px 20px),
+        linear-gradient(135deg, rgba(47, 111, 95, 0.32), rgba(40, 78, 122, 0.16));
+      clip-path: polygon(9% 13%, 94% 6%, 86% 88%, 20% 78%);
+      z-index: -1;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px 7px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 246, 0.78);
+      color: var(--muted);
+      font: 700 12px/1 var(--mono);
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      max-width: 950px;
+      margin-top: 26px;
+      color: #45483f;
+      font-size: clamp(19px, 2.2vw, 27px);
+      line-height: 1.55;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-top: 42px;
+    }
+
+    .thesis {
+      padding: 28px;
+      color: #fff9ed;
+      background: var(--ink);
+      box-shadow: var(--shadow);
+      border-radius: 6px;
+    }
+
+    .thesis .label,
+    .fact span,
+    .mini-label {
+      display: block;
+      margin-bottom: 10px;
+      color: #90cfc3;
+      font: 800 12px/1.2 var(--mono);
+      text-transform: uppercase;
+    }
+
+    .thesis strong {
+      color: #aeeadf;
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .fact {
+      min-height: 118px;
+      padding: 18px;
+      background: rgba(255, 253, 246, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .fact span {
+      color: var(--muted);
+    }
+
+    .fact b {
+      display: block;
+      font-size: 21px;
+      line-height: 1.28;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      gap: 40px;
+      padding: 42px 0 86px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      padding: 18px;
+      background: rgba(255, 253, 246, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: 0 8px 28px rgba(25, 27, 24, 0.06);
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 12px;
+      font: 800 13px/1 var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      display: block;
+      padding: 8px 0;
+      color: #343730;
+      text-decoration: none;
+      border-top: 1px solid rgba(210, 202, 186, 0.7);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      margin-bottom: 34px;
+      padding: 30px;
+      background: rgba(255, 253, 246, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(25, 27, 24, 0.045);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .section-no {
+      padding: 7px 10px;
+      color: var(--panel);
+      background: var(--green);
+      border-radius: 4px;
+      font: 800 12px/1 var(--mono);
+    }
+
+    .lead {
+      max-width: 920px;
+      color: #46493f;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .card,
+    .callout,
+    .metric,
+    .step,
+    .quote-box {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .card {
+      padding: 18px;
+    }
+
+    .card h3,
+    .step h3 {
+      margin-top: 0;
+      font-size: 22px;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 5px solid var(--green);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+    }
+
+    .callout.gold {
+      border-left-color: var(--gold);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric {
+      padding: 16px;
+      min-height: 122px;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--green);
+      font: 800 30px/1.05 var(--serif);
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .step {
+      padding: 15px;
+      position: relative;
+      min-height: 145px;
+    }
+
+    .step .n {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      color: white;
+      background: var(--blue);
+      border-radius: 50%;
+      font: 800 12px/1 var(--mono);
+    }
+
+    .step p {
+      margin-bottom: 0;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #fdf8ed;
+      background: #2f4039;
+      font: 800 12px/1.25 var(--mono);
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .best {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .warn {
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    code,
+    pre {
+      font-family: var(--mono);
+    }
+
+    code {
+      padding: 2px 5px;
+      background: #ebe6d7;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 16px 0;
+      padding: 18px;
+      overflow-x: auto;
+      color: #f9f2df;
+      background: #20231f;
+      border-radius: 6px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .figure {
+      margin: 22px 0;
+      padding: 12px;
+      background: #fdfaf1;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      border: 1px solid rgba(210, 202, 186, 0.8);
+    }
+
+    .figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .compare .card {
+      min-height: 190px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin: 0 6px 8px 0;
+      padding: 5px 8px;
+      color: #2f4039;
+      background: #ebe6d7;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font: 700 12px/1 var(--mono);
+    }
+
+    .quote-box {
+      padding: 20px;
+      color: #fff9ed;
+      background: #20231f;
+    }
+
+    .quote-box p {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.55;
+      font-family: var(--serif);
+    }
+
+    .quote-box .mini-label {
+      color: #aeeadf;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .footer {
+      padding: 26px 0 56px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .layout,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .pipeline,
+      .metrics,
+      .grid-3,
+      .compare {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .shell {
+        width: min(100vw - 24px, 1240px);
+      }
+
+      .hero {
+        min-height: auto;
+        padding: 28px 0 42px;
+      }
+
+      section {
+        padding: 20px;
+      }
+
+      .facts,
+      .grid-2,
+      .grid-3,
+      .metrics,
+      .pipeline,
+      .compare {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header class="hero">
+    <div class="shell">
+      <span class="kicker">arXiv:2605.10129 · paper reading report · 2026-05-12</span>
+      <h1>Synthetic Pre-Pre-Training Improves Language Model Robustness to Noisy Pre-Training Data</h1>
+      <p class="subtitle">一篇关于“在正式预训练前，用少量有结构的合成序列改变模型优化轨迹，让模型更不容易学习噪声”的论文深度解读。</p>
+      <div class="hero-grid">
+        <div class="thesis">
+          <span class="label">Core thesis</span>
+          <p><strong>这篇论文的真正主张不是“合成数据替代自然语言”，而是“合成时序结构可以作为 model-side robustness preparation”。</strong> 数据清洗改变 corpus；RNN-PPT 改变模型进入 noisy PT 时的初始状态和后续优化轨迹。</p>
+        </div>
+        <div class="facts">
+          <div class="fact"><span>Paper</span><b>Synthetic Pre-Pre-Training Improves LM Robustness</b></div>
+          <div class="fact"><span>Authors</span><b>Xu Guo et al.</b></div>
+          <div class="fact"><span>Main claim</span><b>1B 模型最多 49% PT-token savings</b></div>
+          <div class="fact"><span>Key source</span><b>1000 个随机固定 RNN 生成器</b></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell layout">
+    <aside class="toc">
+      <strong>目录</strong>
+      <a href="#overview">0. 快速读懂</a>
+      <a href="#problem">1. 研究问题</a>
+      <a href="#method">2. 方法流程</a>
+      <a href="#synthetic">3. RNN 合成数据</a>
+      <a href="#noise">4. 噪声构造</a>
+      <a href="#eval">5. 评估设置</a>
+      <a href="#results">6. 主实验结果</a>
+      <a href="#ablation">7. 消融实验</a>
+      <a href="#mechanism">8. 机制分析</a>
+      <a href="#insight">9. 我的 insight</a>
+      <a href="#limits">10. 局限和后续</a>
+    </aside>
+
+    <main>
+      <section id="overview">
+        <div class="section-head">
+          <div>
+            <h2>0. 快速读懂</h2>
+            <p class="lead">如果只看一句话：模型先在“表面像乱码、内部有可学习时序结构”的 RNN 合成序列上训练几百步，再进入 noisy web corpus 预训练，会更少把噪声本身当作有价值规律来建模。</p>
+          </div>
+          <span class="section-no">00</span>
+        </div>
+        <div class="metrics">
+          <div class="metric"><b>65M</b><span>1B scale-up 中的 synthetic PPT token 数，大约 1000 steps。</span></div>
+          <div class="metric"><b>49%</b><span>论文报告的最高 PT-token savings。注意这是 PT token 口径，不含 PPT token。</span></div>
+          <div class="metric"><b>0.10-0.15</b><span>1B 模型在测试噪声范围内的 final validation loss 改善。</span></div>
+          <div class="metric"><b>8-11</b><span>attention probe 中 noise self-modeling 降低主要集中的后层。</span></div>
+        </div>
+        <figure class="figure">
+          <img src="synthetic-ppt-noisy-pretraining-assets/overview.png" alt="论文概览图截图">
+          <figcaption>论文 Figure 1 所在页截图：PPT source、noisy PT、robustness evaluation、mechanistic analyses 的整体流程。</figcaption>
+        </figure>
+        <div class="callout blue">
+          <p><strong>读这篇论文时最重要的区分：</strong>PPT 数据不是知识来源，而是结构预热。它不教模型事实、不教 instruction following，也不替代 C4/FineWeb；它改变的是模型面对 noisy corpus 时的训练倾向。</p>
+        </div>
+      </section>
+
+      <section id="problem">
+        <div class="section-head">
+          <div>
+            <h2>1. 研究问题</h2>
+            <p class="lead">大模型预训练语料来自网页，网页数据不可能完全干净。论文关注的是：当残余噪声不可避免时，能不能让模型本身更抗噪，而不是只靠继续清洗数据。</p>
+          </div>
+          <span class="section-no">01</span>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>传统处理对象：corpus</h3>
+            <p>常见 pipeline 会做去重、语言识别、质量打分、模板过滤、毒性过滤、domain sampling 等。问题是过滤有 trade-off：太强会丢 rare knowledge，太弱会留下 boilerplate、广告、目录、格式错误和低质量片段。</p>
+          </div>
+          <div class="card">
+            <h3>本文处理对象：model initialization</h3>
+            <p>作者不修改 PT 数据和训练 recipe，而是在 PT 前插入一个短暂 synthetic PPT 阶段。它问的是：模型不是从完全随机初始化开始接触 noisy corpus，会不会更少走向“拟合噪声”的训练轨迹。</p>
+          </div>
+        </div>
+        <div class="callout red">
+          <p><strong>核心风险：</strong>next-token prediction 会拟合任何统计模式。网页噪声虽然信息价值低，但常常有局部重复、模板结构和随机片段。如果模型把这些也认真建模，就会浪费容量并损害 clean validation loss。</p>
+        </div>
+      </section>
+
+      <section id="method">
+        <div class="section-head">
+          <div>
+            <h2>2. 方法流程</h2>
+            <p class="lead">方法本身非常简单：先做短 PPT，再做正常 PT。复杂性不在训练算法，而在 synthetic source 的设计和对机制的解释。</p>
+          </div>
+          <span class="section-no">02</span>
+        </div>
+        <div class="pipeline">
+          <div class="step"><span class="n">1</span><h3>初始化</h3><p>从随机初始化的 Pythia 架构模型开始，不使用已有语言模型 checkpoint。</p></div>
+          <div class="step"><span class="n">2</span><h3>PPT</h3><p>用 RNN / Dyck / Random synthetic source 做普通 next-token prediction。</p></div>
+          <div class="step"><span class="n">3</span><h3>参数转移</h3><p>把 PPT 后的模型参数作为正式预训练的初始化。</p></div>
+          <div class="step"><span class="n">4</span><h3>Noisy PT</h3><p>在 C4 或 FineWeb 上训练，并注入 sample / token / span 级噪声。</p></div>
+          <div class="step"><span class="n">5</span><h3>评估</h3><p>看 clean validation loss、PT-token savings、LAMBADA 和 PIQA。</p></div>
+        </div>
+        <pre>随机初始化模型
+  → synthetic PPT：学习非语言但可预测的时序结构
+  → PPT-initialized model
+  → noisy natural-text PT：在污染语料上继续预训练
+  → clean validation loss / token savings / downstream checks</pre>
+        <table>
+          <thead>
+            <tr><th>设置</th><th>160M main</th><th>1B scale-up</th><th>解释</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>PPT steps</td><td>500</td><td>1000</td><td>PPT 是轻量插入阶段，1B 中约 65M tokens。</td></tr>
+            <tr><td>PT steps</td><td>10k</td><td>25k</td><td>正式自然文本预训练阶段。</td></tr>
+            <tr><td>effective batch</td><td>32</td><td>32</td><td>配合 sequence length 2048，每步约 65,536 tokens。</td></tr>
+            <tr><td>optimizer</td><td>AdamW</td><td>AdamW</td><td>PPT 和 PT 是两个独立 optimization runs，各自有 warmup/cosine schedule。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="synthetic">
+        <div class="section-head">
+          <div>
+            <h2>3. RNN 合成数据</h2>
+            <p class="lead">RNN-PPT 的设计目标是让数据“有结构，但不是自然语言；可学习，但不太窄；表面像噪声，但内部有可预测时序依赖”。</p>
+          </div>
+          <span class="section-no">03</span>
+        </div>
+        <div class="compare">
+          <div class="card">
+            <h3>Random PPT</h3>
+            <p><span class="badge">structure-free</span></p>
+            <p>每个 token 从 full vocabulary 独立均匀采样。它几乎没有上下文依赖，所以只能测试“多训练一点 / warm-up 一下”是否有效。结果接近 baseline。</p>
+          </div>
+          <div class="card">
+            <h3>Dyck PPT</h3>
+            <p><span class="badge">formal language</span></p>
+            <p>使用 k-Shuffle Dyck 括号匹配语言。它有明确长程结构，但结构较窄、较 homogeneous，对真实网页噪声的迁移弱于 RNN-PPT。</p>
+          </div>
+          <div class="card">
+            <h3>RNN PPT</h3>
+            <p><span class="badge">broad sequential prior</span></p>
+            <p>从 1000 个随机固定 RNN 中采样序列。每个 generator 是一种“小型随机语言”，ensemble 提供多样时序结构。</p>
+          </div>
+        </div>
+        <h3>生成过程</h3>
+        <pre>对每条 synthetic sequence：
+  选择一个 generator g ~ Uniform({1, ..., M})
+  初始化 x0 ~ Uniform(vocabulary), h0 = 0
+  对 t = 1 ... 2048：
+      h_t = A e_{x_{t-1}} + W h_{t-1} + b
+      logits_t = C h_t + d
+      x_t ~ Categorical(softmax(logits_t / τ))</pre>
+        <div class="grid-3">
+          <div class="card"><h3>M = 1000</h3><p>generator 数足够大，减少单一 RNN 的 idiosyncratic bias。</p></div>
+          <div class="card"><h3>H = 64</h3><p>hidden size 处在可学习复杂度区间。太大时短 PPT 学不会。</p></div>
+          <div class="card"><h3>V = 50,304</h3><p>使用完整 tokenizer vocabulary，避免 narrow token subset 带来的偏置。</p></div>
+        </div>
+      </section>
+
+      <section id="noise">
+        <div class="section-head">
+          <div>
+            <h2>4. 噪声构造</h2>
+            <p class="lead">论文没有只在一种人工噪声上验证，而是覆盖 sample-level、token permutation、span corruption 和 FineWeb natural-noise split。</p>
+          </div>
+          <span class="section-no">04</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>噪声类型</th><th>怎么做</th><th>它模拟什么</th><th>边界</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Sample-level corruption</td><td>每条训练 sequence 以概率 p 被整段替换成 uniform random tokens。</td><td>极端低信息样本、随机污染。</td><td>很可控，但比真实网页噪声更人工。</td></tr>
+            <tr><td>Token permutation</td><td>把 2048 tokens 切成窗口，在选中窗口内打乱 token 顺序。</td><td>局部顺序破坏、格式扰动。</td><td>保留 token 集合，不等价于真实 spam。</td></tr>
+            <tr><td>Span corruption</td><td>随机选长度 5-20 的 span，用 uniform random tokens 替换。</td><td>局部乱码、局部污染。</td><td>仍是 synthetic corruption。</td></tr>
+            <tr><td>Naturally noisy FineWeb</td><td>用 OpenLLaMA-3B-v2 给 FineWeb 文档打 cross-entropy 分，取 bottom/top third。</td><td>真实网页中的 boilerplate、目录、广告、低信息片段。</td><td>perplexity split 是 proxy，不是人工质量标注。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="eval">
+        <div class="section-head">
+          <div>
+            <h2>5. 评估设置</h2>
+            <p class="lead">主评估不是聊天能力，而是带噪预训练后，模型对干净自然文本分布的语言建模能力是否更好。</p>
+          </div>
+          <span class="section-no">05</span>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Clean validation loss</h3>
+            <p>训练数据可能带噪，但评估在 clean held-out corpus 上做 next-token cross-entropy。loss 越低，说明模型越能学到可泛化自然语言结构，而不是被训练噪声拖偏。</p>
+          </div>
+          <div class="card">
+            <h3>PT-token savings</h3>
+            <p>如果 baseline 训练到最终 loss 需要 <code>S_base</code> PT steps，而 PPT 方法在 PPT 后只需要 <code>S_match</code> PT steps，则报告 <code>1 - S_match / S_base</code>。</p>
+          </div>
+        </div>
+        <div class="callout gold">
+          <p><strong>重要口径：</strong>49% 是 PT-token savings，不是严格 total-token savings。因为 PPT 成本较小，工程上仍然有意义；但汇报成本时应明确是否把 PPT tokens 算进总预算。</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>补充指标</th><th>含义</th><th>在本文中的角色</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>LAMBADA perplexity</td><td>根据长上下文预测 passage 最后一个词，perplexity 越低越好。</td><td>语言建模补充证据，和主 claim 较一致。</td></tr>
+            <tr><td>PIQA normalized accuracy</td><td>物理常识二选一，模型给两个候选 completion 打分。</td><td>弱下游证据，提升较小，不是主 claim 基础。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="results">
+        <div class="section-head">
+          <div>
+            <h2>6. 主实验结果</h2>
+            <p class="lead">结果主线很清楚：Random PPT 几乎不能解释收益，Dyck PPT 有小收益，RNN-PPT 在 C4、FineWeb、不同噪声类型和 1B scale-up 上最强。</p>
+          </div>
+          <span class="section-no">06</span>
+        </div>
+        <figure class="figure">
+          <img src="synthetic-ppt-noisy-pretraining-assets/results-main.png" alt="论文主实验结果截图">
+          <figcaption>论文 Figure 2/3 所在页截图：C4 controlled-noise 主结果和跨噪声类型泛化结果。</figcaption>
+        </figure>
+        <h3>C4 160M final validation loss</h3>
+        <table>
+          <thead>
+            <tr><th>方法</th><th>0%</th><th>10%</th><th>30%</th><th>50%</th><th>解释</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Baseline</td><td>3.627</td><td>3.659</td><td>3.719</td><td>3.818</td><td>从随机初始化直接 noisy PT。</td></tr>
+            <tr><td>Random PPT</td><td>3.621</td><td>3.654</td><td>3.710</td><td>3.792</td><td>有少量 warm-up，但缺少时序结构。</td></tr>
+            <tr><td>Dyck PPT</td><td>3.619</td><td>3.645</td><td>3.703</td><td>3.798</td><td>形式语言结构有效，但迁移较弱。</td></tr>
+            <tr><td>C4 PPT</td><td>3.613</td><td>3.635</td><td>3.703</td><td>3.786</td><td>先看干净自然语料也有收益，但不如 RNN。</td></tr>
+            <tr><td>RNN PPT</td><td class="best">3.603</td><td class="best">3.628</td><td class="best">3.681</td><td class="best">3.761</td><td>全噪声强度最优。</td></tr>
+          </tbody>
+        </table>
+        <h3>C4 160M token savings</h3>
+        <table>
+          <thead>
+            <tr><th>C4 noise</th><th>RNN-PPT final loss gap</th><th>PT-token savings</th><th>直觉解释</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0%</td><td>0.024</td><td>11%</td><td>即使 clean PT，结构预热也能改善早期优化。</td></tr>
+            <tr><td>10%</td><td>0.031</td><td>14%</td><td>噪声出现后，RNN-PPT 优势扩大。</td></tr>
+            <tr><td>30%</td><td>0.038</td><td>15%</td><td>更明显抗噪。</td></tr>
+            <tr><td>50%</td><td>0.057</td><td>20%</td><td>噪声越高，相对收益越大。</td></tr>
+          </tbody>
+        </table>
+        <h3>FineWeb controlled noise</h3>
+        <table>
+          <thead>
+            <tr><th>PT noise</th><th>Baseline</th><th>Dyck-PPT</th><th>RNN-PPT</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0%</td><td>3.706</td><td>3.696</td><td class="best">3.678</td></tr>
+            <tr><td>10%</td><td>3.733</td><td>3.718</td><td class="best">3.705</td></tr>
+            <tr><td>30%</td><td>3.789</td><td>3.779</td><td class="best">3.758</td></tr>
+            <tr><td>50%</td><td>3.874</td><td>3.871</td><td class="best">3.839</td></tr>
+          </tbody>
+        </table>
+        <h3>1B scale-up 和 LAMBADA</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h3>1B main result</h3>
+            <p>论文报告 RNN-PPT 在 0%、5%、10%、15% 噪声下都优于 baseline。final validation loss 降低约 0.10-0.15，并且最多达到 49% PT-token savings。</p>
+          </div>
+          <div class="card">
+            <h3>1B LAMBADA perplexity</h3>
+            <p>Baseline 在 0/5/10/15% 噪声下是 113.7 / 130.0 / 141.8 / 159.7；RNN-PPT 是 76.5 / 83.1 / 86.6 / 94.2。方向和主指标一致。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="ablation">
+        <div class="section-head">
+          <div>
+            <h2>7. 消融实验</h2>
+            <p class="lead">消融支持两个原则：synthetic source 要可学习，但不能太窄；要有结构，但不能只是低阶 token statistics。</p>
+          </div>
+          <span class="section-no">07</span>
+        </div>
+        <figure class="figure">
+          <img src="synthetic-ppt-noisy-pretraining-assets/ablations.png" alt="论文消融和1B实验截图">
+          <figcaption>论文 Figure 6/7/8/9 所在页截图：PPT budget、RNN 设计消融、1B scale-up、layer-mean noise self-modeling。</figcaption>
+        </figure>
+        <div class="grid-3">
+          <div class="card">
+            <h3>PPT budget</h3>
+            <p>收益在几百步后出现，500 steps 左右基本达到平台。太短学不到结构，太长收益不明显增加。</p>
+          </div>
+          <div class="card">
+            <h3>Hidden size</h3>
+            <p>H=16/32/64 这类中等复杂度最好。H=512/1024 太复杂，短 PPT 学不会，收益消失。</p>
+          </div>
+          <div class="card">
+            <h3>Generator count</h3>
+            <p>1 或 10 个 generator 收益弱，100 起明显变好，1000 左右很强。ensemble 降低单一生成器偏置。</p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Metamer source</th><th>0%</th><th>10%</th><th>30%</th><th>50%</th><th>含义</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Unigram metamer</td><td>0.006</td><td>0.006</td><td>0.008</td><td>0.014</td><td>只保留单 token 频率，收益很小。</td></tr>
+            <tr><td>Bigram metamer</td><td>-0.002</td><td>0.002</td><td>-0.011</td><td>-0.001</td><td>局部二元统计不足以解释收益。</td></tr>
+            <tr><td>Trigram metamer</td><td>0.002</td><td>0.003</td><td>0.004</td><td>0.005</td><td>三元统计也不够。</td></tr>
+            <tr><td>RNN subset</td><td class="best">0.026</td><td class="best">0.029</td><td class="best">0.036</td><td class="best">0.052</td><td>长程时序组织才是关键。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="mechanism">
+        <div class="section-head">
+          <div>
+            <h2>8. 机制分析</h2>
+            <p class="lead">论文最好的解释不是“模型直接学会忽略噪声”，而是“PPT 让模型在 noisy PT 中逐渐减少 noise-to-noise attention”。</p>
+          </div>
+          <span class="section-no">08</span>
+        </div>
+        <figure class="figure">
+          <img src="synthetic-ppt-noisy-pretraining-assets/mechanism.png" alt="论文机制分析截图">
+          <figcaption>论文 Figure 10 所在页截图：不同 PT noise level 下，每个 layer/head 的 noise self-modeling 差异。</figcaption>
+        </figure>
+        <h3>Noise self-modeling 指标</h3>
+        <p>对每个 noisy query token，统计它在 causal prefix 中分配给 noisy key tokens 的 attention mass，然后对所有 noisy query 平均。这个值越高，说明模型越倾向于用前面的噪声 token 来处理当前噪声 token。</p>
+        <pre>r_noise = average over noisy query positions q:
+              sum of attention weight from q to noisy key positions
+
+Δr_noise = r_noise(RNN-PPT) - r_noise(No-PPT)
+
+如果 Δr_noise < 0：
+  RNN-PPT 比 no-PPT 更少做 noise-to-noise attention。</pre>
+        <div class="callout blue">
+          <p><strong>关键观察：</strong>RNN-PPT 不是在 PT 开始前就天然 suppress noise。差异是在 noisy PT 的前几千步中发展出来的：no-PPT 模型越来越 attend noisy tokens，RNN-PPT 曲线则下降并保持更低。</p>
+        </div>
+        <div class="callout gold">
+          <p><strong>我的判断：</strong>attention probe 是有说服力的诊断，但还不是完整因果证明。更强的后续证据应该包括 head ablation、activation patching，或训练中直接干预 noisy-token attention。</p>
+        </div>
+      </section>
+
+      <section id="insight">
+        <div class="section-head">
+          <div>
+            <h2>9. 我的 insight</h2>
+            <p class="lead">这篇论文最有价值的地方，是把 synthetic data 从“内容补充”重新定位为“优化轨迹塑形工具”。</p>
+          </div>
+          <span class="section-no">09</span>
+        </div>
+        <div class="quote-box">
+          <span class="mini-label">The central idea</span>
+          <p>数据清洗解决“给模型看什么”；RNN-PPT 解决“模型以什么状态开始看”。这两个方向不是替代关系，而是互补关系。</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>为什么这个 idea 漂亮</h3>
+            <p>它没有依赖昂贵标注、没有引入复杂 loss、没有修改 PT pipeline。它只是用一个低成本 synthetic stage 改变模型的初始化和早期优化轨迹。如果这个现象 scale 到更大模型，工程价值会很直接。</p>
+          </div>
+          <div class="card">
+            <h3>为什么还不能过度外推</h3>
+            <p>1B 和 25k PT steps 仍然远小于真实 frontier pretraining。真实训练混合数据、去重、采样权重、domain balance 和 tokenizer 细节都可能改变效果。</p>
+          </div>
+        </div>
+        <h3>我会如何把它变成工程实验</h3>
+        <pre>最小验证实验：
+  1. 固定一个小模型和真实 noisy corpus。
+  2. 跑 no-PPT、Random-PPT、RNN-PPT、clean-data-PPT 四组。
+  3. 统一 PT recipe，只改 initialization。
+  4. 看 clean validation loss curve，不只看 final downstream。
+  5. 同时报告 PT-token savings 和 total-token savings。
+  6. 如果小规模稳定，再扩到更大模型和更真实的 data mixture。</pre>
+      </section>
+
+      <section id="limits">
+        <div class="section-head">
+          <div>
+            <h2>10. 局限和后续</h2>
+            <p class="lead">这是一篇 strong empirical signal paper，而不是最终 scaling law paper。它提出了值得认真试的训练前干预，但还需要更大规模、更真实 pipeline 和更强机制验证。</p>
+          </div>
+          <span class="section-no">10</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>局限</th><th>为什么重要</th><th>我希望看到的后续</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>scale 只有 1B</td><td>真实大模型训练中优化动态、数据混合和容量分配会变化。</td><td>3B/7B/13B 以上，甚至更长 token budget 的 scaling study。</td></tr>
+            <tr><td>真实噪声 proxy 有限</td><td>FineWeb perplexity split 不能覆盖所有网页噪声类型。</td><td>接入真实 curation pipeline 前后的多 domain mixture。</td></tr>
+            <tr><td>source selection 成本高</td><td>每种 synthetic source 都要完整跑 PPT-to-PT pipeline。</td><td>找可预测 source 有效性的统计：learnability、long-range mutual information、entropy profile。</td></tr>
+            <tr><td>机制还不是因果证明</td><td>attention pattern 与 loss 改善相关，但不是充分因果链。</td><td>head ablation、activation patching、attention intervention。</td></tr>
+            <tr><td>只测试 RNN family</td><td>不知道真正关键的是 recurrence、latent state、长程依赖还是 ensemble diversity。</td><td>比较 LSTM、GRU、SSM、HMM、PCFG、cellular automata 和 procedural data。</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <p><strong>最终判断：</strong>这篇论文的实践价值在于提供了一个低成本候选 curriculum/initialization trick。它不该被当成数据清洗替代品，但很适合作为正式大训练前的小规模预实验：如果 token-to-loss curve 稳定改善，再考虑放大。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="shell">
+      <p>本地 HTML 报告生成日期：2026-05-12。论文来源：arXiv:2605.10129v1。图片为论文 PDF 页渲染截图，解释和表格为阅读后整理。</p>
+      <p>文件位置：/Users/bytedance/Downloads/synthetic-ppt-noisy-pretraining-report.html</p>
+    </div>
+  </footer>
+</body>
+</html>

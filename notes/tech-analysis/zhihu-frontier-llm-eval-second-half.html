@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>大模型测试的下半场：Agent 时代评测该测什么</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      --bg: #f7f1e8;
+      --paper: #fffaf2;
+      --ink: #211914;
+      --muted: #6f6258;
+      --line: #dfd3c4;
+      --accent: #b85c38;
+      --accent-dark: #7e351f;
+      --soft: #f0e2d2;
+      --code-bg: #241c18;
+      --code-fg: #f7eadc;
+      --ok: #44624a;
+      --warn: #9a6027;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", "Noto Serif SC", "Songti SC", serif;
+      line-height: 1.72;
+    }
+    a { color: var(--accent-dark); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 241, 232, 0.94);
+      backdrop-filter: blur(10px);
+    }
+    nav .inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 10px 22px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+    header {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 54px 22px 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.75fr);
+      gap: 32px;
+      align-items: end;
+    }
+    .eyebrow {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      color: var(--accent-dark);
+      background: var(--paper);
+      font: 700 13px/1.3 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    h1 {
+      margin: 18px 0 16px;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+    .thesis {
+      max-width: 760px;
+      font-size: 22px;
+      line-height: 1.58;
+      color: #3b2d25;
+      margin: 0;
+    }
+    .meta-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 12px 34px rgba(73, 50, 32, 0.08);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+    .meta-card strong { display: block; margin-bottom: 8px; color: var(--accent-dark); }
+    .meta-card p { margin: 0 0 10px; color: var(--muted); }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 22px 70px;
+    }
+    section {
+      padding: 34px 0;
+      border-top: 1px solid var(--line);
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 30px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 26px 0 10px;
+      font-size: 20px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 14px; }
+    .lead { font-size: 18px; color: #352820; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent-dark);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .card p, .card li { color: #3e332d; }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 20px 0;
+    }
+    .quote {
+      font-size: 21px;
+      line-height: 1.58;
+      color: #2c211c;
+      border-left: 4px solid var(--accent-dark);
+      padding-left: 18px;
+      margin: 24px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 18px 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #eadbca; color: #35261e; }
+    tr:last-child td { border-bottom: 0; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #efe1cf;
+      color: #40281e;
+      padding: 0 4px;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+    pre {
+      margin: 18px 0;
+      padding: 16px;
+      overflow-x: auto;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 8px;
+      border: 1px solid #5b493f;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    figure {
+      margin: 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    figure img { width: 100%; display: block; }
+    figcaption {
+      padding: 8px 10px;
+      font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--muted);
+    }
+    .math {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+    .tag {
+      display: inline-block;
+      margin: 4px 6px 4px 0;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--muted);
+      font: 13px/1.35 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 20px;
+      align-items: start;
+    }
+    ul, ol { margin-top: 8px; padding-left: 22px; }
+    li { margin-bottom: 7px; }
+    .small { color: var(--muted); font-size: 14px; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    footer {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 22px 60px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font: 14px/1.6 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    @media (max-width: 860px) {
+      header, .split { grid-template-columns: 1fr; }
+      .grid, .grid.two, .figure-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 42px; }
+      .thesis { font-size: 19px; }
+      nav .inner { overflow-x: auto; flex-wrap: nowrap; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="inner">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#delegation">委派智能</a>
+      <a href="#metrics">指标</a>
+      <a href="#claw">Claw-Eval</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </div>
+  </nav>
+
+  <header>
+    <div>
+      <span class="eyebrow">X / Zhihu Reading Report · 2026-05-20</span>
+      <h1>大模型测试的下半场</h1>
+      <p class="thesis">这篇文章的核心不是说传统评测已经没用，而是说：当 Agent 成为 <code>Model + Harness</code> 的生产系统后，前沿模型评测的主战场必须从“模型脑内会不会”迁移到“模型知不知道该如何解决”。</p>
+    </div>
+    <aside class="meta-card">
+      <strong>材料身份</strong>
+      <p>X 原帖：ZhihuFrontier 对李磊NLP知乎文章《大模型测试的下半场》的英文摘要。</p>
+      <p>原文：知乎专栏，2026-05-18 13:57 更新。</p>
+      <p>主题：Agent 时代的 LLM eval、Delegation Intelligence、Claw-Eval、Pass-all-k、Token Efficiency、模型直觉和安全。</p>
+    </aside>
+  </header>
+
+  <main>
+    <section id="source">
+      <h2>1. 我读了什么，如何核验</h2>
+      <p class="lead">这条 X 帖不是完整论文式 thread，而是一条英文导读。它最关键的信息藏在短链里：短链解析到知乎文章《大模型测试的下半场》。因此解读重点应该放在“X 摘要 + 知乎原文 + Claw-Eval 指标背景”的三角关系上。</p>
+      <div class="grid">
+        <div class="card">
+          <strong>X 原帖</strong>
+          <p><a href="https://x.com/ZhihuFrontier/status/2056408194801635391">ZhihuFrontier/status/2056408194801635391</a></p>
+          <p>OpenCLI 抓到 1 条 root tweet，包含四张图卡和短链。原帖定位为 Part 1，Part 2 尚未包含在该状态中。</p>
+        </div>
+        <div class="card">
+          <strong>知乎原文</strong>
+          <p><a href="https://zhuanlan.zhihu.com/p/2039705880090911522">大模型测试的下半场</a></p>
+          <p>直接 HTTP 返回 403，但 OpenCLI browser-backed read 成功抽取正文。本文的主要论证来自这里。</p>
+        </div>
+        <div class="card">
+          <strong>外部核验</strong>
+          <p><a href="https://claw-eval.github.io/">Claw-Eval</a> 页面确认指标包括 <code>Pass^3</code>、<code>Pass@3</code>、Completion、Robustness、Safety、Avg Score。</p>
+          <p>Pass@k / Pass^k 解释参考 <a href="https://www.philschmid.de/agents-pass-at-k-pass-power-k">Phil Schmid</a> 与 <a href="https://hippocampus-garden.com/pass_k/">Hippocampus's Garden</a>。</p>
+        </div>
+      </div>
+      <div class="figure-grid">
+        <figure>
+          <img src="zhihu-frontier-llm-eval-second-half-assets/tweet-card-1.jpg" alt="X thread media card 1">
+          <figcaption>X 图卡 1：文章的评测范式迁移背景。</figcaption>
+        </figure>
+        <figure>
+          <img src="zhihu-frontier-llm-eval-second-half-assets/tweet-card-2.jpg" alt="X thread media card 2">
+          <figcaption>X 图卡 2：传统 benchmark 天花板。</figcaption>
+        </figure>
+        <figure>
+          <img src="zhihu-frontier-llm-eval-second-half-assets/tweet-card-3.jpg" alt="X thread media card 3">
+          <figcaption>X 图卡 3：Delegation Intelligence。</figcaption>
+        </figure>
+        <figure>
+          <img src="zhihu-frontier-llm-eval-second-half-assets/tweet-card-4.jpg" alt="X thread media card 4">
+          <figcaption>X 图卡 4：知识获取与工具委派示例。</figcaption>
+        </figure>
+      </div>
+      <div class="callout">
+        <strong>可靠性边界：</strong>Claw-Eval leaderboard 是动态页面，本报告只使用 2026-05-20 抽取到的指标结构作为上下文，不把其中模型名和分数当成长期固定事实。ProgramBench 在快速检索中没有得到干净权威来源，因此本文仅按原文举例处理，不展开额外 claim。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>2. 作者到底想解决什么问题</h2>
+      <p>作者的问题意识可以概括为一句话：<strong>我们正在用单轮问答时代的尺子，衡量一个由模型、工具、环境、执行器和验证器共同组成的新系统。</strong></p>
+      <p>传统 LLM eval 的隐含对象通常是“裸模型”：给一个 prompt，看它能否在内部知识和内部推理里生成答案。但 Agent 系统的对象变了：它不是只有模型权重，还有 system prompt、检索工具、代码执行器、浏览器、文件系统、shell、外部 API、测试环境、trajectory 记录和验证器。这就是原文说的 <code>Agent = Model + Harness</code>。</p>
+      <p>一旦对象变了，评测目标也会变。过去问“模型知道不知道 X 公司营收”，现在更应该问“模型能否意识到这是时效性问题，应该联网查，并且交叉验证来源”。过去问“模型能不能心算复杂概率”，现在更应该问“模型能否判断这个问题更适合写程序模拟或符号求解”。</p>
+
+      <div class="grid three">
+        <div class="card">
+          <strong>好的 eval 是能力地图</strong>
+          <p>它不只是输出排行榜，而是告诉我们模型在哪类环境、哪类路径、哪类工具选择上稳定，在哪些地方会失败。</p>
+        </div>
+        <div class="card">
+          <strong>好的 eval 推进方法论</strong>
+          <p>step-level scoring、trajectory analysis、LLM-as-a-judge、机器可验证状态等，都是比单点分数更长期的工程进展。</p>
+        </div>
+        <div class="card">
+          <strong>好的 eval 打开想象力</strong>
+          <p>OSWorld 和 SWE-Bench 的价值不只是难题，而是告诉社区“模型可以被放进真实操作环境和代码仓库里做事”。</p>
+        </div>
+      </div>
+
+      <p class="quote">我的理解：这篇文章真正强调的是“评测的对象迁移”。当对象从裸模型变成 Agent 系统时，继续只测静态知识、纯脑内推理和最终答案，就会漏掉生产系统里最关键的决策质量。</p>
+    </section>
+
+    <section>
+      <h2>3. 为什么传统 benchmark 在前沿 Agent 场景里开始失真</h2>
+      <p>作者没有简单否定传统 benchmark，而是在限定边界：当基础能力还没补齐时，传统 eval 仍然很重要；但对前沿模型和 Agent 系统来说，部分传统任务的边际价值下降了。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>传统评测类型</th>
+            <th>原本测什么</th>
+            <th>Agent 时代的失真点</th>
+            <th>更应该测什么</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>知识 QA</td>
+            <td>模型参数中是否存有事实知识。</td>
+            <td>web search 成为默认能力后，死记硬背静态知识的意义下降，尤其是时效信息。</td>
+            <td>是否知道该查、查哪里、如何交叉验证、如何标注时间与来源。</td>
+          </tr>
+          <tr>
+            <td>长链推理题</td>
+            <td>模型能否在自然语言链条中完成多步推导。</td>
+            <td>概率、组合、状态模拟等问题常常用代码更稳定；高分可能来自工具路径，而非脑内推理。</td>
+            <td>是否能选择直接推理、代码执行、检索、符号工具或验证流程。</td>
+          </tr>
+          <tr>
+            <td>函数级 coding</td>
+            <td>补全函数、修局部 bug。</td>
+            <td>真实 coding agent 要读仓库、改多文件、跑测试、理解历史和依赖。</td>
+            <td>repo-level 修改、环境构建、测试反馈、跨文件一致性和长期任务恢复。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>关键边界：</strong>“传统 benchmark 失去意义”不是绝对命题。对小模型、垂直领域、基础能力查漏补缺，传统评测仍是低成本诊断工具。作者真正反对的是：对前沿 Agent 继续把大量资源押在静态知识和纯脑内题上，却忽略工具委派、路径稳定性和安全。
+      </div>
+    </section>
+
+    <section id="delegation">
+      <h2>4. Delegation Intelligence：不是“会用工具”，而是“知道该怎么解决”</h2>
+      <p>Delegation Intelligence 可以翻译为“委派智能”。它不是鼓励模型盲目多调用工具，也不是把所有能力外包给工具，而是评估模型是否能把任务拆给合适的外部机制，并回收、验证、整合结果。</p>
+      <p>一个强工程师不会心算 <code>2^37 * 1.0732</code>，会用计算器；不会凭记忆回答 2026 年财报，会查公告；不会读到一半就相信个人博客，会看研究设计、样本和日期。作者说的智能，更多是这种<strong>路径选择能力</strong>。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>具体在测什么</th>
+            <th>好表现</th>
+            <th>坏表现</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tool-use judgment</td>
+            <td>什么时候调工具、调哪个工具、参数怎么设、是否需要工具。</td>
+            <td>时效问题联网；数值问题用代码；文件任务用 shell 和测试。</td>
+            <td>需要当前信息却凭训练记忆答；能直接回答却乱搜；工具参数乱猜。</td>
+          </tr>
+          <tr>
+            <td>Information synthesis & verification</td>
+            <td>多源信息是否加权，而不是平均。</td>
+            <td>优先采信官方公告、论文、RCT、代码和可复现实验；标注旧来源和弱来源。</td>
+            <td>把 Nature RCT、个人博客和过时综述等权平均。</td>
+          </tr>
+          <tr>
+            <td>Path selection</td>
+            <td>在直接推理、代码、检索、阅读、验证、人审之间选路。</td>
+            <td>能先判断任务形状，再选择低风险、可验证、成本合适的路径。</td>
+            <td>一条路走到黑；不知道何时停止；没有验证步骤。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>这比“工具调用成功率”更严格。一个模型可以会调用浏览器，但如果它不知道什么时候应该联网，或者不知道搜索结果要按可靠性加权，它仍然缺乏委派智能。</p>
+    </section>
+
+    <section id="metrics">
+      <h2>5. Pass@k、Pass-all-k / Pass^k 和 Stability Gap</h2>
+      <p>原文最有操作价值的一点，是把 Agent 可靠性从“偶尔成功”推进到“连续稳定成功”。这就是 Pass@k 与 Pass-all-k / Pass^k 的区别。</p>
+      <div class="split">
+        <div class="card">
+          <strong>Pass@k：至少一次成功</strong>
+          <p>如果一个任务运行多次，只要 k 次里有一次成功，就算覆盖到了成功路径。它适合“可以筛选答案”的场景，比如代码生成里有单元测试，生成多个候选后挑一个通过的。</p>
+          <div class="math">\[
+            \mathrm{Pass@}k = 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}
+          \]</div>
+        </div>
+        <div class="card">
+          <strong>Pass^k / Pass-all-k：每次都成功</strong>
+          <p>它关心连续 k 次独立运行是否都成功。对真实 Agent 产品更苛刻，因为用户通常不能接受“多试几次总有一次对”。</p>
+          <div class="math">\[
+            \mathrm{Pass}^{k} \approx \left(\frac{c}{n}\right)^k
+          \]</div>
+        </div>
+      </div>
+      <p>举一个直观例子：某客服 Agent 单次成功率 70%。如果给 3 次机会，Pass@3 可能看起来接近 97%，因为至少有一次成功很容易；但连续 3 次都成功的 Pass^3 只有 34.3%。这正是生产可靠性和 benchmark 乐观分数之间的落差。</p>
+      <div class="math">\[
+        \mathrm{Stability\ Gap} = \mathrm{Pass@}k - \mathrm{Pass\text{-}all\text{-}}k
+      \]</div>
+      <p>这个 gap 的解释非常直接：gap 大，说明模型有时能做对，但路径不稳定，可能靠随机采样或偶然工具路径；gap 小，说明它的决策路径比较稳定。对 Agent 来说，稳定性本身就是能力，因为真实用户购买的是连续服务质量，而不是排行榜上“至少一次成功”的希望。</p>
+      <div class="callout">
+        <strong>指标 insight：</strong>Pass@k 更像“探索覆盖率”，Pass^k 更像“生产可靠性”。前者鼓励多试，后者惩罚波动。Agent eval 同时报告二者，比只报告平均成功率更能暴露模型是否真的知道该怎么做。
+      </div>
+    </section>
+
+    <section id="claw">
+      <h2>6. Claw-Eval 实践：结果 + 路径 + 成本 + 安全</h2>
+      <p>原文用 Claw-Eval 作为实践例子。外部核验显示，Claw-Eval 官方页公开展示 <code>Pass^3</code>、<code>Pass@3</code>、Completion、Robustness、Safety、Avg Score，并给出 Pass^3 与 Token Efficiency 的散点视图。这和文章主张一致：Agent 评测不能只看最终完成，还要看稳定性、鲁棒性、安全和成本。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>评测层</th>
+            <th>文章中的主张</th>
+            <th>为什么重要</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>结果正确性</td>
+            <td>优先使用可验证任务：单元测试、数值答案、文件 diff、API 状态。</td>
+            <td>减少 LLM judge 和人工主观性，让结果可复现。</td>
+          </tr>
+          <tr>
+            <td>路径合理性</td>
+            <td>记录工具调用 trajectory，并承认一题多解。</td>
+            <td>同样正确的答案，可能来自更安全、更低成本或更鲁棒的路径。</td>
+          </tr>
+          <tr>
+            <td>Token Efficiency</td>
+            <td>做对还不够，要看消耗了多少 token、工具调用和轨迹长度。</td>
+            <td>生产系统中成本和延迟是能力的一部分；50k token 做对和 5k token 做对不应等价。</td>
+          </tr>
+          <tr>
+            <td>Model Instinct</td>
+            <td>有些模型无需完整读完材料就能指出关键段落；有些必须全量搜索后才收敛。</td>
+            <td>这可能解释为什么两个 accuracy 相同的模型，在真实工作流中的效率和可用性差很多。</td>
+          </tr>
+          <tr>
+            <td>Safety</td>
+            <td>Agent 会操作文件、网络和外部系统，因此安全应是一票否决维度。</td>
+            <td>能完成任务但会删错文件、泄露信息或调用禁用工具的 Agent，不能算强。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>这里最值得注意的是“路径合理性”。如果评测强行规定一条黄金路径，就会把真正的智能压扁成流程复刻；但如果完全不看路径，只看最终答案，又无法区分模型是否靠偶然、过度搜索、错误工具、泄漏答案或高成本暴力试出来。好的 Agent eval 必须在这两端之间找到平衡：允许多路径，但要求路径可审计。</p>
+    </section>
+
+    <section>
+      <h2>7. “模型直觉”为什么很重要，也为什么很难测</h2>
+      <p>文章里最有前瞻性的概念是 Model Instinct。作者观察到，不同模型在 trajectory 里的“第一判断”差异很大：有的模型看论文目录就知道 method section 关键段落在哪，有的模型看代码目录就能猜到核心文件，有的模型在信息不足时的初始判断已经接近最终答案。</p>
+      <p>这不是普通 accuracy。两个模型最终都做对，一个可能是读遍所有来源才做对，另一个可能是一开始就走对路径。Token efficiency 可以部分反映这种差异，但不够精确，因为低 token 可能来自粗糙跳步，高 token 也可能来自必要验证。</p>
+      <div class="grid two">
+        <div class="card">
+          <strong>可能的测量方式</strong>
+          <ul>
+            <li>记录第一轮计划是否命中最终有效路径。</li>
+            <li>统计无效工具调用比例。</li>
+            <li>比较早停版本与完整运行版本的答案质量差距。</li>
+            <li>看模型是否能在证据不足时表达正确不确定性，而不是过早自信。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>主要风险</strong>
+          <ul>
+            <li>“直觉”可能是训练集泄漏或 benchmark 熟悉度。</li>
+            <li>工具和检索索引质量会干扰模型自身判断。</li>
+            <li>过度奖励快速路径可能惩罚必要的安全验证。</li>
+            <li>不同 harness 的 prompt 和工具描述会显著改变第一判断。</li>
+          </ul>
+        </div>
+      </div>
+      <p>我的判断是：Model Instinct 值得测，但不应该被神秘化。它可以被拆成可操作变量：第一计划命中率、无效探索成本、早期证据定位能力、错误自信率、路径修正速度。真正有用的不是给“直觉”起一个漂亮名字，而是把它还原成 trajectory 里的可统计行为。</p>
+    </section>
+
+    <section id="limits">
+      <h2>8. 这篇文章的局限与容易误读的地方</h2>
+      <div class="grid two">
+        <div class="card">
+          <strong>误读 1：传统能力不重要了</strong>
+          <p>不对。作者明确保留边界：小模型、垂直模型、基础能力查漏补缺仍需要传统 eval。问题只是前沿 Agent 的主战场不应停留在旧题型。</p>
+        </div>
+        <div class="card">
+          <strong>误读 2：工具越多越强</strong>
+          <p>也不对。Delegation Intelligence 不是工具数量，而是选择策略。乱搜、乱跑代码、乱调 API 只会提高成本和风险。</p>
+        </div>
+        <div class="card">
+          <strong>误读 3：Pass^k 越高就一切解决</strong>
+          <p>Pass^k 衡量连续成功，但仍需要看任务分布、环境稳定性、安全 veto 和成本。单一指标不能代表完整能力。</p>
+        </div>
+        <div class="card">
+          <strong>误读 4：模型能力可以和 harness 完全分开</strong>
+          <p>文章反而提醒我们，harness mismatch 会严重影响横向比较。同一个模型换工具集、prompt 或执行环境后，表现可能大幅变化。</p>
+        </div>
+      </div>
+      <p>还有一个更深的限制：Agent eval 的复现性很难。web search 结果会漂移，模型 endpoint 会限流，browser 自动化会卡住，容器资源会变化。此时评测样本不是“题目 + 答案”，而是“题目 + 环境快照 + harness + 工具状态 + trajectory + 最终状态”。缺任何一项，分数都可能难解释。</p>
+    </section>
+
+    <section id="insight">
+      <h2>9. 我的核心 insight</h2>
+      <p class="quote">这篇文章真正有价值的地方，是把“智能”从静态能力重新定义为动态资源调度：知道什么时候依赖参数，什么时候依赖工具，什么时候依赖证据，什么时候依赖验证。</p>
+      <p>在单轮问答时代，我们习惯把模型看成一个“答案生成器”。因此 eval 的自然形态是：题目、标准答案、正确率。Agent 时代更像把模型放进一个工作系统里，模型要决定：要不要查？查什么？信谁？要不要写代码？代码结果怎么验证？工具失败怎么办？成本是否过高？是否触碰安全边界？</p>
+      <p>所以，评测也要从“答案评测”升级到“决策过程评测”。这不意味着最终答案不重要，而是最终答案必须和路径、稳定性、成本、安全一起看。否则我们会奖励两类错误能力：一类是偶然成功，一类是高成本暴力成功。</p>
+      <p>如果要把这篇文章变成实际评测设计，我会落到五个字段：<span class="tag">final correctness</span><span class="tag">path auditability</span><span class="tag">repeated reliability</span><span class="tag">cost efficiency</span><span class="tag">safety veto</span>。这五个字段加起来，才更接近 Agent 在生产里真正要交付的能力。</p>
+    </section>
+
+    <section>
+      <h2>10. 本次可复现命令</h2>
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com"
+opencli twitter --help
+opencli twitter thread --help
+opencli web read --help
+opencli twitter thread "https://x.com/ZhihuFrontier/status/2056408194801635391" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/q9722vRvuG"
+opencli web read --url "https://zhuanlan.zhihu.com/p/2039705880090911522" --stdout true --download-images false --wait 5 -f json --trace retain-on-failure</code></pre>
+      <p class="small">本地材料见 <code>results/zhihu-frontier-x-2056408194801635391/</code>；最终报告和图像资源位于 Downloads。</p>
+    </section>
+  </main>
+
+  <footer>
+    Generated locally on 2026-05-20. This report summarizes and interprets the X post, its linked Zhihu article, and narrow external metric references. It is not an official Claw-Eval or Zhihu document.
+  </footer>
+</body>
+</html>

@@ -1,0 +1,1560 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展 - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 40</div>
+        <div class="brand-title">模块三：预训练、数据工程、Scaling Law 与模型结构扩展</div>
+        <div class="brand-meta">2. 核心题完整答案 · 第 3 步 · 核心模块</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0557">25. Causal Language Modeling 和 Masked Language Modeling 的区别是什么？</a>
+<a class="toc-link" href="#h-0558" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0559" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0560">26. 什么是 Scaling Law？</a>
+<a class="toc-link" href="#h-0561" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0562" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0563">27. 为什么大模型预训练需要数据去重和数据清洗？</a>
+<a class="toc-link" href="#h-0564" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0565" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0566">28. Continue Pretraining 和 SFT 的目标有何不同？</a>
+<a class="toc-link" href="#h-0567" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0568" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0569">29. 什么是 MoE？</a>
+<a class="toc-link" href="#h-0570" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0571" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0572">30. MoE 的优势和代价分别是什么？</a>
+<a class="toc-link" href="#h-0573" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0574" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0575">31. 如果要做一个法律/医疗/金融领域模型，你会选继续预训练还是直接 SFT？为什么？</a>
+<a class="toc-link" href="#h-0576" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0577" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0578">32. 预训练数据配比为什么重要？高质量小数据和低质量大数据怎么权衡？</a>
+<a class="toc-link" href="#h-0579" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0580" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0581">33. Scaling Law 在实际项目里怎么指导模型选型和算力预算？</a>
+<a class="toc-link" href="#h-0582" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0583" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0584">34. MoE 为什么能在“参数量变大”的同时把推理 FLOPs 控住？它的路由又会引入什么问题？</a>
+<a class="toc-link" href="#h-0585" style="padding-left:18px">标准答案</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link current" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="039.html">← 39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a><a href="041.html">41. 模块四：SFT、PEFT 与对齐训练 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0556" data-category="core" data-title="模块三：预训练、数据工程、Scaling Law 与模型结构扩展">
+<h2 id="h-0556"><a class="anchor-link" href="#h-0556" aria-label="跳转到本节">#</a>模块三：预训练、数据工程、Scaling Law 与模型结构扩展</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>本章是核心题完整答案层，承接 <a href="007.html">第 07 章</a> 的模块地图。建议按问题顺序精读；读完后用 <a href="051.html">第 51 章</a> 做知识点查漏。</p></aside>
+<h3 id="h-0557"><a class="anchor-link" href="#h-0557" aria-label="跳转到本节">#</a>25. Causal Language Modeling 和 Masked Language Modeling 的区别是什么？</h3>
+<h4 id="h-0558"><a class="anchor-link" href="#h-0558" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>CLM</code>（Causal Language Modeling）是标准的自回归目标：只看前文，预测下一个 token，所以它天然适合文本生成、对话、代码续写这类任务。<code>MLM</code>（Masked Language Modeling）则是把一部分 token 遮住，让模型根据左右文把它补回来，因此更适合理解型表示学习。</p>
+<p>两者最大的区别，不只是”一个单向一个双向”，而是训练目标决定了后续能力形态。<code>CLM</code> 更容易直接迁移到生成式 LLM；<code>MLM</code> 更适合做编码器和语义表示。所以今天的通用大模型主流更偏 <code>CLM</code>，不是因为 <code>MLM</code> 无用，而是因为目标函数和产品形态更匹配。</p>
+<hr>
+<h4 id="h-0559"><a class="anchor-link" href="#h-0559" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. CLM 和 MLM 的数学形式对比</strong></p>
+<p><strong>CLM (Causal Language Modeling)</strong>：</p>
+<pre><code class="language-text">L_CLM = -Σ log P(x_t | x_{&lt;t}; θ)</code></pre>
+<ul>
+<li>每个位置 t 只能看到前面的 token <code>x_1, ..., x_{t-1}</code>
+</li>
+<li>预测下一个 token <code>x_t</code>
+</li>
+<li>天然适合自回归生成
+</li>
+</ul>
+<p><strong>MLM (Masked Language Modeling)</strong>：</p>
+<pre><code class="language-text">L_MLM = -Σ_{t∈M} log P(x_t | x_{\M}; θ)</code></pre>
+<ul>
+<li>随机 mask 一部分位置集合 M
+</li>
+<li>用<strong>双向上下文</strong>预测被 mask 的 token
+</li>
+<li>适合学习上下文表示
+</li>
+</ul>
+<p><strong>2. 为什么 CLM 更适合生成，MLM 更适合理解？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>CLM</th>
+<th>MLM</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>上下文方向</strong></td>
+<td>单向（只能看左边）</td>
+<td>双向（看左右两边）</td>
+</tr>
+<tr>
+<td><strong>训练-推理一致性</strong></td>
+<td>完美一致（都是自回归）</td>
+<td>不一致（训练时 mask，推理时没有 mask）</td>
+</tr>
+<tr>
+<td><strong>表示能力</strong></td>
+<td>弱于 MLM（只能单向编码）</td>
+<td>强于 MLM（双向编码更充分）</td>
+</tr>
+<tr>
+<td><strong>生成能力</strong></td>
+<td>天然强（训练目标=生成目标）</td>
+<td>需要额外适配（如 BERT 做生成需改造）</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 从预训练到下游任务的迁移路径</strong></p>
+<pre><code class="language-text">CLM 预训练 (GPT) → 直接做生成任务（对话、续写、代码）
+                    → 也可以做理解（通过 prompt 设计）
+
+MLM 预训练 (BERT) → 直接做理解任务（分类、NER、匹配）
+                    → 做生成困难（没有自回归训练）</code></pre>
+<p><strong>4. Span Corruption：T5 的统一尝试</strong></p>
+<p>T5 提出 Span Corruption：把输入中连续的 token 片段替换为 sentinel，让模型生成被替换的内容。</p>
+<pre><code class="language-text">输入: “Thank you &lt;X&gt; me to your party &lt;Y&gt; week”
+目标: “&lt;X&gt; for inviting &lt;Y&gt; last”</code></pre>
+<p>这是 CLM 和 MLM 的折中：</p>
+<ul>
+<li>像 MLM：能看到双向上下文（输入中的 sentinel 两边）
+</li>
+<li>像 CLM：输出是自回归生成的
+</li>
+<li>但工程上比纯 Decoder-only 更复杂
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”为什么 GPT 用 CLM 而不是 MLM？如果反过来会怎样？”</strong>
+<ul>
+<li>答：GPT 的目标是生成，CLM 的训练目标和生成目标完全一致。如果用 MLM 训练 GPT，推理时模型没有 mask，会遇到 exposure bias——训练时看到完整上下文（mask 位置两边），推理时只能看到左边。BERT 做生成需要额外加 decoder 层或改造输出方式。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”MLM 的 mask 比例 15% 是怎么定的？能改吗？”</strong>
+<ul>
+<li>答：15% 是 BERT 论文中的经验值。mask 太少 → 训练信号不足；mask 太多 → 上下文信息太少，模型难以推断。实践中可以调，但通常在 10%-20% 之间。RoBERTa 发现 15% 已经很优，加大到 20% 提升不明显。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”CLM 和 MLM 的样本效率哪个更高？”</strong>
+<ul>
+<li>答：MLM 更高。MLM 每个样本能同时预测多个 mask 位置（如 15% 的 token），训练信号密度高。CLM 每个位置只预测下一个 token，信号密度低。但 CLM 的优势是训练-推理一致，且可以通过海量数据（万亿 token）弥补样本效率差距。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0560"><a class="anchor-link" href="#h-0560" aria-label="跳转到本节">#</a>26. 什么是 Scaling Law？</h3>
+<h4 id="h-0561"><a class="anchor-link" href="#h-0561" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>Scaling Law 说的是：当模型参数、训练 token、算力预算持续增大时，模型性能通常会呈现出某种相对平滑、可预测的变化规律。它不是一句“模型越大越强”的口号，而是告诉你提升性能时，数据、参数和算力之间存在耦合关系。</p>
+<p>它在工程上的价值，不是拿来神奇预测最终分数，而是帮助团队做资源决策：预算固定时，是继续堆模型、继续加数据，还是先提升数据质量更划算。如果你能把 Scaling Law 讲成”资源配置规律”，而不是”一个数学公式”，回答会成熟很多。</p>
+<hr>
+<h4 id="h-0562"><a class="anchor-link" href="#h-0562" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. Scaling Law 的核心公式</strong></p>
+<p>Hoffmann 等人（2022，DeepMind，Chinchilla 论文）提出的标准形式：</p>
+<pre><code class="language-text">L(N, D) = E + A/N^α + B/D^β</code></pre>
+<p>其中：</p>
+<ul>
+<li><code>L</code>：损失（loss）
+</li>
+<li><code>N</code>：模型参数量
+</li>
+<li><code>D</code>：训练 token 数
+</li>
+<li><code>E</code>：不可约损失（数据本身的熵）
+</li>
+<li><code>A, B, α, β</code>：拟合常数，通常 <code>α ≈ 0.34</code>, <code>β ≈ 0.28</code>
+</li>
+</ul>
+<p>这个公式的核心含义：损失由三部分组成——数据本身的难度（E）、模型太小带来的欠拟合（A/N^α）、数据太少带来的欠训练（B/D^β）。</p>
+<p><strong>2. Chinchilla Optimal：模型和数据的配比</strong></p>
+<p>Chinchilla 论文的发现：过去很多模型（如 GPT-3、Gopher）在固定算力下，模型参数量太大、训练数据太少，处于”欠训练”状态。</p>
+<p>最优配比（算力固定为 C ≈ 6ND FLOPs）：</p>
+<ul>
+<li><code>N_opt ∝ C^0.5</code>
+</li>
+<li><code>D_opt ∝ C^0.5</code>
+</li>
+</ul>
+<p>也就是说：<strong>模型大小和数据量应该等比例增长</strong>。如果算力增加 4 倍，模型和数据都应该增加约 2 倍。</p>
+<p>具体数字：在 1e21 FLOPs 预算下，Chinchilla 最优约是 10B 参数 + 200B token；而 Gopher 用了 280B 参数 + 300B token，模型过大、数据不足。</p>
+<p><strong>3. 为什么 Scaling Law 不是”越大越好”？</strong></p>
+<p>因为公式中有”不可约损失”E。当 N 和 D 足够大后，<code>A/N^α</code> 和 <code>B/D^β</code> 都变得很小，损失趋近于 E。此时继续堆资源，收益急剧递减。</p>
+<p>另外，Scaling Law 只在”充分训练”的假设下成立。如果数据质量差、重复多、分布偏移，实际损失会偏离 Scaling Law 的预测。</p>
+<p><strong>4. 工程中的实际用法</strong></p>
+<p>Scaling Law 最常见的工程用途：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>用法</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>算力预算固定</td>
+<td>按 Chinchilla optimal 选 N 和 D，避免模型过大或数据过少</td>
+</tr>
+<tr>
+<td>已有模型，想继续训</td>
+<td>判断当前是模型瓶颈还是数据瓶颈：如果 loss 曲线还很陡，说明数据不够；如果已经很平，说明模型容量到头了</td>
+</tr>
+<tr>
+<td>小模型能否通过多数据追上大模型</td>
+<td>可以，但有天花板。小模型+超量数据的 loss 会逼近 E + A/N^α，大模型+适量数据的 loss 是 E + A/N'^α。如果 N' &gt;&gt; N，小模型无论如何也追不上</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果算力增加 10 倍，按 Scaling Law 模型应该增大多少倍？”</strong>
+<ul>
+<li>答：按 Chinchilla optimal，<code>N_opt ∝ C^0.5</code>，所以算力增加 10 倍，模型和数据都应增加约 <code>sqrt(10) ≈ 3.16</code> 倍。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”Scaling Law 在小模型上成立吗？为什么有些 1B 模型效果比 7B 还好？”</strong>
+<ul>
+<li>答：Scaling Law 描述的是”充分训练”后的趋势，不是绝对排名。小模型如果在高质量数据上充分训练，可能超过大模型在差数据上的效果。而且 Scaling Law 的幂律拟合在大模型区域更准，小模型区域可能因为初始化、优化器等非线性因素偏离。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”为什么 Scaling Law 用 loss 而不是下游任务指标？”</strong>
+<ul>
+<li>答：Loss 是连续值、可微分、对训练过程敏感，适合拟合平滑曲线。下游任务指标（如 accuracy）通常是离散的、饱和的（接近 100% 后很难提升），而且受任务难度影响大，不适合做跨模型/跨任务的统一拟合。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0563"><a class="anchor-link" href="#h-0563" aria-label="跳转到本节">#</a>27. 为什么大模型预训练需要数据去重和数据清洗？</h3>
+<h4 id="h-0564"><a class="anchor-link" href="#h-0564" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>大模型预训练要做数据去重和清洗，核心原因是训练预算非常贵，不能把大量 step 浪费在重复、脏乱或低价值样本上。重复数据会让模型过度记忆少数模式，低质数据会把噪声、错误语法、错误事实甚至爬虫垃圾一起灌进去，最后既影响泛化，也污染评测判断。</p>
+<p>更严重的是，如果训练集和测试集存在近重复或泄漏，模型会显得”离线成绩很好”，但其实只是提前见过答案。所以很多团队后来发现，盲目扩数据不一定比认真做去重、清洗、质量分层更有效。</p>
+<hr>
+<h4 id="h-0565"><a class="anchor-link" href="#h-0565" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 数据去重的技术原理：MinHash + LSH</strong></p>
+<p>大规模去重不能用暴力两两比较（O(N²) 不可行），工业界主流用 <strong>MinHash + 局部敏感哈希（LSH）</strong>：</p>
+<ul>
+<li><strong>MinHash</strong>：把文档转成一组 k-gram（如 5-gram），用多个哈希函数分别取最小值，构成签名。两个文档的 Jaccard 相似度 ≈ 签名相同的比例。
+</li>
+<li><strong>LSH</strong>：把签名分桶，相似文档大概率落在同一个桶里，只需比较同桶内的文档对。
+</li>
+</ul>
+<p>这样可以在 O(N) 时间内找出近似重复，适用于百亿级文档。</p>
+<p><strong>2. 数据清洗的分层策略</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>层级</th>
+<th>清洗目标</th>
+<th>典型手段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>格式层</strong></td>
+<td>去除 HTML 标签、乱码、不可见字符</td>
+<td>正则过滤、编码检测</td>
+</tr>
+<tr>
+<td><strong>语言层</strong></td>
+<td>保证目标语言纯度、去除混杂语</td>
+<td>语言检测模型（如 fastText）</td>
+</tr>
+<tr>
+<td><strong>质量层</strong></td>
+<td>过滤低质量、机器生成、spam</td>
+<td>perplexity 阈值、规则过滤、分类器</td>
+</tr>
+<tr>
+<td><strong>语义层</strong></td>
+<td>去重、去除敏感/有害内容</td>
+<td>MinHash/LSH、关键词+分类器</td>
+</tr>
+<tr>
+<td><strong>评测层</strong></td>
+<td>防止测试集泄漏到训练集</td>
+<td>n-gram 重叠检测、字符串匹配</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 评测污染（Contamination）的定量感受</strong></p>
+<p>假设训练集中混入了 1% 的测试集近似重复样本：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>污染比例</th>
+<th>对评测指标的影响</th>
+<th>后果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>0.1%</td>
+<td>轻微提升（+1-2%）</td>
+<td>可能察觉不到</td>
+</tr>
+<tr>
+<td>1%</td>
+<td>明显提升（+5-10%）</td>
+<td>误导模型选型</td>
+</tr>
+<tr>
+<td>10%</td>
+<td>大幅虚高（+20-50%）</td>
+<td>完全失去评测意义</td>
+</tr>
+</tbody></table></div>
+<p>GPT-3 论文中就明确报告了评测污染检测流程，很多后来的模型也效仿这种做法。</p>
+<p><strong>4. 为什么”高质量小数据 &gt; 低质量大数据”？</strong></p>
+<p>信息论角度：模型每一步梯度更新都在学习数据分布。低质量数据中噪声比例高，模型会把 step 浪费在拟合噪声上。</p>
+<p>实验证据：Chinchilla 论文发现，在相同计算预算下，高质量数据（如过滤后的书籍、维基）的”每 token 信息量”显著高于普通网页爬取数据。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”MinHash 去重时，k-gram 选多大合适？太大或太小有什么问题？”</strong>
+<ul>
+<li>答：k 太小（如 2-gram）：”的”、”是”等高频组合导致大量误报；k 太大（如 20-gram）：近似重复（只改了几个词）检测不到。通常选 5-13 gram，平衡覆盖与特异性。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”数据去重会把'有用的重复'也去掉吗？比如 FAQ 中正确答案重复出现？”</strong>
+<ul>
+<li>答：预训练的去重通常针对整个文档级别（doc-level dedup），不是句子级别。FAQ 的重复句子不会被误删。但如果整篇文档完全复制粘贴（如镜像网站），则会去重。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果发现模型在评测集上异常高，怎么验证是不是污染？”</strong>
+<ul>
+<li>答：三板斧：1）把测试集和训练集做 n-gram 重叠分析；2）检查测试样本在训练 loss 上是否异常低（提前见过则 loss 低）；3）构造一个”等难度但全新”的测试集，看分数是否大幅下降。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0566"><a class="anchor-link" href="#h-0566" aria-label="跳转到本节">#</a>28. Continue Pretraining 和 SFT 的目标有何不同？</h3>
+<h4 id="h-0567"><a class="anchor-link" href="#h-0567" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>continue pretraining 和 SFT 最大的区别，在于它们解决的问题层级不同。continue pretraining 主要是在原有底座上继续喂某个领域的数据，让模型更熟悉这个领域的术语、语气、知识结构和文本分布，所以它更像“补知识、补语料分布”；SFT 则是通过高质量输入输出对，让模型学会特定任务格式、回答风格和行为约束，更像“补行为”。</p>
+<p>一句更好记的话是：continue pretraining 让模型”更懂这个领域”，SFT 让模型”更会按你的要求工作”。如果面试题落在法律、医疗、金融等行业，通常也要按这个思路分析先做哪一步。</p>
+<hr>
+<h4 id="h-0568"><a class="anchor-link" href="#h-0568" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 两个阶段的本质差异</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>Continue Pretraining</th>
+<th>SFT</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>优化目标</strong></td>
+<td>降低领域语料的 perplexity</td>
+<td>最大化高质量 (prompt, response) 对的似然</td>
+</tr>
+<tr>
+<td><strong>数据形式</strong></td>
+<td>无标签纯文本</td>
+<td>成对的 (input, output)</td>
+</tr>
+<tr>
+<td><strong>数据量</strong></td>
+<td>大（TB 级领域语料）</td>
+<td>小（10K-1M 条高质量对话）</td>
+</tr>
+<tr>
+<td><strong>学习时长</strong></td>
+<td>长（数天到数周）</td>
+<td>短（几小时到几天）</td>
+</tr>
+<tr>
+<td><strong>改变什么</strong></td>
+<td>知识分布、术语理解</td>
+<td>行为模式、输出格式、安全边界</td>
+</tr>
+<tr>
+<td><strong>风险</strong></td>
+<td>灾难性遗忘（忘记通用能力）</td>
+<td>过拟合（只学会训练集中的模式）</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 为什么通常是”先 continue pretraining，后 SFT”？</strong></p>
+<p>如果模型完全不懂法律术语：</p>
+<pre><code class="language-text">问题：”请解释《合同法》第52条”
+只 SFT → 模型知道”要回答法律问题”，但可能胡编条文
+先 Continue Pretraining → 模型见过大量法律文本，知道”第52条”是什么
+再 SFT → 模型学会”用规范格式解释法律条文”</code></pre>
+<p>但这不是绝对的。如果底座已经够强（如 GPT-4），可能直接 SFT 就够了。</p>
+<p><strong>3. 什么时候可以跳过 continue pretraining？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>条件</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>底座通用能力足够强</td>
+<td>如 GPT-4、Claude-3，通用知识已覆盖大部分领域概念</td>
+</tr>
+<tr>
+<td>任务不需要深层领域知识</td>
+<td>如风格转换、格式调整、简单问答</td>
+</tr>
+<tr>
+<td>领域和通用语料分布差异小</td>
+<td>如通用中文 → 新闻中文</td>
+</tr>
+<tr>
+<td>时间/算力极度受限</td>
+<td>只能做 SFT，accept 效果上限降低</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 两阶段的数据配比陷阱</strong></p>
+<p>Continue Pretraining 的一个常见错误：只用领域数据。</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>配比策略</th>
+<th>效果</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>100% 领域数据</td>
+<td>灾难性遗忘</td>
+<td>模型忘记通用知识，变成”领域 narrow expert”</td>
+</tr>
+<tr>
+<td>90% 通用 + 10% 领域</td>
+<td>较好</td>
+<td>保留通用能力，同时学习领域分布</td>
+</tr>
+<tr>
+<td>50% 通用 + 50% 领域</td>
+<td>可能欠拟合领域</td>
+<td>领域信号不够强</td>
+</tr>
+</tbody></table></div>
+<p>最佳实践：通用数据占比 70-90%，领域数据 10-30%，具体比例通过验证集调。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果一个法律模型在 SFT 后对通用问题回答变差了，原因是什么？”</strong>
+<ul>
+<li>答：SFT 数据只覆盖法律领域，模型在 SFT 过程中”忘记”了通用问题的回答方式。这就是 SFT 阶段的灾难性遗忘。解决：1）SFT 数据中加入通用数据混合；2）用 LoRA 代替全参数 SFT，冻结大部分预训练权重；3）多阶段 SFT：先做通用 SFT，再做领域 SFT。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”continue pretraining 的学习率应该比预训练大还是小？”</strong>
+<ul>
+<li>答：通常更小。预训练学习率 ~1e-4 到 3e-4；continue pretraining 常用 ~1e-5 到 5e-5。原因：预训练是从随机初始化开始，需要大学习率快速收敛；continue pretraining 是在已有好的权重上微调，大学习率会破坏已有知识。但也要看数据量：如果领域数据量很大（如 100B tokens），可以用稍大的学习率。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”SFT 数据的质量和数量哪个更重要？”</strong>
+<ul>
+<li>答：质量更重要。1000 条高质量 SFT 数据 &gt; 10000 条低质量数据。高质量的标准：1）输入输出匹配；2）格式一致；3）无错误信息；4）覆盖关键场景。实践中常见策略：先用少量高质量数据（1K-10K）做冷启动，再逐步增加数据量。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0569"><a class="anchor-link" href="#h-0569" aria-label="跳转到本节">#</a>29. 什么是 MoE？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">MoE 路由与负载均衡</div>
+        <p class="inline-enhancement-note">放在 MoE / Expert / DeepSeekMoE 小节附近，区分总参数量、激活参数量和路由副作用。</p>
+        <div class="visual-grid"><div class="visual-card"><b>MoE Top-k 路由图</b><img src="../assets/moe-routing.svg" alt="MoE Top-k 路由图"><p>gate 选择 top-k expert，再做加权合并。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>MoE Top-k 输出</b><div class="math-display">\[y=\sum_{i\in \mathrm{TopK}(g(x))} g_i(x)\,E_i(x)\]</div><p>每个 token 只激活少量 expert。</p></div><div class="formula-card"><b>MoE 负载均衡直觉</b><div class="math-display">\[\mathcal{L}_{aux}\propto N\sum_{i=1}^{N} f_i\,p_i\]</div><p>避免所有 token 挤向少数 expert。</p></div></div>
+      </aside>
+<h4 id="h-0570"><a class="anchor-link" href="#h-0570" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>MoE</code>（Mixture of Experts）可以理解成“很多专家 + 一个分诊路由器”的结构。模型里不是只有一个统一 FFN，而是有很多个专家子网络；每个 token 进来后，路由器会决定它该送去哪些专家处理，通常只激活 top-k 个，而不是把所有专家都算一遍。</p>
+<p>这样做的价值在于：模型总参数量可以做得很大，容量明显提升，但单个 token 实际激活的计算量不需要按总参数等比例上涨。所以大家会说 <code>MoE</code> 是一种”总参数大、激活参数小”的稀疏激活架构。</p>
+<hr>
+<h4 id="h-0571"><a class="anchor-link" href="#h-0571" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 路由机制的数学形式</strong></p>
+<p>对于每个 token 的隐藏状态 <code>h</code>，路由器先计算一个分数：</p>
+<pre><code class="language-text">gate_score = softmax(h @ W_gate)  # 形状: (num_experts,)
+topk_indices = topk(gate_score, k)  # 通常 k=1 或 2</code></pre>
+<p>然后 token 只被送到 <code>topk_indices</code> 对应的专家。每个专家的输出按 gate score 加权求和：</p>
+<pre><code class="language-text">output = Σ(i in topk) gate_score[i] * Expert_i(h)</code></pre>
+<p><strong>2. 为什么 top-k 而不是只选 top-1？</strong></p>
+<ul>
+<li><code>k=1</code>（最稀疏）：每个 token 只走一个专家，通信最少，但路由决策”硬”——选错了就没有补救。
+</li>
+<li><code>k=2</code>（常用）：主专家 + 辅助专家，兼顾稀疏性和容错性。DeepSeek-V3 甚至用到 <code>k=6</code>（共享专家 + 路由专家），让关键知识放在共享专家保证必达，领域知识放在路由专家按需激活。
+</li>
+</ul>
+<p><strong>3. 负载均衡：MoE 训练的核心难点</strong></p>
+<p>如果没有约束，路由器会倾向于把 token 送到少数”好训”的专家（称为”专家塌缩”）。解决方案：</p>
+<ul>
+<li><strong>辅助损失（Auxiliary Loss）</strong>：惩罚不平衡的路由分布。常见形式是 <code>load_balancing_loss = α * Σ(f_i * P_i)</code>，其中 <code>f_i</code> 是专家 i 的实际负载比例，<code>P_i</code> 是路由概率的平均值。
+</li>
+<li><strong>专家容量限制（Expert Capacity）</strong>：每个专家每轮最多处理固定数量的 token，超出的 token 被溢出到下一个专家或跳过。
+</li>
+<li><strong>Noisy Top-K Gating</strong>：在路由分数上加噪声，打破”永远选同一个专家”的局部最优。
+</li>
+</ul>
+<p><strong>4. 参数量 vs 激活参数量的具体对比</strong></p>
+<p>假设：模型隐藏维度 <code>d=4096</code>，专家 FFN 扩到 <code>4d=16384</code>，专家数 <code>E=16</code>，top-k=2。</p>
+<ul>
+<li>单个专家参数量：<code>3 * d * 4d = 3 * 4096 * 16384 ≈ 201M</code>
+</li>
+<li>所有专家总参数量：<code>16 * 201M ≈ 3.2B</code>
+</li>
+<li>每 token 激活参数量：<code>2 * 201M ≈ 402M</code>（只激活 2 个专家）
+</li>
+<li>对比稠密模型 FFN：<code>3 * d * 4d ≈ 201M</code>
+</li>
+</ul>
+<p>总参数从 201M 扩展到 3.2B（16 倍），但每 token 计算只从 201M 增加到 402M（2 倍）。这就是”容量大、计算省”。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”MoE 的 all-to-all 通信瓶颈是什么？”</strong>
+<ul>
+<li>答：每个 token 激活的专家可能分布在不同 GPU 上，需要把所有 token 的路由结果广播出去，再把激活结果收集回来。这就是 all-to-all 通信。当专家数多、token 数大时，通信量 <code>~batch_size * seq_len * k * hidden_dim</code> 会很大，成为训练瓶颈。Expert Parallel（EP）就是为了把相关专家尽量放在同一节点内，减少跨节点通信。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”DeepSeek 的 shared expert 和 routed expert 有什么区别？”</strong>
+<ul>
+<li>答：Shared expert 是所有 token 都必须经过的（类似一个公共 FFN），保证通用知识始终可达；Routed expert 是按 top-k 选择的，处理领域特异性知识。这样设计的好处是：不会因为路由错误而丢失关键通用能力，同时保留稀疏激活的扩展性。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”MoE 和 Dense 模型在推理时谁更快？”</strong>
+<ul>
+<li>答：不一定。MoE 每 token 激活的参数量可能更少（如 top-2 时只激活 2/16 专家），但 all-to-all 通信和路由开销会增加延迟。小 batch 时 MoE 可能更慢（通信占比高）；大 batch 高并发时 MoE 优势更明显（计算可以掩盖通信）。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0572"><a class="anchor-link" href="#h-0572" aria-label="跳转到本节">#</a>30. MoE 的优势和代价分别是什么？</h3>
+<h4 id="h-0573"><a class="anchor-link" href="#h-0573" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>MoE</code> 的最大优势，是它让模型可以在不把单 token 计算成本同步拉爆的前提下，把总容量做得更大。换句话说，你可以拥有更多参数、更强知识容量和更高潜在上限，但每次前向只激活少量专家，因此 FLOPs 增长没有那么夸张。</p>
+<p>代价同样很明显。第一，路由器可能把大量 token 挤到少数热门专家，导致负载不均；第二，多机多卡下专家通信会变复杂；第三，训练容易出现不稳定和专家塌缩；第四，部署和监控成本明显高于稠密模型。所以 <code>MoE</code> 不是”白送容量”，而是把难题从纯算力转移到了系统与训练策略。</p>
+<hr>
+<h4 id="h-0574"><a class="anchor-link" href="#h-0574" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 优势的具体量化</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>Dense 模型</th>
+<th>MoE 模型（16 专家, top-2）</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>总参数量</td>
+<td>7B</td>
+<td>7B + 专家额外参数 ≈ 30-100B</td>
+<td>容量大</td>
+</tr>
+<tr>
+<td>每 token FLOPs</td>
+<td>7B 级别</td>
+<td>~14B 级别（只算 2 个专家）</td>
+<td>计算增长可控</td>
+</tr>
+<tr>
+<td>训练速度（同样 FLOPs）</td>
+<td>基准</td>
+<td>略慢（路由开销）</td>
+<td>通信开销</td>
+</tr>
+<tr>
+<td>推理吞吐（大 batch）</td>
+<td>基准</td>
+<td>更高（激活参数少）</td>
+<td>高并发优势</td>
+</tr>
+<tr>
+<td>推理延迟（小 batch）</td>
+<td>基准</td>
+<td>可能更高（all-to-all）</td>
+<td>通信占比高</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 专家塌缩（Expert Collapse）是什么？</strong></p>
+<p>训练初期，所有专家随机初始化，路由大致均匀。但随着训练进行，某些专家可能因为初始化优势或数据分布偏差，逐渐吸收更多 token。最终可能 80% 的 token 都被送到 2-3 个专家，其他专家几乎闲置。</p>
+<p>后果：</p>
+<ul>
+<li>负载不均导致 GPU 利用率下降（某些卡很忙，某些卡很闲）
+</li>
+<li>闲置专家没有充分训练，浪费参数量
+</li>
+<li>活跃专家过载，泛化能力下降
+</li>
+</ul>
+<p><strong>3. 负载均衡损失的数学形式</strong></p>
+<pre><code class="language-text">load_balancing_loss = α * num_experts * Σ(f_i * P_i)</code></pre>
+<p>其中：</p>
+<ul>
+<li><code>f_i</code>：batch 中实际分配给专家 i 的 token 比例
+</li>
+<li><code>P_i</code>：路由器对专家 i 的平均选择概率
+</li>
+<li><code>α</code>：超参数（通常很小，如 0.01）
+</li>
+</ul>
+<p>当路由完全均匀时，<code>f_i = P_i = 1/num_experts</code>，每一项 <code>f_i * P_i = 1/num_experts²</code>，总和最小。 当路由极度不均时（如 <code>f_1=1, f_其他=0</code>），损失很大。</p>
+<p>注意：这个损失只在训练时加，推理时不加。</p>
+<p><strong>4. MoE 和 Dense 的选择决策树</strong></p>
+<pre><code class="language-text">需要超大容量（&gt;30B 等效）？
+  ├── 是 → 有高并发推理需求？
+  │         ├── 是 → MoE（吞吐优势）
+  │         └── 否 → Dense（延迟更稳）
+  └── 否 → Dense（实现简单、训练稳定）</code></pre>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”MoE 模型做推理时，怎么选部署 GPU 数量？”</strong>
+<ul>
+<li>答：需要同时考虑模型并行和数据并行。专家数通常是 8/16/64，最好能被 GPU 数整除，让每个 GPU 负责整数个专家。如果 16 个专家但只有 8 张卡，每张卡放 2 个专家，all-to-all 通信只在 8 个节点间进行。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”MoE 的 dropout 应该加在哪里？”</strong>
+<ul>
+<li>答：通常在专家输出后加 dropout，而不是在路由前。因为路由是”硬”决策，对 dropout 敏感。另外，一些实现会对专家做”expert dropout”——训练时随机屏蔽某些专家，强迫路由器学会多路径依赖。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果 MoE 的一个专家坏了（如权重损坏），怎么恢复？”</strong>
+<ul>
+<li>答：因为 top-k 通常 k≥2，单个专家损坏不会完全断流（还有其他专家兜底）。恢复时可以：1）用同层其他专家的权重平均初始化；2）冻结其他专家，只训练损坏专家几轮；3）如果有 checkpoint，直接回滚。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0575"><a class="anchor-link" href="#h-0575" aria-label="跳转到本节">#</a>31. 如果要做一个法律/医疗/金融领域模型，你会选继续预训练还是直接 SFT？为什么？</h3>
+<h4 id="h-0576"><a class="anchor-link" href="#h-0576" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>如果法律、医疗、金融模型的核心短板是“不懂这个行业在说什么”，比如术语陌生、领域知识缺失、文本风格完全不对，那优先考虑 continue pretraining，因为你首先要把底层语言分布补进去。如果模型已经大致懂这个领域，但不会按问答、抽取、报告、风控解释等任务格式稳定输出，那更适合做 SFT。</p>
+<p>真实项目里最常见的组合通常是：先用高质量领域语料继续预训练，让模型”听得懂行业黑话”；再用任务数据做 SFT，让模型”按业务要求回答”。如果直接二选一，往往说明你还没先分清楚知识问题和行为问题。</p>
+<hr>
+<h4 id="h-0577"><a class="anchor-link" href="#h-0577" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 行业模型的典型构建路径</strong></p>
+<pre><code class="language-text">通用底座（如 LLaMA-2-7B）
+    ↓
+[阶段一] Continue Pretraining（领域语料）
+    - 目标：让模型懂行业术语、知识、文风
+    - 数据：法律判决书、医学文献、金融财报
+    - 结果：领域 perplexity 下降，但通用能力可能轻微退化
+    ↓
+[阶段二] SFT（任务数据）
+    - 目标：让模型按业务格式回答
+    - 数据：(用户问题, 标准回答) 对
+    - 结果：学会问答、摘要、报告生成等任务格式
+    ↓
+[阶段三] RLHF/DPO（偏好数据）
+    - 目标：让回答更专业、更安全、更符合行业规范
+    - 数据：同一问题的多个回答 + 专业人士排序</code></pre>
+<p><strong>2. 什么时候可以跳过 continue pretraining？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>条件</th>
+<th>示例</th>
+<th>建议</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>底座已覆盖领域基础</td>
+<td>GPT-4 做通用法律咨询</td>
+<td>直接 SFT + RAG</td>
+</tr>
+<tr>
+<td>任务主要是格式/风格</td>
+<td>让模型输出 JSON 格式报告</td>
+<td>直接 SFT</td>
+</tr>
+<tr>
+<td>领域和通用语料差异小</td>
+<td>新闻分类（通用中文→新闻中文）</td>
+<td>直接 SFT</td>
+</tr>
+<tr>
+<td>需要深度领域推理</td>
+<td>医疗诊断、法律判例分析</td>
+<td>必须 continue pretraining</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 领域数据的质量要求</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>低质量</th>
+<th>高质量</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>准确性</strong></td>
+<td>包含错误医学知识</td>
+<td>经专家审核的文献</td>
+</tr>
+<tr>
+<td><strong>时效性</strong></td>
+<td>过时的法律法规</td>
+<td>最新生效的条文</td>
+</tr>
+<tr>
+<td><strong>格式</strong></td>
+<td>网页爬虫的 HTML 残渣</td>
+<td>清洗后的纯文本</td>
+</tr>
+<tr>
+<td><strong>版权</strong></td>
+<td>侵权内容</td>
+<td>公开授权或自有数据</td>
+</tr>
+</tbody></table></div>
+<p>法律/医疗领域尤其要注意：<strong>模型会背诵训练数据中的错误信息，且置信度很高</strong>。错误知识的危害性远大于”不知道”。</p>
+<p><strong>4. 领域模型评估的特殊性</strong></p>
+<p>通用模型的评估（如 MMLU）不够，需要领域专用评测：</p>
+<ul>
+<li><strong>法律</strong>：法考客观题、案例判决匹配、法条引用准确性
+</li>
+<li><strong>医疗</strong>：执业医考、诊断推理、药物相互作用判断
+</li>
+<li><strong>金融</strong>：财报指标计算、风险术语理解、合规规则判断
+</li>
+</ul>
+<p>关键指标：<strong>幻觉率</strong>（hallucination rate）——模型编造不存在法条/药物/规定的比例。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果领域数据只有 1GB，还值得做 continue pretraining 吗？”</strong>
+<ul>
+<li>答：1GB 大约 2 亿 token，对于 7B 模型来说太少（通常需要 10B+ token 才能看到明显效果）。建议：1）先尝试直接 SFT + RAG，看效果是否够用；2）如果必须 CPT，用很小的学习率（1e-6）和很少的步数，防止过拟合；3）考虑数据增强（同义词替换、回译）扩充到 5-10GB。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”法律模型生成错误法条，责任谁负？”</strong>
+<ul>
+<li>答：这是领域模型落地的核心风险。工程上需要：1）RAG 优先（检索真实法条作为生成依据）；2）输出时强制引用来源（”根据《合同法》第52条...”）；3）免责声明（”仅供参考，不构成法律建议”）；4）人工审核闭环（高风险场景必须人工确认）。技术上不能完全消除幻觉，必须通过系统设计控制风险。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”领域 continue pretraining 会不会导致灾难性遗忘？”</strong>
+<ul>
+<li>答：会，如果领域数据占比过高。缓解策略：1）通用数据 : 领域数据 = 7:3 或 8:2；2）LoRA 代替全参数 CPT（只微调少量参数）；3）多阶段训练：先领域 CPT，再通用数据”恢复”通用能力；4）评估监控：定期检查通用 benchmark（MMLU、GSM8K）是否下降。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0578"><a class="anchor-link" href="#h-0578" aria-label="跳转到本节">#</a>32. 预训练数据配比为什么重要？高质量小数据和低质量大数据怎么权衡？</h3>
+<h4 id="h-0579"><a class="anchor-link" href="#h-0579" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>预训练数据配比重要，是因为模型最后学到的不是某一份数据，而是整个训练分布。你给什么比例，它就把多少训练预算花在那种模式上。所以高质量数据虽然量小，但往往信息密度高、噪声低；低质量大数据虽然覆盖广，但会把很多预算浪费在弱模式甚至错误模式上。</p>
+<p>实际权衡通常不是”二选一”，而是先用足够大的数据保证覆盖，再通过采样权重、课程学习或数据分层，让高质量数据在关键阶段占更大比重。简化成一句话就是：先解决有没有，再解决好不好。</p>
+<hr>
+<h4 id="h-0580"><a class="anchor-link" href="#h-0580" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 数据配比的数学：加权采样</strong></p>
+<p>假设训练语料有 K 个来源，原始采样概率为 <code>p_i</code>（按文档数比例）。如果希望来源 j 被多采一些，可以给它一个权重 <code>w_j &gt; 1</code>：</p>
+<pre><code class="language-text">采样概率 q_i = (w_i * p_i) / Σ(w_k * p_k)</code></pre>
+<p>例如：网页数据占 90%、书籍占 10%。如果我们认为书籍质量更高，给书籍权重 3：</p>
+<ul>
+<li>新的采样比例：网页 = (1 × 0.9) / (0.9 + 0.3) = 75%，书籍 = (3 × 0.1) / 1.2 = 25%
+</li>
+</ul>
+<p>这就是 <strong>Data Mixing</strong> 的核心机制。</p>
+<p><strong>2. 高质量小数据 vs 低质量大数据的权衡</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>高质量小数据</th>
+<th>低质量大数据</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>信息密度</strong></td>
+<td>高（每 token 含更多有效信号）</td>
+<td>低（大量噪声和冗余）</td>
+</tr>
+<tr>
+<td><strong>覆盖范围</strong></td>
+<td>窄（可能漏掉长尾知识）</td>
+<td>广（覆盖更多领域和语言）</td>
+</tr>
+<tr>
+<td><strong>训练效率</strong></td>
+<td>高（收敛快）</td>
+<td>低（需要更多 step 过滤噪声）</td>
+</tr>
+<tr>
+<td><strong>泛化风险</strong></td>
+<td>可能过拟合高质量来源的风格</td>
+<td>可能学到噪声模式</td>
+</tr>
+</tbody></table></div>
+<p><strong>最佳实践不是二选一，而是动态组合</strong>：</p>
+<ul>
+<li><strong>前期</strong>：用大数据保证覆盖，防止模型没见过某些模式
+</li>
+<li><strong>中期/后期</strong>：提高高质量数据比例，让模型在”信息密度高”的数据上精修
+</li>
+<li><strong>课程学习</strong>：先易后难，逐步引入更复杂的数据
+</li>
+</ul>
+<p><strong>3. 著名模型的数据配比参考</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>模型</th>
+<th>网页</th>
+<th>书籍</th>
+<th>代码</th>
+<th>百科</th>
+<th>其他</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GPT-3</td>
+<td>60%</td>
+<td>16%</td>
+<td>0%</td>
+<td>3%</td>
+<td>21%</td>
+</tr>
+<tr>
+<td>LLaMA-1</td>
+<td>~65%</td>
+<td>~5%</td>
+<td>~5%</td>
+<td>~5%</td>
+<td>~20%</td>
+</tr>
+<tr>
+<td>LLaMA-2</td>
+<td>降低网页比例</td>
+<td>提高代码比例</td>
+<td>↑</td>
+<td>↑</td>
+<td>质量过滤更严格</td>
+</tr>
+</tbody></table></div>
+<p>趋势：后续模型普遍<strong>降低网页比例、提高代码和书籍比例</strong>，因为网页噪声太大。</p>
+<p><strong>4. 课程学习（Curriculum Learning）在预训练中的应用</strong></p>
+<p>不是所有数据同时加入训练。一种策略：</p>
+<ul>
+<li><strong>Phase 1（0-30% steps）</strong>：高质量通用数据（书籍、百科）
+</li>
+<li><strong>Phase 2（30-70% steps）</strong>：加入代码、对话、多语言数据
+</li>
+<li><strong>Phase 3（70-100% steps）</strong>：加入领域特定数据和高质量指令数据
+</li>
+</ul>
+<p>这样模型先学会”基础语言能力”，再扩展到”多样化技能”。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果我把网页数据权重设成 0，只用书籍和代码训练，会怎样？”</strong>
+<ul>
+<li>答：模型可能在通用知识和对话能力上表现差，因为网页虽然噪声大，但覆盖了大量日常用语、时事、多语言内容。完全去掉会导致知识覆盖不足。更好的做法是降权重 + 严格过滤，而不是完全丢弃。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”怎么判断'高质量'和'低质量'？有没有客观的指标？”</strong>
+<ul>
+<li>答：常见指标：1）perplexity（用已有好模型测，perplexity 越低通常质量越高）；2）语言模型一致性（句子内部逻辑是否通顺）；3）人工评分抽样；4）来源可信度（如维基 &gt; 论坛 &gt; 未过滤网页）。但这些指标都有局限，最终需要下游任务验证。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”数据配比对模型'性格'有什么影响？”</strong>
+<ul>
+<li>答：影响很大。代码比例高 → 模型更擅长推理和结构化思维；对话比例高 → 模型更健谈、更懂指令跟随；书籍比例高 → 模型知识更深但可能更”书呆子”。GPT-4 之后的模型普遍提高了代码和指令数据比例，这就是它们”更会思考”的原因之一。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0581"><a class="anchor-link" href="#h-0581" aria-label="跳转到本节">#</a>33. Scaling Law 在实际项目里怎么指导模型选型和算力预算？</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">参数量 / 显存速算</div>
+        <p class="inline-enhancement-note">放在参数量、复杂度、显存估算小节附近，作为面试快算公式。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>Transformer 单层参数近似</b><div class="math-display">\[P_{layer}\approx 4d^2 + 2d\,d_{ff}\approx 12d^2\quad(d_{ff}\approx4d)\]</div><p>用于快速估算 dense LLM 参数量；SwiGLU/GQA 会改变常数项。</p></div><div class="formula-card"><b>训练显存组成</b><div class="math-display">\[\mathrm{Memory}\approx W + G + O + A\]</div><p>W 是权重，G 是梯度，O 是优化器状态，A 是激活值。</p></div></div>
+      </aside>
+<h4 id="h-0582"><a class="anchor-link" href="#h-0582" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>Scaling Law 在项目里最有用的地方，是帮团队做“钱该花在哪”的判断。比如预算固定时，你需要判断继续堆模型参数是不是已经进入收益递减区，或者是不是应该把更多钱投到数据扩充、数据清洗、训练 token 数，甚至基础设施效率优化上。</p>
+<p>所以它更像一个资源导航工具，而不是一个死板公式。成熟团队不会机械地根据某条曲线拍板，而是结合试验点、历史经验和硬件成本，判断当前最值得投入的方向。</p>
+<hr>
+<h4 id="h-0583"><a class="anchor-link" href="#h-0583" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. Chinchilla Scaling Law 的预算分配公式</strong></p>
+<p>Chinchilla 论文给出的最优配置：</p>
+<pre><code class="language-text">N_opt ∝ C^0.5,  D_opt ∝ C^0.5</code></pre>
+<p>即：在固定计算预算 C（FLOPs）下，最优参数 N 和数据量 D 应该相等增长。</p>
+<p>具体数值（近似）：</p>
+<pre><code class="language-text">N_opt ≈ C / (6 * D_opt)
+D_opt ≈ 20 * N_opt  （单位：tokens，N 单位：参数）</code></pre>
+<p>即：1B 参数的模型，最优训练数据约 20B tokens。</p>
+<p><strong>2. 固定预算下的权衡：扩模型 vs 扩数据</strong></p>
+<p>假设你有 1e21 FLOPs 的计算预算：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方案</th>
+<th>参数量</th>
+<th>数据量</th>
+<th>预期损失</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>模型过大</strong></td>
+<td>100B</td>
+<td>10B</td>
+<td>较高</td>
+<td>数据不足，模型欠训练</td>
+</tr>
+<tr>
+<td><strong>Chinchilla 最优</strong></td>
+<td>30B</td>
+<td>600B</td>
+<td>最低</td>
+<td>N 和 D 平衡</td>
+</tr>
+<tr>
+<td><strong>数据过大</strong></td>
+<td>1B</td>
+<td>1000B</td>
+<td>较高</td>
+<td>模型容量不足，无法吸收</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 实际项目中的三段式决策</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阶段</th>
+<th>判断标准</th>
+<th>决策</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>模型是否够大</strong></td>
+<td>当前模型是否已到达数据瓶颈？</td>
+<td>如果 loss 还在快速下降 → 继续扩数据；如果 plateau → 考虑扩模型</td>
+</tr>
+<tr>
+<td><strong>数据是否够好</strong></td>
+<td>数据质量和多样性是否足够？</td>
+<td>如果数据质量差 → 先清洗；如果覆盖不足 → 先扩数据</td>
+</tr>
+<tr>
+<td><strong>硬件是否够强</strong></td>
+<td>训练时间和成本是否在预算内？</td>
+<td>如果训练太慢 → 优化infra；如果成本太高 → 考虑小模型+更多数据</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 为什么 Scaling Law 不是万能公式？</strong></p>
+<ul>
+<li><strong>它假设数据是 i.i.d. 的</strong>：真实数据有分布偏移、长尾问题
+</li>
+<li><strong>它假设模型架构固定</strong>：新架构（如 MoE、Mamba）可能打破原有曲线
+</li>
+<li><strong>它忽略推理成本</strong>：训练时最优的模型，推理时可能太贵
+</li>
+<li><strong>它不考虑任务类型</strong>：代码任务和创意写作任务的最优配比不同
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果老板给你 100 万美元预算，你会怎么分配给模型和数据？"</strong>
+<ul>
+<li>答：先算总 FLOPs（100 万 ≈ 购买 100-200 张 A100 训练 1-2 个月 ≈ 1e21-1e22 FLOPs）。按 Chinchilla，选 30-70B 参数 + 600B-1.4T tokens。但具体还要看：1）领域数据是否充足（不足则花更多钱买/清洗数据）；2）推理成本约束（如果推理预算有限，宁可选小模型+更多数据）；3）时间约束（大模型训练时间更长）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 GPT-3（175B）的训练数据只有 300B tokens，远低于 Chinchilla 最优？"</strong>
+<ul>
+<li>答：GPT-3 训练时 Chinchilla 论文还没发表。事后看，GPT-3 是"模型过大、数据不足"的典型——如果按 Chinchilla 配比，70B 参数 + 1.4T tokens 可能达到类似效果，且推理成本更低。这也解释了为什么后来很多模型（如 LLaMA）选择更小参数+更多数据的路线。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Scaling Law 对推理系统选型有什么指导？"</strong>
+<ul>
+<li>答：训练时最优的模型不一定适合部署。假设 70B 模型训练效果比 7B 好 20%，但推理成本高 10 倍。如果业务场景对延迟敏感、预算有限，可能选择 7B + RAG 的方案，而不是直接部署 70B。Scaling Law 指导训练，部署决策还要考虑业务约束。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0584"><a class="anchor-link" href="#h-0584" aria-label="跳转到本节">#</a>34. MoE 为什么能在“参数量变大”的同时把推理 FLOPs 控住？它的路由又会引入什么问题？</h3>
+<h4 id="h-0585"><a class="anchor-link" href="#h-0585" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>MoE</code> 能把总参数量做大但推理 FLOPs 控住，关键就在“稀疏激活”。虽然模型里有很多专家，但每个 token 实际只走 top-k 个专家，所以一次前向并不会把所有参数都算一遍。这样总容量很大，但单次实际计算仍被限制在少数子网里。</p>
+<p>问题是，路由从来不是免费的。它会引入热点专家、负载不均、跨卡通信、容量溢出、训练不稳定等一系列工程与优化问题。也就是说，<code>MoE</code> 节省的不是系统复杂度，而是把复杂度重新分布到了路由和并行系统上。</p>
+<hr>
+<h4 id="h-0586"><a class="anchor-link" href="#h-0586" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 稀疏激活的定量计算</strong></p>
+<p>假设一个 MoE 层：</p>
+<ul>
+<li>总专家数 <code>E = 8</code>
+</li>
+<li>每个专家大小同标准 FFN（<code>d_model × d_ff × 2</code>）
+</li>
+<li>激活专家数 <code>k = 2</code>
+</li>
+</ul>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>指标</th>
+<th>Dense 模型</th>
+<th>MoE 模型</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>总参数量</strong></td>
+<td>1×</td>
+<td>8×（专家数倍数）</td>
+</tr>
+<tr>
+<td><strong>激活参数量</strong></td>
+<td>1×</td>
+<td>2×（top-k 倍数）</td>
+</tr>
+<tr>
+<td><strong>单次前向 FLOPs</strong></td>
+<td>1×</td>
+<td>~2×（略大于 k 倍，因为还要算路由）</td>
+</tr>
+</tbody></table></div>
+<p>关键：总参数 8 倍，但计算只 2 倍。模型"记住"了 8 倍的知识，但推理时只激活 2 倍计算。</p>
+<p><strong>2. 路由问题的详细拆解</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>问题</th>
+<th>现象</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>专家塌缩</strong></td>
+<td>所有 token 都路由到少数几个专家</td>
+<td>负载均衡损失（auxiliary loss）</td>
+</tr>
+<tr>
+<td><strong>负载不均</strong></td>
+<td>某些 GPU 过载，某些空闲</td>
+<td>Expert Parallelism + 动态负载均衡</td>
+</tr>
+<tr>
+<td><strong>跨卡通信</strong></td>
+<td>专家分布在不同 GPU，token 需要跨卡传输</td>
+<td>All-to-All 通信优化、重叠通信与计算</td>
+</tr>
+<tr>
+<td><strong>容量溢出</strong></td>
+<td>某专家接收 token 超过容量上限</td>
+<td>Capacity factor（容量因子，如 1.25）</td>
+</tr>
+<tr>
+<td><strong>训练不稳定</strong></td>
+<td>路由权重剧烈波动、loss spike</td>
+<td>路由噪声（noise）、温度退火</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 负载均衡损失的数学</strong></p>
+<p>为了防止所有 token 都走同一个专家，MoE 训练通常加一个辅助损失：</p>
+<pre><code class="language-text">L_aux = α * E * Σ(f_i * P_i)</code></pre>
+<ul>
+<li><code>f_i</code>：第 i 个专家被分配的 token 比例
+</li>
+<li><code>P_i</code>：路由器分配给第 i 个专家的平均概率
+</li>
+<li><code>α</code>：超参数（通常 0.01）
+</li>
+</ul>
+<p>目标：让 <code>f_i</code> 和 <code>P_i</code> 都接近均匀分布（<code>1/E</code>），鼓励负载均衡。</p>
+<p><strong>4. MoE  vs Dense 的效果-效率权衡</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>模型</th>
+<th>总参数</th>
+<th>激活参数</th>
+<th>训练 FLOPs</th>
+<th>推理 FLOPs/token</th>
+<th>效果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Dense 70B</td>
+<td>70B</td>
+<td>70B</td>
+<td>1.4e21</td>
+<td>2×70B</td>
+<td>基准</td>
+</tr>
+<tr>
+<td>MoE 8×7B</td>
+<td>56B</td>
+<td>14B</td>
+<td>1.4e21</td>
+<td>2×14B</td>
+<td>≈ Dense 70B</td>
+</tr>
+<tr>
+<td>MoE 64×7B</td>
+<td>448B</td>
+<td>14B</td>
+<td>~1e22</td>
+<td>2×14B</td>
+<td>&gt; Dense 70B</td>
+</tr>
+</tbody></table></div>
+<p>MoE 8×7B（总 56B，激活 14B）的训练成本和推理成本都远低于 Dense 70B，但效果接近。这是 MoE 的核心价值。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"为什么 MoE 的训练通常需要 Expert Parallelism？"</strong>
+<ul>
+<li>答：因为单个 GPU 放不下所有专家（如 64 个专家 × 7B = 448B 参数）。Expert Parallelism 把不同专家放在不同 GPU 上，token 根据路由结果发送到对应 GPU。这引入了 all-to-all 通信开销，是 MoE 训练的主要瓶颈之一。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Capacity factor 是什么？为什么需要它？"</strong>
+<ul>
+<li>答：容量因子 = 专家实际容量 / 理论平均负载。如 capacity factor=1.25，意味着每个专家可以处理比平均值多 25% 的 token。如果没有容量因子，当某些 token 被异常大量路由到同一专家时，会 overflow（溢出），这些 token 就被丢弃了。capacity factor 提供了缓冲，但太大会浪费计算。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"DeepSeekMoE 的 shared expert 是什么创新？"</strong>
+<ul>
+<li>答：传统 MoE 的所有专家都是"平等"的，每个 token 从所有专家中选 top-k。DeepSeekMoE 发现：某些基础能力（如语法、常识）是所有 token 都需要的，不需要路由。于是设计了"共享专家"（shared experts）——所有 token 必须经过这些共享专家，只在剩余专家上做路由。这样减少了路由负担，同时保证了基础能力不被路由错误破坏。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0587"><a class="anchor-link" href="#h-0587" aria-label="跳转到本节">#</a>35. 数据重复、污染、评测泄漏会怎样破坏模型质量判断？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">评测指标闭环</div>
+        <p class="inline-enhancement-note">放在 benchmark、LLM-as-a-Judge、pass@k、Recall@K 等小节附近，避免只背指标名。</p>
+        <div class="visual-grid"><div class="visual-card"><b>评测闭环图</b><img src="../assets/evaluation-loop.svg" alt="评测闭环图"><p>任务、输出、裁判、指标与误差分析要闭环。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>Recall@K</b><div class="math-display">\[\mathrm{Recall@K}=\frac{|\mathrm{Relevant}\cap \mathrm{TopK}|}{|\mathrm{Relevant}|}\]</div><p>衡量相关文档是否被召回。</p></div><div class="formula-card"><b>MRR</b><div class="math-display">\[\mathrm{MRR}=\frac{1}{|Q|}\sum_{q\in Q}\frac{1}{\mathrm{rank}_q}\]</div><p>第一个正确结果越靠前，MRR 越高。</p></div><div class="formula-card"><b>pass@k</b><div class="math-display">\[\mathrm{pass@}k\approx1-\frac{\binom{n-c}{k}}{\binom{n}{k}}\]</div><p>采样 k 个候选时至少一个正确的概率。</p></div></div>
+      </aside>
+<h4 id="h-0588"><a class="anchor-link" href="#h-0588" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>数据重复、数据污染和评测泄漏最危险的地方，是它们会制造一种“模型已经很强”的假象。离线指标可能很好看，但其实模型只是见过大量重复样本，或者训练集和测试集存在近重复，最后并没有真正学会泛化。</p>
+<p>这种假象会直接破坏项目判断：团队可能误以为当前模型架构更优、训练策略有效、甚至可以提前上线，结果一到真实场景就掉性能。所以做模型评估时，很多时候不是先看分数，而是先看这分数干不干净。</p>
+<hr>
+<h4 id="h-0589"><a class="anchor-link" href="#h-0589" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 三类问题的定义与区分</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>问题类型</th>
+<th>定义</th>
+<th>典型场景</th>
+<th>检测难度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>数据重复</strong></td>
+<td>训练集中同一样本出现多次</td>
+<td>爬虫多次抓取同一网页</td>
+<td>中</td>
+</tr>
+<tr>
+<td><strong>数据污染</strong></td>
+<td>训练集混入了测试集或评测数据</td>
+<td>评测数据被爬虫抓取</td>
+<td>高</td>
+</tr>
+<tr>
+<td><strong>评测泄漏</strong></td>
+<td>测试集与训练集有近重复（非完全重复）</td>
+<td>改写后的评测题混入训练集</td>
+<td>很高</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 数据重复的定量影响</strong></p>
+<p>假设训练集中某文档重复了 M 次：</p>
+<ul>
+<li>模型在这份文档上的梯度被计算 M 次
+</li>
+<li>相当于给这份文档加了 M 倍权重
+</li>
+<li>如果这份文档包含错误信息，错误被强化了 M 倍
+</li>
+</ul>
+<p>实验数据：去重后训练 LLaMA，在多个 benchmark 上效果提升 1-3%——说明重复数据确实在浪费训练预算。</p>
+<p><strong>3. 评测污染的经典案例</strong></p>
+<p>GPT-3 论文明确报告了评测污染问题：</p>
+<ul>
+<li>发现某些 benchmark 的测试样本与训练数据有 3-10% 的重叠
+</li>
+<li>污染样本上的准确率比未污染样本高 10-30%
+</li>
+<li>团队用 n-gram 过滤去除污染后，重新评估真实能力
+</li>
+</ul>
+<p>后续模型（如 LLaMA、PaLM）都引入了更严格的污染检测流程。</p>
+<p><strong>4. 检测方法详解</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>原理</th>
+<th>能检测什么</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>n-gram 匹配</strong></td>
+<td>训练集和测试集的 n-gram 重叠率</td>
+<td>直接重复、近重复</td>
+</tr>
+<tr>
+<td><strong>MinHash</strong></td>
+<td>文档级别的 Jaccard 相似度</td>
+<td>文档级重复</td>
+</tr>
+<tr>
+<td><strong>Embedding 相似度</strong></td>
+<td>语义相似但表述不同</td>
+<td>改写后的泄漏</td>
+</tr>
+<tr>
+<td><strong>Loss 异常低</strong></td>
+<td>模型在测试集上 loss 异常低</td>
+<td>暗示提前见过</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果测试集泄漏了 5%，对模型选型有什么影响？"</strong>
+<ul>
+<li>答：影响可能很大。假设模型 A 在干净测试集上 70%，在污染测试集上 80%；模型 B 在两者上都是 75%。如果不检测污染，会错误地选 A。实际部署后 A 的真实能力只有 70%，比 B 差。所以任何模型比较前，必须先确认分数的"干净度"。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"数据去重时，会不会把'重要的重复信息'也去掉？比如多个来源报道同一事件？"</strong>
+<ul>
+<li>答： doc-level 去重不会误删。多个来源报道同一事件，文档内容通常不同（角度、措辞、细节差异），MinHash 相似度不会达到去重阈值。真正被去重的是完全复制粘贴或只改几个字的内容（如镜像网站、重复爬取）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果检测到评测泄漏，已经训练好的模型怎么办？"</strong>
+<ul>
+<li>答：1）如果泄漏比例低（&lt;1%），影响可能不大，继续用但标注"分数可能有轻微高估"；2）如果泄漏比例高（&gt;5%），需要重新训练（去除污染数据后），或者至少重新评估（构造全新的测试集）。最理想的做法是：训练前就做好污染检测，避免事后补救。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0590"><a class="anchor-link" href="#h-0590" aria-label="跳转到本节">#</a>36. 为什么有些团队宁愿做数据工程，也不急着继续堆模型参数？</h3>
+<h4 id="h-0591"><a class="anchor-link" href="#h-0591" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>很多团队不急着继续堆参数，是因为模型做到一定规模后，性能瓶颈往往不再只是“模型不够大”，而是“数据不够好、分布不够对、训练预算没花在刀刃上”。这时候继续加参数，可能只是在更高成本下重复学习噪声。</p>
+<p>所以成熟团队常会先回头做数据工程：清洗、去重、重采样、提升高质量数据比例、修评测泄漏。因为对已经很大的模型来说，喂更干净的数据，往往比盲目再放大模型更划算。</p>
+<hr>
+<h4 id="h-0592"><a class="anchor-link" href="#h-0592" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 数据工程 vs 堆参数的 ROI 对比</strong></p>
+<p>假设一个团队有 100 万美元预算：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>投资方向</th>
+<th>预期效果提升</th>
+<th>风险</th>
+<th>边际收益</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>扩模型 2 倍</strong></td>
+<td>+5-10%</td>
+<td>训练不稳定、推理成本翻倍</td>
+<td>递减</td>
+</tr>
+<tr>
+<td><strong>数据清洗+去重</strong></td>
+<td>+3-8%</td>
+<td>低</td>
+<td>稳定</td>
+</tr>
+<tr>
+<td><strong>增加高质量数据 2 倍</strong></td>
+<td>+5-15%</td>
+<td>数据获取难</td>
+<td>较高</td>
+</tr>
+<tr>
+<td><strong>数据配比优化</strong></td>
+<td>+2-5%</td>
+<td>低</td>
+<td>稳定</td>
+</tr>
+</tbody></table></div>
+<p>关键洞察：<strong>模型规模扩大 2 倍的成本，通常远高于把数据质量提升一挡的成本</strong>。而且数据质量的提升不会增加推理成本，而模型扩大会同时增加训练和推理成本。</p>
+<p><strong>2. 为什么数据质量比数据量更重要？</strong></p>
+<p>信息论视角：</p>
+<ul>
+<li>模型的训练过程是"从数据中提取信号、过滤噪声"
+</li>
+<li>低质量数据中噪声比例高 → 模型需要更多 step 来"平均掉"噪声
+</li>
+<li>高质量数据中信号密度高 → 每 step 学习效率更高
+</li>
+</ul>
+<p>实证：</p>
+<ul>
+<li>LLaMA 团队发现，用相同计算预算，高质量数据（如过滤后的书籍）训练的模型，效果优于用 2 倍低质量数据训练的模型
+</li>
+<li>GPT-3 到 GPT-4 的提升中，数据质量（包括筛选、标注、多模态数据）的贡献不亚于模型规模
+</li>
+</ul>
+<p><strong>3. "数据工程"具体包括什么？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>工程项</th>
+<th>投入</th>
+<th>预期收益</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>去重</strong></td>
+<td>中（需计算资源）</td>
+<td>消除 10-30% 冗余数据，提升训练效率</td>
+</tr>
+<tr>
+<td><strong>质量过滤</strong></td>
+<td>高（需设计规则/分类器）</td>
+<td>去除低质量源，提升信号密度</td>
+</tr>
+<tr>
+<td><strong>格式标准化</strong></td>
+<td>低</td>
+<td>减少模型学习格式噪声的负担</td>
+</tr>
+<tr>
+<td><strong>领域配比</strong></td>
+<td>中（需实验验证）</td>
+<td>优化下游任务表现</td>
+</tr>
+<tr>
+<td><strong>评测污染检测</strong></td>
+<td>中</td>
+<td>确保评估结果可信</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 什么时候应该继续堆参数？</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>条件</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>数据质量已经很高</td>
+<td>继续洗数据的边际收益很低</td>
+</tr>
+<tr>
+<td>任务需要极强涌现能力</td>
+<td>某些能力（如复杂推理）只在一定规模后出现</td>
+</tr>
+<tr>
+<td>推理成本不是首要约束</td>
+<td>如内部研究、离线分析</td>
+</tr>
+<tr>
+<td>有充足预算</td>
+<td>可以同时做"数据工程 + 扩模型"</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果你只有 10 万美元预算，会优先投给数据还是模型？"</strong>
+<ul>
+<li>答：优先数据。10 万美元大约能租 20 张 A100 训练 1 个月（~1e20 FLOPs）。按 Chinchilla，最优配置约 7B 参数 + 140B tokens。与其把 7B 扩到 13B（效果提升有限），不如把预算花在：1）购买/清洗高质量数据；2）设计更好的数据配比；3）做多轮实验验证不同数据策略。数据工程的投资回报率通常更高。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"数据工程和模型架构改进，哪个优先级更高？"</strong>
+<ul>
+<li>答：取决于当前瓶颈。如果模型在干净数据上 still underfitting（训练 loss 还在降），说明模型容量是瓶颈，应该改进架构/扩参数；如果模型在训练集上表现好、测试集差（overfitting），说明数据是瓶颈，应该做数据工程。通常先确认数据质量，再谈架构——因为脏数据会让架构改进的效果被噪声淹没。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"LLaMA 和 GPT-3 的参数规模差不多，为什么 LLaMA 效果更好？"</strong>
+<ul>
+<li>答：核心差异在数据工程。LLaMA 团队做了更严格的数据清洗、去重、配比优化，用更多 tokens（1.4T vs 300B）训练更小模型。这验证了"数据质量 + 数据量 &gt; 单纯扩参数"的假设。也是"先做数据工程"理念的最佳实践案例。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="039.html">← 39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a><a href="041.html">41. 模块四：SFT、PEFT 与对齐训练 →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

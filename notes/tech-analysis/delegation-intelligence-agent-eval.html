@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delegation Intelligence：Agent 时代该如何重新理解评测</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      --bg: #f7f2ea;
+      --paper: #fffaf3;
+      --paper-2: #f0e7dc;
+      --ink: #271d17;
+      --muted: #6d6258;
+      --line: #d8cab9;
+      --accent: #a44d2d;
+      --accent-2: #6f3928;
+      --code-bg: #241f1b;
+      --code-fg: #f5ede2;
+      --ok: #3f6f54;
+      --warn: #9b5d22;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+    a { color: var(--accent-2); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .shell { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    header {
+      min-height: 92vh;
+      display: grid;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(39, 29, 23, 0.22), rgba(247, 242, 234, 0.98)),
+        url("delegation-intelligence-agent-eval-assets/article-hero.jpg") center 16% / cover no-repeat;
+    }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(18px);
+      background: rgba(247, 242, 234, 0.86);
+      border-bottom: 1px solid rgba(216, 202, 185, 0.8);
+    }
+    .nav .shell {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 54px;
+    }
+    .nav strong { font-size: 14px; }
+    .nav-links { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+    .nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; }
+    .hero {
+      padding: 128px 0 56px;
+      color: #fffaf3;
+      text-shadow: 0 1px 16px rgba(0, 0, 0, 0.38);
+    }
+    .eyebrow {
+      display: inline-block;
+      padding: 4px 9px;
+      border: 1px solid rgba(255, 250, 243, 0.46);
+      background: rgba(39, 29, 23, 0.34);
+      font-size: 13px;
+      border-radius: 999px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      max-width: 930px;
+      margin: 0;
+      font-size: clamp(38px, 6vw, 76px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+    .thesis {
+      max-width: 820px;
+      margin: 22px 0 0;
+      font-size: clamp(18px, 2.1vw, 24px);
+      color: #fff3e4;
+    }
+    main { padding: 44px 0 72px; }
+    section {
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 {
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.2;
+      margin: 0 0 18px;
+      letter-spacing: 0;
+    }
+    h3 {
+      font-size: 18px;
+      margin: 28px 0 10px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 14px; }
+    .lead { font-size: 18px; color: #3a2a21; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 20px 0 8px;
+    }
+    .grid.two { grid-template-columns: repeat(2, 1fr); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      min-width: 0;
+    }
+    .card strong { display: block; margin-bottom: 6px; }
+    .card p, li { color: #3c3129; }
+    .metric {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .formula {
+      background: #fff5e8;
+      border: 1px solid #e2cbb5;
+      border-left: 4px solid var(--accent);
+      padding: 15px 17px;
+      border-radius: 8px;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    .formula .caption {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      margin: 18px 0;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--paper-2); color: #352820; }
+    tr:last-child td { border-bottom: 0; }
+    ul { padding-left: 22px; margin: 10px 0 16px; }
+    figure {
+      margin: 24px 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    figure img { width: 100%; display: block; background: #fff; }
+    figcaption {
+      padding: 10px 14px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--line);
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #fff7ec;
+      padding: 16px 18px;
+      border-radius: 8px;
+      margin: 18px 0;
+    }
+    .callout.good { border-left-color: var(--ok); }
+    .callout.warn { border-left-color: var(--warn); }
+    code {
+      background: #efe2d3;
+      color: #33241b;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid #40362f;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; border-radius: 0; }
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .source-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+    }
+    .source-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+    .compact { color: var(--muted); font-size: 14px; }
+    .quote {
+      font-size: 18px;
+      color: #33251d;
+      border-left: 4px solid var(--accent);
+      padding-left: 16px;
+      margin: 20px 0;
+    }
+    footer { color: var(--muted); font-size: 13px; padding: 28px 0 42px; }
+    @media (max-width: 820px) {
+      .shell { width: min(100% - 28px, 1120px); }
+      .nav .shell { align-items: flex-start; flex-direction: column; gap: 6px; padding: 10px 0; }
+      .nav-links { justify-content: flex-start; }
+      header { min-height: 88vh; }
+      .hero { padding-bottom: 40px; }
+      .grid, .grid.two, .metric, .source-list { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="shell">
+      <strong>Agent Eval Reading Note</strong>
+      <div class="nav-links">
+        <a href="#source">来源</a>
+        <a href="#problem">问题</a>
+        <a href="#concept">委派智能</a>
+        <a href="#metric">指标</a>
+        <a href="#engineering">工程挑战</a>
+        <a href="#insight">Insight</a>
+      </div>
+    </div>
+  </nav>
+
+  <header>
+    <div class="shell hero">
+      <span class="eyebrow">X Article · Lei Li · 2026-05-18</span>
+      <h1>Delegation Intelligence：Agent 时代该如何重新理解评测</h1>
+      <p class="thesis">这篇文章真正想推进的不是再发明一个 leaderboard，而是把 Agent 评测的中心从“模型脑内能不能做”迁移到“模型是否知道该把任务交给工具、搜索、代码、人审或验证流程”。</p>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section id="source">
+      <h2>1. 读了什么，以及如何核验</h2>
+      <p class="lead">原帖 <a href="https://x.com/_TobiasLee/status/2056339539866886649">https://x.com/_TobiasLee/status/2056339539866886649</a> 本身只有一个短链，实际内容是 X Article <a href="https://x.com/i/article/2056333686597890048">Measuring the Delegation Intelligence of Agents</a>。OpenCLI 的 <code>twitter thread</code> 成功抓到原帖和回复；<code>twitter article</code> 对该 X Article 返回 <code>Article not found</code>，因此用 <code>opencli web read</code> 抽取文章正文。</p>
+      <div class="source-list">
+        <div class="source-item">
+          <strong>X Article 主文</strong>
+          <a href="https://x.com/i/article/2056333686597890048">Measuring the Delegation Intelligence of Agents</a>
+          <span>作者 Lei Li，2026-05-18；核心讨论 Agent 评测、Delegation Intelligence、Pass-all-k、token efficiency、model instinct。</span>
+        </div>
+        <div class="source-item">
+          <strong>Claw-Eval 页面</strong>
+          <a href="https://claw-eval.github.io/">Claw-Eval leaderboard</a>
+          <span>用于交叉确认文章提到的 benchmark 指标：Pass^3、Pass@3、Completion、Robustness、Safety、Avg Score。</span>
+        </div>
+        <div class="source-item">
+          <strong>Pass^k 背景</strong>
+          <a href="https://sierra.ai/blog/tau-bench-shaping-development-evaluation-agents">Sierra 关于 τ-bench 的说明</a>
+          <span>用于核对评论里提到的 tau2 / pass^k 背景：重复运行中的一致成功概率。</span>
+        </div>
+        <div class="source-item">
+          <strong>Pass@k vs Pass^k 解释</strong>
+          <a href="https://www.philschmid.de/agents-pass-at-k-pass-power-k">Phil Schmid: Pass@k vs Pass^k</a>
+          <span>用于补充公式层面的直观解释：Pass@k 偏乐观，Pass^k 更接近生产可靠性。</span>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>可靠性边界：</strong>Claw-Eval leaderboard 是活页面，模型列表和分数会变化；本报告只把 2026-05-20 抽取到的信息作为上下文，不把其分数当成静态事实。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>2. 文章在反对什么旧评测范式</h2>
+      <p>作者的出发点是：2026 年 Agent 已经从 demo 进入生产，主流范式变成 <code>Agent = Model + Harness</code>。这里的 harness 指工具、系统提示、浏览器、shell、代码解释器、检索、文件系统、执行环境、验证器等外部支架。模型不再是孤立地回答一道题，而是在一个可操作环境里完成任务。</p>
+      <p>这会让很多传统 benchmark 的意义发生变化。</p>
+      <div class="grid">
+        <div class="card">
+          <strong>知识题的尴尬</strong>
+          <p>如果 web search 是标准工具，那么“记住 Q1 2026 营收”不再是核心能力。更关键的是模型是否知道这类问题必须联网、是否能交叉核验、是否能标注时间和来源。</p>
+        </div>
+        <div class="card">
+          <strong>长链推理题的尴尬</strong>
+          <p>很多概率、组合、状态跟踪题可以用几行 Python 更稳定地解决。此时高分可能测到的不是脑内推理深度，而是模型是否知道“该写代码”。</p>
+        </div>
+        <div class="card">
+          <strong>边界条件</strong>
+          <p>作者没有否定 base capability eval。对小模型、垂直模型、基础能力还没补齐的场景，传统 eval 仍然是 gap finding 工具。争议只在 frontier agent 的主战场应该迁移。</p>
+        </div>
+      </div>
+      <p class="quote">我对这篇文章的理解是：它把“能力”从静态参数里的知识和推理，重新定义成一种动态决策策略：知道什么时候自己做，什么时候借外力，什么时候验证，什么时候停。</p>
+    </section>
+
+    <section id="concept">
+      <h2>3. Delegation Intelligence 到底是什么</h2>
+      <p>Delegation Intelligence 可以翻译成“委派智能”或“代理式委派能力”。它不是说模型一定要调用更多工具，而是说模型要能在不同路径之间做正确选择。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>具体含义</th>
+            <th>好行为</th>
+            <th>坏行为</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tool-use judgment</td>
+            <td>什么时候用工具、用哪个工具、参数怎么设。</td>
+            <td>实时财报问题主动搜索；概率模拟主动写代码；高风险操作先 dry-run。</td>
+            <td>能心算就硬心算；需要当前信息却凭记忆答；工具参数乱猜。</td>
+          </tr>
+          <tr>
+            <td>Information synthesis & verification</td>
+            <td>多来源整合、可靠性加权、冲突处理。</td>
+            <td>RCT 权重高于博客；旧综述标注时效边界；关键数字找两个来源。</td>
+            <td>把所有来源平均；把低质量摘要当事实；不说明不确定性。</td>
+          </tr>
+          <tr>
+            <td>Path selection</td>
+            <td>在直接推理、代码、检索、阅读、验证、人审之间选择路径。</td>
+            <td>先定位核心文件再改代码；先看 README/测试再下判断；任务完成后运行验证。</td>
+            <td>无计划地扩搜；过早下结论；为简单问题启动昂贵流程。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout good">
+        <strong>这比“会用工具”更严格。</strong>会用工具只是动作空间扩大；委派智能关心的是策略质量：是否在正确时间把正确子任务交给正确外部机制，并且能回收证据、判断证据、承担最终答案责任。
+      </div>
+    </section>
+
+    <section id="metric">
+      <h2>4. 为什么 Pass-all-k / Pass^k 比 Pass@k 更重要</h2>
+      <p>这条 X 的回复里，<a href="https://x.com/xeophon/status/2056348520404123793">xeophon</a> 提到作者的 <code>pass-all-k</code> 与 τ-bench 语境里的 <code>pass^k</code> 基本指向同一类可靠性指标。这个点很关键，因为它正好解释 Agent 评测为什么不能只看“多试几次总能成功”。</p>
+
+      <div class="metric">
+        <div class="card">
+          <strong>Pass@k：乐观的“至少一次成功”</strong>
+          <p>给模型 k 次独立尝试，只要其中一次成功就算通过。代码生成里常用，因为用户或评测器可以从多个候选里挑一个正确答案。</p>
+          <div class="formula">
+            \[
+              \mathrm{Pass@}k = 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}
+            \]
+            <div class="caption">其中 \(n\) 是总尝试数，\(c\) 是成功数。它回答：“抽 k 个候选，至少一个正确的概率是多少？”</div>
+          </div>
+        </div>
+        <div class="card">
+          <strong>Pass^k / Pass-all-k：严格的“每次都成功”</strong>
+          <p>关注 k 次尝试是否全部成功。它更接近生产环境：用户不会因为系统三次里有一次成功就满意，用户关心连续请求是否稳定完成。</p>
+          <div class="formula">
+            \[
+              \mathrm{Pass}^{k} \approx \left(\frac{c}{n}\right)^k
+            \]
+            <div class="caption">这是独立同分布假设下的简化估计。实际 benchmark 也可以直接按重复运行结果统计“同一任务 k 次是否全部通过”。</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>一个小例子</h3>
+      <p>假设某客服 Agent 单次任务成功率是 70%。如果给它 3 次机会，<code>Pass@3</code> 可能看起来接近 97%，因为至少一次成功很容易。但如果要求连续 3 次都成功，<code>Pass^3 = 0.7^3 = 34.3%</code>。这就是为什么 Pass@k 会掩盖可靠性问题。</p>
+      <div class="formula">
+        \[
+          \mathrm{Stability\ Gap} = \mathrm{Pass@}k - \mathrm{Pass\text{-}all\text{-}}k
+        \]
+        <div class="caption">gap 大，说明模型“有时能撞对”；gap 小，说明决策路径稳定。对 Agent 来说，稳定路径本身就是能力。</div>
+      </div>
+
+      <h3>Claw-Eval 的指标组合</h3>
+      <p>Claw-Eval 页面把 <code>Pass^3</code>、<code>Pass@3</code>、Completion、Robustness、Safety 和 Avg Score 放在一起。这个设计体现了文章主张：只看最终答案不够，还要看重复运行稳定性、鲁棒性和安全边界。</p>
+      <figure>
+        <img src="delegation-intelligence-agent-eval-assets/token-efficiency.jpg" alt="Claw-Eval token efficiency scatter plot">
+        <figcaption>文章中的 token efficiency 图：同等准确率附近，不同模型可能消耗差几个倍数的 token。图像来自 X Article 配图，本地保存用于阅读报告。</figcaption>
+      </figure>
+      <div class="callout warn">
+        <strong>不要把成本指标绝对化。</strong>Token efficiency 很重要，但它不是所有任务的第一目标。医疗、金融、代码删除、权限变更等高风险任务里，额外验证的 token 成本可能是必要成本。更合理的做法是画 task-conditioned cost-quality frontier，而不是给所有任务套同一个成本惩罚。
+      </div>
+    </section>
+
+    <section id="instinct">
+      <h2>5. “Model Instinct” 是这篇文章最有意思但也最难测的部分</h2>
+      <p>作者观察到不同模型有不同“直觉”：有些模型还没完整读论文，就能定位关键 method 段；还没深入代码库，就能猜到核心文件；信息还不充分时，第一判断就接近最终答案。这种能力不是最终准确率，也不完全等于 token efficiency。</p>
+      <p>我觉得这个概念有价值，因为它描述的是“搜索策略的先验质量”。强模型不只是会穷举路径，而是更早把注意力放到高信息密度的位置。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>可测 proxy</th>
+            <th>测什么</th>
+            <th>潜在混淆</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Time-to-first-relevant-artifact</td>
+            <td>多久找到真正关键的文件、段落、网页或日志。</td>
+            <td>可能受工具速度、索引质量、先验泄漏影响。</td>
+          </tr>
+          <tr>
+            <td>Early-path regret</td>
+            <td>前几步选择与最终最短成功路径的偏离程度。</td>
+            <td>“最短路径”未必是最安全路径。</td>
+          </tr>
+          <tr>
+            <td>Unnecessary-tool rate</td>
+            <td>调用了多少对最终答案没有贡献的工具。</td>
+            <td>探索性任务中冗余调用不一定是坏事。</td>
+          </tr>
+          <tr>
+            <td>Source-weight calibration</td>
+            <td>是否能早期区分高质量来源和噪声来源。</td>
+            <td>需要人工或强验证器标注来源质量。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>我的判断：</strong>“instinct”值得研究，但不能直接变成一个玄学 leaderboard。它必须落到轨迹指标、可复核证据和反事实路径比较上，否则很容易把“看起来聪明的 shortcut”误当成真实能力。
+      </div>
+    </section>
+
+    <section id="engineering">
+      <h2>6. 作者强调的工程挑战，其实是 Agent Eval 的可信度底座</h2>
+      <p>文章最后一部分很工程化，但重要性不低于指标本身。Agent eval 比 QA eval 更容易被环境污染。</p>
+      <div class="grid two">
+        <div class="card">
+          <strong>基础设施侧</strong>
+          <ul>
+            <li>模型服务超时、限流、上下文截断会污染结果。</li>
+            <li>浏览器、shell、容器、文件系统状态漂移会被误归因成模型失败。</li>
+            <li>Docker CPU、内存、磁盘不足会让任务互相影响；隔离不仅是文件隔离，也是资源隔离。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>评测设计侧</strong>
+          <ul>
+            <li>同一模型换 prompt、工具集、harness 后可能差很多；跨模型比较必须考虑 harness mismatch。</li>
+            <li>Web search/mock service 会随时间漂移；需要 snapshot 或避免强时效依赖。</li>
+            <li>安全应作为 veto 维度：越权删文件、泄漏信息、乱发请求，不能用任务成功抵消。</li>
+          </ul>
+        </div>
+      </div>
+      <p>这里最值得带走的工程原则是：Agent eval 的样本不是“题目 + 答案”，而是“题目 + 环境 + harness + 工具状态 + 执行轨迹 + 最终状态”。缺任何一项，复现性和可解释性都会下降。</p>
+    </section>
+
+    <section id="insight">
+      <h2>7. 我的核心 insight</h2>
+      <p>这篇文章的重要性，在于它把 Agent 能力从“是否拥有某项内生技能”推进到“是否拥有正确的外包策略”。这是一个更接近真实生产的能力定义。</p>
+      <div class="grid">
+        <div class="card">
+          <strong>它解释了为什么旧题会失效</strong>
+          <p>不是因为知识、推理、数学不重要，而是因为在 Agent 系统里，这些能力经常被工具重构。评测如果仍然禁止工具，就测不到真实工作流；如果允许工具却不记录路径，又分不清模型能力和 harness 偶然性。</p>
+        </div>
+        <div class="card">
+          <strong>它把可靠性放回中心</strong>
+          <p>Pass@k 奖励“多试几次总会成功”，Pass^k 追问“连续处理真实请求是否稳定”。生产系统真正要的是后者。</p>
+        </div>
+        <div class="card">
+          <strong>它也暴露了新风险</strong>
+          <p>Delegation Intelligence 容易被 harness 设计劫持。一个模型在某个工具环境里很强，不代表它具备可迁移的委派能力。因此多 harness 方差、路径审计和安全 veto 是必要配套。</p>
+        </div>
+      </div>
+      <p class="quote">我会把这篇文章看作一个评测方向的宣言：下一代 Agent benchmark 不应该只问“模型答对了吗”，而应该问“它为什么选择这条路径、这条路径是否稳定、成本是否合理、是否遵守边界、换一个 harness 是否仍然成立”。</p>
+    </section>
+
+    <section id="commands">
+      <h2>8. 本次使用的关键命令</h2>
+      <pre><code>opencli twitter thread "https://x.com/_TobiasLee/status/2056339539866886649" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/Rb5eLxvoaF"
+opencli web read --url "https://x.com/i/article/2056333686597890048" --stdout true --download-images false --wait 5 -f json --trace retain-on-failure
+opencli web read --url "https://claw-eval.github.io/" --stdout true --download-images false --wait 5 -f json --trace retain-on-failure</code></pre>
+      <p class="compact">补充来源通过 mcp-router/Grok Search 定位到 Sierra τ-bench 说明和 Phil Schmid 的 Pass@k vs Pass^k 解释，再用 mcp-router fetch 抽取正文。</p>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <p>生成时间：2026-05-20 · 输出文件：/Users/bytedance/Downloads/delegation-intelligence-agent-eval.html</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景） - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 18</div>
+        <div class="brand-title">十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</div>
+        <div class="brand-meta">4. 架构、位置编码、算力与手撕代码 · 第 6 步 · 训练/推理/系统</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0140">一、参数量计算的第一性原理</a>
+<a class="toc-link" href="#h-0141">二、标准 Transformer 的参数量推导</a>
+<a class="toc-link" href="#h-0142" style="padding-left:18px">Step 1: Embedding 层</a>
+<a class="toc-link" href="#h-0143" style="padding-left:18px">Step 2: Attention 投影</a>
+<a class="toc-link" href="#h-0144" style="padding-left:18px">Step 3: FFN 层</a>
+<a class="toc-link" href="#h-0145" style="padding-left:18px">Step 4: 归一化层</a>
+<a class="toc-link" href="#h-0146" style="padding-left:18px">Step 5: 单层总参数量</a>
+<a class="toc-link" href="#h-0147" style="padding-left:18px">Step 6: 模型总参数量</a>
+<a class="toc-link" href="#h-0148">三、完整计算示例：LLaMA-2 7B</a>
+<a class="toc-link" href="#h-0149">四、MoE 模型的参数量计算</a>
+<a class="toc-link" href="#h-0150">五、训练显存 vs 推理显存的完整估算</a>
+<a class="toc-link" href="#h-0151" style="padding-left:18px">训练显存（以 AdamW + BF16 为例）</a>
+<a class="toc-link" href="#h-0152" style="padding-left:18px">推理显存</a>
+<a class="toc-link" href="#h-0153">六、参数量计算速查公式卡</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link current" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="017.html">← 17. 十三、参数量估算、复杂度与算力题专项</a><a href="022.html">22. 十六、参数量、显存与复杂度快算口诀 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0139" data-category="engineering" data-title="十三点五、参数量计算深度解析（新增：完整推导与复杂场景）">
+<h2 id="h-0139"><a class="anchor-link" href="#h-0139" aria-label="跳转到本节">#</a>十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>把结构题、RoPE/长上下文、参数量估算和手写代码放在一起读。它们共同考察“能否把模型结构落到公式、显存和实现”。</p></aside>
+<p>前面的参数量估算专项已经给出了"快速口诀"，但面试中真正拉开差距的是：<strong>你能否从第一性原理出发，一步步推导出任意架构的参数量？能否在面试官给出一个非标准配置时，仍然正确计算？</strong></p>
+<p>本节给出<strong>系统化的参数量计算方法</strong>，覆盖标准 Transformer、GQA、MoE、SwiGLU 等变体，以及训练/推理显存的完整估算。</p>
+<hr>
+<h3 id="h-0140"><a class="anchor-link" href="#h-0140" aria-label="跳转到本节">#</a>一、参数量计算的第一性原理</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">参数量 / 显存速算</div>
+        <p class="inline-enhancement-note">放在参数量、复杂度、显存估算小节附近，作为面试快算公式。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>Transformer 单层参数近似</b><div class="math-display">\[P_{layer}\approx 4d^2 + 2d\,d_{ff}\approx 12d^2\quad(d_{ff}\approx4d)\]</div><p>用于快速估算 dense LLM 参数量；SwiGLU/GQA 会改变常数项。</p></div><div class="formula-card"><b>训练显存组成</b><div class="math-display">\[\mathrm{Memory}\approx W + G + O + A\]</div><p>W 是权重，G 是梯度，O 是优化器状态，A 是激活值。</p></div></div>
+      </aside>
+<p><strong>核心原则</strong>：参数量 = 所有可训练张量的元素个数之和。</p>
+<p>对于 Transformer 模型，可训练张量主要来自：</p>
+<ol>
+<li><strong>Embedding 层</strong>：输入词表映射 + 输出头（如果不共享）
+</li>
+<li><strong>Attention 块</strong>：Q/K/V/O 投影矩阵
+</li>
+<li><strong>FFN 块</strong>：前馈网络矩阵
+</li>
+<li><strong>归一化层</strong>：LayerNorm/RMSNorm 的可学习参数
+</li>
+<li><strong>其他</strong>：偏置项、位置编码（如果可学习）等
+</li>
+</ol>
+<hr>
+<h3 id="h-0141"><a class="anchor-link" href="#h-0141" aria-label="跳转到本节">#</a>二、标准 Transformer 的参数量推导</h3>
+<h4 id="h-0142"><a class="anchor-link" href="#h-0142" aria-label="跳转到本节">#</a>Step 1: Embedding 层</h4>
+<pre><code class="language-text">输入 embedding: V × d_model
+输出头（不共享时）: d_model × V</code></pre>
+<p>如果输出头和输入 embedding <strong>共享权重</strong>（如 GPT、LLaMA），则只算一次：</p>
+<pre><code class="language-text">Embedding 参数量 = V × d_model</code></pre>
+<h4 id="h-0143"><a class="anchor-link" href="#h-0143" aria-label="跳转到本节">#</a>Step 2: Attention 投影</h4><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">Attention 数据流</div>
+        <p class="inline-enhancement-note">放在 Self-Attention / FlashAttention / KV cache 相关小节附近，帮助把 Q/K/V、softmax 和输出向量串起来。</p>
+        <div class="visual-grid"><div class="visual-card"><b>Scaled Attention 结构图</b><img src="../assets/attention-flow.svg" alt="Scaled Attention 结构图"><p>从 Q/K/V 到 softmax 再到输出向量的核心数据流。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>Scaled Dot-Product Attention</b><div class="math-display">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><p>缩放项控制点积方差，softmax 后得到对 V 的加权。</p></div><div class="formula-card"><b>KV Cache 显存估算</b><div class="math-display">\[\mathrm{KVCache}\approx 2 \times B \times L \times H_{kv} \times d_h \times N_{layer} \times \mathrm{bytes}\]</div><p>2 表示 K 和 V；长上下文下主要随 batch、序列长度和层数线性增长。</p></div></div>
+      </aside>
+<p>标准 Multi-Head Attention 有 4 个投影矩阵：</p>
+<pre><code class="language-text">Wq: d_model × d_model
+Wk: d_model × d_model
+Wv: d_model × d_model
+Wo: d_model × d_model
+
+Attention 参数量 = 4 × d_model²</code></pre>
+<p><strong>GQA 变体</strong>：设 <code>n_heads</code> 为 query 头数，<code>n_kv_heads</code> 为 key/value 头数（<code>n_kv_heads &lt;= n_heads</code>）：</p>
+<pre><code class="language-text">Wq: d_model × d_model                      # query 保持全头
+Wk: d_model × (n_kv_heads × head_dim)      # key 投影到共享空间
+Wv: d_model × (n_kv_heads × head_dim)      # value 投影到共享空间
+Wo: d_model × d_model                      # 输出投影保持全维
+
+Attention 参数量 = d_model² + 2 × d_model × (n_kv_heads × head_dim) + d_model²
+                = 2d_model² + 2d_model² × (n_kv_heads / n_heads)</code></pre>
+<p>当 <code>n_kv_heads = n_heads</code>（标准 MHA）时：<code>= 4d_model²</code> 当 <code>n_kv_heads = 1</code>（MQA）时：<code>= 2d_model² + 2d_model × head_dim</code> 当 <code>n_kv_heads = n_heads / 4</code>（典型 GQA）时：<code>= 2d_model² + 0.5d_model² = 2.5d_model²</code></p>
+<h4 id="h-0144"><a class="anchor-link" href="#h-0144" aria-label="跳转到本节">#</a>Step 3: FFN 层</h4>
+<p><strong>经典两层 FFN</strong>（ReLU/GELU）：</p>
+<pre><code class="language-text">W1: d_model × d_ff
+W2: d_ff × d_model
+
+FFN 参数量 = 2 × d_model × d_ff</code></pre>
+<p><strong>SwiGLU 变体</strong>（LLaMA、Qwen 等现代模型）：</p>
+<pre><code class="language-text">SwiGLU 有三个矩阵：
+W_gate: d_model × d_ff
+W_up:   d_model × d_ff
+W_down: d_ff × d_model
+
+FFN 参数量 = 3 × d_model × d_ff</code></pre>
+<p>对于 LLaMA 风格，<code>d_ff ≈ (8/3) × d_model</code>：</p>
+<pre><code class="language-text">SwiGLU FFN 参数量 = 3 × d_model × (8/3 × d_model) = 8d_model²</code></pre>
+<h4 id="h-0145"><a class="anchor-link" href="#h-0145" aria-label="跳转到本节">#</a>Step 4: 归一化层</h4>
+<p>LayerNorm/RMSNorm 通常每个有 <code>d_model</code> 个可学习参数：</p>
+<pre><code class="language-text">每个 LN: 2 × d_model (gamma + beta) 或 1 × d_model (RMSNorm 只有 scale)
+每层通常有 2 个 LN (Pre-Norm: attention 前 + FFN 前)
+
+单层 LN 参数量 ≈ 2 × d_model（可忽略相对于矩阵项）</code></pre>
+<h4 id="h-0146"><a class="anchor-link" href="#h-0146" aria-label="跳转到本节">#</a>Step 5: 单层总参数量</h4>
+<p><strong>LLaMA 风格（GQA + SwiGLU + RMSNorm）</strong>：</p>
+<pre><code class="language-text">单层 ≈ Attention + FFN + Norm
+     ≈ (2 + 2 × n_kv_heads/n_heads) × d² + 8d² + 可忽略项
+     ≈ (10 + 2 × n_kv_heads/n_heads) × d²</code></pre>
+<p>当 <code>n_kv_heads = n_heads</code>（MHA）：单层 ≈ <code>12d²</code> 当 <code>n_kv_heads = n_heads/4</code>（典型 GQA）：单层 ≈ <code>10.5d²</code></p>
+<h4 id="h-0147"><a class="anchor-link" href="#h-0147" aria-label="跳转到本节">#</a>Step 6: 模型总参数量</h4>
+<pre><code class="language-text">总参数量 ≈ Embedding + L × 单层参数 + 输出头（如果不共享）
+         ≈ V × d + L × (10 ~ 12) × d²</code></pre>
+<hr>
+<h3 id="h-0148"><a class="anchor-link" href="#h-0148" aria-label="跳转到本节">#</a>三、完整计算示例：LLaMA-2 7B</h3>
+<p><strong>配置</strong>：</p>
+<ul>
+<li>V = 32000
+</li>
+<li>d = 4096
+</li>
+<li>L = 32
+</li>
+<li>n_heads = 32, n_kv_heads = 32（MHA，LLaMA-2 7B 是 MHA）
+</li>
+<li>d_ff = 11008（≈ 8/3 × 4096 = 10922.67，向上取整到 128 的倍数）
+</li>
+<li>SwiGLU
+</li>
+</ul>
+<p><strong>计算</strong>：</p>
+<pre><code class="language-text">Embedding: 32000 × 4096 = 131,072,000 ≈ 131M
+
+Attention（每层）:
+  Wq: 4096 × 4096 = 16,777,216
+  Wk: 4096 × 4096 = 16,777,216
+  Wv: 4096 × 4096 = 16,777,216
+  Wo: 4096 × 4096 = 16,777,216
+  Attention/层 = 67,108,864 ≈ 67.1M
+
+FFN（SwiGLU，每层）:
+  W_gate: 4096 × 11008 = 45,056,128
+  W_up:   4096 × 11008 = 45,056,128
+  W_down: 11008 × 4096 = 45,056,128
+  FFN/层 = 135,168,384 ≈ 135.2M
+
+单层总计 = 67.1M + 135.2M = 202.3M
+32 层 = 32 × 202.3M = 6,473.6M ≈ 6.47B
+
+总参数量 = 131M + 6,474M = 6,605M ≈ 6.6B
+
+加上 Norm 层和少量其他参数 ≈ 6.7B ~ 6.74B</code></pre>
+<p>这就是为什么叫"约 7B 模型"。</p>
+<hr>
+<h3 id="h-0149"><a class="anchor-link" href="#h-0149" aria-label="跳转到本节">#</a>四、MoE 模型的参数量计算</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">MoE 路由与负载均衡</div>
+        <p class="inline-enhancement-note">放在 MoE / Expert / DeepSeekMoE 小节附近，区分总参数量、激活参数量和路由副作用。</p>
+        <div class="visual-grid"><div class="visual-card"><b>MoE Top-k 路由图</b><img src="../assets/moe-routing.svg" alt="MoE Top-k 路由图"><p>gate 选择 top-k expert，再做加权合并。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>MoE Top-k 输出</b><div class="math-display">\[y=\sum_{i\in \mathrm{TopK}(g(x))} g_i(x)\,E_i(x)\]</div><p>每个 token 只激活少量 expert。</p></div><div class="formula-card"><b>MoE 负载均衡直觉</b><div class="math-display">\[\mathcal{L}_{aux}\propto N\sum_{i=1}^{N} f_i\,p_i\]</div><p>避免所有 token 挤向少数 expert。</p></div></div>
+      </aside>
+<p>MoE 的核心是：<strong>总参数量 ≠ 激活参数量</strong>。</p>
+<p><strong>配置示例</strong>：</p>
+<ul>
+<li>基础模型：d=4096, L=32, 标准 MHA + SwiGLU
+</li>
+<li>每层有 N=8 个专家
+</li>
+<li>每个专家是一个完整的 FFN（即替代原来的 dense FFN）
+</li>
+<li>每个 token 激活 top-k=2 个专家
+</li>
+</ul>
+<p><strong>参数量分解</strong>：</p>
+<pre><code class="language-text">Dense 部分（所有 token 都走）:
+  Embedding: V × d
+  Attention（32 层）: 32 × 4d² = 128d²
+  Norm 等：可忽略
+
+Sparse 部分（MoE FFN）:
+  每层有 8 个专家，每个专家是一个 FFN
+  每个专家参数量 = 3 × d × d_ff（SwiGLU）
+  每层 MoE 参数量 = 8 × 3 × d × d_ff
+  32 层 MoE 参数量 = 32 × 8 × 3 × d × d_ff
+
+总参数量 = Embedding + Attention + MoE
+         ≈ Vd + 128d² + 32 × 8 × 3 × d × d_ff</code></pre>
+<p><strong>具体数值</strong>（d=4096, d_ff=11008）：</p>
+<pre><code class="language-text">Dense 部分: 131M + 32 × 67.1M = 131M + 2,147M = 2,278M ≈ 2.3B
+MoE 部分: 32 × 8 × 135.2M = 32 × 1,081.6M = 34,611M ≈ 34.6B
+总参数量 ≈ 2.3B + 34.6B = 36.9B
+
+但每个 token 只激活 2 个专家：
+激活参数量/层 = Attention + 2 × Expert_FFN = 67.1M + 2 × 135.2M = 337.5M
+激活参数量/模型 = 131M + 32 × 337.5M = 131M + 10,800M = 10.9B</code></pre>
+<p>所以：总参数约 37B，但每次前向只激活约 11B。这就是 MoE "容量大、计算省" 的本质。</p>
+<hr>
+<h3 id="h-0150"><a class="anchor-link" href="#h-0150" aria-label="跳转到本节">#</a>五、训练显存 vs 推理显存的完整估算</h3>
+<h4 id="h-0151"><a class="anchor-link" href="#h-0151" aria-label="跳转到本节">#</a>训练显存（以 AdamW + BF16 为例）</h4><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">优化器与基础损失</div>
+        <p class="inline-enhancement-note">放在 AdamW、softmax、交叉熵、KL 等数学/优化器小节附近。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>AdamW 解耦权重衰减</b><div class="math-display">\[\theta_{t+1}=\theta_t-\eta\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}-\eta\lambda\theta_t\]</div><p>把 weight decay 从自适应梯度更新里解耦。</p></div><div class="formula-card"><b>Softmax + Cross Entropy</b><div class="math-display">\[p_i=\frac{e^{z_i}}{\sum_j e^{z_j}},\qquad \mathcal{L}_{CE}=-\sum_i y_i\log p_i\]</div><p>语言建模和分类最常见的基础损失。</p></div><div class="formula-card"><b>KL Divergence</b><div class="math-display">\[D_{KL}(P\|Q)=\sum_x P(x)\log\frac{P(x)}{Q(x)}\]</div><p>PPO 中常用 KL 约束策略偏离参考模型。</p></div></div>
+      </aside>
+<p>以 7B 模型，batch_size=1, seq_len=4096 为例：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>组件</th>
+<th>公式</th>
+<th>估算值</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>参数（BF16）</td>
+<td>7B × 2B</td>
+<td>~14 GB</td>
+</tr>
+<tr>
+<td>梯度（BF16）</td>
+<td>7B × 2B</td>
+<td>~14 GB</td>
+</tr>
+<tr>
+<td>Optimizer State（FP32）</td>
+<td>7B × 2 × 4B</td>
+<td>~56 GB</td>
+</tr>
+<tr>
+<td>激活（以 seq=4K 计）</td>
+<td>~batch × seq × d × L × 常数</td>
+<td>~20-40 GB</td>
+</tr>
+<tr>
+<td><strong>训练总显存</strong></td>
+<td></td>
+<td><strong>~100-130 GB</strong></td>
+</tr>
+</tbody></table></div>
+<h4 id="h-0152"><a class="anchor-link" href="#h-0152" aria-label="跳转到本节">#</a>推理显存</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>组件</th>
+<th>公式</th>
+<th>估算值</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>参数（BF16/INT8）</td>
+<td>7B × 2B (BF16) / 1B (INT8)</td>
+<td>~14 GB / ~7 GB</td>
+</tr>
+<tr>
+<td>KV Cache</td>
+<td>2 × B × T × L × n_kv_heads × head_dim × bytes</td>
+<td>取决于 batch 和长度</td>
+</tr>
+<tr>
+<td><strong>推理总显存</strong></td>
+<td></td>
+<td><strong>参数 + KV Cache</strong></td>
+</tr>
+</tbody></table></div>
+<p><strong>KV Cache 具体计算</strong>：</p>
+<pre><code class="language-text">KV Cache = 2 × B × T × L × n_kv_heads × head_dim × bytes
+
+例：B=4, T=4096, L=32, n_kv_heads=8, head_dim=128, BF16(2 bytes)
+KV Cache = 2 × 4 × 4096 × 32 × 8 × 128 × 2
+         = 2 × 4 × 4096 × 32 × 8 × 128 × 2
+         = 2,147,483,648 bytes
+         ≈ 2 GB
+
+如果 T=32768（32K 上下文）:
+KV Cache = 2 × 4 × 32768 × 32 × 8 × 128 × 2
+         = 17,179,869,184 bytes
+         ≈ 16 GB</code></pre>
+<p><strong>关键结论</strong>：32K 上下文下，KV Cache（16 GB）已经超过 7B 模型权重本身（14 GB）！这就是为什么长上下文推理首先要优化 KV Cache。</p>
+<hr>
+<h3 id="h-0153"><a class="anchor-link" href="#h-0153" aria-label="跳转到本节">#</a>六、参数量计算速查公式卡</h3>
+<pre><code class="language-text">【标准 Transformer 每层】
+  Attention: 4d²
+  FFN (2层): 2 × d × d_ff
+  总计: ≈ 4d² + 2d × d_ff
+
+【LLaMA 风格（SwiGLU + MHA）每层】
+  Attention: 4d²
+  FFN (SwiGLU): 3 × d × (8d/3) = 8d²
+  总计: ≈ 12d²
+
+【LLaMA 风格（SwiGLU + GQA, n_kv=n_heads/4）每层】
+  Attention: 2d² + 0.5d² = 2.5d²
+  FFN: 8d²
+  总计: ≈ 10.5d²
+
+【模型总参数量】
+  Total ≈ V × d + L × 单层参数
+
+【训练显存（AdamW + BF16）】
+  ≈ 参数 × (2+2+8) + 激活 ≈ 12 × 参数量 + 激活
+
+【推理显存】
+  ≈ 参数量 × 精度字节 + KV Cache
+
+【KV Cache】
+  = 2 × B × T × L × n_kv_heads × head_dim × bytes</code></pre>
+<hr>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="017.html">← 17. 十三、参数量估算、复杂度与算力题专项</a><a href="022.html">22. 十六、参数量、显存与复杂度快算口诀 →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

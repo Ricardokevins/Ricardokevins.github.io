@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MMProLong / LongPT 深度解读</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f3ea;
+      --surface: #fffdf7;
+      --surface-2: #f0eadf;
+      --ink: #1b1a17;
+      --muted: #6f6a60;
+      --subtle: #8b867c;
+      --line: #d8d0c0;
+      --line-strong: #a89e8c;
+      --accent: #b5572d;
+      --accent-soft: #f2ded2;
+      --blue: #315e8c;
+      --blue-soft: #dce7f2;
+      --green: #26705c;
+      --green-soft: #dcebe5;
+      --red: #9f3b2f;
+      --red-soft: #f2ded7;
+      --gold: #9f6a1a;
+      --gold-soft: #f5e6c7;
+      --shadow: 0 18px 44px rgba(49, 43, 31, 0.10);
+      --radius: 8px;
+      --max: 1260px;
+      --sans: "Avenir Next", "Inter", "Segoe UI", Arial, sans-serif;
+      --serif: "Georgia", "Times New Roman", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      font-size: 16px;
+    }
+    a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 243, 234, 0.94);
+      backdrop-filter: blur(14px);
+    }
+    .nav-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 10px 22px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .brand {
+      font-weight: 800;
+      color: var(--accent);
+      margin-right: 12px;
+    }
+    .nav-inner a {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 4px 0;
+    }
+    .nav-inner a:hover { color: var(--ink); }
+    header, main, footer {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding-left: 22px;
+      padding-right: 22px;
+    }
+    header {
+      padding-top: 46px;
+      padding-bottom: 28px;
+    }
+    .kicker {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(36px, 5vw, 62px);
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      max-width: 900px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.66;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 26px;
+    }
+    .meta-card, .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .meta-card {
+      padding: 14px 15px;
+      min-height: 108px;
+    }
+    .meta-card strong {
+      display: block;
+      font-size: 12px;
+      color: var(--subtle);
+      margin-bottom: 6px;
+    }
+    .meta-card span {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 28px;
+      padding-bottom: 52px;
+    }
+    section {
+      background: transparent;
+      border-top: 1px solid var(--line);
+      padding-top: 28px;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 27px;
+      line-height: 1.24;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 18px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+    p { margin: 10px 0; }
+    ul, ol { padding-left: 22px; margin: 10px 0; }
+    li { margin: 6px 0; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+    .card {
+      padding: 16px;
+      box-shadow: none;
+    }
+    .card h3 { margin-top: 0; }
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      padding: 2px 9px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface-2);
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .callout {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .callout.good { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.warn { border-left-color: var(--gold); background: var(--gold-soft); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.blue { border-left-color: var(--blue); background: var(--blue-soft); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 11px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    th {
+      background: var(--surface-2);
+      color: var(--ink);
+      font-weight: 800;
+    }
+    tr:last-child td { border-bottom: 0; }
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: #efe6d7;
+      color: #3b2d20;
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+    pre {
+      background: #241f1a;
+      color: #f7efe1;
+      border-radius: var(--radius);
+      padding: 14px;
+      overflow-x: auto;
+      border: 1px solid #44382c;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+    .math {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 13px 15px;
+      margin: 14px 0;
+      font-family: var(--serif);
+      font-size: 18px;
+      overflow-x: auto;
+    }
+    .frac {
+      display: inline-grid;
+      grid-template-rows: auto auto;
+      vertical-align: middle;
+      text-align: center;
+      margin: 0 2px;
+    }
+    .frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 3px; }
+    .frac > span:last-child { padding: 0 3px; }
+    .small { color: var(--muted); font-size: 14px; }
+    .score {
+      font-weight: 900;
+      color: var(--accent);
+      font-size: 22px;
+      line-height: 1.2;
+    }
+    .source-list li { word-break: break-word; }
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      padding-bottom: 32px;
+    }
+    @media (max-width: 860px) {
+      .meta-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      h1 { font-size: 36px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <span class="brand">MMProLong</span>
+      <a href="#thesis">一句话</a>
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#recipe">配方</a>
+      <a href="#evaluation">评估</a>
+      <a href="#results">结果</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </div>
+  </nav>
+
+  <header>
+    <div class="kicker">X thread + arXiv paper reading report</div>
+    <h1>MMProLong：长上下文 LVLM 训练的关键，不是把样本堆到 128K，而是让模型学会跨长度检索证据</h1>
+    <p class="subtitle">
+      这篇推文介绍的是 arXiv:2605.13831《Training Long-Context Vision-Language Models Effectively with Generalization Beyond 128K Context》。
+      论文的核心价值不在于又宣布一个 128K/512K 模型，而在于用一组受控 ablation 给出一个可复用的 LongPT 数据配方：长文档 VQA 优于 OCR transcription，pool-native 长度分布优于刻意长样本偏置，8:2 的抽取/推理混合最稳。
+    </p>
+    <div class="meta-grid">
+      <div class="meta-card"><strong>材料</strong><span>X 帖 + HF Paper Page + arXiv PDF/HTML</span></div>
+      <div class="meta-card"><strong>论文</strong><span>arXiv:2605.13831，2026-05-13 发布</span></div>
+      <div class="meta-card"><strong>模型目标</strong><span>Qwen2.5-VL-7B 从 32K 扩展到 128K</span></div>
+      <div class="meta-card"><strong>训练预算</strong><span>5B tokens，约 2.9K H20 hours</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="thesis">
+      <h2>一句话结论</h2>
+      <div class="callout good">
+        <strong>这篇工作的真正 thesis：</strong>长上下文多模态能力主要是“在很长的视觉-文本上下文中找到少量关键证据，再按指令回答”的能力；所以最有效的数据不是让模型机械转录整份 PDF，而是把短段落中生成的、有锚点的 QA 放回整篇长文档，让模型在完整上下文里练习检索、聚合和轻量推理。
+      </div>
+      <p>
+        换句话说，它把 LongPT（Long-context Continued Pre-Training，长上下文继续预训练）从一个“算力和窗口长度故事”变成一个“训练任务设计故事”。如果只看推文里的 128K、512K、5B tokens，容易误读为这是一个 context scaling 工程；读完论文后更准确的理解是：作者在回答“5B token 这样相对有限的预算下，什么样的数据最值得喂给 LVLM”。
+      </p>
+    </section>
+
+    <section id="source">
+      <h2>来源与当前发布状态</h2>
+      <ul class="source-list">
+        <li>X 主帖：Zhaowei Wang 发布 MMProLong，称从 Qwen2.5-VL-7B 出发，将 context window 从 32K 扩到 128K，并在 256K/512K 上无需额外训练保持表现；回复中说明 code、model、data will be released soon。</li>
+        <li>短链解析：推文中的论文链接指向 Hugging Face Papers 页面 <code>https://huggingface.co/papers/2605.13831</code>。</li>
+        <li>论文原文：arXiv HTML 与 PDF 已核验；PDF 元数据为 29 页，标题和作者与 HF 页面一致。</li>
+        <li>Artifact 状态：本次核查 GitHub Search API、Hugging Face models/datasets/spaces API，未发现公开的 <code>MMProLong</code> 模型、数据集或代码仓库条目；因此这里将复现性判断标为“尚待发布”，不是永久性结论。</li>
+      </ul>
+    </section>
+
+    <section id="problem">
+      <h2>论文要解决什么问题</h2>
+      <p>
+        过去 LVLM 的长上下文能力很容易被包装成“支持多少 K token”的规格，但真正难点有三层：第一，模型能不能在长文档、长网页、长视频里保持位置感；第二，能不能从大量干扰信息中定位少数证据；第三，能不能把证据按用户问题组织成答案，而不是只会 OCR 或复述局部内容。
+      </p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>窗口长度不是能力本身</h3>
+          <p>把 RoPE/mRoPE 改到更长只能让模型“形式上可以接收”更长输入，但不保证它真的会在长距离上找证据。</p>
+        </div>
+        <div class="card">
+          <h3>长文档训练配方不透明</h3>
+          <p>很多强模型只在 technical report 里简略描述数据，缺少受控实验告诉我们到底哪类数据有效。</p>
+        </div>
+        <div class="card">
+          <h3>预算有限</h3>
+          <p>作者固定每次 LongPT 为 5B tokens，所以问题变成：同样预算下，应该合成什么任务、怎么混合、怎么分配长度。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>方法：数据怎么从 PDF 变成 LongPT 样本</h2>
+      <h3>1. 构建文档池</h3>
+      <p>
+        作者先收集超过 153 万份 PDF 文档，覆盖论文、书籍、技术手册，以及工程、医学、社科、生物等领域。训练合成时主要选择 32 到 50 页的文档，因为在 Qwen2.5-VL 的视觉 token 化设定下，这类文档大致形成 32K 到 128K 的多模态 token 序列。为降低 benchmark contamination，论文还用 PDF 内容 SHA-256 hash 过滤可能与评测重叠的样本。
+      </p>
+      <h3>2. 渲染 PDF，并用 OCR expert 解析结构</h3>
+      <p>
+        PDF 每页用 PyMuPDF 以 144 DPI 渲染成图片。然后用一个由 Seed 2.0 微调出的 OCR expert 把页面解析成 layout-aware blocks：标题、章节、段落、表格、图注、页眉页脚等。这一步有两个作用：标题/章节用于抽取语义连贯的页段；识别出的文本块用于构造 OCR transcription baseline。
+      </p>
+      <h3>3. 生成长文档 VQA，不是直接问整篇文档</h3>
+      <ol>
+        <li>先从完整文档中采样一个 8 到 15 页的连续章节片段。</li>
+        <li>把这个短片段的页面图片喂给 Seed 2.0 作为 QA generator，生成问题、答案、证据描述和证据页。</li>
+        <li>再把 QA pair 放回原始完整文档，形成一个长上下文训练样本。</li>
+      </ol>
+      <div class="callout blue">
+        <strong>关键细节：</strong>问题必须带有局部锚点，例如“在 Introduction section”或“on pages 20-25”。否则一个在短片段中唯一的答案，放回整份财报或手册后可能不唯一，训练信号会被污染。
+      </div>
+      <h3>4. 三类 VQA 任务对应三种能力</h3>
+      <table>
+        <thead><tr><th>任务</th><th>训练目标</th><th>模型实际要学什么</th></tr></thead>
+        <tbody>
+          <tr><td><code>extract-single</code></td><td>单页事实抽取</td><td>在长文档中定位一页，并读出明确事实、实体、日期、数值或列表。</td></tr>
+          <tr><td><code>extract-multi</code></td><td>多页事实聚合</td><td>跨多个页面找到证据，合并多个事实点。</td></tr>
+          <tr><td><code>reasoning</code></td><td>轻量计算/比较/计数</td><td>先检索至少两个证据，再做求和、差值、比较、计数等操作。</td></tr>
+        </tbody>
+      </table>
+      <h3>5. OCR transcription 被作为对照</h3>
+      <p>
+        OCR transcription 分两类：<code>OCR-full</code> 要转录所有页面，<code>OCR-needle</code> 只转录少数目标页、其余页面作为干扰。这个对照很重要，因为它测试一个常见假设：让 LVLM 大量做 OCR，会不会自然获得长上下文能力？论文的答案是否定的，至少在他们的下游长文档 VQA 评估上不是好路线。
+      </p>
+    </section>
+
+    <section id="recipe">
+      <h2>最终训练配方</h2>
+      <table>
+        <thead><tr><th>模块</th><th>配置</th><th>为什么这么选</th></tr></thead>
+        <tbody>
+          <tr><td>初始化模型</td><td>Qwen2.5-VL-7B-Instruct，原始 32K context</td><td>作为 7B 级开源基座，便于做受控 LongPT 实验。</td></tr>
+          <tr><td>目标窗口</td><td>131,072 tokens，即 128K</td><td>训练窗口扩展目标；后续额外测试 256K/512K 外推。</td></tr>
+          <tr><td>mRoPE base</td><td>从 1 x 10^6 调到 4 x 10^6</td><td>遵循 Dynamic-NTK 风格的中等幅度位置频率缩放；8 x 10^6 并不稳定更好。</td></tr>
+          <tr><td>长数据</td><td>40% extract-single，40% extract-multi，20% reasoning</td><td>8:2 extraction-to-reasoning 最优；长上下文瓶颈主要是检索，少量推理保持任务多样性。</td></tr>
+          <tr><td>长度分布</td><td>pool-native，从文档池自然采样 32K-128K</td><td>比刻意偏向 100K+ 的 long-biased 更稳，说明模型需要跨长度/跨位置校准。</td></tr>
+          <tr><td>短数据</td><td>默认不混短上下文数据</td><td>纯长文档 VQA 基本保留短上下文能力；若特别关注短能力，可考虑 40% LLaVA-OneVision。</td></tr>
+          <tr><td>优化</td><td>AdamW，peak LR 1e-5，cosine 到 1e-6，10% warmup</td><td>固定 5B token budget、4M token global batch，保证 ablation 对比公平。</td></tr>
+          <tr><td>工程</td><td>VeOmni + FlashAttention，Ulysses SP=2，FSDP=4</td><td>在长序列训练下节省显存并提高吞吐；主训练使用 8 个 H20 节点。</td></tr>
+        </tbody>
+      </table>
+      <span class="math">Dynamic-NTK 直觉：base scaling 约随 expansion factor <em>t</em><sup><span class="frac"><span>d</span><span>d-2</span></span></sup> 增大；但 LVLM 的 mRoPE 有 temporal / height / width 结构，不能机械套用 1-D RoPE 经验。</span>
+    </section>
+
+    <section id="evaluation">
+      <h2>到底评估了什么</h2>
+      <p>
+        这篇论文的评估重点不是“模型是否真的会使用 512K 任意上下文完成所有任务”，而是更具体地测几个能力面：长文档 VQA、网页 haystack 中的多模态 needle、视觉-文本压缩、长视频理解，以及短上下文能力是否退化。
+      </p>
+      <table>
+        <thead><tr><th>评测</th><th>输入/输出</th><th>指标怎么理解</th><th>注意事项</th></tr></thead>
+        <tbody>
+          <tr><td>MMLongBench document category</td><td>长 PDF/网页/slide 视觉上下文 + 问题；输出文本答案</td><td>按子任务使用 exact match、soft accuracy、multiple-choice accuracy；简单答案用 LLM 二分类 judge，列表答案算覆盖 F1；AVG 是三个数据集宏平均。</td><td>核心主评测，包含 64K/128K，另扩到 256K/512K。</td></tr>
+          <tr><td>MM-NIAH</td><td>网页 haystack，插入 text/image needles；输出检索、计数或推理答案</td><td>先平均 text/image needle，再对 retrieval/counting/reasoning 做宏平均。</td><td>更像“长上下文定位能力”压力测试，不是文档 QA 同分布。</td></tr>
+          <tr><td>VTCBench-Wild</td><td>压缩后的视觉-文本长上下文；输出检索/推理/记忆答案</td><td>Retrieval 和 Reasoning 用 containsAll accuracy，Memory 用 gpt-4o-mini 判分，Overall 是样本数加权。</td><td>能看出是否保留压缩视觉上下文中的信息。</td></tr>
+          <tr><td>Video-MME / MLVU / LongVideoBench</td><td>1fps 视频帧，最多 768 帧，总 video tokens 不超过 24,576</td><td>多选准确率或对应 benchmark 平均准确率。</td><td>不是训练目标，属于零样本迁移。</td></tr>
+          <tr><td>短上下文 benchmark</td><td>MMBench、RWQA、MMMU、MMMU-Pro、MathVista、OCRBench</td><td>六项平均。</td><td>用于检查 LongPT 是否破坏原模型一般 VLM 能力。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="results">
+      <h2>关键结果和数字</h2>
+      <h3>1. VQA 数据明显优于 OCR transcription</h3>
+      <table>
+        <thead><tr><th>训练数据</th><th>Overall AVG</th><th>相对 Qwen2.5-VL-7B</th><th>解读</th></tr></thead>
+        <tbody>
+          <tr><td>Qwen2.5-VL-7B</td><td>50.59</td><td>-</td><td>32K 原模型在 128K 上有明显退化。</td></tr>
+          <tr><td>extract-single</td><td>55.69</td><td>+5.1</td><td>单页检索训练已经有效。</td></tr>
+          <tr><td>extract-multi</td><td>56.90</td><td>+6.3</td><td>多页聚合是最强单任务。</td></tr>
+          <tr><td>reasoning</td><td>56.47</td><td>+5.9</td><td>推理任务也有效，但单独使用不如混合。</td></tr>
+          <tr><td>OCR-full</td><td>33.17</td><td>-17.4</td><td>密集转录与下游指令 QA 不对齐。</td></tr>
+          <tr><td>OCR-full + 额外 5B SFT</td><td>53.84</td><td>+3.2</td><td>加 SFT 后恢复一些，但成本更高且仍弱于 VQA。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2. 最好的任务混合是偏检索，不是全推理</h3>
+      <p>
+        extraction-to-reasoning 从 0:10 到 10:0 网格搜索，最佳是 8:2，整体 AVG 为 57.70。6:4 也较好，为 57.27。这个结果的含义很直接：在长上下文 LVLM 里，推理常常不是第一瓶颈，先找到证据才是瓶颈；但完全不要 reasoning 也不是最好，因为任务多样性会下降。
+      </p>
+
+      <h3>3. 不必把训练样本刻意堆到 128K 附近</h3>
+      <p>
+        long-biased 分布里约 83.9% 样本超过 100K tokens；pool-native 只有约 23.5%-23.6% 超过 100K。结果 pool-native 在 extract-single 和 reasoning 上明显更好，extract-multi 基本持平。这说明模型需要学的是跨不同绝对位置、相对距离和长度的检索校准，而不是只适配接近上限的窗口。
+      </p>
+
+      <h3>4. MMProLong 在主评测上提升明显，但没有超过最强闭源/大模型</h3>
+      <table>
+        <thead><tr><th>模型</th><th>64K AVG</th><th>128K AVG</th><th>Overall AVG</th></tr></thead>
+        <tbody>
+          <tr><td>Qwen2.5-VL-7B</td><td>52.24</td><td>48.94</td><td>50.59</td></tr>
+          <tr><td>MMProLong</td><td>59.56</td><td>55.84</td><td>57.70</td></tr>
+          <tr><td>Qwen2.5-VL-32B</td><td>60.55</td><td>56.08</td><td>58.31</td></tr>
+          <tr><td>Qwen2.5-VL-72B</td><td>62.81</td><td>58.85</td><td>60.83</td></tr>
+          <tr><td>Gemini-3.1-Pro</td><td>83.55</td><td>83.77</td><td>83.66</td></tr>
+        </tbody>
+      </table>
+      <p>
+        所以“显著”的正确读法是：对 7B 基座和同级开源模型显著，对大参数开源模型具有竞争力，但不是 SOTA 闭源级别能力。
+      </p>
+
+      <h3>5. 128K 训练后能外推到 256K/512K，但评估方式有边界</h3>
+      <table>
+        <thead><tr><th>模型</th><th>256K AVG</th><th>512K AVG</th><th>Overall AVG</th></tr></thead>
+        <tbody>
+          <tr><td>MMProLong</td><td>55.09</td><td>52.52</td><td>53.80</td></tr>
+          <tr><td>Qwen2.5-VL-7B</td><td>38.12</td><td>19.49</td><td>28.80</td></tr>
+          <tr><td>Gemma3-12B</td><td>47.37</td><td>23.51</td><td>35.44</td></tr>
+        </tbody>
+      </table>
+      <p>
+        这是强结果，但要注意：256K/512K 样本是按 MMLongBench 方法通过左右填充随机负文档扩展长度，核心问题未必天然需要利用 512K 全部信息。它更像在测抗干扰和位置外推，不等价于证明模型可以稳定完成任意 512K 多证据任务。
+      </p>
+
+      <h3>6. 泛化任务显示学到的不只是文档 VQA 模板</h3>
+      <table>
+        <thead><tr><th>任务</th><th>Qwen2.5-VL-7B</th><th>MMProLong</th><th>变化</th></tr></thead>
+        <tbody>
+          <tr><td>MM-NIAH 64K AVG</td><td>27.83</td><td>56.61</td><td>+28.78</td></tr>
+          <tr><td>MM-NIAH 128K AVG</td><td>12.17</td><td>42.28</td><td>+30.11</td></tr>
+          <tr><td>VTCBench Overall</td><td>48.23</td><td>52.73</td><td>+4.50</td></tr>
+          <tr><td>Video-MME</td><td>65.10</td><td>67.78</td><td>+2.68</td></tr>
+          <tr><td>MLVU</td><td>70.20</td><td>73.55</td><td>+3.35</td></tr>
+          <tr><td>LongVideoBench</td><td>60.43</td><td>62.08</td><td>+1.65</td></tr>
+        </tbody>
+      </table>
+      <p>
+        MM-NIAH 的提升最大，符合“检索是核心瓶颈”的解释；视频任务提升较小但一致，说明 LongPT 学到了一些跨模态长上下文稳定性，但不应夸大成专门的视频模型突破。
+      </p>
+    </section>
+
+    <section id="limits">
+      <h2>局限和容易误读的地方</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 复现性暂时不足</h3>
+          <p>推文说代码、模型、数据 soon release；本次未找到公开 artifact。现在只能评价论文结果和方法逻辑，不能独立复现实验。</p>
+        </div>
+        <div class="card">
+          <h3>2. 主要规模是 7B/8B</h3>
+          <p>论文自己也承认，30B/70B 或 1M context 的趋势是否保持还没系统验证。</p>
+        </div>
+        <div class="card">
+          <h3>3. 512K 不是自然长任务全覆盖</h3>
+          <p>512K 评估通过填充负文档扩展，主要测抗干扰/外推，不代表所有 512K 多跳任务都解决了。</p>
+        </div>
+        <div class="card">
+          <h3>4. 数据生成依赖强 teacher</h3>
+          <p>Seed 2.0 既做 OCR expert 基础，又做 QA generator；如果换 weaker teacher，数据质量和结论可能变化。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断</h2>
+      <div class="callout warn">
+        <strong>最有价值的 insight：</strong>这篇论文把“长上下文训练”重新定义成“证据定位训练”。在多模态长上下文里，模型失败往往不是因为不会最后一步推理，而是因为在视觉页面、表格、图注、段落里找不到正确证据，或者在大量干扰中把证据位置校准错了。
+      </div>
+      <p>
+        因此，MMProLong 的配方有一个很实际的工程启发：如果你要做自己的长文档/长网页/长视频 LVLM，不要第一反应就是堆超长样本、堆 OCR、堆 reasoning。更稳的起点是构造带证据锚点的 QA，让模型在完整长上下文里反复练习“定位少数关键证据 -> 聚合 -> 回答”。长度分布也要覆盖不同位置和不同距离，而不是只冲目标最大长度。
+      </p>
+      <p>
+        我认为这篇论文的结果是实践上有意义的：5B token 把 7B 模型从 50.59 提到 57.70，并且在 256K/512K 抗干扰上保持优势，这不是小修小补。但它的 claims 需要按范围理解：它证明的是一种数据高效的 LongPT recipe，而不是证明一个 7B LVLM 已经拥有通用、可靠的 512K 多模态推理能力。
+      </p>
+    </section>
+
+    <section id="commands">
+      <h2>本次核验命令摘录</h2>
+      <pre><code>opencli twitter thread "https://x.com/ZhaoweiWang4/status/2054832914677055819" --limit 80 -f json
+curl -Ls -o /dev/null -w "%{url_effective}\n%{http_code}\n" "https://t.co/DrnfDU97Tf"
+curl -L "https://arxiv.org/pdf/2605.13831" -o "/tmp/mmprolong_2605_13831.pdf"
+pdfinfo "/tmp/mmprolong_2605_13831.pdf"
+pdftotext -layout "/tmp/mmprolong_2605_13831.pdf" "/tmp/mmprolong_2605_13831.txt"
+curl -fsSL "https://huggingface.co/api/models?search=MMProLong&limit=20"
+curl -fsSL "https://huggingface.co/api/datasets?search=MMProLong&limit=20"</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>Generated on 2026-05-15. This report is based on the X thread, Hugging Face Papers page, arXiv HTML/PDF, and local command verification. Artifact release status may change after this report.</p>
+  </footer>
+</body>
+</html>

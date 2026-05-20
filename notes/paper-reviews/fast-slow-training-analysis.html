@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fast-Slow Training X Thread Analysis</title>
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --paper: #fffaf2;
+      --paper-2: #fbf3e6;
+      --ink: #251d17;
+      --muted: #6d6258;
+      --line: #ded1bf;
+      --accent: #b85f3b;
+      --accent-2: #466a77;
+      --green: #6e9b7a;
+      --blue: #5c7fa7;
+      --shadow: 0 12px 30px rgba(55, 38, 22, 0.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: Georgia, "Times New Roman", "Noto Serif SC", serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.68;
+      font-size: 16px;
+    }
+    a { color: #8d462d; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(246, 241, 232, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+    nav {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      min-height: 54px;
+      overflow-x: auto;
+      white-space: nowrap;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    nav a { color: var(--muted); text-decoration: none; }
+    nav a:hover { color: var(--ink); }
+    .hero {
+      padding: 52px 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 1.04;
+      margin: 16px 0 18px;
+      letter-spacing: 0;
+      max-width: 940px;
+    }
+    .thesis {
+      max-width: 900px;
+      font-size: 20px;
+      color: #46382e;
+      margin: 0;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .meta {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 15px;
+      box-shadow: var(--shadow);
+    }
+    .meta strong {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .meta span { font-size: 14px; color: var(--ink); }
+    main { padding: 34px 0 70px; }
+    section {
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: 30px;
+      line-height: 1.15;
+      margin: 0 0 18px;
+      letter-spacing: 0;
+    }
+    h3 {
+      font-size: 18px;
+      line-height: 1.32;
+      margin: 24px 0 8px;
+      letter-spacing: 0;
+    }
+    p { margin: 10px 0; }
+    .lead { font-size: 18px; color: #403229; max-width: 880px; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 22px;
+      align-items: start;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .card h3:first-child { margin-top: 0; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 9px;
+      margin: 2px 4px 2px 0;
+      background: #fff7eb;
+      color: #5f5248;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .quote {
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      background: #fff4e6;
+      color: #3b2d24;
+      margin: 16px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .callout {
+      border: 1px solid #d4b99d;
+      background: #fff2df;
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin: 18px 0;
+    }
+    .callout strong { color: #7d3d25; }
+    figure {
+      margin: 18px 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: var(--shadow);
+    }
+    figure img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 5px;
+      background: white;
+    }
+    figcaption {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 8px 4px 2px;
+      line-height: 1.5;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      background: #efe2cf;
+      color: #3b3028;
+      font-weight: 700;
+    }
+    tr:last-child td { border-bottom: 0; }
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: #f1e4d1;
+      color: #2a211b;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    pre {
+      overflow: auto;
+      background: #2a211b;
+      color: #f7efe4;
+      padding: 14px 16px;
+      border-radius: 8px;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .step {
+      position: relative;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 138px;
+    }
+    .step b {
+      display: inline-flex;
+      width: 24px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .step h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+    .step p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .metric {
+      font-size: 28px;
+      font-family: var(--serif);
+      line-height: 1.05;
+      margin: 2px 0 6px;
+      color: #7d3d25;
+    }
+    .small { font-size: 13px; color: var(--muted); }
+    .math-box {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff8ee;
+      font-family: var(--serif);
+      font-size: 20px;
+      overflow-x: auto;
+    }
+    .math-box .note {
+      display: block;
+      margin-top: 6px;
+      font-family: var(--sans);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .source-list li { margin: 8px 0; }
+    .kbd {
+      font-family: var(--mono);
+      background: #30251d;
+      color: #fff5e9;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 24px 0 46px;
+    }
+    @media (max-width: 900px) {
+      .meta-grid, .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .hero { padding-top: 36px; }
+      .wrap { padding: 0 18px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav>
+        <a href="#summary">结论</a>
+        <a href="#source">来源</a>
+        <a href="#thread">推文</a>
+        <a href="#method">方法</a>
+        <a href="#evaluation">评估</a>
+        <a href="#limits">边界</a>
+        <a href="#insight">Insight</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="wrap">
+      <div class="eyebrow">X Thread Reading · RLVR · Prompt Optimization</div>
+      <h1>Fast-Slow Training：把 Prompt 优化放进 RL 训练循环，而不是训练后才补救</h1>
+      <p class="thesis">Raja Patnaik 这条 X 线程的核心判断是对的：FST 的真正价值不是单纯“3x sample efficiency”，而是把短期、任务特定、可从 rollout 文本反馈快速吸收的经验放进 prompt channel，让模型参数少漂移，从而保留继续学习下一个任务的 plasticity。</p>
+      <div class="meta-grid">
+        <div class="meta"><strong>原帖</strong><span>@RajaPatnaik, 2026-05-14, 5 条线程</span></div>
+        <div class="meta"><strong>论文</strong><span>arXiv:2605.12484v2, 2026-05-14</span></div>
+        <div class="meta"><strong>方法</strong><span>GRPO/CISPO slow weights + GEPA fast weights</span></div>
+        <div class="meta"><strong>我的判断</strong><span>强思路，早期证据好，但训练成本与可复现性需谨慎</span></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section id="summary">
+      <h2>一句话结论</h2>
+      <p class="lead">这篇论文把 LLM post-training 从“只更新参数”改成“两条学习通道共同演化”：慢通道更新模型权重 <code>theta</code>，快通道更新文本上下文 / prompt population <code>Phi</code>。它的思想很自然：不是所有任务经验都应该永久写进权重；有些经验更像临时策略、错误检查表、任务格式偏好，放在可快速改写的上下文里更合适。</p>
+      <div class="grid-3">
+        <div class="card">
+          <div class="metric">1.4x-3.0x</div>
+          <p>达到 RL running peak 所需训练样本更少：CodeIO 3.0x、Math 1.4x、HoVer-hard 3.0x。</p>
+        </div>
+        <div class="card">
+          <div class="metric">up to 70%</div>
+          <p>在相同 reward 附近，FST 的 slow weights 相对 base model 的 KL drift 更低。</p>
+        </div>
+        <div class="card">
+          <div class="metric">~0% vs close</div>
+          <p>Math -> HoVer-hard plasticity probe 中，RL-init 很快掉到近 0；FST-init 更接近 base-init。</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>关键边界：</strong>“样本效率更高”不等于“总训练更便宜”。论文附录写明，同等 RL step 下 FST 还要周期性跑 GEPA、额外 rollout 和 reflection LM 调用；没有 rollout reuse 时 HoVer-hard 每个 RL step 约 100 秒，而 RL-only 约 60 秒。FST 的价值更像“用额外 prompt-search 计算，换更少权重漂移和更好的持续学习能力”。
+      </div>
+    </section>
+
+    <section id="source">
+      <h2>来源与核验</h2>
+      <div class="grid-2">
+        <div>
+          <p>我读取并核对了三类材料：X 原线程、arXiv 论文和作者/GEPA 官方页面。X 线程通过本地 <code>opencli twitter thread</code> 抓取，短链解析到 arXiv；PDF 已下载并用 <code>pdfinfo</code> 核验标题、作者、页数和版本。</p>
+          <ul class="source-list">
+            <li><strong>X 线程：</strong><code>https://x.com/RajaPatnaik/status/2055015053834006756</code>，共 5 条，发布时间为 2026-05-14 19:59 UTC。</li>
+            <li><strong>论文：</strong><em>Learning, Fast and Slow: Towards LLMs That Adapt Continually</em>，arXiv:2605.12484v2，29 页。</li>
+            <li><strong>作者链接：</strong>arXiv HTML 暴露了 Video / Blog / Code；Blog 可读，Code 页面当前显示 “Code coming soon”。</li>
+            <li><strong>本地证据：</strong>PDF 页面截图和推文配图保存在 <code>fast-slow-training-analysis-assets/</code>。</li>
+          </ul>
+        </div>
+        <figure>
+          <img src="fast-slow-training-analysis-assets/pages/fst-03.png" alt="Paper Figure 2 showing FST slow weights and fast weights co-evolve">
+          <figcaption>论文 Figure 2：慢通道更新模型参数，快通道更新 context pool / prompt population。图里的关键点是 fast loop 能看到 rich textual feedback，而 slow loop 主要吃 scalar reward。</figcaption>
+        </figure>
+      </div>
+      <pre><code>opencli twitter thread "https://x.com/RajaPatnaik/status/2055015053834006756" --limit 80 -f json
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/WXzZ0oQvwS"
+pdfinfo "2605.12484.pdf"
+pdftotext -layout "2605.12484.pdf" "2605.12484.txt"</code></pre>
+    </section>
+
+    <section id="thread">
+      <h2>原帖到底在说什么</h2>
+      <p class="lead">线程不是在介绍一个普通 prompt tuning 技巧，而是在批评当前 RLVR pipeline 的顺序：先做 RL 后训练，把所有行为改进都压进权重；最后再做 prompt optimization。Raja 的观点是，这个顺序错了，prompt optimization 应该和 RL post-training 同步演化。</p>
+      <table>
+        <thead>
+          <tr><th>线程主张</th><th>翻译成技术问题</th><th>是否被论文支持</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>RLVR 会把 durable skills、heuristics、recent rollout lessons 全塞进 slow weights。</td>
+            <td>模型参数同时承载长期能力、任务格式、临时纠错经验，容易导致 entropy collapse、KL drift、plasticity loss。</td>
+            <td>论文 introduction 和 KL/plasticity 实验直接围绕这个诊断展开。</td>
+          </tr>
+          <tr>
+            <td>FST 的 fast channel 用 GEPA 维护 Pareto prompt population。</td>
+            <td>不是找一个单一最佳 prompt，而是保留多个互补 prompt，让不同 prompt 处理不同 problem slice。</td>
+            <td>论文算法明确维护 <code>K</code> 个 prompt，并在每个问题的 rollout group 内混合 prompt-induced variance。</td>
+          </tr>
+          <tr>
+            <td>headline 不只是 3x sample efficiency，而是 plasticity。</td>
+            <td>训练完任务 X 后，模型是否还学得动任务 Y。</td>
+            <td>Math -> HoVer-hard 和 Physics -> HoVer-hard 的二阶段实验支持这个点。</td>
+          </tr>
+          <tr>
+            <td>RLVR pipeline 不应把 GEPA 放到最后。</td>
+            <td>prompt tuning 不是后处理，而应成为训练时的 adaptation channel。</td>
+            <td>这是论文最核心的方法论主张，但在生产系统中还要看额外成本和复杂度。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="problem">
+      <h2>论文要解决的问题</h2>
+      <p>传统 RLVR 的基本形态是：给模型一个任务 prompt，让它生成多个答案，用 verifier 给 0/1 或分数 reward，然后通过 GRPO/PPO/CISPO 这类 policy-gradient 方法更新模型参数。这个流程对数学、代码、可验证问答很有效，但有一个结构性问题：所有改善都必须写进同一套权重。</p>
+      <p>这会造成三类混杂：</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>长期技能</h3>
+          <p>例如更好的递归推理、代码执行心智模型、multi-hop retrieval 规划。这类知识值得进入权重。</p>
+        </div>
+        <div class="card">
+          <h3>任务格式</h3>
+          <p>例如“输出 JSON”“最后一行放 boxed answer”“HoVer 要写检索 query”。这类更像 prompt-level protocol。</p>
+        </div>
+        <div class="card">
+          <h3>最近错误经验</h3>
+          <p>例如刚才 rollout 失败是因为 off-by-one、漏读 parenthetical disambiguator、除零。这类经验短期有用，但不一定应永久写入参数。</p>
+        </div>
+      </div>
+      <p>FST 的核心洞见是：把这些信息全部压进参数，会让参数为了当前任务移动过多，表现为更高 KL drift、更低 entropy、对下一个任务更不敏感。相比之下，prompt / context 是廉价、可频繁更新、可按任务切换的“快权重”，很适合承载任务级和近期 rollout 级经验。</p>
+    </section>
+
+    <section id="method">
+      <h2>FST 方法一步一步讲</h2>
+      <p class="lead">FST 不是替代 RL，也不是只做 prompt optimization。它把 RL 和 prompt optimization 交错起来：每隔几个 RL step，先用当前模型和近期 lookahead batch 进化 prompt；然后在新 prompt population 下继续更新模型权重。</p>
+
+      <figure>
+        <img src="fast-slow-training-analysis-assets/pages/fst-02.png" alt="Paper page with Figure 1 overview of Fast-Slow Training">
+        <figcaption>论文 Figure 1：概览 FST 相对 RL-only 和 GEPA-only 的三类收益：性能、plasticity、KL drift。</figcaption>
+      </figure>
+
+      <div class="flow">
+        <div class="step">
+          <b>1</b>
+          <h3>初始化</h3>
+          <p>有初始模型参数 <code>theta_0</code> 和 seed prompt <code>phi_seed</code>，prompt population 初始只有一个 prompt。</p>
+        </div>
+        <div class="step">
+          <b>2</b>
+          <h3>预取 lookahead batch</h3>
+          <p>每个 cycle 开始时，预取接下来 <code>T</code> 个 RL minibatch，作为 GEPA 的 anchor/eval set。</p>
+        </div>
+        <div class="step">
+          <b>3</b>
+          <h3>GEPA 更新快权重</h3>
+          <p>当前模型 rollout，reflection LM 阅读答案、错误、反馈，提出 prompt mutation，保留 Pareto frontier top-K。</p>
+        </div>
+        <div class="step">
+          <b>4</b>
+          <h3>混合 prompt 采样</h3>
+          <p>每个问题采样 <code>G=8</code> 个 rollout，均匀分配给 <code>K</code> 个 prompt，形成同一个 group。</p>
+        </div>
+        <div class="step">
+          <b>5</b>
+          <h3>CISPO/GRPO 更新慢权重</h3>
+          <p>按 per-problem group reward 计算 advantage，更新 <code>theta</code>；<code>T=6</code> 步后进入下一轮 GEPA。</p>
+        </div>
+      </div>
+
+      <h3>慢通道：GRPO + CISPO 更新参数</h3>
+      <p>对每个问题 <code>x</code>，模型生成一组答案 <code>y_i</code>，verifier 给每个答案 reward。group-relative advantage 的直觉是：同一道题内，比同组平均更好的答案得到正信号，比同组平均更差的答案得到负信号。这样可以减少不同题目难度差异带来的噪声。</p>
+      <div class="math-box">
+        A<sub>i</sub> = (r(x, y<sub>i</sub>) - r&#772;<sub>g</sub>) / (sigma<sub>g</sub> + epsilon)
+        <span class="note">直觉：不要只问“这个答案得了几分”，而是问“它在同一道题的同组 rollout 里相对好不好”。</span>
+      </div>
+
+      <h3>快通道：GEPA 更新 prompt population</h3>
+      <p>GEPA 的关键不是“随机搜索 prompt”，而是 reflective evolutionary prompt optimization：它把 rollout 的完整文本、错误、tool call、verifier feedback 交给一个冻结 reflection LM，让它用自然语言总结失败原因并改写 prompt。然后 GEPA 不只保留一个最好 prompt，而是保留 Pareto frontier，理由是不同 prompt 可能擅长不同题型。</p>
+      <p>这也是 FST 和“训练完再调 prompt”的差别：FST 的 prompt 在训练过程中不断变，模型权重是在这些不断演化的上下文条件下学习的。换句话说，模型学到的是“在一组更好的任务脚手架下如何行动”，而不是裸 prompt 下被迫把所有纠错经验写进权重。</p>
+
+      <figure>
+        <img src="fast-slow-training-analysis-assets/pages/fst-05.png" alt="Paper page with Figure 3 data efficiency results">
+        <figcaption>论文 Figure 3：FST 在 CodeIO、Math、HoVer-hard 上用更少样本追上 RL running peak；底部显示 OOD average 与 RL 接近。</figcaption>
+      </figure>
+    </section>
+
+    <section id="evaluation">
+      <h2>实验到底评了什么</h2>
+      <p>论文主实验覆盖三类训练任务，外加一个 Physics 任务用于 KL/plasticity 等分析。模型主要是 <code>Qwen3-8B</code> thinking 模式；Math 因为公开 Qwen3-8B 已经在数学上较饱和，所以作者用 Qwen3-8B-Base 在 Nemotron 上继续 SFT 得到一个 math base。</p>
+      <table>
+        <thead>
+          <tr><th>训练族</th><th>任务是什么</th><th>输出/评分对象</th><th>主要比较</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CodeIO</td>
+            <td>代码输出预测</td>
+            <td>模型给出程序/输出，verifier 判断正确性；报告 validation accuracy / mean@4。</td>
+            <td>RL-only vs FST vs GEPA-only；OOD 包括 Polaris、Physics、LCB-Hard。</td>
+          </tr>
+          <tr>
+            <td>Math (Polaris)</td>
+            <td>数学推理</td>
+            <td>最终答案是否正确；报告 validation accuracy / mean@4。</td>
+            <td>RL-only vs FST；OOD 包括 CodeIO、Physics、HMMT25。</td>
+          </tr>
+          <tr>
+            <td>HoVer-hard</td>
+            <td>多跳事实验证 / 检索 query 构造</td>
+            <td>是否写出能检索到验证所需维基页面的 query；报告 validation accuracy。</td>
+            <td>RL-only vs FST；OOD 包括 Physics、CodeIO。</td>
+          </tr>
+          <tr>
+            <td>Physics</td>
+            <td>sciknoweval 多选物理题</td>
+            <td>选择 A/B/C/D；用于 KL curve 和 plasticity probe。</td>
+            <td>比较训练后权重 drift 与迁移到 HoVer-hard 的可学习性。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>指标解释</h3>
+      <table>
+        <thead>
+          <tr><th>指标</th><th>含义</th><th>为什么重要</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Validation accuracy / reward</td>
+            <td>在 held-out validation prompts 上的正确率或 reward。</td>
+            <td>直接衡量训练任务上的效果。</td>
+          </tr>
+          <tr>
+            <td>mean@4</td>
+            <td>每个 validation prompt 采样 4 次，取平均表现。</td>
+            <td>减少单次采样偶然性，适合 stochastic LLM。</td>
+          </tr>
+          <tr>
+            <td>OOD average</td>
+            <td>在非训练域任务上的平均表现。</td>
+            <td>检验 sample efficiency 是否靠过拟合当前任务换来。</td>
+          </tr>
+          <tr>
+            <td>KL(pi_train || pi_base)</td>
+            <td>训练后策略相对 base policy 的 token-level 分布距离。</td>
+            <td>越大表示权重行为漂移越远，通常和遗忘、低熵、plasticity loss 相关。</td>
+          </tr>
+          <tr>
+            <td>Plasticity probe</td>
+            <td>先在任务 X 训练，再从该 checkpoint 继续用 RL 学任务 Y。</td>
+            <td>评估模型是否还“学得动”新任务，而不只是当前任务分数高。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <figure>
+        <img src="fast-slow-training-analysis-assets/pages/fst-06.png" alt="Paper page with Figure 4 asymptote and KL discussion">
+        <figcaption>论文 Figure 4：作者用 4-parameter sigmoid 拟合 validation trajectory，比较上限 asymptote，而不是只看某一个训练步的最后分数。</figcaption>
+      </figure>
+
+      <h3>主结果</h3>
+      <table>
+        <thead>
+          <tr><th>结论</th><th>数字</th><th>我如何解读</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>样本效率</td>
+            <td>CodeIO 3.0x、Math 1.4x、HoVer-hard 3.0x 更少 optimizer steps 追上 RL peak。</td>
+            <td>这个结果说明 fast prompt channel 能快速吸收任务信号，尤其在 CodeIO/HoVer 这种格式和错误反馈强的任务上更明显。</td>
+          </tr>
+          <tr>
+            <td>性能上限</td>
+            <td>拟合 asymptote：CodeIO 47.4 vs 43.0，Math 49.2 vs 46.4，HoVer-hard 25.0 vs 17.3。</td>
+            <td>FST 不只是快一点，还可能把 fast/slow 两类优化叠加出更高 ceiling；HoVer 的差距最大。</td>
+          </tr>
+          <tr>
+            <td>KL drift</td>
+            <td>在 matched reward 下，FST 曲线整体更靠左，摘要称最高可低 70%。</td>
+            <td>这支持线程里的“weights stay sane”：同样得分下，参数不必为了任务细节移动那么远。</td>
+          </tr>
+          <tr>
+            <td>Plasticity</td>
+            <td>Math -> HoVer-hard：base-init 20.2%，RL-init 0.0%，FST-init 16.7%；Physics -> HoVer-hard：18.3/19.9/24.2%。</td>
+            <td>这是最有启发的实验：它直接测“训练之后还会不会学”，比单任务分数更贴近 continual learning。</td>
+          </tr>
+          <tr>
+            <td>Continual learning</td>
+            <td>HoVer -> CodeIO -> Physics 连续 600 step，每 200 step 换任务；FST 每阶段接近 peak，RL 在 CodeIO 阶段基本停滞。</td>
+            <td>证明 FST 的优势不仅是离线二阶段 probe，也能在任务流切换里体现。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <figure>
+        <img src="fast-slow-training-analysis-assets/pages/fst-07.png" alt="Paper page with Figure 5 KL and Figure 6 plasticity probe">
+        <figcaption>论文 Figure 5/6：KL-vs-reward 曲线和二阶段 plasticity probe。Raja 线程强调 plasticity，我认为这里确实是最重要证据。</figcaption>
+      </figure>
+
+      <figure>
+        <img src="fast-slow-training-analysis-assets/pages/fst-09.png" alt="Paper page with Figure 7 continual learning and Figure 8 star graph">
+        <figcaption>论文 Figure 7/8：连续任务切换和 star graph 早期学习。star graph 显示 fast weights 能更早逃离 zero-reward regime。</figcaption>
+      </figure>
+    </section>
+
+    <section id="limits">
+      <h2>边界和我会谨慎的地方</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 训练总成本不是 headline 里的 3x</h3>
+          <p>论文明确写了 FST 需要额外 GEPA cycles、reflection LM 和 prompt evaluation。若只看 RL optimizer steps，FST 更 sample-efficient；若看端到端 wall-clock、外部 LLM 调用费用、工程复杂度，结论要重新算。</p>
+        </div>
+        <div class="card">
+          <h3>2. Reflection LM 是强外部能力</h3>
+          <p>GEPA 的 proposer 是 OpenAI gpt-5.2。也就是说，FST 的快通道借用了一个强模型来读错误、写 prompt。生产中若不能用同等强的 reflection LM，收益可能下降。</p>
+        </div>
+        <div class="card">
+          <h3>3. 任务类型偏 verifier-friendly</h3>
+          <p>CodeIO、Math、HoVer、Physics 都能用较明确 reward 评分。开放式对话、安全、长程 agent 任务是否同样稳定，还没有被充分证明。</p>
+        </div>
+        <div class="card">
+          <h3>4. Code 目前未公开</h3>
+          <p>arXiv 页面有 Code 链接，但我读取时作者 code 页面显示 “Code coming soon”。因此当前只能基于论文和 blog 复现实验设计，不能直接运行官方实现。</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>一个容易误读的点：</strong>FST 不是说“prompt 可以代替 finetuning/RL”。论文 Figure 9 的分解反而显示，在 HoVer-hard 和 CodeIO 上 fast/slow 两边都贡献，联合最好；在 Math 上主要还是 slow weights 贡献。更准确的说法是：prompt channel 应该承担它擅长的任务级 adaptation，减轻权重的负担。
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的 Insight：这篇工作的真实价值</h2>
+      <p class="lead">我认为这篇论文最重要的地方，不是提出了一个具体的 “GRPO + GEPA” recipe，而是把 post-training 里的“知识写入位置”问题讲清楚了。</p>
+      <p>现在很多 RLVR 讨论默认把所有 improvement 都看作应进入参数的东西：答错了，就用 reward 更新权重；格式错了，也更新权重；刚刚遇到某类 off-by-one，也更新权重。这在短期 benchmark 上看起来有效，但它会把“长期技能”和“短期工作记忆”混在同一个慢变量里。FST 的贡献是重新分配学习负载：长期、可泛化的 procedure 写进参数；任务格式、错误检查、近期反馈写进上下文。</p>
+      <p>这和人类学习直觉很像：你不会把每个项目的 checklist 都内化成永久神经回路。你会保留一部分为笔记、工具、规程、工作流。LLM 系统也应该如此。真正的 post-training pipeline 可能不再是单一 optimizer，而是一个多记忆层系统：weights、prompts、retrieval memory、tool state、eval feedback 都在不同时间尺度上更新。</p>
+      <p>如果我是要把这篇论文用到实际 RLVR pipeline，我不会马上照搬全量 FST，而会先做三个轻量实验：</p>
+      <table>
+        <thead>
+          <tr><th>实验</th><th>目的</th><th>通过标准</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>训练中 prompt refresh</td>
+            <td>每 N 个 RL step 用失败样本生成/更新 task checklist prompt。</td>
+            <td>相同验证分数下 KL drift 下降，且 OOD 不掉。</td>
+          </tr>
+          <tr>
+            <td>Prompt population 而非 single prompt</td>
+            <td>比较单 prompt、top-K prompt、Pareto prompt 的 RL 训练效果。</td>
+            <td>top-K 不只提高训练分数，还改善不同题型覆盖。</td>
+          </tr>
+          <tr>
+            <td>Plasticity as first-class metric</td>
+            <td>每个 RL recipe 都做 X -> Y 二阶段学习 probe。</td>
+            <td>不再只报告单任务 reward，而报告训练后是否还能学新任务。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>因此我赞同 Raja 的重点：如果你已经在跑 RLVR，不应该把 GEPA/prompt optimization 当作最后的 inference-time polish。更合理的方向是把它作为训练时的 fast adaptation channel，让权重和上下文共同演化。但我会把这视为一个强研究方向，而不是已完全工程化的 recipe；缺少公开代码、依赖强 reflection LM、端到端成本仍需更透明的复现实验。</p>
+    </section>
+
+    <section id="commands">
+      <h2>本次读取命令摘要</h2>
+      <pre><code># OpenCLI workflow
+opencli list -f yaml | rg -n "site: twitter|domain: x\\.com|twitter/thread"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/RajaPatnaik/status/2055015053834006756" --limit 80 -f json --trace retain-on-failure
+
+# Link and paper verification
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/WXzZ0oQvwS"
+curl -L "https://arxiv.org/pdf/2605.12484" -o "2605.12484.pdf"
+pdfinfo "2605.12484.pdf"
+pdftotext -layout "2605.12484.pdf" "2605.12484.txt"
+pdftoppm -png -r 130 -f 1 -l 9 "2605.12484.pdf" "fst"</code></pre>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p>Generated locally on 2026-05-15. This report is a reading artifact based on the X thread, arXiv paper, project blog/code links, and local PDF extraction. External content was treated as source material, not instructions.</p>
+  </footer>
+</body>
+</html>

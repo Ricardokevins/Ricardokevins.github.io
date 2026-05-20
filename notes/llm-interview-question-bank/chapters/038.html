@@ -1,0 +1,1748 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>38. 模块一：基础与 Transformer 架构 - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 38</div>
+        <div class="brand-title">模块一：基础与 Transformer 架构</div>
+        <div class="brand-meta">2. 核心题完整答案 · 第 1 步 · 核心模块</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0483">1. Transformer 的核心组成模块有哪些？</a>
+<a class="toc-link" href="#h-0484" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0485" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0486">2. Self-Attention 的时间复杂度和空间复杂度分别是什么？</a>
+<a class="toc-link" href="#h-0487" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0488" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0489">3. 为什么 Self-Attention 里要除以 sqrt(d_k)？</a>
+<a class="toc-link" href="#h-0490" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0491" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0492">4. Encoder-only、Decoder-only、Encoder-Decoder 分别适合什么任务？</a>
+<a class="toc-link" href="#h-0493" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0494" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0495">5. Multi-Head Attention 相比单头注意力的优势是什么？</a>
+<a class="toc-link" href="#h-0496" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0497" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0498">6. 为什么现在大语言模型大多采用 Decoder-only 架构？</a>
+<a class="toc-link" href="#h-0499" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0500" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0501">7. 你一步一步讲一下 Self-Attention 是怎么计算的，从输入到输出都说清楚。</a>
+<a class="toc-link" href="#h-0502" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0503" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0504">8. 为什么 LLM 时代 Decoder-only 压过了 Encoder-Decoder？它付出了什么代价？</a>
+<a class="toc-link" href="#h-0505" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0506" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0507">9. Pre-Norm 和 Post-Norm 有什么区别？为什么现代大模型更偏向 Pre-Norm？</a>
+<a class="toc-link" href="#h-0508" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0509" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0510">10. 如果上下文特别长，Attention 复杂度会成为什么瓶颈？有哪些替代思路？</a>
+<a class="toc-link" href="#h-0511" style="padding-left:18px">标准答案</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link current" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="014.html">← 14. 十、系统设计、业务落地与成本权衡</a><a href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0482" data-category="core" data-title="模块一：基础与 Transformer 架构">
+<h2 id="h-0482"><a class="anchor-link" href="#h-0482" aria-label="跳转到本节">#</a>模块一：基础与 Transformer 架构</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>本章是核心题完整答案层，承接 <a href="005.html">第 05 章</a> 的模块地图。建议按问题顺序精读；读完后用 <a href="049.html">第 49 章</a> 做知识点查漏。</p></aside>
+<h3 id="h-0483"><a class="anchor-link" href="#h-0483" aria-label="跳转到本节">#</a>1. Transformer 的核心组成模块有哪些？</h3>
+<h4 id="h-0484"><a class="anchor-link" href="#h-0484" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>典型 Transformer 可以拆成 7 个核心部件：输入 embedding、位置编码、多头注意力、前馈网络（FFN）、残差连接、归一化层，以及最后把隐藏状态映射回词表的输出头。面试时不要只背名字，更要顺着数据流讲：token 先被映射成向量，再叠加位置信息进入多层 Transformer block，每个 block 里先做注意力聚合上下文，再做 FFN 做非线性变换，同时用残差和归一化保证深层训练稳定，最后输出到 logits 做预测。</p>
+<p>如果继续追问架构类型，可以补一句：Encoder-only 更强调双向理解，Decoder-only 强调自回归生成，Encoder-Decoder 则把“理解输入”和“生成输出”分成两段。这样回答会显得你不是在背组件清单，而是真正理解整个架构是怎么工作的。</p>
+<hr>
+<h4 id="h-0485"><a class="anchor-link" href="#h-0485" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 用一句话理解每个组件</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>组件</th>
+<th>一句话职责</th>
+<th>如果去掉会怎样</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Embedding</td>
+<td>把离散 token 变成连续向量</td>
+<td>模型无法处理文本</td>
+</tr>
+<tr>
+<td>位置编码</td>
+<td>告诉模型"这个词在第几个位置"</td>
+<td>模型不知道顺序，"猫吃鱼"="鱼吃猫"</td>
+</tr>
+<tr>
+<td>Multi-Head Attention</td>
+<td>让每个词动态决定"该看哪些词"</td>
+<td>每个词只能孤立理解，没有上下文</td>
+</tr>
+<tr>
+<td>FFN</td>
+<td>对每个词做非线性变换，增加表达能力</td>
+<td>模型变成纯线性系统，无法拟合复杂函数</td>
+</tr>
+<tr>
+<td>残差连接</td>
+<td>让梯度有一条"高速公路"直通输入层</td>
+<td>深层网络梯度消失，训练失败</td>
+</tr>
+<tr>
+<td>LayerNorm</td>
+<td>控制每层输出的数值范围，防止爆炸</td>
+<td>深层数值无界增长，训练不稳定</td>
+</tr>
+<tr>
+<td>输出头</td>
+<td>把隐藏状态映射回词表，做预测</td>
+<td>模型无法输出下一个 token</td>
+</tr>
+</tbody></table></div>
+<hr>
+<p><strong>2. 数据流的完整过程：以 "猫 吃 鱼" 为例</strong></p>
+<p><strong>Step 1：Tokenization</strong></p>
+<p>原始文本 "猫吃鱼" → tokenizer 切成 token → 假设得到 <code>["猫", "吃", "鱼"]</code></p>
+<p><strong>Step 2：Embedding</strong></p>
+<p>每个 token 查表得到一个向量：</p>
+<pre><code class="language-text">"猫" → [0.2, 0.5, -0.3, 0.8]     # 形状 (4,)
+"吃" → [0.1, -0.4, 0.6, 0.3]
+"鱼" → [-0.3, 0.2, 0.1, 0.5]</code></pre>
+<p><strong>Step 3：叠加位置编码</strong></p>
+<p>如果不加位置信息，模型无法区分 "猫" 是第一个词还是第三个词。位置编码给每个位置一个独特"指纹"：</p>
+<pre><code class="language-text">位置 0 的编码 → [0.0, 0.1, 0.2, 0.3]
+位置 1 的编码 → [0.1, 0.3, -0.1, 0.2]
+位置 2 的编码 → [0.2, 0.1, 0.0, -0.1]
+
+"猫" 的最终输入 = [0.2, 0.5, -0.3, 0.8] + [0.0, 0.1, 0.2, 0.3]
+                  = [0.2, 0.6, -0.1, 1.1]</code></pre>
+<p><strong>Step 4：进入 Transformer Block（重复 N 层）</strong></p>
+<p>每一层内部：</p>
+<pre><code class="language-text">输入 x ──→ LayerNorm ──→ Multi-Head Attention ──→ + ──→ LayerNorm ──→ FFN ──→ + ──→ 输出
+           │                                           ↑              │              ↑
+           └───────────────────────────────────────────┘              └──────────────┘
+                                    残差连接                                    残差连接</code></pre>
+<p><strong>具体发生了什么？</strong></p>
+<ul>
+<li><strong>LayerNorm（第一次）</strong>：把输入数值归一化到合理范围
+</li>
+<li><strong>Attention</strong>："吃" 看了 "猫" 和 "鱼"，发现 "猫" 跟自己关系更大（因为 "猫吃" 是主谓关系），所以 "吃" 的输出中混入了更多 "猫" 的信息
+</li>
+<li><strong>加残差</strong>：attention 的输出 + 原始输入 = "既有原始信息，又有上下文信息"
+</li>
+<li><strong>LayerNorm（第二次）</strong>：再次归一化
+</li>
+<li><strong>FFN</strong>：对 "吃" 的向量做非线性变换——相当于"基于 attention 聚合后的信息，做更深层次的语义加工"
+</li>
+<li><strong>加残差</strong>：FFN 的输出 + attention 后的输入
+</li>
+</ul>
+<p><strong>Step 5：输出预测</strong></p>
+<p>经过 N 层后，最后一个 token "鱼" 的隐藏状态是 <code>[0.5, -0.2, 0.3, 0.1]</code>。输出头把它映射回词表空间：</p>
+<pre><code class="language-text">logits = [0.5, -1.2, 0.8, 0.3, -0.5, ...]   # 词表里每个词的分数
+softmax → [0.15, 0.03, 0.35, 0.22, 0.08, ...]</code></pre>
+<p>分数最高的词是下一个 token 的预测。如果正在生成句子，模型可能预测 "。" 或 "很香" 之类的续写。</p>
+<hr>
+<p><strong>3. 为什么残差连接 + LayerNorm 是绝配？</strong></p>
+<p><strong>没有残差连接的深层网络</strong>：</p>
+<pre><code class="language-text">x_1 = f(x_0)
+x_2 = f(x_1)
+x_3 = f(x_2)
+...
+x_L = f(x_{L-1})</code></pre>
+<p>反向传播时，梯度要从 x_L 传回 x_0，需要穿过 L 层的 Jacobian 连乘。如果每层 Jacobian 的特征值都略小于 1，连乘后梯度会指数衰减（梯度消失）；如果略大于 1，会指数爆炸。</p>
+<p><strong>加上残差连接</strong>：</p>
+<pre><code class="language-text">x_{l+1} = x_l + f(x_l)</code></pre>
+<p>反向传播时：</p>
+<pre><code class="language-text">∂x_{l+1} / ∂x_l = I + ∂f/∂x_l</code></pre>
+<p>即使 <code>∂f/∂x_l</code> 很小，还有单位矩阵 <code>I</code> 保底，梯度不会完全消失。这就是"高速公路"。</p>
+<p><strong>LayerNorm 的作用</strong>：残差连接让各层输出累加：<code>x_L ≈ x_0 + f(x_0) + f(x_1) + ...</code>。如果没有归一化，这些累加会让数值越来越大，最终导致溢出。LayerNorm 把每层输出压缩回标准范围，让累加不会失控。</p>
+<hr>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"Transformer 和 RNN 最本质的区别是什么？"</strong>
+<ul>
+<li>答：RNN 是串行的——处理第 i 个词时必须先处理完前 i-1 个词；Transformer 是并行的——所有词同时进入 attention，直接建立联系。RNN 的长程依赖通过隐藏状态层层传递，容易遗忘；Transformer 通过 attention 直接连接，任意距离都是 O(1) 的"注意力跳数"。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 Transformer 需要 FFN？Attention 不是已经有足够表达能力了吗？"</strong>
+<ul>
+<li>答：Attention 做的是"信息聚合"——把不同位置的信息加权混合，但它本身是一个线性操作（加权求和）。FFN 提供非线性变换，让模型能学到更复杂的映射关系。如果把 FFN 去掉，整个 Transformer block 几乎是线性的，表达能力会大幅下降。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"LayerNorm 和 BatchNorm 有什么区别？为什么 Transformer 用 LayerNorm？"</strong>
+<ul>
+<li>答：BatchNorm 对一个 batch 内所有样本的同一维度做归一化；LayerNorm 对单个样本的所有维度做归一化。Transformer 用 LayerNorm 是因为：1）序列长度不固定，BatchNorm 的统计量不稳定；2）训练时 batch size 可能很小，BatchNorm 估计不准；3）LayerNorm 对每个样本独立归一化，更适合变长序列。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0486"><a class="anchor-link" href="#h-0486" aria-label="跳转到本节">#</a>2. Self-Attention 的时间复杂度和空间复杂度分别是什么？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">Attention 数据流</div>
+        <p class="inline-enhancement-note">放在 Self-Attention / FlashAttention / KV cache 相关小节附近，帮助把 Q/K/V、softmax 和输出向量串起来。</p>
+        <div class="visual-grid"><div class="visual-card"><b>Scaled Attention 结构图</b><img src="../assets/attention-flow.svg" alt="Scaled Attention 结构图"><p>从 Q/K/V 到 softmax 再到输出向量的核心数据流。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>Scaled Dot-Product Attention</b><div class="math-display">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><p>缩放项控制点积方差，softmax 后得到对 V 的加权。</p></div><div class="formula-card"><b>KV Cache 显存估算</b><div class="math-display">\[\mathrm{KVCache}\approx 2 \times B \times L \times H_{kv} \times d_h \times N_{layer} \times \mathrm{bytes}\]</div><p>2 表示 K 和 V；长上下文下主要随 batch、序列长度和层数线性增长。</p></div></div>
+      </aside>
+<h4 id="h-0487"><a class="anchor-link" href="#h-0487" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>对长度为 <code>n</code> 的序列，标准 self-attention 最贵的部分是计算 <code>QK^T</code>，因为它要让每个 token 和其余 token 两两做一次相关性打分，所以时间复杂度通常看作 <code>O(n^2)</code>；对应的注意力矩阵本身也是 <code>n x n</code>，因此中间激活的空间复杂度也常看作 <code>O(n^2)</code>。</p>
+<p>面试里最好再补一句：这里真正随序列长度爆炸的不是模型参数，而是 token 两两交互带来的计算量、显存占用和带宽压力。所以一旦上下文从 <code>4K</code> 提到 <code>32K</code>、<code>128K</code>，瓶颈往往不是“模型更大了”，而是 attention 的二次复杂度开始压垮系统。</p>
+<hr>
+<h4 id="h-0488"><a class="anchor-link" href="#h-0488" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么时间复杂度是 O(n²)？从矩阵乘法看</strong></p>
+<p>Self-Attention 的核心计算是 <code>Q @ K^T</code>：</p>
+<pre><code class="language-text">Q 的形状: (n, d_k)
+K 的形状: (n, d_k)
+Q @ K^T 的形状: (n, n)</code></pre>
+<p>矩阵乘法中，结果矩阵的每个元素 <code>(i, j)</code> 是 Q 的第 i 行和 K 的第 j 行做内积：</p>
+<pre><code class="language-text">(Q @ K^T)[i, j] = Σ(k=0 to d_k-1) Q[i, k] * K[j, k]</code></pre>
+<p>结果矩阵有 <code>n * n</code> 个元素，每个元素需要 <code>d_k</code> 次乘加运算，所以总计算量是 <code>O(n² * d_k)</code>。</p>
+<p>因为 <code>d_k</code> 是固定常数（比如 64 或 128），通常简化为 <code>O(n²)</code>。</p>
+<p><strong>为什么不是 O(n³)？</strong> 因为 attention 不是三维张量的乘法，只是两个二维矩阵相乘。如果模型有 h 个 head，每个 head 独立计算，总计算量是 <code>h * O(n² * d_k) = O(n² * h * d_k) = O(n² * d_model)</code>，仍然是 <code>O(n²)</code>。</p>
+<hr>
+<p><strong>2. 空间复杂度的具体构成</strong></p>
+<p>空间复杂度不只是 <code>QK^T</code> 矩阵，还包括：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>张量</th>
+<th>形状</th>
+<th>大小（n=4096, d_k=128, FP16）</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Q</td>
+<td>(n, d_k)</td>
+<td>4096 * 128 * 2 = 1 MB</td>
+</tr>
+<tr>
+<td>K</td>
+<td>(n, d_k)</td>
+<td>1 MB</td>
+</tr>
+<tr>
+<td>V</td>
+<td>(n, d_v)</td>
+<td>1 MB</td>
+</tr>
+<tr>
+<td>QK^T</td>
+<td>(n, n)</td>
+<td>4096² * 2 = <strong>32 MB</strong></td>
+</tr>
+<tr>
+<td>Softmax 输出</td>
+<td>(n, n)</td>
+<td>32 MB</td>
+</tr>
+<tr>
+<td>Attention @ V</td>
+<td>(n, d_v)</td>
+<td>1 MB</td>
+</tr>
+<tr>
+<td><strong>总计（峰值）</strong></td>
+<td></td>
+<td><strong>~68 MB</strong></td>
+</tr>
+</tbody></table></div>
+<p>注意：这只是一个 head、一个 layer、batch=1 的情况。实际中：</p>
+<ul>
+<li>32 个 head → 并行计算但内存峰值取决于实现
+</li>
+<li>32 层 → KV cache 会累积
+</li>
+<li>batch=8 → 所有内存乘以 8
+</li>
+</ul>
+<hr>
+<p><strong>3. 具体数值感受：不同序列长度下的爆炸</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>序列长度</th>
+<th>Attention FLOPs</th>
+<th>QK^T 显存</th>
+<th>相对 n=1K</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1K</td>
+<td>~1.3e8</td>
+<td>2 MB</td>
+<td>1x</td>
+</tr>
+<tr>
+<td>4K</td>
+<td>~2.1e9</td>
+<td>32 MB</td>
+<td>16x</td>
+</tr>
+<tr>
+<td>8K</td>
+<td>~8.4e9</td>
+<td>128 MB</td>
+<td>64x</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>~1.3e11</td>
+<td>2 GB</td>
+<td>1024x</td>
+</tr>
+<tr>
+<td>128K</td>
+<td>~2.1e12</td>
+<td>32 GB</td>
+<td>16384x</td>
+</tr>
+</tbody></table></div>
+<p>注意：显存增长是 <code>n²</code>，但 FLOPs 增长也是 <code>n²</code>。从 1K 到 128K（128 倍），FLOPs 增长 16384 倍。这就是为什么长上下文不是简单"把窗口改大"的问题。</p>
+<hr>
+<p><strong>4. 为什么 O(n²) 在长序列下成为瓶颈？</strong></p>
+<p><strong>计算瓶颈</strong>：</p>
+<ul>
+<li>128K 序列的 attention FLOPs 约 2T，在 A100 上需要数秒
+</li>
+<li>相比之下，FFN 层的计算量是 <code>O(n * d_model²)</code>，对于 128K * 4096² ≈ 2T，和 attention 相当
+</li>
+<li>但 attention 的内存访问模式更差（随机访问大矩阵），实际 wall-clock time 更长
+</li>
+</ul>
+<p><strong>显存瓶颈</strong>：</p>
+<ul>
+<li>128K 的 QK^T 矩阵占 32 GB（FP16），单卡 A100（80GB）快满了
+</li>
+<li>加上 KV cache（32 layer * 128K * 128 * 2 * 2 = 2GB per head...），总显存压力巨大
+</li>
+</ul>
+<p><strong>带宽瓶颈</strong>：</p>
+<ul>
+<li>FlashAttention 把 HBM 访问次数从 O(n²) 降到 O(n)，但长序列下 HBM 和 SRAM 之间的数据搬运仍然很重
+</li>
+</ul>
+<hr>
+<p><strong>5. 各种替代方案的复杂度对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>时间复杂度</th>
+<th>空间复杂度</th>
+<th>核心思想</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>标准 Attention</td>
+<td>O(n²)</td>
+<td>O(n²)</td>
+<td>全连接</td>
+</tr>
+<tr>
+<td>稀疏 Attention</td>
+<td>O(n * k)</td>
+<td>O(n * k)</td>
+<td>只看最近的 k 个位置</td>
+</tr>
+<tr>
+<td>Linear Attention</td>
+<td>O(n)</td>
+<td>O(n)</td>
+<td>用核技巧把 softmax 提到求和外面</td>
+</tr>
+<tr>
+<td>FlashAttention</td>
+<td>O(n²)</td>
+<td>O(n)</td>
+<td>分块计算，减少 HBM 访问</td>
+</tr>
+<tr>
+<td>Sliding Window</td>
+<td>O(n * w)</td>
+<td>O(n * w)</td>
+<td>只看窗口内的 w 个位置</td>
+</tr>
+</tbody></table></div>
+<p><strong>关键洞察</strong>：FlashAttention 没有改变渐近复杂度，它优化的是常数因子（内存访问模式）。真正降低复杂度的是稀疏/线性 attention，但它们会改变 attention 结构，需要重新训练。</p>
+<hr>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"Attention 的 O(n²) 和 RNN 的 O(n) 相比，为什么 Transformer 反而更快？"</strong>
+<ul>
+<li>答：RNN 虽然理论复杂度是 O(n)，但它是串行的——处理第 i 个词必须等前 i-1 个词处理完。Transformer 的 attention 计算虽然总 FLOPs 更大，但所有位置可以并行计算。在 GPU 上，并行度比总 FLOPs 更重要。短序列时 Transformer 更快；超长序列时 O(n²) 开始压垮并行优势。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果 n=100K，d_k=128，算一次 attention 需要多少 FLOPs？"</strong>
+<ul>
+<li>答：QK^T 需要 n * n * d_k = 100K * 100K * 128 = 1.28e12 FLOPs。Softmax 和加权求和各需要 O(n²) 的额外计算。总计约 2-3e12 FLOPs。A100 的峰值是 312 TFLOPS（FP16），利用率按 30% 算，约 100 TFLOPS，所以需要约 30 秒——这解释了为什么长序列 prefill 这么慢。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么空间复杂度说 O(n²)，但实际瓶颈常常是 KV cache 而不是 attention 矩阵？"</strong>
+<ul>
+<li>答：训练时 attention 矩阵确实是 O(n²) 的显存占用，是主要瓶颈。但推理时（尤其是 decode 阶段），KV cache 是 O(n * layer * d_model) 的累积量，而 attention 矩阵只是 O(n²) 的临时量。当 n 很大（如 128K）且 layer 很多（如 32）时，KV cache 的累积量可能超过 attention 矩阵的临时量。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0489"><a class="anchor-link" href="#h-0489" aria-label="跳转到本节">#</a>3. 为什么 Self-Attention 里要除以 <code>sqrt(d_k)</code>？</h3>
+<h4 id="h-0490"><a class="anchor-link" href="#h-0490" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>因为 <code>Q</code> 和 <code>K</code> 的每一维都会参与内积，当维度 <code>d_k</code> 变大时，点积结果的方差也会随之变大。如果不做缩放，送进 softmax 的值很容易绝对值过大，最后出现两个问题：一是分布过于尖锐，模型几乎只盯住某几个位置；二是 softmax 进入饱和区后梯度变差，训练更不稳定。</p>
+<p>所以除以 <code>sqrt(d_k)</code> 的本质，不是一个”经验小技巧”，而是在做数值尺度校正，让不同 head 维度下的 attention score 保持在更稳定的范围里。你如果能把”方差变大 -&gt; softmax 饱和 -&gt; 梯度变差”这条因果链讲出来，面试官通常会认为你是真的懂。</p>
+<hr>
+<h4 id="h-0491"><a class="anchor-link" href="#h-0491" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 数学推导：为什么点积的方差会随维度增长？</strong></p>
+<p>假设 <code>Q</code> 和 <code>K</code> 的每个元素都是独立同分布的随机变量，均值为 0，方差为 <code>σ²</code>。那么 <code>Q·K</code>（内积）可以写成：</p>
+<pre><code class="language-text">Q·K = Σ(i=1 to d_k) q_i * k_i</code></pre>
+<p>每一项 <code>q_i * k_i</code> 的期望是 0（因为 E[q_i]=E[k_i]=0），方差是 <code>σ⁴</code>（因为两个独立零均值变量的乘积方差等于各自方差的乘积）。</p>
+<p><code>d_k</code> 个这样的独立项相加，总和的方差就是 <code>d_k * σ⁴</code>。也就是说：<strong>点积的方差与维度 <code>d_k</code> 成正比</strong>。</p>
+<p>如果 <code>d_k=64</code>，方差是某个基准值；当 <code>d_k=128</code> 时，方差翻倍。不缩放的话，更大的 head 维度会让 attention score 的绝对值更容易变得很大。</p>
+<p>除以 <code>sqrt(d_k)</code> 后，新的方差变成：</p>
+<pre><code class="language-text">Var(Q·K / sqrt(d_k)) = Var(Q·K) / d_k = (d_k * σ⁴) / d_k = σ⁴</code></pre>
+<p>方差被拉回与维度无关的常数，这就是缩放的数学本质。</p>
+<p><strong>2. 具体数值感受</strong></p>
+<p>假设 <code>q_i</code> 和 <code>k_i</code> 都是标准正态分布（μ=0, σ=1），那么 <code>q_i * k_i</code> 的方差约为 1。<code>d_k</code> 个这样的项相加：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>d_k</th>
+<th>点积标准差（不缩放）</th>
+<th>缩放后标准差</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>64</td>
+<td>8.0</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>128</td>
+<td>11.3</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>256</td>
+<td>16.0</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>512</td>
+<td>22.6</td>
+<td>1.0</td>
+</tr>
+</tbody></table></div>
+<p>当 <code>d_k=512</code> 时不做缩放，标准差高达 22.6，softmax 输入会大量落在 ±20 甚至更高的区域，导致梯度几乎为 0。</p>
+<p><strong>3. 为什么偏偏是 sqrt(d_k)，不是 d_k 或别的常数？</strong></p>
+<p>因为方差与 <code>d_k</code> 成正比，标准差与 <code>sqrt(d_k)</code> 成正比。要抵消的是标准差的膨胀，所以除以 <code>sqrt(d_k)</code>。除以 <code>d_k</code> 会过度压制；除以常数（如 8）则无法自适应不同 head 维度。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果 Q 和 K 做了 LayerNorm，元素本身已经被归一化，还需要除以 sqrt(d_k) 吗？”</strong>
+<ul>
+<li>答：LayerNorm 把每个 token 的向量归一化为单位长度附近，但它控制的是<strong>向量级</strong>的范数，不是<strong>点积级</strong>的方差。即使单个向量被归一化，两个向量的点积仍会因维度累积而方差增大，所以缩放仍然必要。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”除了除以 sqrt(d_k)，还有什么别的缩放策略？”</strong>
+<ul>
+<li>答：Performer 等线性注意力方法里会用不同的核函数替代 softmax；某些变体如 Attention with Linear Biases (ALiBi) 不在 score 上做除法，而是在 score 上叠加位置偏置。但标准 Transformer 中，<code>sqrt(d_k)</code> 是最简洁且理论上站得住脚的方案。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果 attention score 很小（比如所有 score 都在 -1 到 1 之间），不除 sqrt(d_k) 会有问题吗？”</strong>
+<ul>
+<li>答：理论上如果输入分布本身就很”温和”，不缩放也未必立刻崩溃。但训练过程中分布会漂移，尤其是深层网络中，Q 和 K 的范数可能随训练逐渐变大。缩放是一种”预防性”的数值稳定措施，让网络对分布变化更鲁棒。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0492"><a class="anchor-link" href="#h-0492" aria-label="跳转到本节">#</a>4. Encoder-only、Decoder-only、Encoder-Decoder 分别适合什么任务？</h3>
+<h4 id="h-0493"><a class="anchor-link" href="#h-0493" aria-label="跳转到本节">#</a>标准答案</h4>
+<ul>
+<li><code>Encoder-only</code> 适合理解类任务，例如分类、匹配、抽取，因为它能同时看左右文，更适合做表示学习；
+</li>
+<li><code>Decoder-only</code> 适合生成类任务，例如对话、写作、代码补全，因为它按从左到右的方式预测下一个 token，和生成过程天然一致；
+</li>
+<li><code>Encoder-Decoder</code> 适合条件生成任务，例如翻译、摘要、结构化输入到文本输出，因为它把“先理解输入，再基于输入生成输出”这件事拆得更清楚。
+</li>
+</ul>
+<p>面试时最好再补一句 trade-off：<code>Encoder-only</code> 强在表示，<code>Decoder-only</code> 强在统一生成范式，<code>Encoder-Decoder</code> 强在输入输出结构清晰，但训练和部署链路相对更复杂。这样回答比只列任务名更完整。</p>
+<hr>
+<h4 id="h-0494"><a class="anchor-link" href="#h-0494" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 三种架构的本质差异：注意力掩码</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>架构</th>
+<th>Attention 掩码</th>
+<th>信息流动</th>
+<th>典型代表</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Encoder-only</strong></td>
+<td>双向（无掩码）</td>
+<td>每个 token 能看到所有其他 token</td>
+<td>BERT, RoBERTa</td>
+</tr>
+<tr>
+<td><strong>Decoder-only</strong></td>
+<td>因果掩码（causal mask）</td>
+<td>每个 token 只能看到前面的 token</td>
+<td>GPT, LLaMA</td>
+</tr>
+<tr>
+<td><strong>Encoder-Decoder</strong></td>
+<td>Encoder 双向 + Decoder 因果</td>
+<td>先编码输入，再解码输出</td>
+<td>T5, BART</td>
+</tr>
+</tbody></table></div>
+<p>注意力的方向决定了能力边界：</p>
+<ul>
+<li><strong>双向注意力</strong> → 适合做"理解"：分类、匹配、抽取（因为能看到完整上下文）
+</li>
+<li><strong>因果注意力</strong> → 适合做"生成"：逐 token 预测下一个（和生成过程天然一致）
+</li>
+</ul>
+<p><strong>2. 为什么 Decoder-only 统一了 LLM 范式？</strong></p>
+<p>三个关键原因：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>原因</th>
+<th>解释</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>训练统一</strong></td>
+<td>所有数据都可以格式化为 "prefix → continuation"，不需要为不同任务设计不同目标函数</td>
+</tr>
+<tr>
+<td><strong>推理统一</strong></td>
+<td>训练和推理都是同一个自回归过程，没有 encoder-decoder 的"两个阶段"割裂</td>
+</tr>
+<tr>
+<td><strong>规模扩展友好</strong></td>
+<td>单一结构更容易堆叠层数、扩大参数量，工程实现更简单</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. Encoder-Decoder 的历史优势为什么被稀释了？</strong></p>
+<p>T5 时代的 Encoder-Decoder 优势：</p>
+<ul>
+<li>输入输出分离，适合翻译（不同语言长度差异大）
+</li>
+<li>Encoder 双向理解 + Decoder 自回归生成，分工明确
+</li>
+</ul>
+<p>被稀释的原因：</p>
+<ul>
+<li><strong>Decoder-only 也能做翻译</strong>：通过 prompt engineering（"Translate English to French: ..."）
+</li>
+<li><strong>统一范式降低工程复杂度</strong>：维护一套训练/推理 infra 比维护两套更划算
+</li>
+<li><strong>涌现能力</strong>：当规模足够大时，Decoder-only 的理解能力也足够强
+</li>
+</ul>
+<p><strong>4. 三种架构的参数效率对比</strong></p>
+<p>假设相同的总参数量（如 7B）：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>架构</th>
+<th>有效参数量利用率</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Encoder-only</td>
+<td>高</td>
+<td>所有参数都用于表示学习</td>
+</tr>
+<tr>
+<td>Decoder-only</td>
+<td>中-高</td>
+<td>生成时必须自回归，不能并行解码</td>
+</tr>
+<tr>
+<td>Encoder-Decoder</td>
+<td>中</td>
+<td>参数被拆成 encoder + decoder 两部分</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"BERT 是 Encoder-only，GPT 是 Decoder-only，T5 是 Encoder-Decoder，如果让你做一个文本分类任务，你会选哪个？"</strong>
+<ul>
+<li>答：文本分类首选 Encoder-only（BERT 类）。因为分类只需要理解输入，不需要生成输出。BERT 的双向注意力能充分利用上下文信息。但如果只有 Decoder-only 模型可用，也可以做分类——把分类标签放在 prompt 里，让模型生成标签 token（如 "Sentiment: positive"）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Decoder-only 做翻译，和 Encoder-Decoder 做翻译，本质区别在哪？"</strong>
+<ul>
+<li>答：Encoder-Decoder 的 encoder 可以双向看源语言句子，提取完整语义后再解码；Decoder-only 只能从左到右看，翻译长句子时可能"忘记"源语言开头的内容（信息瓶颈）。但 Decoder-only 可以通过更大的模型规模和更长的上下文来缓解这个问题。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 BERT 的 MLM 目标不适合直接做生成？"</strong>
+<ul>
+<li>答：MLM 训练时模型看到被 mask 的完整句子（双向上下文），但生成时只能看到已生成的部分（单向）。训练和推理的上下文不一致，导致 BERT 生成时表现差。而 CLM 的训练和推理都是"只看前文预测下一个"，完全一致。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0495"><a class="anchor-link" href="#h-0495" aria-label="跳转到本节">#</a>5. Multi-Head Attention 相比单头注意力的优势是什么？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">MHA / GQA / MQA 结构差异</div>
+        <p class="inline-enhancement-note">放在多头注意力、GQA、MQA 相关小节附近，重点解释 KV 头共享为什么能省显存。</p>
+        <div class="visual-grid"><div class="visual-card"><b>MHA / GQA / MQA 对比图</b><img src="../assets/mha-gqa-mqa.svg" alt="MHA / GQA / MQA 对比图"><p>查询头与 KV 头的共享方式决定 decode 阶段 KV cache 的压力。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>KV 头数与缓存关系</b><div class="math-display">\[H_{kv}=H\;(\mathrm{MHA}),\quad H_{kv}=G\;(\mathrm{GQA}),\quad H_{kv}=1\;(\mathrm{MQA})\]</div><p>KV cache 显存与 KV 头数近似线性相关。</p></div></div>
+      </aside>
+<h4 id="h-0496"><a class="anchor-link" href="#h-0496" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>多头注意力的核心价值是“并行看不同关系”。单头注意力相当于只用一种打分方式去看上下文，而多头注意力会先把隐藏维度切到多个子空间，每个 head 在自己的子空间里独立计算注意力，所以有的 head 可能更关注局部语法，有的更关注长程指代，有的更关注位置模式或特殊分隔符。</p>
+<p>从工程视角看，多头不是简单重复计算，而是在总维度固定的情况下提升表达分解能力，让不同 head 形成一定分工。面试里如果继续追问，也可以补一句：头数并不是越多越好，太多头可能出现冗余 head、每头维度太小、收益递减等问题。</p>
+<hr>
+<h4 id="h-0497"><a class="anchor-link" href="#h-0497" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 头的分工：研究发现了什么？</strong></p>
+<p>多个研究（如 Voita et al., 2019; Clark et al., 2019）通过分析 attention 权重，发现不同 head 确实会形成不同的功能 specialization：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>Head 类型</th>
+<th>行为特征</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>位置头</strong></td>
+<td>关注相邻 token（如 i 关注 i-1, i+1）</td>
+<td>捕捉局部语法、词性标注</td>
+</tr>
+<tr>
+<td><strong>指代头</strong></td>
+<td>跨句关注代词和对应名词</td>
+<td>解决 coreference</td>
+</tr>
+<tr>
+<td><strong>分隔符头</strong></td>
+<td>关注 [SEP], [CLS] 等特殊 token</td>
+<td>聚合句子级表示</td>
+</tr>
+<tr>
+<td><strong>复制头</strong></td>
+<td>从输入复制罕见词到输出</td>
+<td>处理命名实体、代码中的变量名</td>
+</tr>
+<tr>
+<td><strong>长程头</strong></td>
+<td>关注远距离 token</td>
+<td>捕捉段落级依赖</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 为什么头数不是越多越好？</strong></p>
+<p>假设 <code>d_model=512</code>：</p>
+<ul>
+<li><code>num_heads=8</code> → 每头 <code>d_k=64</code>，信息丰富
+</li>
+<li><code>num_heads=64</code> → 每头 <code>d_k=8</code>，信息极度压缩
+</li>
+</ul>
+<p>当每头维度太小（如 &lt;16），单个 head 的表达能力严重受限。而且研究表明：很多 head 在训练后可以被<strong>剪枝</strong>（pruning）而几乎不影响效果——说明冗余 head 确实存在。</p>
+<p>常见配置：</p>
+<ul>
+<li>BERT-base: 12 heads, d_k=64
+</li>
+<li>GPT-3: 96 heads, d_k=128 (d_model=12288)
+</li>
+<li>LLaMA-2: 32 heads, d_k=128 (d_model=4096)
+</li>
+</ul>
+<p><strong>3. 多头并行的工程实现</strong></p>
+<p>实际不是真的循环 8 次计算 8 个 head，而是：</p>
+<pre><code class="language-text">Q = X @ W_q  # 输出 (seq_len, d_model)
+# reshape 成 (seq_len, num_heads, head_dim)
+# transpose 成 (num_heads, seq_len, head_dim)</code></pre>
+<p>这样可以用一个大的矩阵乘法同时算出所有 head，GPU 利用率高。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果某个 head 的 attention 权重总是接近 uniform（均匀分布），说明什么？"</strong>
+<ul>
+<li>答：说明这个 head 没有学到有用的模式，可能是冗余 head。训练时它的梯度很小，对最终输出贡献不大。这种现象在深层网络中更常见——浅层 head 通常更有分工，深层 head 趋于均匀。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Multi-Head 和 Multi-Query Attention 在 head 维度上的根本区别是什么？"</strong>
+<ul>
+<li>答：MHA 是每个 query head 有自己独立的 K/V 投影（<code>n_heads</code> 组 K/V）；MQA 是所有 query head 共享同一组 K/V（只有 1 组）。从 head 角度看，MHA 是"多头查询、多头索引"，MQA 是"多头查询、单头索引"。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 attention 里 Q 和 K 的维度要相同？"</strong>
+<ul>
+<li>答：因为 Q 和 K 要做点积 <code>Q @ K^T</code>，维度不同无法直接相乘。但 V 的维度可以和 Q/K 不同（虽然通常设为相同），因为 V 只是被权重加权，不需要和 Q 做点积。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0498"><a class="anchor-link" href="#h-0498" aria-label="跳转到本节">#</a>6. 为什么现在大语言模型大多采用 Decoder-only 架构？</h3>
+<h4 id="h-0499"><a class="anchor-link" href="#h-0499" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>因为大语言模型主流目标是 next-token prediction，而 Decoder-only 恰好就是最自然的自回归架构：训练时按前文预测下一个 token，推理时也按同样方式逐 token 生成，训练目标和部署方式高度统一。这样做的好处是数据构造简单，几乎所有纯文本都能直接拿来训练，而且对话、写作、代码补全、Agent 规划这类任务都能统一成“继续生成”。</p>
+<p>它能压过 Encoder-Decoder，并不是因为后者完全不行，而是因为 Decoder-only 在大规模预训练、指令微调、推理缓存、生态工具链上形成了最顺的一条路线。代价是它在强条件生成、结构化输入输出分工上不一定总最优，而且自回归解码天然有串行时延。</p>
+<hr>
+<h4 id="h-0500"><a class="anchor-link" href="#h-0500" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么 Encoder-Decoder 在翻译/摘要里曾经很强？</strong></p>
+<p>Encoder-Decoder 把任务天然拆成两步：</p>
+<ul>
+<li>Encoder：把源语言/长文档编码成固定长度的上下文表示
+</li>
+<li>Decoder：基于这个表示生成目标语言/摘要
+</li>
+</ul>
+<p>这种显式分工在"理解+生成"类任务上很直观。但 Decoder-only 证明了一件事：只要模型足够大、数据足够多，它可以在同一个自回归框架里隐式完成"理解"和"生成"，不需要显式分工。</p>
+<p><strong>2. Decoder-only 的工程优势清单</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>优势</th>
+<th>具体说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>统一训练目标</strong></td>
+<td>所有数据都是 next-token prediction，不需要为不同任务设计不同目标</td>
+</tr>
+<tr>
+<td><strong>统一推理方式</strong></td>
+<td>训练和推理完全一致，不需要区分 encode 阶段和 decode 阶段</td>
+</tr>
+<tr>
+<td><strong>KV Cache 自然</strong></td>
+<td>自回归生成天然适合缓存历史 K/V，推理优化成熟</td>
+</tr>
+<tr>
+<td><strong>数据构造简单</strong></td>
+<td>几乎所有文本都能直接训练，不需要配对数据（如平行语料）</td>
+</tr>
+<tr>
+<td><strong>任务统一</strong></td>
+<td>对话、代码、问答、Agent 都能统一成"续写"</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. Decoder-only 的代价</strong></p>
+<ul>
+<li><strong>条件生成不自然</strong>：翻译时"先读完全部源语言再生成"不如 Encoder-Decoder 直观
+</li>
+<li><strong>自回归延迟</strong>：必须逐 token 生成，无法并行
+</li>
+<li><strong>双向信息缺失</strong>：每个位置只能看左边，不像 Encoder 能同时看左右文
+</li>
+<li><strong>长输入处理</strong>：prompt 部分虽然可以并行 prefill，但信息压缩不如显式 encoder
+</li>
+</ul>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"为什么 Encoder-only（如 BERT）不适合做生成任务？"</strong>
+<ul>
+<li>答：BERT 的预训练目标是 MLM（掩码预测），训练时能看到被掩码位置两边的上下文；但生成时必须自左向右逐个生成，BERT 没有自回归训练，不会"一个 token 一个 token 地续写"。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果要做机器翻译，Decoder-only 和 Encoder-Decoder 哪个更好？"</strong>
+<ul>
+<li>答：数据量小时 Encoder-Decoder 可能更稳（显式分工降低了学习难度）；数据量极大时 Decoder-only 可以通过 scale 弥补结构劣势，而且统一框架更容易复用已有生态。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Decoder-only 模型能做理解类任务（如分类）吗？"</strong>
+<ul>
+<li>答：可以。做法是把分类任务改写成生成任务："这句话的情感是：[正面/负面/中性]"。模型只需要生成"正面"或"负面"即可。这种做法在 GPT 时代非常常见，虽然不如 Encoder-only 的 [CLS] token 表示直接，但足够有效。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0501"><a class="anchor-link" href="#h-0501" aria-label="跳转到本节">#</a>7. 你一步一步讲一下 Self-Attention 是怎么计算的，从输入到输出都说清楚。</h3>
+<h4 id="h-0502"><a class="anchor-link" href="#h-0502" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>可以按 6 步讲清楚。第一步，把输入隐藏状态通过三组线性层投影成 <code>Q</code>、<code>K</code>、<code>V</code>，它们分别代表“我当前想找什么”“我能提供什么索引”“我真正携带的内容”。第二步，用 <code>Q</code> 和所有 <code>K</code> 做点积，得到当前 token 对其他位置的相关性分数。第三步，把分数除以 <code>sqrt(d_k)</code> 做尺度稳定化。第四步，根据任务类型加上 mask，比如 padding mask 防止看见补齐位，causal mask 防止看到未来。第五步，对分数做 softmax，得到一组归一化权重。第六步，用这些权重对 <code>V</code> 加权求和，得到新的上下文表示。</p>
+<p>如果是多头注意力，就在最开始把通道拆成多个 head 并行做上述过程，最后再把各 head 输出拼接起来，过一层输出投影。这样回答的关键不是把公式背出来，而是让面试官听见你知道每一步张量在做什么、为什么要这么做。</p>
+<hr>
+<h4 id="h-0503"><a class="anchor-link" href="#h-0503" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. Self-Attention 要解决什么问题？</strong></p>
+<p>在 RNN/LSTM 时代，模型处理第 i 个 token 时，只能依次看过前 i-1 个 token 的隐藏状态。这导致两个问题：</p>
+<ul>
+<li><strong>串行瓶颈</strong>：不能并行计算
+</li>
+<li><strong>长程遗忘</strong>：距离太远的 token 信息在层层传递中被稀释
+</li>
+</ul>
+<p>Self-Attention 的核心思想是：<strong>让每个 token 直接和所有 token 建立联系</strong>，不需要经过中间层传递。就像开会时每个人都可以直接看到所有人，而不是只能通过邻座传话。</p>
+<p>但"直接看到所有人"需要解决一个问题：不是所有人都一样重要。当前 token 应该更关注相关的 token，更少关注无关的 token。Self-Attention 通过 Q/K/V 机制来实现这种"选择性关注"。</p>
+<hr>
+<p><strong>2. 用一个具体小例子走完整流程</strong></p>
+<p>假设输入有 2 个 token：<code>["猫", "吃鱼"]</code>，模型维度 <code>d_model = 4</code>。为了简化，用单头 <code>head_dim = 2</code>。</p>
+<p><strong>Step 1：输入表示</strong></p>
+<p>经过 Embedding 层后，输入 <code>X</code> 的形状是 <code>(2, 4)</code>：</p>
+<pre><code class="language-text">X = [[ 0.2,  0.5, -0.3,  0.8],     # "猫"
+     [ 0.1, -0.4,  0.6,  0.3]]     # "吃鱼"</code></pre>
+<p><strong>Step 2：投影得到 Q、K、V</strong></p>
+<p>用三个投影矩阵（为简化，这里用假想的数值）：</p>
+<pre><code class="language-text">W_q = [[ 0.1,  0.3],
+       [-0.2,  0.5],
+       [ 0.4, -0.1],
+       [ 0.2,  0.6]]        # 形状 (4, 2)
+
+Q = X @ W_q
+  = [[0.2*0.1 + 0.5*(-0.2) + (-0.3)*0.4 + 0.8*0.2,  0.2*0.3 + 0.5*0.5 + (-0.3)*(-0.1) + 0.8*0.6],
+     [0.1*0.1 + (-0.4)*(-0.2) + 0.6*0.4 + 0.3*0.2,   0.1*0.3 + (-0.4)*0.5 + 0.6*(-0.1) + 0.3*0.6]]
+  = [[0.02 - 0.10 - 0.12 + 0.16,  0.06 + 0.25 + 0.03 + 0.48],
+     [0.01 + 0.08 + 0.24 + 0.06,   0.03 - 0.20 - 0.06 + 0.18]]
+  = [[-0.04,  0.82],
+     [ 0.39, -0.05]]                # 形状 (2, 2)</code></pre>
+<p>同理算出 K 和 V（假设不同的投影矩阵）：</p>
+<pre><code class="language-text">K = [[ 0.5, -0.3],                 # "猫" 的 key
+     [-0.2,  0.7]]                 # "吃鱼" 的 key
+
+V = [[ 0.3,  0.6],                 # "猫" 的 value
+     [ 0.8, -0.4]]                 # "吃鱼" 的 value</code></pre>
+<p><strong>Step 3：计算 attention scores</strong></p>
+<pre><code class="language-text">Scores = Q @ K^T
+
+Q @ K^T = [[-0.04,  0.82],   @   [[ 0.5, -0.2]
+           [ 0.39, -0.05]]        [-0.3,  0.7]]
+
+= [[(-0.04)*0.5 + 0.82*(-0.3),  (-0.04)*(-0.2) + 0.82*0.7],
+   [0.39*0.5 + (-0.05)*(-0.3),   0.39*(-0.2) + (-0.05)*0.7]]
+
+= [[-0.02 - 0.246,  0.008 + 0.574],
+   [0.195 + 0.015,  -0.078 - 0.035]]
+
+= [[-0.266,  0.582],
+   [ 0.210, -0.113]]</code></pre>
+<p><strong>Step 4：缩放</strong></p>
+<p><code>d_k = 2</code>，所以除以 <code>sqrt(2) ≈ 1.414</code>：</p>
+<pre><code class="language-text">Scaled = [[-0.266/1.414,  0.582/1.414],
+          [ 0.210/1.414, -0.113/1.414]]
+       = [[-0.188,  0.412],
+          [ 0.149, -0.080]]</code></pre>
+<p><strong>Step 5：加 causal mask（因果掩码）</strong></p>
+<p>Decoder-only 模型中，位置 0（"猫"）只能看自己，位置 1（"吃鱼"）能看位置 0 和自己：</p>
+<pre><code class="language-text">mask = [[0,   -inf],       # 位置 0：能看位置 0，不能看位置 1
+        [0,     0 ]]       # 位置 1：能看位置 0 和 1
+
+Masked = [[-0.188,  -inf],
+          [ 0.149, -0.080]]</code></pre>
+<p><strong>Step 6：Softmax</strong></p>
+<p>对每一行做 softmax：</p>
+<pre><code class="language-text">第 0 行：softmax([-0.188, -inf]) = [1.0, 0.0]
+  （因为 -inf 的指数是 0，-0.188 的指数是 e^(-0.188) ≈ 0.829，归一化后 0.829/(0.829+0) = 1.0）
+
+第 1 行：softmax([0.149, -0.080])
+  e^0.149 ≈ 1.161
+  e^(-0.080) ≈ 0.923
+  和 = 2.084
+  softmax = [1.161/2.084, 0.923/2.084] ≈ [0.557, 0.443]
+
+Weights = [[1.000, 0.000],
+           [0.557, 0.443]]</code></pre>
+<p><strong>解读</strong>：</p>
+<ul>
+<li>"猫" 只关注自己（权重 [1.0, 0.0]），因为它不能看后面
+</li>
+<li>"吃鱼" 同时关注 "猫"（57%）和 自己（44%），因为它能看到两者
+</li>
+</ul>
+<p><strong>Step 7：加权求和</strong></p>
+<pre><code class="language-text">Output = Weights @ V
+
+= [[1.000, 0.000],   @   [[0.3,  0.6],
+   [0.557, 0.443]]        [0.8, -0.4]]
+
+= [[1.000*0.3 + 0.000*0.8,  1.000*0.6 + 0.000*(-0.4)],
+   [0.557*0.3 + 0.443*0.8,   0.557*0.6 + 0.443*(-0.4)]]
+
+= [[0.300,  0.600],
+   [0.167 + 0.354,  0.334 - 0.177]]
+
+= [[0.300,  0.600],
+   [0.521,  0.157]]</code></pre>
+<p><strong>输出含义</strong>：</p>
+<ul>
+<li>"猫" 的输出 ≈ 它自己的 V（因为只能看自己）
+</li>
+<li>"吃鱼" 的输出 ≈ 0.557 * "猫" 的 V + 0.443 * "吃鱼" 的 V
+<ul>
+<li>也就是说，"吃鱼" 的表示里混入了 "猫" 的信息
+</li>
+<li>这正是 attention 的核心：<strong>每个位置的输出都融合了它"关注"的那些位置的信息</strong>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p><strong>3. Q、K、V 的分工原理</strong></p>
+<p>为什么不是直接用 X 做 attention，而是分三路投影？</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>角色</th>
+<th>语义职责</th>
+<th>类比</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Q (Query)</td>
+<td>"我现在想找什么信息？"</td>
+<td>搜索框里输入的关键词</td>
+</tr>
+<tr>
+<td>K (Key)</td>
+<td>"我能提供什么信息？"</td>
+<td>图书馆每本书的标签/索引</td>
+</tr>
+<tr>
+<td>V (Value)</td>
+<td>"我实际携带什么内容？"</td>
+<td>书里的实际内容</td>
+</tr>
+</tbody></table></div>
+<p>Attention 的计算 = <strong>用 Q 去查 K 的索引，找到相关的位置，然后把对应 V 的内容加权混合</strong>。</p>
+<p>如果 Q=K=V=X，那么：</p>
+<ul>
+<li>查询和索引用同一套表示，无法区分"我想找什么"和"我能提供什么"
+</li>
+<li>Attention 矩阵天然对称，但语言中 "A 关注 B" 和 "B 关注 A" 的含义完全不同
+</li>
+</ul>
+<p>分别投影后，模型可以学到：</p>
+<ul>
+<li>W_q 专门学习"如何表达查询意图"
+</li>
+<li>W_k 专门学习"如何表达可被检索的特征"
+</li>
+<li>W_v 专门学习"什么内容值得被传递"
+</li>
+</ul>
+<hr>
+<p><strong>4. 多头的并行方式</strong></p>
+<p>上面的例子是单头。实际中会把 d_model 切成多个 head：</p>
+<p>假设 <code>num_heads = 2</code>，<code>d_model = 4</code>，则每个 head 的 <code>d_k = 4/2 = 2</code>。</p>
+<p>实现上不是真的"切"，而是用一个大矩阵：</p>
+<ul>
+<li><code>W_q</code> 的形状是 <code>(4, 4)</code>，输出 <code>(2, 4)</code>
+</li>
+<li>reshape 成 <code>(2, 2, 2)</code>，转置成 <code>(2, 2, 2)</code>
+</li>
+<li>两个 head 各是 <code>(2, 2)</code>，并行计算
+</li>
+</ul>
+<p>两个 head 的输出拼接回 <code>(2, 4)</code>，再过 <code>W_o: (4, 4)</code> 投影。</p>
+<p><strong>关键洞察</strong>：不同 head 可以学到不同的关注模式——head 0 可能学会"看语法关系"，head 1 可能学会"看语义相似性"。多头 = 多个视角并行观察。</p>
+<hr>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"Self-Attention 里，Q 和 K 的内积为什么能衡量相关性？"</strong>
+<ul>
+<li>答：因为内积 <code>q·k = |q||k|cos(θ)</code>。当两个向量方向相近（语义相关）时，夹角 θ 小，cos(θ) 大，内积就大；方向垂直时内积为 0；方向相反时为负。所以内积天然编码了"方向相似度"。加上投影矩阵后，模型还能学习把语义相关性映射到向量方向的接近上。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 attention 叫 '软' 查找？跟硬查找有什么区别？"</strong>
+<ul>
+<li>答：硬查找是"要么全要、要么不要"（比如数据库查一条记录）；软查找是"每个位置都贡献一点，贡献多少由权重决定"。Softmax 保证所有权重和为 1，输出是输入的加权和，所以信息是"混合"的，不是"替换"的。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Causal mask 在训练时和推理时的作用有区别吗？"</strong>
+<ul>
+<li>答：训练时，一次前向传播处理整个序列，需要用 causal mask 阻止位置 i 看到位置 i+1, i+2... 的信息。推理时，模型是逐 token 生成的，每次只处理一个位置，天然就看不到未来，所以 causal mask 在推理时不是必须的——但为了保持训练和推理的一致性，通常仍然保留。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0504"><a class="anchor-link" href="#h-0504" aria-label="跳转到本节">#</a>8. 为什么 LLM 时代 Decoder-only 压过了 Encoder-Decoder？它付出了什么代价？</h3>
+<h4 id="h-0505"><a class="anchor-link" href="#h-0505" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>Decoder-only</code> 在 LLM 时代胜出，核心是它把“预训练、指令微调、在线推理”三件事统一成了同一种 token 续写范式。团队不需要为翻译、摘要、问答、对话分别设计完全不同的训练接口，几乎所有数据都能转成 prompt -&gt; continuation 的形式，规模化效率非常高。</p>
+<p>但它不是没有代价。第一，它对强条件生成任务未必总比 Encoder-Decoder 更自然；第二，它必须逐 token 自回归解码，所以线上时延和吞吐优化压力更大；第三，它没有把输入理解和输出生成显式分工，很多”先编码、再解码”的结构优势被牺牲掉了。面试里这样答，会显得你在讲范式选择，不是在喊口号。</p>
+<hr>
+<h4 id="h-0506"><a class="anchor-link" href="#h-0506" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. Decoder-only 胜出的三个深层原因</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>原因</th>
+<th>细节</th>
+<th>工程影响</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>数据格式统一</strong></td>
+<td>所有任务 → “prompt + continuation”</td>
+<td>不需要为翻译/摘要/问答分别造数据格式</td>
+</tr>
+<tr>
+<td><strong>训练-推理一致性</strong></td>
+<td>训练和推理都是 next-token prediction</td>
+<td>没有 train-test gap，没有 exposure bias</td>
+</tr>
+<tr>
+<td><strong>infra 简化</strong></td>
+<td>单一模型、单一前向逻辑</td>
+<td>一套训练框架、一套 serving 框架、一套 checkpoint</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. Decoder-only 付出的代价</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>代价</th>
+<th>具体表现</th>
+<th>缓解手段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>自回归延迟</strong></td>
+<td>生成 N 个 token 需要 N 次 forward</td>
+<td>KV cache、speculative decoding、continuous batching</td>
+</tr>
+<tr>
+<td><strong>输入理解受限</strong></td>
+<td>只能单向看输入（Encoder-Decoder 可双向）</td>
+<td>更大模型、更长上下文、更强 prompt 工程</td>
+</tr>
+<tr>
+<td><strong>长输入高显存</strong></td>
+<td>长 prompt 的 KV cache 占用大</td>
+<td>GQA/MQA、cache 量化、PagedAttention</td>
+</tr>
+<tr>
+<td><strong>条件生成弱</strong></td>
+<td>翻译/摘要等”输入→输出”任务天然弱于 E-D</td>
+<td>指令微调、前缀调优</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 为什么 Encoder-Decoder 在 NLP 早期更强？</strong></p>
+<ul>
+<li><strong>BERT/GPT-1/T5 时代</strong>（2018-2019）：模型小（&lt;1B），Decoder-only 的理解能力不够强
+</li>
+<li><strong>翻译任务</strong>：Encoder 双向理解源语言 → Decoder 生成目标语言，分工明确效果好
+</li>
+<li><strong>T5 的 text-to-text 统一框架</strong>：把所有任务都转成 “输入文本 → 输出文本”
+</li>
+</ul>
+<p><strong>转折点</strong>：GPT-3（2020，175B）展示了 Decoder-only 的”涌现能力”——规模够大时，统一生成范式的优势超过结构分工的优势。</p>
+<p><strong>4. 现在的 Encoder-Decoder 还有价值吗？</strong></p>
+<p>有，但场景变窄了：</p>
+<ul>
+<li><strong>机器翻译</strong>：WMT 等比赛 top 系统仍常用 E-D（如 DeepL）
+</li>
+<li><strong>长文档摘要</strong>：输入长、输出也长，E-D 的分离结构更可控
+</li>
+<li><strong>代码生成</strong>（特定场景）：需要精确理解长上下文后生成结构化输出
+</li>
+</ul>
+<p>但通用 LLM（ChatGPT/Claude/Gemini）清一色 Decoder-only，因为”统一范式 + 简化 infra”的工程收益太大。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”Decoder-only 做翻译，和 T5 的 Encoder-Decoder 做翻译，哪个质量更好？”</strong>
+<ul>
+<li>答：数据量小、模型小时 E-D 更好（双向理解 + 分离解码）。但模型大到 100B+、数据万亿级时，Decoder-only 通过 in-context learning 和 instruction tuning 也能达到接近甚至超越的效果。关键是工程上 Decoder-only 只需维护一套 infra，成本远低于 E-D。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果让你设计一个'理解+生成'都强的系统，你会怎么选架构？”</strong>
+<ul>
+<li>答：看场景。通用对话 → Decoder-only（简单、统一）；翻译/摘要 → 考虑 Encoder-Decoder（输入输出分离更可控）；理解任务为主 → Encoder-only（如 BERT 做分类、匹配）。也可以混合：用 Decoder-only 做主干，特定任务接轻量 encoder 模块。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”Decoder-only 的因果掩码，会不会限制模型'理解'能力？”</strong>
+<ul>
+<li>答：理论上会。双向注意力能同时看到左右文，对理解更有利。但实际中 Decoder-only 通过：1）海量预训练数据弥补；2）足够深的层数让信息充分流动；3）长上下文（128K+）让”单向”也能看到很远的前文。所以实践中 Decoder-only 的理解能力并不弱于同规模的 Encoder-only。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0507"><a class="anchor-link" href="#h-0507" aria-label="跳转到本节">#</a>9. Pre-Norm 和 Post-Norm 有什么区别？为什么现代大模型更偏向 Pre-Norm？</h3>
+<h4 id="h-0508"><a class="anchor-link" href="#h-0508" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>Pre-Norm 和 Post-Norm 的区别，表面看只是 LayerNorm 放在子层前还是子层后，但背后是训练稳定性差异。Pre-Norm 是先归一化、再进入 attention 或 FFN，再走残差；Post-Norm 则是子层输出和残差相加后再做归一化。</p>
+<p>现代大模型更偏向 Pre-Norm，主要因为网络做得很深时，Pre-Norm 的梯度传递更顺，不容易在深层出现训练不稳、梯度爆炸或消失。Post-Norm 在早期 Transformer 里常见，但一旦层数和规模继续增大，稳定性问题会更明显。所以面试里最好把答案讲成：Pre-Norm 不只是"现在流行"，而是更适合超深层大模型训练。</p>
+<hr>
+<h4 id="h-0509"><a class="anchor-link" href="#h-0509" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 用公式看 Pre-Norm 和 Post-Norm 的区别</strong></p>
+<ul>
+<li><strong>Post-Norm</strong>（原始 Transformer）：<code>x_{l+1} = Norm(x_l + Sublayer(x_l))</code>
+</li>
+<li><strong>Pre-Norm</strong>（现代 LLM）：<code>x_{l+1} = x_l + Sublayer(Norm(x_l))</code>
+</li>
+</ul>
+<p>表面只是 <code>Norm</code> 位置不同，但对梯度流的影响完全不同。</p>
+<p><strong>2. 为什么 Pre-Norm 的梯度更稳定？</strong></p>
+<p>在反向传播时，梯度要从输出层传回输入层。Post-Norm 中，梯度每经过一层都要先经过 <code>Norm</code> 再经过残差。<code>Norm</code> 层会对梯度做缩放，这种缩放会逐层累积。层数很深时，梯度要么被不断压缩（消失），要么在某些维度被放大（爆炸）。</p>
+<p>Pre-Norm 中，梯度通过残差连接 <code>x_l + ...</code> 时有一条"高速公路"可以直接回流，不受 <code>Sublayer</code> 和 <code>Norm</code> 的干扰。数学上，Pre-Norm 的残差路径更接近恒等映射：<code>∂x_{l+1} / ∂x_l ≈ I + small_term</code>，深层梯度不会指数衰减。</p>
+<p><strong>3. Post-Norm 的效果真的更差吗？</strong></p>
+<p>不一定。Post-Norm 在浅层网络（如原始 Transformer 的 6 层）上训练稳定，而且理论上 Post-Norm 的表示能力更强——因为每一层的输出都经过归一化，动态范围更一致。但层数超过 12-24 层后，训练不稳定的代价超过了表示优势，所以大模型时代 Pre-Norm 成为主流。</p>
+<p><strong>4. 为什么还需要残差连接？</strong></p>
+<p>没有残差连接时，深层网络等价于很多层函数复合：<code>x_L = f_L(f_{L-1}(...f_1(x)...))</code>。反向传播时梯度要穿过所有层的 Jacobian 连乘，很容易爆炸或消失。加上残差后：<code>x_{l+1} = x_l + f(x_l)</code>，梯度有了一条直通路径：<code>∂x_{l+1}/∂x_l = I + ∂f/∂x_l</code>。即使 <code>∂f/∂x_l</code> 很小，梯度也不会完全消失。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果我把 LayerNorm 换成 RMSNorm，训练稳定性会有什么变化？"</strong>
+<ul>
+<li>答：RMSNorm 去掉了 LayerNorm 中的去均值操作（减去均值），计算更省。在 LLM 中，因为隐藏状态通常已经以零为中心（ReLU/SwiGLU 的输出），去均值的收益不明显，所以 RMSNorm 足够稳定且更快。但严格说，如果输入分布有明显偏移，LayerNorm 的去均值仍有价值。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Pre-Norm 这么好，那 Post-Norm 还有存在的价值吗？"</strong>
+<ul>
+<li>答：有。Post-Norm 在 encoder 类浅层任务上仍然有效（BERT 就是 Post-Norm 且只有 12/24 层）。另外，一些研究表明 Post-Norm 的表示质量在某些下游任务上略好，只是训练需要更小心（如学习率预热要更长、warmup steps 更多）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 Transformer 需要 LayerNorm，CNN 不需要？"</strong>
+<ul>
+<li>答：Transformer 的 attention 输出是加权和，不同样本、不同位置的数值范围差异很大；深层堆叠后这种差异会被放大。CNN 有局部感受野和参数共享，且通常带 BatchNorm，对内部数值范围有一定的自然约束。另外，Transformer 的残差连接导致深层输出是各层输出的累加，没有归一化会无界增长。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0510"><a class="anchor-link" href="#h-0510" aria-label="跳转到本节">#</a>10. 如果上下文特别长，Attention 复杂度会成为什么瓶颈？有哪些替代思路？</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">参数量 / 显存速算</div>
+        <p class="inline-enhancement-note">放在参数量、复杂度、显存估算小节附近，作为面试快算公式。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>Transformer 单层参数近似</b><div class="math-display">\[P_{layer}\approx 4d^2 + 2d\,d_{ff}\approx 12d^2\quad(d_{ff}\approx4d)\]</div><p>用于快速估算 dense LLM 参数量；SwiGLU/GQA 会改变常数项。</p></div><div class="formula-card"><b>训练显存组成</b><div class="math-display">\[\mathrm{Memory}\approx W + G + O + A\]</div><p>W 是权重，G 是梯度，O 是优化器状态，A 是激活值。</p></div></div>
+      </aside>
+<h4 id="h-0511"><a class="anchor-link" href="#h-0511" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>当上下文特别长时，attention 会同时变成计算瓶颈、显存瓶颈和带宽瓶颈。原因是每个 token 都要和大量历史 token 做交互，<code>QK^T</code> 计算量迅速增长，中间注意力矩阵也会占很多显存，推理时 <code>KV cache</code> 又会继续放大压力。</p>
+<p>替代思路大体有三类。第一类是”不改算法、先改实现”，例如 <code>FlashAttention</code> 通过 IO-aware 的方式减少中间张量落地；第二类是”减少缓存或交互成本”，例如 <code>GQA/MQA/MLA</code>；第三类是”换建模路线”，例如稀疏 attention、线性 attention、SSM/Mamba，或者在系统层用 RAG 减少真正需要塞进上下文的信息量。这样回答会比只列术语更有层次。</p>
+<hr>
+<h4 id="h-0512"><a class="anchor-link" href="#h-0512" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 计算量的具体数值感受</strong></p>
+<p>Self-Attention 的核心计算是 <code>Q @ K^T</code> 和 <code>weights @ V</code>。</p>
+<ul>
+<li><code>Q @ K^T</code>：<code>(n, d_k) @ (d_k, n) → (n, n)</code>，计算量是 <code>O(n² × d_k)</code>
+</li>
+<li><code>weights @ V</code>：<code>(n, n) @ (n, d_v) → (n, d_v)</code>，计算量也是 <code>O(n² × d_v)</code>
+</li>
+</ul>
+<p>假设 <code>d_k = d_v = 64</code>，看不同序列长度下的计算量：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>序列长度 n</th>
+<th>Attention 计算量 (flops)</th>
+<th>相对于 n=1K 的倍数</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1K</td>
+<td>~1.3 × 10⁸</td>
+<td>1×</td>
+</tr>
+<tr>
+<td>4K</td>
+<td>~2.1 × 10⁹</td>
+<td>16×</td>
+</tr>
+<tr>
+<td>8K</td>
+<td>~8.4 × 10⁹</td>
+<td>64×</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>~1.3 × 10¹¹</td>
+<td>1024×</td>
+</tr>
+<tr>
+<td>128K</td>
+<td>~2.1 × 10¹²</td>
+<td>16384×</td>
+</tr>
+</tbody></table></div>
+<p>长度从 1K 增加到 128K（128 倍），attention 计算量增长 16384 倍。这就是”二次方诅咒”。</p>
+<p><strong>2. KV Cache 的显存占用计算</strong></p>
+<p>推理时每层每头需要缓存 K 和 V 两个矩阵。</p>
+<p>以 LLaMA-2 7B 为例：</p>
+<ul>
+<li>层数 <code>L = 32</code>
+</li>
+<li>隐藏维度 <code>d = 4096</code>
+</li>
+<li>头数 <code>n_heads = 32</code>
+</li>
+<li><code>d_k = 4096 / 32 = 128</code>
+</li>
+<li>使用 FP16（2 字节）
+</li>
+</ul>
+<p>KV cache 大小 = <code>2 × L × n_heads × d_k × seq_len × batch_size × 2 bytes</code> = <code>2 × 32 × 32 × 128 × seq_len × batch_size × 2</code> ≈ <code>524,288 × seq_len × batch_size</code> 字节</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>seq_len</th>
+<th>batch=1 的 KV cache</th>
+<th>batch=8 的 KV cache</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1K</td>
+<td>~512 MB</td>
+<td>~4 GB</td>
+</tr>
+<tr>
+<td>4K</td>
+<td>~2 GB</td>
+<td>~16 GB</td>
+</tr>
+<tr>
+<td>8K</td>
+<td>~4 GB</td>
+<td>~32 GB</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>~16 GB</td>
+<td>~128 GB</td>
+</tr>
+</tbody></table></div>
+<p>一个 7B 模型本身参数只占约 14 GB（FP16），但 batch=8、seq_len=32K 时 KV cache 就要 128 GB，远超模型参数本身。这就是为什么长上下文首先打爆的是显存。</p>
+<p><strong>3. 三类替代方案的本质区别</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>类别</th>
+<th>代表方法</th>
+<th>核心思想</th>
+<th>复杂度变化</th>
+<th>代价</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>IO优化</td>
+<td>FlashAttention</td>
+<td>减少HBM访问，fuse kernel</td>
+<td>仍是 O(n²)，但常数更小</td>
+<td>需要特定kernel实现</td>
+</tr>
+<tr>
+<td>缓存压缩</td>
+<td>GQA/MQA/MLA</td>
+<td>减少 KV 的头数或维度</td>
+<td>显存从 O(n×h) 降到 O(n×h')</td>
+<td>轻微效果损失</td>
+</tr>
+<tr>
+<td>稀疏/线性注意力</td>
+<td>Longformer、BigBird、Linformer、Performer</td>
+<td>让每个token只关注部分位置，或用核方法近似</td>
+<td>从 O(n²) 降到 O(n) 或 O(n log n)</td>
+<td>实现复杂，效果通常略逊于全注意力</td>
+</tr>
+<tr>
+<td>换架构</td>
+<td>Mamba、RWKV</td>
+<td>用状态空间模型替代attention</td>
+<td>O(n)</td>
+<td>生态不成熟，长程建模能力仍在验证</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”FlashAttention 说它是 O(n²) 复杂度，那它到底优化了什么？”</strong>
+<ul>
+<li>答：FlashAttention 没有改变 attention 的数学形式和渐近复杂度，它优化的是<strong>内存访问模式</strong>。标准 attention 需要把 <code>(n, n)</code> 的注意力矩阵显式写入 HBM（高带宽显存），这会消耗大量带宽。FlashAttention 通过分块（tiling）和重计算（recomputation），让小块矩阵在 SRAM（高速缓存）里完成计算，避免了大矩阵的反复读写。所以它减少的是<strong>wall-clock time</strong>和<strong>显存峰值</strong>，不是理论复杂度。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”为什么稀疏 attention（比如只让每个token看最近的1024个位置）在实际中落地没那么容易？”</strong>
+<ul>
+<li>答：因为稀疏模式会改变模型的注意力结构，预训练好的模型不能直接用稀疏模式——它没见过这种稀疏的注意力分布。如果要落地，通常需要重新预训练或至少做大量继续训练。而像 GQA/MQA 这样的改动，可以在不改变 attention 模式的情况下减少缓存，所以更容易在已有模型上直接应用。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果有一个 100K token 的文档要处理，你会怎么选择方案？”</strong>
+<ul>
+<li>答：不会只用一个方案，而是分层处理。首先看是不是所有 100K 都需要一次性处理：如果用 RAG 能先召回最相关的几段（比如 top-5 共 5K token），那就只需要处理 5K，问题就解决了。如果确实需要一次处理 100K，先看硬件能不能放下 KV cache（100K × 7B 模型的 KV cache 约 50 GB），能放下就用 FlashAttention 加速；放不下再考虑 GQA 或分段处理。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0513"><a class="anchor-link" href="#h-0513" aria-label="跳转到本节">#</a>11. MHA、MQA、GQA 在效果和推理成本上的 trade-off 是什么？</h3>
+<h4 id="h-0514"><a class="anchor-link" href="#h-0514" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>这三者本质上是在权衡“表达能力”和“推理缓存成本”。<code>MHA</code> 里每个 query head 都有自己独立的 <code>K/V</code>，表达最充分，效果通常最好，但 <code>KV cache</code> 也最大。<code>MQA</code> 把很多 query head 对应到同一组 <code>K/V</code>，显存和带宽最省，推理会很友好，但因为共享过强，质量有时掉得比较明显。</p>
+<p><code>GQA</code> 则是折中方案：不是所有 head 共用一组 <code>K/V</code>，而是按组共享，让缓存成本明显下降，但表达能力又比 <code>MQA</code> 保留得更多。所以生产系统里经常看到 <code>GQA</code>，因为它不是理论上最极致，而是在效果和成本之间更平衡。</p>
+<hr>
+<h4 id="h-0515"><a class="anchor-link" href="#h-0515" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 从一个具体小例子看 MHA 的完整计算流程</strong></p>
+<p>假设输入序列有 3 个 token：<code>["我", "喜欢", "猫"]</code>，模型维度 <code>d_model = 8</code>，head 数 <code>n_heads = 4</code>，每个 head 的维度 <code>head_dim = 2</code>。</p>
+<p><strong>Step 1：输入投影得到 Q、K、V</strong></p>
+<p>输入 <code>X</code> 的形状是 <code>(3, 8)</code>。用三个投影矩阵分别计算：</p>
+<pre><code class="language-text">Q = X @ W_q    -&gt; 形状 (3, 8)  @ (8, 8)  -&gt; (3, 8)
+K = X @ W_k    -&gt; 形状 (3, 8)  @ (8, 8)  -&gt; (3, 8)
+V = X @ W_v    -&gt; 形状 (3, 8)  @ (8, 8)  -&gt; (3, 8)</code></pre>
+<p><strong>Step 2：把 Q/K/V 切成多个 head</strong></p>
+<p>MHA 的核心操作是把最后一维切成 <code>n_heads</code> 份，每份 <code>head_dim</code> 维：</p>
+<pre><code class="language-text">Q 形状 (3, 8) -&gt; reshape -&gt; (3, 4, 2) -&gt; transpose -&gt; (4, 3, 2)
+                 ^^^^^^^^^ 4 个 head，每个 head 是 (3, 2)
+
+K 同理 -&gt; (4, 3, 2)
+V 同理 -&gt; (4, 3, 2)</code></pre>
+<p>现在每个 head <code>h</code> 都有自己的 <code>Q_h (3, 2)</code>、<code>K_h (3, 2)</code>、<code>V_h (3, 2)</code>，它们<strong>独立计算 attention</strong>，互不相干。</p>
+<p><strong>Step 3：单个 head 内怎么计算 attention</strong></p>
+<p>以 head 0 为例：</p>
+<pre><code class="language-text">Scores = Q_0 @ K_0^T / sqrt(2)    -&gt; (3, 2) @ (2, 3) -&gt; (3, 3)
+
+假设原始 Q_0 @ K_0^T =
+  [[ 1.0,  0.5, -0.2],
+   [ 0.3,  1.2,  0.8],
+   [-0.1,  0.4,  0.9]]
+
+除以 sqrt(2) ~ 1.414：
+  [[ 0.71,  0.35, -0.14],
+   [ 0.21,  0.85,  0.57],
+   [-0.07,  0.28,  0.64]]</code></pre>
+<p><strong>Step 4： causal mask（因果掩码）</strong></p>
+<p>Decoder-only 模型只能看当前位置及之前的位置。对 3 个 token，mask 是：</p>
+<pre><code class="language-text">mask = [[1, 0, 0],      # 位置0只能看位置0
+        [1, 1, 0],      # 位置1能看位置0,1
+        [1, 1, 1]]      # 位置2能看位置0,1,2</code></pre>
+<p>把 mask 为 0 的位置填 <code>-inf</code>，再 softmax：</p>
+<pre><code class="language-text"> masked scores -&gt; softmax -&gt; Attention Weights A_0
+  [[ 0.71,  -inf,  -inf]      [[1.00,  0.00,  0.00]
+   [ 0.21,  0.85,  -inf]  -&gt;    [0.34,  0.66,  0.00]
+   [-0.07,  0.28,  0.64]]      [0.28,  0.37,  0.35]]</code></pre>
+<p><strong>Step 5：加权求和得到 head 输出</strong></p>
+<pre><code class="language-text">Output_0 = A_0 @ V_0    -&gt; (3, 3) @ (3, 2) -&gt; (3, 2)</code></pre>
+<p>4 个 head 各自独立做完上述过程，得到 4 个 <code>(3, 2)</code> 的输出，concat 拼回 <code>(3, 8)</code>，再过 <code>W_o</code> 投影。</p>
+<p><strong>关键洞察</strong>：每个 head 只在自己的 2 维子空间里计算 attention，相当于<strong>用 4 种不同的"视角"去看同一句话</strong>。head 0 可能学会"看代词指代"，head 1 可能学会"看局部语法"，head 2 可能学会"看位置关系"——这是 MHA 表达能力强的根源。</p>
+<hr>
+<p><strong>2. GQA 的计算和 MHA 到底哪里不同？</strong></p>
+<p>沿用上面的例子，但现在 K/V 不是 4 个 head，而是只有 2 个（<code>n_kv_heads = 2</code>）。这就是 <strong>GQA</strong>。</p>
+<p><strong>Q 的切法不变</strong>：</p>
+<pre><code class="language-text">Q -&gt; (4, 3, 2)   # 还是 4 个 query head</code></pre>
+<p><strong>K/V 的切法变了</strong>：</p>
+<pre><code class="language-text">K -&gt; (2, 3, 2)   # 只有 2 个 kv head
+V -&gt; (2, 3, 2)</code></pre>
+<p>问题来了：4 个 query head 怎么和 2 个 kv head 配对？</p>
+<p><strong>答案是按组配对</strong>。4 个 query head 分成 2 组，每组 2 个 query head 共享同一组 K/V：</p>
+<pre><code class="language-text">query head 0  --+
+query head 1  --+---&gt; 共享 kv head 0
+                |
+query head 2  --+
+query head 3  --+---&gt; 共享 kv head 1</code></pre>
+<p>具体到计算：</p>
+<ul>
+<li>head 0 的 attention：<code>Q_0 (3,2)</code> 跟 <code>K_0 (3,2)</code> 算 score -&gt; <code>A_0 @ V_0</code>
+</li>
+<li>head 1 的 attention：<code>Q_1 (3,2)</code> 也跟 <code>K_0 (3,2)</code> 算 score -&gt; <code>A_1 @ V_0</code>
+</li>
+<li>head 2 的 attention：<code>Q_2 (3,2)</code> 跟 <code>K_1 (3,2)</code> 算 score -&gt; <code>A_2 @ V_1</code>
+</li>
+<li>head 3 的 attention：<code>Q_3 (3,2)</code> 也跟 <code>K_1 (3,2)</code> 算 score -&gt; <code>A_3 @ V_1</code>
+</li>
+</ul>
+<p><strong>发现了吗？GQA 的 attention 计算流程和 MHA 完全一样</strong>，唯一的区别是 K/V 的来源从"每个 query head 有自己的"变成了"每组的 query heads 共用同一组"。工程上实现时，通常先把 K/V 复制（broadcast）到和 query head 数对齐，再做标准 attention。</p>
+<p><strong>MQA 是 GQA 的极端</strong>：<code>n_kv_heads = 1</code>，所有 4 个 query head 共用同一组 K/V。</p>
+<hr>
+<p><strong>3. 为什么共享 K/V 会损失效果？从机制上理解</strong></p>
+<p>MHA 中，每个 query head <code>h</code> 有自己的 <code>K_h</code> 和 <code>V_h</code>。这意味着：</p>
+<ul>
+<li><code>K_h</code> 可以被专门优化来"服务" <code>Q_h</code> 的查询模式
+</li>
+<li>比如 <code>Q_0</code> 喜欢查"代词指代"，<code>K_0</code> 就学会把代词相关信息编码到 key 里
+</li>
+<li><code>Q_1</code> 喜欢查"动词搭配"，<code>K_1</code> 就学会把动词相关信息编码到 key 里
+</li>
+</ul>
+<p>当 GQA 让 <code>Q_0</code> 和 <code>Q_1</code> 共享 <code>K_0</code> 时，<code>K_0</code> 必须<strong>同时满足两种查询需求</strong>——既要包含代词信息，又要包含动词信息。一个固定维度的向量能承载的信息量有限，被迫"服务两个主子"时，每个主子得到的信息就会变少。</p>
+<p><strong>类比</strong>：MHA 像是每个部门（query head）有自己的专属档案员（K/V），查什么都很精准。GQA 像是几个部门共用一个档案员，档案员必须把多个部门关心的信息都记下来，每个部门查询时得到的回答就不如专属档案员那么精准。MQA 则是全公司只有一个档案员，信息混杂最严重。</p>
+<p>GQA 折中的好处是：不需要完全独立（那样缓存太大），但分组后不同组之间还可以保持一定差异化——第 1 组的 K/V 可以专门服务"语法类" query，第 2 组的 K/V 可以专门服务"语义类" query。</p>
+<hr>
+<p><strong>4. KV Cache 与参数量的数值对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方案</th>
+<th>n_kv_heads</th>
+<th>KV cache (L=32, seq=4096, B=1, FP16)</th>
+<th>相对于 MHA</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>MHA</td>
+<td>32</td>
+<td>~2.1 GB</td>
+<td>1.0x</td>
+</tr>
+<tr>
+<td>GQA (8组)</td>
+<td>8</td>
+<td>~536 MB</td>
+<td>0.25x</td>
+</tr>
+<tr>
+<td>MQA</td>
+<td>1</td>
+<td>~67 MB</td>
+<td>0.031x</td>
+</tr>
+</tbody></table></div>
+<p>KV cache 公式：<code>2 * B * seq_len * L * n_kv_heads * head_dim * 2 bytes</code></p>
+<p>参数量方面：</p>
+<ul>
+<li><code>W_q</code> 始终是 <code>d_model * d_model</code>（因为 query 不共享）
+</li>
+<li><code>W_k</code>、<code>W_v</code> 是 <code>d_model * (n_kv_heads * head_dim)</code>
+</li>
+<li>MHA 中 <code>n_kv_heads = n_heads</code>，GQA/MQA 中更小
+</li>
+</ul>
+<hr>
+<p><strong>5. 实际落地中的选择</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>推荐方案</th>
+<th>理由</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>研究/追求最高效果</td>
+<td>MHA</td>
+<td>不省缓存，效果天花板最高</td>
+</tr>
+<tr>
+<td>生产部署/长上下文服务</td>
+<td>GQA (4-8组)</td>
+<td>缓存降 1/4~1/8，效果损失通常 &lt;1%</td>
+</tr>
+<tr>
+<td>极致边缘部署</td>
+<td>MQA</td>
+<td>缓存最小，适合手机/嵌入式</td>
+</tr>
+</tbody></table></div>
+<p>LLaMA-2、Mistral、Qwen 等生产模型都采用了 GQA，说明它已成为平衡效果与成本的主流选择。</p>
+<hr>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"GQA 的 '组' 数怎么选？8 组一定比 4 组好吗？"</strong>
+<ul>
+<li>答：组数越多越接近 MHA（效果越好、缓存越大），组数越少越接近 MQA（缓存越小、效果越差）。选择是工程权衡：先看显存/带宽瓶颈有多严重，再测不同组数的效果损失。通常 4-8 组是 sweet spot。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"GQA 和 MQA 在代码实现上怎么做到共享 K/V 的？"</strong>
+<ul>
+<li>答：最简洁的实现方式是先把 K/V 从 <code>(batch, n_kv_heads, seq_len, head_dim)</code> broadcast 成 <code>(batch, n_heads, seq_len, head_dim)</code>，让 query 和 key/value 的 head 维度对齐，然后直接做标准 attention 计算。 PyTorch 里用 <code>expand()</code> 或 <code>repeat()</code> 即可，不需要改 attention 的核心逻辑。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果从 MHA 模型转成 GQA，能直接改结构加载权重吗？"</strong>
+<ul>
+<li>答：不能直接加载，因为 K/V 投影的权重形状变了。常见做法是用原 MHA 模型中对应组的 K/V 权重做平均或筛选，初始化 GQA 的 K/V 投影，然后做少量继续训练来恢复效果。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"MLA 和 GQA 有什么区别？"</strong>
+<ul>
+<li>答：GQA 是在 head 维度上共享 K/V（减少 K/V 的头数）；MLA 更进一步，在 latent 空间压缩 K/V，用更少的 latent 维度来表示缓存信息，压缩更激进但需要重新设计 attention 结构。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0516"><a class="anchor-link" href="#h-0516" aria-label="跳转到本节">#</a>12. 你如何向不懂深度学习的人解释”注意力机制”到底在做什么？</h3>
+<h4 id="h-0517"><a class="anchor-link" href="#h-0517" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>可以把注意力机制理解成“动态查资料”。模型在处理当前这个词时，不会对前文一视同仁，而是会临时决定：哪些词和我现在最相关，应该多看一点；哪些词关系不大，可以少看一点。这个“看多看少”的权重，就是注意力分数。</p>
+<p>如果要讲得更生活化，可以说：人读一句长句子时，也不会每次都平均回看所有前文，而是会根据当前问题重点回看人名、时间、动作或结论。注意力机制做的就是类似事情，只不过它把这个过程变成了可学习的向量计算。</p>
+<hr>
+<h4 id="h-0518"><a class="anchor-link" href="#h-0518" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 注意力机制的"查询-键-值"类比</strong></p>
+<p>把 attention 比喻成<strong>图书馆查资料</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>概念</th>
+<th>图书馆类比</th>
+<th>数学对象</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Query</strong></td>
+<td>你当前的问题</td>
+<td>当前 token 的向量 q</td>
+</tr>
+<tr>
+<td><strong>Key</strong></td>
+<td>每本书的标签/目录</td>
+<td>每个历史 token 的向量 k</td>
+</tr>
+<tr>
+<td><strong>Value</strong></td>
+<td>书里的实际内容</td>
+<td>每个历史 token 的向量 v</td>
+</tr>
+<tr>
+<td><strong>Attention Score</strong></td>
+<td>某本书对你问题的相关度</td>
+<td>q·k / √d</td>
+</tr>
+<tr>
+<td><strong>Weighted Sum</strong></td>
+<td>综合多本书内容形成答案</td>
+<td>Σ softmax(score) × v</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 为什么需要"注意力"而不是固定权重？</strong></p>
+<p>固定权重（如 CNN 的卷积核）：</p>
+<ul>
+<li>每个位置只能看固定范围的邻居（如前后 2 个词）
+</li>
+<li>不管当前词是什么，看的范围都一样
+</li>
+</ul>
+<p>注意力：</p>
+<ul>
+<li>"苹果"在"我吃苹果"中 → 多看"吃"（动作关系）
+</li>
+<li>"苹果"在"苹果公司"中 → 多看"公司"（实体关系）
+</li>
+<li>同一个词，根据上下文动态决定"看什么"
+</li>
+</ul>
+<p><strong>3. Self-Attention 的本质：每个词都问所有词一个问题</strong></p>
+<pre><code class="language-text">句子："猫 坐 在 垫子 上"
+
+"猫"会问：
+- "猫"和"坐"相关吗？→ 高（主谓关系）
+- "猫"和"垫子"相关吗？→ 中（位置关系）
+- "猫"和"上"相关吗？→ 低
+
+"坐"会问：
+- "坐"和"猫"相关吗？→ 高
+- "坐"和"垫子"相关吗？→ 高（坐在垫子上）</code></pre>
+<p>每个词都有独立的 Q 向量，所以"问的问题"不同，关注的重点也不同。</p>
+<p><strong>4. Multi-Head：多问几个问题</strong></p>
+<p>不只是问一个问题，而是同时问 8/16/32 个问题：</p>
+<ul>
+<li>Head 1："谁是动作执行者？"（找主语）
+</li>
+<li>Head 2："动作对象是什么？"（找宾语）
+</li>
+<li>Head 3："时间/地点是什么？"
+</li>
+<li>Head 4："代词指代谁？"
+</li>
+</ul>
+<p>每个 head 独立学习不同的"关注点"，组合起来形成丰富的表示。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"注意力机制和 RNN 的区别是什么？"</strong>
+<ul>
+<li>答：RNN 像"传纸条"——信息从第一个词逐步传到最后一个词，长距离信息会衰减。注意力像"开群聊"——每个词可以直接和所有词对话，没有距离衰减。所以注意力在处理长距离依赖（如代词指代）时更强。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"注意力为什么需要除以 sqrt(d_k)？"</strong>
+<ul>
+<li>答：当维度 d_k 很大时，q·k 的点积值会很大（方差随 d_k 线性增长），导致 softmax 进入饱和区（梯度极小）。除以 sqrt(d_k) 把方差缩回 1，保持梯度健康。详见问题 3 深度解析。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么说 Transformer 是'完全并行'的，RNN 不是？"</strong>
+<ul>
+<li>答：RNN 计算第 t 个词的表示时，必须等第 t-1 个词算完（顺序依赖）。Transformer 的 attention 中，所有词的 Q/K/V 可以同时计算，所有 attention score 可以同时计算——没有顺序依赖，所以可以在 GPU 上完全并行。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="014.html">← 14. 十、系统设计、业务落地与成本权衡</a><a href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口 →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

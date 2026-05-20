@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRACE: Capability-Targeted Agentic Training | 深度论文报告</title>
+  <style>
+    :root {
+      --paper: #f7f8fb;
+      --surface: #ffffff;
+      --surface-2: #eef2f6;
+      --ink: #17202a;
+      --muted: #5d6977;
+      --line: #d9e0e7;
+      --teal: #087568;
+      --teal-soft: #dff4ef;
+      --red: #bd3c32;
+      --red-soft: #f7e5e2;
+      --blue: #2d5f9a;
+      --blue-soft: #e1ecfa;
+      --gold: #a36a00;
+      --gold-soft: #f5ecd8;
+      --green: #2d7a3e;
+      --green-soft: #e1f1e6;
+      --code: #223142;
+      --shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+      --radius: 8px;
+      --max: 1320px;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(45, 95, 154, 0.06) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(8, 117, 104, 0.05) 1px, transparent 1px),
+        var(--paper);
+      background-size: 72px 72px;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(45, 95, 154, 0.35);
+    }
+
+    a:hover {
+      border-bottom-color: var(--blue);
+    }
+
+    .page {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 24px 64px;
+    }
+
+    .hero {
+      min-height: 92vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: 28px;
+      align-items: end;
+      padding: 54px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-copy {
+      padding-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--teal);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-size: 0.78rem;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: var(--teal);
+      display: inline-block;
+    }
+
+    h1, h2, h3 {
+      font-family: var(--serif);
+      line-height: 1.06;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+
+    h1 {
+      font-size: clamp(3rem, 7.5vw, 6.8rem);
+      margin: 0;
+      max-width: 980px;
+    }
+
+    .subtitle {
+      max-width: 820px;
+      margin: 22px 0 0;
+      color: #2d3845;
+      font-size: clamp(1.08rem, 2vw, 1.34rem);
+      line-height: 1.62;
+    }
+
+    .meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      color: #263442;
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .hero-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      align-self: stretch;
+      min-height: 560px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+    }
+
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+    }
+
+    .panel-title strong {
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+
+    .score-ledger {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-self: center;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      background: linear-gradient(180deg, #ffffff, #f7fafc);
+      min-height: 140px;
+    }
+
+    .metric .value {
+      font-family: var(--serif);
+      font-size: clamp(2.2rem, 4vw, 4rem);
+      line-height: 0.95;
+      color: var(--ink);
+    }
+
+    .metric .label {
+      margin-top: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.36;
+    }
+
+    .metric:nth-child(1) {
+      border-top: 5px solid var(--teal);
+    }
+
+    .metric:nth-child(2) {
+      border-top: 5px solid var(--blue);
+    }
+
+    .metric:nth-child(3) {
+      border-top: 5px solid var(--red);
+    }
+
+    .metric:nth-child(4) {
+      border-top: 5px solid var(--gold);
+    }
+
+    .thesis {
+      border-left: 5px solid var(--red);
+      background: var(--red-soft);
+      padding: 14px 16px;
+      color: #51241f;
+      font-weight: 700;
+      line-height: 1.52;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 34px;
+      align-items: start;
+      padding-top: 30px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 12px 30px rgba(23, 32, 42, 0.06);
+    }
+
+    .toc h2 {
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+
+    .toc a {
+      display: block;
+      border: 0;
+      padding: 8px 0;
+      color: #31404f;
+      font-size: 0.92rem;
+      line-height: 1.28;
+      border-top: 1px solid transparent;
+    }
+
+    .toc a:hover {
+      color: var(--teal);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: clamp(22px, 4vw, 42px);
+      margin-bottom: 22px;
+      box-shadow: 0 10px 28px rgba(23, 32, 42, 0.04);
+    }
+
+    section > h2 {
+      margin: 0 0 18px;
+      font-size: clamp(2rem, 4vw, 3.25rem);
+    }
+
+    h3 {
+      font-size: clamp(1.34rem, 2.2vw, 2rem);
+      margin: 34px 0 12px;
+    }
+
+    p {
+      margin: 12px 0;
+    }
+
+    ul, ol {
+      padding-left: 1.35rem;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    code, pre {
+      font-family: var(--mono);
+    }
+
+    code {
+      background: #edf1f5;
+      color: var(--code);
+      border: 1px solid #d7e0e7;
+      border-radius: 5px;
+      padding: 0.08rem 0.28rem;
+      font-size: 0.9em;
+    }
+
+    pre {
+      margin: 16px 0;
+      background: #17202a;
+      color: #edf6ff;
+      border-radius: var(--radius);
+      padding: 18px;
+      overflow-x: auto;
+      line-height: 1.55;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      border: 0;
+      padding: 0;
+    }
+
+    .lead {
+      font-size: 1.12rem;
+      color: #263442;
+      line-height: 1.7;
+    }
+
+    .callout {
+      border-left: 5px solid var(--teal);
+      background: var(--teal-soft);
+      padding: 16px 18px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 20px 0;
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .callout.gold {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .note-box {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 18px;
+    }
+
+    .note-box h3,
+    .note-box h4 {
+      font-family: var(--sans);
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+
+    .note-box p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 22px 0;
+    }
+
+    .stage {
+      position: relative;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--teal);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 18px;
+      min-height: 232px;
+    }
+
+    .stage:nth-child(2) {
+      border-top-color: var(--blue);
+    }
+
+    .stage:nth-child(3) {
+      border-top-color: var(--gold);
+    }
+
+    .stage:nth-child(4) {
+      border-top-color: var(--red);
+    }
+
+    .stage-number {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      background: var(--ink);
+      color: #fff;
+      border-radius: 50%;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .stage h3 {
+      font-family: var(--sans);
+      font-size: 1.08rem;
+      line-height: 1.25;
+      margin: 0 0 10px;
+    }
+
+    .stage p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .formula-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .formula {
+      background: #17202a;
+      color: #eaf3ff;
+      border-radius: var(--radius);
+      padding: 16px;
+      min-height: 150px;
+    }
+
+    .formula strong {
+      display: block;
+      color: #9ce1d3;
+      margin-bottom: 8px;
+    }
+
+    .formula code {
+      display: block;
+      background: transparent;
+      color: #fff;
+      border: 0;
+      padding: 0;
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 22px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: table;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #edf2f7;
+      color: #24313f;
+      font-weight: 900;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    td.num, th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .bar-table td:last-child {
+      min-width: 180px;
+    }
+
+    .bar {
+      height: 10px;
+      background: #e3e9ef;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--teal);
+      border-radius: 999px;
+    }
+
+    .bar.blue > span {
+      background: var(--blue);
+    }
+
+    .bar.red > span {
+      background: var(--red);
+    }
+
+    .capability-map {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 20px 0;
+    }
+
+    .capability {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 18px;
+      min-height: 170px;
+    }
+
+    .capability h3 {
+      font-family: var(--sans);
+      font-size: 1.05rem;
+      margin: 0 0 8px;
+    }
+
+    .capability .tag {
+      display: inline-block;
+      font-size: 0.76rem;
+      font-weight: 900;
+      color: var(--teal);
+      background: var(--teal-soft);
+      padding: 4px 8px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .capability p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    .signal {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+      align-items: stretch;
+      margin: 22px 0;
+    }
+
+    .rollout-stack {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .rollout {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) 86px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.94rem;
+    }
+
+    .rollout:last-child {
+      border-bottom: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      min-height: 26px;
+      padding: 4px 8px;
+      font-weight: 900;
+      font-size: 0.78rem;
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .pill.good {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .pill.mid {
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .pill.bad {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .advantage-box {
+      background: #17202a;
+      color: #eaf3ff;
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .advantage-box h3 {
+      font-family: var(--sans);
+      color: #fff;
+      margin: 0 0 10px;
+      font-size: 1.08rem;
+    }
+
+    .advantage-box p {
+      color: #c7d4e2;
+      line-height: 1.52;
+      margin: 0;
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      counter-reset: insight;
+    }
+
+    .insight {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .insight::before {
+      counter-increment: insight;
+      content: counter(insight);
+      position: absolute;
+      right: 18px;
+      top: 12px;
+      font-family: var(--serif);
+      font-size: 3rem;
+      color: rgba(45, 95, 154, 0.12);
+      line-height: 1;
+    }
+
+    .insight h3 {
+      font-family: var(--sans);
+      font-size: 1.08rem;
+      margin: 0 48px 8px 0;
+    }
+
+    .insight p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.58;
+    }
+
+    .footer {
+      border-top: 1px solid var(--line);
+      margin-top: 34px;
+      padding-top: 20px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1040px) {
+      .hero,
+      .layout,
+      .signal {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+
+      .hero-panel {
+        min-height: 0;
+      }
+
+      .toc {
+        position: relative;
+        top: auto;
+      }
+
+      .workflow,
+      .formula-grid,
+      .three-col {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        padding: 0 14px 44px;
+      }
+
+      .hero {
+        padding-top: 30px;
+      }
+
+      .score-ledger,
+      .two-col,
+      .workflow,
+      .formula-grid,
+      .capability-map,
+      .insight-grid,
+      .three-col {
+        grid-template-columns: 1fr;
+      }
+
+      section {
+        padding: 20px;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .rollout {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div class="hero-copy">
+        <div class="eyebrow">论文深读报告 · arXiv 2604.05336v1</div>
+        <h1>TRACE: Capability-Targeted Agentic Training</h1>
+        <p class="subtitle">
+          这份 HTML 报告把论文内容重构成一个工程化阅读视图：先看问题与核心贡献，再看 TRACE 四阶段闭环、GRPO 训练信号、实验结果与我的关键判断。重点不是“又一个 RL 算法”，而是“如何把 agent 失败日志变成可训练的能力课程”。
+        </p>
+        <div class="meta-strip">
+          <span class="chip">Hangoo Kang et al.</span>
+          <span class="chip">Stanford University</span>
+          <span class="chip">2026-04-07</span>
+          <span class="chip">Agentic RL</span>
+          <span class="chip">Synthetic Environment</span>
+          <span class="chip">LoRA Routing</span>
+        </div>
+      </div>
+
+      <aside class="hero-panel" aria-label="关键结果概览">
+        <div class="panel-title">
+          <strong>Key Results</strong>
+          <span class="chip">TRACE vs. Baselines</span>
+        </div>
+        <div class="score-ledger">
+          <div class="metric">
+            <div class="value">47.0%</div>
+            <div class="label">tau^2-Bench overall pass rate</div>
+          </div>
+          <div class="metric">
+            <div class="value">+14.1</div>
+            <div class="label">points over base agent</div>
+          </div>
+          <div class="metric">
+            <div class="value">0.552</div>
+            <div class="label">ToolSandBox mean similarity</div>
+          </div>
+          <div class="metric">
+            <div class="value">26/129</div>
+            <div class="label">ToolSandBox perfect scores</div>
+          </div>
+        </div>
+        <div class="thesis">
+          我的判断：TRACE 的核心价值是失败归因工程化。它把“模型做错了”进一步拆成“哪个可验证能力缺失”，再把能力缺失转成可训练环境。
+        </div>
+      </aside>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="页面目录">
+        <h2>目录</h2>
+        <a href="#problem">1. 论文解决什么问题</a>
+        <a href="#pipeline">2. TRACE 四阶段闭环</a>
+        <a href="#capability">3. 能力缺口如何被发现</a>
+        <a href="#environment">4. 合成环境如何训练能力</a>
+        <a href="#grpo">5. GRPO 训练信号</a>
+        <a href="#routing">6. LoRA 与路由</a>
+        <a href="#evaluation">7. 评估与结果</a>
+        <a href="#insights">8. 我的 insight</a>
+        <a href="#limits">9. 局限与复用建议</a>
+      </nav>
+
+      <main>
+        <section id="problem">
+          <h2>1. 论文解决什么问题？</h2>
+          <p class="lead">
+            TRACE 面向的是真实 agentic environment：模型不只是回答问题，而是要多轮观察环境、调用工具、修改状态、遵守业务规则，并最终完成用户任务。论文的核心问题是：直接在完整目标环境上做 RL 或 SFT 时，训练信号无法告诉模型“到底缺哪个能力”。
+          </p>
+          <div class="two-col">
+            <div class="note-box">
+              <h3>目标环境</h3>
+              <p><strong>tau^2-Bench</strong> 测客服工作流，包含 Airline 与 Retail；模型需要查用户、查订单、检查政策、执行修改/退款/取消，并正确沟通。</p>
+            </div>
+            <div class="note-box">
+              <h3>目标环境</h3>
+              <p><strong>ToolSandBox</strong> 测状态化工具调用；模型需要处理设备设置、时间换算、提醒创建、权限错误恢复等多步工具问题。</p>
+            </div>
+          </div>
+
+          <p>
+            直接 RL 的难点在于 credit assignment。一次客服任务失败，可能是模型没有读懂工具返回的结构化 JSON，可能是选对工具但参数传错，可能是只完成第一个子任务就停止，也可能是没检查 policy precondition 就执行了状态变更。最终 pass/fail reward 把这些失败原因混在一起，模型只能隐式猜测哪个动作应该被加强或削弱。
+          </p>
+
+          <div class="callout red">
+            <strong>论文真正的切入点：</strong>不要把失败看成一个标量 reward，而要把失败变成可命名、可验证、可训练的 capability deficit。
+          </div>
+        </section>
+
+        <section id="pipeline">
+          <h2>2. TRACE 四阶段闭环</h2>
+          <p class="lead">
+            TRACE 的方法不是单点算法，而是一条端到端 pipeline：从目标环境轨迹中诊断能力缺口，再生成能力定向训练环境，分别训练 LoRA，推理时路由到对应能力模块。
+          </p>
+
+          <div class="workflow" aria-label="TRACE pipeline">
+            <div class="stage">
+              <div class="stage-number">1</div>
+              <h3>Capability Selection</h3>
+              <p>让 base agent 在目标环境中跑出成功/失败轨迹，再由 LLM analysis agent 对比两类轨迹，发现高影响能力缺口。</p>
+            </div>
+            <div class="stage">
+              <div class="stage-number">2</div>
+              <h3>Synthetic Environment Generation</h3>
+              <p>为每个能力缺口生成一个小型、可验证、接口保真的训练环境，让 reward 主要反映该能力是否被展示。</p>
+            </div>
+            <div class="stage">
+              <div class="stage-number">3</div>
+              <h3>GRPO LoRA Training</h3>
+              <p>基础模型冻结。每个 capability environment 上训练一个 LoRA adapter，用组内 reward variance 提供 RL 信号。</p>
+            </div>
+            <div class="stage">
+              <div class="stage-number">4</div>
+              <h3>Select & Adapt</h3>
+              <p>推理时 base model 根据任务和能力描述选择最相关 adapter；如果没有合适能力，则使用原始 base model。</p>
+            </div>
+          </div>
+
+          <div class="callout">
+            这条 pipeline 的核心不是“合成更多数据”，而是“只围绕当前模型在当前环境里反复失败的能力造训练环境”。这让训练更 model-specific，也更 environment-specific。
+          </div>
+        </section>
+
+        <section id="capability">
+          <h2>3. 能力缺口如何被发现？</h2>
+          <p>
+            TRACE 的输入是 base agent 在目标环境里的 rollout 数据：任务实例、完整轨迹、reward、成功/失败标签。分析器不是简单看失败样本，而是对比成功和失败轨迹，给每条轨迹和每个能力打三类标签。
+          </p>
+
+          <div class="three-col">
+            <div class="note-box">
+              <h3>NA</h3>
+              <p>该能力对当前任务不相关。例如时间换算能力不一定和订单退款任务相关。</p>
+            </div>
+            <div class="note-box">
+              <h3>PRESENT</h3>
+              <p>能力相关，而且模型在轨迹里展示出来了。例如正确检查了退款必须回到原支付方式。</p>
+            </div>
+            <div class="note-box">
+              <h3>LACKING</h3>
+              <p>能力相关，但模型没有展示。例如工具返回 PermissionError 后直接告诉用户失败，没有诊断 blocker。</p>
+            </div>
+          </div>
+
+          <h3>筛选统计量</h3>
+          <div class="formula-grid">
+            <div class="formula">
+              <strong>成功轨迹缺失率</strong>
+              <code>ER+(c) = P(LACKING | success, c relevant)</code>
+            </div>
+            <div class="formula">
+              <strong>失败轨迹缺失率</strong>
+              <code>ER-(c) = P(LACKING | failure, c relevant)</code>
+            </div>
+            <div class="formula">
+              <strong>Contrastive Gap</strong>
+              <code>Delta(c) = ER-(c) - ER+(c)</code>
+            </div>
+          </div>
+
+          <p>
+            论文用 `Delta(c)` 判断能力是否真正区分成功与失败，用 `Coverage(c)` 判断能力覆盖多少失败样本。实验阈值是 `delta = 0.20`、`rho = 0.10`，并做 10 次独立 labeling，要求能力至少 8 次被选中。
+          </p>
+
+          <div class="capability-map">
+            <div class="capability">
+              <span class="tag">tau^2-Bench · 10/10</span>
+              <h3>Structured Data Reasoning</h3>
+              <p>模型不能稳定解析或交叉引用工具返回的结构化记录，例如嵌套价格数组、航班舱位、商品 variants。</p>
+            </div>
+            <div class="capability">
+              <span class="tag">tau^2-Bench · 8/10</span>
+              <h3>Tool Calling Precision</h3>
+              <p>模型知道要调用哪个工具，但传错参数，例如退款应回到原信用卡，却传入 gift card。</p>
+            </div>
+            <div class="capability">
+              <span class="tag">tau^2-Bench · 10/10</span>
+              <h3>Multi-Step Task Completion</h3>
+              <p>复合请求中只完成第一步就收尾，例如用户要求取消两个预订并修改第三个，模型只取消一个。</p>
+            </div>
+            <div class="capability">
+              <span class="tag">tau^2-Bench · 10/10</span>
+              <h3>Precondition Verification</h3>
+              <p>执行状态变更前没有检查政策条件，例如 basic economy 航班不满足取消条件却直接调用取消工具。</p>
+            </div>
+            <div class="capability">
+              <span class="tag">ToolSandBox</span>
+              <h3>Permission Error Recovery</h3>
+              <p>工具因设备状态冲突报错后，模型停止，而不是诊断低电量模式等 blocker 并修复后重试。</p>
+            </div>
+            <div class="capability">
+              <span class="tag">ToolSandBox</span>
+              <h3>Datetime Reasoning</h3>
+              <p>模型跳过时间戳转换工具，靠语言模型猜日期，导致提醒设置到错误日期或过去日期。</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="environment">
+          <h2>4. 合成环境如何训练能力？</h2>
+          <p class="lead">
+            TRACE 最关键也最工程的部分，是把能力缺口转成一个可验证的 synthetic environment。这个环境要保留目标 benchmark 的工具接口和交互格式，但不要直接包原 simulator；它应该是更小、更可控、更奖励密集的训练场。
+          </p>
+
+          <div class="two-col">
+            <div>
+              <h3>Structured Data Reasoning 环境</h3>
+              <ol>
+                <li>seed 生成 Airline 或 Retail 场景。</li>
+                <li>创建合成数据库：航班、价格、舱位、用户订单、商品 variants。</li>
+                <li>用户提出带约束请求，例如筛选 11 点后的 economy 航班。</li>
+                <li>agent 必须查工具、过滤 JSON、匹配正确实体。</li>
+                <li>reward 对比最终数据库状态和 gold action，并检查最终沟通。</li>
+              </ol>
+            </div>
+            <div>
+              <h3>Permission Error Recovery 环境</h3>
+              <ol>
+                <li>用户要求打开 Wi-Fi。</li>
+                <li>工具返回 PermissionError，原因是低电量模式。</li>
+                <li>正确轨迹需要查 blocker、关闭低电量模式、重试原工具。</li>
+                <li>reward = `0.6 * action_score + 0.4 * communication_score`。</li>
+                <li>既奖励真实状态变更，也奖励把结果告诉用户。</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="callout gold">
+            这里的 insight：合成环境不是“生成一些题目”，而是“生成适合 GRPO 学习的环境”。如果 reward 没有组内方差，或者接口和原 benchmark 不一致，训练会失效或无法迁移。
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>环境生成要求</th>
+                <th>为什么重要</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>同一 seed 确定性生成任务，不同 seed 有真实差异</td>
+                <td>避免模型记住固定样本，同时让 GRPO 可在同题多 rollout 中比较优劣。</td>
+              </tr>
+              <tr>
+                <td>工具名、参数名、返回 JSON 形状匹配目标环境</td>
+                <td>训练到的工具调用行为才能迁移回原 benchmark。</td>
+              </tr>
+              <tr>
+                <td>reward 有多级部分分</td>
+                <td>区分“完全错”“动作对但沟通差”“完全正确”，提供更密集信号。</td>
+              </tr>
+              <tr>
+                <td>base model 成功率最好在 30%-60%</td>
+                <td>太容易全 1，太难全 0，都会导致组内 reward variance 不足。</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="grpo">
+          <h2>5. GRPO 训练信号到底是什么？</h2>
+          <p>
+            对同一个 seed，synthetic environment 生成同一个任务。policy 用随机采样产生多条不同 rollout，每条 rollout 得到 reward。GRPO 不训练 value function，而是用同组 reward 的相对高低构造 advantage。
+          </p>
+
+          <div class="signal">
+            <div class="rollout-stack">
+              <div class="rollout">
+                <span class="pill">seed 42</span>
+                <span>轨迹 A：查错字段，参数错，状态未更新</span>
+                <span class="pill bad">r = 0.0</span>
+              </div>
+              <div class="rollout">
+                <span class="pill">seed 42</span>
+                <span>轨迹 B：工具动作正确，但最终沟通不完整</span>
+                <span class="pill mid">r = 0.3</span>
+              </div>
+              <div class="rollout">
+                <span class="pill">seed 42</span>
+                <span>轨迹 C：状态变更正确，沟通也正确</span>
+                <span class="pill good">r = 1.0</span>
+              </div>
+              <div class="rollout">
+                <span class="pill">seed 42</span>
+                <span>轨迹 D：提前回复用户，未执行第二个子任务</span>
+                <span class="pill bad">r = 0.0</span>
+              </div>
+            </div>
+            <div class="advantage-box">
+              <h3>组内比较，而不是绝对打分</h3>
+              <p>
+                `A = (r - mean(r)) / (std(r) + epsilon)`。同一任务下 reward 高的轨迹得到正 advantage，reward 低的轨迹得到负 advantage。所有 action tokens 共享轨迹级 advantage。
+              </p>
+            </div>
+          </div>
+
+          <p>
+            这解释了为什么 TRACE 要强调 environment reward design。一个 group 如果所有 rollout 都同分，GRPO 就看不到“同题不同解谁更好”，训练信号消失。TRACE 的 synthetic environment 把 reward 的因果含义变窄：在这个环境里，高 reward 更明确表示目标 capability 被正确展示。
+          </p>
+        </section>
+
+        <section id="routing">
+          <h2>6. LoRA 与推理时路由</h2>
+          <p>
+            TRACE 为每个 capability 单独训练 LoRA。推理时，它没有把所有 adapter merge 成一个模型，而是让 base model 读当前任务、候选能力描述和成功轨迹示例，然后选择一个单 token label。若选中 base label，则不用 adapter；否则激活对应 capability adapter。
+          </p>
+
+          <table class="bar-table">
+            <thead>
+              <tr>
+                <th>多能力组合方法</th>
+                <th class="num">tau^2 Overall</th>
+                <th>相对效果</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base Model</td>
+                <td class="num">32.9</td>
+                <td><div class="bar"><span style="width: 70%"></span></div></td>
+              </tr>
+              <tr>
+                <td>Single Capability GRPO</td>
+                <td class="num">40.3</td>
+                <td><div class="bar blue"><span style="width: 86%"></span></div></td>
+              </tr>
+              <tr>
+                <td>CORE-TSV merge</td>
+                <td class="num">39.6</td>
+                <td><div class="bar blue"><span style="width: 84%"></span></div></td>
+              </tr>
+              <tr>
+                <td>On-Policy Distillation</td>
+                <td class="num">37.8</td>
+                <td><div class="bar blue"><span style="width: 80%"></span></div></td>
+              </tr>
+              <tr>
+                <td>Multi Capability GRPO</td>
+                <td class="num">40.9</td>
+                <td><div class="bar blue"><span style="width: 87%"></span></div></td>
+              </tr>
+              <tr>
+                <td><strong>TRACE routing</strong></td>
+                <td class="num"><strong>47.0</strong></td>
+                <td><div class="bar red"><span style="width: 100%"></span></div></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout blue">
+            我的理解：这些 adapter 学到的不只是知识，而是不同的行为偏置。precondition verification 会让模型更谨慎，multi-step completion 会让模型更倾向继续执行。强行合并可能让偏置互相覆盖；routing 避免在参数空间里求一个折中点。
+          </div>
+        </section>
+
+        <section id="evaluation">
+          <h2>7. 评估与结果</h2>
+          <h3>tau^2-Bench</h3>
+          <table class="bar-table">
+            <thead>
+              <tr>
+                <th>方法</th>
+                <th class="num">Airline</th>
+                <th class="num">Retail</th>
+                <th class="num">Overall</th>
+                <th>Overall Bar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base Model</td>
+                <td class="num">24.0</td>
+                <td class="num">36.8</td>
+                <td class="num">32.9</td>
+                <td><div class="bar"><span style="width: 70%"></span></div></td>
+              </tr>
+              <tr>
+                <td>GRPO on Target</td>
+                <td class="num">32.0</td>
+                <td class="num">40.4</td>
+                <td class="num">37.8</td>
+                <td><div class="bar blue"><span style="width: 80%"></span></div></td>
+              </tr>
+              <tr>
+                <td>ADP</td>
+                <td class="num">28.0</td>
+                <td class="num">34.2</td>
+                <td class="num">32.3</td>
+                <td><div class="bar"><span style="width: 69%"></span></div></td>
+              </tr>
+              <tr>
+                <td>AWM</td>
+                <td class="num">32.0</td>
+                <td class="num">41.2</td>
+                <td class="num">38.4</td>
+                <td><div class="bar blue"><span style="width: 82%"></span></div></td>
+              </tr>
+              <tr>
+                <td>GEPA</td>
+                <td class="num">38.0</td>
+                <td class="num">40.4</td>
+                <td class="num">39.6</td>
+                <td><div class="bar blue"><span style="width: 84%"></span></div></td>
+              </tr>
+              <tr>
+                <td>Single Capability GRPO</td>
+                <td class="num">34.0</td>
+                <td class="num">43.0</td>
+                <td class="num">40.3</td>
+                <td><div class="bar blue"><span style="width: 86%"></span></div></td>
+              </tr>
+              <tr>
+                <td><strong>TRACE</strong></td>
+                <td class="num"><strong>44.0</strong></td>
+                <td class="num"><strong>48.2</strong></td>
+                <td class="num"><strong>47.0</strong></td>
+                <td><div class="bar red"><span style="width: 100%"></span></div></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>ToolSandBox</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>方法</th>
+                <th class="num">Perfect Score</th>
+                <th class="num">Mean Similarity</th>
+                <th>解释</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base</td>
+                <td class="num">19/129</td>
+                <td class="num">0.411</td>
+                <td>基础工具使用能力。</td>
+              </tr>
+              <tr>
+                <td>GRPO on Target</td>
+                <td class="num">22/129</td>
+                <td class="num">0.519</td>
+                <td>直接目标环境 RL 已有明显收益。</td>
+              </tr>
+              <tr>
+                <td>GEPA</td>
+                <td class="num">22/129</td>
+                <td class="num">0.520</td>
+                <td>能力提示优化很强，但仍不如训练行为分布。</td>
+              </tr>
+              <tr>
+                <td><strong>TRACE</strong></td>
+                <td class="num"><strong>26/129</strong></td>
+                <td class="num"><strong>0.552</strong></td>
+                <td>多 7 个 perfect scores，mean similarity 比 base 高 0.141。</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout">
+            最重要的结果不只是最终分数，而是 scaling 曲线：TRACE 随 rollout budget 增加更稳定提升；直接 target GRPO 出现不稳定和 plateau。这说明 targeted environment 降低了 credit assignment 难度。
+          </div>
+        </section>
+
+        <section id="insights">
+          <h2>8. 我的 insight</h2>
+          <div class="insight-grid">
+            <article class="insight">
+              <h3>TRACE 的本质是错误驱动 curriculum</h3>
+              <p>训练环境不再来自人工直觉或通用数据池，而是来自当前 agent 在当前环境里的失败。它让“失败日志”变成 curriculum generator。</p>
+            </article>
+            <article class="insight">
+              <h3>Capability 是行为缺口，不是宏大认知能力</h3>
+              <p>论文里的 capability 更接近可验证动作模式，例如“先查 blocker 再重试工具”。这让方法实用，也限制了适用范围。</p>
+            </article>
+            <article class="insight">
+              <h3>最强假设是失败归因可靠</h3>
+              <p>如果 LLM analysis agent 把表面症状误判为根因，后续 synthetic environment 会训偏。实践中需要抽样人工审计 selected capabilities。</p>
+            </article>
+            <article class="insight">
+              <h3>环境质量决定上限</h3>
+              <p>合成环境必须接口保真、reward 可验证、难度适中、有组内方差。TRACE 的成功并不来自“让 LLM 随便写题”。</p>
+            </article>
+            <article class="insight">
+              <h3>Prompt 提醒不等于行为改变</h3>
+              <p>GEPA 说明 capability prompt 有用，但 RL adapter 更能改变长轨迹中的工具调用分布、参数选择和继续执行倾向。</p>
+            </article>
+            <article class="insight">
+              <h3>Routing 避免能力干扰</h3>
+              <p>多个 capability adapter 可能携带冲突的行为偏置。只激活一个 adapter 的简单 routing，反而比强行合并更稳。</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="limits">
+          <h2>9. 局限与复用建议</h2>
+          <div class="two-col">
+            <div>
+              <h3>主要局限</h3>
+              <ul>
+                <li>需要可运行目标环境、自动评分器和完整轨迹日志。</li>
+                <li>更适合工具调用、客服 workflow、状态化 agent；不适合 reward 难验证的开放式任务。</li>
+                <li>LLM-generated environment 可能有接口不保真、reward 漏洞、任务过窄或 shortcut 风险。</li>
+                <li>推理时只选一个 adapter，真实任务如果同时需要多个能力，可能限制上限。</li>
+                <li>实验范围仍偏工具/客服类，不能直接外推到所有 agent 场景。</li>
+              </ul>
+            </div>
+            <div>
+              <h3>我会如何复用</h3>
+              <ol>
+                <li>先收集 base agent 的成功/失败轨迹。</li>
+                <li>用 LLM 做 capability discovery，但抽样人工审计。</li>
+                <li>每个 capability 先生成一个小环境，不追求一次覆盖所有失败。</li>
+                <li>先验证 base success rate、reward std、informative groups。</li>
+                <li>训练前做 prompt-only baseline，确认它不是单靠提醒即可修复。</li>
+                <li>训练有效后再考虑 routing、adapter merge 或多阶段 router。</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="callout red">
+            最终判断：TRACE 最大价值不在“提出新模型”，而在“把 agent 失败分析、环境生成和训练闭环工程化”。它提供了一条比泛泛增加 RL 数据更可控的 agent 改进路线。
+          </div>
+
+          <div class="footer">
+            Source reading notes: arXiv 2604.05336v1, official TRACE README and pipeline configs. HTML generated on 2026-05-12 from the detailed Chinese PaperNote in Obsidian.
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

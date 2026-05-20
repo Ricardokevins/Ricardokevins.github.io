@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RESD X 线程与论文解读</title>
+  <style>
+    :root {
+      --bg: #f7f1e8;
+      --paper: #fffaf2;
+      --ink: #231f1a;
+      --muted: #675f55;
+      --line: #dfd3c2;
+      --accent: #b5532f;
+      --accent2: #234e52;
+      --code-bg: #241f1b;
+      --code-fg: #f8efe4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif;
+      line-height: 1.66;
+    }
+    a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: rgba(255, 250, 242, 0.9);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    nav {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      font-size: 13px;
+    }
+    nav a { color: var(--muted); text-decoration: none; }
+    .hero {
+      padding: 56px 0 28px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    h1 {
+      margin: 10px 0 18px;
+      max-width: 930px;
+      font-size: clamp(34px, 6vw, 58px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .thesis {
+      max-width: 900px;
+      margin: 0 0 22px;
+      font-size: 20px;
+      color: #332c25;
+    }
+    .meta-grid, .grid-2, .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin: 16px 0;
+    }
+    .meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 24px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .meta-card, .card, .callout, .figure, table {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .meta-card { min-height: 108px; padding: 14px 16px; }
+    .meta-card b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    main { padding: 34px 0 70px; }
+    section {
+      padding: 24px 0 12px;
+      border-bottom: 1px solid rgba(223, 211, 194, 0.72);
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+    p { margin: 10px 0 14px; }
+    .card { padding: 18px; }
+    .card h3 { margin-top: 0; }
+    .callout {
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent);
+    }
+    .callout strong { color: var(--accent); }
+    .source-list {
+      display: grid;
+      grid-template-columns: 1.05fr 1.2fr;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      background: var(--paper);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .source-list > div {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .source-list > div:nth-child(odd) { font-weight: 700; color: #332c25; background: #f5eadb; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 22px;
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th { background: #efe0cf; font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    code {
+      background: #efe2d2;
+      color: #3c2c20;
+      padding: 1px 5px;
+      border-radius: 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 8px;
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid #342b24;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; border-radius: 0; }
+    .figure { margin: 18px 0 24px; padding: 12px; }
+    .figure img { display: block; width: 100%; height: auto; border-radius: 6px; background: white; }
+    .caption { margin: 10px 4px 2px; color: var(--muted); font-size: 13px; }
+    .formula {
+      margin: 16px 0;
+      padding: 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f0e2d1;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+    }
+    .verdict { color: var(--accent2); font-size: 18px; font-weight: 700; }
+    .small { color: var(--muted); font-size: 13px; }
+    li { margin: 7px 0; }
+    @media (max-width: 860px) {
+      .wrap { padding: 0 18px; }
+      .meta-grid, .grid-2, .grid-3, .source-list { grid-template-columns: 1fr; }
+      th, td { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="#source">来源</a>
+      <a href="#claim">推文主张</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#eval">评估</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+      <a href="#commands">核验</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="wrap">
+      <div class="eyebrow">X thread analysis · RESD · 2026-05-15</div>
+      <h1>RESD：失败轨迹不能直接教会模型，除非先把失败解释成可复用的经验</h1>
+      <p class="thesis">Yuwei Zhang 的 X 线程介绍了论文 <em>Learning with Rare Success but Rich Feedback via Reflection-Enhanced Self-Distillation</em>。它的核心不是泛泛地“让模型反思”，而是在 on-policy self-distillation 中新增一个可持久化的反馈解释层：局部 reflection 诊断失败，global playbook 累积规则，再让 self-teacher 基于这些结构化上下文给 token-level 监督。</p>
+      <div class="meta-grid">
+        <div class="meta-card"><b>材料对象</b><span>X 线程、Notion Blog、arXiv 2605.12741、GitHub horizon-llm/RESD</span></div>
+        <div class="meta-card"><b>论文状态</b><span>Work in Progress；arXiv v1，2026-05-12 发布</span></div>
+        <div class="meta-card"><b>主张一句话</b><span>原始环境反馈是 diagnostic，不是 instructional；RESD 把它变成可训练监督。</span></div>
+        <div class="meta-card"><b>我的判断</b><span>方向有价值，但证据主要集中在可执行反馈丰富的任务，尚不能外推到所有开放式长程 agent。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section id="source">
+      <h2>1. 来源地图：这条 X 到底指向什么</h2>
+      <div class="source-list">
+        <div>X 原帖</div>
+        <div>OpenCLI 读取到 1/N 到 6/N 主线程、最终 Paper/Blog/Code 链接、作者补充的 updated paper link，以及关于 playbook curation 的回复。</div>
+        <div>论文</div>
+        <div>作者最初 paper 短链解析到 GitHub `resd` 分支并返回 404；作者后续补发链接解析到 `main/paper.pdf`，PDF 已下载并抽取全文。arXiv ID 为 `2605.12741`。</div>
+        <div>Blog</div>
+        <div>Notion 项目页标题为 “Learning from Rare Success and Rich Feedback via Reflection-Enhanced Self-Distillation”，包含 TL;DR、背景、方法图、主要结果图和 citation。</div>
+        <div>代码</div>
+        <div>GitHub 仓库 `horizon-llm/RESD` 公开，README 说明基于 veRL 和 SDPO，包含训练脚本、context updater、feedback、datasets、teacher 和 trainer 模块。</div>
+      </div>
+      <div class="callout">
+        <strong>读这条推文时最容易误解的一点：</strong>RESD 不是把失败样本直接拿来 SFT，也不是简单在 prompt 里塞一句“请反思”。它仍然是 self-distillation：学生模型生成 on-policy rollout，teacher 使用更丰富的上下文重新给每个 token 的概率分布，学生去匹配这个 teacher distribution。
+      </div>
+    </section>
+
+    <section id="claim">
+      <h2>2. 推文主张：失败本身不是学习信号，解释后的失败才可能是</h2>
+      <ol>
+        <li>On-policy self-distillation 看起来适合从文本反馈学习，但问题是：它能否真正从 failed trajectories 学到东西？作者的回答是：不太能，除非模型主动解释失败。</li>
+        <li>现有 SDPO 在样本充足时会借助 successful peer solutions。一旦限制 rollout 数量，让同一 prompt 没有成功 peer demonstration 可看，性能明显下降。</li>
+        <li>RESD 的改动是把 raw environment feedback 先变成 local reflection，再把反复出现的经验沉淀进 persistent playbook。</li>
+        <li>在 rare-success regime 中，RESD 相比 SDPO 类 self-distillation baseline 表现更强；相比 GRPO，它在早期训练阶段用更少 rollout 更快提升。</li>
+        <li>作者还强调了一个机制性观察：RESD 的 teacher 更“纠错”，distillation loss 更集中在 reasoning-decision tokens 上。</li>
+      </ol>
+      <p>作者回复里补充了一个有用信息：去掉 teacher prompt 中的 playbook 会显著掉点，Manufactoria-Has 的 per-test-case accuracy 降 16%，BouncingSim-Easy 降 6%；playbook 的一个关键维护机制是每隔几步压缩，避免过长。</p>
+    </section>
+
+    <section id="problem">
+      <h2>3. 问题背景：为什么 SDPO 会卡在 rare-success 场景</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>On-policy</h3>
+          <p>训练数据来自当前正在训练的模型自己生成的 rollout，而不是固定离线数据。好处是分布匹配，坏处是当前模型很弱时会生成大量失败轨迹。</p>
+        </div>
+        <div class="card">
+          <h3>Self-distillation</h3>
+          <p>teacher 不是另一个强得多的外部模型，而是学生模型的当前或 EMA 版本，只是 teacher 能看到 privileged context，例如环境反馈、成功样例、playbook。</p>
+        </div>
+        <div class="card">
+          <h3>Token-level supervision</h3>
+          <p>不是只给一条成功/失败奖励，而是在每个生成位置上给一个 teacher distribution。学生优化目标是让自己的 token 分布接近 teacher。</p>
+        </div>
+      </div>
+      <p>SDPO 的问题在于，它虽然把环境反馈给 teacher 看，但这些反馈很多时候只是诊断性的。例如代码执行失败会告诉你哪个 test case 没过、哪个状态机 parse error，却不直接告诉你“哪一步推理错了、应当如何重构策略”。如果同一 batch 里有成功 peer solution，teacher 可以用成功样例作为正例来纠正失败样本；但当任务初始成功率接近 0，batch 里几乎全是失败时，teacher 就只剩下 raw failure feedback。这时 SDPO 的监督会变弱。</p>
+      <div class="callout">
+        <strong>核心瓶颈不是没有反馈，而是 feedback formulation。</strong>同样一段失败信息，直接 append 到 prompt 里是被动暴露；先诊断 root cause、提炼规则、维护有效/有害计数后再给 teacher，是主动理解。
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>4. RESD 方法：从 rollout 到 reflection，再到 playbook，再到 KL loss</h2>
+      <div class="figure">
+        <img src="resd-x-analysis-assets/resd_workflow_v3.jpg" alt="RESD workflow">
+        <p class="caption">RESD 官方 workflow：student rollout 产生反馈；失败样本进入 reflection 和 playbook curation；teacher 使用 enriched context 生成 token-level log probabilities。</p>
+      </div>
+
+      <h3>4.1 一次训练 step 发生什么</h3>
+      <ol>
+        <li><strong>Student rollout：</strong>当前策略 π<sub>θ</sub> 对 prompt `x` 生成回答 `y`。</li>
+        <li><strong>Environment feedback：</strong>环境执行或评估 `y`，得到 reward `R(x,y)` 和详细反馈 `c(x,y)`。例如 Manufactoria 会检查 DSL 状态机能否通过所有 tape test cases。</li>
+        <li><strong>Context update：</strong>如果 rollout 失败，模型调用 reflector 生成 reflection `r`，解释失败原因，并给已有 playbook 条目打 helpful / harmful / neutral 标签；curator 再把新的、非重复的 lesson 加入 playbook。</li>
+        <li><strong>Solution buffer：</strong>如果 rollout 成功，则把成功轨迹缓存到 solution buffer，之后同一问题或相近训练上下文可以作为 teacher prompt 的成功参考。</li>
+        <li><strong>Teacher prompt construction：</strong>把 playbook、reflection、previous trial、environment feedback 和可用成功解组成 privileged context。</li>
+        <li><strong>Token-level distillation：</strong>teacher 在 privileged context 下计算 token 分布，student 在普通上下文下计算 token 分布，训练 student 去匹配 teacher。</li>
+      </ol>
+
+      <h3>4.2 损失函数直觉</h3>
+      <p>论文把 self-distillation 写成 f-divergence 的统一形式。对每个 token 位置 `t`，teacher 和 student 对 vocabulary 中每个 token `v` 给出概率。令 teacher/student 的概率比为：</p>
+      <div class="formula">
+        τ<sub>v,t</sub> = π<sub>θold</sub>(v | x, y<sub>&lt;t</sub>, c, r, P, B(x)) / π<sub>θ</sub>(v | x, y<sub>&lt;t</sub>)
+      </div>
+      <p>然后对所有 token 位置求期望，最小化一个 f-divergence。实现上论文报告默认多用 reverse KL 或 JSD，并对 top-100 tokens 做 distillation。直觉上，这不是奖励某个最终答案，而是在每个位置问：如果 teacher 看到了失败解释和 playbook，它会不会更偏好另一个 reasoning decision？如果会，student 就朝这个方向更新。</p>
+      <div class="formula">
+        L<sub>SD</sub>(θ) = E<sub>x,y∼πθ</sub> [ Σ<sub>t</sub> Σ<sub>v∈V</sub> π<sub>θ</sub>(v | x,y<sub>&lt;t</sub>) · f(clip(τ<sub>v,t</sub>)) ]
+      </div>
+
+      <h3>4.3 playbook 到底是什么</h3>
+      <p>代码里 playbook 不是抽象比喻，而是带 ID、helpful/harmful 计数的自然语言 bullet 列表。典型格式类似：</p>
+      <pre><code>[ctx-00001] helpful=2 harmful=0 :: When matching a target substring, skip non-pattern symbols instead of rejecting immediately.</code></pre>
+      <p>reflection prompt 要求模型输出：错误识别、root cause、正确做法、key insight，并给每个已有 bullet 打标签。curator prompt 要求只输出 JSON operations，只新增当前 playbook 缺失的 insight，不重写整个 playbook。`playbook_utils.py` 里会解析 bullet、更新 helpful/harmful 计数，并在重建时丢弃不符合格式的泄漏行。</p>
+      <p>这点很重要：RESD 的“记忆”不是直接把所有失败日志越堆越长，而是用计数和 concise 策略维护一个紧凑的经验库。论文附录说默认 global playbook 跨训练样本共享，Manufactoria-Has 最多 200 条，BouncingSim/FiNER 等任务最多 120 或 150 条，定期按 staleness 或 priority 删除。</p>
+    </section>
+
+    <section id="eval">
+      <h2>5. 评估：它到底测了什么，结果强在哪里</h2>
+      <h3>5.1 任务设置</h3>
+      <table>
+        <thead>
+          <tr><th>任务</th><th>训练/测试量</th><th>模型</th><th>输入输出</th><th>为什么适合测 RESD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Manufactoria-Has</td><td>742 / 132</td><td>Qwen3-4B-Thinking-2507</td><td>输入字符串模式任务，输出 DSL 状态机程序</td><td>初始成功率接近 0，但执行器能给丰富 test-case feedback</td></tr>
+          <tr><td>BouncingSim-Easy</td><td>640 / 100</td><td>Qwen3-4B-Thinking-2507</td><td>输入 2D 碰撞场景，输出 Python 模拟代码</td><td>程序综合 + 物理推理，失败反馈可执行、可定位</td></tr>
+          <tr><td>BouncingSim-Medium</td><td>320 / 100</td><td>Qwen3-30B-A3B-Thinking-2507</td><td>更难的多物体碰撞模拟</td><td>测试 30B-A3B 模型在更难程序任务上的提升</td></tr>
+          <tr><td>FiNER</td><td>1000 / 500</td><td>Qwen3-4B-Thinking-2507</td><td>SEC filings 中金融实体标注</td><td>初始成功率较高，用来检查有成功样例时 RESD 是否仍有收益</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 指标定义</h3>
+      <ul>
+        <li><strong>mean@4 / m@4：</strong>每个测试问题采样 4 个回答，取 4 个回答性能的平均。它衡量模型平均一次回答的稳定质量。</li>
+        <li><strong>best@4 / b@4：</strong>每个测试问题采样 4 个回答，取最好一个回答的性能。它衡量模型在多次采样里是否偶尔能找到正确解。</li>
+        <li><strong>Per-Task Accuracy：</strong>一个问题的回答必须通过所有 test cases 才算成功。对程序任务来说，这是严格 pass all。</li>
+        <li><strong>Per-Test-Case Accuracy：</strong>所有测试用例层面的平均通过率。即使整个程序没有全对，也能反映它修复了多少局部行为。</li>
+      </ul>
+
+      <h3>5.3 关键结果</h3>
+      <table>
+        <thead>
+          <tr><th>方法</th><th>Manufactoria-Has Per-Task m@4/b@4</th><th>Manufactoria-Has Per-Test-Case m@4/b@4</th><th>FiNER Per-Task m@4/b@4</th><th>FiNER Per-Test-Case m@4/b@4</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Base model</td><td>0.38 / 1.52</td><td>25.31 / 60.97</td><td>39.28 / 51.90</td><td>69.65 / 79.21</td></tr>
+          <tr><td>SDPO</td><td>0.95 / 3.79</td><td>37.66 / 73.55</td><td>40.93 / 50.50</td><td>71.27 / 78.21</td></tr>
+          <tr><td>SDPO+ss</td><td>0.57 / 2.27</td><td>37.97 / 71.93</td><td>50.25 / 59.12</td><td>76.15 / 82.21</td></tr>
+          <tr><td><strong>RESD</strong></td><td><strong>35.80 / 65.91</strong></td><td><strong>76.95 / 96.53</strong></td><td><strong>53.66 / 61.12</strong></td><td><strong>78.98 / 84.32</strong></td></tr>
+        </tbody>
+      </table>
+      <p>最显眼的是 Manufactoria-Has：这是 rare-success 最强的场景。RESD 把 per-task m@4 从 SDPO+ss 的 0.57 提到 35.80，把 per-test-case m@4 从 37.97 提到 76.95。这个不是小幅调参收益，而是从“几乎学不动”到“能系统性修复大量局部失败”。</p>
+
+      <div class="figure">
+        <img src="resd-x-analysis-assets/sdpo_all_combined.jpg" alt="RESD vs SDPO results">
+        <p class="caption">官方 SDPO 对比结果图。注意曲线不是只看最终点，RESD 在 streaming training 的早期也更快抬升。</p>
+      </div>
+
+      <h3>5.4 和 GRPO 的比较要谨慎读</h3>
+      <p>推文说 GRPO 使用 8 rollouts per prompt，而 RESD 只用 1 rollout per prompt。这是 RESD 的核心样本效率卖点。但这也意味着比较对象本质不同：GRPO 是 group-relative reward optimization，需要多条 rollout 估计组内相对优势；RESD 是单 rollout + teacher context distillation。论文的结论应读成：在有丰富执行反馈的 early-stage bootstrapping 中，结构化失败反馈比单纯多采样 sparse reward 更划算。它不证明 RESD 在训练后期或成功率较高后一定替代 GRPO。</p>
+      <div class="figure">
+        <img src="resd-x-analysis-assets/grpo_all_combined.jpg" alt="RESD vs GRPO results">
+        <p class="caption">官方 GRPO 对比图。论文还报告 per-step latency：SDPO 最低约 400s，RESD 因 reflection/curation 有额外开销，但仍低于 GRPO 的 1200s 以上。</p>
+      </div>
+
+      <h3>5.5 消融实验说明哪些部件真的有用</h3>
+      <table>
+        <thead>
+          <tr><th>变体</th><th>Manufactoria-Has per-test m@4/b@4</th><th>BouncingSim-Easy per-test m@4/b@4</th><th>FiNER per-test m@4/b@4</th><th>解释</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>RESD full</td><td>76.95 / 96.53</td><td>38.87 / 55.80</td><td>78.98 / 84.32</td><td>reflection + playbook + solution buffer 全开</td></tr>
+          <tr><td>w/o reflection</td><td>51.41 / 79.26</td><td>36.85 / 55.33</td><td>77.78 / 82.26</td><td>Manufactoria 掉得最狠，说明局部失败诊断是关键</td></tr>
+          <tr><td>w/o playbook</td><td>60.65 / 92.37</td><td>32.95 / 53.60</td><td>77.42 / 83.07</td><td>没有持久经验库，跨 step 复用变弱</td></tr>
+          <tr><td>w/o solution buffer</td><td>60.24 / 80.10</td><td>31.97 / 52.40</td><td>78.36 / 83.42</td><td>成功轨迹缓存能把局部进展转成完整示范</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="limits">
+      <h2>6. 局限和风险：不要把 RESD 读成通用 agent 记忆解决方案</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>任务依赖丰富、可信的环境反馈</h3>
+          <p>RESD 的强项是在程序、DSL、执行器、NER 这类可以给明确反馈的场景。开放式写作、主观偏好、长程规划失败，反馈往往不够可验证，reflection 可能会自圆其说。</p>
+        </div>
+        <div class="card">
+          <h3>reflection 本身也可能错</h3>
+          <p>如果模型对失败原因诊断错误，playbook 会沉淀错误规则。代码里有 helpful/harmful 计数和 concise，但这只能缓解，不能保证每条 lesson 都是真因果。</p>
+        </div>
+        <div class="card">
+          <h3>global playbook 有迁移和污染风险</h3>
+          <p>论文默认 global playbook 跨训练样本共享。它适合任务家族规则稳定的 setting；如果任务分布很混杂，旧规则可能误导新样本。</p>
+        </div>
+        <div class="card">
+          <h3>成本不是免费的</h3>
+          <p>RESD 省 rollout，但增加 reflection、curation、teacher prompt 计算。它更像“用推理和记忆换采样”，不是绝对降低所有计算。</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>结论边界：</strong>论文证明的是“在 rare-success、rich-feedback、online streaming 的训练设定下，结构化失败反馈显著改善 self-distillation”。它还没有证明“模型可以靠自然语言反思在所有 long-horizon agent 任务中持续自我改进”。
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>7. 我的 insight：RESD 真正有价值的地方是把反馈从 prompt trick 变成训练系统状态</h2>
+      <p class="verdict">我认为 RESD 的贡献不在于“reflection”这个词，而在于它把 reflection 放进了一个可更新、可筛选、可复用、能影响 token-level loss 的闭环。</p>
+      <p>很多 self-reflection 方法的问题是，反思只发生在推理时：模型失败了，再让它想一想，然后重新回答。这种做法对单题 retry 有用，但不一定会进入参数。RESD 的不同之处是：失败解释先影响 teacher distribution，然后通过 distillation loss 进入 student 参数。也就是说，它把一次失败的自然语言诊断转译成下一次训练更新的 token 概率偏移。</p>
+      <p>这也解释了为什么它在 Manufactoria 这种任务上效果大：任务有明确的局部规则，失败反馈可执行，reflection 能把 “parse error / wrong tape behavior / infinite loop” 映射成稳定的编程规则。playbook 又让这些规则跨样本复用。相比之下，GRPO 的 scalar reward 虽然更原则化，但在成功样本很少时，reward 只告诉模型“这条不行”，不告诉它“为什么不行”。</p>
+      <p>如果要把 RESD 用到更一般的 agent memory / continual learning，我会优先看三个问题：第一，feedback 是否足够 grounded，能否被程序或 judge 稳定验证；第二，playbook 是 global、per-task 还是 per-user，如何避免污染；第三，teacher prompt 中的 lesson 如何从自然语言规则升级成可检验的 causal credit assignment。</p>
+    </section>
+
+    <section id="commands">
+      <h2>8. 本次核验命令和本地材料</h2>
+      <pre><code>opencli twitter thread "https://x.com/YuweiZh49446108/status/2054322467347542242" --limit 80 -f json
+curl -Ls -o /dev/null -w "%{url_effective}\n%{http_code}\n" "https://t.co/d6xBIQvvDk"
+curl -L "https://github.com/horizon-llm/RESD/raw/main/paper.pdf" -o "resd-x-analysis/refs/resd-paper.pdf"
+pdfinfo "resd-x-analysis/refs/resd-paper.pdf"
+pdftotext -layout "resd-x-analysis/refs/resd-paper.pdf" "resd-x-analysis/refs/resd-paper.txt"
+curl -Ls "https://raw.githubusercontent.com/horizon-llm/RESD/main/README.md"
+curl -Ls "https://api.github.com/repos/horizon-llm/RESD/git/trees/main?recursive=1"</code></pre>
+      <p>本地归档：</p>
+      <ul>
+        <li><code>resd-x-analysis/refs/resd-paper.pdf</code></li>
+        <li><code>resd-x-analysis/refs/resd-paper.txt</code></li>
+        <li><code>/Users/bytedance/Downloads/resd-x-analysis.html</code></li>
+        <li><code>/Users/bytedance/Downloads/resd-x-analysis-assets/</code></li>
+      </ul>
+      <p class="small">报告生成日期：2026-05-15。本文档基于 OpenCLI 抽取的 X 线程、Notion 项目页、arXiv 元数据、本地 PDF 全文和 GitHub 仓库 README/代码树交叉核验。</p>
+    </section>
+  </main>
+</body>
+</html>

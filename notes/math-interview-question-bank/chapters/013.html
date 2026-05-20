@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>013. 微积分与优化例题：从导数到约束优化 - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 013</div>
+        <div class="brand-title">微积分与优化例题：从导数到约束优化</div>
+        <div class="brand-meta">例题 · 解答 · 用可手算的小题理解梯度、Taylor、Hessian 和 Lagrange 乘子。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-013-goals">学习目标</a><a class="toc-link" href="#s-013-start">概念起点</a><a class="toc-link" href="#s-013-1">例题 1：softplus 的导数和曲率</a><a class="toc-link" href="#s-013-2">例题 2：Taylor 近似到底在近似什么</a><a class="toc-link" href="#s-013-3">例题 3：多元梯度与最陡下降</a><a class="toc-link" href="#s-013-4">例题 4：Hessian 判断极小值</a><a class="toc-link" href="#s-013-5">例题 5：Lagrange 乘子</a><a class="toc-link" href="#s-013-6">例题 6：学习率与梯度下降</a><a class="toc-link" href="#s-013-7">例题 7：最小二乘矩阵求导</a><a class="toc-link" href="#s-013-mistakes">常见误区</a><a class="toc-link" href="#s-013-interview">LLM/量化面试连接</a><a class="toc-link" href="#s-013-checklist">最后检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link current" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="012.html">← 012. 应用桥接：LLM 与 Quant 中的数学对象</a><a href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="practice" data-title="微积分与优化例题：从导数到约束优化">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>013. 微积分与优化例题：从导数到约束优化</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章把前面微积分和优化概念落到可手算例题。重点不是算得多快，而是每一步都能解释“公式在解决什么问题”。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>，保持概念、例题和算法直觉连贯。</p></aside>
+
+          <h3 id="s-013-goals"><a class="anchor-link" href="#s-013-goals" aria-label="跳转到本节">#</a>学习目标</h3>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>会算</h4>
+              <p>看到一元函数、多元函数、矩阵形式目标函数时，能写出导数、梯度、Hessian，知道每一项从哪里来。</p>
+            </div>
+            <div class="concept-card">
+              <h4>会解释</h4>
+              <p>能把 \(f'(x)\)、\(\nabla f\)、\(H\)、Lagrange 乘子解释成“局部斜率、最陡上升方向、曲率、约束力”。</p>
+            </div>
+            <div class="concept-card">
+              <h4>会连接算法</h4>
+              <p>能把 Taylor 近似、梯度下降、二阶条件、最小二乘和 LLM/量化里的训练、拟合、风险控制联系起来。</p>
+            </div>
+          </div>
+
+          <div class="intuition-box"><b>本章读法</b><p>每道题都按同一个节奏走：先看题目在问什么，再找对应公式，然后逐步代入计算，最后解释结果的直觉。零基础学习时，不要跳过“为什么这样设”这一步；面试官通常不是只看最后数值，而是看你能不能把数学对象翻译成算法行为。</p></div>
+
+          <h3 id="s-013-start"><a class="anchor-link" href="#s-013-start" aria-label="跳转到本节">#</a>概念起点：这几类题到底在问什么</h3>
+          <p>微积分和优化题表面上有很多公式，但核心问题只有三个：函数往哪个方向变大或变小、弯曲程度如何、在限制条件下怎么找最优。先把符号认清楚，后面的计算会轻很多。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>对象</th>
+                  <th>它回答的问题</th>
+                  <th>常见面试问法</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>\(f'(x)\)</td>
+                  <td>一元函数在某一点的瞬时变化率。</td>
+                  <td>这个激活函数梯度会不会消失？某个 loss 对参数怎么变？</td>
+                </tr>
+                <tr>
+                  <td>\(\nabla f(x,y)\)</td>
+                  <td>多元函数对每个变量的偏导数组成的向量，指向局部最陡上升方向。</td>
+                  <td>为什么梯度下降要沿 \(-\nabla f\) 更新？方向导数怎么算？</td>
+                </tr>
+                <tr>
+                  <td>\(H\)</td>
+                  <td>二阶偏导数组成的矩阵，描述函数在不同方向上的弯曲。</td>
+                  <td>怎么判断驻点是极小值、极大值还是鞍点？牛顿法为什么用 Hessian？</td>
+                </tr>
+                <tr>
+                  <td>\(\mathcal{L}\)</td>
+                  <td>把目标函数和约束合在一起，用无约束一阶条件求受约束最优。</td>
+                  <td>带预算、权重和风险约束的最优化怎么写？</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-list">
+            <div><b>链式法则</b><span>如果 \(f(x)=g(h(x))\)，那么 \(f'(x)=g'(h(x))h'(x)\)。先对外层求导，再乘内层导数。</span></div>
+            <div><b>方向导数</b><span>如果 \(u\) 是单位方向，沿 \(u\) 的瞬时变化率是 \(D_u f=\nabla f^T u\)。</span></div>
+            <div><b>二阶 Taylor</b><span>一元近似是 \(f(x+\Delta)\approx f(x)+f'(x)\Delta+\frac12 f''(x)\Delta^2\)，多元近似是 \(f(w+\Delta)\approx f(w)+\nabla f(w)^T\Delta+\frac12\Delta^T H(w)\Delta\)。</span></div>
+            <div><b>梯度下降</b><span>更新式是 \(w_{t+1}=w_t-\eta\nabla f(w_t)\)，\(\eta\) 是学习率，决定每一步走多远。</span></div>
+          </div>
+
+          <h3 id="s-013-1"><a class="anchor-link" href="#s-013-1" aria-label="跳转到本节">#</a>例题 1：softplus 的导数和曲率</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设 \(f(x)=\log(1+e^x)\)。求 \(f'(x)\)、\(f''(x)\)，计算 \(x=0\) 处的一阶和二阶导数，并解释它为什么常被看成 ReLU 的平滑版本。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>这道题在问两件事：第一，函数每个点的斜率是多少；第二，斜率本身变化得快不快。softplus 里面有复合函数：外层是 \(\log(\cdot)\)，内层是 \(1+e^x\)。用链式法则，对外层求导得到“内层的倒数”，再乘内层导数 \(e^x\)。</p>
+              <div class="math-display">\[
+f'(x)=\frac{e^x}{1+e^x}=\frac{1}{1+e^{-x}}=\sigma(x)
+\]</div>
+              <p>这里 \(\sigma(x)\) 是 sigmoid 函数。为了求二阶导数，可以继续对 \(\sigma(x)\) 求导：</p>
+              <div class="math-display">\[
+f''(x)=\sigma(x)(1-\sigma(x))
+\]</div>
+              <p>代入 \(x=0\)，先算 \(\sigma(0)=1/(1+e^0)=1/2\)，所以：</p>
+              <div class="math-display">\[
+f'(0)=\frac12,\qquad f''(0)=\frac12\left(1-\frac12\right)=\frac14
+\]</div>
+              <p>因为 \(0<\sigma(x)<1\)，所以 \(f''(x)>0\)，函数是凸的。凸的意思是曲线整体像碗一样向上弯，没有“向下凹”的局部区域。</p>
+              <p>再看它和 ReLU 的关系。ReLU 是 \(\max(0,x)\)：当 \(x<0\) 时输出 0，当 \(x>0\) 时输出 \(x\)。softplus 在两端也有类似行为：</p>
+              <div class="math-display">\[
+x\gg 0:\ \log(1+e^x)\approx \log(e^x)=x,\qquad
+x\ll 0:\ \log(1+e^x)\approx \log(1)=0
+\]</div>
+              <p>不同点在 \(x=0\) 附近。ReLU 在 0 处有尖点，导数从 0 突然跳到 1；softplus 的导数从 0 平滑过渡到 1，所以优化时不会遇到不可导尖点。</p>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>导数 \(\sigma(x)\) 是一条从 0 平滑过渡到 1 的曲线。它告诉优化器：负区间不是完全没有梯度，而是梯度很小；正区间接近线性，梯度接近 1。二阶导数在 0 附近最大，说明 softplus 在转折区弯得最明显；远离 0 后二阶导数接近 0，函数近似直线或常数。</p></div>
+          </div>
+
+          <h3 id="s-013-2"><a class="anchor-link" href="#s-013-2" aria-label="跳转到本节">#</a>例题 2：Taylor 近似到底在近似什么</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>用二阶 Taylor 展开近似 \(\log(1+x)\) 在 \(x=0.05\) 和 \(x=0.5\) 处的值，并说明为什么离展开点越远，误差通常越明显。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>Taylor 近似的想法是：在一个熟悉的点附近，用“函数值、斜率、曲率”拼出一个多项式，临时代替原函数。这里展开点是 \(0\)，函数是 \(g(x)=\log(1+x)\)。</p>
+              <p>先计算展开所需的导数：</p>
+              <div class="math-display">\[
+g(0)=0,\qquad g'(x)=\frac{1}{1+x},\qquad g'(0)=1
+\]</div>
+              <div class="math-display">\[
+g''(x)=-\frac{1}{(1+x)^2},\qquad g''(0)=-1
+\]</div>
+              <p>二阶 Taylor 公式是：</p>
+              <div class="math-display">\[
+g(x)\approx g(0)+g'(0)x+\frac12 g''(0)x^2
+\]</div>
+              <p>代入上面的数值，得到：</p>
+              <div class="math-display">\[
+\log(1+x)\approx x-\frac{x^2}{2}
+\]</div>
+              <p>先代入 \(x=0.05\)：</p>
+              <div class="math-display">\[
+0.05-\frac{0.05^2}{2}=0.05-0.00125=0.04875
+\]</div>
+              <p>真实值 \(\log(1.05)\approx 0.04879\)，误差大约是 \(0.00004\)，很小。再代入 \(x=0.5\)：</p>
+              <div class="math-display">\[
+0.5-\frac{0.5^2}{2}=0.5-0.125=0.375
+\]</div>
+              <p>真实值 \(\log(1.5)\approx 0.40547\)，误差大约是 \(0.03047\)，明显变大。原因不是 Taylor 公式错了，而是我们只保留到二阶，丢掉了后面的高阶项：</p>
+              <div class="math-display">\[
+\log(1+x)=x-\frac{x^2}{2}+\frac{x^3}{3}-\frac{x^4}{4}+\cdots
+\]</div>
+              <p>当 \(x=0.05\) 时，\(x^3\) 已经非常小；当 \(x=0.5\) 时，\(x^3/3\) 约为 \(0.04167\)，不能再忽略，所以二阶近似会低估真实值。</p>
+            </div>
+            <div class="intuition-box"><b>面试说法</b><p>Taylor 展开就是“在当前点附近，用一个更简单的多项式临时代替复杂函数”。梯度下降只相信一阶近似，所以它只知道往哪里下降；牛顿法利用二阶近似，所以还会考虑不同方向的曲率，从而调整步长和方向。</p></div>
+          </div>
+
+          <h3 id="s-013-3"><a class="anchor-link" href="#s-013-3" aria-label="跳转到本节">#</a>例题 3：多元梯度与最陡下降</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设 \(f(x,y)=x^2+2xy+3y^2\)。求 \(\nabla f(1,-1)\)，给出单位方向 \(u=(3/5,4/5)\) 上的方向导数，并说明哪个方向下降最快。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>这是一个二元函数。变量有两个：\(x\) 和 \(y\)。求梯度时，分别问：“只动 \(x\)，函数怎么变？”以及“只动 \(y\)，函数怎么变？”这两个答案就是两个偏导。</p>
+              <p>对 \(x\) 求偏导时，把 \(y\) 当常数：</p>
+              <div class="math-display">\[
+\frac{\partial f}{\partial x}=2x+2y
+\]</div>
+              <p>其中 \(x^2\) 对 \(x\) 的导数是 \(2x\)，\(2xy\) 对 \(x\) 的导数是 \(2y\)，\(3y^2\) 对 \(x\) 的导数是 0。对 \(y\) 求偏导时，把 \(x\) 当常数：</p>
+              <div class="math-display">\[
+\frac{\partial f}{\partial y}=2x+6y
+\]</div>
+              <p>代入 \((1,-1)\)：</p>
+              <div class="math-display">\[
+\nabla f(1,-1)=
+\begin{bmatrix}
+0\\
+-4
+\end{bmatrix}
+\]</div>
+              <p>梯度 \((0,-4)\) 的意思是：在 \((1,-1)\) 附近，单独增加 \(x\) 的一阶影响为 0，增加 \(y\) 会让函数值快速下降，因为 \(y\) 分量的偏导是 \(-4\)。</p>
+              <p>方向导数要把梯度和单位方向做内积：</p>
+              <div class="math-display">\[
+D_u f(1,-1)=\nabla f(1,-1)^Tu=0\cdot \frac35+(-4)\cdot \frac45=-\frac{16}{5}
+\]</div>
+              <p>结果是负数，说明沿 \(u\) 方向走，函数值一开始会下降；绝对值 \(16/5\) 表示下降速度的大小。</p>
+              <p>最陡上升方向是梯度方向 \((0,-4)\) 的单位化，也就是 \((0,-1)\)。最陡下降方向是负梯度方向 \((0,4)\) 的单位化，也就是 \((0,1)\)。</p>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>梯度是一个“局部线性打分器”。给它一个方向 \(u\)，内积 \(\nabla f^Tu\) 就告诉你沿这个方向函数值一开始涨还是跌、涨跌多快。</p></div>
+          </div>
+
+          <h3 id="s-013-4"><a class="anchor-link" href="#s-013-4" aria-label="跳转到本节">#</a>例题 4：Hessian 判断极小值</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设 \(f(x,y)=x^2+2xy+2y^2-4x\)。求驻点，并判断它是否是局部极小值。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>驻点的定义是梯度为 0 的点。直觉上，在驻点处，一阶变化看不出函数往哪个方向立刻上升或下降。但这还不代表它一定是最小值，还要看二阶曲率。</p>
+              <p>先求梯度：</p>
+              <div class="math-display">\[
+\nabla f(x,y)=
+\begin{bmatrix}
+2x+2y-4\\
+2x+4y
+\end{bmatrix}
+\]</div>
+              <p>令梯度为 0：</p>
+              <div class="math-display">\[
+2x+2y-4=0,\qquad 2x+4y=0
+\]</div>
+              <p>两式同时除以 2，得到更简单的线性方程组：</p>
+              <div class="math-display">\[
+x+y=2,\qquad x+2y=0
+\]</div>
+              <p>用第二式减第一式，得到 \(y=-2\)，再代入 \(x+y=2\)，得到 \(x=4\)。所以驻点是 \((4,-2)\)。</p>
+              <p>接着求 Hessian，也就是把二阶偏导排成矩阵：</p>
+              <div class="math-display">\[
+H=
+\begin{bmatrix}
+2&2\\
+2&4
+\end{bmatrix}
+\]</div>
+              <p>二维矩阵正定的快速判断是：左上角元素大于 0，行列式大于 0。这里：</p>
+              <div class="math-display">\[
+2>0,\qquad \det(H)=2\cdot4-2\cdot2=4>0
+\]</div>
+              <p>所以 \(H\) 正定，驻点 \((4,-2)\) 是严格局部极小值。因为这是二次函数，并且 Hessian 在所有点都正定，所以它也是全局极小值。</p>
+            </div>
+            <div class="intuition-box"><b>算法关联</b><p>Hessian 正定表示每个方向都向上弯，像碗；Hessian 有负特征值时，某些方向向下弯，驻点可能是鞍点。深度学习里很多 loss surface 有鞍点，所以“梯度接近 0”不自动等于“训练到了好解”。</p></div>
+          </div>
+
+          <h3 id="s-013-5"><a class="anchor-link" href="#s-013-5" aria-label="跳转到本节">#</a>例题 5：Lagrange 乘子</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>求约束 \(x+y=1\) 下 \(x^2+y^2\) 的最小值，并解释 Lagrange 乘子 \(\lambda\) 为什么会出现。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>没有约束时，\(x^2+y^2\) 的最小值在 \((0,0)\)，因为它表示点 \((x,y)\) 到原点距离的平方。但现在有约束 \(x+y=1\)，点必须落在这条直线上，不能随便取 \((0,0)\)。</p>
+              <p>Lagrange 方法把目标和约束写到同一个函数里：</p>
+              <div class="math-display">\[
+\mathcal{L}(x,y,\lambda)=x^2+y^2+\lambda(x+y-1)
+\]</div>
+              <p>这里 \(x+y-1=0\) 是约束。乘子 \(\lambda\) 可以理解成“约束的权重”或“为了不离开约束面，需要施加的修正力”。</p>
+              <p>分别对 \(x,y,\lambda\) 求偏导并令其为 0：</p>
+              <div class="math-display">\[
+\frac{\partial \mathcal{L}}{\partial x}=2x+\lambda=0,\qquad
+\frac{\partial \mathcal{L}}{\partial y}=2y+\lambda=0,\qquad
+\frac{\partial \mathcal{L}}{\partial \lambda}=x+y-1=0
+\]</div>
+              <p>前两式说明 \(2x+\lambda=2y+\lambda\)，所以 \(x=y\)。再代入约束 \(x+y=1\)，得到：</p>
+              <div class="math-display">\[
+x=y=\frac12
+\]</div>
+              <p>最小值为：</p>
+              <div class="math-display">\[
+x^2+y^2=\frac14+\frac14=\frac12
+\]</div>
+              <p>如果还想求 \(\lambda\)，代入 \(2x+\lambda=0\)，得到 \(\lambda=-1\)。这个数本身不是目标值，而是描述约束对最优解的一阶影响。</p>
+            </div>
+            <div class="intuition-box"><b>几何图像</b><p>目标函数 \(x^2+y^2\) 的等高线是以原点为圆心的圆，约束 \(x+y=1\) 是一条直线。最优点是这条直线上离原点最近的点，也就是把原点投影到直线上的位置。Lagrange 条件背后的几何事实是：在最优点，目标函数等高线的法向量和约束直线的法向量平行。</p></div>
+          </div>
+
+          <h3 id="s-013-6"><a class="anchor-link" href="#s-013-6" aria-label="跳转到本节">#</a>例题 6：学习率与梯度下降数值例题</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>用梯度下降最小化 \(f(w)=(w-3)^2\)。从 \(w_0=0\) 开始，分别用学习率 \(\eta=0.1\)、\(\eta=1\)、\(\eta=1.2\) 做几步更新，观察学习率如何影响收敛。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>目标函数 \(f(w)=(w-3)^2\) 的最小点显然是 \(w=3\)，因为此时平方项为 0。梯度下降不会直接“看答案”，它只用当前点的导数决定下一步怎么走。</p>
+              <p>先求导：</p>
+              <div class="math-display">\[
+f'(w)=2(w-3)
+\]</div>
+              <p>梯度下降更新式是：</p>
+              <div class="math-display">\[
+w_{t+1}=w_t-\eta f'(w_t)=w_t-2\eta(w_t-3)
+\]</div>
+              <p>学习率 \(\eta=0.1\) 时：</p>
+              <div class="math-display">\[
+w_1=0-0.1\cdot 2(0-3)=0.6
+\]</div>
+              <div class="math-display">\[
+w_2=0.6-0.1\cdot 2(0.6-3)=1.08
+\]</div>
+              <div class="math-display">\[
+w_3=1.08-0.1\cdot 2(1.08-3)=1.464
+\]</div>
+              <p>它在慢慢靠近 3。步子比较稳，但速度不快。</p>
+              <p>学习率 \(\eta=1\) 时：</p>
+              <div class="math-display">\[
+w_1=0-1\cdot 2(0-3)=6,\qquad
+w_2=6-1\cdot 2(6-3)=0
+\]</div>
+              <p>它在 0 和 6 之间来回跳，永远不靠近 3。这不是因为方向错，而是步子太大，每次都跨过最小点同样远。</p>
+              <p>学习率 \(\eta=1.2\) 时：</p>
+              <div class="math-display">\[
+w_1=0-1.2\cdot 2(0-3)=7.2
+\]</div>
+              <div class="math-display">\[
+w_2=7.2-1.2\cdot 2(7.2-3)=7.2-10.08=-2.88
+\]</div>
+              <p>离最优点越来越远，说明学习率过大时会发散。</p>
+              <p>这个例子还可以从误差 \(e_t=w_t-3\) 看得更清楚：</p>
+              <div class="math-display">\[
+e_{t+1}=w_{t+1}-3=(1-2\eta)(w_t-3)=(1-2\eta)e_t
+\]</div>
+              <p>要收敛，需要 \(|1-2\eta|<1\)，也就是 \(0<\eta<1\)。\(\eta=0.1\) 满足条件，\(\eta=1\) 卡在边界震荡，\(\eta=1.2\) 超过边界发散。</p>
+            </div>
+            <div class="intuition-box"><b>训练直觉</b><p>学习率不是越大越好。小学习率像小步下坡，慢但稳定；过大学习率像每步都跳过谷底，可能震荡甚至发散。LLM 训练中 loss spike、梯度裁剪、warmup 和学习率衰减，本质上都和“每一步不要走坏”有关。</p></div>
+          </div>
+
+          <h3 id="s-013-7"><a class="anchor-link" href="#s-013-7" aria-label="跳转到本节">#</a>例题 7：矩阵求导与最小二乘梯度</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设线性模型预测为 \(Xw\)，真实标签为 \(y\)，最小二乘目标为 \(J(w)=\frac12\|Xw-y\|_2^2\)。求 \(\nabla_w J(w)\)，并用一个小数值例子验证公式。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>这道题里的符号含义是：\(X\) 是数据矩阵，每一行是一条样本；\(w\) 是要学习的参数；\(Xw\) 是模型预测；\(y\) 是真实值；\(Xw-y\) 是残差，也就是预测错了多少。</p>
+              <p>先令残差 \(r=Xw-y\)，目标变成：</p>
+              <div class="math-display">\[
+J(w)=\frac12 r^T r
+\]</div>
+              <p>为什么前面放 \(\frac12\)？只是为了求导后抵消平方带来的 2，让公式更干净，不改变最优点。</p>
+              <p>用微分法推导最稳。因为 \(r=Xw-y\)，所以 \(dr=X\,dw\)。目标函数的微分为：</p>
+              <div class="math-display">\[
+dJ=\frac12 d(r^Tr)=r^Tdr=r^T X\,dw
+\]</div>
+              <p>把 \(dw\) 放到右侧，并写成“某个向量转置乘 \(dw\)”的形式：</p>
+              <div class="math-display">\[
+dJ=(X^Tr)^Tdw
+\]</div>
+              <p>因此梯度是：</p>
+              <div class="math-display">\[
+\nabla_w J(w)=X^T(Xw-y)
+\]</div>
+              <p>做一个小数值验证。取：</p>
+              <div class="math-display">\[
+X=
+\begin{bmatrix}
+1&0\\
+1&1
+\end{bmatrix},\qquad
+w=
+\begin{bmatrix}
+1\\
+2
+\end{bmatrix},\qquad
+y=
+\begin{bmatrix}
+2\\
+2
+\end{bmatrix}
+\]</div>
+              <p>先算预测：</p>
+              <div class="math-display">\[
+Xw=
+\begin{bmatrix}
+1\\
+3
+\end{bmatrix}
+\]</div>
+              <p>再算残差：</p>
+              <div class="math-display">\[
+r=Xw-y=
+\begin{bmatrix}
+-1\\
+1
+\end{bmatrix}
+\]</div>
+              <p>最后左乘 \(X^T\)：</p>
+              <div class="math-display">\[
+X^Tr=
+\begin{bmatrix}
+1&1\\
+0&1
+\end{bmatrix}
+\begin{bmatrix}
+-1\\
+1
+\end{bmatrix}
+=
+\begin{bmatrix}
+0\\
+1
+\end{bmatrix}
+\]</div>
+              <p>所以 \(\nabla_w J(w)=(0,1)^T\)。如果用学习率 \(\eta=0.1\) 做一步梯度下降：</p>
+              <div class="math-display">\[
+w_{\text{new}}=
+\begin{bmatrix}
+1\\
+2
+\end{bmatrix}
+-0.1
+\begin{bmatrix}
+0\\
+1
+\end{bmatrix}
+=
+\begin{bmatrix}
+1\\
+1.9
+\end{bmatrix}
+\]</div>
+              <p>这表示当前第一维参数的一阶方向不需要动，第二维参数应该下降一点，以减小平方误差。</p>
+            </div>
+            <div class="intuition-box"><b>为什么是 \(X^T\)</b><p>残差 \(r\) 是样本维度上的错误，参数 \(w\) 是特征维度上的变量。\(X^T r\) 做的事情是：把每个样本的错误按对应特征加权汇总回参数维度。这就是线性回归、神经网络最后一层、很多因子模型里梯度的基本形状。</p></div>
+          </div>
+
+          <h3 id="s-013-mistakes"><a class="anchor-link" href="#s-013-mistakes" aria-label="跳转到本节">#</a>常见误区</h3>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>把梯度当成下降方向</h4>
+              <p>梯度 \(\nabla f\) 指向最陡上升方向。最小化时用 \(-\nabla f\)。如果符号写反，loss 会增大。</p>
+            </div>
+            <div class="concept-card">
+              <h4>忘记方向导数要求单位方向</h4>
+              <p>\(\nabla f^Tu\) 的“每单位长度变化率”解释依赖 \(u\) 是单位向量。若方向没归一化，数值会混入向量长度。</p>
+            </div>
+            <div class="concept-card">
+              <h4>以为梯度为 0 就一定是最小值</h4>
+              <p>梯度为 0 只是驻点。还要看 Hessian 或其它条件；可能是极小值、极大值，也可能是鞍点。</p>
+            </div>
+            <div class="concept-card">
+              <h4>把 Taylor 近似当全局公式</h4>
+              <p>Taylor 是局部近似。离展开点越远，被截断的高阶项越可能变大，所以不能无条件相信低阶展开。</p>
+            </div>
+            <div class="concept-card">
+              <h4>矩阵求导只背形状</h4>
+              <p>只背 \(\nabla_w\frac12\|Xw-y\|^2=X^T(Xw-y)\) 容易在转置上出错。先写残差形状，再用微分或维度检查更可靠。</p>
+            </div>
+            <div class="concept-card">
+              <h4>Lagrange 忘记约束方程</h4>
+              <p>一阶条件不仅有对 \(x,y\) 的偏导，也有对 \(\lambda\) 的偏导。后者正是原约束，漏掉就无法得到可行解。</p>
+            </div>
+          </div>
+
+          <h3 id="s-013-interview"><a class="anchor-link" href="#s-013-interview" aria-label="跳转到本节">#</a>LLM/量化面试连接</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>本章对象</th>
+                  <th>LLM 中怎么出现</th>
+                  <th>量化中怎么出现</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>softplus / sigmoid 导数</td>
+                  <td>激活函数、门控、二分类 logit、数值稳定的正值参数化。</td>
+                  <td>把无约束变量映射成正参数，例如波动率、强度、惩罚系数。</td>
+                </tr>
+                <tr>
+                  <td>Taylor 近似</td>
+                  <td>解释梯度下降、二阶优化、loss surface 局部形状、近似推导。</td>
+                  <td>风险因子小扰动下的 PnL 近似，例如 delta-gamma 近似。</td>
+                </tr>
+                <tr>
+                  <td>梯度下降和学习率</td>
+                  <td>训练稳定性、warmup、loss spike、梯度裁剪、AdamW 调参。</td>
+                  <td>参数拟合、在线学习、信号权重更新、交易模型校准。</td>
+                </tr>
+                <tr>
+                  <td>Hessian</td>
+                  <td>曲率、鞍点、sharp/flat minima、牛顿法和二阶预条件思想。</td>
+                  <td>二次规划、风险模型、协方差矩阵正定性、组合优化曲率。</td>
+                </tr>
+                <tr>
+                  <td>Lagrange 乘子</td>
+                  <td>带约束训练、正则化解释、约束解码或资源限制下的优化。</td>
+                  <td>投资组合权重和为 1、目标收益约束、风险预算约束。</td>
+                </tr>
+                <tr>
+                  <td>最小二乘梯度</td>
+                  <td>线性层、回归头、embedding 到 target 的拟合，反向传播的基础局部块。</td>
+                  <td>因子回归、收益预测、风险暴露估计、残差最小化。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="intuition-box"><b>面试中的高分表达</b><p>不要只说“用梯度下降优化”。更好的表达是：先定义目标函数，说明参数是什么、loss 衡量什么错误；再写出梯度或一阶条件；然后解释学习率、曲率或约束如何影响更新行为。这样面试官能看到你不是在背公式，而是在用公式描述算法。</p></div>
+
+          <h3 id="s-013-checklist"><a class="anchor-link" href="#s-013-checklist" aria-label="跳转到本节">#</a>最后检查清单</h3>
+          <ul class="checkpoint-list">
+            <li><span>看到 \(f(x)=\log(1+e^x)\) 时，能用链式法则推出 \(f'(x)=\sigma(x)\)，并解释 softplus 为什么平滑近似 ReLU。</span></li>
+            <li><span>能写出 \(\log(1+x)\) 在 0 附近的二阶 Taylor 近似，并说明近似只在局部可靠。</span></li>
+            <li><span>能对二元函数逐项求偏导，组成梯度，并用 \(\nabla f^T u\) 计算单位方向上的方向导数。</span></li>
+            <li><span>能通过梯度为 0 找驻点，再用 Hessian 正定、负定或不定判断局部形状。</span></li>
+            <li><span>能把等式约束问题写成 Lagrangian，并记得同时使用目标变量和乘子的所有一阶条件。</span></li>
+            <li><span>能手算一维梯度下降的前几步，解释学习率太小、合适、太大分别会发生什么。</span></li>
+            <li><span>能从 \(J(w)=\frac12\|Xw-y\|^2\) 推出 \(\nabla_wJ=X^T(Xw-y)\)，并用维度解释 \(X^T\) 的作用。</span></li>
+            <li><span>能把这些例题连接到 LLM 训练稳定性、因子回归、组合约束和风险近似，而不是停留在纯计算。</span></li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="012.html">← 012. 应用桥接：LLM 与 Quant 中的数学对象</a><a href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 新增例题与算法直觉层。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>014. 线性代数例题：投影、最小二乘、SVD 与 PCA - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 014</div>
+        <div class="brand-title">线性代数例题：投影、最小二乘、SVD 与 PCA</div>
+        <div class="brand-meta">例题 · 解答 · 用小矩阵理解空间、正交、低秩和主方向。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-014-1">学习目标</a><a class="toc-link" href="#s-014-2">概念起点：形状、空间与方向</a><a class="toc-link" href="#s-014-3">例题 1：矩阵形状与矩阵乘法</a><a class="toc-link" href="#s-014-4">例题 2：秩和列空间</a><a class="toc-link" href="#s-014-5">例题 3：最小二乘就是投影</a><a class="toc-link" href="#s-014-6">例题 4：正定矩阵和组合风险</a><a class="toc-link" href="#s-014-7">例题 5：PCA 的主方向</a><a class="toc-link" href="#s-014-8">例题 6：截断 SVD 的低秩近似</a><a class="toc-link" href="#s-014-9">例题 7：LoRA 低秩参数量</a><a class="toc-link" href="#s-014-10">常见误区、面试连接与检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link current" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="013.html">← 013. 微积分与优化例题：从导数到约束优化</a><a href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="practice" data-title="线性代数例题：投影、最小二乘、SVD 与 PCA">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>014. 线性代数例题：投影、最小二乘、SVD 与 PCA</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>线性代数题不要只算矩阵。每一道题都要回答：这个矩阵在描述哪个空间，哪些方向被保留，哪些方向被压缩或丢掉。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>，保持概念、例题和算法直觉连贯。</p></aside>
+
+          <h3 id="s-014-1"><a class="anchor-link" href="#s-014-1" aria-label="跳转到本节">#</a>学习目标</h3>
+          <p>这一章不把线性代数当作“矩阵计算技巧集合”，而是把每道题拆成面试中真正要考察的链路：输入对象长什么样、它代表哪个空间、公式为什么适用、计算每一步在做什么、结果如何解释到模型或风险系统里。</p>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>会看形状</h4>
+              <p>看到 \(A\in\mathbb{R}^{m\times n}\)、\(x\in\mathbb{R}^n\)，能立刻判断 \(Ax\) 是否合法、输出维度是多少，以及每一维输出由哪些输入线性组合而来。</p>
+            </div>
+            <div class="concept-card">
+              <h4>会看空间</h4>
+              <p>理解列空间、零空间、秩、投影和残差。面试官问“为什么正规方程成立”时，你能说出残差与特征列正交，而不只是背 \(X^TX\hat\beta=X^Ty\)。</p>
+            </div>
+            <div class="concept-card">
+              <h4>会看方向</h4>
+              <p>理解特征向量、奇异向量、主成分和低秩更新都在讨论“哪些方向重要”。这对 PCA、SVD、embedding 压缩、LoRA、组合风险都很关键。</p>
+            </div>
+            <div class="concept-card">
+              <h4>会讲应用</h4>
+              <p>能把小矩阵例题翻译成 LLM 和量化面试语言：参数矩阵如何映射向量、低秩适配为什么省参数、协方差矩阵为什么决定组合波动。</p>
+            </div>
+          </div>
+          <div class="intuition-box"><b>学习方式</b><p>本章每个例题都先回答“题目在问什么”，再进入公式。零基础复习时，不要急着消元或代数展开，先检查维度、对象和目标，这会直接减少一半错误。</p></div>
+
+          <h3 id="s-014-2"><a class="anchor-link" href="#s-014-2" aria-label="跳转到本节">#</a>概念起点：形状、空间与方向</h3>
+          <p>线性代数里最容易混乱的原因，是同一个矩阵可以有三个视角。计算视角把矩阵看成数字表；函数视角把矩阵看成从输入向量到输出向量的线性函数；空间视角把矩阵看成若干列向量张成的输出空间。面试里真正需要的是后两个视角。</p>
+          <div class="formula-list">
+            <p><b>矩阵乘向量：</b>若 \(A\in\mathbb{R}^{m\times n}\)，\(x\in\mathbb{R}^n\)，则 \(Ax\in\mathbb{R}^m\)。可以把 \(Ax\) 理解成 \(A\) 的列向量按 \(x\) 的分量加权求和。</p>
+            <div class="math-display">\[
+A x
+=
+\begin{bmatrix}a_1&a_2&\cdots&a_n\end{bmatrix}
+\begin{bmatrix}x_1\\x_2\\\vdots\\x_n\end{bmatrix}
+=x_1a_1+x_2a_2+\cdots+x_na_n
+\]</div>
+            <p><b>列空间：</b>\(\operatorname{Col}(A)=\{Ax:x\in\mathbb{R}^n\}\)。它描述矩阵所有可能输出的位置。</p>
+            <p><b>秩：</b>\(\operatorname{rank}(A)\) 是独立列的个数，也等于列空间的维度。秩小意味着有重复信息或冗余方向。</p>
+            <p><b>投影：</b>如果目标 \(y\) 不在列空间里，就找列空间里离 \(y\) 最近的点 \(\hat y\)。误差 \(r=y-\hat y\) 会垂直于列空间。</p>
+            <p><b>正定：</b>对称矩阵 \(M\) 正定表示任意非零 \(x\) 都有 \(x^TMx>0\)。在量化里，协方差矩阵正定意味着任意非零组合都有正方差。</p>
+            <p><b>SVD/PCA：</b>SVD 把矩阵分解成输入方向、强度、输出方向；PCA 在协方差矩阵上找方差最大的方向。</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>对象</th><th>零基础读法</th><th>常见面试翻译</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>\(A\in\mathbb{R}^{m\times n}\)</td><td>吃进 \(n\) 维向量，吐出 \(m\) 维向量</td><td>线性层权重、特征设计矩阵、收益暴露矩阵</td></tr>
+                <tr><td>\(\operatorname{rank}(A)\)</td><td>真正独立的方向数</td><td>特征冗余、参数更新自由度、因子数量</td></tr>
+                <tr><td>\(X^TX\)</td><td>特征列之间的内积表</td><td>回归中的 Gram 矩阵、共线性诊断</td></tr>
+                <tr><td>\(w^T\Sigma w\)</td><td>组合在协方差矩阵下的平方长度</td><td>组合方差、风险预算、相关性影响</td></tr>
+                <tr><td>\(U\Sigma V^T\)</td><td>先转到输入方向，缩放，再转到输出方向</td><td>低秩压缩、embedding 结构、LoRA 直觉</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 id="s-014-3"><a class="anchor-link" href="#s-014-3" aria-label="跳转到本节">#</a>例题 1：矩阵形状与矩阵乘法</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设一个线性层把 3 维输入特征映射成 2 维输出：</p>
+            <div class="math-display">\[
+W=
+\begin{bmatrix}
+1&2&0\\
+-1&1&3
+\end{bmatrix},
+\qquad
+x=
+\begin{bmatrix}
+2\\
+1\\
+-1
+\end{bmatrix}
+\]</div>
+            <p>判断 \(Wx\) 是否合法，计算结果，并用“列向量线性组合”的方式解释它。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>先看形状。\(W\) 有 2 行 3 列，所以 \(W\in\mathbb{R}^{2\times 3}\)。\(x\) 是 3 行 1 列，所以 \(x\in\mathbb{R}^3\)。矩阵乘法 \(Wx\) 合法，因为左边矩阵的列数 3 等于右边向量的维度 3。输出形状由外侧维度决定，是 \(2\times 1\)。</p>
+              <div class="math-display">\[
+Wx\in\mathbb{R}^{2}
+\]</div>
+              <p>按行计算，就是每个输出坐标都做一次点积：</p>
+              <div class="math-display">\[
+Wx
+=
+\begin{bmatrix}
+1\cdot2+2\cdot1+0\cdot(-1)\\
+(-1)\cdot2+1\cdot1+3\cdot(-1)
+\end{bmatrix}
+=
+\begin{bmatrix}
+4\\
+-4
+\end{bmatrix}
+\]</div>
+              <p>按列空间理解，\(W\) 的三列是：</p>
+              <div class="math-display">\[
+w_1=\begin{bmatrix}1\\-1\end{bmatrix},
+\quad
+w_2=\begin{bmatrix}2\\1\end{bmatrix},
+\quad
+w_3=\begin{bmatrix}0\\3\end{bmatrix}
+\]</div>
+              <p>输入 \(x=(2,1,-1)^T\) 的三个分量就是三列的权重，所以：</p>
+              <div class="math-display">\[
+Wx=2w_1+1w_2-1w_3
+=
+2\begin{bmatrix}1\\-1\end{bmatrix}
++
+\begin{bmatrix}2\\1\end{bmatrix}
+-
+\begin{bmatrix}0\\3\end{bmatrix}
+=
+\begin{bmatrix}4\\-4\end{bmatrix}
+\]</div>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>矩阵乘向量不是神秘操作，它就是“用输入坐标作为配方，混合矩阵的列”。在线性层里，输出不是凭空产生的，而是落在权重矩阵列空间里的某个点。若权重矩阵列之间高度重复，模型这一层能表达的输出方向也会受限。</p></div>
+          </div>
+
+          <h3 id="s-014-4"><a class="anchor-link" href="#s-014-4" aria-label="跳转到本节">#</a>例题 2：秩和列空间</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>判断矩阵 \(A=\begin{bmatrix}1&2&3\\2&4&6\\1&1&2\end{bmatrix}\) 的秩，并解释列空间的含义。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>题目在问：这个 \(3\times3\) 矩阵的三列里，到底有几个真正独立的方向。记三列为：</p>
+              <div class="math-display">\[
+c_1=\begin{bmatrix}1\\2\\1\end{bmatrix},
+\quad
+c_2=\begin{bmatrix}2\\4\\1\end{bmatrix},
+\quad
+c_3=\begin{bmatrix}3\\6\\2\end{bmatrix}
+\]</div>
+              <p>先检查最明显的线性关系。把第一列和第二列相加：</p>
+              <div class="math-display">\[
+c_3=c_1+c_2
+\]</div>
+              <p>这说明第三列没有提供新方向，它已经可以由前两列合成。接着要检查前两列是否独立。如果 \(c_2\) 是 \(c_1\) 的倍数，那么应该存在常数 \(k\)，使得 \(c_2=kc_1\)。前两个分量提示 \(k=2\)，因为 \(2=2\cdot1\)、\(4=2\cdot2\)，但第三个分量会要求 \(1=2\cdot1\)，这是错的。因此 \(c_1\) 和 \(c_2\) 独立。</p>
+              <p>所以独立列有 2 个：</p>
+              <div class="math-display">\[
+\operatorname{rank}(A)=2
+\]</div>
+              <p>列空间就是所有 \(Ax\) 的集合。因为 \(Ax=x_1c_1+x_2c_2+x_3c_3\)，而 \(c_3=c_1+c_2\)，所以无论 \(x_3\) 取什么值，输出都能写成 \(c_1\) 和 \(c_2\) 的线性组合：</p>
+              <div class="math-display">\[
+\operatorname{Col}(A)=\operatorname{span}\{c_1,c_2\}
+\]</div>
+              <p>如果想用行变换确认，也可以把矩阵化简：</p>
+              <div class="math-display">\[
+\begin{bmatrix}
+1&2&3\\
+2&4&6\\
+1&1&2
+\end{bmatrix}
+\longrightarrow
+\begin{bmatrix}
+1&2&3\\
+0&0&0\\
+0&-1&-1
+\end{bmatrix}
+\]</div>
+              <p>非零行有 2 行，也说明秩为 2。行化简给的是秩，原始列空间的基仍应从原矩阵的独立列里选，例如 \(c_1,c_2\)。</p>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>秩是矩阵真正携带的独立方向数。列空间是矩阵 \(Ax\) 所有可能输出的集合；如果秩是 2，说明输出只能落在三维空间里的一个二维平面上。</p></div>
+          </div>
+
+          <h3 id="s-014-5"><a class="anchor-link" href="#s-014-5" aria-label="跳转到本节">#</a>例题 3：最小二乘就是投影</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>用直线 \(y=a+bx\) 拟合三个点 \((0,1),(1,2),(2,2)\)。求最小二乘解，并检查残差的正交性。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>题目在问：三点不一定完全落在同一条直线上，如何找一条“总体误差平方和最小”的直线。直线 \(y=a+bx\) 有两个未知参数，截距 \(a\) 和斜率 \(b\)。把每个样本代入模型：</p>
+              <div class="math-display">\[
+\begin{aligned}
+x=0&:\quad a+0b\approx1\\
+x=1&:\quad a+1b\approx2\\
+x=2&:\quad a+2b\approx2
+\end{aligned}
+\]</div>
+              <p>写成矩阵形式，设计矩阵 \(X\) 的第一列全是 1，对应截距；第二列是输入 \(x\)，对应斜率：</p>
+              <div class="math-display">\[
+X=\begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix},\qquad
+y=\begin{bmatrix}1\\2\\2\end{bmatrix}
+\]</div>
+              <p>参数向量记为 \(\beta=(a,b)^T\)。预测值是 \(X\beta\)，它一定在 \(X\) 的列空间里。最小二乘就是在这个二维列空间中找离 \(y\) 最近的点。最近点的误差向量 \(r=y-X\hat\beta\) 必须与列空间正交，因此：</p>
+              <div class="math-display">\[
+X^T(y-X\hat\beta)=0
+\quad\Longrightarrow\quad
+X^TX\hat\beta=X^Ty
+\]</div>
+              <p>这就是正规方程。现在计算两边：</p>
+              <div class="math-display">\[
+X^TX=\begin{bmatrix}3&3\\3&5\end{bmatrix},\qquad
+X^Ty=\begin{bmatrix}5\\6\end{bmatrix}
+\]</div>
+              <p>于是：</p>
+              <div class="math-display">\[
+\begin{bmatrix}3&3\\3&5\end{bmatrix}
+\begin{bmatrix}\hat a\\\hat b\end{bmatrix}
+=
+\begin{bmatrix}5\\6\end{bmatrix}
+\]</div>
+              <p>展开成两个方程：</p>
+              <div class="math-display">\[
+\begin{cases}
+3\hat a+3\hat b=5\\
+3\hat a+5\hat b=6
+\end{cases}
+\]</div>
+              <p>第二个方程减第一个方程，得到 \(2\hat b=1\)，所以 \(\hat b=1/2\)。代回第一个方程，\(3\hat a+3/2=5\)，所以 \(\hat a=7/6\)。</p>
+              <div class="math-display">\[
+\hat\beta=
+\begin{bmatrix}\hat a\\\hat b\end{bmatrix}
+=
+\begin{bmatrix}7/6\\1/2\end{bmatrix}
+\]</div>
+              <p>预测值是：</p>
+              <div class="math-display">\[
+\hat y=X\hat\beta
+=
+\begin{bmatrix}
+7/6\\
+7/6+1/2\\
+7/6+1
+\end{bmatrix}
+=
+\begin{bmatrix}
+7/6\\
+5/3\\
+13/6
+\end{bmatrix}
+\]</div>
+              <p>残差是观测值减预测值：</p>
+              <div class="math-display">\[
+r=y-\hat y
+=
+\begin{bmatrix}1\\2\\2\end{bmatrix}
+-
+\begin{bmatrix}7/6\\5/3\\13/6\end{bmatrix}
+=
+\begin{bmatrix}-1/6\\1/3\\-1/6\end{bmatrix}
+\]</div>
+              <p>检查正交性。\(X\) 的第一列是 \((1,1,1)^T\)，第二列是 \((0,1,2)^T\)。如果残差与这两列都正交，就有 \(X^Tr=0\)：</p>
+              <div class="math-display">\[
+X^Tr=
+\begin{bmatrix}
+1&1&1\\
+0&1&2
+\end{bmatrix}
+\begin{bmatrix}-1/6\\1/3\\-1/6\end{bmatrix}
+=
+\begin{bmatrix}0\\0\end{bmatrix}
+\]</div>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>最小二乘不是“强行穿过所有点”，而是把 \(y\) 投影到 \(X\) 的列空间上。残差和列空间正交，表示模型能解释的方向已经全部用完。</p></div>
+          </div>
+
+          <h3 id="s-014-6"><a class="anchor-link" href="#s-014-6" aria-label="跳转到本节">#</a>例题 4：正定矩阵和组合风险</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设协方差矩阵 \(\Sigma=\begin{bmatrix}0.04&0.01\\0.01&0.09\end{bmatrix}\)，组合权重 \(w=(0.6,0.4)^T\)。计算组合方差，并判断 \(\Sigma\) 是否正定。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>题目在问两个问题。第一，组合收益 \(r_p=w_1r_1+w_2r_2\) 的方差是多少；第二，这个协方差矩阵是否合理，即任意非零组合的方差是否都大于 0。</p>
+              <p>这里 \(0.04\) 和 \(0.09\) 是两个资产自身的方差，标准差分别是 \(20\%\) 和 \(30\%\)。\(0.01\) 是协方差，表示两个资产同向波动的程度。组合方差公式是：</p>
+              <div class="math-display">\[
+\operatorname{Var}(w^Tr)=w^T\Sigma w
+\]</div>
+              <p>先算 \(\Sigma w\)：</p>
+              <div class="math-display">\[
+\Sigma w
+=
+\begin{bmatrix}
+0.04&0.01\\
+0.01&0.09
+\end{bmatrix}
+\begin{bmatrix}0.6\\0.4\end{bmatrix}
+=
+\begin{bmatrix}
+0.04\cdot0.6+0.01\cdot0.4\\
+0.01\cdot0.6+0.09\cdot0.4
+\end{bmatrix}
+=
+\begin{bmatrix}
+0.028\\
+0.042
+\end{bmatrix}
+\]</div>
+              <p>再左乘 \(w^T\)：</p>
+              <div class="math-display">\[
+w^T\Sigma w
+=
+\begin{bmatrix}0.6&0.4\end{bmatrix}
+\begin{bmatrix}0.028\\0.042\end{bmatrix}
+=0.6\cdot0.028+0.4\cdot0.042
+=0.0336
+\]</div>
+              <p>也可以按展开公式理解：</p>
+              <div class="math-display">\[
+w^T\Sigma w
+=w_1^2\sigma_1^2+2w_1w_2\operatorname{Cov}(r_1,r_2)+w_2^2\sigma_2^2
+=0.6^2\cdot0.04+2\cdot0.6\cdot0.4\cdot0.01+0.4^2\cdot0.09
+\]</div>
+              <p>正定性检查。对 \(2\times2\) 对称矩阵：</p>
+              <div class="math-display">\[
+\begin{bmatrix}a&b\\b&d\end{bmatrix}
+\]</div>
+              <p>正定等价于第一个主子式 \(a>0\) 且行列式 \(ad-b^2>0\)。这里：</p>
+              <div class="math-display">\[
+0.04>0,\qquad
+\det(\Sigma)=0.04\cdot0.09-0.01^2=0.0035>0
+\]</div>
+              <p>所以 \(\Sigma\) 正定。组合标准差是方差开根号：</p>
+              <div class="math-display">\[
+\sqrt{0.0336}\approx0.1833
+\]</div>
+            </div>
+            <div class="intuition-box"><b>量化解释</b><p>协方差矩阵正定意味着任何非零组合都有正方差。组合风险不仅取决于单资产波动，还取决于协方差项；相关性越高，分散化越弱。</p></div>
+          </div>
+
+          <h3 id="s-014-7"><a class="anchor-link" href="#s-014-7" aria-label="跳转到本节">#</a>例题 5：PCA 的主方向</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>协方差矩阵 \(\Sigma=\begin{bmatrix}4&2\\2&1\end{bmatrix}\)。求第一主成分方向，并解释它意味着什么。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>PCA 的问题是：在所有单位方向 \(u\) 中，找一个方向使数据投影到这个方向后的方差最大。若协方差矩阵是 \(\Sigma\)，方向 \(u\) 上的方差是：</p>
+              <div class="math-display">\[
+u^T\Sigma u,\qquad \|u\|=1
+\]</div>
+              <p>最大方差方向就是最大特征值对应的单位特征向量。先求特征值：</p>
+              <div class="math-display">\[
+\det(\Sigma-\lambda I)=(4-\lambda)(1-\lambda)-4=\lambda(\lambda-5)
+\]</div>
+              <p>特征值是 \(5\) 和 \(0\)。最大特征值 \(5\) 表示第一主成分方向上的方差为 5。求对应特征向量，需要解：</p>
+              <div class="math-display">\[
+(\Sigma-5I)v=0
+\]</div>
+              <p>即：</p>
+              <div class="math-display">\[
+\begin{bmatrix}-1&2\\2&-4\end{bmatrix}
+\begin{bmatrix}v_1\\v_2\end{bmatrix}=0
+\quad\Longrightarrow\quad v_1=2v_2
+\]</div>
+              <p>所以特征向量可以取 \(v=(2,1)^T\)。PCA 要求方向向量长度为 1，因此需要单位化。长度是：</p>
+              <div class="math-display">\[
+\|v\|=\sqrt{2^2+1^2}=\sqrt5
+\]</div>
+              <p>单位化后第一主成分方向为：</p>
+              <div class="math-display">\[
+u_1=\frac{1}{\sqrt5}\begin{bmatrix}2\\1\end{bmatrix}
+\]</div>
+              <p>如果把一个中心化后的数据点 \(z=(z_1,z_2)^T\) 投影到第一主成分上，它的一维表示就是：</p>
+              <div class="math-display">\[
+\text{score}=u_1^Tz=\frac{2z_1+z_2}{\sqrt5}
+\]</div>
+              <p>这说明第一维特征的权重更大，第二维特征也同向参与。第二个特征值为 0，意味着垂直于 \((2,1)\) 的方向没有方差；数据几乎完全躺在一条直线上。</p>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>数据主要沿 \((2,1)\) 方向波动，垂直方向几乎没有波动。这类结构在量化里对应共同风险因子，在 embedding 分析里对应主要变化方向。</p></div>
+          </div>
+
+          <h3 id="s-014-8"><a class="anchor-link" href="#s-014-8" aria-label="跳转到本节">#</a>例题 6：截断 SVD 的低秩近似</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设 \(A=\begin{bmatrix}3&0\\0&1\end{bmatrix}\)。给出最好的 rank-1 近似，并说明误差是多少。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>SVD 把矩阵写成：</p>
+              <div class="math-display">\[
+A=U
+\begin{bmatrix}
+\sigma_1&0\\
+0&\sigma_2
+\end{bmatrix}
+V^T,\qquad \sigma_1\ge\sigma_2\ge0
+\]</div>
+              <p>这里 \(A\) 已经是对角矩阵，且对角线是非负数，所以它本身就是一个非常简单的 SVD：\(U=I\)、\(V=I\)、奇异值为 \(3\) 和 \(1\)。rank-1 近似只能保留一个方向。Eckart-Young 定理告诉我们，在所有 rank-1 矩阵里，最好的近似是保留最大奇异值及其对应方向，丢掉其他方向。</p>
+              <div class="math-display">\[
+A_1=\begin{bmatrix}3&0\\0&0\end{bmatrix}
+\]</div>
+              <p>误差矩阵是：</p>
+              <div class="math-display">\[
+A-A_1=
+\begin{bmatrix}
+0&0\\
+0&1
+\end{bmatrix}
+\]</div>
+              <p>如果用谱范数衡量误差，误差等于被丢掉的最大奇异值：</p>
+              <div class="math-display">\[
+\|A-A_1\|_2=1
+\]</div>
+              <p>如果用 Frobenius 范数衡量误差，误差是所有被丢弃奇异值平方和再开根号。这里也只有一个被丢弃的奇异值 \(1\)，所以：</p>
+              <div class="math-display">\[
+\|A-A_1\|_F=\sqrt{1^2}=1
+\]</div>
+            </div>
+            <div class="intuition-box"><b>LLM 关联</b><p>低秩近似保留“最强方向”，丢掉弱方向。LoRA 的 \(\Delta W=BA\) 不是在完整参数空间里任意更新，而是在低秩子空间里学习任务相关变化。</p></div>
+          </div>
+
+          <h3 id="s-014-9"><a class="anchor-link" href="#s-014-9" aria-label="跳转到本节">#</a>例题 7：LoRA 低秩参数量</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>一个 Transformer 线性层权重 \(W\in\mathbb{R}^{4096\times4096}\)。全量微调会为这个矩阵更新全部参数。LoRA 不直接学习完整的 \(\Delta W\)，而是写成：</p>
+            <div class="math-display">\[
+\Delta W=BA,\qquad
+B\in\mathbb{R}^{4096\times r},\quad
+A\in\mathbb{R}^{r\times4096}
+\]</div>
+            <p>当 \(r=8\) 时，LoRA 需要训练多少参数？相对全量 \(\Delta W\) 节省了多少？为什么这叫低秩更新？</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>先看全量更新。如果直接学习 \(\Delta W\in\mathbb{R}^{4096\times4096}\)，参数量是：</p>
+              <div class="math-display">\[
+4096\cdot4096=16{,}777{,}216
+\]</div>
+              <p>LoRA 把更新拆成两个小矩阵。第一个矩阵 \(B\) 的参数量是 \(4096\cdot r\)，第二个矩阵 \(A\) 的参数量是 \(r\cdot4096\)。当 \(r=8\) 时：</p>
+              <div class="math-display">\[
+4096\cdot8+8\cdot4096=65{,}536
+\]</div>
+              <p>节省比例可以从“LoRA 参数量 / 全量参数量”算起：</p>
+              <div class="math-display">\[
+\frac{65{,}536}{16{,}777{,}216}
+=
+\frac{1}{256}
+\approx0.390625\%
+\]</div>
+              <p>也就是说，LoRA 只训练全量更新约 \(0.39\%\) 的参数，参数量减少约 \(99.61\%\)。</p>
+              <p>为什么叫低秩？矩阵乘积的秩满足：</p>
+              <div class="math-display">\[
+\operatorname{rank}(BA)\le \min(\operatorname{rank}(B),\operatorname{rank}(A))\le r
+\]</div>
+              <p>所以 \(\Delta W=BA\) 的秩最多是 8。它不能表示任意 \(4096\times4096\) 更新，而只能表示最多 8 个独立方向组合出的更新。这是限制，也是优势：训练自由度小，显存和存储开销低，并且常常足以表达某个下游任务需要的主要变化方向。</p>
+            </div>
+            <div class="intuition-box"><b>LLM 直觉</b><p>全量微调允许权重在所有方向上变化；LoRA 假设任务需要的变化集中在少数方向上。它不是“把原矩阵压缩成低秩”，而是“让新增更新量低秩”。面试里这句话很重要，因为原始 \(W\) 仍然可以是满秩的。</p></div>
+          </div>
+
+          <h3 id="s-014-10"><a class="anchor-link" href="#s-014-10" aria-label="跳转到本节">#</a>常见误区、面试连接与检查清单</h3>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>误区 1：只背公式，不看维度</h4>
+              <p>\(AB\) 是否存在，先看 \(A\) 的列数是否等于 \(B\) 的行数。很多线性层、attention、LoRA 题不是难在公式，而是难在形状方向写反。</p>
+            </div>
+            <div class="concept-card">
+              <h4>误区 2：把秩和矩阵大小混为一谈</h4>
+              <p>\(3\times3\) 矩阵的秩不一定是 3。秩看独立方向，不看表格大小。列重复、线性相关、因子暴露冗余都会让秩下降。</p>
+            </div>
+            <div class="concept-card">
+              <h4>误区 3：以为最小二乘必须穿过所有点</h4>
+              <p>只有当 \(y\) 正好在 \(X\) 的列空间里，残差才为 0。一般情况下，最小二乘找的是列空间里离 \(y\) 最近的投影。</p>
+            </div>
+            <div class="concept-card">
+              <h4>误区 4：把 PCA 和 SVD 完全等同</h4>
+              <p>PCA 是在中心化数据的协方差方向上找最大方差；SVD 是任意矩阵的分解工具。实际实现 PCA 时常用 SVD，但概念侧重点不同。</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>面试场景</th><th>线性代数问题</th><th>应该讲出的关键句</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>LLM 线性层</td><td>\(y=Wx\) 的形状和含义</td><td>矩阵列是输出空间的基方向，输入分量是混合权重。</td></tr>
+                <tr><td>LoRA</td><td>\(\Delta W=BA\) 为什么省参数</td><td>参数量从 \(d_{\text{out}}d_{\text{in}}\) 变成 \(r(d_{\text{out}}+d_{\text{in}})\)，且更新秩最多为 \(r\)。</td></tr>
+                <tr><td>Embedding 分析</td><td>为什么看 PCA 主方向</td><td>主方向是 embedding 变化最大的方向，可用于可视化、去除公共方向或诊断聚类结构。</td></tr>
+                <tr><td>线性回归</td><td>正规方程为什么成立</td><td>最小二乘的残差与设计矩阵列空间正交，所以 \(X^Tr=0\)。</td></tr>
+                <tr><td>量化组合</td><td>组合风险怎么算</td><td>组合方差是 \(w^T\Sigma w\)，协方差项决定分散化是否有效。</td></tr>
+                <tr><td>因子模型</td><td>为什么关心秩</td><td>秩反映独立因子数量；因子共线会导致估计不稳定和解释冗余。</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-list">
+            <p><b>最后检查清单：</b></p>
+          </div>
+          <ul class="checkpoint-list">
+            <li>看到矩阵乘法时，我能先判断形状是否合法，并说出输出维度。</li>
+            <li>我能把 \(Ax\) 解释成矩阵列向量的线性组合，而不只是机械做乘法。</li>
+            <li>我能用“独立方向数”解释秩，并能从列关系或行化简判断秩。</li>
+            <li>我能说出最小二乘的几何意义：把 \(y\) 投影到 \(X\) 的列空间。</li>
+            <li>我能解释正规方程来自 \(X^T(y-X\hat\beta)=0\)，而不是只背公式。</li>
+            <li>我能计算 \(w^T\Sigma w\)，并说明协方差项对组合风险的影响。</li>
+            <li>我知道 \(2\times2\) 对称矩阵正定可检查 \(a>0\) 和 \(ad-b^2>0\)。</li>
+            <li>我能解释 PCA 第一主成分是最大方差方向，对应最大特征值的单位特征向量。</li>
+            <li>我能说明截断 SVD 保留最大奇异值方向，低秩近似误差来自被丢弃奇异值。</li>
+            <li>我能计算 LoRA 参数量，并说清楚低秩的是新增更新 \(\Delta W\)，不是原始权重 \(W\)。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="013.html">← 013. 微积分与优化例题：从导数到约束优化</a><a href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计 →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 新增例题与算法直觉层。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,1701 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口 - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 39</div>
+        <div class="brand-title">模块二：Tokenizer、Embedding、位置编码与上下文窗口</div>
+        <div class="brand-meta">2. 核心题完整答案 · 第 2 步 · 核心模块</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0520">13. BPE、WordPiece、SentencePiece 的主要区别是什么？</a>
+<a class="toc-link" href="#h-0521" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0522" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0523">14. 什么是 tokenization，为什么不能简单按“词”来切？</a>
+<a class="toc-link" href="#h-0524" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0525" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0526">15. 什么是 contextual embedding，它和 Word2Vec 这种静态 embedding 有什么区别？</a>
+<a class="toc-link" href="#h-0527" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0528" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0529">16. 位置编码分为哪几类？绝对位置编码和相对位置编码的差别是什么？</a>
+<a class="toc-link" href="#h-0530" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0531" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0532">17. RoPE 的核心思想是什么？</a>
+<a class="toc-link" href="#h-0533" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0534" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0535">18. context window 指什么，它为什么重要？</a>
+<a class="toc-link" href="#h-0536" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0537" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0538">19. 为什么 RoPE 会成为主流？它相比绝对位置编码到底好在哪里？</a>
+<a class="toc-link" href="#h-0539" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0540" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0541">20. 长度外推为什么难？RoPE 在长上下文下会遇到什么问题？</a>
+<a class="toc-link" href="#h-0542" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0543" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0544">21. 如果一个模型窗口从 8K 扩到 128K，会带来哪些新的工程和建模问题？</a>
+<a class="toc-link" href="#h-0545" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0546" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0547">22. “Lost in the Middle” 是什么现象？为什么它在 RAG 里特别致命？</a>
+<a class="toc-link" href="#h-0548" style="padding-left:18px">标准答案</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link current" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="038.html">← 38. 模块一：基础与 Transformer 架构</a><a href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0519" data-category="core" data-title="模块二：Tokenizer、Embedding、位置编码与上下文窗口">
+<h2 id="h-0519"><a class="anchor-link" href="#h-0519" aria-label="跳转到本节">#</a>模块二：Tokenizer、Embedding、位置编码与上下文窗口</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>本章是核心题完整答案层，承接 <a href="006.html">第 06 章</a> 的模块地图。建议按问题顺序精读；读完后用 <a href="050.html">第 50 章</a> 做知识点查漏。</p></aside>
+<h3 id="h-0520"><a class="anchor-link" href="#h-0520" aria-label="跳转到本节">#</a>13. BPE、WordPiece、SentencePiece 的主要区别是什么？</h3>
+<h4 id="h-0521"><a class="anchor-link" href="#h-0521" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>三者本质上都在做子词切分，但训练方式和工程假设不一样。<code>BPE</code> 可以理解成不断把高频相邻片段合并，所以更偏频次驱动；<code>WordPiece</code> 更像是在问“合并后能不能让语言模型更划算”，因此带一点概率视角；<code>SentencePiece</code> 的优势则是它不依赖人工先分词，直接在原始文本流上学习切分单元，所以对中文、多语言、带特殊符号的文本更友好。</p>
+<p>面试里不要只说“它们都是 tokenizer 方法”，最好补一句：它们的差别不仅影响词表构建，还会影响 token 长度分布、训练成本以及不同语言场景下的适配性。这样答案会更像工程判断。</p>
+<hr>
+<h4 id="h-0522"><a class="anchor-link" href="#h-0522" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么需要子词切分？从一个例子说起</strong></p>
+<p>假设词表只有 10000 个英文单词。遇到 "unhappiness" 怎么办？</p>
+<ul>
+<li>如果按"词"切分："unhappiness" 不在词表里 → OOV（未登录词）
+</li>
+<li>如果按"字"切分：u-n-h-a-p-p-i-n-e-s-s → 10 个 token，语义完全丢失
+</li>
+<li><strong>子词切分</strong>：un + happiness → 2 个 token，既覆盖了未登录词，又保留了语义
+</li>
+</ul>
+<p>子词切分的核心思想：<strong>高频词保持完整，低频词拆成有意义的片段</strong>。</p>
+<hr>
+<p><strong>2. BPE（Byte Pair Encoding）</strong></p>
+<p><strong>训练过程</strong>：从字符级别开始，不断合并最高频的相邻片段。</p>
+<p><strong>具体例子</strong>：</p>
+<p>假设训练语料中有这些词和频次：</p>
+<pre><code class="language-text">low: 5, lower: 2, lowest: 1, newer: 6, wider: 3</code></pre>
+<p>初始时每个词拆成字符 + <code>&lt;/w&gt;</code>（词尾标记）：</p>
+<pre><code class="language-text">l o w &lt;/w&gt;: 5
+l o w e r &lt;/w&gt;: 2
+l o w e s t &lt;/w&gt;: 1
+n e w e r &lt;/w&gt;: 6
+w i d e r &lt;/w&gt;: 3</code></pre>
+<p><strong>第 1 轮</strong>：统计所有相邻字符对的出现次数：</p>
+<ul>
+<li><code>e r</code> 出现 2+6+3 = 11 次（最高频）
+</li>
+<li>合并 <code>e r</code> → <code>er</code>
+</li>
+</ul>
+<p><strong>第 2 轮</strong>：</p>
+<ul>
+<li><code>w er</code> 出现 2+6 = 8 次（注意 lower 中 <code>w</code> 和 <code>er</code> 相邻）
+</li>
+<li>合并 <code>w er</code> → <code>wer</code>
+</li>
+</ul>
+<p><strong>第 3 轮</strong>：</p>
+<ul>
+<li><code>low</code> 出现 5+2+1 = 8 次
+</li>
+<li>合并 <code>l o w</code> → <code>low</code>
+</li>
+</ul>
+<p>最终词表包含：<code>low</code>, <code>wer</code>, <code>er</code>, <code>new</code>, <code>wide</code>, <code>est</code> 等。</p>
+<p><strong>编码过程</strong>：对新词 "lowering"：</p>
+<pre><code class="language-text">lowering → low + er + ing</code></pre>
+<p><strong>BPE 的特点</strong>：</p>
+<ul>
+<li>贪婪合并：每次选最高频的 pair
+</li>
+<li>合并次数是超参数（决定词表大小）
+</li>
+<li>对英语效果很好，对中文需要预处理（因为中文没有天然字符分隔）
+</li>
+</ul>
+<hr>
+<p><strong>3. WordPiece</strong></p>
+<p>WordPiece 和 BPE 很像，但合并标准不同：</p>
+<p>| | BPE | WordPiece | |--|-----|-----------| | 合并标准 | 频率最高 | 使语言模型损失下降最多 | | 合并方式 | 基于频次 | 基于概率 |</p>
+<p><strong>WordPiece 的合并规则</strong>：</p>
+<p>对于候选 pair <code>(a, b)</code>，计算合并后的得分：</p>
+<pre><code class="language-text">score = count(a, b) / (count(a) * count(b))</code></pre>
+<p>这个得分衡量的是"a 和 b 一起出现的频率"相对于"它们各自独立出现的频率"的比值。比值越大，说明 a 和 b 越应该合并。</p>
+<p><strong>例子</strong>：</p>
+<ul>
+<li><code>th</code> 经常一起出现，<code>count(th)</code> ≈ <code>count(t) * count(h)</code> 的比值很大 → 合并
+</li>
+<li><code>qx</code> 很少一起出现，比值很小 → 不合并
+</li>
+</ul>
+<p><strong>WordPiece 的优势</strong>：</p>
+<ul>
+<li>更"语义化"——不只是看频率，还看了组合的信息增益
+</li>
+<li>Google 的 BERT 使用 WordPiece
+</li>
+</ul>
+<hr>
+<p><strong>4. SentencePiece</strong></p>
+<p>SentencePiece 最大的区别：<strong>不假设输入有分词边界</strong>。</p>
+<p>BPE 和 WordPiece 都需要先把文本按空格分成"词"，然后再做子词切分。这对英语没问题，但对中文、日文（没有空格）、泰文（没有空格）就有问题了。</p>
+<p><strong>SentencePiece 的做法</strong>：</p>
+<p>直接把原始文本当成字符流，用 <code>▁</code>（特殊符号）标记空格：</p>
+<pre><code class="language-text">原始文本：Hello world
+SentencePiece 输入：Hello▁world</code></pre>
+<p>然后在这个字符流上跑 BPE 或 Unigram Language Model。</p>
+<p><strong>Unigram Language Model</strong>（SentencePiece 默认算法）：</p>
+<p>和 BPE 相反——从一个大词表开始，不断<strong>删除</strong>使损失增加最少的子词。</p>
+<ol>
+<li>初始词表：包含所有可能的字符、常见词、高频子串
+</li>
+<li>对训练语料中的每个词，用 Viterbi 算法找到最优切分
+</li>
+<li>计算每个子词的概率
+</li>
+<li>删除那些概率低、对整体损失影响小的子词
+</li>
+<li>重复直到达到目标词表大小
+</li>
+</ol>
+<p><strong>SentencePiece 的优势</strong>：</p>
+<ul>
+<li>语言无关：中文、日文、代码、数字混用都没问题
+</li>
+<li>可逆性：token 序列可以 100% 还原成原始文本（因为保留了空格信息）
+</li>
+<li>T5、ALBERT 等模型使用 SentencePiece
+</li>
+</ul>
+<hr>
+<p><strong>5. 三种方法的核心对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>BPE</th>
+<th>WordPiece</th>
+<th>SentencePiece</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>合并策略</td>
+<td>频率最高</td>
+<td>信息增益最大</td>
+<td>反向删除（Unigram）</td>
+</tr>
+<tr>
+<td>预处理</td>
+<td>需先按空格分词</td>
+<td>需先按空格分词</td>
+<td>直接在原始文本上学习</td>
+</tr>
+<tr>
+<td>语言适应性</td>
+<td>英语好</td>
+<td>英语好</td>
+<td>任何语言（含中文/日文）</td>
+</tr>
+<tr>
+<td>代表模型</td>
+<td>GPT-2, RoBERTa</td>
+<td>BERT</td>
+<td>T5, ALBERT</td>
+</tr>
+<tr>
+<td>空格处理</td>
+<td>空格作为分隔符</td>
+<td>空格作为分隔符</td>
+<td><code>▁</code> 显式编码空格</td>
+</tr>
+</tbody></table></div>
+<hr>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"BPE 的词表大小怎么选？大了好还是小了好？"</strong>
+<ul>
+<li>答：词表大（如 100K）→ token 数少，序列短，计算快，但词表占内存大，罕见词可能被切成单字。词表小（如 16K）→ token 数多，序列长，计算慢，但词表紧凑。常见选择：英文 32K-50K，中文 50K-100K，多语言 100K-250K。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么中文 tokenizer 经常把词切成单字？"</strong>
+<ul>
+<li>答：因为中文训练语料里单字频率极高（的、了、是），BPE/WordPiece 会优先合并高频 pair，而中文高频 pair 大多是单字组合。解决方法：1）增大词表；2）用预分词（如 jieba）做初始切分；3）用 SentencePiece 的 Unigram 算法，它更容易学到多字词。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"tokenizer 对模型效果影响大吗？"</strong>
+<ul>
+<li>答：非常大。tokenizer 决定了：1）序列长度（影响 attention 计算量）；2）词表大小（影响 embedding 层参数量）；3）OOV 率（影响未登录词的处理）；4）不同语言的切分质量（影响多语言模型效果）。有研究表明，换 tokenizer 可以让同规模模型效果波动几个百分点。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0523"><a class="anchor-link" href="#h-0523" aria-label="跳转到本节">#</a>14. 什么是 tokenization，为什么不能简单按“词”来切？</h3>
+<h4 id="h-0524"><a class="anchor-link" href="#h-0524" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>tokenization 就是把原始文本切成模型能处理的离散单元，也就是 token。之所以不能简单按“词”切，是因为真实世界文本远比“单词列表”复杂：有新词、错拼、缩写、代码片段、表情、数字串、多语言混写，还有中文这种天然没有空格分词的场景。</p>
+<p>如果直接按词建词表，会遇到两个大问题：第一，词表会非常大，参数和训练成本都高；第二，大量未登录词会变成 OOV，模型泛化能力差。子词切分的价值，就是在”粒度不要太粗”和”不要切得太碎”之间找平衡。</p>
+<hr>
+<h4 id="h-0525"><a class="anchor-link" href="#h-0525" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么”按词切”不行？数字说话</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>切分方式</th>
+<th>词表大小</th>
+<th>OOV 率</th>
+<th>平均序列长度</th>
+<th>问题</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>按词</td>
+<td>100万+</td>
+<td>低</td>
+<td>短</td>
+<td>词表爆炸、罕见词 embedding 学不好</td>
+</tr>
+<tr>
+<td>按字符</td>
+<td>256</td>
+<td>0%</td>
+<td>很长</td>
+<td>序列太长、失去词级别语义</td>
+</tr>
+<tr>
+<td>子词 (BPE, 32K)</td>
+<td>32,000</td>
+<td>&lt;1%</td>
+<td>中等</td>
+<td>平衡：常见词完整保留，罕见词拆成子词</td>
+</tr>
+</tbody></table></div>
+<p>假设英文语料：</p>
+<p><strong>2. 子词切分如何处理未见词？</strong></p>
+<pre><code class="language-text">已知词（在词表中）：
+- “apple” → [apple]
+- “playing” → [play, ing]
+
+未见词（OOV）：
+- “tokenization” → [token, ization]（如果训练时见过这两个子词）
+- “GPT-4o” → [GPT, -, 4, o]（混合切分）</code></pre>
+<p>子词切分的核心优势：<strong>任何文本都能被切分成已知子词的组合</strong>，不会出现完全无法处理的 OOV。</p>
+<p><strong>3. 中文为什么更需要子词切分？</strong></p>
+<p>中文没有天然空格，”按词切”需要先分词（如 jieba），但分词本身就有歧义：</p>
+<pre><code class="language-text">“南京市长江大桥”
+- 分词 A：[南京市] [长江大桥]
+- 分词 B：[南京] [市长] [江大桥]</code></pre>
+<p>子词方案（如 SentencePiece）<strong>不需要预分词</strong>，直接在原始字符流上学习：</p>
+<ul>
+<li>高频组合 → 合并成一个 token（如 “人工智能”）
+</li>
+<li>低频组合 → 保持单字（如 “饕”）
+</li>
+</ul>
+<p>避免了分词错误传播给模型的问题。</p>
+<p><strong>4. token 长度对模型能力的影响</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>现象</th>
+<th>原因</th>
+<th>影响</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>英文单词通常 1 个 token</td>
+<td>英文子词和词边界接近</td>
+<td>英文效率高</td>
+</tr>
+<tr>
+<td>中文通常 1-2 个 token/字</td>
+<td>中文字符数多，但常用组合会合并</td>
+<td>中文略低效</td>
+</tr>
+<tr>
+<td>代码空格/缩进大量消耗 token</td>
+<td>每个缩进 level 可能是一个 token</td>
+<td>代码上下文利用率低</td>
+</tr>
+<tr>
+<td>数字常被拆成单个数字</td>
+<td>“2024” → “2”,”0”,”2”,”4”</td>
+<td>数字理解碎片化</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”为什么 GPT-4 的 tokenizer 对中文不友好？怎么解决？”</strong>
+<ul>
+<li>答：GPT-4 的 cl100k_base 词表主要基于英文语料训练，中文覆盖不足。一个中文字符通常被切成 1.5-2 个 token，导致：1）同样内容中文成本高 50-100%；2）上下文窗口”缩水”。解决：1）换中文优化的 tokenizer（如 ChatGLM 的）；2）扩展词表并继续预训练；3）用更短的表达方式。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”BPE 和 SentencePiece 的本质区别是什么？”</strong>
+<ul>
+<li>答：BPE 需要预先把文本按空格分词（对中文不友好），然后合并高频子词对。SentencePiece 直接在原始字符流上操作，不需要预分词，对中文、日文等多语言更友好。BPE 是”词级别合并”，SentencePiece 是”字符级别合并”。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”tokenizer 训练时，词表大小怎么定？”</strong>
+<ul>
+<li>答：常见范围 32K-100K。太小 → 序列过长、语义碎片化；太大 → 罕见词 embedding 学不充分、输出层 softmax 计算量大。经验：通用多语言模型 50K-100K，英文专用 32K-50K。最终通过验证集 PPL 来调优。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0526"><a class="anchor-link" href="#h-0526" aria-label="跳转到本节">#</a>15. 什么是 contextual embedding，它和 Word2Vec 这种静态 embedding 有什么区别？</h3>
+<h4 id="h-0527"><a class="anchor-link" href="#h-0527" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>contextual embedding 的关键在“同词不同义时，向量也会变”。比如 bank 在“river bank”和“bank loan”里含义不同，现代语言模型会根据上下文生成不同的表示；而 Word2Vec 这类静态 embedding 不管上下文怎么变，一个词只有一套固定向量，所以很难表达歧义、指代和细粒度语境差异。</p>
+<p>这也是为什么 Transformer 时代的表示能力远强于传统词向量：模型不是把词查表后就结束了，而是在上下文里反复更新表示，最后得到的是“这个词在这句话里是什么意思”，而不是“这个词通常是什么意思”。</p>
+<hr>
+<h4 id="h-0528"><a class="anchor-link" href="#h-0528" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么需要 Contextual Embedding？</strong></p>
+<p>语言中大量存在<strong>一词多义</strong>。同一个词在不同上下文里意思完全不同：</p>
+<pre><code class="language-text">"bank" 在 "river bank" 里 = 河岸
+"bank" 在 "bank loan" 里 = 银行
+"bank" 在 "data bank" 里 = 数据库</code></pre>
+<p>Word2Vec 这类静态 embedding 的做法是：<strong>一个词 = 一个向量</strong>。不管上下文怎么变，"bank" 永远对应同一个向量。模型无法区分它在不同句子里的含义。</p>
+<p>Contextual Embedding 的做法是：<strong>同一个词在不同上下文中，向量也不同</strong>。模型根据周围词来动态调整这个词的表示。</p>
+<hr>
+<p><strong>2. Contextual Embedding 是怎么工作的？</strong></p>
+<p>以 Transformer 为例。输入 "river bank" 时：</p>
+<p><strong>Step 1：初始表示</strong></p>
+<p>每个词先查 embedding 表得到初始向量：</p>
+<pre><code class="language-text">"river" → [0.2, -0.3, 0.5, ...]
+"bank"  → [0.1, 0.4, -0.2, ...]   # 注意：这是 "bank" 的"平均"表示</code></pre>
+<p><strong>Step 2：通过 Attention 更新</strong></p>
+<p>Attention 机制让 "bank" 看到 "river"，发现两者相关（因为 "river bank" 是一个常见搭配），于是 "bank" 的表示被更新为：</p>
+<pre><code class="language-text">"bank"（更新后） ≈ 0.7 * 原始 "bank" + 0.3 * "river" 的信息
+                = [0.15, 0.25, -0.05, ...]   # 更偏向"河岸"语义</code></pre>
+<p>如果输入是 "bank loan"：</p>
+<pre><code class="language-text">"bank"（更新后） ≈ 0.7 * 原始 "bank" + 0.3 * "loan" 的信息
+                = [0.12, 0.35, -0.15, ...]   # 更偏向"银行"语义</code></pre>
+<p><strong>关键洞察</strong>：Contextual Embedding 不是"换一个查表"，而是<strong>通过 attention 把上下文信息"混合"进当前词的表示中</strong>。同一个词的最终向量会因为邻居不同而不同。</p>
+<hr>
+<p><strong>3. Word2Vec 的局限</strong></p>
+<p>Word2Vec（包括 Skip-gram 和 CBOW）的核心假设：<strong>词的语义独立于上下文</strong>。</p>
+<p>训练方式：</p>
+<pre><code class="language-text">给定 "cat sat on the mat"，Word2Vec 会生成训练样本：
+(中心词="sat", 上下文=["cat", "on"]) → 学习 sat 的向量
+(中心词="sat", 上下文=["on", "the"]) → 同一个 sat 的向量</code></pre>
+<p>无论 "sat" 前面是 "cat" 还是 "dog"，它学到的向量都一样。</p>
+<p><strong>为什么这不够？</strong></p>
+<p>因为语言中大量存在：</p>
+<ul>
+<li><strong>一词多义</strong>："bank" = 河岸/银行
+</li>
+<li><strong>指代消解</strong>："它" 在不同句子里指代不同对象
+</li>
+<li><strong>语义组合</strong>："hot dog" ≠ "hot" + "dog"
+</li>
+<li><strong>语法角色</strong>："dog" 在 "dog bites man" 和 "man bites dog" 中角色不同
+</li>
+</ul>
+<p>Contextual Embedding 通过 attention 让模型学到：<strong>词的意思取决于它跟谁在一起</strong>。</p>
+<hr>
+<p><strong>4. 从 Word2Vec 到 BERT：表示能力的进化</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>模型</th>
+<th>表示方式</th>
+<th>上下文感知</th>
+<th>典型应用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Word2Vec</td>
+<td>静态向量</td>
+<td>无</td>
+<td>词相似度、基础分类</td>
+</tr>
+<tr>
+<td>ELMo</td>
+<td>双向 LSTM 层输出</td>
+<td>有（LSTM）</td>
+<td>语义角色标注</td>
+</tr>
+<tr>
+<td>BERT</td>
+<td>Transformer 输出</td>
+<td>有（双向 Attention）</td>
+<td>分类、匹配、抽取</td>
+</tr>
+<tr>
+<td>GPT</td>
+<td>Transformer 输出</td>
+<td>有（单向 Attention）</td>
+<td>生成、对话</td>
+</tr>
+</tbody></table></div>
+<p><strong>ELMo 的洞察</strong>：不用 Transformer 的最后一层，而是用所有层的加权平均。因为不同层学到不同信息——底层学词法，中层学句法，高层学语义。</p>
+<p><strong>BERT 的突破</strong>：用双向 attention，让每个词同时看到左右上下文，表示能力远超单向模型。</p>
+<hr>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"Contextual Embedding 的输出应该怎么用？取最后一层还是取多层平均？"</strong>
+<ul>
+<li>答：取决于任务。简单分类 → 取 [CLS] token 的最后一层输出即可。需要细粒度语义 → 取多层加权平均（如 ELMo 的做法），因为不同层编码不同信息。有研究表明，取最后 4 层平均通常比单层更好。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Word2Vec 和 Contextual Embedding 在计算成本上差多少？"</strong>
+<ul>
+<li>答：Word2Vec 训练一次后，查表即可，O(1)。Contextual Embedding 需要跑一次完整的前向传播，O(n² * d)。但 Contextual Embedding 的表示质量远超 Word2Vec，所以在现代 NLP 中几乎完全替代了静态 embedding。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果只有 Word2Vec，能做指代消解吗？"</strong>
+<ul>
+<li>答：很难。因为 "he" 的 Word2Vec 向量永远是同一个，模型无法根据上下文判断 "he" 指的是谁。Contextual Embedding 通过 attention 让 "he" 的向量自动融入所指代对象的信息，所以能做指代消解。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0529"><a class="anchor-link" href="#h-0529" aria-label="跳转到本节">#</a>16. 位置编码分为哪几类？绝对位置编码和相对位置编码的差别是什么？</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">RoPE 公式</div>
+        <p class="inline-enhancement-note">放在位置编码和长上下文外推小节附近，突出“旋转注入位置”和“相对位置性质”。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>RoPE 二维旋转</b><div class="math-display">\[\begin{bmatrix}x'_{2i}\\x'_{2i+1}\end{bmatrix}=\begin{bmatrix}\cos(m\theta_i)&-\sin(m\theta_i)\\\sin(m\theta_i)&\cos(m\theta_i)\end{bmatrix}\begin{bmatrix}x_{2i}\\x_{2i+1}\end{bmatrix}\]</div><p>位置不是加到 embedding 上，而是作为旋转注入 Q/K。</p></div><div class="formula-card"><b>相对位置性质</b><div class="math-display">\[\langle R_m q, R_n k\rangle=\langle q, R_{n-m}k\rangle\]</div><p>解释 RoPE 为什么天然把相对距离带进 attention score。</p></div></div>
+      </aside>
+<h4 id="h-0530"><a class="anchor-link" href="#h-0530" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>位置编码常见可以分成几类：最早的是绝对位置编码，直接给每个位置一个固定编号或位置向量；后面发展出相对位置编码，更强调两个 token 之间相距多远；现代 LLM 常见的 <code>RoPE</code>、<code>ALiBi</code> 也都可以理解为在更适合长上下文和自回归的场景里编码位置信息。</p>
+<p>绝对位置编码回答的是”我在第几个位置”，相对位置编码回答的是”我和你相隔多远”。后者在长文本里往往更自然，因为很多语言关系并不关心绝对编号，而更关心相对距离，所以在长度扩展场景下通常更稳。</p>
+<hr>
+<h4 id="h-0531"><a class="anchor-link" href="#h-0531" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 位置编码的完整分类树</strong></p>
+<pre><code class="language-text">位置编码
+├─ 绝对位置编码
+│   ├─ 可学习（Learned）：BERT、GPT-1
+│   └─ 固定函数（Sinusoidal）：原始 Transformer
+├─ 相对位置编码
+│   ├─ 显式偏置：Transformer-XL、T5
+│   ├─ 旋转嵌入：RoPE（LLaMA、GPT-4）
+│   └─ 距离衰减：ALiBi（BLOOM、MPT）
+└─ 无显式位置编码
+    └─ 结构化稀疏：Mamba、RWKV（靠扫描/循环隐式编码位置）</code></pre>
+<p><strong>2. 绝对 vs 相对：数学本质对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>绝对位置编码</th>
+<th>相对位置编码</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>编码对象</strong></td>
+<td>每个位置的”绝对坐标”</td>
+<td>两个位置之间的”相对距离”</td>
+</tr>
+<tr>
+<td><strong>公式形式</strong></td>
+<td><code>x_i = embedding_i + pos_i</code></td>
+<td><code>attn_score = f(q_i, k_j, i-j)</code></td>
+</tr>
+<tr>
+<td><strong>长度外推</strong></td>
+<td>差（未见过的位置没有编码）</td>
+<td>好（只依赖距离，不依赖绝对位置）</td>
+</tr>
+<tr>
+<td><strong>代表方法</strong></td>
+<td>Sinusoidal, Learned</td>
+<td>RoPE, ALiBi, T5 bias</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 四种主流方法的详细对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>核心机制</th>
+<th>优点</th>
+<th>缺点</th>
+<th>代表模型</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Sinusoidal</strong></td>
+<td><code>PE(pos, 2i) = sin(pos/10000^(2i/d))</code></td>
+<td>连续、有确定性的位置关系</td>
+<td>不直接编码相对位置</td>
+<td>原始 Transformer</td>
+</tr>
+<tr>
+<td><strong>Learned</strong></td>
+<td>每个位置学一个向量</td>
+<td>灵活、可训练</td>
+<td>长度外推差、占参数量</td>
+<td>BERT, GPT-1</td>
+</tr>
+<tr>
+<td><strong>RoPE</strong></td>
+<td>Q/K 向量旋转，角度∝位置</td>
+<td>内积天然含相对位置、外推友好</td>
+<td>高频维度外推仍衰减</td>
+<td>LLaMA, Qwen</td>
+</tr>
+<tr>
+<td><strong>ALiBi</strong></td>
+<td>Attention score 减去距离偏置</td>
+<td>训练快、长度外推极强</td>
+<td>短文本可能略弱于 RoPE</td>
+<td>BLOOM, MPT</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 为什么相对位置编码更适合长上下文？</strong></p>
+<p>核心直觉：语言关系通常是”局部的”和”相对的”。</p>
+<ul>
+<li>“我爱你”中，”我”和”爱”的关系取决于它们<strong>相距 1 个位置</strong>，而不在于它们在文档的第 100 个还是第 10000 个位置。
+</li>
+<li>绝对编码需要为每个位置学一个独立向量，<code>pos=10000</code> 的向量在训练时可能从未见过（训练最长 4096）。
+</li>
+<li>相对编码只关心 <code>distance = i-j</code>，<code>distance=1</code> 在短文本和长文本中是一样的。
+</li>
+</ul>
+<p><strong>5. RoPE vs ALiBi 的工程选择</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>推荐</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>通用 LLM（追求最佳效果）</td>
+<td>RoPE</td>
+<td>表达力更强，配合 NTK/YaRN 外推效果好</td>
+</tr>
+<tr>
+<td>需要训练时极快收敛</td>
+<td>ALiBi</td>
+<td>不需要位置编码层，直接 distance bias</td>
+</tr>
+<tr>
+<td>超长上下文（1M+）</td>
+<td>ALiBi 或 RoPE+YaRN</td>
+<td>ALiBi 外推”免费”；RoPE 需要额外微调</td>
+</tr>
+<tr>
+<td>代码/数学（精确位置敏感）</td>
+<td>RoPE</td>
+<td>旋转编码对精确位置关系建模更细</td>
+</tr>
+</tbody></table></div>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”RoPE 和 ALiBi 的本质区别是什么？”</strong>
+<ul>
+<li>答：RoPE 是”乘法型”相对编码——把位置信息乘到 Q/K 向量上（通过旋转矩阵），attention score 通过内积自然获得相对位置信息。ALiBi 是”加法型”相对编码——直接在 attention score 上减去一个与距离成正比的偏置项。RoPE 更细粒度（每维不同频率），ALiBi 更简单粗暴但外推更稳。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”为什么原始 Transformer 用 Sinusoidal，而现代 LLM 不用了？”</strong>
+<ul>
+<li>答：Sinusoidal 编码虽然连续、有确定性，但它编码的是绝对位置。训练时最长 512，测试时 1024 就外推失败了（因为 <code>pos=1000</code> 的编码训练时没见过）。现代 LLM 需要支持 128K+ 上下文，必须有良好的长度外推能力，所以 RoPE/ALiBi 取代了 Sinusoidal。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果不用任何位置编码，模型能学会位置信息吗？”</strong>
+<ul>
+<li>答：纯自注意力是位置无关的（permutation equivariant）——打乱 token 顺序，attention 输出只是对应位置互换。没有位置编码，模型完全不知道”第一个 token”和”第二个 token”的区别。但一些新方法（如 Mamba、RWKV）通过循环/扫描结构隐式编码位置，不依赖显式位置编码。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0532"><a class="anchor-link" href="#h-0532" aria-label="跳转到本节">#</a>17. RoPE 的核心思想是什么？</h3>
+<h4 id="h-0533"><a class="anchor-link" href="#h-0533" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>RoPE</code> 的核心思想，不是像早期方法那样给 token 向量额外加一个位置向量，而是直接对 <code>Q/K</code> 的不同维度做成对旋转，让 attention 分数在做内积时天然带上相对位置信息。换句话说，它把“位置”嵌进了相关性计算本身，而不是只在输入端做一次标记。</p>
+<p>这样做的好处是：模型在判断两个 token 是否相关时，不仅知道它们内容像不像，还能顺带感知它们相隔多远、方向如何。这也是为什么很多人会说 <code>RoPE</code> 更像是在改造 attention，而不只是改造 embedding。</p>
+<hr>
+<h4 id="h-0534"><a class="anchor-link" href="#h-0534" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么 attention 需要位置信息？</strong></p>
+<p>Self-Attention 有一个根本性质：<strong>位置无关性（permutation equivariant）</strong>。如果你把输入 token 的顺序打乱，attention 的输出只是对应位置互换，数值本身完全不变。</p>
+<p>举例：句子 "猫 喜欢 鱼" 和 "鱼 喜欢 猫"，如果不加位置信息，模型认为这两个句子完全一样——因为 attention 只看 token 内容，不看顺序。</p>
+<p>所以位置编码的使命是：<strong>在不破坏 attention 核心机制的前提下，让模型感知顺序</strong>。</p>
+<p>早期做法（如原始 Transformer）是给每个位置加一个固定向量 <code>p(m)</code>：<code>x + p(m)</code>。但这样位置信息和内容信息是"相加"关系，可能互相干扰。</p>
+<p>RoPE 的做法更巧妙：<strong>不添加额外向量，而是直接旋转 Q/K 向量本身</strong>，让位置信息通过"旋转角度"注入到内积计算中。</p>
+<hr>
+<p><strong>2. 旋转的数学形式：用一个具体例子走一遍</strong></p>
+<p>RoPE 对 Q/K 向量的每一对维度做二维旋转。对于位置 <code>m</code> 的向量，第 <code>(2i, 2i+1)</code> 维度的旋转如下：</p>
+<pre><code class="language-text">[q_{2i}  ]   [cos(mθ_i)  -sin(mθ_i)] [q_{2i}  ]
+[q_{2i+1}] = [sin(mθ_i)   cos(mθ_i)] [q_{2i+1}]</code></pre>
+<p>其中 <code>θ_i = base^(-2i/d)</code>，<code>base</code> 通常取 10000。</p>
+<p><strong>具体数值例子</strong>：假设某个 token 在维度对 <code>(0, 1)</code> 上的原始值是 <code>q = [1.0, 0.0]</code>，位置 <code>m = 3</code>，<code>base = 10000</code>，<code>d = 4</code>（所以 <code>i = 0</code>）。</p>
+<p>先算 <code>θ_0</code>：</p>
+<pre><code class="language-text">θ_0 = 10000^(-2*0/4) = 10000^0 = 1.0</code></pre>
+<p>再算旋转矩阵：</p>
+<pre><code class="language-text">cos(3 * 1.0) = cos(3) ≈ -0.990
+sin(3 * 1.0) = sin(3) ≈  0.141
+
+[q_0']   [-0.990  -0.141] [1.0]   [-0.990 * 1.0 + (-0.141) * 0.0]   [-0.990]
+[q_1'] = [ 0.141  -0.990] [0.0] = [ 0.141 * 1.0 + (-0.990) * 0.0] = [ 0.141]</code></pre>
+<p>位置 3 的 token，其 Q 向量在第 <code>(0,1)</code> 维上从 <code>[1.0, 0.0]</code> 旋转成了 <code>[-0.990, 0.141]</code>。</p>
+<p><strong>关键观察</strong>：</p>
+<ul>
+<li>同一个 token 在不同位置上，旋转角度不同
+</li>
+<li>位置 <code>m</code> 越大，旋转角度 <code>mθ_i</code> 越大
+</li>
+<li>向量长度不变（旋转矩阵是正交矩阵），所以位置编码不改变 token 表示的"强度"
+</li>
+</ul>
+<hr>
+<p><strong>3. 为什么二维一组旋转？不同频率的作用</strong></p>
+<p>RoPE 不是对整个向量做一次高维旋转，而是<strong>按维度对分别旋转</strong>。每对维度有自己的旋转速度 <code>θ_i</code>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度对索引 i</th>
+<th>θ_i = 10000^(-2i/d)</th>
+<th>旋转速度</th>
+<th>编码范围</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>i = 0</td>
+<td>10000^0 = 1.0</td>
+<td>最快</td>
+<td>短程精细位置</td>
+</tr>
+<tr>
+<td>i = d/4</td>
+<td>10000^(-0.5) ≈ 0.01</td>
+<td>中等</td>
+<td>中程位置</td>
+</tr>
+<tr>
+<td>i = d/2-1</td>
+<td>10000^(-(d-2)/d) ≈ 0.0001</td>
+<td>最慢</td>
+<td>长程粗粒度位置</td>
+</tr>
+</tbody></table></div>
+<p><strong>直观理解</strong>：</p>
+<ul>
+<li>高频对（i 小，θ_i 大）：转得快，相邻位置的区分度高 → 适合编码"这个词紧挨着那个词"
+</li>
+<li>低频对（i 大，θ_i 小）：转得慢，很多位置共享相近角度 → 适合编码"这两个词相距很远"
+</li>
+</ul>
+<p>这种"多频率"设计让 RoPE 同时兼顾短程精度和长程覆盖。</p>
+<hr>
+<p><strong>4. 为什么旋转后的内积只跟相对位置有关？</strong></p>
+<p>这是 RoPE 最核心的数学性质。设位置 <code>m</code> 的 query 经过旋转后为 <code>R(m)q</code>，位置 <code>n</code> 的 key 经过旋转后为 <code>R(n)k</code>，则：</p>
+<pre><code class="language-text">&lt;R(m)q, R(n)k&gt; = &lt;q, R(n-m)k&gt;</code></pre>
+<p><strong>也就是说，attention 分数只取决于 <code>m-n</code>（相对距离），跟绝对位置无关。</strong></p>
+<p><strong>用具体数值验证</strong>：</p>
+<p>假设 <code>q = [1, 0]</code>，<code>k = [1, 0]</code>，<code>θ = 1.0</code>。</p>
+<ul>
+<li>位置 m=2, n=0（相对距离 = 2）：
+</li>
+</ul>
+<pre><code class="language-text">  R(2)q = [cos(2), sin(2)] ≈ [-0.416, 0.909]
+  R(0)k = [cos(0), sin(0)] = [1, 0]
+  内积 = -0.416 * 1 + 0.909 * 0 = -0.416</code></pre>
+<ul>
+<li>位置 m=5, n=3（相对距离也是 2）：
+</li>
+</ul>
+<pre><code class="language-text">  R(5)q = [cos(5), sin(5)] ≈ [0.284, -0.959]
+  R(3)k = [cos(3), sin(3)] ≈ [-0.990, 0.141]
+  内积 = 0.284 * (-0.990) + (-0.959) * 0.141 ≈ -0.281 + (-0.135) ≈ -0.416</code></pre>
+<p>（数值近似是因为 cos(2) ≈ cos(5-3)，严格相等需要更精确的计算，但趋势一致）</p>
+<p>这个性质为什么重要？因为<strong>语言关系本质上大多是相对的</strong>：</p>
+<ul>
+<li>"A 修饰 B" 关系不依赖于 A 和 B 在句子的第几个位置
+</li>
+<li>只依赖于"A 在 B 前面几个位置"
+</li>
+</ul>
+<p>RoPE 把这个直觉变成了数学保证。</p>
+<hr>
+<p><strong>5. Base = 10000 的含义</strong></p>
+<p><code>base = 10000</code> 决定了最慢维度对（i = d/2-1）的旋转周期：</p>
+<pre><code class="language-text">周期 T = 2π / θ_{max} ≈ 2π * base^((d-2)/d) ≈ 2π * 10000 ≈ 62832</code></pre>
+<p>对于 4K、8K 的上下文，一个周期还没转完，所以位置编码是"单调"的——每个位置的角度都不一样。</p>
+<p>但对于 128K 上下文，位置角度可能超过训练时见过的范围，这就是<strong>外推困难的来源</strong>：模型在训练时只见过 <code>[0, 4Kθ_i]</code> 范围内的角度，推理时突然要处理 <code>[0, 128Kθ_i]</code>，注意力分数的数值行为完全陌生。</p>
+<hr>
+<p><strong>6. RoPE 和绝对位置编码的本质区别</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>绝对位置编码</th>
+<th>RoPE</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>注入方式</td>
+<td><code>x + p(m)</code>（相加）</td>
+<td><code>R(m)x</code>（旋转）</td>
+</tr>
+<tr>
+<td>位置信息</td>
+<td>显式附加在输入端</td>
+<td>嵌入到 attention 内积中</td>
+</tr>
+<tr>
+<td>相对位置</td>
+<td>需要额外设计</td>
+<td>天然满足 <code>&lt;R(m)q, R(n)k&gt; = &lt;q, R(n-m)k&gt;</code></td>
+</tr>
+<tr>
+<td>外推性</td>
+<td>较差，位置向量从未见过</td>
+<td>较好，但超长仍有问题</td>
+</tr>
+</tbody></table></div>
+<hr>
+<p><strong>7. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"RoPE 和绝对位置编码在数学上最本质的区别是什么？"</strong>
+<ul>
+<li>答：绝对位置编码是 <code>f(x) + p(m)</code>（内容+位置相加），RoPE 是 <code>f(x) * R(m)</code>（内容被位置旋转）。相加时位置和内容可能互相干扰；旋转时内积 <code>&lt;R(m)q, R(n)k&gt; = &lt;q, R(n-m)k&gt;</code>，只跟相对距离有关，这是质的区别。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 RoPE 按维度对旋转，而不是对整个向量做高维旋转？"</strong>
+<ul>
+<li>答：对整个向量做单一旋转，所有维度用同一个频率，无法同时兼顾长短程。按对旋转让每个维度对承载不同频率的位置信号，短程精细变化由高频对编码，长程粗粒度变化由低频对编码。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"base 从 10000 改成 500000（如 CodeLlama 那样），会带来什么变化？"</strong>
+<ul>
+<li>答：base 变大意味着 <code>θ_i</code> 整体变小，所有维度对旋转得更慢。好处是长程外推时不会那么快重叠，长距离区分更稳；代价是短程位置分辨率变粗，近距离 token 的区分能力下降。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0535"><a class="anchor-link" href="#h-0535" aria-label="跳转到本节">#</a>18. context window 指什么，它为什么重要？</h3>
+<h4 id="h-0536"><a class="anchor-link" href="#h-0536" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>context window 就是模型一次前向计算里能同时接收和处理的 token 上限。你可以把它理解成模型当前“工作记忆”的大小：窗口越大，它一次能看到的对话历史、文档证据、代码上下文和工具返回结果就越多。</p>
+<p>它之所以重要，不只是因为”能塞更多字”，而是因为很多能力都依赖足够上下文，比如长文问答、RAG、多轮 Agent、复杂代码补全。如果窗口太小，模型不是不会做，而是压根看不全问题。</p>
+<hr>
+<h4 id="h-0537"><a class="anchor-link" href="#h-0537" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. Context Window 的本质是”一次可见信息量”</strong></p>
+<p>Context window 不是存储容量，而是<strong>前向传播时的计算可见范围</strong>。模型在生成第 \(i\) 个 token 时，只能 attend 到 \([0, i-1]\) 范围内的 token。这决定了：</p>
+<ul>
+<li><strong>信息完整性</strong>：RAG 召回 10 篇文档，但窗口只有 4K，可能只够放 2 篇
+</li>
+<li><strong>连贯性</strong>：多轮对话第 20 轮时，前面 10 轮可能被挤出窗口，模型”忘记”用户偏好
+</li>
+<li><strong>推理深度</strong>：复杂代码补全需要看到整个文件 + 依赖库定义，窗口不够只能局部猜测
+</li>
+</ul>
+<p><strong>2. 窗口大小的工程制约链</strong></p>
+<pre><code class="language-text">目标窗口 ↑
+    → Attention 计算量 O(n²) ↑
+    → KV Cache 显存占用 2*n*h*l*d ↑
+    → 预填充时间 ↑ (TTFT 恶化)
+    → 需要更长序列的预训练/微调成本 ↑</code></pre>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>窗口大小</th>
+<th>典型场景</th>
+<th>KV Cache (70B, BF16)</th>
+<th>预填充 4K 耗时</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>4K</td>
+<td>短对话、单轮 QA</td>
+<td>~2 GB</td>
+<td>~0.5s</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>长文档摘要、代码库</td>
+<td>~16 GB</td>
+<td>~3s</td>
+</tr>
+<tr>
+<td>128K</td>
+<td>整本书、多轮 Agent</td>
+<td>~64 GB</td>
+<td>~15s</td>
+</tr>
+<tr>
+<td>1M+</td>
+<td>视频序列、长期记忆</td>
+<td>~512 GB</td>
+<td>不可行（需稀疏/循环架构）</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. “长窗口”不等于”会用长窗口”</strong></p>
+<p>很多模型声称支持 128K，但实际能力分三层：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>层级</th>
+<th>能力</th>
+<th>测试方法</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>机械容纳</strong></td>
+<td>能接收 128K token 不报错</td>
+<td>直接喂长文本</td>
+</tr>
+<tr>
+<td><strong>信息提取</strong></td>
+<td>能从 128K 中找回特定信息（Needle in Haystack）</td>
+<td>在无关文本中插入关键句，提问</td>
+</tr>
+<tr>
+<td><strong>长程推理</strong></td>
+<td>能整合分散在 128K 中的多段信息做推理</td>
+<td>多跳问答，证据间隔 &gt;50K token</td>
+</tr>
+</tbody></table></div>
+<p>目前多数开源模型做到第二层，第三层仍是挑战。”Lost in the Middle”现象说明即使窗口够大，模型也可能忽略中间内容。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果窗口从 4K 扩展到 128K，训练成本增加多少？”</strong>
+<ul>
+<li>答：预训练阶段，若要保持相同 token 数，计算量与序列长度呈超线性增长（O(n²) attention + 更大的激活显存）。实际做法通常是：先在短序列（4K）预训练，再用长序列（32K/128K）做继续预训练（continue pretraining），成本远低于从头训练。继续预训练通常只需要原预训练 5-10% 的 token。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”KV Cache 是长窗口的主要瓶颈吗？”</strong>
+<ul>
+<li>答：是主要瓶颈之一。Attention 计算本身可通过 FlashAttention、稀疏 attention 缓解，但 KV Cache 的显存占用与序列长度线性相关，且需要在每个生成步骤中从 HBM 读取。解决方案包括：MQA/GQA 减少 KV 头数、KV Cache 量化（INT8/INT4）、分页管理（vLLM PagedAttention）、以及滑动窗口/循环机制（只保留最近 W 个 token 的 KV）。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0538"><a class="anchor-link" href="#h-0538" aria-label="跳转到本节">#</a>19. 为什么 RoPE 会成为主流？它相比绝对位置编码到底好在哪里？</h3>
+<h4 id="h-0539"><a class="anchor-link" href="#h-0539" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>RoPE</code> 会成为主流，核心原因是它同时满足了三件事：第一，和 Decoder-only 自回归架构兼容得很好；第二，能把相对位置信息自然融进 attention 打分；第三，在长度扩展时通常比简单绝对位置编码更稳。</p>
+<p>从工程角度看，它实现统一、生态成熟、很多开源基座都默认采用，所以后来逐渐形成了事实标准。严格说它也不是没有缺点，比如超长外推仍会出问题，但在“效果、实现复杂度、生态接受度”三者之间，它处在很舒服的位置。</p>
+<hr>
+<h4 id="h-0540"><a class="anchor-link" href="#h-0540" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 绝对位置编码是怎么工作的？</strong></p>
+<p>最早的位置编码是给每个位置学一个固定向量。比如词表大小 50000，最大长度 512，就额外学一个 <code>(512, d_model)</code> 的矩阵 <code>P</code>。</p>
+<pre><code class="language-text">位置 0 的编码 → P[0] = [0.1, -0.3, 0.5, ...]
+位置 1 的编码 → P[1] = [0.2,  0.1, -0.2, ...]
+位置 2 的编码 → P[2] = [-0.1, 0.4, 0.3, ...]
+...</code></pre>
+<p>输入表示 = <code>Embedding(token) + P[position]</code>。</p>
+<p>原始 Transformer 用的是正弦/余弦函数来生成位置向量，不需要学习参数：</p>
+<pre><code class="language-text">PE(pos, 2i)   = sin(pos / 10000^(2i/d))
+PE(pos, 2i+1) = cos(pos / 10000^(2i/d))</code></pre>
+<p><strong>2. 绝对位置编码的三个核心问题</strong></p>
+<p><strong>问题一：位置和内容互相干扰</strong></p>
+<p>绝对位置编码是 <code>x + p(m)</code>。相加意味着位置向量和内容向量在同一个空间里竞争。如果位置向量很大，它会"淹没"内容信息；如果很小，位置信号又不够强。模型需要额外学习如何把这两者区分开。</p>
+<p><strong>问题二：不擅长表达相对位置</strong></p>
+<p>绝对位置编码回答的是"我在第几个位置"，但语言关系更多是相对的：</p>
+<ul>
+<li>"A 修饰 B" 不依赖于 A 在第 3 位、B 在第 5 位
+</li>
+<li>只依赖于"A 在 B 前面 2 个位置"
+</li>
+</ul>
+<p>绝对编码要让模型从 <code>P[3]</code> 和 <code>P[5]</code> 推断出"相距 2"，这需要额外学习。RoPE 直接让内积 <code>&lt;R(m)q, R(n)k&gt;</code> 只跟 <code>m-n</code> 有关，不需要额外学习。</p>
+<p><strong>问题三：外推性差</strong></p>
+<p>训练时只见过位置 0~4095，绝对位置编码的 <code>P[4096]</code> 从未见过。推理时要处理位置 10000，<code>P[10000]</code> 完全超出训练分布，模型不知道该怎么处理。</p>
+<p>RoPE 虽然也面临外推问题，但因为它的角度是连续的旋转，相邻位置的角度变化是平滑的，比绝对编码的"跳变"更容易外推（通过 PI、NTK 等方法）。</p>
+<hr>
+<p><strong>3. RoPE 的优势：从机制上理解</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>绝对位置编码</th>
+<th>RoPE</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>注入方式</td>
+<td><code>x + p(m)</code>（相加）</td>
+<td><code>R(m)x</code>（旋转）</td>
+</tr>
+<tr>
+<td>位置与内容的关系</td>
+<td>同一空间竞争</td>
+<td>旋转不改变向量长度，互不干扰</td>
+</tr>
+<tr>
+<td>相对位置</td>
+<td>需要模型额外学习</td>
+<td>内积天然只依赖 <code>m-n</code></td>
+</tr>
+<tr>
+<td>与 attention 的耦合</td>
+<td>仅在输入端注入</td>
+<td>嵌入到 attention 计算本身</td>
+</tr>
+<tr>
+<td>外推性</td>
+<td>差（从未见过的位置向量）</td>
+<td>较好（连续旋转可插值/微调）</td>
+</tr>
+</tbody></table></div>
+<p><strong>关键洞察</strong>：RoPE 不是"多了一个组件"，而是<strong>重新设计了 attention 的数学形式</strong>。它让位置信息不是从外部"附加"进去，而是从内部"生长"出来。</p>
+<hr>
+<p><strong>4. 为什么工程上 RoPE 成为事实标准？</strong></p>
+<p><strong>生态正反馈</strong>：</p>
+<ul>
+<li>LLaMA（Meta）用 RoPE → 大量下游工作基于 LLaMA → 大家默认兼容 RoPE
+</li>
+<li>GPT-4 也用了 RoPE（根据公开分析）→ 进一步确认行业选择
+</li>
+<li>开源工具链（HuggingFace、vLLM、llama.cpp）都对 RoPE 有最成熟的优化
+</li>
+</ul>
+<p><strong>实现简洁</strong>：</p>
+<ul>
+<li>不需要额外的位置嵌入参数（省内存）
+</li>
+<li>实现就是几行旋转矩阵代码
+</li>
+<li>和 FlashAttention 等优化兼容良好
+</li>
+</ul>
+<p><strong>可扩展性</strong>：</p>
+<ul>
+<li>通过调整 base（如 10000 → 500000）可以适应不同长度
+</li>
+<li>PI、NTK-aware、YaRN 等扩展方法都建立在 RoPE 基础上
+</li>
+</ul>
+<hr>
+<p><strong>5. RoPE 真的完美吗？</strong></p>
+<p>不是。它的问题是：</p>
+<ul>
+<li><strong>超长外推仍有挑战</strong>：128K 以上位置的角度可能超出训练分布
+</li>
+<li><strong>近距离分辨率有限</strong>：base 太大时短程区分变粗
+</li>
+<li><strong>没有显式的周期性设计</strong>：不像正弦编码有明确的周期概念
+</li>
+</ul>
+<p>但综合来看，它在"效果、实现复杂度、生态接受度"三者之间确实处于很舒服的位置。</p>
+<hr>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"ALiBi 和 RoPE 有什么区别？"</strong>
+<ul>
+<li>答：RoPE 通过旋转注入位置信息；ALiBi 直接在 attention score 上加一个基于距离的偏置项（距离越远，分数越低）。ALiBi 实现更简单，但位置信息是"硬性"的（不能学习），而 RoPE 的旋转角度可以通过训练自适应调整。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果没有 RoPE，模型能学会位置信息吗？"</strong>
+<ul>
+<li>答：纯 attention 是位置无关的（打乱 token 顺序输出只是位置互换）。但一些替代方案如 Mamba、RWKV 通过循环/扫描结构隐式编码位置，不需要显式位置编码。所以"没有 RoPE"不等于"没有位置信息"，只是机制不同。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 RoPE 适合 Decoder-only，不适合 Encoder-only 吗？"</strong>
+<ul>
+<li>答：RoPE 主要配合 causal mask 使用（每个位置只看前面）。Encoder-only 用双向 attention 时，RoPE 也能工作，但效果不一定比绝对编码更好。RoPE 的优势在长序列自回归生成中更明显。
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="h-0541"><a class="anchor-link" href="#h-0541" aria-label="跳转到本节">#</a>20. 长度外推为什么难？RoPE 在长上下文下会遇到什么问题？</h3>
+<h4 id="h-0542"><a class="anchor-link" href="#h-0542" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>长度外推难，本质上是模型在训练时只见过某个长度分布，比如 <code>4K</code> 或 <code>8K</code>，一旦推理时突然拉到 <code>32K</code>、<code>128K</code>，模型并不是只多看一点内容，而是整个位置分布、依赖距离、注意力使用方式都超出了训练经验。</p>
+<p>对 <code>RoPE</code> 来说，问题会表现为高频旋转外推失真、远距离 token 关系建模变差、注意力分数数值行为变化，以及整体”看到了但用不好”。所以 <code>RoPE</code> 是长上下文的重要基础，但绝不是只要用了 <code>RoPE</code>，长度外推就自动解决。</p>
+<hr>
+<h4 id="h-0543"><a class="anchor-link" href="#h-0543" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 外推困难的本质：训练分布与推理分布的失配</strong></p>
+<p>模型训练时见过的位置范围是 <code>[0, L_train]</code>，比如 4K。RoPE 的旋转角度 <code>mθ_i</code> 随位置 <code>m</code> 线性增长。训练时，模型学到了”角度在 <code>[0, 4K×θ_i]</code> 范围内的位置关系”。</p>
+<p>推理时拉到 128K，位置 <code>m</code> 可能达到 <code>32×L_train</code>。对于高频维度（大 <code>i</code>，<code>θ_i</code> 很小），<code>mθ_i</code> 可能已经超过训练时见过的最大角度几十倍。模型从未见过这样的角度分布，注意力分数的数值行为完全陌生。</p>
+<p>更本质地说：Transformer 不是”看位置编码的公式来理解长度”，而是”看训练数据中的位置模式来学习长度规律”。训练数据里没有 128K 长度的样本，模型就没有学到 128K 长度的注意力使用方式。</p>
+<p><strong>2. 三类长上下文扩展方法的本质</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>核心思想</th>
+<th>数学操作</th>
+<th>是否需要训练</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>位置插值 (PI)</td>
+<td>把长位置压缩到训练范围内</td>
+<td><code>m' = m × L_train / L_target</code></td>
+<td>少量微调</td>
+</tr>
+<tr>
+<td>NTK-aware</td>
+<td>高频少压缩、低频多压缩</td>
+<td>修改 base 实现频率差异化缩放</td>
+<td>通常无需训练</td>
+</tr>
+<tr>
+<td>YaRN</td>
+<td>NTK-by-parts + attention temperature</td>
+<td>区分高低频维度，对attention分数做温度缩放</td>
+<td>少量微调</td>
+</tr>
+</tbody></table></div>
+<p>位置插值最直观：原本 0-128K 的位置，都除以 32 缩回 0-4K。但所有位置都均匀压缩，近距离区分变模糊。</p>
+<p>NTK-aware 更聪明：它通过增大 base，让 <code>θ_i</code> 整体变小，相当于”把钟表的表针调慢”，这样 128K 位置的角度范围不会超出训练见过的太多。而且高频维度（本身 <code>θ_i</code> 就小）受影响更大，低频维度受影响小，实现了差异化处理。</p>
+<p><strong>3. 为什么”支持 128K”不代表”能用好 128K”</strong></p>
+<p>即使通过 PI/NTK 把窗口扩到 128K，模型仍面临几个挑战：</p>
+<ul>
+<li><strong>注意力稀释</strong>：128K 个 token 竞争注意力权重，每个 token 平均只能分到约 <code>1/128K</code> 的注意力，关键信息容易被淹没。
+</li>
+<li><strong>Lost in the Middle</strong>：模型天然更关注开头和结尾，中间信息利用率低。
+</li>
+<li><strong>长程依赖学习不足</strong>：预训练数据中长序列的依赖模式本来就少，模型没有充分学习”跳过 50K token 去找答案”的能力。
+</li>
+</ul>
+<p>所以扩窗口是<strong>必要不充分条件</strong>——窗口大了只是”装得下”，不代表”找得到、用得好”。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”位置插值和 NTK-aware 在直觉上有什么区别？”</strong>
+<ul>
+<li>答：位置插值是”把地图压扁”——所有位置等比例压缩，简单但粗暴；NTK-aware 是”把钟调慢”——让同样的位置区间对应更小的角度变化，且不同频率维度调的程度不同，更精细。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”为什么有些模型扩窗口后继续训练 1B token 就够了，有些需要几十 B？”</strong>
+<ul>
+<li>答：取决于原模型基础能力、扩窗倍数和数据质量。如果原模型已经在 4K 上学到了很好的短程模式，扩到 128K 只需要补”长程模式”；但如果模型本身基础不好，或者扩窗倍数太大（如 4K→1M），就需要更多数据来学习新的位置分布和长程依赖。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”YaRN 的 attention temperature scaling 是为了解决什么问题？”</strong>
+<ul>
+<li>答：扩窗口后，attention 分数的数值范围会变（因为更多 token 参与 softmax 竞争），temperature scaling 通过调整 softmax 前的分数尺度，让 attention 分布保持与训练时相似的”尖锐度”，避免因为窗口变大导致 attention 过于平坦。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0544"><a class="anchor-link" href="#h-0544" aria-label="跳转到本节">#</a>21. 如果一个模型窗口从 <code>8K</code> 扩到 <code>128K</code>，会带来哪些新的工程和建模问题？</h3>
+<h4 id="h-0545"><a class="anchor-link" href="#h-0545" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>如果窗口从 <code>8K</code> 拉到 <code>128K</code>，首先爆炸的是工程成本。attention 计算量会明显上升，prefill 时间更长，<code>KV cache</code> 显存占用显著增加，服务系统的带宽和调度压力也会更重。很多团队以为只是“模型能吃更长输入”，但实际上是整条推理链都被重新定价。</p>
+<p>建模层面也会出现新问题，比如长距离信息被稀释、关键证据掉在中间不被利用、训练时没见过这么长的样本导致分布失配、位置编码外推失效等。所以长窗口不是一个简单参数，而是一整套建模和系统问题。</p>
+<hr>
+<h4 id="h-0546"><a class="anchor-link" href="#h-0546" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 工程成本的量化</strong></p>
+<p>从 8K 扩到 128K（16 倍），以 LLaMA-2 7B 为例：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>指标</th>
+<th>8K</th>
+<th>128K</th>
+<th>增长倍数</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Attention FLOPs</td>
+<td>~4 GFLOPs/层</td>
+<td>~1024 GFLOPs/层</td>
+<td>256x</td>
+</tr>
+<tr>
+<td>KV cache (batch=1)</td>
+<td>~4 GB</td>
+<td>~64 GB</td>
+<td>16x</td>
+</tr>
+<tr>
+<td>Prefill 时间 (A100)</td>
+<td>~0.5s</td>
+<td>~8s</td>
+<td>16x</td>
+</tr>
+<tr>
+<td>Decode 时间/token</td>
+<td>~10ms</td>
+<td>~15ms</td>
+<td>1.5x</td>
+</tr>
+</tbody></table></div>
+<p>KV cache 从 4GB 涨到 64GB，单张 A100 80GB 已经快满了。如果要支持 batch=4，就需要 256GB，远超单卡容量。</p>
+<p><strong>2. 建模层面的具体问题</strong></p>
+<ul>
+<li><strong>注意力稀释</strong>：128K 个 token 竞争注意力，每个 token 平均只能分到 <code>1/128K</code> 的权重，关键信息容易被淹没。
+</li>
+<li><strong>训练数据不足</strong>：预训练语料中长文本（&gt;32K）占比很少，模型没有充分学习长程依赖模式。
+</li>
+<li><strong>位置编码外推</strong>：RoPE 在 128K 上的角度可能超出训练分布，需要 PI/NTK/YaRN 等扩展方法。
+</li>
+<li><strong>优化器状态</strong>：训练时 Adam 的动量统计量也随序列长度增加，显存压力更大。
+</li>
+</ul>
+<p><strong>3. 从 8K 到 128K 的典型路径</strong></p>
+<p>实际工程中不会一步跳到 128K，而是渐进扩展：</p>
+<pre><code class="language-text">8K (预训练) → 32K (继续预训练 100B token) → 128K (继续预训练 50B token)</code></pre>
+<p>每一步都需要：</p>
+<ol>
+<li>调整位置编码（如 NTK-aware scaling）
+</li>
+<li>准备对应长度的训练数据
+</li>
+<li>调整学习率（通常比预训练小一个数量级）
+</li>
+<li>评估外推效果
+</li>
+</ol>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果一个模型训练时最长只见过 4K，直接推理 128K 会怎样？”</strong>
+<ul>
+<li>答：大概率效果很差。模型不仅在位置编码上外推失败，更重要的是注意力模式完全陌生。它不知道如何分配 128K token 的注意力权重，可能只关注前几千个 token，后面的内容虽然”进去了”但”没被用上”。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”扩窗口时，数据从哪里来？”</strong>
+<ul>
+<li>答：几种来源：1）现有长文档（如书籍、论文、法律文件）；2）合成数据（把多个短文档拼接成长序列）；3）领域特定长文本（如代码仓库、多轮对话记录）。关键是数据质量要高，且分布与目标场景匹配。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”128K 模型服务时，怎么解决 KV cache 爆显存的问题？”</strong>
+<ul>
+<li>答：1）GQA/MQA（减少 KV cache 头数）；2）KV cache 量化（INT8/INT4）；3）PagedAttention（提高显存利用率）；4）多卡 TP（张量并行，把 KV cache 分散到多张卡）；5）限制最大 batch size 和生成长度。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0547"><a class="anchor-link" href="#h-0547" aria-label="跳转到本节">#</a>22. “Lost in the Middle” 是什么现象？为什么它在 RAG 里特别致命？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">RAG / Agent 链路</div>
+        <p class="inline-enhancement-note">放在 RAG、Agent、MCP、Tool Schema 小节附近，强调系统闭环而不是单点组件。</p>
+        <div class="visual-grid"><div class="visual-card"><b>RAG 与 Agent 系统图</b><img src="../assets/rag-agent-system.svg" alt="RAG 与 Agent 系统图"><p>检索、重排、上下文组装、工具调用和评测闭环。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>检索重排分数</b><div class="math-display">\[\mathrm{score}(q,d)=\lambda\,s_{dense}(q,d)+(1-\lambda)\,s_{sparse}(q,d)\]</div><p>Hybrid retrieval 常用 dense 与 sparse 信号混合。</p></div></div>
+      </aside>
+<h4 id="h-0548"><a class="anchor-link" href="#h-0548" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>“Lost in the Middle” 指的是模型在长上下文里对中间位置的信息利用最差，往往更容易关注开头和结尾。这不是说中间内容完全没输入进去，而是说它进入了上下文，却没有在生成决策里被有效使用。</p>
+<p>它在 RAG 里特别致命，因为检索系统常常会把多段证据拼接到一个长 prompt 里。如果真正关键的证据刚好落在中段，模型就可能出现“证据在上下文里，但答案还是错”的现象。所以 RAG 不是检索到了就结束，还要考虑证据排序和上下文组织。</p>
+<hr>
+<h4 id="h-0549"><a class="anchor-link" href="#h-0549" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 现象的定量描述</strong></p>
+<p>Liu et al. (2023) 的实验发现：在 GPT-3.5/Claude 等模型上，当上下文包含多个文档时，模型对中间位置文档的问答准确率显著低于开头和结尾。</p>
+<p>具体数据（多文档问答任务，每个文档约 100 token，共 20 个文档）：</p>
+<ul>
+<li>开头位置（第 1-5 个文档）：准确率 ~80%
+</li>
+<li>中间位置（第 8-13 个文档）：准确率 ~50%
+</li>
+<li>结尾位置（第 16-20 个文档）：准确率 ~75%
+</li>
+</ul>
+<p>中间位置的准确率比开头和结尾低了约 25-30 个百分点。</p>
+<p><strong>2. 为什么模型会"丢失"中间信息？</strong></p>
+<p>根本原因不是位置编码失效（RoPE 对所有位置一视同仁），而是<strong>注意力分配</strong>的问题：</p>
+<ul>
+<li>开头文档通常包含 system prompt、问题定义，模型天然关注
+</li>
+<li>结尾文档离生成位置最近，局部注意力更强
+</li>
+<li>中间文档既不被问题直接关联，也不享受位置邻近优势
+</li>
+</ul>
+<p>此外，softmax 归一化也会加剧这个问题：当上下文很长时，每个位置分到的注意力权重被稀释，中间位置更难获得显著权重。</p>
+<p><strong>3. RAG 场景下的缓解策略</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>策略</th>
+<th>做法</th>
+<th>效果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>重排序</strong></td>
+<td>用更强的 reranker 把最相关证据排到最前面</td>
+<td>让关键证据享受"开头优势"</td>
+</tr>
+<tr>
+<td><strong>压缩/摘要</strong></td>
+<td>对召回文档先做摘要，减少总长度</td>
+<td>减少中间位置数量</td>
+</tr>
+<tr>
+<td><strong>分层检索</strong></td>
+<td>先粗读找相关文档，再细读相关段落</td>
+<td>避免一次性塞入过多文档</td>
+</tr>
+<tr>
+<td><strong>证据标注</strong></td>
+<td>在 prompt 中显式标记"以下是关键证据"</td>
+<td>引导模型关注</td>
+</tr>
+<tr>
+<td><strong>多轮查询</strong></td>
+<td>第一轮找文档，第二轮基于找到的答案追问</td>
+<td>缩短每轮上下文</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"Lost in the Middle 是因为位置编码的问题吗？"</strong>
+<ul>
+<li>答：不完全是。位置编码负责"让模型知道位置"，但 Lost in the Middle 是"模型知道了位置但选择不关注"。本质上是 attention 机制和任务结构导致的注意力偏置，不是编码失败。即使换成 ALiBi 或其他位置编码，中间位置仍然相对弱势。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果一个 RAG 系统召回了 20 段证据，你会怎么组织它们进 prompt？"</strong>
+<ul>
+<li>答：不会简单拼接。我会：1）先用 reranker 精排，确保 top-3 最相关；2）按逻辑顺序而非相关度排序（如时间线、因果关系）；3）每段证据前加标记（如"[证据1]"），让模型知道在引用；4）如果总长超过窗口限制，先做摘要或分层处理。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Lost in the Middle 和 Long Context 的能力退化是一回事吗？"</strong>
+<ul>
+<li>答：不是。Long Context 退化是指模型在超长序列上整体效果下降（如 attention 稀释、位置编码外推失效）；Lost in the Middle 是特指"中间位置利用率低于两端"，即使在模型能处理的上下文范围内也存在。前者是能力问题，后者是注意力分配问题。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0550"><a class="anchor-link" href="#h-0550" aria-label="跳转到本节">#</a>23. 一个中英文混合系统为什么不能随便更换 tokenizer？</h3>
+<h4 id="h-0551"><a class="anchor-link" href="#h-0551" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>不能随便更换 tokenizer，是因为 tokenizer 并不是一个独立小组件，而是和词表、embedding 矩阵、训练数据分布、推理成本全部绑在一起。尤其是中英文混合系统里，切分粒度稍微变化，就会影响中文是否被切碎、英文长词是否被拆得太细、代码和符号是否异常膨胀。</p>
+<p>更现实的问题是：一旦 tokenizer 变了，原来的 embedding 对齐关系就变了，很多已训练好的参数不能直接复用，线上 prompt 长度分布和成本也会被改写。所以除非你准备连训练分布一起重新适配，否则不要把换 tokenizer 当成轻量操作。</p>
+<hr>
+<h4 id="h-0552"><a class="anchor-link" href="#h-0552" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. tokenizer 和模型参数的绑定关系</strong></p>
+<pre><code class="language-text">tokenizer ↔ 词表大小(vocab_size) ↔ embedding 矩阵形状(vocab_size × d_model)</code></pre>
+<p>更换 tokenizer → 词表大小变化 → embedding 矩阵和输出头 (lm_head) 形状改变 → 必须重新训练这些层。</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>组件</th>
+<th>参数量</th>
+<th>换 tokenizer 影响</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>token embedding</td>
+<td><code>V × d</code></td>
+<td>必须重新训练（维度 V 变了）</td>
+</tr>
+<tr>
+<td>lm_head</td>
+<td><code>V × d</code></td>
+<td>必须重新训练</td>
+</tr>
+<tr>
+<td>中间层</td>
+<td>不变</td>
+<td>理论上可保留，但分布 mismatch</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 中英文混合系统的 tokenizer 特殊挑战</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>问题</th>
+<th>现象</th>
+<th>影响</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>中文切分过细</strong></td>
+<td>"人工智能" → "人/工/智/能"（4个token）</td>
+<td>序列变长、成本上升、语义碎片化</td>
+</tr>
+<tr>
+<td><strong>中文切分过粗</strong></td>
+<td>"人工智能" → 1个token</td>
+<td>罕见词表膨胀、OOV 增加</td>
+</tr>
+<tr>
+<td><strong>英文子词不平衡</strong></td>
+<td>"unhappiness" → "un/happiness" vs "unhapp/iness"</td>
+<td>不同切分导致语义不一致</td>
+</tr>
+<tr>
+<td><strong>代码/符号膨胀</strong></td>
+<td>空格和缩进产生大量重复token</td>
+<td>上下文浪费、推理成本飙升</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 具体案例：LLaMA tokenizer 的中文问题</strong></p>
+<p>LLaMA 原始词表以英文为主，中文 token 覆盖差：</p>
+<ul>
+<li>一个中文字符可能被切成 2-3 个 token
+</li>
+<li>同样长度的中文文本，token 数是英文的 1.5-2 倍
+</li>
+<li>直接后果：同样的 4096 上下文窗口，中文实际容纳的字符数只有英文的 60%
+</li>
+</ul>
+<p>解决方案（如 Chinese-LLaMA）：</p>
+<ol>
+<li>扩展词表：在原始词表基础上增加中文常用字词
+</li>
+<li>继续预训练：用中文语料训练新加入的 embedding
+</li>
+<li>注意：不能只换 tokenizer 不训练，否则新 token 的 embedding 是随机的
+</li>
+</ol>
+<p><strong>4. tokenizer 对训练成本和推理成本的影响</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>tokenizer</th>
+<th>token 数</th>
+<th>训练成本</th>
+<th>推理成本</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>A（中文优化）</td>
+<td>1000 tokens</td>
+<td>基准</td>
+<td>基准</td>
+</tr>
+<tr>
+<td>B（英文为主）</td>
+<td>1800 tokens</td>
+<td><strong>+80%</strong></td>
+<td><strong>+80%</strong></td>
+</tr>
+</tbody></table></div>
+<p>假设两个 tokenizer 对同一段中文文本的切分：</p>
+<p>token 数直接影响：</p>
+<ul>
+<li>训练：每个 token 都要过一遍 forward + backward
+</li>
+<li>推理：KV cache 大小 ∝ seq_len
+</li>
+<li>API 计费：按 token 数计费
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果要给中文 LLM 扩展词表，具体怎么做？"</strong>
+<ul>
+<li>答：1）收集大量中文语料，用 BPE/SentencePiece 重新训练或扩展 tokenizer；2）确定新词表大小（如从 32K 扩到 60K）；3）扩展 embedding 矩阵和 lm_head，新行随机初始化；4）用中文语料做继续预训练，让新 token 的 embedding 收敛；5）评估：检查中文 PPL 是否下降、同样文本的 token 数是否减少。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么 GPT-4 的 tokenizer 对代码特别友好？"</strong>
+<ul>
+<li>答：GPT-4 的 tokenizer（cl100k_base）在训练时加入了大量代码语料。代码中的常见模式（如 "def ", "import ", "self.", 常见缩进）被识别为独立 token。这让代码序列更短、结构更清晰。如果 tokenizer 没有见过这些模式，代码会被拆成碎片（如 "d/e/f/ /f/o/o"），既浪费上下文又损害代码理解。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"tokenizer 的 vocab_size 越大越好吗？"</strong>
+<ul>
+<li>答：不是。vocab_size 增大的代价：1）embedding 矩阵和 lm_head 参数量线性增长（V×d）；2）输出层 softmax 计算量增大；3）稀有 token 的 embedding 学习不充分。经验平衡：多语言模型 50K-100K，纯英文 32K-50K。太大反而降低效率。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0553"><a class="anchor-link" href="#h-0553" aria-label="跳转到本节">#</a>24. 你怎么理解 token 数、上下文长度、KV cache 占用之间的关系？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">Attention 数据流</div>
+        <p class="inline-enhancement-note">放在 Self-Attention / FlashAttention / KV cache 相关小节附近，帮助把 Q/K/V、softmax 和输出向量串起来。</p>
+        <div class="visual-grid"><div class="visual-card"><b>Scaled Attention 结构图</b><img src="../assets/attention-flow.svg" alt="Scaled Attention 结构图"><p>从 Q/K/V 到 softmax 再到输出向量的核心数据流。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>Scaled Dot-Product Attention</b><div class="math-display">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><p>缩放项控制点积方差，softmax 后得到对 V 的加权。</p></div><div class="formula-card"><b>KV Cache 显存估算</b><div class="math-display">\[\mathrm{KVCache}\approx 2 \times B \times L \times H_{kv} \times d_h \times N_{layer} \times \mathrm{bytes}\]</div><p>2 表示 K 和 V；长上下文下主要随 batch、序列长度和层数线性增长。</p></div></div>
+      </aside>
+<h4 id="h-0554"><a class="anchor-link" href="#h-0554" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>token 数、上下文长度和 <code>KV cache</code> 占用之间是近似线性放大的关系。因为每多一个历史 token，模型在每一层都要额外保存对应的 <code>K/V</code>，所以缓存开销会随着 <code>batch size * seq_len * num_layers * kv_heads * head_dim</code> 一起增长。</p>
+<p>面试里最好再补一句工程直觉：很多人只盯着模型权重大小，其实在线推理里显存爆掉，经常不是因为权重本身，而是因为长上下文和大 batch 把 <code>KV cache</code> 顶上去了。也正因为如此，<code>GQA/MQA</code>、cache 量化、PagedAttention 这些技术才会变得很关键。</p>
+<hr>
+<h4 id="h-0555"><a class="anchor-link" href="#h-0555" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. KV cache 显存占用的精确公式</strong></p>
+<pre><code class="language-text">KV_cache_size = 2 × batch_size × seq_len × num_layers × kv_heads × head_dim × bytes_per_param
+
+其中：
+- 2：K 和 V 两个张量
+- batch_size：同时处理的请求数
+- seq_len：序列长度（输入 + 已生成）
+- num_layers：模型层数
+- kv_heads：KV 头的数量（MHA=num_heads, GQA=group_size, MQA=1）
+- head_dim：每个头的维度
+- bytes_per_param：2 (FP16) 或 1 (INT8) 或 0.5 (INT4)</code></pre>
+<p><strong>2. 具体数值感受（FP16）</strong></p>
+<p>假设模型配置：<code>layers=32, heads=32, head_dim=128, kv_heads=8 (GQA)</code></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>batch</th>
+<th>seq_len</th>
+<th>KV cache 大小</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1K</td>
+<td>1 GB</td>
+<td>短对话，无压力</td>
+</tr>
+<tr>
+<td>1</td>
+<td>4K</td>
+<td>4 GB</td>
+<td>中等长度</td>
+</tr>
+<tr>
+<td>1</td>
+<td>32K</td>
+<td>32 GB</td>
+<td>长文档，单请求就占很大显存</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4K</td>
+<td>32 GB</td>
+<td>batch=8 时，KV cache 超过模型权重</td>
+</tr>
+<tr>
+<td>32</td>
+<td>8K</td>
+<td>256 GB</td>
+<td>多卡 serving 才能承载</td>
+</tr>
+</tbody></table></div>
+<p><strong>对比</strong>：7B 模型权重（FP16）约 14GB。当 batch×seq_len 足够大时，KV cache 远超权重。</p>
+<p><strong>3. 为什么 token 数增长会导致显存"爆炸"？</strong></p>
+<pre><code class="language-text">序列长度从 1K → 32K（32 倍）：
+- KV cache 从 1GB → 32GB（线性增长，32 倍）
+- Attention 计算量从 O(1K²) → O(32K²) = O(1M)（平方增长，1024 倍）</code></pre>
+<p>长度翻倍 → KV cache 翻倍（线性），但 attention 计算量翻 4 倍（平方）。所以长上下文不只是"显存问题"，也是"计算问题"。</p>
+<p><strong>4. 三种降低 KV cache 的策略对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>策略</th>
+<th>原理</th>
+<th>显存节省</th>
+<th>效果损失</th>
+<th>工程复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>GQA/MQA</strong></td>
+<td>多个 Q 头共享 K/V 头</td>
+<td>4-8 倍</td>
+<td>轻微</td>
+<td>低（推理时自动生效）</td>
+</tr>
+<tr>
+<td><strong>Cache 量化</strong></td>
+<td>KV cache 存 INT8/INT4</td>
+<td>2-4 倍</td>
+<td>轻微-中等</td>
+<td>中（需要量化/反量化）</td>
+</tr>
+<tr>
+<td><strong>PagedAttention</strong></td>
+<td>按 block 动态分配，用完即释放</td>
+<td>20-40%</td>
+<td>无</td>
+<td>高（需改造推理引擎）</td>
+</tr>
+<tr>
+<td><strong>H2O/SnapKV</strong></td>
+<td>只保留重要的 KV，丢弃冗余</td>
+<td>30-50%</td>
+<td>中等</td>
+<td>中高（需实现压缩策略）</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果 batch_size=1, seq_len=128K，KV cache 多大？怎么优化？"</strong>
+<ul>
+<li>答：以 32 层、GQA(8 头)、head_dim=128、FP16 计算：2 × 1 × 128K × 32 × 8 × 128 × 2 = 约 16GB。优化：1）GQA 已把 KV cache 降到 MHA 的 1/4；2）INT4 量化再省 4 倍 → 4GB；3）H2O 动态压缩 → 可能 2-3GB；4）PagedAttention 避免内存碎片；5）如果仍不够，考虑模型并行（TP）把 KV cache 分到多卡。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"为什么推理时显存占用会随生成过程不断增长？"</strong>
+<ul>
+<li>答：Decode 阶段每生成一个新 token，就要在 KV cache 中追加该 token 的 K 和 V。所以 seq_len 从 prompt 长度逐步增长到 prompt + output 长度，KV cache 线性增长。当输出很长（如 4K+）时，KV cache 可能从生成初期的几 GB 增长到几十 GB。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"Prefill 阶段的 KV cache 和 Decode 阶段有什么区别？"</strong>
+<ul>
+<li>答：Prefill 阶段一次性计算整个 prompt 的 KV cache，然后存储起来。Decode 阶段每步只计算新 token 的 K/V，然后追加到已有 cache。Prefill 是"批量写入"，Decode 是"逐条追加"。所以 Prefill 阶段显存占用瞬间跳到 prompt 长度对应的 KV cache 大小。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="038.html">← 38. 模块一：基础与 Transformer 架构</a><a href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展 →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

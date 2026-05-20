@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVB OPD / OPSD 资源帖深度解读</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1a16;
+      --muted: #6e675d;
+      --subtle: #91897c;
+      --paper: #f7f2e8;
+      --panel: #fffdf7;
+      --panel-2: #fdf7ec;
+      --line: #d8cdbb;
+      --line-strong: #a99b86;
+      --accent: #b45f3c;
+      --accent-dark: #7f3e2b;
+      --blue: #315e8c;
+      --blue-soft: #dde8f2;
+      --green: #276b5c;
+      --green-soft: #dcebe4;
+      --red: #9e3d32;
+      --red-soft: #f1ddd7;
+      --gold: #9a6a22;
+      --gold-soft: #f2e3bd;
+      --violet: #635099;
+      --violet-soft: #e7e1f4;
+      --code-bg: #2a241d;
+      --code-fg: #f5ead7;
+      --sans: "Avenir Next", "Inter", "Segoe UI", Arial, sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.03) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.022) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 94, 140, 0.32);
+    }
+
+    a:hover {
+      border-bottom-color: currentColor;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(247, 242, 232, 0.93);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 41%, var(--accent) 42% 58%, transparent 59%),
+        linear-gradient(45deg, transparent 0 41%, var(--blue) 42% 58%, transparent 59%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 253, 247, 0.7);
+      color: var(--ink);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(320px, 0.94fr);
+      gap: clamp(28px, 5vw, 64px);
+      align-items: center;
+      min-height: 84vh;
+      padding: clamp(56px, 8vw, 108px) clamp(20px, 5vw, 72px) 48px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 88% 14%, rgba(180, 95, 60, 0.12), transparent 28%),
+        linear-gradient(112deg, rgba(255, 253, 247, 0.86), rgba(247, 242, 232, 0.22));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 18px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.4vw, 96px);
+      font-weight: 700;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.2vw, 54px);
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: clamp(20px, 2.2vw, 28px);
+      font-weight: 800;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .hero-lead {
+      max-width: 770px;
+      margin-top: 24px;
+      color: #39332b;
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.62;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .claim-card,
+    .metric-card,
+    .source-card,
+    .note,
+    .callout,
+    .step,
+    .resource-card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 247, 0.88);
+      box-shadow: 0 18px 45px rgba(47, 40, 28, 0.08);
+    }
+
+    .claim-card {
+      padding: 22px;
+    }
+
+    .claim-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .claim-card p {
+      font-family: var(--serif);
+      font-size: clamp(20px, 2.2vw, 30px);
+      line-height: 1.34;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card {
+      padding: 16px;
+      min-height: 112px;
+    }
+
+    .metric-card .num {
+      display: block;
+      color: var(--accent-dark);
+      font-size: clamp(26px, 3vw, 38px);
+      line-height: 1;
+      font-weight: 850;
+    }
+
+    .metric-card .label {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 64px 0 90px;
+    }
+
+    section {
+      padding: 52px 0;
+      border-bottom: 1px solid rgba(216, 205, 187, 0.78);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(300px, 1.2fr);
+      gap: clamp(22px, 5vw, 58px);
+      align-items: start;
+      margin-bottom: 28px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+      max-width: 900px;
+      color: #332e27;
+      font-size: 17px;
+    }
+
+    .content.wide {
+      max-width: none;
+    }
+
+    .source-map {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .source-card {
+      padding: 18px;
+    }
+
+    .source-card b,
+    .resource-card b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .source-card small,
+    .resource-card small {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--subtle);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .source-card p,
+    .resource-card p {
+      color: #3c362e;
+      font-size: 15px;
+      line-height: 1.62;
+    }
+
+    .note {
+      padding: 18px 20px;
+      background: var(--panel-2);
+      color: #3a342d;
+    }
+
+    .note strong {
+      color: var(--accent-dark);
+    }
+
+    .callout {
+      padding: 20px;
+      border-left: 4px solid var(--accent);
+      background: #fff8ee;
+    }
+
+    .formula {
+      display: grid;
+      gap: 8px;
+      margin: 8px 0;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      background: #fffaf1;
+      font-family: var(--serif);
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.45;
+      overflow-x: auto;
+    }
+
+    .formula .tex {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      line-height: 1.08;
+    }
+
+    .frac .top {
+      border-bottom: 1px solid currentColor;
+      padding: 0 2px 2px;
+    }
+
+    .frac .bottom {
+      padding-top: 2px;
+    }
+
+    sub,
+    sup {
+      line-height: 0;
+    }
+
+    code {
+      padding: 0.12em 0.32em;
+      border-radius: 4px;
+      background: #efe4d2;
+      color: #5b3325;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid #46382b;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      font-size: 15px;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #efe3d1;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    td {
+      color: #383229;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      background: #fffaf1;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .step {
+      position: relative;
+      min-height: 160px;
+      padding: 16px;
+      background: rgba(255, 253, 247, 0.92);
+    }
+
+    .step .index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      margin-bottom: 12px;
+      border: 1px solid var(--line-strong);
+      background: #f2e3d0;
+      color: var(--accent-dark);
+      font-weight: 850;
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .resource-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .resource-card {
+      padding: 18px;
+      min-height: 190px;
+    }
+
+    .resource-card .why {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      color: var(--accent-dark);
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .axis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .axis-card {
+      min-height: 170px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .axis-card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .axis-card p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .axis-card.sft {
+      border-top: 4px solid var(--blue);
+    }
+
+    .axis-card.rl {
+      border-top: 4px solid var(--green);
+    }
+
+    .axis-card.opd {
+      border-top: 4px solid var(--accent);
+    }
+
+    .axis-card.opsd {
+      border-top: 4px solid var(--red);
+    }
+
+    .insight {
+      display: grid;
+      gap: 16px;
+      padding: clamp(24px, 4vw, 34px);
+      border: 1px solid var(--accent);
+      background:
+        linear-gradient(135deg, rgba(180, 95, 60, 0.12), transparent 42%),
+        #fff8ee;
+    }
+
+    .insight h2 {
+      color: var(--accent-dark);
+    }
+
+    .insight p {
+      max-width: 960px;
+      font-size: 18px;
+    }
+
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    figure {
+      margin: 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #fff;
+    }
+
+    figcaption {
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .footer {
+      padding: 32px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 960px) {
+      .hero,
+      .section-head,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+
+      .metric-grid,
+      .three-col,
+      .axis,
+      .flow,
+      .source-map,
+      .resource-grid,
+      .figure-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav {
+        width: 100%;
+      }
+
+      main {
+        width: min(100% - 28px, 1180px);
+        padding-top: 38px;
+      }
+
+      section {
+        padding: 38px 0;
+      }
+
+      th,
+      td {
+        padding: 10px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span>AVB OPD / OPSD 资源帖深度解读</span></div>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#thesis">主张</a>
+      <a href="#mechanism">机制</a>
+      <a href="#route">资源路线</a>
+      <a href="#evidence">证据</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X thread reading report · 2026-05-15</div>
+      <h1>为什么 AVB 说 2026 会是 OPD，更准确说 OPSD 的一年</h1>
+      <p class="hero-lead">
+        这条 X 帖本身很短，但它指向的是一个正在成型的 post-training 范式：让学生模型自己生成轨迹，
+        再用老师模型、同一模型的 privileged context、或多个专家老师在这些轨迹上给 token-level 信号。
+        它不是“蒸馏又回来了”这么简单，而是 SFT、RL、OPD、OPSD 正在围绕同一个问题收敛：
+        如何在不把模型拉离原有分布太远的前提下，给它更密、更便宜、更可控的训练信号。
+      </p>
+    </div>
+    <aside class="hero-side" aria-label="核心结论">
+      <div class="claim-card">
+        <strong>一句话 thesis</strong>
+        <p>OPD 的关键不是“老师更强”，而是“学生在自己的状态分布上被老师纠偏”；OPSD 的关键不是“自己教自己”，而是“如何构造一个高 reward、低 KL、低偏差的临时老师”。</p>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card"><span class="num">6+1</span><span class="label">原帖列出 6 个核心资源，回复补了 1 个 awesome 仓库。</span></div>
+        <div class="metric-card"><span class="num">3</span><span class="label">主要技术维度：on-policy state、dense token signal、teacher construction。</span></div>
+        <div class="metric-card"><span class="num">1</span><span class="label">真正要回答的问题：dense signal 怎样避免变成 biased over-optimization。</span></div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <h2>来源与校验</h2>
+        <p>
+          原帖通过 OpenCLI 的 X/Twitter adapter 读取；短链逐一解析；外部文章用 OpenCLI web reader 读取。
+          其中两个 X Article 不能用 <code>twitter article</code> 直接读取，但可以用 <code>web read</code> 从
+          <code>x.com/i/article/...</code> 读取完整正文。
+        </p>
+      </div>
+      <div class="source-map">
+        <div class="source-card">
+          <b>原帖</b>
+          <small>opencli twitter thread "https://x.com/neural_avb/status/2054640032087146727"</small>
+          <p>AVB 写道：2026 正在成为 OPD 的一年，更准确说是 OPSD，并建议按顺序阅读 Hugging Face、Thinking Machines、TRL、wh、Will Brown 和 multi-teacher OPD 资源。</p>
+        </div>
+        <div class="source-card">
+          <b>作者背景</b>
+          <small>opencli twitter profile "neural_avb"</small>
+          <p>AVB 的 profile 显示其内容集中在 Neural Breakdown、研究阅读和 DPO/RLM/synthetic data 等方向。这里用于理解帖子语境，不作为技术事实来源。</p>
+        </div>
+        <div class="source-card">
+          <b>短链解析</b>
+          <small>curl -Ls -o /dev/null -w '%{url_effective}'</small>
+          <p>短链分别指向 HF GOLD Space、Thinking Machines OPD、HF TRL DistillationTrainer、wh 的 X Article、Will Brown 的 X Article、Yumo Xu 的 MOPD Notion，以及回复中的 awesome OPD 仓库。</p>
+        </div>
+        <div class="source-card">
+          <b>检索补充</b>
+          <small>mcp-router Grok Search + official pages</small>
+          <p>搜索用于核验动态页面标题与外部链接；主体解释仍以 OpenCLI 抽取的一手文本、官方 Hugging Face / Thinking Machines / GitHub / Notion 内容为准。</p>
+        </div>
+      </div>
+      <div class="note" style="margin-top:16px;">
+        <strong>可读性说明：</strong>原帖 4 张 X media 已保存到本地资产目录，但抓取到的图片像是多张论文/截图拼接，局部可读性有限。本报告把它们作为来源留痕而非核心证据；核心判断依赖可抽取正文和链接原文。
+      </div>
+    </section>
+
+    <section id="thesis">
+      <div class="section-head">
+        <h2>这条帖到底在说什么</h2>
+        <p>
+          它不是单纯推荐几篇文章，而是在给一个阅读顺序：先理解 OPD 的基本机制，再看跨 tokenizer 工程化，
+          再看大 teacher 的系统瓶颈，最后进入 OPSD / MOPD 这种“老师怎么构造”的新问题。
+        </p>
+      </div>
+      <div class="content wide">
+        <div class="callout">
+          <p>
+            <strong>我的归纳：</strong>AVB 的判断是，2026 年 post-training 的主战场会从“要不要 RL”转向
+            “如何把 on-policy rollout 和 dense teacher signal 结合起来”。如果老师是外部强模型，就是 OPD；
+            如果老师是同一个模型但带 answer、demo、hint、system prompt、privileged context，就是 OPSD / SDFT / SDPO 一族；
+            如果老师是多个专家 checkpoint，就是 MOPD。
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>数据从哪里来</th>
+              <th>训练信号是什么</th>
+              <th>主要好处</th>
+              <th>主要风险</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SFT</td>
+              <td>固定数据集，通常是人类或老师生成的答案。</td>
+              <td>交叉熵：每个 token 都被当成正确标签。</td>
+              <td>简单、稳定、适合 cold start 和格式塑形。</td>
+              <td>off-policy，容易 exposure bias 和 catastrophic forgetting。</td>
+            </tr>
+            <tr>
+              <td>RL / RLVR</td>
+              <td>学生自己生成 rollout。</td>
+              <td>序列级 reward / advantage，通常很稀疏。</td>
+              <td>on-policy，能探索 verifier 能判分的新策略。</td>
+              <td>样本和算力贵，credit assignment 很粗。</td>
+            </tr>
+            <tr>
+              <td>OPD</td>
+              <td>学生自己生成 rollout。</td>
+              <td>老师在学生 rollout 上给每个 token 的 logprob / KL 信号。</td>
+              <td>保留 on-policy，又比 RL 信号密。</td>
+              <td>需要老师 logprobs；teacher-student mismatch 会污染信号。</td>
+            </tr>
+            <tr>
+              <td>OPSD / SDFT / SDPO</td>
+              <td>学生或同一模型生成 rollout。</td>
+              <td>同一模型在 privileged context 下形成临时 teacher。</td>
+              <td>不需要外部同族大老师，理论上更易扩展。</td>
+              <td>老师信号可能被 hint/answer/style token 强烈偏置，必须控制 KL 和 clipping。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <div class="section-head">
+        <h2>OPD 机制一步一步讲</h2>
+        <p>
+          对 OPD 最容易误解的地方是把它理解成“老师给学生生成答案”。更准确地说，学生先走自己的路，
+          老师再在学生已经走过的每个 prefix 上说：这个 token 我会更支持还是更不支持。
+        </p>
+      </div>
+      <div class="content wide">
+        <div class="flow" aria-label="OPD workflow">
+          <div class="step"><span class="index">1</span><b>给 prompt</b><p>输入一批问题或任务，不先让老师写标准答案。</p></div>
+          <div class="step"><span class="index">2</span><b>学生 rollout</b><p>当前学生模型按自己的策略生成完整或部分回答。</p></div>
+          <div class="step"><span class="index">3</span><b>老师打 token 分</b><p>老师不重新生成，而是在学生同一串 token 上计算 logprob。</p></div>
+          <div class="step"><span class="index">4</span><b>构造 KL 信号</b><p>比较学生与老师对同一 token 的概率差，形成 per-token advantage。</p></div>
+          <div class="step"><span class="index">5</span><b>更新学生</b><p>像 RL 一样训练，但 advantage 来自老师分布而不是 outcome reward。</p></div>
+        </div>
+        <div class="formula" aria-label="reverse KL objective">
+          <div>
+            KL(<span>π<sub>student</sub></span> || <span>π<sub>teacher</sub></span>)
+            ≈ Σ<sub>t</sub> [ log π<sub>student</sub>(y<sub>t</sub> | y<sub>&lt;t</sub>, x)
+            − log π<sub>teacher</sub>(y<sub>t</sub> | y<sub>&lt;t</sub>, x) ]
+          </div>
+          <div class="tex">TeX: \mathrm{KL}(\pi_\theta || \pi_T) \approx \sum_t [\log \pi_\theta(y_t|y_{&lt;t},x)-\log \pi_T(y_t|y_{&lt;t},x)]</div>
+        </div>
+        <p>
+          如果老师对某个学生采样出的 token 给的概率比学生自己更高，训练会把这个 token 往上推；如果老师更不认可，就往下压。
+          这就是为什么很多文章会说 OPD 可以看成“把 GRPO 里的 advantage 换成 teacher-student log-ratio”。
+          这句话听上去抽象，但工程含义很具体：已有 RL 训练框架里，rollout、importance ratio、clip、batching 很多东西可以复用，
+          只是 reward/advantage 的来源变成 teacher logprobs。
+        </p>
+        <div class="two-col">
+          <div class="note">
+            <strong>为什么它像 RL？</strong>
+            <p>因为训练数据来自学生当前策略。模型在训练中看到的是自己会犯的错、自己会走到的 prefix，而不是老师自己生成出来的完美轨迹。</p>
+          </div>
+          <div class="note">
+            <strong>为什么它像蒸馏？</strong>
+            <p>因为每个 token 的方向来自老师分布。相比 RL 的 outcome reward，它能给出更密的局部信号，但也继承了老师分布的偏差。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="route">
+      <div class="section-head">
+        <h2>AVB 推荐的阅读顺序</h2>
+        <p>
+          这个顺序有清晰的学习曲线：先建立“OPD 是什么”，再理解“跨模型族怎么做”，再理解“系统怎么跑得动”，
+          最后进入“OPSD/MOPD 为什么成为新 primitive”。
+        </p>
+      </div>
+      <div class="resource-grid">
+        <article class="resource-card">
+          <b>1. Hugging Face H4：GOLD</b>
+          <small>Unlocking On-Policy Distillation for Any Model Family</small>
+          <p>核心问题是传统 OPD 假设 teacher 和 student 共用 tokenizer。GOLD 用 sequence alignment 和 vocabulary alignment 把不同 tokenizer 的 token/logprob 对齐，使 Qwen teacher 到 Llama/Gemma student 这类跨模型族 OPD 变得可行。</p>
+          <div class="why">为什么先读：它把 OPD 的工程约束讲得最直观。</div>
+        </article>
+        <article class="resource-card">
+          <b>2. Thinking Machines：OPD 总论</b>
+          <small>On-Policy Distillation</small>
+          <p>这篇是最清楚的 OPD 机制文章：学生生成 rollout，老师计算同一 token 的 logprob，用 reverse KL 做 per-token dense signal；还讨论数学 reasoning、personalization、continual learning 和 compute efficiency。</p>
+          <div class="why">为什么第二读：它给出“为什么 OPD 不是普通 KD”的主线。</div>
+        </article>
+        <article class="resource-card">
+          <b>3. Hugging Face TB：TRL DistillationTrainer</b>
+          <small>Distilling 100B+ Models 40x Faster with TRL</small>
+          <p>重点不是新 loss，而是系统工程：generation buffer、teacher server request batching、binary logprob payload。它解释了为什么 OPD 从论文想法变成可跑 100B+ teacher 的训练工具。</p>
+          <div class="why">为什么第三读：它回答“这东西为什么现在能规模化”。</div>
+        </article>
+        <article class="resource-card">
+          <b>4. wh：distributional lens</b>
+          <small>SFT, RL, and OPD Through a Distributional Lens</small>
+          <p>这篇把 SFT/RL/OPD 看成“如何移动模型分布”。重点 insight 是：OPD 的抗遗忘不一定来自老师强，而来自 on-policy data 对学生分布的隐式约束。</p>
+          <div class="why">为什么第四读：它解释 OPD 为什么可能比老师本身更少 forgetting。</div>
+        </article>
+        <article class="resource-card">
+          <b>5. Will Brown：gradient geometry</b>
+          <small>On SFT, RL, and on-policy distillation</small>
+          <p>这篇把 SFT、RL、OPD、OPSD 放到 sparse/dense、biased/unbiased、diffuse/concentrated 的梯度几何里。它最重要的贡献是指出 OPSD 的危险来自“dense + biased + concentrated”。</p>
+          <div class="why">为什么第五读：它给出判断 OPSD 稳不稳的核心框架。</div>
+        </article>
+        <article class="resource-card">
+          <b>6. Yumo Xu：Multi-teacher OPD</b>
+          <small>Multi-Teacher On-Policy Distillation</small>
+          <p>这篇把 OPD 从单 teacher 扩展到生产级多老师合并：MiMo、GLM、Nemotron、DeepSeek-V4 都在用不同形式的 MOPD 做能力合并、遗忘恢复或大规模专家 consolidation。</p>
+          <div class="why">为什么最后读：它显示 OPD 已经是 pipeline primitive，而不是单篇 paper 技巧。</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="opd-opsd">
+      <div class="section-head">
+        <h2>OPD 与 OPSD 的真正分界</h2>
+        <p>
+          “S” 可以理解为 self。OPD 里通常有一个外部 teacher；OPSD / SDFT / SDPO 里，teacher 往往是同一个模型在不同 context 下的分布。
+          这让它更容易获得 tokenizer/recipe match，但也让 privileged context 的偏差成为主问题。
+        </p>
+      </div>
+      <div class="content wide">
+        <div class="axis">
+          <div class="axis-card sft">
+            <b>SFT：dense + biased + diffuse</b>
+            <p>每个 token 都有标签，信号很密，但目标分布固定且可能离当前模型很远。因为数据多样，偏差通常比较分散。</p>
+          </div>
+          <div class="axis-card rl">
+            <b>RL：sparse + lower-bias</b>
+            <p>reward 稀疏，很多 token 的 credit assignment 很粗，但 on-policy 和 outcome reward 让它较少被某个具体 token 轨迹绑死。</p>
+          </div>
+          <div class="axis-card opd">
+            <b>OPD：dense + biased + usually diffuse</b>
+            <p>同族强老师的 logprob 给 dense signal；如果老师和学生分布接近，KL 差异通常不会集中在少数怪 token 上。</p>
+          </div>
+          <div class="axis-card opsd">
+            <b>OPSD：dense + biased + concentrated</b>
+            <p>同一模型带 answer/hint/demo 后，少数 pivot/style token 的 KL 可能极大，训练信号容易被这些 token 主导。</p>
+          </div>
+        </div>
+        <p>
+          Will Brown 文章里最值得记住的不是某个公式，而是这个梯度形状判断：RL 很慢，但噪声可以在大 batch 平均后抵消；
+          SFT 有偏，但偏差被大量样本摊开；OPD 有偏，但如果老师是 same-family teacher，偏差相对自然；
+          OPSD 的危险在于 privileged context 会让老师在某些 pivot token 上突然非常自信，而学生原本几乎不相信这些 token。
+          这会形成一次很尖锐的参数更新，所以 OPSD 往往需要 per-token clipping、固定 reference teacher、KL budget 或更好的 hint construction。
+        </p>
+        <div class="formula">
+          <div>
+            teacher advantage ≈ log
+            <span class="frac"><span class="top">π<sub>teacher</sub>(y<sub>t</sub>|prefix)</span><span class="bottom">π<sub>student</sub>(y<sub>t</sub>|prefix)</span></span>
+          </div>
+          <div class="tex">TeX: A_t \approx \log \frac{\pi_T(y_t|prefix)}{\pi_\theta(y_t|prefix)}</div>
+        </div>
+        <p>
+          举个直观例子：学生在一道数学题中没有想到“换元”这个关键动作，给“let”或某个 substitution token 的概率只有 0.01。
+          teacher 因为看到了答案或提示，突然认为这个 token 概率应该是 0.6。log-ratio 大约是 log(60)，这个 token 就会压过很多普通 token。
+          如果这个 token 真是任务 pivot，更新有用；如果它只是“wait”“therefore”这类风格 token，模型就会朝错误方向过拟合。
+          所以 OPSD 的核心问题不是“有没有信号”，而是“信号到底是不是 causally task-relevant”。
+        </p>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <h2>证据与评估到底评了什么</h2>
+        <p>
+          这批资源里的实验并不都在证明同一件事。Thinking Machines 更像 OPD 总论和应用验证；
+          HF GOLD 验证跨 tokenizer 可行性；TRL 验证系统吞吐；wh/Will Brown 更多是解释性和小实验；
+          MOPD 文章则汇总 frontier report 的 pipeline 收敛。
+        </p>
+      </div>
+      <div class="content wide">
+        <table>
+          <thead>
+            <tr>
+              <th>来源</th>
+              <th>评估对象</th>
+              <th>输入/输出</th>
+              <th>指标或观察</th>
+              <th>能支持的结论</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Thinking Machines</td>
+              <td>Qwen 系列 reasoning 和 personalization 训练。</td>
+              <td>数学题、Tulu3 chat prompts、内部文档 QA 等。</td>
+              <td>AIME、IF-eval、内部 QA；还比较 OPD vs RL 训练步数和 compute。</td>
+              <td>OPD 能把学生自己 rollout 上的 dense teacher signal 转成便宜的后训练收益，尤其适合恢复/保留行为能力。</td>
+            </tr>
+            <tr>
+              <td>HF GOLD</td>
+              <td>不同 tokenizer / 不同模型族的 OPD。</td>
+              <td>Countdown 数学游戏：给数字和目标值，输出满足格式的算式。</td>
+              <td>Countdown correctness、tokenizer similarity、GKD/GOLD/ULD/GRPO 对比。</td>
+              <td>跨 tokenizer OPD 不是不可能，但效果强依赖 alignment 质量和 tokenizer similarity。</td>
+            </tr>
+            <tr>
+              <td>HF TRL</td>
+              <td>大 teacher OPD 的工程吞吐。</td>
+              <td>学生生成 rollout，外部 vLLM teacher server 返回 top-k logprobs。</td>
+              <td>generation buffer speedup、teacher server p99 latency、payload size、AIME25/GPQA 观察。</td>
+              <td>OPD 的瓶颈不只是 loss，而是 rollout batching、teacher logprob serving、payload 编码。</td>
+            </tr>
+            <tr>
+              <td>wh</td>
+              <td>Minimal Code Editing 小实验中的 SFT teacher / RL teacher / OPD student。</td>
+              <td>给 buggy function，要求只修 bug 不重写其他部分。</td>
+              <td>generalization、catastrophic forgetting、LiveCodeBench 退化。</td>
+              <td>OPD student 从 SFT teacher 和 RL teacher 学到的结果相似，提示 on-policy data 可能比 teacher 来源更关键。</td>
+            </tr>
+            <tr>
+              <td>Will Brown</td>
+              <td>post-training 方法的梯度几何解释。</td>
+              <td>方法论文章，不是新 benchmark。</td>
+              <td>sparse/dense、biased/unbiased、diffuse/concentrated 三轴分析。</td>
+              <td>OPSD 的不稳定性可以被理解为 dense biased concentrated update，而不是简单的“蒸馏不行”。</td>
+            </tr>
+            <tr>
+              <td>Yumo Xu MOPD</td>
+              <td>MiMo、GLM、Nemotron、DeepSeek-V4 等多老师后训练报告。</td>
+              <td>多个专家 checkpoint / 多领域 teacher 对同一个 student 做 consolidation。</td>
+              <td>teacher composition、pipeline stage、IcePop train/infer mismatch、full-vocab logits、teacher scheduling。</td>
+              <td>OPD 已经在生产级 pipeline 中变成能力合并和遗忘恢复 primitive。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <strong>重要边界：</strong>这些证据共同支持“OPD 类方法正在变重要”，但还不能支持“OPSD 已经全面替代 RL”。RLVR 在数学、代码、可验证 agent task 中仍然有独特价值，因为 verifier 给的是最终任务成功信号；OPSD 的 dense signal 更便宜，但信号偏差如何控制仍然是核心研究问题。
+        </div>
+      </div>
+    </section>
+
+    <section id="implementation">
+      <div class="section-head">
+        <h2>如果你要真的做 OPD</h2>
+        <p>
+          从工程角度看，OPD 是一个数据流和系统问题，不只是换一个 loss。下面是最小可复现思路。
+        </p>
+      </div>
+      <div class="content wide">
+        <pre><code>for prompt_batch in dataset:
+    # 1. student generates on-policy rollouts
+    rollouts = student.generate(prompt_batch, temperature=T)
+
+    # 2. compute student logprobs on sampled tokens
+    student_logprobs = student.logprobs(rollouts)
+
+    # 3. teacher scores exactly the same sampled tokens
+    teacher_logprobs = teacher.logprobs(rollouts)
+
+    # 4. reverse-KL-style token advantage
+    token_advantage = stop_gradient(teacher_logprobs - student_logprobs)
+
+    # 5. train with policy-gradient / importance-sampling style loss
+    loss = -sum(token_advantage * student_logprobs)
+    update(student, loss)</code></pre>
+        <div class="three-col">
+          <div class="note">
+            <strong>先问 teacher access</strong>
+            <p>有没有 teacher logprobs？只有 API sample 没有 logits 时，标准 OPD 会变困难，需要 black-box OPD、rubric、reward model 或 sample-based surrogate。</p>
+          </div>
+          <div class="note">
+            <strong>再问 tokenizer</strong>
+            <p>同 tokenizer 最简单；不同 tokenizer 需要 GOLD/ULD 这类 sequence + vocabulary alignment，否则 token-level KL 没有明确对应物。</p>
+          </div>
+          <div class="note">
+            <strong>最后问 teacher-student gap</strong>
+            <p>老师太强不一定更好。capacity gap 过大时，学生可能吸收不了老师的额外能力，还可能损伤 out-of-domain 能力。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <h2>这条帖的乐观与边界</h2>
+        <p>
+          “2026 是 OPD/OPSD 年”这个说法有合理性，但要避免把它读成一个已经解决的问题。
+        </p>
+      </div>
+      <div class="content">
+        <p>
+          <strong>成立的部分：</strong>OPD 正在从论文方法变成后训练基础设施。HF 有 trainer，Thinking Machines 给出清晰 recipe，
+          MOPD 在多个 frontier report 中出现，TRL 的工程优化说明 teacher logprob serving 正在被产品化。
+          对模型压缩、专家能力合并、持续学习后的行为恢复、domain specialization 后的 anti-forgetting，OPD 的确很有吸引力。
+        </p>
+        <p>
+          <strong>还没成立的部分：</strong>OPSD 作为“没有外部老师也能获得 dense useful signal”的路线仍然非常早。
+          它最大的问题不是实现，而是 credit assignment：privileged context 让 teacher 更确定，但这种确定性到底来自任务因果信息，
+          还是来自答案泄漏、提示风格、轨迹后见之明？如果不能区分，dense signal 只是把错误偏差更快注入模型。
+        </p>
+        <p>
+          <strong>最实际的判断：</strong>短期内最可靠的不是纯 OPSD，而是混合路线：
+          SFT 做 cold start，RLVR 在可验证任务上找策略，OPD/MOPD 做专家能力合并和遗忘恢复，
+          OPSD/SDFT/SDPO 做低成本局部增强，但必须配 KL budget、clipping、teacher prompt 搜索或 outcome reward 校准。
+        </p>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="insight">
+        <h2>我的 Insight</h2>
+        <p>
+          这一轮 OPD 热潮真正改变的不是“蒸馏能不能超过 SFT”，而是 post-training 的抽象层级：
+          我们不再只问“用 SFT 还是 RL”，而是在拆三个独立变量：
+          <strong>样本分布是不是 on-policy</strong>、<strong>信号是不是 dense</strong>、<strong>老师/奖励的偏差是否可控</strong>。
+          SFT 输在样本分布固定；RL 输在信号太稀疏；OPD 的优势是把前两者组合起来；
+          OPSD 的野心是把“老师”也变成一个可优化对象。
+        </p>
+        <p>
+          所以我会把 AVB 这条帖理解成一个研究路线图，而不是资源推荐：
+          2026 年真正值得追的是 <strong>teacher construction under KL budget</strong>。
+          谁能构造出“让 reward 上升，但不把学生分布拉太远”的 teacher context / hint / expert mixture，
+          谁就能把 OPSD 从一组启发式变成新的训练 primitive。
+        </p>
+      </div>
+    </section>
+
+    <section id="assets">
+      <div class="section-head">
+        <h2>原帖图片留痕</h2>
+        <p>
+          以下为原帖 4 张 media 的本地抓取版。它们证明原帖确实包含图像证据，但由于 X media 抓取/截图质量问题，
+          本报告不依赖这些图片做关键技术结论。
+        </p>
+      </div>
+      <div class="figure-grid">
+        <figure>
+          <img src="neural-avb-opd-resources-assets/HIOKEWUboAAyCF-.jpg" alt="原帖配图 1">
+          <figcaption>原帖配图 1：疑似 GOLD / vocabulary alignment 截图，抓取版局部可读性有限。</figcaption>
+        </figure>
+        <figure>
+          <img src="neural-avb-opd-resources-assets/HIOKGvXaoAASHhi.jpg" alt="原帖配图 2">
+          <figcaption>原帖配图 2：疑似 distribution / OPD 相关图示截图，抓取版存在重叠和文字错位。</figcaption>
+        </figure>
+        <figure>
+          <img src="neural-avb-opd-resources-assets/HIOKKk8acAAzeUY.jpg" alt="原帖配图 3">
+          <figcaption>原帖配图 3：含 Will Brown 文章中的 destructive-interference figure caption。</figcaption>
+        </figure>
+        <figure>
+          <img src="neural-avb-opd-resources-assets/HIOKPrwacAACUjX.jpg" alt="原帖配图 4">
+          <figcaption>原帖配图 4：疑似 gradient geometry 相关截图，局部可读性不足。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <h2>复现命令</h2>
+        <p>用于获取材料的关键命令如下，便于以后复查。</p>
+      </div>
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/neural_avb/status/2054640032087146727" --limit 80 -f json --trace retain-on-failure
+opencli twitter profile "neural_avb" -f json --trace retain-on-failure
+
+curl -Ls -o /dev/null -w '%{url_effective} %{http_code}\n' "https://t.co/..."
+
+opencli web read --url "https://thinkingmachines.ai/blog/on-policy-distillation/" --stdout true --download-images false --wait 5 -f json
+opencli web read --url "https://huggingfaceh4-on-policy-distillation.hf.space/" --stdout true --download-images false --wait 10 -f json
+opencli web read --url "https://huggingfacetb-trl-distillation-trainer.hf.space/" --stdout true --download-images false --wait 10 -f json
+opencli web read --url "https://x.com/i/article/2053122221389053953" --stdout true --download-images false --wait 8 -f json
+opencli web read --url "https://x.com/i/article/2050010745375768576" --stdout true --download-images false --wait 8 -f json</code></pre>
+      <div class="footer">
+        生成时间：2026-05-15。报告文件：/Users/bytedance/Downloads/neural-avb-opd-resources-report.html
+      </div>
+    </section>
+  </main>
+</body>
+</html>

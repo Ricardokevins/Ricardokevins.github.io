@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SEIF 论文与 X 帖深度分析</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1b1a17;
+      --muted: #6f6a60;
+      --subtle: #8b867c;
+      --paper: #f7f3ea;
+      --panel: #fffdf7;
+      --panel-2: #fdf8ee;
+      --line: #d8d0c0;
+      --line-strong: #a89e8c;
+      --accent: #a64f2a;
+      --accent-soft: #f4dfd1;
+      --blue: #315e8c;
+      --blue-soft: #dce7f2;
+      --violet: #6550a4;
+      --violet-soft: #e7e1f5;
+      --gold: #b07922;
+      --gold-soft: #f5e6c7;
+      --red: #9f3b2f;
+      --red-soft: #f2ded7;
+      --green: #26705c;
+      --green-soft: #dcebe5;
+      --shadow: 0 18px 48px rgba(49, 43, 31, 0.12);
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(27, 26, 23, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+        linear-gradient(0deg, rgba(27, 26, 23, 0.025) 1px, transparent 1px) 0 0 / 32px 32px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 94, 140, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(27, 26, 23, 0.14);
+      background: rgba(247, 243, 234, 0.92);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 760;
+      color: var(--ink);
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--ink) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+    }
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.46);
+      color: var(--ink);
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+      gap: clamp(28px, 5vw, 70px);
+      align-items: end;
+      min-height: 86vh;
+      padding: clamp(54px, 9vw, 108px) clamp(20px, 5vw, 72px) 46px;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(115deg, rgba(255, 253, 247, 0.97) 0 36%, rgba(255, 253, 247, 0.75) 37% 57%, rgba(244, 223, 209, 0.55) 58% 100%),
+        url("seif-instruction-following-assets/method.png") center right / contain no-repeat;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 46%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(247, 243, 234, 0));
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    h1 {
+      max-width: 1020px;
+      font-family: var(--serif);
+      font-size: clamp(40px, 7.2vw, 102px);
+      font-weight: 720;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.4vw, 56px);
+      font-weight: 720;
+    }
+    h3 {
+      font-size: clamp(20px, 2.2vw, 27px);
+      font-weight: 760;
+    }
+    .hero-lead {
+      max-width: 780px;
+      margin: 24px 0 0;
+      color: #3a362e;
+      font-size: clamp(18px, 2.05vw, 23px);
+      line-height: 1.62;
+    }
+    .hero-side {
+      align-self: center;
+      display: grid;
+      gap: 14px;
+      padding-top: 120px;
+    }
+    .claim-card {
+      padding: 18px;
+      background: rgba(255, 253, 247, 0.88);
+      border: 1px solid rgba(168, 158, 140, 0.62);
+      box-shadow: var(--shadow);
+    }
+    .claim-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .claim-card p {
+      margin: 0;
+      color: #332f28;
+      font-size: 15px;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 clamp(18px, 4vw, 42px) 90px;
+    }
+    section {
+      padding: 72px 0 0;
+      scroll-margin-top: 72px;
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.62fr) minmax(280px, 0.38fr);
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 20px;
+    }
+    .section-kicker {
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .section-summary {
+      color: var(--muted);
+      font-size: 16px;
+    }
+    p { margin: 12px 0 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+    .card h3 {
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+    .card p, .card li {
+      color: #3d382f;
+      font-size: 15px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      margin: 0 6px 6px 0;
+      padding: 2px 9px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .callout {
+      margin: 24px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      color: #302820;
+    }
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+    }
+    .callout.gold {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+    .callout strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    ul, ol {
+      margin: 12px 0 0;
+      padding-left: 22px;
+    }
+    li { margin: 7px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #efe7d8;
+      color: #2b2924;
+      font-weight: 760;
+    }
+    td { color: #3e392f; }
+    code {
+      font-family: var(--mono);
+      background: #efe4d2;
+      color: #3f2d20;
+      padding: 0.12em 0.32em;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+    pre {
+      margin: 16px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      background: #27231d;
+      color: #f8efe1;
+      border: 1px solid #3e3529;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.58;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
+    figure {
+      margin: 24px 0 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 12px;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(27, 26, 23, 0.08);
+      background: white;
+    }
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .metric {
+      display: grid;
+      gap: 4px;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+    .metric strong {
+      color: var(--accent);
+      font-size: 24px;
+      line-height: 1;
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .flow {
+      counter-reset: step;
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+    .step::before {
+      content: counter(step);
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      font-weight: 780;
+    }
+    .step h3 {
+      margin-bottom: 6px;
+      font-size: 19px;
+    }
+    .math {
+      margin: 16px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      background: #fffaf0;
+      border: 1px solid var(--line);
+      font-family: var(--serif);
+      font-size: 19px;
+      color: #2d251e;
+    }
+    .formula-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .footer {
+      margin-top: 72px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-head,
+      .grid,
+      .grid.two {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: auto;
+        padding-top: 64px;
+      }
+      .hero-side { padding-top: 0; }
+      .hero::before {
+        background:
+          linear-gradient(115deg, rgba(255, 253, 247, 0.98), rgba(255, 253, 247, 0.86)),
+          url("seif-instruction-following-assets/method.png") center bottom / 105% auto no-repeat;
+      }
+      .nav { display: none; }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span>SEIF Reading Report</span></div>
+    <nav class="nav" aria-label="sections">
+      <a href="#sources">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">机制</a>
+      <a href="#reward">奖励</a>
+      <a href="#training">训练</a>
+      <a href="#evaluation">评估</a>
+      <a href="#results">结果</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X thread -> arXiv -> GitHub</div>
+      <h1>SEIF：让 instruction 难度和模型能力一起进化</h1>
+      <p class="hero-lead">
+        HuggingPapers 的帖子介绍了一篇新的 instruction-following RL 论文。它真正有意思的地方不是“模型自我训练”这个口号，而是把开放式 instruction following 拆成 Instructor、Filter、Follower、Judger 四个角色，并用反向满意度奖励把数据生成推到当前 Follower 的能力边界。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="claim-card">
+        <strong>一句话 thesis</strong>
+        <p>SEIF 的核心贡献是一个 closed-loop curriculum：Instructor 专门生成当前 Follower 还做不好的、多约束但不矛盾的指令；Follower 再用这些 adaptive instructions 做 GRPO 训练。</p>
+      </div>
+      <div class="claim-card">
+        <strong>最重要的边界</strong>
+        <p>Filter/Judger 都来自模型自身，论文做了 human agreement 检查，但 Judger 准确率约 0.73-0.74；这说明奖励可用，却不能等同于可靠的人类偏好或真实生产需求。</p>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="sources">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Source Map</div>
+          <h2>我读了哪些材料，怎么核验</h2>
+        </div>
+        <p class="section-summary">目标 X 帖只有两条主内容：论文标题、paper 链接、code 链接和一句机制摘要。真正分析必须落到 arXiv 论文、Hugging Face metadata、GitHub README/代码和公开 parquet 数据。</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>X 线程</h3>
+          <p>OpenCLI 读取到 HuggingPapers 原帖：标题为 <code>SEIF: Self-Evolving Reinforcement Learning for Instruction Following</code>，配图一张，并在回复中给出 paper/code 短链。短链分别解析到 Hugging Face Papers 和 GitHub。</p>
+          <p><span class="tag">created_at: 2026-05-13 UTC</span><span class="tag">likes: 64</span><span class="tag">retweets: 15</span></p>
+        </div>
+        <div class="card">
+          <h3>论文与 HF 页面</h3>
+          <p>arXiv MCP 和 PDF 元数据核验题名、作者和 33 页 PDF；Hugging Face API 核验 daily paper 信息、Fudan University organization、GitHub repo、upvotes 和 abstract。</p>
+          <p><span class="tag">arXiv 2605.07465v1</span><span class="tag">cs.CL</span><span class="tag">HF upvotes 26</span></p>
+        </div>
+        <div class="card">
+          <h3>GitHub 与公开数据</h3>
+          <p>读取 `Rainier-rq1/SEIF` README、训练配置、reward/dataset 关键文件和目录树；下载 `seed.parquet` 与 Qwen-7B 三轮 `q_T*.parquet`，核验行数和列结构。</p>
+          <p><span class="tag">EasyR1/VeRL</span><span class="tag">vLLM services</span><span class="tag">public parquet</span></p>
+        </div>
+      </div>
+      <figure>
+        <img src="seif-instruction-following-assets/comp.png" alt="SEIF 与外部监督、自玩训练范式对比图" />
+        <figcaption>官方仓库图：SEIF 对比传统外部监督和静态 self-play。关键差异是 instruction 难度会随着 Follower 能力变化而更新。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Problem</div>
+          <h2>这篇论文到底解决什么问题</h2>
+        </div>
+        <p class="section-summary">Instruction following 看似普通，其实比数学/代码 RLVR 更麻烦：没有唯一标准答案，很多约束是软的、语义的、格式和上下文混在一起。</p>
+      </div>
+      <div class="callout">
+        <strong>问题不是“让模型更会聊天”，而是让模型更可靠地满足多约束指令。</strong>
+        一个用户可能要求“用正式语气、两段、不要逗号、包含某些关键词、以某句话结尾、从某个角色立场回答”。模型常见失败不是完全不会答，而是漏一个格式约束、违反一个禁词、语气不对、结构不对。
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>外部监督路线的问题</h3>
+          <p>用人类标注或强 teacher model 可以提供 reward 或偏好信号，但成本高，而且持续提升时需要持续收集更难、更贴近模型当前弱点的新数据。对于开放式 instruction following，这个成本会比可验证任务更高。</p>
+        </div>
+        <div class="card">
+          <h3>静态 self-play 的问题</h3>
+          <p>很多自训练/自反馈方法会生成一批指令，然后反复训练。问题是模型变强后，旧指令可能变得太容易；数据难度不跟着模型能力走，训练信号很快变弱。</p>
+        </div>
+      </div>
+      <p>SEIF 的切入点就是：如果能让“出题者”持续根据“答题者”的当前短板出更难但仍可满足的题，那么 instruction-following 的训练数据就可以自适应进化。这和 curriculum learning 很像，但不是人工预设课程，而是由 Instructor 和 Follower 的博弈/协同产生。</p>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Mechanism</div>
+          <h2>SEIF 怎么做：四个角色形成闭环</h2>
+        </div>
+        <p class="section-summary">论文中的四个角色并不是四个完全不同的模型产品，而是同一类 LLM 在不同阶段承担不同职责；真正训练的是 Instructor 和 Follower，Filter/Judger 是冻结的辅助角色。</p>
+      </div>
+      <figure>
+        <img src="seif-instruction-following-assets/method.png" alt="SEIF 方法框架图" />
+        <figcaption>SEIF 总流程：Instructor 先用当前 Follower 作为 evaluator 训练，然后生成新 instruction；Follower 再用这些 instruction 训练；下一轮 Filter/Judger 刷新为最新 Follower。</figcaption>
+      </figure>
+      <div class="flow">
+        <div class="step">
+          <div>
+            <h3>输入：seed instruction</h3>
+            <p>从公开数据源收集约 5120 条 seed instructions。它们通常是相对简单的任务，例如改写、问答、摘要、信息抽取、生成标题等。公开 `seed.parquet` 实测为 5119 行，列为 `prompt`。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Instructor：给 seed 加约束</h3>
+            <p>Instructor 接收 seed question 和 constraint references，输出 JSON 格式的 atomic constraints。hard constraints 通常生成 3 个，soft constraints 通常生成 5 个。它不是直接回答问题，而是把简单任务改造成多约束任务。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Filter：去掉矛盾或无效指令</h3>
+            <p>如果 Instructor 生成了内在矛盾的约束，例如“全小写”同时“第二段以 Agreement 开头”，Filter 返回 0，该样本 reward 归零或在 Follower 阶段跳过。Filter 的作用是防止 Instructor 通过制造不可满足任务来骗取“Follower 做不好”的奖励。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Follower：尝试回答新指令</h3>
+            <p>当前 Follower 对通过 Filter 的 instruction 生成 response。Instructor 阶段会冻结 Follower，只用它暴露当前能力边界；Follower 阶段才更新 Follower，让它学会满足这些新 instruction。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Judger：逐约束打分</h3>
+            <p>Judger 不判断“答案整体好不好”，而是对每个 constraint 输出 0/1，再平均成 satisfaction rate。这样奖励比“整条 instruction 全满足才给 1”更细，不会因为漏掉一个约束就完全没有梯度信号。</p>
+          </div>
+        </div>
+      </div>
+      <p>这个闭环的关键是 Filter 和 Judger 每轮都会从最新 Follower 实例化并冻结。也就是说，评估标准会随着 Follower 能力变化而刷新，但在某一轮训练内部保持静态，避免训练目标同时移动得太剧烈。</p>
+    </section>
+
+    <section id="reward">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Reward Signal</div>
+          <h2>奖励信号到底是什么：Instructor 和 Follower 方向相反</h2>
+        </div>
+        <p class="section-summary">理解 SEIF 的核心，需要看清同一个 Judger 分数在两个阶段的相反用法：Instructor 想让 Follower 失败，Follower 想让自己成功。</p>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>Instructor reward</h3>
+          <div class="math">R<sub>I</sub>(z, x) = 1 - A<sub>t</sub>(x, y), 如果 Filter 通过；否则为 0</div>
+          <p class="formula-note">其中 `A_t(x, y)` 是当前 Follower 对 instruction `x` 的约束满足率。Follower 满足得越差，Instructor reward 越高。</p>
+          <p>直觉：Instructor 被训练成“出当前模型做不好的题”，但不能出逻辑矛盾题。它的 reward 是 reversed reward。</p>
+        </div>
+        <div class="card">
+          <h3>Follower reward</h3>
+          <div class="math">R<sub>F</sub>(x, y<sub>i</sub>) = A<sub>t</sub>'(x, y<sub>i</sub>)</div>
+          <p class="formula-note">Follower 的 reward 就是回答满足约束的比例。满足越多，reward 越高。</p>
+          <p>直觉：Follower 学的是“如何解刚刚由 Instructor 生成的边界题”。因此训练分布不是固定 benchmark，而是每轮被 Instructor 推动。</p>
+        </div>
+      </div>
+      <div class="callout blue">
+        <strong>为什么需要 constraint-level reward?</strong>
+        如果一条 instruction 有 5 个约束，模型满足了 4 个。instruction-level binary reward 会给 0，等同于完全失败；constraint-level reward 给 0.8，可以告诉模型“方向基本对，但还漏了一个约束”。消融显示去掉 constraint-level reward 后，SEIF-7B 在 IFEval、CFBench、FollowBench 上分别下降 2.6、2.0、1.8 分。
+      </div>
+      <figure>
+        <img src="seif-instruction-following-assets/seif-algorithm-21.png" alt="SEIF 算法伪代码页" />
+        <figcaption>论文 Algorithm 1：每轮先训练 Instructor，再训练 Follower；当同组 reward 标准差为 0 时跳过 GRPO update，因为组内没有相对优势可学。</figcaption>
+      </figure>
+    </section>
+
+    <section id="training">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Training Details</div>
+          <h2>训练流程、数据和实现细节</h2>
+        </div>
+        <p class="section-summary">SEIF 使用 GRPO 训练两个可更新角色。公开实现基于 EasyR1/VeRL，配合多个 vLLM endpoint 完成 answer/filter/judge。</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>项目</th><th>论文/实现中的设定</th><th>解释</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>训练框架</td><td>EasyR1 / VeRL-style GRPO</td><td>不训练 value model；同一 prompt 下采样多个输出，用组内 reward 标准化得到 advantage。</td></tr>
+          <tr><td>seed instructions</td><td>论文称约 5120；公开 `seed.parquet` 实测 5119 行</td><td>seed 是简单原始任务，Instructor 负责加 constraints。</td></tr>
+          <tr><td>rollout n</td><td>5</td><td>每个 prompt 采样 5 个候选，用于 GRPO 的 group-relative comparison。</td></tr>
+          <tr><td>global batch size</td><td>96</td><td>配置文件 `examples/config*.yaml` 中一致。</td></tr>
+          <tr><td>max prompt / response</td><td>2048 / 8192</td><td>给多约束 instruction 和长回答留空间。</td></tr>
+          <tr><td>learning rate</td><td>1e-6</td><td>actor 学习率；KL coefficient 为 1e-2。</td></tr>
+          <tr><td>GPU</td><td>8 H200 for training + 4 H200 for vLLM service</td><td>这是论文表 8 的实验资源设定，复现成本不低。</td></tr>
+          <tr><td>训练步数</td><td>Instructor T1/T2/T3: 13/13/13；Follower T1/T2/T3: 39/13/13</td><td>对应“前期训练更充分，后期适度 refinement”的策略。</td></tr>
+        </tbody>
+      </table>
+      <div class="callout gold">
+        <strong>公开数据核验</strong>
+        下载 Qwen2.5-7B 公开数据后，`q_T1/q_T2/q_T3` 分别为 5105、5104、5114 行；列包括 `seed_question`, `constraint`, `prompt`, `kwargs`, `instruction_id_list`。每轮约一半样本有 3 个 constraints，另一半有 5 个 constraints，和 hard/soft constraint 生成设定一致。
+      </div>
+      <figure>
+        <img src="seif-instruction-following-assets/seif-paper-05.png" alt="论文实验设置和主结果表页" />
+        <figcaption>论文第 5 页：Table 1 主结果开始，显示五个模型族在三轮迭代中的 instruction-following benchmark 得分变化。</figcaption>
+      </figure>
+    </section>
+
+    <section id="evaluation">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Evaluation</div>
+          <h2>它到底评估了什么</h2>
+        </div>
+        <p class="section-summary">这不是一个“聊天质量”泛评估，而是围绕 instruction constraints 的遵循能力评估。多个 benchmark 的指标名字不同，但核心都是“是否满足约束”。</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Benchmark</th><th>评估对象</th><th>论文使用的指标</th><th>指标含义</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>IFEval</td><td>带可验证约束的自然语言 prompt</td><td>Pr.(L)</td><td>prompt-level strict/loose 变体中的 loose prompt accuracy；看整条 prompt 的约束是否满足。</td></tr>
+          <tr><td>CFBench</td><td>复杂多约束真实场景和 NLP 任务，含较多中文</td><td>ISR</td><td>Instruction Satisfaction Rate，衡量 instruction 是否被满足。</td></tr>
+          <tr><td>FollowBench</td><td>五类约束：content, situation, style, format, example，并逐级增加难度</td><td>HSR</td><td>Hard Satisfaction Rate，强调严格满足多级约束。</td></tr>
+          <tr><td>WritingBench</td><td>写作类任务，覆盖学术、金融、政治、文学、教育、广告等领域</td><td>Avg.</td><td>基于 criteria-aware critic 的平均写作质量/约束满足评分。</td></tr>
+          <tr><td>AgentIF</td><td>agentic 场景下的长指令和工具/条件/格式/安全要求</td><td>CSR</td><td>Constraint Satisfaction Rate，适合检验长、复杂、工具相关 instruction。</td></tr>
+          <tr><td>Multi-IF</td><td>多轮、多语言 instruction following</td><td>Avg.</td><td>跨 8 种语言、三轮对话的平均 instruction following 表现。</td></tr>
+        </tbody>
+      </table>
+      <div class="callout blue">
+        <strong>常见误解</strong>
+        这些评估不是在问“模型是不是更聪明”或“回答是不是更有人味”，而是在问：给定显式或半显式约束后，模型有没有把格式、长度、关键词、语气、角色、语言、结构、工具约束逐条满足。
+      </div>
+      <p>论文还额外评估 GPQA-Diamond、MMLU-Pro、BBEH、AIME24/25，用来检查 instruction-following RL 是否损害通用能力。这个部分更像 safety check：SEIF 的目标不是提升数学推理，而是尽量不要为了 obey constraints 把原模型通用能力训坏。</p>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Results</div>
+          <h2>主要结果：有效，但不是无条件暴涨</h2>
+        </div>
+        <p class="section-summary">SEIF 在五个模型族上多数 benchmark 都有提升，最强证据来自动态 instruction difficulty 的对照和组件消融。</p>
+      </div>
+      <div class="grid">
+        <div class="metric"><strong>+4.7</strong><span>Qwen2.5-7B-Instruct 在 IFEval 上从 73.9 到 78.6</span></div>
+        <div class="metric"><strong>+6.6</strong><span>Qwen2.5-7B-Instruct 在 WritingBench 上从 57.2 到 63.8</span></div>
+        <div class="metric"><strong>+5.8</strong><span>R1-0528-Qwen3-8B 在 FollowBench 上从 60.4 到 66.2</span></div>
+      </div>
+      <p>最值得看的不是绝对分数，而是和 baseline 的关系。对 Qwen2.5-7B，静态 SFT 几乎没有收益：IFEval 73.9 -> 74.2。Self-Rewarding、Meta-Rewarding 等 self-play / judge 类方法有提升，但 SEIF-7B 达到 IFEval 78.6、CFBench 51.0、FollowBench 59.0，高于 Meta-Rewarding 的 76.6、49.0、57.6。</p>
+      <figure>
+        <img src="seif-instruction-following-assets/seif-paper-06.png" alt="SEIF baseline comparison and ablation tables" />
+        <figcaption>论文第 6 页：Table 2 显示动态 Instructor-Follower co-evolution 优于静态 instruction difficulty 和多个 self-training baseline；Table 4/5 展示关键消融与迭代轮次。</figcaption>
+      </figure>
+      <h3>消融说明了什么</h3>
+      <table>
+        <thead>
+          <tr><th>去掉什么</th><th>结果变化</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>w/o Filter</td><td>IFEval -3.2, CFBench -6.0, FollowBench -4.1</td><td>没有过滤器，Instructor 会产生更多矛盾/不可行指令，数据和 reward 都变脏。</td></tr>
+          <tr><td>w/o Shared Parameters</td><td>IFEval -1.8, CFBench -1.0, FollowBench -1.9</td><td>Filter/Judger 不跟随最新 Follower 刷新时，监督标准不能贴近当前能力边界。</td></tr>
+          <tr><td>w/o Const.-Level Reward</td><td>IFEval -2.6, CFBench -2.0, FollowBench -1.8</td><td>细粒度逐约束 reward 比整条 instruction 全对/全错更适合多约束训练。</td></tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="seif-instruction-following-assets/seif-paper-07.png" alt="SEIF data distribution PCA and constraint type evolution" />
+        <figcaption>论文第 7 页：PCA 和 constraint-type 变化说明不同迭代轮次的数据分布确实在移动，且从简单段落/句子要求转向格式、角色、受众等更复杂约束。</figcaption>
+      </figure>
+      <h3>训练策略：为什么不是越训越多越好</h3>
+      <p>Table 6 比较了不同 epoch allocation。最佳策略是 `E1=3, E2=1, E3=1`：第一轮充分训练，后两轮适度 refinement。论文解释是，早期 instruction 分布提供基础能力；后期 instruction 更贴近当前弱点，但如果过度训练，会偏向最近生成的数据模式，带来分布偏置或过拟合。</p>
+      <figure>
+        <img src="seif-instruction-following-assets/seif-paper-08.png" alt="SEIF training strategy table and reward dynamics" />
+        <figcaption>论文第 8 页：Table 6 和 Figure 5 展示不同训练预算分配。前期充分训练、后期适度训练通常更稳。</figcaption>
+      </figure>
+    </section>
+
+    <section id="ablation">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Reliability</div>
+          <h2>Filter/Judger 靠不靠谱</h2>
+        </div>
+        <p class="section-summary">SEIF 依赖模型自实例化的 Filter/Judger。如果这两个模块严重偏，整个 self-evolution 会变成 reward hacking 或自嗨。</p>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>Filter human agreement</h3>
+          <p>论文从 VerInstruct 抽样 400 个例子，并人工修改一半为矛盾约束。Filter-T1/T2/T3 的 accuracy 约 0.79-0.80，F1 约 0.78-0.80。这个水平说明它能较稳定识别明显冲突，但不是形式化证明器。</p>
+        </div>
+        <div class="card">
+          <h3>Judger human agreement</h3>
+          <p>Judger-T1/T2/T3 的 accuracy 约 0.73-0.74，F1 约 0.70-0.72。constraint satisfaction 本身更主观，因此数值低于 Filter。它可作为训练 reward，但仍可能偏向表面格式和显式约束。</p>
+        </div>
+      </div>
+      <p>最终输出的人类 pairwise evaluation 显示，SEIF 相比 BASE 胜率 62.8%、输率 19.7%；相比 w/o Instructor Evolving 胜率 56.5%；相比 Meta-Rewarding 胜率 53.5%。这说明提升不只是 Judger 自己偏好自己的产物，但优势对强 baseline 并非压倒性。</p>
+    </section>
+
+    <section id="code">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Code Review</div>
+          <h2>公开实现能说明什么</h2>
+        </div>
+        <p class="section-summary">GitHub 仓库公开了数据、README、训练配置和核心 reward/dataset 代码；但工程体验更像研究代码，不像一键复现实验系统。</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>实现证据</th><th>观察</th><th>含义</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>`examples/reward_function/instruction_reward.py`</td><td>顶部有 Follower reward 注释块，后半部分是 Instructor reward；README 要求手动注释/取消注释切换。</td><td>方法可追踪，但 role 切换没有抽象成干净的配置开关，复现容易人为出错。</td></tr>
+          <tr><td>`verl/utils/dataset.py`</td><td>Instructor `RLHFDataset` 激活；Follower dataset class 被注释，README 同样要求手动切换。</td><td>研究代码优先跑通实验，不强调 SOLID/可维护性。</td></tr>
+          <tr><td>`vllm_answer/filter/judge/verifer.sh`</td><td>分别启动不同端口和 GPU 的 vLLM 服务。</td><td>SEIF 的 reward 不是纯本地函数，训练依赖多个在线推理服务，资源和调度成本较高。</td></tr>
+          <tr><td>公开 parquet 数据</td><td>包含 seed 和多个模型族/轮次的 `q_T*.parquet`。</td><td>数据生成结果是可检查的，论文不是只公开空壳代码。</td></tr>
+        </tbody>
+      </table>
+      <pre><code>OpenCLI / local verification highlights
+- X thread: opencli twitter thread "https://x.com/HuggingPapers/status/2054361311392174537" --limit 80 -f json
+- Paper link: https://huggingface.co/papers/2605.07465
+- Code link: https://github.com/Rainier-rq1/SEIF
+- PDF: 33 pages, title/author metadata matched
+- qwen7b-q_T1/T2/T3 rows: 5105 / 5104 / 5114</code></pre>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Limits</div>
+          <h2>限制和风险</h2>
+        </div>
+        <p class="section-summary">SEIF 是有价值的 self-evolution recipe，但不要把它理解成“无监督自动变强”的通用答案。</p>
+      </div>
+      <div class="grid two">
+        <div class="card">
+          <h3>训练分布仍然偏显式约束</h3>
+          <p>训练数据围绕可列举 constraints 构造，真实用户需求常有隐含目标、外部文档引用、长期上下文和价值冲突。论文也承认真实 instruction 可能长达数千 token、交织多类约束。</p>
+        </div>
+        <div class="card">
+          <h3>Judger 不等于人类偏好</h3>
+          <p>Judger 的 human agreement 只是 0.73-0.74 左右，说明 reward 有噪声。多轮 self-evolution 可能逐渐放大 Judger 偏差，尤其在语义软约束上。</p>
+        </div>
+        <div class="card">
+          <h3>提升主要在 instruction-following，不是泛智能</h3>
+          <p>通用 benchmark 只是证明大体不坏。比如 Qwen2.5-7B 的 general avg 从 27.7 到 28.0，属于保持或轻微变化，不应解读为推理能力大幅提升。</p>
+        </div>
+        <div class="card">
+          <h3>复现成本高</h3>
+          <p>论文配置需要 8 张 H200 训练和 4 张 H200 服务 vLLM。代码还需要手动切换 reward/dataset 角色，工程复现门槛不低。</p>
+        </div>
+      </div>
+      <div class="callout red">
+        <strong>最核心的安全边界</strong>
+        SEIF 奖励 Instructor 生成“当前 Follower 做不好”的 instruction。Filter 约束它不能出矛盾题，但没有完全约束它不产生偏门、模板化、对 Judger 友好的难题。因此，self-evolving loop 的质量上限很大程度取决于 Filter/Judger 的覆盖面和抗 reward hacking 能力。
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Insight</div>
+          <h2>我的判断：这篇论文真正值得学的是什么</h2>
+        </div>
+        <p class="section-summary">SEIF 的价值不在于提出“自进化”这个大词，而在于给开放式任务设计了一个可执行的能力边界追踪器。</p>
+      </div>
+      <div class="callout">
+        <strong>最有启发的点：把“数据生成”训练成会找模型弱点的模块。</strong>
+        很多 instruction tuning pipeline 的数据生成是静态的：先生成数据，再训练模型。SEIF 把数据生成者 Instructor 也放进 RL loop，让它持续寻找当前 Follower 做不好的但仍合法的问题。这实际上是在学习一个 adaptive curriculum generator。
+      </div>
+      <p>如果只看结果，SEIF 的提升是中等幅度：Qwen2.5-7B 在 IFEval +4.7、CFBench +4.0、WritingBench +6.6，确实有意义，但不是模型能力阶跃式改变。真正的 insight 是方法论：开放式任务没有 verifier 时，可以把任务拆成“生成边界题、过滤坏题、逐约束打分、训练解题者”四个可控接口。这个拆法比直接喊 self-improvement 更工程化。</p>
+      <p>我会把 SEIF 放在“self-play for data difficulty”而不是“fully autonomous self-improvement”类别里。它不是模型凭空发现新知识，也不是自动得到更深推理能力；它是在现有 seed tasks 和 constraint taxonomy 的空间里，持续把训练样本推向当前模型的薄弱区域。对于 instruction following、tool-use constraints、agent policy compliance 这类“显式规则多、答案空间开放”的任务，这个范式很有迁移价值。</p>
+      <p>但它要进入生产级训练，还需要三个补强：第一，Filter/Judger 应该更模块化，最好混合 rule verifier、人类偏好样本和外部强 judge；第二，Instructor 的目标不能只是不被当前 Follower 满足，还要惩罚模板化难题和 distribution drift；第三，工程实现要把 role 切换和 vLLM 服务编排配置化，否则多轮实验很容易出错。</p>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Commands</div>
+          <h2>关键命令记录</h2>
+        </div>
+        <p class="section-summary">这些命令是本报告的主要本地获取和核验路径。</p>
+      </div>
+      <pre><code>opencli twitter thread "https://x.com/HuggingPapers/status/2054361311392174537" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/JTF0JKBDTR"
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/xLmGRTIxSl"
+curl -L "https://arxiv.org/pdf/2605.07465" -o "seif-instruction-following/refs/2605.07465.pdf"
+pdfinfo "seif-instruction-following/refs/2605.07465.pdf"
+pdftotext -layout "seif-instruction-following/refs/2605.07465.pdf" "seif-instruction-following/refs/2605.07465.txt"
+curl -Ls "https://huggingface.co/api/papers/2605.07465" -o "seif-instruction-following/refs/hf-paper-2605.07465.json"
+curl -Ls "https://raw.githubusercontent.com/Rainier-rq1/SEIF/main/README.md" -o "seif-instruction-following/refs/github-readme.md"
+curl -Ls "https://api.github.com/repos/Rainier-rq1/SEIF/git/trees/main?recursive=1" -o "seif-instruction-following/refs/github-tree.json"</code></pre>
+    </section>
+
+    <div class="footer">
+      <p>Generated on 2026-05-15. Local project materials: `/Users/bytedance/Downloads/10_CodeRepos/SheSheBot/seif-instruction-following/`. Final report: `/Users/bytedance/Downloads/seif-instruction-following-report.html`.</p>
+    </div>
+  </main>
+</body>
+</html>

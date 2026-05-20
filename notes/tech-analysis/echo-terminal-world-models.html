@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ECHO: Terminal Agents Learn World Models for Free | X Article 梳理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f1b16;
+      --muted: #6c6258;
+      --subtle: #8c8174;
+      --paper: #f7f1e8;
+      --panel: #fffdf8;
+      --panel-2: #f2eadf;
+      --line: #d9ccba;
+      --line-strong: #aa9a86;
+      --accent: #b3532b;
+      --accent-soft: #f2d8c9;
+      --blue: #315f8f;
+      --blue-soft: #dce7f3;
+      --green: #3d6f59;
+      --green-soft: #dce9e1;
+      --red: #9d3f31;
+      --red-soft: #f0dcd5;
+      --violet: #6653a5;
+      --violet-soft: #e5dff2;
+      --gold: #9d6b1d;
+      --gold-soft: #f1e1bd;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+      --shadow: 0 18px 44px rgba(38, 31, 22, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(31, 27, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(31, 27, 22, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 95, 143, 0.32);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 58px;
+      gap: 18px;
+      padding: 10px clamp(18px, 4vw, 54px);
+      background: rgba(247, 241, 232, 0.94);
+      border-bottom: 1px solid rgba(31, 27, 22, 0.14);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .mark {
+      width: 25px;
+      height: 25px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--green) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.52);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(310px, 0.88fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: end;
+      min-height: 84vh;
+      padding: clamp(56px, 9vw, 108px) clamp(20px, 5vw, 72px) 46px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.92) 0 36%, rgba(255, 253, 248, 0.66) 37% 100%),
+        url("echo-terminal-world-models-assets/terminal-observation.jpg") right 15% bottom 28% / min(52vw, 720px) auto no-repeat;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 1020px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.4vw, 100px);
+      font-weight: 700;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.4vw, 58px);
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: clamp(20px, 2.2vw, 28px);
+      font-weight: 760;
+    }
+
+    .hero-lead {
+      max-width: 790px;
+      margin: 24px 0 0;
+      color: #3c352d;
+      font-size: clamp(18px, 2.1vw, 23px);
+      line-height: 1.62;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+      align-self: center;
+      padding-top: 130px;
+    }
+
+    .thesis-card,
+    .metric-card,
+    .source-card,
+    .mini-card,
+    .callout,
+    .evidence-card {
+      background: rgba(255, 253, 248, 0.92);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .thesis-card {
+      padding: 20px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .thesis-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .thesis-card p { margin: 0; font-size: 17px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card {
+      padding: 14px;
+      min-height: 104px;
+    }
+
+    .metric-card .num {
+      display: block;
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    .metric-card .label {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 54px 0 86px;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid rgba(31, 27, 22, 0.1);
+    }
+
+    section:last-child { border-bottom: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(260px, 0.52fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    .section-kicker {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    p { margin: 14px 0; }
+
+    .source-grid,
+    .two-col,
+    .three-col {
+      display: grid;
+      gap: 16px;
+    }
+
+    .source-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .source-card,
+    .mini-card,
+    .evidence-card {
+      padding: 18px;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .source-card b,
+    .mini-card b,
+    .evidence-card b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .source-card p,
+    .mini-card p,
+    .evidence-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .callout {
+      margin: 22px 0;
+      padding: 20px 22px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.blue { border-left-color: var(--blue); background: rgba(220, 231, 243, 0.48); }
+    .callout.green { border-left-color: var(--green); background: rgba(220, 233, 225, 0.5); }
+    .callout.red { border-left-color: var(--red); background: rgba(240, 220, 213, 0.48); }
+    .callout.violet { border-left-color: var(--violet); background: rgba(229, 223, 242, 0.5); }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .callout p { margin: 0; }
+
+    .steps {
+      display: grid;
+      gap: 14px;
+      counter-reset: step;
+    }
+
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 16px;
+      padding: 18px;
+      background: rgba(255, 253, 248, 0.82);
+      border: 1px solid var(--line);
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--ink);
+      color: var(--accent);
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .step h3 { margin-bottom: 8px; font-size: 21px; }
+    .step p { margin: 0; color: var(--muted); }
+
+    .math {
+      margin: 24px 0;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      overflow-x: auto;
+    }
+
+    .math-caption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid rgba(217, 204, 186, 0.65);
+    }
+
+    th {
+      color: var(--ink);
+      background: var(--panel-2);
+      font-weight: 760;
+    }
+
+    td { color: #342e27; }
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin: 2px 5px 2px 0;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    figure {
+      margin: 26px 0;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    figcaption {
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .quote {
+      margin: 20px 0;
+      padding: 18px 20px;
+      background: #1f1b16;
+      color: #fff9ef;
+      font-family: var(--serif);
+      font-size: 21px;
+      line-height: 1.48;
+    }
+
+    .quote span {
+      display: block;
+      margin-top: 10px;
+      color: #dbc9b5;
+      font-family: var(--sans);
+      font-size: 13px;
+    }
+
+    code {
+      padding: 2px 5px;
+      background: rgba(179, 83, 43, 0.12);
+      color: #6f2d17;
+      border: 1px solid rgba(179, 83, 43, 0.16);
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 16px;
+      background: #211d18;
+      color: #fff7eb;
+      border: 1px solid #211d18;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    pre code {
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      font-size: inherit;
+    }
+
+    .foot {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .section-head,
+      .source-grid,
+      .two-col,
+      .three-col {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        background:
+          linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(255, 253, 248, 0.78)),
+          url("echo-terminal-world-models-assets/terminal-observation.jpg") center bottom / 100% auto no-repeat;
+        padding-bottom: 190px;
+      }
+
+      .hero-side { padding-top: 0; }
+      .metric-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      main { width: min(100% - 28px, 1120px); padding-top: 28px; }
+      section { padding: 38px 0; }
+      .step { grid-template-columns: 1fr; }
+      h1 { font-size: clamp(38px, 12vw, 58px); }
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark"></span><span>ECHO 阅读报告</span></div>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#evaluation">评估</a>
+      <a href="#results">结果</a>
+      <a href="#replies">回复区</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Article + Paper Reading</div>
+      <h1>ECHO: 把 terminal 输出变成 agent RL 的训练信号</h1>
+      <p class="hero-lead">
+        Dimitris Papailiopoulos 这篇 X Article 宣传的核心不是“又做了一个 CLI agent benchmark”，而是一个很小但很有穿透力的训练目标改动：
+        标准 GRPO 只在 agent 自己写出的 action tokens 上更新，ECHO 同时让模型预测 terminal 回来的 observation tokens。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis-card">
+        <strong>核心 thesis</strong>
+        <p>如果 agent 每一步行动都会让环境用文本回应，那么这些回应不只是下一步行动的上下文，也是一种免费的、on-policy 的、稠密监督。</p>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="num">2.70→5.17</span>
+          <span class="label">Qwen3-8B 在 TerminalBench-2.0 pass@1 的 GRPO→ECHO 提升</span>
+        </div>
+        <div class="metric-card">
+          <span class="num">5.17→10.79</span>
+          <span class="label">Qwen3-14B 在 TerminalBench-2.0 pass@1 的 GRPO→ECHO 提升</span>
+        </div>
+        <div class="metric-card">
+          <span class="num">0.05</span>
+          <span class="label">论文主实验采用的 environment-prediction loss 权重 λ</span>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Source Map</div>
+          <h2>我读了什么，怎么核验</h2>
+        </div>
+        <p>这次材料不是单条推文，而是一个 X Article 入口。原帖只有短链，短链解析到 X 长文；长文再链接论文 PDF 和代码仓库。</p>
+      </div>
+
+      <div class="source-grid">
+        <div class="source-card">
+          <b>X 原帖与 Article</b>
+          <p>
+            原帖：<a href="https://x.com/DimitrisPapail/status/2056368948870811746">DimitrisPapail/status/2056368948870811746</a>。
+            用 <code>opencli twitter thread</code> 抓到原帖、回复和作者补充；用 <code>curl</code> 解析短链到
+            <a href="https://x.com/i/article/2056344151235387392">X Article</a>。
+          </p>
+        </div>
+        <div class="source-card">
+          <b>论文 PDF</b>
+          <p>
+            长文链接到 <a href="https://github.com/anadim/anadim.github.io/blob/master/papers/echo.pdf">echo.pdf</a>。
+            GitHub blob 页面显示 778KB，raw PDF 已下载并用 <code>pdfinfo</code> 确认为 13 页 PDF，创建时间为 2026-05-19。
+          </p>
+        </div>
+        <div class="source-card">
+          <b>代码链接状态</b>
+          <p>
+            X Article 与论文都指向 <a href="https://github.com/microsoft/echo-rl">microsoft/echo-rl</a>。
+            Grok/mcp-router 搜索能看到该仓库标题和描述，但本地直接打开 GitHub 页面与 raw README 时返回不可读/404。因此本文不对代码实现做已核验判断。
+          </p>
+        </div>
+      </div>
+
+      <div class="callout blue">
+        <strong>一句话总结</strong>
+        <p>
+          ECHO 的思想是：CLI agent 的 rollout 本来就是 <code>action → terminal observation → action → terminal observation</code> 的序列；
+          标准 RL 把 observation 只当上下文，ECHO 把 observation 也当预测目标，于是失败轨迹也能贡献关于环境动态的监督。
+        </p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Problem</div>
+          <h2>它到底要解决什么问题</h2>
+        </div>
+        <p>论文关心的是 terminal agents 的多轮强化学习，不是普通 chat model，也不是只做代码补全。</p>
+      </div>
+
+      <p>
+        一个 terminal agent 在 Docker/container 里接任务，然后多轮执行命令：读文件、改文件、跑测试、看 traceback、继续修复。训练时常见做法是让模型采样多个 rollout，
+        最后用 verifier 或单元测试给每条轨迹一个二值奖励：任务做成了就是 1，没做成就是 0。论文使用的是 GRPO 风格的训练：对同一个 prompt 采样多条轨迹，用组内 reward 相对差异产生 advantage，
+        再更新模型在 action tokens 上的概率。
+      </p>
+
+      <div class="quote">
+        标准 agent RL 的浪费在于：terminal 输出已经进了上下文、已经经过模型 forward、已经有 ground truth token，但 loss mask 把它们全部遮掉了。
+        <span>这不是论文原文直引，而是对其问题意识的压缩表述。</span>
+      </div>
+
+      <p>
+        这里的核心困难是 reward 太稀疏。论文给出一个具体现象：在 Qwen3-8B 设置里，很多任务下少于 15% 的 on-policy rollouts 能成功。
+        这意味着多数轨迹对 policy gradient 来说要么没有组内 reward 对比，要么只得到粗糙的负信号。但这些失败轨迹并不空：里面有 <code>ls</code> 输出、测试错误、文件内容、日志、traceback、
+        exit code、grep 结果。这些东西恰好告诉模型“刚才那个命令让环境发生了什么”。
+      </p>
+
+      <div class="two-col">
+        <div class="mini-card">
+          <b>标准 GRPO 看到了什么</b>
+          <p>模型会条件化在旧的 terminal 输出上生成下一步行动，所以 observation 会影响未来 action。</p>
+        </div>
+        <div class="mini-card">
+          <b>标准 GRPO 没训练什么</b>
+          <p>terminal 输出 token 不进入 loss，因此模型没有被直接训练去预测“执行这个命令之后会看到什么”。</p>
+        </div>
+      </div>
+
+      <figure>
+        <img src="echo-terminal-world-models-assets/terminal-observation.jpg" alt="X Article 中 terminal 输出作为低维环境投影的示意图" />
+        <figcaption>作者把 terminal 输出理解为系统状态变化的低维投影：stdout、stderr、文件列表、错误日志并不是完整世界状态，但足够支撑下一步行动。</figcaption>
+      </figure>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Mechanism</div>
+          <h2>ECHO 怎么做</h2>
+        </div>
+        <p>方法本身非常简单：同一条 rollout、同一次 forward、两组 token mask、两个 loss。</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div>
+            <h3>把多轮交互切成 action tokens 和 observation tokens</h3>
+            <p>
+              一条训练序列长得像：system prompt、用户任务、agent 第一次行动、terminal 第一次返回、agent 第二次行动、terminal 第二次返回，直到结束。
+              论文用 <code>A</code> 表示 assistant-action token 位置，用 <code>O</code> 表示 environment-observation token 位置。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>action tokens 继续用 GRPO</h3>
+            <p>
+              对 agent 自己写出的行动，例如 reasoning block、bash command、task-done signal，仍然用 GRPO 的 clipped policy-gradient loss。
+              reward 来自最终测试是否通过，二值化为 1 或 0。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>observation tokens 加 cross-entropy</h3>
+            <p>
+              terminal 输出是已经发生的 ground truth。ECHO 在这些 token 上加 next-token prediction loss，让模型学习：
+              在前文包含任务、历史命令和当前命令的条件下，terminal 会输出什么。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>排除 harness warning，只训练真实 terminal 输出</h3>
+            <p>
+              论文发现 warning prefix 很快被记住，梯度价值低；真正有用的是 command output，例如文件名、测试失败、错误格式、byte count、traceback。
+              因此主设置使用 env-only observation targets。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="math">
+        \[
+          L_{\mathrm{ECHO}}(\theta) = L_{\mathrm{GRPO}}(\theta; A) + \lambda L_{\mathrm{env}}(\theta; O')
+        \]
+        \[
+          L_{\mathrm{env}}(\theta; O') = -\frac{1}{|O|}\sum_{t \in O'} \log p_\theta(x_t \mid x_{<t})
+        \]
+        <div class="math-caption">
+          <code>A</code> 是 action token 位置，<code>O'</code> 是真实 terminal-output token 位置，<code>|O|</code> 做按 observation 长度归一化。主实验使用 <code>λ = 0.05</code>。
+        </div>
+      </div>
+
+      <div class="callout green">
+        <strong>为什么作者说“几乎免费”</strong>
+        <p>
+          因为训练 GRPO 时本来就要对完整 transcript 做一次 actor forward，logits 已经在所有位置算出来。
+          ECHO 只是额外在 observation mask 上 gather log-prob 并 reduce。真正昂贵的 attention/MLP 反传仍然走同一批 activation，不需要额外 rollout、teacher model 或第二次 forward。
+        </p>
+      </div>
+
+      <p>
+        但“免费”不是完全没有代价。更准确说法是：相对采样环境交互、额外 teacher、额外模型前向，这个改动的边际成本很低；不过 observation token 也会引入额外 loss 项，
+        并且会改变梯度方向。因此 <code>λ</code> 不是无脑越大越好。论文 sweep 了 <code>0.001</code> 到 <code>0.2</code>，
+        发现 <code>0.01-0.05</code> 比较有效；<code>0.1</code> 会让 policy plateau 或退化，<code>0.2</code> 甚至可能让模型偏向制造容易预测但对任务无用的 terminal 输出。
+      </p>
+    </section>
+
+    <section id="evaluation">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Evaluation</div>
+          <h2>它到底评估了什么</h2>
+        </div>
+        <p>这篇工作评的是 terminal task completion，不是模型能不能口头解释命令。</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>论文设置</th>
+            <th>含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>训练任务</td>
+            <td>8870 个 terminal tasks，其中 8770 训练、100 个 in-distribution validation</td>
+            <td>任务来自 Endless Terminals、OpenThoughts-Agent-v1-RL，并用修改后的 Endless Terminals pipeline 扩展；保留 GPT-5 至少 16 次尝试中解出过一次的任务。</td>
+          </tr>
+          <tr>
+            <td>交互环境</td>
+            <td>Docker + Harbor，最多 16 turns，16k context，每 turn 最多 2048 generated tokens</td>
+            <td>agent 写 Qwen XML-format bash command，harness 解析并执行，然后把 stdout/stderr/exit code 返回。</td>
+          </tr>
+          <tr>
+            <td>基础模型</td>
+            <td>Qwen3-8B、OpenThinker-Agent-v1-SFT、Qwen3-14B</td>
+            <td>OpenThinker-Agent-v1-SFT 是 Qwen3-8B 用约 15k 条 GLM-4.6 expert terminal-agent demonstrations SFT 得到的起点。</td>
+          </tr>
+          <tr>
+            <td>RL 配方</td>
+            <td>16 rollouts/prompt，batch size 16，LR 1e-6，temperature 0.8，500 steps，8 张 B200</td>
+            <td>GRPO 和 ECHO 保持同一配方，主要变量是 observation tokens 是否进入 environment cross-entropy。</td>
+          </tr>
+          <tr>
+            <td>指标</td>
+            <td>pass@1、pass@3、pass@5</td>
+            <td>pass@k 表示每个任务采样 k 次尝试时至少一次通过的概率或比例。内部 eval 用 8 rollouts/task，TB2 用 Terminus 2 harness 做 5 rollouts。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout violet">
+        <strong>常见误解</strong>
+        <p>
+          “learn world model” 在这里不是训练一个显式 simulator，也不是让模型在 inference 时先模拟未来状态再规划。
+          论文更保守的 operational claim 是：ECHO 让同一个 policy 更会预测 terminal output，这说明它的隐藏表示吸收了一部分 terminal dynamics。
+        </p>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Results</div>
+          <h2>结果数字怎么读</h2>
+        </div>
+        <p>最有价值的不是某个单点翻倍，而是四类证据互相支撑：任务成功率、terminal 输出预测、SFT 替代性、verifier-free adaptation。</p>
+      </div>
+
+      <figure>
+        <img src="echo-terminal-world-models-assets/results-table.jpg" alt="ECHO 与 GRPO 在 val100、ITD、TBLite、TerminalBench-2.0 上的 pass rate 表格" />
+        <figcaption>论文/X Article 展示的主结果表。ECHO 在三个 starting policies 和多个评测切片上整体优于 matched GRPO。</figcaption>
+      </figure>
+
+      <table>
+        <thead>
+          <tr>
+            <th>起点</th>
+            <th>GRPO TB2 pass@1</th>
+            <th>ECHO TB2 pass@1</th>
+            <th>解释</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Qwen3-8B</td>
+            <td>2.70</td>
+            <td>5.17</td>
+            <td>接近 1.9 倍；绝对值仍低，说明 TB2 对小模型非常难，但 ECHO 显著改善样本效率。</td>
+          </tr>
+          <tr>
+            <td>OT-SFT</td>
+            <td>7.64</td>
+            <td>7.87</td>
+            <td>提升很小；专家 SFT 起点已经包含大量 terminal interaction prior，ECHO 的边际空间变窄。</td>
+          </tr>
+          <tr>
+            <td>Qwen3-14B</td>
+            <td>5.17</td>
+            <td>10.79</td>
+            <td>接近 2.1 倍；论文认为大模型可能更能内化可迁移的 terminal dynamics。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <figure>
+        <img src="echo-terminal-world-models-assets/training-curves.jpg" alt="ECHO 与 GRPO 训练曲线对比" />
+        <figcaption>训练曲线显示 ECHO 早期就和 GRPO 拉开距离。对 8B 模型，它还以更少 steps 达到 GRPO 的峰值表现。</figcaption>
+      </figure>
+
+      <div class="three-col">
+        <div class="mini-card">
+          <b>1. 任务成功率变高</b>
+          <p>ECHO 在 val100、ITD、TBLite、TB2 的多数组合中优于 matched GRPO；最吸睛的是 TB2 pass@1 的近似翻倍。</p>
+        </div>
+        <div class="mini-card">
+          <b>2. 输出预测能力变强</b>
+          <p>在 Qwen3-32B 生成的 held-out off-policy trajectories 上，ECHO 显著降低 terminal-output cross-entropy，GRPO 几乎不变。</p>
+        </div>
+        <div class="mini-card">
+          <b>3. 部分替代 expert SFT</b>
+          <p>Qwen3-8B 上，ECHO 在内部评测恢复了几乎全部 expert-SFT gap，在 TB2 上恢复约一半。</p>
+        </div>
+      </div>
+
+      <figure>
+        <img src="echo-terminal-world-models-assets/env-cross-entropy.jpg" alt="ECHO 显著降低 terminal output cross entropy 的图表" />
+        <figcaption>
+          这是“world model” claim 的关键证据：评估轨迹不是模型自己生成的，而是 Qwen3-32B 生成的 held-out trajectories。低 CE 意味着模型更能预测另一个更强 agent 行动之后的 terminal 输出。
+        </figcaption>
+      </figure>
+
+      <div class="callout green">
+        <strong>Verifier-free adaptation 是最有趣但也最要克制的结果</strong>
+        <p>
+          作者从最强 Qwen3-8B+ECHO checkpoint 出发，关掉 GRPO，只训练 <code>L_env</code> 100 steps。
+          val100 提升 +3.8pp；过滤干净工具调用后，PyTerm 提升 +10.0pp，ITD 提升 +5.2pp，但 TBLite 下降 -3.9pp。
+          这说明“只从环境后果学习”不是万能自我改进，只在 rollouts 足够干净、observation 足够 informative 时成立。
+        </p>
+      </div>
+    </section>
+
+    <section id="replies">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Discussion</div>
+          <h2>回复区真正有价值的讨论</h2>
+        </div>
+        <p>回复区的价值在于把 ECHO 放回 agent RL、world model、auxiliary loss 的历史脉络里。</p>
+      </div>
+
+      <div class="two-col">
+        <div class="mini-card">
+          <b>“这是不是老的 user-turn NLL 正则？”</b>
+          <p>
+            有人指出，对非 assistant turn 加 NLL loss 作为 regularization 不是全新概念。我的理解是：
+            形式上确实像，但 ECHO 的 domain-specific 贡献在 terminal agent 的 action-consequence 结构上，
+            它训练的不是任意用户文本，而是 action 导致的环境反馈。
+          </p>
+        </div>
+        <div class="mini-card">
+          <b>“L(observation) 是 autoencoder 吗？”</b>
+          <p>
+            作者回复说不是单独 autoencoder，而是同一个 model/policy 上的 terminal token cross-entropy。
+            action model 和 world model 是一个模型，不是两个模块。
+          </p>
+        </div>
+        <div class="mini-card">
+          <b>“没有 verifier 时，如果 SQL 执行成功但答案错怎么办？”</b>
+          <p>
+            作者承认取决于任务种子、复杂度、多样性和 coverage。如果任务只让模型 grep 文本，terminal dynamics 很贫乏，就学不到有用世界模型。
+          </p>
+        </div>
+        <div class="mini-card">
+          <b>“是不是可以用 JEPA/压缩目标？”</b>
+          <p>
+            有回复认为 terminal 输出多数细节并不总是有用，应该学更抽象状态。作者同意方向，但提到他们更倾向 compaction，而不是直接做 JEPA。
+          </p>
+        </div>
+      </div>
+
+      <p>
+        这些讨论说明 ECHO 的新意不应被夸张成“首次发现 auxiliary prediction”。它更像是把 RL 里长期存在的 forward dynamics / auxiliary prediction 思路，
+        非常直接地插入到 LLM terminal agent 的 on-policy GRPO 训练环里。这个插入点很干净：不用另训 simulator，不改变 inference 架构，也不需要 expert teacher。
+      </p>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Limits</div>
+          <h2>它没有证明什么</h2>
+        </div>
+        <p>这篇文章值得重视，但不要把标题里的 “world model” 读得过强。</p>
+      </div>
+
+      <div class="callout red">
+        <strong>第一，terminal-output CE 不是完整 world model 证明</strong>
+        <p>
+          它证明模型更会预测观察到的 terminal 文本，不证明模型能显式模拟文件系统、进程状态或长期因果结构。
+          这是一个 operational world-model claim：更好的压缩/预测 terminal dynamics，而不是完整可规划 simulator。
+        </p>
+      </div>
+
+      <div class="callout red">
+        <strong>第二，“免费”不等于没有目标冲突</strong>
+        <p>
+          如果 λ 太大，模型可能偏向制造容易预测的输出，而不是推进任务。论文自己的 sweep 已经观察到 λ=0.1/0.2 可能退化。
+          所以 ECHO 是一个要调权重的 auxiliary objective，不是纯收益开关。
+        </p>
+      </div>
+
+      <div class="callout red">
+        <strong>第三，它依赖 observation 的信息密度</strong>
+        <p>
+          Python traceback 这类反馈和 action 强绑定，特别适合 ECHO；但更广泛的 terminal tasks 可能需要多步文件/配置/进程状态推断，输出未必足够直接。
+          这也是 TBLite 在 env-only adaptation 中下降的一个解释。
+        </p>
+      </div>
+
+      <div class="callout red">
+        <strong>第四，代码仓库这次未能直接核验</strong>
+        <p>
+          X Article 和论文指向 <code>microsoft/echo-rl</code>。搜索结果能看到仓库描述，但当前直接访问 GitHub 页面/raw README 失败。
+          因此本报告只基于 X Article 与 PDF 论文分析，不对开源代码成熟度、可复现脚本、配置完整性做判断。
+        </p>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Insight</div>
+          <h2>我认为它真正重要在哪里</h2>
+        </div>
+        <p>这篇工作的 insight 在于重新定义“agent rollout 里什么是监督”。</p>
+      </div>
+
+      <p>
+        我觉得 ECHO 最值得记住的不是 TerminalBench-2.0 上 2.70 到 5.17、5.17 到 10.79 的数字，而是一个训练观念：
+        对 agent 来说，环境返回的文本不是被动上下文，而是行动后果的监督标签。只要世界用 token 反馈，模型就可以用 next-token prediction 从这些反馈里学习一部分 dynamics。
+      </p>
+
+      <p>
+        这对未来 agent RL 很关键。现在大家经常在两个极端之间摇摆：要么模仿 expert trajectories，要么等待稀疏 verifier reward。
+        ECHO 插入了第三种信号：不告诉你“这步好不好”，但告诉你“这步真实造成了什么”。这类信号本身不直接等于策略优化，却能改变模型的 representation 和 action prior，
+        让后续 policy optimization 更容易。
+      </p>
+
+      <p>
+        但我会保守看它的外推。terminal 是一个特别适合 ECHO 的环境，因为返回文本结构化、真实、和 action 因果相关：命令错了就有错误，测试挂了就有 traceback，文件存在就能列出来。
+        如果迁移到 browser agents、GUI agents、用户对话或多工具系统，环境反馈可能更含噪、更延迟、更偏偏好表达。此时原始 observation tokens 未必是好 target，
+        可能需要 summary、state abstraction、trajectory filtering 或 credit assignment 改造。
+      </p>
+
+      <div class="callout green">
+        <strong>我的判断</strong>
+        <p>
+          ECHO 不是“终结 expert SFT / verifier reward”的方法，而是一个很有可能成为 agent RL trainer 标配的低成本辅助项。
+          它的强度取决于三件事：环境反馈是否信息密集、rollout 是否干净、loss 权重是否不压倒策略目标。
+          如果这三件事成立，它确实把原本被 mask 掉的一大块监督找回来了。
+        </p>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Provenance</div>
+          <h2>关键命令和证据</h2>
+        </div>
+        <p>下面是本报告使用的核心获取与校验命令摘要。</p>
+      </div>
+
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/DimitrisPapail/status/2056368948870811746" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/n10GwfKYuY"
+opencli web read --url "https://x.com/i/article/2056344151235387392" --stdout true --download-images false --wait 5 -f json --trace retain-on-failure
+curl -L "https://raw.githubusercontent.com/anadim/anadim.github.io/master/papers/echo.pdf" -o "/tmp/echo-paper.pdf"
+pdfinfo "/tmp/echo-paper.pdf"
+pdftotext -layout "/tmp/echo-paper.pdf" "/tmp/echo-paper.txt"</code></pre>
+
+      <p class="foot">
+        本地 HTML 生成日期：2026-05-20。主要来源：X Article、论文 PDF、OpenCLI 抓取的回复区。代码仓库内容未直接读取成功，报告中已明确标注该边界。
+      </p>
+    </section>
+  </main>
+</body>
+</html>

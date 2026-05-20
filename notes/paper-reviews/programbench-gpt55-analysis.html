@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KLieret X 线程解读：GPT 5.5 首次解出 ProgramBench 实例</title>
+  <style>
+    :root {
+      --bg: #f7f1e8;
+      --paper: #fffaf2;
+      --ink: #211b16;
+      --muted: #6c6258;
+      --line: #ded2c3;
+      --accent: #b25a32;
+      --accent-2: #1e5fbf;
+      --soft: #efe3d3;
+      --code-bg: #2a211c;
+      --code-ink: #f8efe3;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.72 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247, 241, 232, 0.94);
+      backdrop-filter: blur(10px);
+    }
+    .topbar-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 10px 22px;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      font-weight: 750;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      justify-content: flex-end;
+      font-size: 13px;
+    }
+    nav a { color: var(--muted); }
+    header {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 58px 22px 26px;
+    }
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    h1 {
+      max-width: 900px;
+      margin: 12px 0 14px;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    .thesis {
+      max-width: 920px;
+      color: #3a3129;
+      font-size: 20px;
+      line-height: 1.58;
+      margin: 0 0 22px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 26px;
+    }
+    .meta {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 13px 14px;
+    }
+    .meta .k {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .meta .v {
+      font-weight: 760;
+      line-height: 1.35;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px 22px 70px;
+    }
+    section {
+      border-top: 1px solid var(--line);
+      padding: 34px 0 8px;
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 24px 0 8px;
+      font-size: 20px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 14px; }
+    .lead { font-size: 18px; color: #342b24; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .card, .callout {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .card h3:first-child { margin-top: 0; }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #fff6e9;
+    }
+    .source-map {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .source-map .card { padding: 14px; }
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 999px;
+      padding: 2px 9px;
+      margin: 0 6px 6px 0;
+      color: #4a3d33;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    figure {
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #edf4f8;
+    }
+    figcaption {
+      padding: 10px 13px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--line);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #eadccb;
+      font-weight: 760;
+      color: #332a23;
+    }
+    tr:last-child td { border-bottom: none; }
+    code {
+      background: #eadccb;
+      color: #2b211b;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-ink);
+      border-radius: 8px;
+      padding: 14px;
+      overflow: auto;
+      border: 1px solid #3a2e27;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .step {
+      position: relative;
+      padding: 14px 14px 14px 48px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+    }
+    .step:before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff8ef;
+      font-weight: 760;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+    }
+    .small { color: var(--muted); font-size: 13px; }
+    .verdict {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .strong { font-weight: 760; }
+    ul { padding-left: 22px; margin: 8px 0 16px; }
+    li { margin: 6px 0; }
+    @media (max-width: 860px) {
+      .topbar-inner { align-items: flex-start; flex-direction: column; gap: 8px; }
+      nav { justify-content: flex-start; }
+      .meta-grid, .source-map, .grid-2, .verdict { grid-template-columns: 1fr; }
+      header { padding-top: 36px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">ProgramBench / GPT 5.5 解读</div>
+      <nav>
+        <a href="#what">线程说了什么</a>
+        <a href="#benchmark">基准是什么</a>
+        <a href="#metrics">指标</a>
+        <a href="#cmatrix">cmatrix</a>
+        <a href="#comparison">对比</a>
+        <a href="#insight">Insight</a>
+      </nav>
+    </div>
+  </div>
+
+  <header>
+    <div class="eyebrow">X thread reading report · 2026-05-15</div>
+    <h1>GPT 5.5 首次解出 ProgramBench 实例：真正重要的不是“1 道题”，而是推理预算如何改变软件重建能力</h1>
+    <p class="thesis">KLieret 的 X 线程报告了 ProgramBench 的第一次 fully resolved：GPT 5.5 high 和 xhigh 都重建了 <code>cmatrix</code>，但分别选择 C 与 Python。这个结果说明高推理预算能显著改善黑盒程序重建，但它还不是“编程任务被解决”的证据；ProgramBench 仍然只有 0.5% resolved，核心价值在于它把 coding agent 从“修一处 bug”推进到“从二进制和文档重建整个程序”的能力评估。</p>
+    <div class="meta-grid">
+      <div class="meta">
+        <div class="k">原始材料</div>
+        <div class="v">KLieret X 线程，2026-05-12</div>
+      </div>
+      <div class="meta">
+        <div class="k">核心事件</div>
+        <div class="v">首个 ProgramBench 任务 resolved</div>
+      </div>
+      <div class="meta">
+        <div class="k">实例</div>
+        <div class="v"><code>abishekvashok/cmatrix</code></div>
+      </div>
+      <div class="meta">
+        <div class="k">交付物</div>
+        <div class="v">中文详细解读 + 本地证据图</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="source">
+      <h2>材料来源与核验</h2>
+      <div class="source-map">
+        <div class="card">
+          <h3>X 线程</h3>
+          <p>使用 OpenCLI 按仓库规范读取 <code>twitter thread</code>，抓到原帖、主线程、作者后续回复和 4 张配图。原始 JSON 保存在 <code>/tmp/klieret-2054215545663144217-thread.json</code>。</p>
+          <span class="tag">OpenCLI</span><span class="tag">X/Twitter</span>
+        </div>
+        <div class="card">
+          <h3>官方材料</h3>
+          <p>交叉阅读 ProgramBench 官网、官方博客、GitHub README 与 arXiv 论文 <code>2605.03546</code>。官网/论文负责解释 benchmark；博客负责解释 GPT 5.5 的首次 resolved。</p>
+          <span class="tag">ProgramBench</span><span class="tag">arXiv</span><span class="tag">GitHub</span>
+        </div>
+        <div class="card">
+          <h3>证据图</h3>
+          <p>线程中的 4 张图已下载到 <code>/Users/bytedance/Downloads/programbench-gpt55-assets/</code>，分别覆盖 leaderboard、主柱状图、累积分布和 GPT 5.5 xhigh 对 Opus 4.7 xhigh 的逐任务散点图。</p>
+          <span class="tag">local images</span><span class="tag">validation</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="what">
+      <h2>这条 X 线程到底说了什么</h2>
+      <p class="lead">主帖的核心信息有三层：第一，ProgramBench 第一个任务被 GPT 5.5 high/xhigh 解出；第二，同一个任务里 high 与 xhigh 走了两条不同语言路线；第三，在这个更新后的 leaderboard 上，GPT 5.5 xhigh 在所有主要指标上明显强于 Claude Opus 4.7 xhigh。</p>
+      <figure>
+        <img src="programbench-gpt55-assets/HIIEKQMWQAA_p-J.jpg" alt="ProgramBench 主结果柱状图，显示 GPT 5.5 xhigh resolved 0.5%、almost 13.5%">
+        <figcaption>线程主图：200 tasks、248,000+ tests；GPT 5.5 xhigh 的 almost resolved 达到 13.5%，resolved 为 0.5%。</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="card">
+          <h3>线程的主结论</h3>
+          <ul>
+            <li><span class="strong">GPT 5.5 high</span> 解出 <code>cmatrix</code>，用 C 实现。</li>
+            <li><span class="strong">GPT 5.5 xhigh</span> 也解出同一实例，但用 Python 3 实现。</li>
+            <li><span class="strong">GPT 5.5 xhigh</span> 的 leaderboard 指标为 0.5% resolved、13.5% almost resolved。</li>
+            <li><span class="strong">Claude Opus 4.7 xhigh</span> 在几乎解出比例上为 4.5%，但没有 fully resolved。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>作者后续回复补充了什么边界</h3>
+          <ul>
+            <li>有人问 Opus 4.7 是否跑了 max effort；KLieret 回复说 max 只跑了约一半，到约 4-5k 美元时仍没有拿到 solved instance，且在 <code>&gt;99%</code>、<code>&gt;95%</code> 等指标上更弱，所以没有继续跑完。</li>
+            <li>有人问近解实例是否只是被单个坏测试卡住；KLieret 回复说没有系统化拆解，但他们人工检查过 <code>&gt;99%</code> 的实例，以确保不是单个坏测试阻止 solved。</li>
+            <li>有人问是否使用完整 SWE-agent；KLieret 明确说用的是一个 minimal scaffold：<code>mini-swe-agent</code>。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="benchmark">
+      <h2>ProgramBench 是什么：不是补函数，也不是修 bug，而是黑盒重建整个程序</h2>
+      <p>传统 coding benchmark 常见形态是：给一个函数签名，让模型补函数；或者给一个现有 repo 和 issue，让 agent 修一个 bug。ProgramBench 的问题更接近“给你一个已经编译好的程序和文档，你能否从零写出一个行为一致的新项目”。</p>
+      <div class="steps">
+        <div class="step"><span class="strong">输入给 agent 的东西：</span>一个可执行文件、README / man page / help 输出等使用文档，以及工作目录里允许看到的非源码材料。</div>
+        <div class="step"><span class="strong">不给 agent 的东西：</span>源代码、反编译能力、互联网访问。agent 不能直接去 GitHub 克隆原项目，也不能通过反编译偷看实现。</div>
+        <div class="step"><span class="strong">agent 要产出的东西：</span>完整源代码和 build script，构建出一个候选可执行文件。</div>
+        <div class="step"><span class="strong">评测方式：</span>隐藏行为测试把候选程序和参考程序放在同样输入下比较，检查 stdout、exit code、文件系统副作用等可观察行为。</div>
+        <div class="step"><span class="strong">为什么语言可以不同：</span>评测看的是行为，不看源码相似度。因此原程序是 C/Rust/Go 写的，模型也可以用 Python、C 或其他语言重建，只要行为测试全部通过。</div>
+      </div>
+      <p>这就是为什么 <code>cmatrix</code> 上 high 用 C、xhigh 用 Python 仍然都能算 solved：ProgramBench 不奖励“像原项目”，而是奖励“黑盒行为一致”。</p>
+    </section>
+
+    <section id="metrics">
+      <h2>指标怎么读：resolved 很硬，almost 是细粒度信号</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>指标</th>
+            <th>含义</th>
+            <th>为什么重要</th>
+            <th>容易误读的地方</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>% Resolved</code></td>
+            <td>200 个 task 中，候选代码通过所有隐藏行为测试、且没有被判 cheating 的比例。</td>
+            <td>这是最硬指标。哪怕只失败一个关键测试，也可能说明程序行为根本不完整。</td>
+            <td>0.5% 不是“总体 0.5 分”，而是 200 个任务里约 1 个任务 fully solved。</td>
+          </tr>
+          <tr>
+            <td><code>Almost</code></td>
+            <td>通过至少 95% 行为测试的 task 比例。</td>
+            <td>在 resolved 接近 0 的阶段，它能显示模型是否在大量任务上逼近正确实现。</td>
+            <td>95% tests passed 不等于 95% 功能可用。一个失败测试可能对应很核心的行为缺陷。</td>
+          </tr>
+          <tr>
+            <td>平均 pass rate / 分布图</td>
+            <td>看每个任务通过测试的比例，并画成累积分布或逐任务散点。</td>
+            <td>能看到模型是否只是偶然解出一题，还是在整个任务集合上整体右移。</td>
+            <td>不要把“曲线更靠右”直接解释成所有真实软件能力都更强，它仍受测试覆盖和任务选择影响。</td>
+          </tr>
+          <tr>
+            <td>Cost / Calls</td>
+            <td>每个任务平均 API 成本和调用次数，博客里的 <code>cmatrix</code> 表还列了单次轨迹成本与调用。</td>
+            <td>ProgramBench 是 agentic benchmark；同样分数下，成本和调用次数决定它是否有工程可用性。</td>
+            <td>成本不是纯模型能力指标，受 pricing、prompt、agent loop、停止策略影响。</td>
+          </tr>
+        </tbody>
+      </table>
+      <figure>
+        <img src="programbench-gpt55-assets/HIIEV2YXwAA5RiX.jpg" alt="ProgramBench leaderboard screenshot">
+        <figcaption>Leaderboard 图：排序依据是 resolved → almost → avg pass rate。GPT 5.5 xhigh 和 high 是唯二达到 0.5% resolved 的条目。</figcaption>
+      </figure>
+    </section>
+
+    <section id="cmatrix">
+      <h2><code>cmatrix</code> 首个 resolved 实例：模型到底做了什么</h2>
+      <p class="lead"><code>cmatrix</code> 是经典终端“黑客帝国数字雨”程序。这个任务不是让模型读源码，而是让它通过文档、man page、运行原二进制、观察输出/错误/exit code，自己推断 CLI 行为并重写。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Run</th>
+            <th>Failures</th>
+            <th>语言/实现路线</th>
+            <th>Cost</th>
+            <th>API calls</th>
+            <th>解读</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GPT 5.5 high</td>
+            <td>0</td>
+            <td>C，raw ANSI escape sequences</td>
+            <td>$3.17</td>
+            <td>34</td>
+            <td>探索足够但不拖沓：约 10 轮探索、40+ flag 组合，然后一次性写 C 实现并做少量补丁。</td>
+          </tr>
+          <tr>
+            <td>GPT 5.5 xhigh</td>
+            <td>0</td>
+            <td>Python 3</td>
+            <td>$4.84</td>
+            <td>40</td>
+            <td>更强探索路线：约 27 步系统 probing CLI path，再写一个自包含 Python 文件。</td>
+          </tr>
+          <tr>
+            <td>GPT 5.5</td>
+            <td>3</td>
+            <td>C，raw ANSI escape sequences</td>
+            <td>$1.04</td>
+            <td>17</td>
+            <td>低成本但未 fully resolve；说明底座能力不是唯一变量，推理预算/探索深度确实改变结果。</td>
+          </tr>
+          <tr>
+            <td>Claude Opus 4.7 xhigh</td>
+            <td>19</td>
+            <td>C，ncurses</td>
+            <td>$10.74</td>
+            <td>178</td>
+            <td>有复杂系统工程操作，但最终在细节行为上失败。更多调用不自动等于更高测试通过率。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p><span class="strong">关键 insight：</span><code>cmatrix</code> 不是一个算法题，而是“行为规格恢复”题。模型必须决定应该探索哪些 CLI 路径、哪些错误输入、哪些 exit code、哪些终端控制行为。GPT 5.5 的优势不只是会写代码，而是探索路径更有效，能把黑盒行为转成足够完整的实现规格。</p>
+      </div>
+    </section>
+
+    <section id="comparison">
+      <h2>为什么说 GPT 5.5 xhigh 对 Opus 4.7 xhigh 是“整体优势”</h2>
+      <p>如果只看 <code>cmatrix</code>，可能会误以为这是一次偶然的“单题击穿”。线程中的分布图和散点图说明更强的点：GPT 5.5 xhigh 不只是多解出一题，而是在大量任务上 pass-rate 分布整体更靠右。</p>
+      <div class="grid-2">
+        <figure>
+          <img src="programbench-gpt55-assets/HIIEkOYW8AAEfOr.jpg" alt="Cumulative test pass rates chart">
+          <figcaption>累积分布图：横轴是测试通过率阈值，纵轴是超过该阈值的任务比例。曲线越靠右上越好。GPT 5.5 xhigh 在大部分阈值上领先。</figcaption>
+        </figure>
+        <figure>
+          <img src="programbench-gpt55-assets/HIIEuZUWUAAEcXv.jpg" alt="Per task test pass rate comparison between GPT 5.5 xhigh and Claude Opus 4.7 xhigh">
+          <figcaption>逐任务散点图：每个点是一个 task；点在对角线上方表示 GPT 5.5 xhigh 在该任务上 test pass rate 更高。大多数点位于上方。</figcaption>
+        </figure>
+      </div>
+      <h3>但这个“整体优势”仍然有边界</h3>
+      <ul>
+        <li>它是在 <code>mini-swe-agent</code> scaffold、固定 ProgramBench 任务、当前隐藏行为测试套件下的优势，不自动代表所有 coding agent 系统或所有真实开发任务。</li>
+        <li>ProgramBench 的 resolved 仍然很低：GPT 5.5 xhigh 是 0.5%，也就是约 1/200；剩下绝大多数任务仍未完全解决。</li>
+        <li><code>Almost</code> 指标很有信息量，但不能当作“程序基本可用”。很多软件里 5% 的行为缺口可能是安全、兼容性或关键边界条件。</li>
+        <li>行为测试不能覆盖无限输入空间；ProgramBench 官方也强调测试可以扩展，false positive 出现时可增加测试。</li>
+      </ul>
+    </section>
+
+    <section id="why">
+      <h2>这件事为什么重要</h2>
+      <div class="verdict">
+        <div class="card">
+          <h3>1. 它评估的是“软件项目级生成”，不是局部代码补全</h3>
+          <p>ProgramBench 逼迫 agent 做架构选择、语言选择、依赖选择、构建脚本、错误处理、输入输出兼容。它更接近真实“从规格写软件”，也更能区分模型是否会系统性探索问题空间。</p>
+          <h3>2. 它把“推理预算”变成可见变量</h3>
+          <p>同一 GPT 5.5 在普通、高、xhigh 设置下表现差异非常大。普通 GPT 5.5 在 <code>cmatrix</code> 上仍有 3 个 failures；high/xhigh 完全通过。这说明在这类任务里，额外推理不是简单的“多想一会儿”，而是改变探索覆盖和实现完整性。</p>
+          <h3>3. 它暴露了 agent 的真实短板</h3>
+          <p>模型常常能写出一个“看起来像”的程序，但会漏掉大小写、错误码、边界 flag、文件副作用等细节。ProgramBench 的价值正在于这些细节：工程可用的软件不是 demo，而是行为兼容。</p>
+        </div>
+        <div class="card">
+          <h3>一句话判断</h3>
+          <p>这条线程最值得看的不是“GPT 5.5 比 Opus 4.7 强”这种榜单结论，而是：当评测从局部修 bug 变成黑盒重建程序时，模型能力的瓶颈从“会不会写代码”转移到“会不会设计探索策略、建立行为规格、持续验证实现”。</p>
+          <p>换句话说，ProgramBench 更像在测一个 agent 的小型软件工程闭环：读材料、提出假设、运行实验、抽象规格、写实现、跑测试、修边界。GPT 5.5 high/xhigh 的突破，是这个闭环第一次在一个任务上完整闭合。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的 Insight：这不是“编程被解决”，而是 coding benchmark 的难度重新抬高了</h2>
+      <p>ProgramBench 的意义在于它把“写代码”从文本生成问题重新拉回软件工程问题。过去很多 benchmark 的接口太干净：输入是题目，输出是函数；或者输入是 issue，输出是 patch。模型不需要真正理解一个完整程序的操作面、错误语义、构建系统、依赖约束和用户可见行为。</p>
+      <p>但真实软件很少只由 happy path 组成。真实软件的“规格”常常散落在 README、man page、help 输出、错误信息、默认值、历史兼容、exit code 和文件副作用里。ProgramBench 的黑盒重建设定正好逼模型面对这些东西。它不是逆向工程比赛的炫技，而是对 agent 研发很有用的压力测试：你的 agent 是否能把不完整文档变成可验证的行为模型？</p>
+      <p>我对这次结果的判断是：<span class="strong">显著，但不该夸大。</span>显著之处在于，之前论文里的最好模型 0% resolved，而 GPT 5.5 high/xhigh 把 resolved 从 0 推到 0.5%，并把 almost resolved 拉到 13.5%。这在一个 200 task、248k+ tests 的困难 benchmark 上是实质进展。不该夸大之处在于，0.5% 仍然意味着 199 个任务没解完；它更像“冰面出现第一条裂缝”，不是“湖已经化开”。</p>
+      <p>工程上最值得学的是：未来 coding agent 的改进可能不只来自更强模型，还来自更好的探索协议。比如让 agent 系统性枚举 CLI flag、做 differential probing、记录 exit code、生成自己的 behavior checklist、回归测试每次 patch。GPT 5.5 的结果说明模型本身更强；ProgramBench 的设置则提醒我们，agent harness 如何把推理预算转化成有效实验，同样关键。</p>
+    </section>
+
+    <section id="commands">
+      <h2>本次读取与校验命令摘要</h2>
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/KLieret/status/2054215545663144217" --limit 80 -f json
+curl -Ls -o /dev/null -w '%{url_effective}\n%{http_code}\n' "https://t.co/PmiRueZawn"
+curl -L "https://pbs.twimg.com/media/HIIEKQMWQAA_p-J.jpg" -o "/Users/bytedance/Downloads/programbench-gpt55-assets/HIIEKQMWQAA_p-J.jpg"</code></pre>
+      <p class="small">注：报告中的核心数字来自 X 线程、ProgramBench 官方博客、官网、GitHub README 与 arXiv 论文交叉核验。X 线程 JSON 和临时抽取材料位于 <code>/tmp/</code>，最终 HTML 与图片资源位于 <code>/Users/bytedance/Downloads/</code>。</p>
+    </section>
+  </main>
+</body>
+</html>

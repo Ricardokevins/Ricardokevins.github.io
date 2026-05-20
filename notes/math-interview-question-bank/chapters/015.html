@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>015. 概率统计例题：Bayes、MLE、KL 与风险估计 - 数学基础速修手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/math-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 015</div>
+        <div class="brand-title">概率统计例题：Bayes、MLE、KL 与风险估计</div>
+        <div class="brand-meta">例题 · 解答 · 用数字题理解 base rate、参数估计、分布差异和采样误差。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-015-1">学习目标</a><a class="toc-link" href="#s-015-2">概念起点：概率题先分清对象</a><a class="toc-link" href="#s-015-3">例题 1：Bayes 和 base rate</a><a class="toc-link" href="#s-015-4">例题 2：组合收益的均值和方差</a><a class="toc-link" href="#s-015-5">例题 3：Bernoulli 的 MLE 与 MAP</a><a class="toc-link" href="#s-015-6">例题 4：KL 散度的数字含义</a><a class="toc-link" href="#s-015-7">例题 5：Monte Carlo 的误差尺度</a><a class="toc-link" href="#s-015-8">例题 6：VaR 与 CVaR 数字题</a><a class="toc-link" href="#s-015-9">例题 7：benchmark 与回测采样误差</a><a class="toc-link" href="#s-015-10">常见误区</a><a class="toc-link" href="#s-015-11">LLM/量化面试连接</a><a class="toc-link" href="#s-015-12">最后检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本数学速修手册</a>
+</div>
+<div class="toc-group" data-phase="calculus">
+<div class="toc-group-title">1. 微积分与优化</div>
+<a class="toc-link" data-category="calculus" href="002.html">002. 微积分一：极限、连续与导数</a>
+<a class="toc-link" data-category="calculus" href="003.html">003. 微积分二：Taylor、链式法则与反向传播</a>
+<a class="toc-link" data-category="calculus" href="004.html">004. 优化：Hessian、约束与数值稳定</a>
+</div>
+<div class="toc-group" data-phase="algebra">
+<div class="toc-group-title">2. 线性代数</div>
+<a class="toc-link" data-category="algebra" href="005.html">005. 线性代数一：向量空间、矩阵与秩</a>
+<a class="toc-link" data-category="algebra" href="006.html">006. 线性代数二：投影、最小二乘与正交分解</a>
+<a class="toc-link" data-category="algebra" href="007.html">007. 线性代数三：特征值、SVD、PCA 与正定矩阵</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率统计与风险</div>
+<a class="toc-link" data-category="probability" href="008.html">008. 概率一：条件概率、随机变量与常见分布</a>
+<a class="toc-link" data-category="probability" href="009.html">009. 概率二：期望、方差、大数定律与中心极限定理</a>
+<a class="toc-link" data-category="probability" href="010.html">010. 统计推断：MLE/MAP、熵、KL 与 Monte Carlo</a>
+<a class="toc-link" data-category="probability" href="011.html">011. 随机过程与量化风险：Markov、Martingale、Brownian、VaR/CVaR</a>
+</div>
+<div class="toc-group" data-phase="applications">
+<div class="toc-group-title">4. 应用桥接</div>
+<a class="toc-link" data-category="applications" href="012.html">012. 应用桥接：LLM 与 Quant 中的数学对象</a>
+</div>
+<div class="toc-group" data-phase="practice">
+<div class="toc-group-title">5. 例题与算法直觉</div>
+<a class="toc-link" data-category="practice" href="013.html">013. 微积分与优化例题：从导数到约束优化</a>
+<a class="toc-link" data-category="practice" href="014.html">014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a>
+<a class="toc-link current" data-category="practice" href="015.html">015. 概率统计例题：Bayes、MLE、KL 与风险估计</a>
+<a class="toc-link" data-category="practice" href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>
+</div>
+<div class="toc-group" data-phase="followup">
+<div class="toc-group-title">6. 应用追问与反例</div>
+<a class="toc-link" data-category="followup" href="017.html">017. 大模型方向综合追问：从公式到训练行为</a>
+<a class="toc-link" data-category="followup" href="018.html">018. 量化方向综合追问：从估计到风险控制</a>
+<a class="toc-link" data-category="followup" href="019.html">019. 常见错误与反例：面试中最容易混淆的边界</a>
+<a class="toc-link" data-category="followup" href="020.html">020. 综合案例题：把数学链路从输入推到结论</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="014.html">← 014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a><a href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" data-category="practice" data-title="概率统计例题：Bayes、MLE、KL 与风险估计">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>015. 概率统计例题：Bayes、MLE、KL 与风险估计</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>概率题最重要的是分清先验、条件、样本、估计量和随机误差。面试里能把 base rate 与采样误差说清，通常比背更多分布更有价值。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后继续看 <a href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件</a>，保持概念、例题和算法直觉连贯。</p></aside>
+
+          <h3 id="s-015-1"><a class="anchor-link" href="#s-015-1" aria-label="跳转到本节">#</a>学习目标</h3>
+          <p>本章不是重新罗列概率统计定义，而是把面试里常见的数字题做成“可跟算”的训练。读完以后，你应该能在看到题目时先判断随机对象是什么、已知条件是什么、需要估计的量是什么，再选择对应公式，而不是凭记忆套模板。</p>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>从条件到后验</h4>
+              <p>理解 \(P(A\mid B)\) 和 \(P(B\mid A)\) 不是一回事，能用 Bayes 公式把检测阳性、点击转化、模型报警这类问题转成后验概率。</p>
+            </div>
+            <div class="concept-card">
+              <h4>从样本到参数</h4>
+              <p>能区分样本均值、样本方差、MLE、MAP 和标准误。知道“估计出来的数”本身也会因为样本不同而波动。</p>
+            </div>
+            <div class="concept-card">
+              <h4>从分布到风险</h4>
+              <p>能解释组合方差、KL、VaR、CVaR、Monte Carlo 误差这些量到底衡量什么，以及它们为什么会出现在 LLM 训练、benchmark 和量化回测中。</p>
+            </div>
+          </div>
+          <ul class="checkpoint-list">
+            <li>遇到概率题时，先写清事件、随机变量、样本量、参数和条件。</li>
+            <li>看到“阳性以后”“已知发生以后”时，优先检查是否需要 Bayes 公式。</li>
+            <li>看到“多个资产”“多个策略”“多个指标”时，主动寻找协方差或相关性项。</li>
+            <li>看到“评测提升”“回测收益”“抽样模拟”时，主动问误差尺度有多大。</li>
+          </ul>
+
+          <h3 id="s-015-2"><a class="anchor-link" href="#s-015-2" aria-label="跳转到本节">#</a>概念起点：概率题先分清对象</h3>
+          <p>概率统计的难点通常不在公式本身，而在“题目到底让你算谁”。同一个数字 \(0.95\) 可能是检测灵敏度，也可能是置信水平；同一个 \(p\) 可能表示真实成功率，也可能表示模型给出的预测概率。零基础复习时，建议每道题都先做下面这张拆解表。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>要分清的对象</th>
+                  <th>它是什么</th>
+                  <th>典型符号</th>
+                  <th>面试里常见问法</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>事件</td>
+                  <td>会不会发生的命题</td>
+                  <td>\(D\)、\(+\)、\(A\)</td>
+                  <td>患病、检测阳性、样本通过、模型答对</td>
+                </tr>
+                <tr>
+                  <td>随机变量</td>
+                  <td>结果是数字的随机对象</td>
+                  <td>\(X\)、\(R\)、\(L\)</td>
+                  <td>收益、损失、点击数、正确题数</td>
+                </tr>
+                <tr>
+                  <td>参数</td>
+                  <td>分布背后的未知常数</td>
+                  <td>\(p\)、\(\mu\)、\(\sigma^2\)</td>
+                  <td>真实成功率、真实均值、真实波动率</td>
+                </tr>
+                <tr>
+                  <td>估计量</td>
+                  <td>用样本算出来、会随机波动的公式</td>
+                  <td>\(\hat p\)、\(\bar X\)、\(\hat \mu\)</td>
+                  <td>样本准确率、回测均值、模拟均值</td>
+                </tr>
+                <tr>
+                  <td>误差尺度</td>
+                  <td>估计量通常会偏离真实值多少</td>
+                  <td>\(\operatorname{SE}\)、CI</td>
+                  <td>提升 1% 是否可信？回测收益是不是噪声？</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-list">
+            <div><b>条件概率</b>：\(P(A\mid B)=P(A\cap B)/P(B)\)。意思是：在 \(B\) 已经发生的世界里，\(A\) 占多少。</div>
+            <div><b>全概率</b>：\(P(B)=P(B\mid A)P(A)+P(B\mid \neg A)P(\neg A)\)。意思是：\(B\) 可以从不同来源发生，要把来源加起来。</div>
+            <div><b>Bayes 公式</b>：\(P(A\mid B)=P(B\mid A)P(A)/P(B)\)。意思是：用观察到的证据 \(B\) 反推原因 \(A\)。</div>
+            <div><b>样本均值标准误</b>：\(\operatorname{SE}(\bar X)=\sigma/\sqrt n\)。意思是：独立样本越多，均值估计越稳定，但速度只有平方根级别。</div>
+          </div>
+          <div class="intuition-box"><b>做题顺序</b><p>先翻译题目，再写公式，最后代数值。不要一看到“准确率 95%”就把答案写成 95%。概率题最常见的错误，就是把“已知原因时看到结果的概率”和“已知结果时原因成立的概率”混在一起。</p></div>
+
+          <h3 id="s-015-3"><a class="anchor-link" href="#s-015-3" aria-label="跳转到本节">#</a>例题 1：Bayes 和 base rate</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>某病患病率为 1%，检测灵敏度 95%，假阳性率 5%。一个人检测为阳性，他真正患病的概率是多少？再解释为什么这个答案远小于 95%。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>先把中文翻译成事件。记患病为 \(D\)，不患病为 \(\neg D\)，检测阳性为 \(+\)。题目给的是：</p>
+              <ul>
+                <li>患病率 \(P(D)=0.01\)，所以 \(P(\neg D)=0.99\)。</li>
+                <li>灵敏度 \(P(+\mid D)=0.95\)，意思是“真的患病的人中，有 95% 会测出阳性”。</li>
+                <li>假阳性率 \(P(+\mid \neg D)=0.05\)，意思是“没患病的人中，也有 5% 会被误判成阳性”。</li>
+              </ul>
+              <p>问题问的是 \(P(D\mid +)\)：已经看到了阳性结果以后，这个人真的患病的概率。方向从“阳性”反推“患病”，所以要用 Bayes 公式。</p>
+              <div class="math-display">\[
+P(D\mid +)=\frac{P(+\mid D)P(D)}{P(+\mid D)P(D)+P(+\mid \neg D)P(\neg D)}
+\]</div>
+              <p>分子是“真实患者并且测阳性”的概率：</p>
+              <div class="math-display">\[
+P(+\mid D)P(D)=0.95\cdot0.01=0.0095
+\]</div>
+              <p>分母是“所有测阳性的人”的概率，包含真阳性和假阳性两部分：</p>
+              <div class="math-display">\[
+P(+)=0.95\cdot0.01+0.05\cdot0.99=0.0095+0.0495=0.059
+\]</div>
+              <p>所以：</p>
+              <div class="math-display">\[
+P(D\mid +)=\frac{0.95\cdot0.01}{0.95\cdot0.01+0.05\cdot0.99}
+=\frac{0.0095}{0.059}\approx 0.161
+\]</div>
+              <p>所以阳性后的真实患病概率约为 16.1%。</p>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>把 10000 人想成一个人群：大约 100 人患病，其中 95 人测阳性；9900 人不患病，其中 495 人也会假阳性。阳性总人数约 590 人，真正患病的只有 95 人，所以后验概率约 \(95/590\approx16.1\%\)。检测本身很灵敏，但 base rate 太低，健康人基数太大，假阳性数量会淹没真阳性。</p></div>
+          </div>
+
+          <h3 id="s-015-4"><a class="anchor-link" href="#s-015-4" aria-label="跳转到本节">#</a>例题 2：组合收益的均值和方差</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>两个资产日收益均值分别为 \(0.001\)、\(0.0005\)，日波动分别为 \(0.02\)、\(0.01\)，相关系数为 \(0.3\)。组合权重为 \(w=(0.6,0.4)\)。求组合均值、方差和日波动率，并解释协方差项为什么不能漏掉。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>先定义两个资产收益为 \(R_1,R_2\)，组合收益为：</p>
+              <div class="math-display">\[
+R_p=0.6R_1+0.4R_2
+\]</div>
+              <p>均值是线性的，所以组合均值就是权重加权平均：</p>
+              <div class="math-display">\[
+\mu_p=0.6\cdot0.001+0.4\cdot0.0005=0.0008
+\]</div>
+              <p>这表示组合日均收益约为 \(0.08\%\)。方差不只是两个方差的加权平均，因为两个资产可能一起涨跌。先把相关系数转成协方差：</p>
+              <div class="math-display">\[
+\operatorname{Cov}(R_1,R_2)=\rho\sigma_1\sigma_2=0.3\cdot0.02\cdot0.01=0.00006
+\]</div>
+              <p>两个资产组合的方差公式是：</p>
+              <div class="math-display">\[
+\sigma_p^2=w_1^2\sigma_1^2+w_2^2\sigma_2^2+2w_1w_2\operatorname{Cov}(R_1,R_2)
+\]</div>
+              <p>逐项代入：</p>
+              <div class="math-display">\[
+\begin{aligned}
+w_1^2\sigma_1^2 &= 0.6^2\cdot0.02^2=0.000144,\\
+w_2^2\sigma_2^2 &= 0.4^2\cdot0.01^2=0.000016,\\
+2w_1w_2\operatorname{Cov}(R_1,R_2) &= 2\cdot0.6\cdot0.4\cdot0.00006=0.0000288.
+\end{aligned}
+\]</div>
+              <div class="math-display">\[
+\sigma_p^2=0.6^2\cdot0.02^2+0.4^2\cdot0.01^2+2\cdot0.6\cdot0.4\cdot0.00006=0.0001888
+\]</div>
+              <p>组合日波动为 \(\sqrt{0.0001888}\approx 0.0137\)，即约 1.37%。</p>
+            </div>
+            <div class="intuition-box"><b>量化解释</b><p>如果两个资产经常同涨同跌，组合并没有真正分散风险，协方差项会把风险加回来。若相关系数变成 \(-0.3\)，协方差项会变成负数，组合方差会降到 \(0.0001312\)，日波动约 \(1.15\%\)。所以量化里说“分散化”不是看资产数量，而是看相关结构。</p></div>
+          </div>
+
+          <h3 id="s-015-5"><a class="anchor-link" href="#s-015-5" aria-label="跳转到本节">#</a>例题 3：Bernoulli 的 MLE 与 MAP</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>10 次 Bernoulli 试验中成功 7 次。求成功率 \(p\) 的 MLE。若先验为 \(Beta(2,2)\)，求 MAP。解释 MLE 和 MAP 的差别，以及为什么 MAP 会更保守。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>Bernoulli 试验只有两个结果：成功记为 1，失败记为 0。参数 \(p\) 表示真实成功概率。10 次里成功 7 次，失败 3 次，似然函数为：</p>
+              <div class="math-display">\[
+L(p)=p^7(1-p)^3
+\]</div>
+              <p>MLE 是让样本最可能出现的参数。为了方便求导，取对数似然：</p>
+              <div class="math-display">\[
+\ell(p)=7\log p+3\log(1-p)
+\]</div>
+              <p>对 \(p\) 求导并令导数为 0：</p>
+              <div class="math-display">\[
+\frac{d\ell}{dp}=\frac{7}{p}-\frac{3}{1-p}=0
+\]</div>
+              <p>移项得到 \(7(1-p)=3p\)，所以 \(7=10p\)，因此：</p>
+              <div class="math-display">\[
+\hat p_{MLE}=\frac{7}{10}=0.7
+\]</div>
+              <p>现在加入先验 \(Beta(2,2)\)。这个先验可以理解为“在看到真实样本前，温和地相信成功率接近中间值”。Beta 先验和 Bernoulli 似然共轭，所以后验仍是 Beta 分布：</p>
+              <div class="math-display">\[
+p\mid \text{data}\sim Beta(\alpha+k,\beta+n-k)=Beta(2+7,2+3)=Beta(9,5)
+\]</div>
+              <p>当 \(Beta(a,b)\) 的两个参数都大于 1 时，它的众数，也就是 MAP，为：</p>
+              <div class="math-display">\[
+\hat p_{MAP}=\frac{a-1}{a+b-2}
+=\frac{\alpha+k-1}{\alpha+\beta+n-2}
+=\frac{2+7-1}{2+2+10-2}
+=\frac{8}{12}=\frac23
+\]</div>
+              <p>所以 MLE 是 \(0.7\)，MAP 是 \(0.6667\)。MAP 比 MLE 更靠近 \(0.5\)，因为 \(Beta(2,2)\) 给中间成功率更多先验权重。</p>
+            </div>
+            <div class="intuition-box"><b>LLM 直觉</b><p>如果你只评测 10 道题，一个模型答对 7 道，直接说它真实准确率就是 70% 太激进。MAP 的作用类似“先别完全相信小样本，把估计往先验合理区间拉一点”。在 RLHF 偏好胜率、A/B 实验点击率、agent pass rate 中，小样本胜率都需要这种保守意识。</p></div>
+          </div>
+
+          <h3 id="s-015-6"><a class="anchor-link" href="#s-015-6" aria-label="跳转到本节">#</a>例题 4：KL 散度的数字含义</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>设真实分布 \(p=(0.8,0.2)\)，模型分布 \(q=(0.6,0.4)\)。计算 \(D_{KL}(p\|q)\)，解释这个数字代表什么，并说明它和交叉熵训练的关系。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>这里有两个可能结果，可以理解成二分类标签、两个 token，或者两个市场状态。真实分布 \(p\) 认为第一个结果出现概率 0.8，第二个结果出现概率 0.2；模型分布 \(q\) 认为它们分别是 0.6 和 0.4。</p>
+              <p>KL 散度 \(D_{KL}(p\|q)\) 衡量的是：如果真实世界按 \(p\) 生成，但你用 \(q\) 去编码或预测，平均多付出多少代价。公式是：</p>
+              <div class="math-display">\[
+D_{KL}(p\|q)=0.8\log\frac{0.8}{0.6}+0.2\log\frac{0.2}{0.4}
+\]</div>
+              <p>分两项算：</p>
+              <div class="math-display">\[
+\log\frac{0.8}{0.6}=\log(1.3333)\approx0.2877
+\]</div>
+              <div class="math-display">\[
+\log\frac{0.2}{0.4}=\log(0.5)\approx-0.6931
+\]</div>
+              <p>代回去：</p>
+              <div class="math-display">\[
+0.8\log(1.3333)+0.2\log(0.5)\approx 0.8\cdot0.2877-0.2\cdot0.6931\approx 0.0915
+\]</div>
+              <p>所以 \(D_{KL}(p\|q)\approx0.0915\) nats。nats 是使用自然对数时的单位。如果改用 \(\log_2\)，单位会变成 bits。</p>
+              <p>交叉熵满足：</p>
+              <div class="math-display">\[
+H(p,q)=H(p)+D_{KL}(p\|q)
+\]</div>
+              <p>当真实分布 \(p\) 固定时，\(H(p)\) 是常数。最小化交叉熵 \(H(p,q)\)，等价于最小化 \(D_{KL}(p\|q)\)，也就是让模型分布 \(q\) 靠近数据分布 \(p\)。</p>
+            </div>
+            <div class="intuition-box"><b>LLM 解释</b><p>语言模型训练时，真实下一个 token 常被表示成 one-hot。若真实 token 是第一个，训练损失就是 \(-\log q_1\)。模型给真实 token 的概率越低，损失越大。更一般地看，交叉熵训练是在把模型的 token 分布推向数据分布。注意 \(D_{KL}(p\|q)\) 不对称，\(D_{KL}(q\|p)\) 的惩罚行为不同，不能随意交换顺序。</p></div>
+          </div>
+
+          <h3 id="s-015-7"><a class="anchor-link" href="#s-015-7" aria-label="跳转到本节">#</a>例题 5：Monte Carlo 的误差尺度</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>某随机变量标准差为 2。用样本均值估计其期望，样本量为 100 和 10000 时，标准误分别是多少？如果想把标准误从 0.2 降到 0.02，需要多多少样本？这说明 Monte Carlo 为什么常常很贵？</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>Monte Carlo 的核心思想是：无法直接算期望时，就独立采样很多次，用样本均值近似真实期望。设样本为 \(X_1,\ldots,X_n\)，样本均值为：</p>
+              <div class="math-display">\[
+\bar X=\frac{1}{n}\sum_{i=1}^n X_i
+\]</div>
+              <p>如果每个样本的标准差是 \(\sigma\)，独立采样下，样本均值的标准误是：</p>
+              <div class="math-display">\[
+\operatorname{SE}(\bar X)=\frac{\sigma}{\sqrt n}
+\]</div>
+              <p>当 \(n=100\)：</p>
+              <div class="math-display">\[
+\operatorname{SE}=2/\sqrt{100}=0.2
+\]</div>
+              <p>当 \(n=10000\)：</p>
+              <div class="math-display">\[
+\operatorname{SE}=2/\sqrt{10000}=0.02
+\]</div>
+              <p>样本量从 100 增加到 10000，增加了 100 倍；标准误只从 0.2 降到 0.02，缩小了 10 倍。原因是误差按 \(1/\sqrt n\) 缩小，而不是按 \(1/n\) 缩小。</p>
+              <p>如果目标是让标准误小于等于 \(\epsilon\)，需要：</p>
+              <div class="math-display">\[
+\frac{\sigma}{\sqrt n}\le \epsilon
+\quad\Longrightarrow\quad
+n\ge \left(\frac{\sigma}{\epsilon}\right)^2
+\]</div>
+              <p>例如 \(\sigma=2,\epsilon=0.01\)，则 \(n\ge(2/0.01)^2=40000\)。</p>
+            </div>
+            <div class="intuition-box"><b>直觉</b><p>Monte Carlo 很通用，但它用计算量换精度，而且换得不便宜。LLM 多次采样评测、agent benchmark、策略蒙特卡洛回测、VaR 模拟都会遇到这个平方根瓶颈：想让误差再小一半，通常要把样本量提高到 4 倍。</p></div>
+          </div>
+
+          <h3 id="s-015-8"><a class="anchor-link" href="#s-015-8" aria-label="跳转到本节">#</a>例题 6：VaR 与 CVaR 数字题</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>某策略未来一天的损失 \(L\) 有如下五种等概率情形，单位为万元：\(-1,0,2,5,12\)。这里负损失表示盈利。求 80% VaR 和 80% CVaR，并解释二者差别。</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>先确认符号：这里 \(L\) 是损失，越大越坏；\(L=-1\) 表示赚了 1 万元。五个情形等概率，每个概率都是 \(20\%\)。先把损失从小到大排序，题目已经排好：</p>
+              <div class="math-display">\[
+-1,\quad 0,\quad 2,\quad 5,\quad 12
+\]</div>
+              <p>80% VaR 的常见离散理解是：找一个阈值 \(v\)，使得损失不超过 \(v\) 的概率至少为 80%。逐个看累积概率：</p>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>损失 \(L\)</th>
+                      <th>单点概率</th>
+                      <th>累积概率 \(P(L\le v)\)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>\(-1\)</td><td>20%</td><td>20%</td></tr>
+                    <tr><td>\(0\)</td><td>20%</td><td>40%</td></tr>
+                    <tr><td>\(2\)</td><td>20%</td><td>60%</td></tr>
+                    <tr><td>\(5\)</td><td>20%</td><td>80%</td></tr>
+                    <tr><td>\(12\)</td><td>20%</td><td>100%</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>第一次达到 80% 的损失阈值是 5，所以：</p>
+              <div class="math-display">\[
+\operatorname{VaR}_{80\%}=5
+\]</div>
+              <p>80% CVaR 关注的是最坏 20% 尾部里的平均损失。在这个等概率例子中，最坏 20% 正好只有一个情形 \(12\)，所以：</p>
+              <div class="math-display">\[
+\operatorname{CVaR}_{80\%}=12
+\]</div>
+              <p>如果题目要求 60% CVaR，最坏 40% 会包含 \(5\) 和 \(12\)，此时：</p>
+              <div class="math-display">\[
+\operatorname{CVaR}_{60\%}=\frac{5+12}{2}=8.5
+\]</div>
+            </div>
+            <div class="intuition-box"><b>风险直觉</b><p>VaR 问的是“到某个置信水平为止，损失阈值在哪里”；CVaR 问的是“超过这个阈值以后，尾部平均有多惨”。在本题中，80% VaR 只告诉你 80% 情况下损失不超过 5 万元，却没有表达最坏情形会亏 12 万元；CVaR 对尾部严重程度更敏感。</p></div>
+          </div>
+
+          <h3 id="s-015-9"><a class="anchor-link" href="#s-015-9" aria-label="跳转到本节">#</a>例题 7：benchmark 与回测采样误差</h3>
+          <div class="worked-example">
+            <div class="example-title">题目</div>
+            <p>某 LLM benchmark 有 400 道独立二值题，模型 A 答对 288 道，模型 B 答对 276 道。A 的准确率是 72%，B 是 69%，差距 3 个百分点。这个差距一定显著吗？用近似标准误解释。再类比一个量化回测：252 个交易日平均日收益 0.04%，日收益标准差 1%，这个均值估计的标准误是多少？</p>
+            <div class="solution">
+              <div class="example-title">解答</div>
+              <p>先看 benchmark。准确率是 Bernoulli 均值：每道题答对记 1，答错记 0。对于准确率 \(\hat p\)，标准误近似为：</p>
+              <div class="math-display">\[
+\operatorname{SE}(\hat p)\approx \sqrt{\frac{\hat p(1-\hat p)}{n}}
+\]</div>
+              <p>模型 A 的 \(\hat p_A=288/400=0.72\)：</p>
+              <div class="math-display">\[
+\operatorname{SE}(\hat p_A)\approx \sqrt{\frac{0.72\cdot0.28}{400}}
+=\sqrt{0.000504}\approx0.0224
+\]</div>
+              <p>模型 B 的 \(\hat p_B=276/400=0.69\)：</p>
+              <div class="math-display">\[
+\operatorname{SE}(\hat p_B)\approx \sqrt{\frac{0.69\cdot0.31}{400}}
+=\sqrt{0.00053475}\approx0.0231
+\]</div>
+              <p>如果粗略把两组题目结果当作独立估计，差值 \(\hat p_A-\hat p_B\) 的标准误是：</p>
+              <div class="math-display">\[
+\operatorname{SE}(\hat p_A-\hat p_B)
+\approx \sqrt{0.0224^2+0.0231^2}
+\approx0.0322
+\]</div>
+              <p>观察到的差距是 \(0.72-0.69=0.03\)，不到 1 个差值标准误：</p>
+              <div class="math-display">\[
+\frac{0.03}{0.0322}\approx0.93
+\]</div>
+              <p>这说明 400 题下的 3 个百分点差距不一定可靠。它可能是真提升，也可能是样本抽题、题目噪声或评测波动导致的。若两个模型答的是同一批题，更合适的是看逐题配对差异，例如 A 对 B 错、A 错 B 对的数量，而不是只看两个总准确率。</p>
+              <p>再看量化回测。252 个交易日，日收益标准差 \(\sigma=1\%=0.01\)，样本均值的标准误为：</p>
+              <div class="math-display">\[
+\operatorname{SE}(\bar R)=\frac{0.01}{\sqrt{252}}\approx0.00063
+\]</div>
+              <p>换成百分比是 \(0.063\%\) 每日。回测平均日收益是 \(0.04\%=0.0004\)，小于一个标准误：</p>
+              <div class="math-display">\[
+\frac{0.0004}{0.00063}\approx0.63
+\]</div>
+              <p>这意味着仅凭一年日频样本，很难证明这个策略真实日均收益为正。收益均值的估计噪声比观察到的均值还大。</p>
+            </div>
+            <div class="intuition-box"><b>面试直觉</b><p>benchmark 和回测都容易被“点估计”误导。72% 比 69% 高，0.04% 平均收益也看起来为正，但面试官真正想听的是：样本量多大？标准误多大？是否配对？是否多次选择最优结果？有没有把噪声当能力或 alpha？</p></div>
+          </div>
+
+          <h3 id="s-015-10"><a class="anchor-link" href="#s-015-10" aria-label="跳转到本节">#</a>常见误区</h3>
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h4>把 \(P(+\mid D)\) 当成 \(P(D\mid +)\)</h4>
+              <p>这是 base-rate 题的核心陷阱。检测灵敏度是“患病时阳性”的概率，不是“阳性时患病”的概率。后者必须把假阳性来源放进分母。</p>
+            </div>
+            <div class="concept-card">
+              <h4>把波动率线性相加</h4>
+              <p>组合均值可以线性加权，组合方差不可以只加权两个波动率。只要资产之间相关，就必须考虑协方差项。</p>
+            </div>
+            <div class="concept-card">
+              <h4>把 MLE 当成真值</h4>
+              <p>MLE 是样本下最合理的参数，不是上帝视角的真实参数。小样本中 MLE 可能很极端，MAP 或置信区间能提醒你不确定性仍然很大。</p>
+            </div>
+            <div class="concept-card">
+              <h4>以为 KL 是距离</h4>
+              <p>KL 非负，但一般不对称，也不满足普通几何距离的直觉。\(D_{KL}(p\|q)\) 和 \(D_{KL}(q\|p)\) 关注的错误类型不同。</p>
+            </div>
+            <div class="concept-card">
+              <h4>忽视平方根收敛</h4>
+              <p>Monte Carlo 样本量增加 100 倍，误差通常只缩小 10 倍。评测、回测、模拟都不能只说“我采样很多次”，还要量化误差尺度。</p>
+            </div>
+            <div class="concept-card">
+              <h4>只看 VaR 不看尾部</h4>
+              <p>VaR 是分位数，可能对尾部严重程度不敏感。两个策略的 95% VaR 相同，但最坏 5% 的平均亏损可能完全不同，这时 CVaR 更有信息量。</p>
+            </div>
+          </div>
+
+          <h3 id="s-015-11"><a class="anchor-link" href="#s-015-11" aria-label="跳转到本节">#</a>LLM/量化面试连接</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>本章对象</th>
+                  <th>LLM 面试怎么问</th>
+                  <th>量化面试怎么问</th>
+                  <th>回答重点</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Bayes/base rate</td>
+                  <td>模型报警有 90% precision 吗？低频错误下人工审核怎么设阈值？</td>
+                  <td>异常信号命中率高，为什么实盘仍可能亏？</td>
+                  <td>先验概率、假阳性来源、后验概率。</td>
+                </tr>
+                <tr>
+                  <td>组合方差</td>
+                  <td>多 benchmark 平均分是否代表能力稳定？指标之间是否相关？</td>
+                  <td>多资产组合风险、因子暴露、相关性危机。</td>
+                  <td>均值线性，风险含协方差。</td>
+                </tr>
+                <tr>
+                  <td>MLE/MAP</td>
+                  <td>小样本 pass rate、偏好胜率、reward model 标注比例。</td>
+                  <td>交易胜率、填单成功率、信号触发后上涨概率。</td>
+                  <td>样本估计、先验收缩、小样本不确定性。</td>
+                </tr>
+                <tr>
+                  <td>KL/交叉熵</td>
+                  <td>next-token loss、distillation、RL 中 KL penalty。</td>
+                  <td>预测分布校准、情景概率偏离、熵正则。</td>
+                  <td>分布差异、方向性、平均额外代价。</td>
+                </tr>
+                <tr>
+                  <td>Monte Carlo/采样误差</td>
+                  <td>多次采样 pass@k、benchmark 置信区间、A/B eval。</td>
+                  <td>风险模拟、回测收益显著性、bootstrap。</td>
+                  <td>\(1/\sqrt n\) 收敛、标准误、配对比较。</td>
+                </tr>
+                <tr>
+                  <td>VaR/CVaR</td>
+                  <td>安全评测中最坏响应尾部、agent failure cost。</td>
+                  <td>组合尾部亏损、风控阈值、极端行情。</td>
+                  <td>分位数和尾部均值的差别。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="intuition-box"><b>回答策略</b><p>概率统计面试不要急着展示公式多熟。更强的回答是先说明“这个量在业务里代表什么”，再说明“样本如何生成”，最后说明“点估计之外的不确定性有多大”。这会自然连接到 LLM 评测是否可信、回测 alpha 是否显著、风险尾部是否被低估。</p></div>
+
+          <h3 id="s-015-12"><a class="anchor-link" href="#s-015-12" aria-label="跳转到本节">#</a>最后检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能解释 \(P(A\mid B)\) 和 \(P(B\mid A)\) 的区别，并能在 Bayes 分母中写出所有证据来源。</li>
+            <li>我能把一个二分类准确率题翻译成 Bernoulli 样本均值，并估算 \(\sqrt{\hat p(1-\hat p)/n}\)。</li>
+            <li>我能说明 MLE 是样本驱动，MAP 是似然加先验；样本少时先验影响更明显。</li>
+            <li>我能计算两个资产组合的均值、协方差项、方差和波动率，并解释相关性改变风险。</li>
+            <li>我能算一个两点分布的 KL，并解释交叉熵最小化为什么会让模型分布接近数据分布。</li>
+            <li>我知道 Monte Carlo 误差按 \(1/\sqrt n\) 缩小，样本量翻 4 倍才让标准误约减半。</li>
+            <li>我能区分 VaR 是分位数阈值，CVaR 是尾部平均损失，并能在离散样本中手算。</li>
+            <li>我不会只报告 benchmark 分数或回测均值，还会追问样本量、标准误、置信区间、配对设计和多重选择偏差。</li>
+          </ul>
+          </div>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="014.html">← 014. 线性代数例题：投影、最小二乘、SVD 与 PCA</a><a href="016.html">016. 常用算法直觉：输入、输出、步骤与失效条件 →</a></nav>
+      <footer class="footer"><p>数学基础速修手册 · 最近整理：2026-05-19 · 新增例题与算法直觉层。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/math-bank.js"></script>
+</body>
+</html>

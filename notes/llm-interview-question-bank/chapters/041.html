@@ -1,0 +1,1558 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>41. 模块四：SFT、PEFT 与对齐训练 - 大模型面试题库</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/question-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 41</div>
+        <div class="brand-title">模块四：SFT、PEFT 与对齐训练</div>
+        <div class="brand-meta">2. 核心题完整答案 · 第 4 步 · 核心模块</div>
+      </div>
+      <nav class="toc-group" aria-label="本章目录">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#h-0594">37. SFT 是什么？它和预训练有什么本质区别？</a>
+<a class="toc-link" href="#h-0595" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0596" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0597">38. LoRA 的核心思路是什么？</a>
+<a class="toc-link" href="#h-0598" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0599" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0600">39. QLoRA 比 LoRA 多做了什么？</a>
+<a class="toc-link" href="#h-0601" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0602" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0603">40. 什么是 PEFT？为什么它适合大模型微调？</a>
+<a class="toc-link" href="#h-0604" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0605" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0606">41. RLHF 的典型三阶段流程是什么？</a>
+<a class="toc-link" href="#h-0607" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0608" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0609">42. DPO 和 PPO / RLHF 相比，最大的区别是什么？</a>
+<a class="toc-link" href="#h-0610" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0611" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0612">43. 为什么很多人会说“做完 SFT 之后模型反而变傻了”？</a>
+<a class="toc-link" href="#h-0613" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0614" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0615">44. 灾难性遗忘在微调里是怎么发生的，你会怎么缓解？</a>
+<a class="toc-link" href="#h-0616" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0617" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0618">45. 什么时候应该全参数微调，什么时候应该 LoRA / QLoRA，什么时候根本不该微调？</a>
+<a class="toc-link" href="#h-0619" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0620" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0621">46. 你怎么判断一个问题更适合 RAG 还是更适合 fine-tuning？</a>
+<a class="toc-link" href="#h-0622" style="padding-left:18px">标准答案</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link current" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+</nav>
+    </aside>
+    <main class="content">
+      <nav class="chapter-nav"><a href="040.html">← 40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a><a href="042.html">42. 模块五：推理优化、Serving 与部署工程 →</a></nav>
+      <article class="chapter-page">
+        <section class="chapter" id="section-h-0593" data-category="core" data-title="模块四：SFT、PEFT 与对齐训练">
+<h2 id="h-0593"><a class="anchor-link" href="#h-0593" aria-label="跳转到本节">#</a>模块四：SFT、PEFT 与对齐训练</h2>
+<aside class="chapter-orientation"><b>阅读定位</b><p>本章是核心题完整答案层，承接 <a href="008.html">第 08 章</a> 的模块地图。建议按问题顺序精读；读完后用 <a href="052.html">第 52 章</a> 做知识点查漏。</p></aside>
+<h3 id="h-0594"><a class="anchor-link" href="#h-0594" aria-label="跳转到本节">#</a>37. SFT 是什么？它和预训练有什么本质区别？</h3>
+<h4 id="h-0595"><a class="anchor-link" href="#h-0595" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>SFT（Supervised Fine-Tuning）本质上是拿高质量的指令-回答样本去教模型“遇到这类输入时，应该怎样输出”。它关心的是行为对齐、任务格式、回答风格和遵循指令的能力；而预训练更多是在海量无标注文本上学习语言规律、世界知识和通用表示，所以它解决的是底座能力问题。</p>
+<p>一句好记的话是：预训练决定模型”懂多少”，SFT 决定模型”怎么把懂的东西说出来”。所以很多模型在预训练后虽然已经有知识，但没有经过 SFT 时，回答往往不稳定、不听话、格式也不受控。</p>
+<hr>
+<h4 id="h-0596"><a class="anchor-link" href="#h-0596" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 目标函数的数学差异</strong></p>
+<ul>
+<li><strong>预训练（CLM）</strong>：最大化无标注文本的联合概率
+</li>
+</ul>
+<pre><code class="language-text">  L_pretrain = -Σ log P(x_t | x_1, x_2, ..., x_{t-1}; θ)</code></pre>
+<p>数据是连续文本，没有输入输出配对。</p>
+<ul>
+<li><strong>SFT</strong>：最大化给定输入下期望输出的条件概率
+</li>
+</ul>
+<pre><code class="language-text">  L_SFT = -Σ log P(y_t | x, y_1, ..., y_{t-1}; θ)</code></pre>
+<p>数据是 <code>(instruction, response)</code> 对，模型只学习”给定 instruction 后生成 response”。</p>
+<p>本质区别：预训练学的是”语言怎么工作”，SFT 学的是”我该怎么回应”。</p>
+<p><strong>2. 数据规模与分布差异</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>预训练</th>
+<th>SFT</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>数据量</strong></td>
+<td>TB 级（数万亿 token）</td>
+<td>MB-GB 级（万-百万条）</td>
+</tr>
+<tr>
+<td><strong>数据来源</strong></td>
+<td>网页、书籍、代码、百科</td>
+<td>人工标注、合成数据、对话记录</td>
+</tr>
+<tr>
+<td><strong>数据成本</strong></td>
+<td>低（爬虫获取）</td>
+<td>高（人工标注每条 $0.1-$5）</td>
+</tr>
+<tr>
+<td><strong>数据格式</strong></td>
+<td>连续文本</td>
+<td>(input, output) 配对</td>
+</tr>
+<tr>
+<td><strong>epoch</strong></td>
+<td>通常 1 轮（数据太大）</td>
+<td>通常 1-3 轮（防止过拟合）</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 学习率与优化差异</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>参数</th>
+<th>预训练</th>
+<th>SFT</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>学习率</strong></td>
+<td>1e-4 ~ 3e-4</td>
+<td>1e-5 ~ 1e-4（通常小 10x）</td>
+</tr>
+<tr>
+<td><strong>warmup</strong></td>
+<td>长（如 2000 steps）</td>
+<td>短（如 100 steps）</td>
+</tr>
+<tr>
+<td><strong>batch size</strong></td>
+<td>极大（百万级 token/batch）</td>
+<td>小（16-128 条）</td>
+</tr>
+<tr>
+<td><strong>优化器</strong></td>
+<td>AdamW / Adam</td>
+<td>AdamW（常配合 LoRA）</td>
+</tr>
+</tbody></table></div>
+<p>学习率更小的原因：预训练是从随机或弱初始化开始，需要大学习率快速探索；SFT 是在已收敛的权重上微调，大学习率会破坏已有能力。</p>
+<p><strong>4. SFT 的效果边界</strong></p>
+<p>SFT 不能教会模型”它本来不知道的东西”：</p>
+<ul>
+<li>如果底座没见过”量子纠缠”，SFT 数据里也没有，模型就不可能回答好相关问题
+</li>
+<li>SFT 改变的是<strong>行为</strong>（怎么回答），不是<strong>知识</strong>（知道什么）
+</li>
+</ul>
+<p>所以：知识不足 → 需要 continue pretraining；行为不对 → 需要 SFT。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”SFT 数据里，instruction 和 response 哪个质量更重要？”</strong>
+<ul>
+<li>答：response 质量更重要。instruction 只是触发条件，response 是模型实际要学习的目标分布。但 instruction 的多样性和清晰度也很重要——如果 instruction 太单一，模型会过拟合到特定 prompt 格式。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”SFT 时 loss 降得很低，但线上效果很差，为什么？”</strong>
+<ul>
+<li>答：可能是分布过拟合。SFT loss 低说明模型”记住了训练集中的回答”，但测试集的指令分布和训练集不同。解决：1）增加 instruction 多样性；2）混入通用数据；3）控制 epoch（不要训到 loss 趋近于 0）；4）用 LoRA 限制参数量。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”为什么 SFT 数据通常要做'格式统一'？”</strong>
+<ul>
+<li>答：如果训练数据中有的用 <code>”Q: ... A: ...”</code>、有的用 <code>”用户: ... 助手: ...”</code>、有的用 <code>”### Instruction: ... ### Response: ...”</code>，模型会学到混乱的格式分布，推理时输出格式不稳定。统一格式（如全部用 ChatML 或 Alpaca 格式）能让模型更稳定地学习到”正确的回应模式”。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0597"><a class="anchor-link" href="#h-0597" aria-label="跳转到本节">#</a>38. LoRA 的核心思路是什么？</h3><aside class="inline-enhancement medium">
+        <div class="inline-enhancement-title">LoRA / PEFT 低秩更新</div>
+        <p class="inline-enhancement-note">放在 LoRA、QLoRA、PEFT 小节附近，解释为什么只训练 A/B 两个低秩矩阵。</p>
+        <div class="visual-grid"><div class="visual-card"><b>LoRA 低秩更新图</b><img src="../assets/lora-update.svg" alt="LoRA 低秩更新图"><p>冻结原权重 W，仅训练低秩增量。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>LoRA 低秩增量</b><div class="math-display">\[W' = W+\Delta W,\qquad \Delta W=\frac{\alpha}{r}BA,\qquad \mathrm{rank}(\Delta W)\le r\]</div><p>LoRA 学的是低秩增量，不是完整权重。</p></div><div class="formula-card"><b>LoRA 可训练参数</b><div class="math-display">\[P_{LoRA}=r(d_{in}+d_{out})\]</div><p>rank 越大表达力越强，成本也越高。</p></div></div>
+      </aside>
+<h4 id="h-0598"><a class="anchor-link" href="#h-0598" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>LoRA 的核心思路是：不要去大改整张权重矩阵，而是假设“真正需要学习的更新”其实落在一个低秩子空间里。于是训练时冻结原模型参数，只额外学习两个小矩阵，让它们的乘积形成一个低秩增量，再把这个增量加回原线性层。</p>
+<p>这样做的好处是三重的：第一，训练参数量大幅下降；第二，显存和优化器状态更省；第三，底座模型主体不动，更容易保留原能力。所以 LoRA 的本质不是”少训一点参数”，而是用低秩假设把更新压缩了。</p>
+<hr>
+<h4 id="h-0599"><a class="anchor-link" href="#h-0599" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 为什么”更新是低秩的”这个假设站得住脚？</strong></p>
+<p>Aghajanyan 等人（2021）的研究发现：预训练大模型在微调时，权重更新的有效秩其实很低。直观理解是——大模型经过海量预训练后，已经学到了非常丰富的通用表示；微调只是让它”往特定方向偏一点”，不需要推翻整个表示空间。这个”偏量”往往只涉及少数几个关键方向，所以用低秩矩阵来近似是合理的。</p>
+<p>数学上，如果完整更新的秩是 <code>r_full</code>（实际观测往往只有几十），而 LoRA 的秩是 <code>r</code>，只要 <code>r ≥ r_full</code>，LoRA 就能无损表示真实更新。实践中 <code>r=8</code> 或 <code>16</code> 往往就够了。</p>
+<p><strong>2. 参数量的具体对比</strong></p>
+<p>假设要微调一个线性层，输入维度 <code>d_in=4096</code>，输出维度 <code>d_out=4096</code>：</p>
+<ul>
+<li>全参数微调：需要训练 <code>4096 × 4096 = 16,777,216</code> 个参数
+</li>
+<li>LoRA (r=16)：需要训练 <code>A: 4096×16</code> + <code>B: 16×4096</code> = <code>65,536 + 65,536 = 131,072</code> 个参数
+</li>
+<li>压缩比：<code>16,777,216 / 131,072 = 128×</code>
+</li>
+</ul>
+<p>一个 7B 模型有约 200 个线性层（attention + FFN），全参数微调要训 7B 参数；LoRA 只训约 <code>200 × 131K ≈ 26M</code> 参数，是原来的约 1/270。</p>
+<p><strong>3. 秩 r 的选择：不是越大越好</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>r 值</th>
+<th>参数量</th>
+<th>适用场景</th>
+<th>风险</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1-4</td>
+<td>极小</td>
+<td>简单任务、快速实验</td>
+<td>可能容量不足</td>
+</tr>
+<tr>
+<td>8-16</td>
+<td>小</td>
+<td>大多数下游任务</td>
+<td>sweet spot</td>
+</tr>
+<tr>
+<td>32-64</td>
+<td>中等</td>
+<td>复杂任务、大 domain gap</td>
+<td>接近全参数效率</td>
+</tr>
+<tr>
+<td>128+</td>
+<td>大</td>
+<td>接近全参数</td>
+<td>低秩优势不明显</td>
+</tr>
+</tbody></table></div>
+<p>r 太小（如 1）：模型只能沿一个方向调整，表达能力受限。 r 太大（如 256）：参数量接近全参数，LoRA 的意义下降。</p>
+<p><strong>4. 为什么 LoRA 通常只应用于线性层？</strong></p>
+<p>因为线性层的更新天然是矩阵形式，低秩分解（<code>BA</code>）可以直接套用。LayerNorm、Embedding、偏置的参数量本来就很小的参数量，用 LoRA 分解没有收益。Attention 中的 Q/V 投影通常是 LoRA 的重点，而 K 投影有时不加 LoRA（因为 K 主要影响 key 的表示，对下游任务敏感度较低）。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”LoRA 的 A 和 B 初始化有什么讲究？”</strong>
+<ul>
+<li>答：A 通常用高斯随机初始化，B 初始化为零。这样训练开始时 <code>BA = 0</code>，增量为零，模型从原参数开始，保证训练初期稳定。如果 B 也随机初始化，训练一开始就会有较大扰动。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”LoRA 和 Adapter 有什么区别？”</strong>
+<ul>
+<li>答：Adapter 是在原网络中插入小的 bottleneck 层（通常是 down-project + activation + up-project），修改了网络拓扑；LoRA 是在原线性层旁路加低秩增量，不改变网络结构。Adapter 需要改 forward 路径，LoRA 可以直接合并回原始权重（<code>W' = W + BA</code>），推理无额外开销。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果 LoRA 训完后想部署，怎么处理 BA？”</strong>
+<ul>
+<li>答：最简单的方式是把 <code>BA</code> 合并回原权重：<code>W' = W + BA</code>，然后丢弃 A 和 B。这样推理时跟原模型完全一样，没有任何额外计算。如果需要保留多个任务的 adapter，可以动态加载不同 BA 到同一底座上。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0600"><a class="anchor-link" href="#h-0600" aria-label="跳转到本节">#</a>39. QLoRA 比 LoRA 多做了什么？</h3>
+<h4 id="h-0601"><a class="anchor-link" href="#h-0601" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>QLoRA</code> 可以理解成“量化版 LoRA”。它不是直接在全精度底座上挂 LoRA，而是先把底座模型以更低精度形式加载进显存，再只训练上面的 LoRA adapter。这样相比普通 LoRA，会进一步减少权重存储和训练时的显存占用。</p>
+<p>它适合的典型场景是：底座模型太大，普通 LoRA 也快放不下，但你又不想走全参数微调。代价则是量化会引入额外数值误差，所以在特别敏感的任务上，效果可能比全精度 LoRA 略差。</p>
+<hr>
+<h4 id="h-0602"><a class="anchor-link" href="#h-0602" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. QLoRA 的"双量化"机制</strong></p>
+<p>QLoRA 的核心不是简单地把 FP16 权重转成 INT8，而是用了更精细的 NF4（Normal Float 4-bit）量化：</p>
+<ul>
+<li><strong>第一次量化</strong>：把权重分组（如每 64 个参数一组），计算每组的统计量（均值、标准差），然后用 NF4 表示组内参数。NF4 的特点是根据正态分布的累积分布函数来设计量化点，让量化误差在常见值域更小。
+</li>
+<li><strong>第二次量化</strong>：对第一次量化的缩放因子（scale）再做量化。因为每组的缩放因子本身也占用显存，对它们做 8-bit 量化可以进一步节省。
+</li>
+</ul>
+<p>这就是为什么叫"双量化"——权重被量化一次，权重的元数据（缩放因子）又被量化一次。</p>
+<p><strong>2. 显存占用的具体对比</strong></p>
+<p>以微调 LLaMA-65B 为例（batch_size=1, seq_len=512）：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方案</th>
+<th>底座显存</th>
+<th>梯度显存</th>
+<th>优化器状态</th>
+<th>LoRA 参数</th>
+<th>总显存</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>全参数微调</td>
+<td>130 GB</td>
+<td>130 GB</td>
+<td>260 GB</td>
+<td>-</td>
+<td>~520 GB</td>
+</tr>
+<tr>
+<td>LoRA (FP16)</td>
+<td>130 GB</td>
+<td>~1 GB</td>
+<td>~2 GB</td>
+<td>~0.5 GB</td>
+<td>~133 GB</td>
+</tr>
+<tr>
+<td>QLoRA (NF4)</td>
+<td>~40 GB</td>
+<td>~1 GB</td>
+<td>~2 GB</td>
+<td>~0.5 GB</td>
+<td>~43 GB</td>
+</tr>
+</tbody></table></div>
+<p>QLoRA 把底座从 130GB 压到 40GB，总显存从 133GB 降到 43GB，单张 A100 就能微调 65B 模型。</p>
+<p><strong>3. 为什么用 NF4 而不是 INT4？</strong></p>
+<p>神经网络权重通常近似正态分布（以 0 为中心，两边对称）。INT4 的量化点是均匀分布的，对正态分布不是最优；NF4 的量化点根据正态分布的分位数设计，在权重常见的值域（接近 0 的区域）有更细的粒度，量化误差更小。</p>
+<p><strong>4. 分页优化器（Paged Optimizer）</strong></p>
+<p>QLoRA 还引入了分页优化器来应对"显存峰值"问题。训练过程中某些步骤（如梯度累积、验证）会短暂需要更多显存。分页优化器把这些临时数据放到 CPU 内存，需要时再换入 GPU，避免 OOM。</p>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"QLoRA 的量化误差会在训练中累积吗？"</strong>
+<ul>
+<li>答：会的。底座权重被量化后，前向传播的激活值就带上了量化误差。但 LoRA 增量 <code>BA</code> 是在全精度下训练的，它可以部分补偿底座的量化误差——训练过程中 <code>BA</code> 会学到"如何纠偏"。这就是为什么 QLoRA 的效果往往比直接做 4-bit 推理要好：因为 adapter 有学习能力。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"QLoRA 训完后，底座还是 NF4 吗？部署怎么办？"</strong>
+<ul>
+<li>答：是的，底座保持 NF4。部署时可以把 <code>BA</code> 合并回去：<code>W_NF4 + BA</code>。如果需要更高精度，可以把底座反量化到 FP16 再合并。很多框架（如 transformers, PEFT）支持自动合并。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"什么任务不适合 QLoRA？"</strong>
+<ul>
+<li>答：对数值精度极度敏感的任务，如精确数学计算、代码执行（需要生成可运行代码）、需要细粒度推理的任务。另外，如果底座本身的 4-bit 量化就导致效果严重下降（如某些小模型或已经量化过一次的模型），QLoRA 的纠偏空间也有限。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0603"><a class="anchor-link" href="#h-0603" aria-label="跳转到本节">#</a>40. 什么是 PEFT？为什么它适合大模型微调？</h3>
+<h4 id="h-0604"><a class="anchor-link" href="#h-0604" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>PEFT（Parameter-Efficient Fine-Tuning）是参数高效微调的总称，LoRA、Adapter、Prefix Tuning、Prompt Tuning 都可以看作 PEFT 家族成员。它们的共同点不是方法形式一样，而是都在做一件事：尽量少改参数，却让模型获得足够的任务适配能力。</p>
+<p>它之所以特别适合大模型，是因为全参数微调不仅显存贵、训练慢、存储多个任务版本也很重，而且很多业务任务根本不值得为了一点适配去重训整个底座。所以 PEFT 的价值，本质上是把”可用效果”和”可承受成本”拉到一个更合理的平衡点。</p>
+<hr>
+<h4 id="h-0605"><a class="anchor-link" href="#h-0605" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. PEFT 四大方法的原理对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>修改位置</th>
+<th>核心思想</th>
+<th>可训练参数量（以 7B 模型为例）</th>
+<th>典型超参</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>LoRA</strong></td>
+<td>Attention/FFN 的权重矩阵旁路</td>
+<td>低秩分解：W = W₀ + BA</td>
+<td>~8-33M (r=8~32)</td>
+<td>rank r, α=2r</td>
+</tr>
+<tr>
+<td><strong>Adapter</strong></td>
+<td>每层 Transformer 后插入小 FFN</td>
+<td>瓶颈结构：down-proj + non-linear + up-proj</td>
+<td>~2-5M/层</td>
+<td>bottleneck dim</td>
+</tr>
+<tr>
+<td><strong>Prefix Tuning</strong></td>
+<td>每层 K/V 前添加可学习前缀</td>
+<td>冻结模型，只学 prefix 嵌入</td>
+<td>~0.1% 参数量</td>
+<td>prefix length</td>
+</tr>
+<tr>
+<td><strong>Prompt Tuning</strong></td>
+<td>输入层添加可学习软提示</td>
+<td>冻结整个模型，只优化 prompt tokens</td>
+<td>~20K-200K</td>
+<td>prompt length</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. LoRA 为什么有效：低秩假设的数学直觉</strong></p>
+<p>核心假设：微调带来的权重变化 ΔW 是低秩的。</p>
+<pre><code class="language-text">W_full = W_pretrain + ΔW
+其中 ΔW ∈ R^(d×d)，但 rank(ΔW) &lt;&lt; d
+
+LoRA 参数化：ΔW = B × A
+  B ∈ R^(d×r), A ∈ R^(r×d), r &lt;&lt; d
+  参数量从 d² 降到 2×d×r</code></pre>
+<p>对于 4096×4096 的权重矩阵：</p>
+<ul>
+<li>全参数：16.8M 参数
+</li>
+<li>LoRA (r=16)：2 × 4096 × 16 = 131K 参数
+</li>
+<li><strong>压缩比：128 倍</strong>
+</li>
+</ul>
+<p><strong>3. 各方法的适用场景与选择策略</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>推荐方法</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>单任务、追求最佳效果</td>
+<td>LoRA</td>
+<td>表达能力最强，接近全参数微调</td>
+</tr>
+<tr>
+<td>多任务、需快速切换</td>
+<td>Adapter</td>
+<td>每层独立插入，任务切换只需换 adapter</td>
+</tr>
+<tr>
+<td>极少量数据、分类任务</td>
+<td>Prompt Tuning</td>
+<td>参数量最小，不易过拟合</td>
+</tr>
+<tr>
+<td>生成任务、长上下文</td>
+<td>Prefix Tuning</td>
+<td>对生成任务效果好，prefix 能影响注意力模式</td>
+</tr>
+<tr>
+<td>资源极度受限</td>
+<td>Prompt Tuning / BitFit</td>
+<td>只训练 bias 或 prompt，&lt;0.01% 参数</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 各方法的兼容性</strong></p>
+<pre><code class="language-text">LoRA + 量化 = QLoRA（节省显存）
+Adapter + 多任务 = 每个任务一个 adapter 文件
+Prefix Tuning + 长文本 = prefix 提供额外上下文信号</code></pre>
+<p>实践中<strong>LoRA 最常用</strong>，因为：</p>
+<ol>
+<li>推理时无额外开销（W = W₀ + BA 可合并）
+</li>
+<li>与量化兼容好（QLoRA）
+</li>
+<li>社区生态成熟（Hugging Face PEFT 库）
+</li>
+</ol>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”LoRA 的 rank r 怎么选？r 越大效果越好吗？”</strong>
+<ul>
+<li>答：不是越大越好。r 决定 ΔW 的表达能力：r 太小（如 1-2）→ 欠拟合；r 太大（如 128+）→ 接近全参数，失去 PEFT 意义。经验法则：简单任务 r=8-16 足够，复杂任务 r=32-64。可以用 SVD 分析预训练权重的有效秩来指导选择。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”为什么 LoRA 通常只加在 Attention 的 Q/V 投影上，不加在 FFN 上？”</strong>
+<ul>
+<li>答：经验发现 Attention 的 Q/V 投影对任务适配最敏感。FFN 参数量大但 rank 高，低秩分解收益小。但最新研究（如 DoRA）表明在 FFN 上也加 LoRA 能进一步提升效果，只是性价比不如 Attention 高。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”Adapter 和 LoRA 推理时的区别？”</strong>
+<ul>
+<li>答：LoRA 的 BA 可以在推理前合并回 W₀（W = W₀ + BA），推理零额外开销。Adapter 需要在前向传播时额外过一层 bottleneck FFN，增加约 5-10% 的推理延迟。所以 LoRA 更适合 latency 敏感场景。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”PEFT 会加剧 catastrophic forgetting 吗？”</strong>
+<ul>
+<li>答：PEFT 反而能缓解遗忘。因为大部分预训练权重被冻结，保留了通用能力。只微调少量参数，模型不会轻易”忘记”预训练知识。但 PEFT 学到的任务特定知识可能和预训练知识冲突，这时需要正则化或任务隔离策略。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0606"><a class="anchor-link" href="#h-0606" aria-label="跳转到本节">#</a>41. RLHF 的典型三阶段流程是什么？</h3><aside class="inline-enhancement compact">
+        <div class="inline-enhancement-title">偏好优化公式</div>
+        <p class="inline-enhancement-note">放在 RLHF、DPO、PPO、GRPO、Reasoning 后训练小节附近。</p>
+        
+        <div class="formula-grid"><div class="formula-card"><b>DPO 损失</b><div class="math-display">\[\mathcal{L}_{DPO}=-\log\sigma\left(\beta\log\frac{\pi_\theta(y_w|x)}{\pi_{ref}(y_w|x)}-\beta\log\frac{\pi_\theta(y_l|x)}{\pi_{ref}(y_l|x)}\right)\]</div><p>把偏好比较转成 policy 相对 reference 的 log-ratio 差。</p></div><div class="formula-card"><b>PPO Clip Objective</b><div class="math-display">\[\mathcal{L}^{clip}=\mathbb{E}\left[\min(r_t A_t,\mathrm{clip}(r_t,1-\epsilon,1+\epsilon)A_t)\right]\]</div><p>clip 限制单步策略更新幅度。</p></div><div class="formula-card"><b>GRPO 组内归一化优势</b><div class="math-display">\[A_i=\frac{r_i-\mathrm{mean}(\{r_j\}_{j=1}^{G})}{\mathrm{std}(\{r_j\}_{j=1}^{G})+\epsilon}\]</div><p>同一 prompt 下多条回答的相对奖励构造 advantage。</p></div></div>
+      </aside>
+<h4 id="h-0607"><a class="anchor-link" href="#h-0607" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>RLHF 的经典三阶段流程通常这样讲。第一阶段先做 SFT，用人工示范数据把模型调到“基本会按要求回答”；第二阶段收集偏好对，比如两条回答里哪条更好，再训练 reward model，让它学会近似人类偏好；第三阶段用 PPO 等强化学习方法，让策略模型去最大化这个奖励。</p>
+<p>它的目标不只是让模型"事实更正确"，而是让输出整体上更符合人类偏好，比如更有帮助、更安全、更自然、更少冒犯。所以 RLHF 解决的是"人喜欢怎样的回答"，而不只是"哪句在语法上对"。</p>
+<hr>
+<h4 id="h-0608"><a class="anchor-link" href="#h-0608" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 三阶段的本质分工</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阶段</th>
+<th>目标</th>
+<th>数据</th>
+<th>训练方式</th>
+<th>输出</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>SFT</td>
+<td>让模型"学会基本应答格式"</td>
+<td>人工写的高质量 (prompt, response) 对</td>
+<td>监督学习</td>
+<td>策略模型 π_SFT</td>
+</tr>
+<tr>
+<td>Reward Model</td>
+<td>让模型"学会判断好坏"</td>
+<td>同一问题的两个回答 + 人类偏好标签</td>
+<td>对比学习</td>
+<td>Reward 模型 r(x,y)</td>
+</tr>
+<tr>
+<td>PPO</td>
+<td>让模型"主动优化回答质量"</td>
+<td>用当前策略采样回答，Reward 模型打分</td>
+<td>强化学习</td>
+<td>优化后的策略 π_RL</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. Reward Model 的训练细节</strong></p>
+<p>给定一个问题 <code>x</code> 和两个回答 <code>(y_w, y_l)</code>，其中 <code>y_w</code> 是人类偏好的（win），<code>y_l</code> 是不被偏好的（lose）。Reward 模型的 Bradley-Terry 损失：</p>
+<pre><code class="language-text">L = -log σ(r(x, y_w) - r(x, y_l))</code></pre>
+<p>其中 <code>σ</code> 是 sigmoid。当 <code>r(x, y_w) &gt; r(x, y_l)</code> 时，损失趋近于 0；反之损失很大。</p>
+<p>Reward 模型通常比策略模型小（如 7B 策略配 1B reward），因为判断好坏比生成回答容易。</p>
+<p><strong>3. PPO 的 Clip Objective</strong></p>
+<p>PPO 的目标函数：</p>
+<pre><code class="language-text">L_CLIP = E[min(ratio * A, clip(ratio, 1-ε, 1+ε) * A)] - β * KL(π_RL || π_SFT)</code></pre>
+<p>其中：</p>
+<ul>
+<li><code>ratio = π_RL(y|x) / π_SFT(y|x)</code>：新策略与旧策略的概率比
+</li>
+<li><code>A</code>：优势函数（Advantage），估计当前回答比平均水平好多少
+</li>
+<li><code>clip</code>：防止策略更新过大（ε 通常 0.1-0.2）
+</li>
+<li><code>KL 惩罚</code>：防止新策略偏离 SFT 太远
+</li>
+</ul>
+<p>Clip 的作用：如果 ratio 已经很大（如 &gt; 1+ε），即使 advantage 为正也不再增加奖励，避免策略"走太远"。</p>
+<p><strong>4. RLHF 的常见失败模式</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>失败模式</th>
+<th>现象</th>
+<th>根因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Reward Hacking</strong></td>
+<td>模型学会讨好 reward 模型而非人类</td>
+<td>Reward 模型不是完美的人类代理</td>
+</tr>
+<tr>
+<td><strong>模式崩溃</strong></td>
+<td>模型总是输出同一种"安全"回答</td>
+<td>KL 惩罚太强或 reward 模型太窄</td>
+</tr>
+<tr>
+<td><strong>长度偏见</strong></td>
+<td>模型倾向于输出更长回答</td>
+<td>Reward 模型天然偏好更完整的回答</td>
+</tr>
+<tr>
+<td><strong>训练不稳定</strong></td>
+<td>PPO 损失剧烈波动</td>
+<td>优势估计不准、学习率敏感</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"为什么 Reward Model 会 overfit 到表面特征？"</strong>
+<ul>
+<li>答：Reward 模型只在偏好对上训练，而偏好数据量远小于预训练数据。它可能学到一些"捷径"（如更长的回答得分更高、包含特定关键词得分更高），而不是真正理解回答质量。这就是 reward hacking 的根源。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"PPO 的 KL 惩罚和 DPO 的 KL 约束有什么区别？"</strong>
+<ul>
+<li>答：PPO 的 KL 是显式加在目标函数里的惩罚项，每次更新都约束；DPO 的 KL 是隐式的——DPO 的推导中，最优策略形式本身就包含 KL 约束，不需要额外超参调 β。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果 Reward Model 和策略模型规模一样大，会有什么问题？"</strong>
+<ul>
+<li>答：训练成本翻倍。另外，规模相近时 reward model 可能"太聪明"，能识别出策略模型的很多 trick，导致 reward hacking 更隐蔽但危害更大。实践中 reward model 通常比策略模型小 1/4 到 1/7。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0609"><a class="anchor-link" href="#h-0609" aria-label="跳转到本节">#</a>42. DPO 和 PPO / RLHF 相比，最大的区别是什么？</h3>
+<h4 id="h-0610"><a class="anchor-link" href="#h-0610" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>DPO</code> 和传统 PPO 式 RLHF 最大的区别在于：它不再显式分成“先训 reward model，再做在线 RL”两步，而是直接把偏好数据转成一个可监督优化的目标，让模型提升被偏好答案的相对概率、压低被拒绝答案的相对概率。</p>
+<p>这带来的好处是流程更短、训练更稳、工程复杂度更低，不需要在线采样和 RL 调参地狱。缺点是它的灵活性通常不如完整 RLHF，尤其当你需要复杂奖励设计、在线探索或多目标权衡时，传统 RL 框架仍更有表达力。</p>
+<hr>
+<h4 id="h-0611"><a class="anchor-link" href="#h-0611" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. DPO 的损失函数推导</strong></p>
+<p>DPO 的核心洞察：在 Bradley-Terry 模型假设下，人类偏好可以被表示为隐式 reward 的 logistic 形式：</p>
+<pre><code class="language-text">P(y_w &gt; y_l | x) = σ(r(x, y_w) - r(x, y_l))</code></pre>
+<p>DPO 更进一步：它证明了在最优 RL 策略下，reward 可以表示为策略概率和参考策略概率的比值：</p>
+<pre><code class="language-text">r(x, y) = β * log(π(y|x) / π_ref(y|x)) + β * log Z(x)</code></pre>
+<p>把这个 reward 表达式代入 Bradley-Terry 模型，就得到 DPO 的损失函数：</p>
+<pre><code class="language-text">L_DPO = -log σ(β * log(π(y_w|x)/π_ref(y_w|x)) - β * log(π(y_l|x)/π_ref(y_l|x)))</code></pre>
+<p>其中：</p>
+<ul>
+<li><code>π</code>：当前策略模型
+</li>
+<li><code>π_ref</code>：参考模型（通常是 SFT 后的模型，固定不训练）
+</li>
+<li><code>β</code>：温度系数，控制对参考策略的偏离程度
+</li>
+</ul>
+<p><strong>2. DPO 的本质：隐式 reward + 离线优化</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>特性</th>
+<th>PPO/RLHF</th>
+<th>DPO</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Reward 模型</td>
+<td>显式训练</td>
+<td>隐式包含在损失中</td>
+</tr>
+<tr>
+<td>采样方式</td>
+<td>在线采样（当前策略生成）</td>
+<td>离线（偏好数据已固定）</td>
+</tr>
+<tr>
+<td>训练稳定性</td>
+<td>需要小心调参</td>
+<td>更稳定（监督学习）</td>
+</tr>
+<tr>
+<td>灵活性</td>
+<td>高（可设计复杂 reward）</td>
+<td>低（只能表达成对偏好）</td>
+</tr>
+<tr>
+<td>计算成本</td>
+<td>高（需要 reward model + 在线生成）</td>
+<td>低（只需要策略和参考模型）</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. DPO 的 β 参数怎么调？</strong></p>
+<ul>
+<li><code>β</code> 太大：模型不敢偏离参考策略，偏好学习不充分
+</li>
+<li><code>β</code> 太小：模型可能偏离太远，输出变得奇怪或不连贯
+</li>
+<li>通常从 <code>β=0.1</code> 开始调，根据效果微调
+</li>
+</ul>
+<p><code>β</code> 的直观含义：控制"愿意为了迎合偏好而牺牲多少参考策略的likelihood"。</p>
+<p><strong>4. DPO 的局限</strong></p>
+<ul>
+<li><strong>分布外泛化差</strong>：DPO 只在已有的偏好对上训练，对训练时没见过的问题类型，优化效果不确定
+</li>
+<li><strong>长度偏见</strong>：跟 RLHF 一样，DPO 也可能学到偏好更长的回答
+</li>
+<li><strong>无法表达复杂奖励</strong>：比如"回答要有帮助且安全"这种多目标，DPO 只能折合成成对偏好，不如 RLHF 灵活
+</li>
+</ul>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"DPO 的参考模型为什么固定不训练？"</strong>
+<ul>
+<li>答：参考模型提供"锚点"——它代表了 SFT 后的基础能力。DPO 的目标是"在保持基础能力的前提下向偏好方向优化"。如果参考模型也一起训练，就失去了锚定作用，模型可能跑飞。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"DPO 和对比学习（Contrastive Learning）有什么关系？"</strong>
+<ul>
+<li>答：DPO 本质上是一种有监督的对比学习：拉近偏好回答、推远拒绝回答。但 DPO 的特殊之处在于它通过 Bradley-Terry 模型把偏好和策略概率联系起来，有明确的 RL 理论支撑，不只是启发式对比。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果偏好数据有噪声（标注者意见不一致），DPO 和 PPO 谁更鲁棒？"</strong>
+<ul>
+<li>答：DPO 通常更鲁棒。因为 DPO 是离线监督学习，噪声数据的影响是一次性的；PPO 是在线采样，如果 reward model 被噪声影响，会持续产生错误的训练信号，错误会被放大。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0612"><a class="anchor-link" href="#h-0612" aria-label="跳转到本节">#</a>43. 为什么很多人会说“做完 SFT 之后模型反而变傻了”？</h3>
+<h4 id="h-0613"><a class="anchor-link" href="#h-0613" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>很多人说“做完 SFT 模型变傻了”，本质上是在说：模型被高强度地拉向一类特定回答分布后，原来更广泛的能力空间被压缩了。如果 SFT 数据太窄、格式太死、任务覆盖不够，模型就可能变得特别会一种答法，但在别的场景下更迟钝。</p>
+<p>从训练视角看，这通常不是模型真的”智商下降”，而是行为分布被过度收缩，导致探索性下降、回答多样性下降，甚至覆盖掉原本的泛化能力。面试时如果你能把它解释成”分布过拟合”而不是一句玩笑话，会更专业。</p>
+<hr>
+<h4 id="h-0614"><a class="anchor-link" href="#h-0614" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. “变傻”的数学直觉：KL 散度视角</strong></p>
+<p>设预训练后模型的输出分布为 <code>P_pretrain(y|x)</code>，SFT 后变为 <code>P_SFT(y|x)</code>。</p>
+<p>SFT 的目标是最小化：</p>
+<pre><code class="language-text">L_SFT = -E_{(x,y)~D_SFT}[log P_SFT(y|x)]</code></pre>
+<p>如果 SFT 数据 <code>D_SFT</code> 分布很窄（如全是简短回答），模型会被拉向这个窄分布。对预训练时见过的多样化输入 x'，新的输出分布可能与原来相差很大：</p>
+<pre><code class="language-text">KL(P_pretrain(y|x') || P_SFT(y|x')) 增大</code></pre>
+<p>这就是”变傻”的本质：模型在 SFT 分布上表现好了，但在预训练分布上的行为被改变了。</p>
+<p><strong>2. 导致”变傻”的四大典型原因</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>原因</th>
+<th>现象</th>
+<th>机理</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>数据太窄</strong></td>
+<td>只会一种答法</td>
+<td>分布支持集太小，模型没见过其他回答模式</td>
+</tr>
+<tr>
+<td><strong>格式太死</strong></td>
+<td>所有回答都是一个模板</td>
+<td>输出前缀高度一致，模型学到强偏置</td>
+</tr>
+<tr>
+<td><strong>长度压缩</strong></td>
+<td>回答变短、变简单</td>
+<td>SFT 数据中回答普遍偏短，模型学到”短=好”</td>
+</tr>
+<tr>
+<td><strong>过度优化</strong></td>
+<td>对训练集过拟合</td>
+<td>学习率太大或 epoch 太多，参数离开原最优区</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 量化感受：SFT 数据量与”变傻”程度</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>SFT 数据量</th>
+<th>数据多样性</th>
+<th>典型现象</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1K 条</td>
+<td>低</td>
+<td>严重过拟合，几乎只会模板回答</td>
+</tr>
+<tr>
+<td>10K 条</td>
+<td>中</td>
+<td>基本可用，但长尾问题表现差</td>
+</tr>
+<tr>
+<td>100K 条</td>
+<td>高</td>
+<td>分布较丰富，”变傻”现象明显减轻</td>
+</tr>
+<tr>
+<td>1M+ 条</td>
+<td>很高</td>
+<td>接近预训练分布广度，基本不变傻</td>
+</tr>
+</tbody></table></div>
+<p>所以”变傻”和数据量/多样性强相关。数据少时尤其要小心。</p>
+<p><strong>4. 如何缓解”变傻”</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>原理</th>
+<th>实施要点</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>混入通用数据</strong></td>
+<td>保持原分布的梯度方向</td>
+<td>SFT 数据中加 10-30% 通用对话</td>
+</tr>
+<tr>
+<td><strong>降低学习率</strong></td>
+<td>更新幅度小，不远离原分布</td>
+<td>通常 1e-5 或更低</td>
+</tr>
+<tr>
+<td><strong>控制 epoch</strong></td>
+<td>防止过度拟合 SFT 分布</td>
+<td>通常 1-2 轮</td>
+</tr>
+<tr>
+<td><strong>用 LoRA</strong></td>
+<td>冻结原参数，只改少量方向</td>
+<td>r=8-16 通常足够</td>
+</tr>
+<tr>
+<td><strong>DPO/RLHF 后续</strong></td>
+<td>用偏好数据纠正 SFT 的偏差</td>
+<td>需要高质量偏好数据</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”SFT 后模型回答变短了，怎么诊断和解决？”</strong>
+<ul>
+<li>答：诊断：统计 SFT 数据中的 response 长度分布，如果训练数据中回答普遍偏短，模型就学到了”短回答=正确”。解决：1）在 SFT 数据中加入长回答样本；2）训练时对短回答加惩罚（或长回答加奖励）；3）用 RLHF/DPO 阶段纠正长度偏差。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”如果 SFT 数据全是'好的回答'，没有'坏的回答'，会有什么问题？”</strong>
+<ul>
+<li>答：模型只学到了”什么是对的”，但没学到”什么是错的”。这导致两个问题：1）模型对错误输入也可能一本正经地回答；2）模型缺乏”拒绝回答”的能力（如面对有害请求时不会说”不”）。解决：加入负面示例和拒绝回答的训练样本。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”SFT 后模型在训练集上的 accuracy 很高，但在真实用户测试上很差，这是什么问题？”</strong>
+<ul>
+<li>答：这是训练-测试分布不匹配。可能原因：1）SFT 数据的 instruction 风格过于统一，真实用户提问方式多样；2）SFT 数据没有覆盖真实场景的 edge case；3）训练时过拟合到了表面模式（如特定关键词）。解决：增加 instruction 多样性、做对抗性数据增强、控制过拟合。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0615"><a class="anchor-link" href="#h-0615" aria-label="跳转到本节">#</a>44. 灾难性遗忘在微调里是怎么发生的，你会怎么缓解？</h3>
+<h4 id="h-0616"><a class="anchor-link" href="#h-0616" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>灾难性遗忘的本质是：模型在新任务上更新得太猛，参数被强行推向一个更窄的新分布，结果把原先在通用语料或旧任务上学到的能力覆盖掉了。典型诱因包括：新数据太单一、学习率过高、训练步数过长、全参数微调改动范围太大。</p>
+<p>缓解方法也要围绕“别让更新过猛”来设计，例如混入通用数据防止分布塌缩、减小学习率、控制 epoch、优先用 PEFT、做多任务训练，或者加一些保持原能力的正则项。回答时最好讲成“为什么会忘”和“怎么减缓这个忘”，而不是只背方法名。</p>
+<hr>
+<h4 id="h-0617"><a class="anchor-link" href="#h-0617" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 遗忘的数学直觉</strong></p>
+<p>模型参数空间是高维的。预训练让模型落在一个"通用能力"的局部最优附近。微调时，梯度方向被新任务数据主导，参数沿着新任务的损失梯度下降。如果学习率太大或步数太多，参数会"走太远"，离开原来的局部最优，进入新任务的区域，旧能力就被"覆盖"了。</p>
+<p>想象一个二维参数空间的等高线图：预训练在 A 点（通用能力高），新任务的最优在 B 点。从 A 直接走到 B，可能经过一片"旧能力很低"的区域。</p>
+<p><strong>2. 具体缓解策略及原理</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>策略</th>
+<th>原理</th>
+<th>适用场景</th>
+<th>代价</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>混入通用数据</strong></td>
+<td>保持旧任务梯度方向的存在，防止参数只被新任务拉走</td>
+<td>数据获取容易</td>
+<td>训练时间增加</td>
+</tr>
+<tr>
+<td><strong>降低学习率</strong></td>
+<td>每步更新更小，参数不会走太远</td>
+<td>几乎所有场景</td>
+<td>收敛更慢</td>
+</tr>
+<tr>
+<td><strong>LoRA/Adapter</strong></td>
+<td>只改少量参数，主体参数冻结</td>
+<td>大多数下游任务</td>
+<td>效果上限略低</td>
+</tr>
+<tr>
+<td><strong>EWC (Elastic Weight Consolidation)</strong></td>
+<td>给重要参数加正则约束，不让它们变化太大</td>
+<td>多任务序列学习</td>
+<td>需要计算 Fisher 信息矩阵</td>
+</tr>
+<tr>
+<td><strong>Replay Buffer</strong></td>
+<td>保留部分旧样本，训练时一起回放</td>
+<td>增量学习</td>
+<td>存储开销</td>
+</tr>
+<tr>
+<td><strong>知识蒸馏</strong></td>
+<td>用原模型当教师，新模型同时拟合新任务和旧输出</td>
+<td>需要保留原模型</td>
+<td>训练复杂</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 为什么 PEFT（LoRA）能缓解遗忘？</strong></p>
+<p>因为 PEFT 冻结了原模型的大部分参数（~99.5%），只训练极少的 adapter 参数。原参数空间基本不动，所以旧能力被保留。Adapter 学习的是"在不动原空间的前提下，怎么扭曲输入/输出才能适配新任务"——相当于在原能力基础上做"微调增量"，而不是"整体搬迁"。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果我必须用全参数微调，怎么最大程度减少遗忘？"</strong>
+<ul>
+<li>答：三板斧：1）学习率降到预训练的 1/10 甚至 1/100；2）混入 10-30% 的通用数据（如预训练语料或指令数据）；3）控制 epoch（通常 1-3 轮就够，不要过拟合）。如果还不行，考虑 EWC 或 L2-SP（只惩罚远离原参数的变化）。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"多任务训练和混合数据防止遗忘，本质区别是什么？"</strong>
+<ul>
+<li>答：多任务训练是同时优化多个任务的目标函数，模型需要找到一个"兼顾所有任务"的参数点；混合数据只是让旧任务的梯度仍然存在，本质上还是在优化单一目标（新任务），只是数据更丰富。多任务训练更系统，但设计更复杂；混合数据更简单直接。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"灾难性遗忘和过拟合有什么区别？"</strong>
+<ul>
+<li>答：过拟合是"在新任务训练集上好、测试集上差"；灾难性遗忘是"在新任务上好、在旧任务上差"。一个模型可以同时不过拟合新任务，但严重遗忘旧任务。解决过拟合用 dropout、早停、数据增强；解决遗忘用参数约束、混合数据、PEFT。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0618"><a class="anchor-link" href="#h-0618" aria-label="跳转到本节">#</a>45. 什么时候应该全参数微调，什么时候应该 LoRA / QLoRA，什么时候根本不该微调？</h3>
+<h4 id="h-0619"><a class="anchor-link" href="#h-0619" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>判断要不要全参数微调，关键先看问题类型。若任务和底座差异非常大、对效果上限要求极高、数据和算力也充足，那全参数微调值得考虑；若任务只是中等程度适配，而且资源有限，LoRA/QLoRA 往往性价比更高。</p>
+<p>更重要的是第三种情况：如果问题的本质其实是知识更新、证据追溯或外部文档约束，那很多时候根本不该先微调，而应该先做 RAG。因为这时你需要的是”让模型能查到最新知识”，不是”把知识硬塞进参数”。</p>
+<hr>
+<h4 id="h-0620"><a class="anchor-link" href="#h-0620" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 决策树：什么时候用什么方法</strong></p>
+<pre><code class="language-text">问题分析：
+├─ 需要注入的是知识/事实？
+│   ├─ 知识经常变化？ → RAG（知识在库中，随时更新）
+│   └─ 知识固定且量大？ → Continue Pretraining
+├─ 需要注入的是行为/风格/格式？
+│   ├─ 数据充足（10K+）且算力够？ → 全参数 SFT
+│   └─ 数据少或算力受限？ → LoRA / QLoRA
+└─ 底座和任务差异极大？
+    └─ 全参数微调（但成本极高）</code></pre>
+<p><strong>2. 三种方法的资源消耗对比</strong></p>
+<p>以 7B 模型为例：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>可训练参数</th>
+<th>显存需求</th>
+<th>训练时间</th>
+<th>存储成本</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>全参数微调</strong></td>
+<td>7B</td>
+<td>80-150GB</td>
+<td>数天</td>
+<td>每个任务一个 14GB checkpoint</td>
+</tr>
+<tr>
+<td><strong>LoRA (r=16)</strong></td>
+<td>~33M (0.5%)</td>
+<td>20-40GB</td>
+<td>数小时</td>
+<td>每个任务一个 60MB adapter</td>
+</tr>
+<tr>
+<td><strong>QLoRA (4bit)</strong></td>
+<td>~33M</td>
+<td>10-20GB</td>
+<td>数小时</td>
+<td>每个任务一个 60MB adapter</td>
+</tr>
+<tr>
+<td><strong>RAG</strong></td>
+<td>0（不微调）</td>
+<td>推理显存</td>
+<td>无训练</td>
+<td>向量库索引</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. 全参数微调的适用边界</strong></p>
+<p>真正需要全参数微调的场景很少：</p>
+<ul>
+<li>底座和目标任务<strong>分布差异极大</strong>（如通用模型 → 特定生物医学领域）
+</li>
+<li>追求<strong>绝对效果上限</strong>（如竞赛、研究 SOTA）
+</li>
+<li>数据量<strong>极大</strong>（如 100M+ 条高质量领域数据）
+</li>
+</ul>
+<p>大多数业务场景（如客服、写作助手、代码补全）LoRA 足够。</p>
+<p><strong>4. “不该微调”的场景</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>原因</th>
+<th>正确做法</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>知识经常更新</td>
+<td>微调后知识仍滞后</td>
+<td>RAG + 定期更新索引</td>
+</tr>
+<tr>
+<td>需要证据溯源</td>
+<td>微调后模型”编造”来源</td>
+<td>RAG（retrieval 结果可作为引用）</td>
+</tr>
+<tr>
+<td>数据量极小（&lt;100 条）</td>
+<td>过拟合严重</td>
+<td>prompt engineering / few-shot</td>
+</tr>
+<tr>
+<td>多租户/多任务</td>
+<td>每个任务一个微调模型，维护成本爆炸</td>
+<td>RAG + 共享底座</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>”如果 LoRA 效果不够好，什么时候该升级到全参数微调？”</strong>
+<ul>
+<li>答：先排查 LoRA 效果不好的原因：1）rank 太小 → 尝试 r=64/128；2）只加了 Q/V 投影 → 尝试所有 attention 层 + FFN；3）数据质量差 → 清洗数据；4）学习率不对 → 调参。如果这些都试过仍不够，且业务确实需要那最后 1-2% 的提升，才考虑全参数微调。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”一个公司有 100 个业务场景，每个都用 LoRA 微调，怎么管理？”</strong>
+<ul>
+<li>答：用”底座 + 多个 adapter”的架构。底座共享（7B），每个场景一个 adapter（60MB）。推理时动态加载对应 adapter：1）内存节省：底座常驻显存，adapter 按需加载；2）快速切换：换场景只需加载几十 MB；3）独立迭代：每个场景的 adapter 可以独立训练、独立版本管理。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>”RAG 和微调可以一起用吗？什么顺序？”</strong>
+<ul>
+<li>答：可以，而且常常一起用。典型顺序：1）先用 RAG 解决知识召回问题；2）再用 SFT/LoRA 训练模型”如何更好地利用检索到的内容”（如引用格式、信息整合风格）。RAG 解决”知道什么”，微调解决”怎么说”。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0621"><a class="anchor-link" href="#h-0621" aria-label="跳转到本节">#</a>46. 你怎么判断一个问题更适合 <code>RAG</code> 还是更适合 <code>fine-tuning</code>？</h3><aside class="inline-enhancement wide">
+        <div class="inline-enhancement-title">RAG / Agent 链路</div>
+        <p class="inline-enhancement-note">放在 RAG、Agent、MCP、Tool Schema 小节附近，强调系统闭环而不是单点组件。</p>
+        <div class="visual-grid"><div class="visual-card"><b>RAG 与 Agent 系统图</b><img src="../assets/rag-agent-system.svg" alt="RAG 与 Agent 系统图"><p>检索、重排、上下文组装、工具调用和评测闭环。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>检索重排分数</b><div class="math-display">\[\mathrm{score}(q,d)=\lambda\,s_{dense}(q,d)+(1-\lambda)\,s_{sparse}(q,d)\]</div><p>Hybrid retrieval 常用 dense 与 sparse 信号混合。</p></div></div>
+      </aside>
+<h4 id="h-0622"><a class="anchor-link" href="#h-0622" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>判断 <code>RAG</code> 还是 <code>fine-tuning</code>，最核心的问题是：你要改的是模型“知道什么”，还是“怎么做事”。如果知识经常变化、需要引用外部证据、要求答案可追溯，那更偏向 RAG；如果你想改变的是输出风格、任务流程、工具使用习惯、拒答边界，那更偏向微调。</p>
+<p>很多真实系统并不是二选一，而是组合使用：用 RAG 解决"知识从哪里来"，用 fine-tuning 解决"模型拿到知识后怎样按业务规则表达出来"。这句话说出来，通常就已经比单纯选边站成熟很多。</p>
+<hr>
+<h4 id="h-0623"><a class="anchor-link" href="#h-0623" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. RAG vs Fine-tuning 的本质分工</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>RAG</th>
+<th>Fine-tuning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>改什么</strong></td>
+<td>知识来源（外部检索）</td>
+<td>模型行为（参数更新）</td>
+</tr>
+<tr>
+<td><strong>更新速度</strong></td>
+<td>实时（改索引即可）</td>
+<td>慢（需重新训练）</td>
+</tr>
+<tr>
+<td><strong>证据溯源</strong></td>
+<td>有（retrieval 结果可展示）</td>
+<td>无（知识在参数中）</td>
+</tr>
+<tr>
+<td><strong>数据需求</strong></td>
+<td>文档库</td>
+<td>成对的训练数据</td>
+</tr>
+<tr>
+<td><strong>成本</strong></td>
+<td>索引 + 推理</td>
+<td>训练 + 部署</td>
+</tr>
+<tr>
+<td><strong>风险</strong></td>
+<td>检索失败 → 回答错误</td>
+<td>训练数据偏差 → 行为偏差</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 决策矩阵：具体问题具体分析</strong></p>
+<pre><code class="language-text">问题诊断：
+├─ 模型"不知道"正确知识？
+│   ├─ 知识经常更新？ → RAG
+│   ├─ 知识固定但量大？ → Continue Pretraining + RAG
+│   └─ 知识在训练数据中已有？ → 检查 retrieval 质量
+├─ 模型"知道"但"说不好"？
+│   ├─ 格式不对？ → SFT
+│   ├─ 风格不对？ → SFT
+│   └─ 安全边界不对？ → RLHF/DPO
+└─ 两者都有？
+    └─ RAG + Fine-tuning 组合</code></pre>
+<p><strong>3. 组合使用的典型架构</strong></p>
+<pre><code class="language-text">用户 Query
+    ↓
+[Query Rewrite] → 优化检索 query
+    ↓
+[Retrieval] → 从知识库召回相关文档
+    ↓
+[Rerank] → 精排，选出最相关的 top-k
+    ↓
+[Prompt Construction]
+    "基于以下资料回答问题：[文档1]...[文档k]\n问题：{query}"
+    ↓
+[LLM Generation] ← 这里可以用 SFT 过的模型
+    ↓
+[后处理] → 引用检查、格式校验</code></pre>
+<p>SFT 的作用：让模型更擅长"利用检索到的内容"——如正确引用、不 hallucinate、按指定格式整合多段信息。</p>
+<p><strong>4. 常见误区</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>误区</th>
+<th>真相</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>"RAG 比微调高级"</td>
+<td>两者解决不同问题，不是替代关系</td>
+</tr>
+<tr>
+<td>"微调后就不需要 RAG 了"</td>
+<td>微调的知识仍滞后于训练数据，无法实时更新</td>
+</tr>
+<tr>
+<td>"RAG 可以替代所有知识注入"</td>
+<td>RAG 检索失败时模型可能 hallucinate，需要 fallback</td>
+</tr>
+<tr>
+<td>"先微调再 RAG"</td>
+<td>通常先 RAG 看效果，不够再微调，避免过度工程</td>
+</tr>
+</tbody></table></div>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"如果 RAG 检索到的文档有错误，模型会跟着错吗？"</strong>
+<ul>
+<li>答：很可能。模型倾向于"忠实"于 prompt 中提供的上下文（尤其是经过 SFT 训练的模型）。如果检索到错误文档，模型可能直接引用错误信息。缓解：1）reranker 过滤低质量文档；2）多源交叉验证；3）模型输出置信度评估；4）人工审核高风险答案。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"微调后的模型做 RAG，和直接用底座做 RAG，有什么区别？"</strong>
+<ul>
+<li>答：微调后的模型更擅长：1）遵循指令格式（如"基于资料回答"）；2）正确引用和总结检索内容；3）拒绝回答检索不到的问题（而不是 hallucinate）。底座模型可能忽略 prompt 中的检索资料，直接凭参数记忆回答。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"一个系统同时需要实时知识（RAG）和特定行为（SFT），怎么设计训练流程？"</strong>
+<ul>
+<li>答：1）底座模型；2）通用 SFT（学会对话格式、安全边界）；3）领域 SFT（如果有领域特定行为）；4）上线时接入 RAG（实时知识）。注意：SFT 阶段就要包含"基于资料回答"的训练样本，让模型学会利用检索内容。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0624"><a class="anchor-link" href="#h-0624" aria-label="跳转到本节">#</a>47. RLHF、DPO、IPO、ORPO 这类方法的共同目标是什么，它们训练信号差在哪里？</h3>
+<h4 id="h-0625"><a class="anchor-link" href="#h-0625" aria-label="跳转到本节">#</a>标准答案</h4>
+<p><code>RLHF</code>、<code>DPO</code>、<code>IPO</code>、<code>ORPO</code> 这些方法虽然训练形式不同，但共同目标都一样：让模型输出更符合人类偏好，而不是只拟合原始语料分布。它们关心的是“哪种回答更受欢迎、更有帮助、更安全”，而不只是下一个 token 的似然。</p>
+<p>差别主要在训练信号怎么构造。有的方法显式训练 reward model，再用 RL 去追奖励；有的方法直接从偏好对出发优化相对概率；还有的方法在目标函数里做更稳定或更简洁的改写。所以面试里可以先讲共同目标，再讲信号差异，这样结构更清楚。</p>
+<hr>
+<h4 id="h-0626"><a class="anchor-link" href="#h-0626" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 四种方法的训练信号对比</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>训练信号</th>
+<th>是否需要 Reward Model</th>
+<th>是否需 RL</th>
+<th>核心公式/思想</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>RLHF</strong></td>
+<td>人类偏好 → RM 打分 → PPO 优化</td>
+<td>是</td>
+<td>是</td>
+<td><code>L_PPO = E[min(ratio·A, clip·A)] - β·KL</code></td>
+</tr>
+<tr>
+<td><strong>DPO</strong></td>
+<td>人类偏好 → 直接优化策略</td>
+<td>否</td>
+<td>否</td>
+<td><code>L_DPO = -log σ(β·log(π_w/π_ref) - β·log(π_l/π_ref))</code></td>
+</tr>
+<tr>
+<td><strong>IPO</strong></td>
+<td>人类偏好 → 更稳定的离线优化</td>
+<td>否</td>
+<td>否</td>
+<td>在 DPO 基础上加正则，防止过拟合到偏好对</td>
+</tr>
+<tr>
+<td><strong>ORPO</strong></td>
+<td>偏好 + SFT 合并在一步</td>
+<td>否</td>
+<td>否</td>
+<td>把 odds ratio 直接加入 SFT loss，无需参考模型</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 从 RLHF 到 DPO：为什么可以去掉 Reward Model？</strong></p>
+<p>DPO 的核心洞察：在 Bradley-Terry 模型假设下，最优策略和 reward 之间存在一一对应关系。</p>
+<pre><code class="language-text">RLHF 路径：
+偏好数据 → 训练 RM → PPO 优化策略 → 策略最大化 RM 分数
+
+DPO 路径：
+偏好数据 → 直接优化策略（策略本身隐含 reward）</code></pre>
+<p>数学上，DPO 证明了：给定参考模型 π_ref，满足 KL 约束的最优策略 π* 可以直接从偏好数据中学到，不需要显式建模 reward。</p>
+<p><strong>3. 四种方法的适用场景</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>场景</th>
+<th>推荐方法</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>数据充足、算力充足、追求最佳效果</td>
+<td>RLHF</td>
+<td>表达能力最强，但工程最复杂</td>
+</tr>
+<tr>
+<td>偏好数据少、不想训练 RM</td>
+<td>DPO</td>
+<td>简单直接，效果接近 RLHF</td>
+</tr>
+<tr>
+<td>偏好对噪声大、担心过拟合</td>
+<td>IPO</td>
+<td>正则化更强，对噪声更鲁棒</td>
+</tr>
+<tr>
+<td>极简工程、一步完成 SFT+对齐</td>
+<td>ORPO</td>
+<td>不需要参考模型，显存省</td>
+</tr>
+</tbody></table></div>
+<p><strong>4. 各方法的工程复杂度排序</strong></p>
+<pre><code class="language-text">复杂度从高到低：
+RLHF (需训练 RM + PPO，3 个模型同时驻留显存)
+  &gt; DPO (需参考模型 π_ref + 策略模型，2 个模型)
+  &gt; IPO (同 DPO，但正则化更稳)
+  &gt; ORPO (只需 1 个模型，SFT 和对齐一步完成)</code></pre>
+<p><strong>5. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"DPO 为什么说不需要 Reward Model，它的假设是什么？"</strong>
+<ul>
+<li>答：DPO 假设人类偏好服从 Bradley-Terry 模型：P(y_w &gt; y_l) = σ(r(y_w) - r(y_l))。在这个假设下，可以推导出：最优策略 π* 和 reward r 之间存在闭式解。因此不需要显式训练 RM，直接从偏好数据优化策略即可。但这个假设也意味着：如果偏好数据不满足 BT 模型（如存在循环偏好 A&gt;B&gt;C&gt;A），DPO 效果会下降。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"RLHF 和 DPO 的效果差距有多大？"</strong>
+<ul>
+<li>答：论文报告和实践经验显示：在相同偏好数据上，DPO 通常能达到 RLHF 90-95% 的效果，但训练成本低 50-70%。差距主要来自：RLHF 的 online 采样能探索更多回答空间，而 DPO 是 offline 的（只在给定偏好对上优化）。如果偏好数据覆盖好、质量高，DPO 足以替代 RLHF。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"ORPO 为什么不需要参考模型？"</strong>
+<ul>
+<li>答：ORPO 把 SFT 和对齐合二为一。它的 loss 有两部分：1）SFT loss（标准 next-token prediction）；2）odds ratio loss（让 chosen 回答的 odds 大于 rejected）。因为 odds ratio 是基于当前策略自身计算的，不需要额外的参考模型 π_ref。这使得 ORPO 的显存需求最低，但理论上对齐强度也略弱于 DPO。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"IPO 相比 DPO 改进了什么？"</strong>
+<ul>
+<li>答：DPO 有一个已知问题：当策略模型对 chosen 和 rejected 的回答概率都接近 0 或都接近 1 时，梯度信号会消失或爆炸。IPO 通过修改 loss function，在这些极端情况下仍保持稳定的梯度。简单说，IPO 是 DPO 的"更稳版本"。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0627"><a class="anchor-link" href="#h-0627" aria-label="跳转到本节">#</a>48. 如果偏好数据很少、很贵，你还会怎么做对齐？</h3>
+<h4 id="h-0628"><a class="anchor-link" href="#h-0628" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>如果偏好数据很少、很贵，第一反应不应该是“那就硬凑更多”，而是先把现有数据价值榨干。常见做法包括：提高数据筛选质量、优先覆盖最关键场景、让强模型给出辅助反馈、做蒸馏、增加规则约束，或者先搭出评测闭环，让少量偏好数据真正打在高价值问题上。</p>
+<p>换句话说，偏好数据稀缺时，重点不是追求表面数量，而是提高每条数据的监督密度和业务价值。很多时候，把范围收缩到几个核心场景，反而比泛泛全覆盖更有效。</p>
+<hr>
+<h4 id="h-0629"><a class="anchor-link" href="#h-0629" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 偏好数据稀缺时的策略矩阵</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>策略</th>
+<th>适用场景</th>
+<th>代价</th>
+<th>效果上限</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>数据增强</strong></td>
+<td>现有数据质量好但少</td>
+<td>低（自动扩展）</td>
+<td>中</td>
+</tr>
+<tr>
+<td><strong>强模型蒸馏</strong></td>
+<td>有 API 访问强模型（GPT-4/Claude）</td>
+<td>API 费用</td>
+<td>中高</td>
+</tr>
+<tr>
+<td><strong>合成偏好对</strong></td>
+<td>有 SFT 模型可采样</td>
+<td>计算成本</td>
+<td>中</td>
+</tr>
+<tr>
+<td><strong>规则/约束对齐</strong></td>
+<td>安全边界、格式约束明确</td>
+<td>维护成本</td>
+<td>低-中</td>
+</tr>
+<tr>
+<td><strong>自举（Bootstrapping）</strong></td>
+<td>有少量种子数据</td>
+<td>迭代周期长</td>
+<td>高</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 强模型蒸馏：最实用的捷径</strong></p>
+<p>步骤：</p>
+<ol>
+<li>用少量高质量 prompt，让 GPT-4/Claude 生成多个回答
+</li>
+<li>用 GPT-4 做 judge，给回答打分/排序
+</li>
+<li>把 (prompt, chosen, rejected) 三元组作为 DPO 训练数据
+</li>
+</ol>
+<pre><code class="language-text">成本估算：
+- 生成：1000 条 prompt × 2 个回答 × $0.01 = $20
+- 评判：1000 条 × $0.005 = $5
+- 总成本：~$25 获得 1000 条偏好对</code></pre>
+<p>相比人工标注（$1-5/条），成本降低 50-200 倍。</p>
+<p><strong>3. 合成偏好对：用模型自己生成</strong></p>
+<p>如果只有 SFT 模型，没有强模型 API：</p>
+<ol>
+<li>对每个 prompt，用 SFT 模型采样 4-8 个回答（temperature &gt; 0）
+</li>
+<li>用 reward model 或规则打分（如：格式正确 +1，有引用 +1，长度适中 +1）
+</li>
+<li>选最高分和最低分组成偏好对
+</li>
+</ol>
+<p>局限：SFT 模型采样的回答质量可能都不够高，偏好对的"区分度"有限。</p>
+<p><strong>4. 规则约束：不用偏好数据也能对齐</strong></p>
+<p>对于安全/格式类约束，可以用规则直接惩罚：</p>
+<ul>
+<li>输出包含敏感词 → 直接给低分
+</li>
+<li>格式不符合 JSON schema → 直接给低分
+</li>
+<li>回答长度超出限制 → 直接给低分
+</li>
+</ul>
+<p>这种方式不需要偏好数据，但只能处理"可规则化"的约束，无法捕捉 subtle 的人类偏好。</p>
+<p><strong>5. Self-Play / Iterative DPO：自举提升</strong></p>
+<pre><code class="language-text">迭代循环：
+1. 用当前模型采样回答
+2. 用当前 reward model / judge 打分
+3. 选高分 vs 低分构建新偏好对
+4. 用新数据训练 DPO
+5. 重复 1-4</code></pre>
+<p>SPIN、Self-Rewarding Language Models 等论文证明了这种自举的有效性——模型通过自我对抗不断提升。</p>
+<p><strong>6. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>"蒸馏 GPT-4 的偏好数据，会不会有 legal 问题？"</strong>
+<ul>
+<li>答：取决于使用条款。OpenAI 的服务条款禁止用输出开发竞争模型。但用自己的模型生成 + 自己的 judge，或开源模型（如 Llama）做教师，没有这个问题。实际工程中，建议用自己的 SFT 模型做采样，配合规则/人工审核，避免法律风险。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"如果只有 100 条人工偏好数据，怎么最大化利用？"</strong>
+<ul>
+<li>答：1）数据筛选：只保留"区分度大"的 pair（即 chosen 和 rejected 差距明显）；2）数据增强：对 prompt 做 paraphrase，扩展 3-5 倍；3）小学习率 + 早停：防止过拟合；4）结合规则约束：人工数据捕捉 subtle 偏好，规则处理明确约束；5）冷启动后启动合成数据流水线。
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>"DPO 对偏好数据质量敏感吗？"</strong>
+<ul>
+<li>答：非常敏感。DPO 的假设是：chosen 确实比 rejected 好。如果数据有噪声（如 chosen 实际更差），DPO 会强行拉大概率差距，导致模型学到错误偏好。建议：1）人工审核 top 20% 的关键 pair；2）用一致性检查（多个 judge 是否都选同一个）；3）过滤掉"平局"pair（chosen 和 rejected 质量太接近）。
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</section>
+      </article>
+      <nav class="chapter-nav"><a href="040.html">← 40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a><a href="042.html">42. 模块五：推理优化、Serving 与部署工程 →</a></nav>
+      <footer class="footer">
+        <p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

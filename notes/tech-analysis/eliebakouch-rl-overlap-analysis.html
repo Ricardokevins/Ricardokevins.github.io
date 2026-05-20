@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mid-training/RL 数据重叠会伤害 RL 吗？</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --paper: #ffffff;
+      --ink: #17201d;
+      --muted: #5b665f;
+      --line: #dce2dd;
+      --accent: #0f6f68;
+      --accent-2: #7b4e1d;
+      --soft: #e9f2ef;
+      --warn: #fff3df;
+      --code: #10201d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.68;
+    }
+
+    a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid var(--line);
+      background: rgba(246, 247, 244, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 10px 22px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    header {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 54px 22px 28px;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font-size: clamp(34px, 6vw, 62px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin: 22px 0 0;
+      font-size: 20px;
+      color: #33413b;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .meta {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      padding: 14px 16px;
+      border-radius: 8px;
+    }
+
+    .meta strong {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .meta span {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 22px 70px;
+    }
+
+    section {
+      padding: 34px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0 0 14px; }
+
+    .lead {
+      font-size: 18px;
+      color: #2d3c36;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 18px;
+    }
+
+    .card h3:first-child { margin-top: 0; }
+
+    .thesis {
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      padding: 18px 20px;
+      border-radius: 0 8px 8px 0;
+      font-size: 18px;
+    }
+
+    .warning {
+      border-left: 4px solid var(--accent-2);
+      background: var(--warn);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 13px 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+      margin: 14px 0 0;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 13px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef3ef;
+      font-size: 13px;
+      color: #33413b;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    figure {
+      margin: 18px 0 0;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 12px;
+    }
+
+    .step {
+      counter-increment: step;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 8px;
+      padding: 15px 16px 15px 52px;
+      position: relative;
+    }
+
+    .step:before {
+      content: counter(step);
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--line);
+      background: #f7faf8;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 4px 6px 0;
+    }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      overflow: auto;
+      background: var(--code);
+      color: #e8f4ef;
+      border-radius: 8px;
+      padding: 15px 16px;
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 800px) {
+      .topbar-inner { align-items: flex-start; flex-direction: column; }
+      .meta-grid, .grid-2 { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+      header { padding-top: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>Elie Bakouch X thread reading · 2026-05-20</div>
+      <nav class="nav" aria-label="sections">
+        <a href="#source">来源</a>
+        <a href="#question">问题</a>
+        <a href="#mechanism">机制</a>
+        <a href="#evidence">证据</a>
+        <a href="#tests">怎么验证</a>
+        <a href="#insight">判断</a>
+      </nav>
+    </div>
+  </div>
+
+  <header>
+    <div class="eyebrow">RL 数据重叠 · Mid-training · Exploration</div>
+    <h1>Mid-training 见过类似 RL rollouts，会不会反而伤害后续 RL？</h1>
+    <p class="subtitle">这条 X 帖真正问的是：当模型在 RL 之前已经用大量“像轨迹一样”的推理/工具调用文本继续预训练，后续 RL 得到的是更好的起点，还是一个探索空间被提前收窄的 policy prior？</p>
+    <div class="meta-grid">
+      <div class="meta"><strong>原帖</strong><span>@eliebakouch</span></div>
+      <div class="meta"><strong>发布时间</strong><span>2026-05-18 UTC</span></div>
+      <div class="meta"><strong>核心外部来源</strong><span>MiniMax-M1 arXiv</span></div>
+      <div class="meta"><strong>报告结论</strong><span>风险真实，但不是一刀切</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="source">
+      <h2>来源地图</h2>
+      <ul class="source-list">
+        <li><strong>X 原帖和回复：</strong><a href="https://x.com/eliebakouch/status/2056511622529634703">eliebakouch/status/2056511622529634703</a>。通过 OpenCLI `twitter thread` 读取到主帖和 5 条上下文回复，原帖附带一张 MiniMax-M1 论文截图。</li>
+        <li><strong>论文原文：</strong><a href="https://arxiv.org/html/2506.13585v1">MiniMax-M1: Scaling Test-Time Compute Efficiently with Lightning Attention</a>。核对了 continual pretraining、SFT、RL 数据构造、去重和长输出 RL 训练段落。</li>
+        <li><strong>官方技术页：</strong><a href="https://www.minimax.io/news/minimax-m1-technical-seminar-2">MiniMax-M1 Technical Seminar</a>。页面以图片为主，作为背景来源，具体 overlap 结论仍以 arXiv 原文为准。</li>
+      </ul>
+      <figure>
+        <img src="eliebakouch-rl-overlap-analysis-assets/minimax-m1-sft-rl-overlap.jpg" alt="MiniMax-M1 论文截图，强调 SFT 与 RL 数据严格隔离以避免 overlap">
+        <figcaption>原帖附图来自 MiniMax-M1 论文 4.1 节附近。高亮句子的含义是：RL 数学数据会做 embedding 去重，并与 SFT 数据严格隔离，避免 SFT 到 RL 的泄漏削弱探索和训练有效性。</figcaption>
+      </figure>
+    </section>
+
+    <section id="question">
+      <h2>这条推文在问什么</h2>
+      <div class="thesis">
+        作者不是在问“重复数据会不会让 loss 变低”这么简单的问题，而是在问：如果 mid-training 的语料已经像 RL rollouts，也就是包含长推理轨迹、工具使用轨迹、尝试与纠错路径，那么后续 RL 是否还会学到真正的新策略，还是只是在强化一个已经被文本预训练塑形过的行为分布。
+      </div>
+      <h3>几个词先对齐</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>词</th>
+            <th>在这里的具体含义</th>
+            <th>为什么关键</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>continual pretraining / mid-training</td>
+            <td>基础模型之后继续做 next-token 训练，通常加入更高比例的推理、代码、STEM、长上下文或轨迹类语料。</td>
+            <td>它不是 RL，没有 reward，但会改变模型最自然会生成什么样的解题路径。</td>
+          </tr>
+          <tr>
+            <td>RL rollouts / traces</td>
+            <td>模型在任务上生成的完整轨迹：可能包含思考、工具调用、执行结果、修正和最终答案。</td>
+            <td>如果这些轨迹被提前放进 mid-training，模型可能已经“背熟”某些路径或风格。</td>
+          </tr>
+          <tr>
+            <td>SFT cold start</td>
+            <td>RL 前用高质量示范答案教模型基本的长 CoT、格式、反思和答题习惯。</td>
+            <td>它让 RL 更稳定，但如果和 RL 题目/解法重叠，reward 会变得不再纯粹。</td>
+          </tr>
+          <tr>
+            <td>exploration</td>
+            <td>RL 采样时尝试不同解法、搜索路线、工具调用和中间假设，而不是只走熟悉模板。</td>
+            <td>推理 RL 的收益通常来自在 reward 反馈下发现更好的策略，而不是重复已有文本。</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3>原帖的隐含假设</h3>
+      <p>作者把 MiniMax-M1 的 SFT/RL overlap 经验外推到更早、更大规模的 mid-training 阶段：如果 SFT 数据泄漏到 RL 会削弱探索，那么 trillions-token 级别的“轨迹类预训练”是否也会产生类似效果？更细的问题是：如果题目相同，但轨迹来自另一个模型，这算不算危险 overlap？</p>
+      <p>这个问题有价值，因为 2026 年的很多 agent / reasoning 训练路线都在做类似事情：先收集大量 trajectory corpus 做 mid-training，再用 RLVR、tool-use RL 或环境 reward 做强化。两者之间的边界越来越模糊。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>为什么 overlap 可能伤害 RL</h2>
+      <p class="lead">我的理解是，风险不在“文本出现过”本身，而在它改变了 RL 的探索分布、难度分布和 reward 信号含义。</p>
+      <div class="steps">
+        <div class="step">
+          <strong>起点 policy 被提前收窄。</strong>
+          Mid-training 如果大量见过某类轨迹，模型采样时会更倾向走那些轨迹风格。RL 采样空间变窄后，reward 看到的不是“模型自然探索出来的多样尝试”，而是预训练语料中高频路径的再现。
+        </div>
+        <div class="step">
+          <strong>RL 题目变得过于容易。</strong>
+          如果 prompt、答案、题型或 solution skeleton 与 RL 数据重叠，模型在 RL 开始时 pass@1 可能已经很高。这样看起来训练很顺，但 advantage 信号会变弱，剩下的梯度可能更多是在强化格式、长度和模板。
+        </div>
+        <div class="step">
+          <strong>成功轨迹不再证明策略可迁移。</strong>
+          当模型在相似题上成功，成功原因可能是记忆、局部插值或跨模型蒸馏来的模板，而不是通过 reward 学会了可泛化的搜索策略。到 OOD 任务，尤其是新工具、新约束、新环境时，性能可能掉得更明显。
+        </div>
+        <div class="step">
+          <strong>reward 变成确认偏差。</strong>
+          对 verifiable tasks 来说，reward 只知道答案对不对，不知道答案为什么对。如果轨迹来自提前见过的解法分布，RL 会强化“已经会的路径”，不一定鼓励发现新的问题分解方式。
+        </div>
+      </div>
+
+      <h3>但 overlap 也可能帮助 RL</h3>
+      <p>不能把 overlap 简化成“有害”。如果模型完全不会长轨迹、不会工具调用、不会按环境状态行动，RL 会非常稀疏和昂贵。适度的 mid-training 可以教会模型基本动作语法：如何保持多步状态、如何调用工具、如何把失败反馈纳入下一步。这就是回复里有人说的“先有 reasoning space 的地图”：RL 不是从荒地开始，而是进入已有街区。</p>
+      <p>所以问题不在“是否要 trajectory-like mid-training”，而在它是否把后续 RL 要探索的任务、答案、轨迹模式提前泄漏得太具体。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>MiniMax-M1 到底支持了什么</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>论文明确说了什么</h3>
+          <p>MiniMax-M1 先在 7.5T tokens 的推理密集语料上继续预训练，然后做 SFT 注入长 CoT 模式，再做大规模 RL。论文 4.1 节在数学 RL 数据清洗里强调：RL 数据源之间做 embedding 去重，并与 SFT 数据严格隔离，理由是 SFT 到 RL 的泄漏会削弱探索和训练有效性。</p>
+          <p>同一篇论文还提到，在扩展到 80K 输出长度的 RL 时，他们会移除太容易的样本，并降低部分 synthetic reasoning data 的比例，因为这类数据在长上下文 RL 中会导致重复、同质化，对整体性能不利。</p>
+        </div>
+        <div class="card">
+          <h3>论文没有证明什么</h3>
+          <p>截图不是一个系统 ablation。它没有给出“重叠多少会伤害多少”的曲线，也没有直接测试 trillion-token 级 continual pretraining 中，另一个模型生成的同题不同 rollout 是否伤害 RL。</p>
+          <p>因此，原帖作者是在提出合理外推，不是在引用一个已经封闭回答的问题。MiniMax-M1 提供的是工程经验和训练卫生原则，不是最终理论。</p>
+        </div>
+      </div>
+
+      <h3>把 overlap 拆成四类，结论会清楚很多</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>overlap 类型</th>
+            <th>例子</th>
+            <th>对 RL 的风险</th>
+            <th>我的判断</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>prompt/问题重叠</td>
+            <td>RL 题目在 SFT 或 mid-training 中出现过。</td>
+            <td>最高。模型可能直接识别题目，pass@1 虚高。</td>
+            <td>必须严格去重，至少做 exact、n-gram、embedding 和 benchmark contamination 检查。</td>
+          </tr>
+          <tr>
+            <td>答案/最终结果重叠</td>
+            <td>题目稍有改写，但答案或证明结构几乎一样。</td>
+            <td>很高。reward 无法区分真实求解和记忆式到达。</td>
+            <td>需要按语义和 solution skeleton 去重，仅 prompt 去重不够。</td>
+          </tr>
+          <tr>
+            <td>同题不同模型 rollout</td>
+            <td>同一个数学题，mid-training 使用另一个模型生成的多条解法。</td>
+            <td>中到高。比直接答案泄漏弱，但会提供策略提示和路线先验。</td>
+            <td>如果目标是测 RL 能不能探索，应该隔离；如果目标是教动作语法，可放入非评测域。</td>
+          </tr>
+          <tr>
+            <td>风格/分布相似</td>
+            <td>大量长 CoT、工具调用、debug trace，但任务不同。</td>
+            <td>中等。通常有帮助，但可能造成模板化和同质化。</td>
+            <td>要看多样性、任务迁移和 OOD 表现，不应按 exact overlap 一刀切。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="tests">
+      <h2>怎么判断它真的伤害了 RL</h2>
+      <p class="lead">回复里有人问：这能否从 RL 期间异常高的 pass@1 看出来？答案是：可以作为警报，但不够。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>诊断信号</th>
+            <th>怎么看</th>
+            <th>解释边界</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>RL step 0 / early step pass@1 异常高</td>
+            <td>RL 开始前或很早期已经能单次采样解决大量训练题。</td>
+            <td>可能是能力强，也可能是泄漏。需要与严格 holdout 同分布题比较。</td>
+          </tr>
+          <tr>
+            <td>pass@N 与 pass@1 差距很小</td>
+            <td>多采样没有明显增加可解题数，说明策略多样性不足。</td>
+            <td>对简单题也会这样，所以要按难度分桶看。</td>
+          </tr>
+          <tr>
+            <td>训练题提升大，OOD 题提升小</td>
+            <td>同模板/同来源提升明显，跨来源、改写、组合任务收益弱。</td>
+            <td>这是最关键的风险信号，说明 RL 学到的可能是窄分布策略。</td>
+          </tr>
+          <tr>
+            <td>成功轨迹与 mid-training corpus 高相似</td>
+            <td>对 CoT、工具序列、关键中间式、代码 patch pattern 做 embedding/MinHash/AST 相似度检查。</td>
+            <td>相似不等于抄袭，但高相似加低 OOD 增益就是强证据。</td>
+          </tr>
+          <tr>
+            <td>advantage 分布变窄</td>
+            <td>同一 prompt 下各 rollout reward 差别小，正负样本分布不够分离。</td>
+            <td>RL 梯度会变弱，训练可能主要强化格式和长度偏好。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>一个干净的实验设计</h3>
+      <div class="steps">
+        <div class="step">
+          构造四组 mid-training 数据：无轨迹、同域不同题轨迹、同题另一个模型轨迹、同题同解法轨迹。
+        </div>
+        <div class="step">
+          后续 RL 使用同一 verifier、同一采样预算、同一 prompt 池，并且训练题、同分布 holdout、跨来源 OOD 三类分开评估。
+        </div>
+        <div class="step">
+          同时记录 pass@1、pass@N、unique successful solution modes、轨迹相似度、advantage 方差、输出长度、reward hacking 或重复模式。
+        </div>
+        <div class="step">
+          如果同题轨迹组 early pass@1 高、训练集收益高，但 OOD 增益弱、成功轨迹相似度高，那就说明 overlap 在把 RL 变成确认已有策略，而不是扩展策略。
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断</h2>
+      <div class="warning">
+        <strong>最重要的 insight：</strong>在 reasoning/agent RL 里，数据重叠的危害不是传统意义上的“评测污染”而已。它会改变 RL 训练本身：模型采样什么、reward 能区分什么、优势函数是否有信息量、以及最后学到的是搜索能力还是轨迹模仿。
+      </div>
+      <p>如果 mid-training 的轨迹只是教会模型“怎么行动”，例如工具调用格式、长状态保持、错误恢复、任务分解语言，那么它通常是 RL 的加速器。如果它提前覆盖了 RL 要用来发现能力边界的题目、答案、解法路线或环境状态，那么它会把 RL 的探索问题变成记忆确认问题。</p>
+      <p>作者问的“T-token scale 会不会改变这个结论”，我的答案是：规模会稀释单条样本的记忆效应，但不会自动消除结构性泄漏。真正决定风险的是有效重复率、语义相似度、题目难度是否仍在模型能力边界上，以及后续 RL 是否有足够 OOD holdout 来检验泛化。</p>
+      <p>对训练 pipeline 来说，比较稳妥的做法是：mid-training 可以使用轨迹类语料，但 RL 任务池必须按 prompt、答案、轨迹、环境状态和 benchmark 来源做多层去重；RL 训练还要动态移除过易样本，保留能产生探索差异的边界题。MiniMax-M1 的数据清洗策略本质上就是这个方向。</p>
+
+      <h3>本次使用的命令证据</h3>
+      <pre><code>"/opt/homebrew/bin/opencli" twitter thread "https://x.com/eliebakouch/status/2056511622529634703" --limit 80 -f json --trace retain-on-failure
+curl -L "https://pbs.twimg.com/media/HIoyQy8WkAAjr1E.jpg" -o "/tmp/eliebakouch-2056511622529634703.jpg"
+mcp-router web_fetch "https://arxiv.org/html/2506.13585v1"
+mcp-router web_fetch "https://www.minimax.io/news/minimax-m1-technical-seminar-2"</code></pre>
+      <p class="small">边界说明：原帖是一个技术问题和假设，不是论文结果。MiniMax-M1 原文支持“严格隔离 SFT 与 RL 数据以避免泄漏伤害探索”的训练卫生原则，但没有直接回答所有 mid-training overlap 变体。</p>
+    </section>
+  </main>
+</body>
+</html>
