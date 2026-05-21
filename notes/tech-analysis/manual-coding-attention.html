@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>手撕经典算法 #1 Attention 篇整理</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20242a;
+      --muted: #65717d;
+      --subtle: #87919c;
+      --paper: #f7f4ee;
+      --panel: #fffdf8;
+      --panel-2: #f0ebe3;
+      --line: #d9d1c5;
+      --line-strong: #a89a88;
+      --accent: #1f6678;
+      --accent-2: #9a5b24;
+      --accent-soft: #e4f0f2;
+      --code-bg: #171b20;
+      --code-fg: #e8edf2;
+      --warn: #9a4d1c;
+      --warn-soft: #f5e5d8;
+      --ok: #326b53;
+      --ok-soft: #e3efe8;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --shadow: 0 18px 46px rgba(35, 41, 47, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 102, 120, 0.26);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) clamp(18px, 4vw, 46px) 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+      gap: clamp(22px, 4vw, 44px);
+      align-items: end;
+      min-height: calc(68vh - var(--notes-shell-height, 46px));
+      padding: clamp(30px, 7vw, 86px) 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 900px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6.2vw, 78px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 10px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 24px;
+      font-size: clamp(20px, 2vw, 26px);
+      font-weight: 760;
+    }
+
+    p {
+      margin: 0.78rem 0 0;
+    }
+
+    .lead {
+      max-width: 790px;
+      color: #3f4852;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .toc,
+    .source-card,
+    .shape-card,
+    .check-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: #43505b;
+      font-size: 14px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0 0;
+    }
+
+    .metric {
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.76);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: 25px;
+      line-height: 1.05;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section {
+      padding: clamp(34px, 6vw, 64px) 0 0;
+    }
+
+    .section > .section-lead {
+      max-width: 820px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 22px;
+      overflow: hidden;
+      background: var(--line);
+      box-shadow: none;
+    }
+
+    .toc a {
+      display: grid;
+      min-height: 102px;
+      padding: 14px;
+      border: 0;
+      background: var(--panel);
+      color: var(--ink);
+    }
+
+    .toc a:hover {
+      background: #f7fbfc;
+    }
+
+    .toc b {
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .toc span {
+      align-self: end;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .source-card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .source-card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent-2);
+    }
+
+    .source-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .panel {
+      margin-top: 24px;
+      padding: clamp(20px, 3.2vw, 32px);
+    }
+
+    .panel h3:first-child {
+      margin-top: 0;
+    }
+
+    .math-box {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      overflow-x: auto;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 17px 18px;
+      border-left: 5px solid var(--warn);
+      background: var(--warn-soft);
+      box-shadow: none;
+    }
+
+    .callout.ok {
+      border-left-color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .callout b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .shape-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .shape-card {
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .shape-card b {
+      display: block;
+      color: var(--accent);
+    }
+
+    .shape-card code {
+      display: inline-block;
+      margin-top: 8px;
+      color: #374151;
+      background: #ece6dc;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      background: var(--panel);
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      background: #eef5f6;
+      font-weight: 760;
+    }
+
+    code {
+      padding: 0.12em 0.34em;
+      border-radius: 5px;
+      background: #e9e2d8;
+      color: #2f3a44;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      font-size: 13px;
+      line-height: 1.58;
+      tab-size: 4;
+    }
+
+    pre code {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    ul, ol {
+      margin: 0.8rem 0 0;
+      padding-left: 1.25rem;
+    }
+
+    li + li {
+      margin-top: 0.38rem;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .check-card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .check-card b {
+      display: block;
+      color: var(--accent);
+    }
+
+    .footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-grid,
+      .source-grid,
+      .shape-grid,
+      .check-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .toc {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        padding-inline: 16px;
+      }
+
+      .meta-grid,
+      .source-grid,
+      .shape-grid,
+      .check-grid,
+      .toc {
+        grid-template-columns: 1fr;
+      }
+
+      .toc a {
+        min-height: 82px;
+      }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Manual Coding · Attention</div>
+        <h1>手撕经典算法 #1 Attention 篇整理</h1>
+        <p class="lead">这份笔记把原文的 Attention 手写代码整理成一条更稳定的学习路线：先理解 SDPA 的张量对象，再扩展到 MHA、KV Cache、MQA/GQA，最后指出原实现里值得面试和工程实践特别留意的 shape、mask 与缓存边界。</p>
+        <div class="meta-grid" aria-label="summary metrics">
+          <div class="metric"><b>5</b><span>类 Attention 变体</span></div>
+          <div class="metric"><b>3</b><span>个核心张量轴</span></div>
+          <div class="metric"><b>2</b><span>类 Mask 边界</span></div>
+          <div class="metric"><b>1</b><span>统一 GQA/MQA 视角</span></div>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <strong>一句话结论</strong>
+        <p>Attention 的手撕题不是背代码，而是能在每一步说清楚张量形状、mask 广播、KV 是否共享、cache 是 prefill 还是 decode 阶段使用。</p>
+      </aside>
+    </header>
+
+    <section class="section" id="source">
+      <h2>来源与导入方式</h2>
+      <p class="section-lead">本页是站内整理版，不是外部页面全文镜像。原文提供了多种注意力机制的 PyTorch 示例；这里保留来源脉络，重写关键实现，并补充实现风险、统一抽象和面试复盘清单。</p>
+      <div class="source-grid">
+        <div class="source-card">
+          <b>原始材料</b>
+          <p><a href="https://hewei2001.pages.dev/Manual-Coding-1">hewei2001.pages.dev/Manual-Coding-1</a>，页面题为“手撕经典算法 #1 Attention篇”。</p>
+        </div>
+        <div class="source-card">
+          <b>页面状态</b>
+          <p>原页面标注最后更新为 2025-03-20；本次抓取和整理时间为 2026-05-21。</p>
+        </div>
+        <div class="source-card">
+          <b>导入边界</b>
+          <p>原文 MLA 部分仍为 TODO；本页不虚构 MLA 实现，只说明它与 KV 压缩的关系和后续补充方向。</p>
+        </div>
+      </div>
+    </section>
+
+    <nav class="toc" aria-label="page table of contents">
+      <a href="#map"><b>Map</b><span>Attention 变体的共同对象</span></a>
+      <a href="#sdpa"><b>SDPA</b><span>缩放点积注意力</span></a>
+      <a href="#mha"><b>MHA</b><span>多头注意力</span></a>
+      <a href="#cache"><b>Cache</b><span>Prefill 与 Decode</span></a>
+      <a href="#gqa"><b>MQA/GQA</b><span>共享 KV 的统一实现</span></a>
+    </nav>
+
+    <section class="section" id="map">
+      <h2>先看共同结构</h2>
+      <p class="section-lead">所有这些变体都在回答同一个问题：当前位置的 query 应该从哪些 key 对应的 value 中取信息？差异主要来自两个地方：是否拆成多个 head，以及 K/V 是否在多个 query head 之间共享。</p>
+
+      <div class="math-box">
+        \[
+        \operatorname{Attention}(Q, K, V)=\operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}} + M\right)V
+        \]
+      </div>
+
+      <div class="shape-grid">
+        <div class="shape-card">
+          <b>Query</b>
+          <p>当前位置发出的“我要找什么”。在 MHA 中常见形状是：</p>
+          <code>(batch, heads, q_len, head_dim)</code>
+        </div>
+        <div class="shape-card">
+          <b>Key</b>
+          <p>每个历史位置提供的“我有什么特征”。GQA/MQA 会减少 K head 数。</p>
+          <code>(batch, kv_heads, kv_len, head_dim)</code>
+        </div>
+        <div class="shape-card">
+          <b>Value</b>
+          <p>真正被加权汇总的信息内容。它的 head 共享策略通常和 Key 一致。</p>
+          <code>(batch, kv_heads, kv_len, head_dim)</code>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>变体</th>
+            <th>核心变化</th>
+            <th>收益</th>
+            <th>代价/边界</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SDPA</td>
+            <td>直接计算 \(QK^\top\)，不关心投影和多头拆分。</td>
+            <td>最小机制，适合理解公式和 mask。</td>
+            <td>不是完整 Transformer attention layer。</td>
+          </tr>
+          <tr>
+            <td>MHA</td>
+            <td>把 hidden 拆成多个 query/key/value head，最后 concat 后输出投影。</td>
+            <td>不同 head 可以学习不同关系。</td>
+            <td>KV cache 随 head 数线性增长。</td>
+          </tr>
+          <tr>
+            <td>MQA</td>
+            <td>多个 Q head 共享同一组 K/V。</td>
+            <td>大幅降低 decode 阶段 KV cache 带宽和显存。</td>
+            <td>共享过强，表达能力可能受影响。</td>
+          </tr>
+          <tr>
+            <td>GQA</td>
+            <td>介于 MHA 和 MQA：多个 Q head 分组共享 K/V。</td>
+            <td>显存/带宽与效果之间更平衡。</td>
+            <td>需要保证 query heads 能整除 kv heads。</td>
+          </tr>
+          <tr>
+            <td>MLA</td>
+            <td>通过低秩 latent 表示压缩 KV 相关状态。</td>
+            <td>进一步降低缓存成本。</td>
+            <td>原文未展开；完整实现需要 RoPE、低秩投影和 cache 格式一起考虑。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section" id="sdpa">
+      <h2>SDPA：把公式写对</h2>
+      <p class="section-lead">缩放点积注意力是后面所有变体的内核。手写时最重要的不是类结构，而是确认 score 的最后两个维度是 \(q\_len \times k\_len\)，mask 只加在 key 维度或未来位置上。</p>
+
+      <div class="panel">
+        <h3>推荐的最小实现</h3>
+        <pre><code class="language-python">import math
+import torch
+
+
+def scaled_dot_product_attention(query, key, value, attn_mask=None):
+    """
+    query: (batch, heads, q_len, head_dim)
+    key:   (batch, heads, k_len, head_dim)
+    value: (batch, heads, k_len, head_dim)
+    attn_mask: broadcastable to (batch, heads, q_len, k_len);
+               True means the position is masked.
+    """
+    scale = 1.0 / math.sqrt(query.size(-1))
+    scores = torch.matmul(query, key.transpose(-1, -2)) * scale
+
+    if attn_mask is not None:
+        scores = scores.masked_fill(attn_mask, torch.finfo(scores.dtype).min)
+
+    weights = torch.softmax(scores, dim=-1)
+    return torch.matmul(weights, value), weights</code></pre>
+
+        <div class="callout ok">
+          <b>为什么这里用函数而不是先写类？</b>
+          <p>SDPA 是纯计算内核，没有参数。把它写成函数更符合 KISS：输入 Q/K/V 和 mask，输出 attention result。完整 Attention layer 的可学习参数应该放在 MHA/GQA 类里。</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Mask 的关键边界</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Mask 类型</th>
+              <th>典型形状</th>
+              <th>语义</th>
+              <th>最容易错的点</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Causal mask</td>
+              <td><code>(q_len, k_len)</code> 或 <code>(1, 1, q_len, k_len)</code></td>
+              <td>当前位置不能看未来 token。</td>
+              <td>decode 单步时 q_len=1，k_len=历史长度+1，不再是完整方阵。</td>
+            </tr>
+            <tr>
+              <td>Padding mask</td>
+              <td><code>(batch, k_len)</code> 转成 <code>(batch, 1, 1, k_len)</code></td>
+              <td>不让模型关注 padding token。</td>
+              <td>如果 score 不是四维，盲目 unsqueeze 两次会触发错误广播。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="mha">
+      <h2>MHA：多头只是换形状，不是换公式</h2>
+      <p class="section-lead">多头注意力的主线是：对输入做 Q/K/V 三个线性投影，把 hidden_size 拆成 num_heads × head_dim，在每个 head 内做 SDPA，再把所有 head 拼回 hidden_size。</p>
+
+      <div class="math-box">
+        \[
+        Q=XW_q,\quad K=XW_k,\quad V=XW_v,\quad
+        \operatorname{MHA}(X)=\operatorname{Concat}(head_1,\ldots,head_h)W_o
+        \]
+      </div>
+
+      <div class="panel">
+        <h3>更稳健的 MHA 写法</h3>
+        <pre><code class="language-python">from torch import nn
+
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, hidden_size, num_heads, dropout=0.0):
+        super().__init__()
+        if hidden_size % num_heads != 0:
+            raise ValueError("hidden_size must be divisible by num_heads")
+
+        self.hidden_size = hidden_size
+        self.num_heads = num_heads
+        self.head_dim = hidden_size // num_heads
+
+        self.q_proj = nn.Linear(hidden_size, hidden_size)
+        self.k_proj = nn.Linear(hidden_size, hidden_size)
+        self.v_proj = nn.Linear(hidden_size, hidden_size)
+        self.o_proj = nn.Linear(hidden_size, hidden_size)
+        self.dropout = nn.Dropout(dropout)
+
+    def _split_heads(self, x):
+        batch, seq_len, _ = x.shape
+        x = x.view(batch, seq_len, self.num_heads, self.head_dim)
+        return x.transpose(1, 2)
+
+    def _merge_heads(self, x):
+        batch, _, seq_len, _ = x.shape
+        x = x.transpose(1, 2).contiguous()
+        return x.view(batch, seq_len, self.hidden_size)
+
+    def forward(self, hidden_states, attn_mask=None):
+        query = self._split_heads(self.q_proj(hidden_states))
+        key = self._split_heads(self.k_proj(hidden_states))
+        value = self._split_heads(self.v_proj(hidden_states))
+
+        output, weights = scaled_dot_product_attention(query, key, value, attn_mask)
+        output = self.o_proj(self._merge_heads(output))
+        return output, weights</code></pre>
+      </div>
+
+      <div class="two-col">
+        <div class="callout ok">
+          <b>面试解释重点</b>
+          <p>多头不是把模型“复制多份”，而是把同一个 hidden 表示投影到多个子空间。每个 head 的 score 矩阵独立，最后 concat 再用 \(W_o\) 混合。</p>
+        </div>
+        <div class="callout">
+          <b>工程实现重点</b>
+          <p><code>transpose</code> 后再 <code>view</code> 要注意内存连续性；输出合并时用 <code>.contiguous().view(...)</code> 或 <code>.reshape(...)</code>，不要默认 stride 一定兼容。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="cache">
+      <h2>KV Cache：真正省的是 decode 阶段的重复 K/V</h2>
+      <p class="section-lead">KV Cache 的语义是：生成第 \(t\) 个 token 时，历史 token 的 K/V 不需要重新投影和保存一遍。注意它主要服务自回归 decode；prefill 阶段通常一次性处理完整 prompt，并建立初始 cache。</p>
+
+      <div class="panel">
+        <h3>单层缓存接口的写法</h3>
+        <pre><code class="language-python">class CachedMultiHeadAttention(MultiHeadAttention):
+    def forward(self, hidden_states, attn_mask=None, past_key_value=None, use_cache=False):
+        query = self._split_heads(self.q_proj(hidden_states))
+        key = self._split_heads(self.k_proj(hidden_states))
+        value = self._split_heads(self.v_proj(hidden_states))
+
+        if past_key_value is not None:
+            past_key, past_value = past_key_value
+            key = torch.cat([past_key, key], dim=2)
+            value = torch.cat([past_value, value], dim=2)
+
+        output, weights = scaled_dot_product_attention(query, key, value, attn_mask)
+        output = self.o_proj(self._merge_heads(output))
+        new_cache = (key, value) if use_cache else None
+        return output, new_cache, weights</code></pre>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>输入长度</th>
+            <th>是否使用已有 cache</th>
+            <th>核心指标</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Prefill</td>
+            <td>prompt 全长</td>
+            <td>通常没有已有 cache，但会产出初始 cache。</td>
+            <td>TTFT，算力密集，矩阵乘较大。</td>
+          </tr>
+          <tr>
+            <td>Decode</td>
+            <td>通常每步 1 个 token</td>
+            <td>复用历史 K/V，只追加当前 token 的 K/V。</td>
+            <td>TPOT，带宽和 KV cache 读写更关键。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <b>原页面代码里值得修正的细节</b>
+        <p>KV Cache 示例的测试函数需要先实例化 attention 模块；此外，真实模型的 cache 不是单层变量，而是每一层各自保存一份 K/V。生成服务里还要管理 batch 内不同序列长度、cache eviction、prefix cache 命中和 P/D 分离。</p>
+      </div>
+    </section>
+
+    <section class="section" id="gqa">
+      <h2>MQA/GQA：用一个抽象统一 K/V 共享</h2>
+      <p class="section-lead">MQA 和 GQA 最好不要写成两套重复代码。更清晰的抽象是：query_heads 固定为 num_heads，key/value_heads 可配置。KV heads 等于 num_heads 就是 MHA，等于 1 就是 MQA，介于中间就是 GQA。</p>
+
+      <div class="panel">
+        <h3>统一版 GQA/MQA</h3>
+        <pre><code class="language-python">def repeat_kv(x, repeats):
+    # x: (batch, kv_heads, seq_len, head_dim)
+    if repeats == 1:
+        return x
+    batch, kv_heads, seq_len, head_dim = x.shape
+    x = x[:, :, None, :, :].expand(batch, kv_heads, repeats, seq_len, head_dim)
+    return x.reshape(batch, kv_heads * repeats, seq_len, head_dim)
+
+
+class GroupedQueryAttention(nn.Module):
+    def __init__(self, hidden_size, num_heads, kv_heads):
+        super().__init__()
+        if hidden_size % num_heads != 0:
+            raise ValueError("hidden_size must be divisible by num_heads")
+        if num_heads % kv_heads != 0:
+            raise ValueError("num_heads must be divisible by kv_heads")
+
+        self.hidden_size = hidden_size
+        self.num_heads = num_heads
+        self.kv_heads = kv_heads
+        self.head_dim = hidden_size // num_heads
+
+        self.q_proj = nn.Linear(hidden_size, hidden_size)
+        self.k_proj = nn.Linear(hidden_size, kv_heads * self.head_dim)
+        self.v_proj = nn.Linear(hidden_size, kv_heads * self.head_dim)
+        self.o_proj = nn.Linear(hidden_size, hidden_size)
+
+    def _split(self, x, heads):
+        batch, seq_len, _ = x.shape
+        x = x.view(batch, seq_len, heads, self.head_dim)
+        return x.transpose(1, 2)
+
+    def forward(self, hidden_states, attn_mask=None):
+        query = self._split(self.q_proj(hidden_states), self.num_heads)
+        key = self._split(self.k_proj(hidden_states), self.kv_heads)
+        value = self._split(self.v_proj(hidden_states), self.kv_heads)
+
+        repeats = self.num_heads // self.kv_heads
+        key = repeat_kv(key, repeats)
+        value = repeat_kv(value, repeats)
+
+        output, weights = scaled_dot_product_attention(query, key, value, attn_mask)
+        batch, _, seq_len, _ = output.shape
+        output = output.transpose(1, 2).contiguous().view(batch, seq_len, self.hidden_size)
+        return self.o_proj(output), weights</code></pre>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>配置</th>
+            <th>等价变体</th>
+            <th>KV cache 相对大小</th>
+            <th>适用直觉</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>kv_heads = num_heads</code></td>
+            <td>MHA</td>
+            <td>最大</td>
+            <td>表达最自由，成本最高。</td>
+          </tr>
+          <tr>
+            <td><code>kv_heads = 1</code></td>
+            <td>MQA</td>
+            <td>约为 MHA 的 \(1 / num\_heads\)</td>
+            <td>decode 服务很省，但共享最强。</td>
+          </tr>
+          <tr>
+            <td><code>1 &lt; kv_heads &lt; num_heads</code></td>
+            <td>GQA</td>
+            <td>约为 MHA 的 \(kv\_heads / num\_heads\)</td>
+            <td>现代 LLM 常用折中方案。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section" id="issues">
+      <h2>实现风险复盘</h2>
+      <p class="section-lead">手撕题里最有价值的部分，是能指出代码为什么“看起来能跑”，但一换 batch、device、mask 或生成阶段就可能出错。</p>
+
+      <div class="check-grid">
+        <div class="check-card">
+          <b>Mask 广播</b>
+          <p>三维 SDPA 和四维 MHA 的 padding mask 不能用同一套 unsqueeze 规则。要先写出 score shape，再让 mask broadcast 到同一 shape。</p>
+        </div>
+        <div class="check-card">
+          <b>Device 与 dtype</b>
+          <p>不要在 forward 里随手创建 CPU tensor 做 scale。用 <code>math.sqrt</code> 或 Python float，避免 GPU 运行时隐式问题。</p>
+        </div>
+        <div class="check-card">
+          <b>连续内存</b>
+          <p><code>transpose</code> 之后的张量通常不是 contiguous。合并 head 前用 <code>contiguous</code> 或 <code>reshape</code>。</p>
+        </div>
+        <div class="check-card">
+          <b>整除约束</b>
+          <p><code>hidden_size % num_heads == 0</code>、<code>num_heads % kv_heads == 0</code> 应该显式校验，不要让 shape error 延迟到 matmul。</p>
+        </div>
+        <div class="check-card">
+          <b>Cache 语义</b>
+          <p>cache 的 seq_len 是历史长度，不一定等于当前输入长度。decode 单步 attention 的 score 通常是 <code>(B,H,1,T)</code>。</p>
+        </div>
+        <div class="check-card">
+          <b>MLA 不可硬补</b>
+          <p>MLA 不是简单把 GQA 的 K/V head 再减少。它涉及低秩 latent cache、RoPE 部分维度和投影分解，需要单独推导。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="interview">
+      <h2>面试复述模板</h2>
+      <p class="section-lead">如果要在面试里手撕 Attention，建议按下面顺序回答。这样不会陷入“代码背出来了，但 shape 说不清”的问题。</p>
+
+      <div class="panel">
+        <ol>
+          <li>先定义输入：<code>hidden_states</code> 是 <code>(B,T,C)</code>，<code>C = H * D</code>。</li>
+          <li>说明 Q/K/V：三个线性层把同一个输入投影到 query、key、value 空间。</li>
+          <li>拆 head：从 <code>(B,T,C)</code> 变为 <code>(B,H,T,D)</code>，便于每个 head 独立做注意力。</li>
+          <li>计算 score：<code>query @ key.transpose(-1, -2) / sqrt(D)</code>，得到 <code>(B,H,T,T)</code>。</li>
+          <li>加 mask：causal mask 管未来，padding mask 管无效 token。</li>
+          <li>softmax 后乘 value：得到每个位置的上下文向量。</li>
+          <li>合并 head：转回 <code>(B,T,C)</code>，再经过输出投影。</li>
+          <li>如果追问推理优化，再讲 KV Cache、MQA/GQA 为什么减少 decode 阶段的内存带宽。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="insight">
+      <h2>我的判断</h2>
+      <div class="panel">
+        <p>这篇材料适合作为 Attention 手撕题的入口，因为它覆盖了从 SDPA 到 GQA 的主线。但真正要把它变成可面试、可工程使用的知识，需要把“实现片段”提升成“张量不变量”：每一步都能写出 batch/head/query/key/value 的形状，知道 mask 加在哪个维度，知道 cache 复用的是历史 K/V 而不是历史输出。</p>
+        <p>最值得沉淀的 insight 是：MQA/GQA 并不是新的注意力公式，而是 K/V 共享策略的改变。这个视角会让实现更 DRY，也更容易解释为什么现代 LLM 在推理服务里偏好 GQA：decode 阶段的瓶颈经常不是算不出矩阵乘，而是读写庞大的 KV cache 太贵。</p>
+        <p>后续如果继续补全这套“手撕经典算法”笔记，优先补 MLA、RoPE、RMSNorm、SwiGLU、MoE router 和 FlashAttention。它们和 Attention 的关系很紧：一个处理位置，一个处理归一化，一个处理 FFN 表达，一个处理稀疏专家，一个处理 IO-aware attention kernel。</p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Source: <a href="https://hewei2001.pages.dev/Manual-Coding-1">Manual-Coding-1</a>. Imported as a transformed study note for the Ricardokevins Notes section on 2026-05-21.</p>
+    </footer>
+  </main>
+</body>
+</html>

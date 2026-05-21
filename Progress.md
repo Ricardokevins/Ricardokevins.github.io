@@ -1,5 +1,45 @@
 # Ricardokevins.github.io Progress
 
+## 2026-05-21 Manual-Coding Attention 笔记导入
+
+### 背景
+
+- 用户要求将 `https://hewei2001.pages.dev/Manual-Coding-1` 的内容导入个人主页 Notes。
+- 目标页面是“手撕经典算法 #1 Attention篇”，覆盖 SDPA、MHA、KV Cache、MQA、GQA，MLA 部分仍为 TODO。
+- 本次不做外站整页镜像，改为站内可读的整理版，保留来源、算法脉络、关键公式、PyTorch 参考实现和实现风险提示。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/manual-coding-attention.html`。
+  - 覆盖来源与导入方式、Attention 共同结构、SDPA、MHA、KV Cache、MQA/GQA、实现风险复盘、面试复述模板和个人 insight。
+  - 使用站内 `notes/assets/notes-shell.css` 导航壳，页面内 CSS 独立作用域，不影响现有 Notes 子站。
+  - 使用 MathJax 渲染 Attention 公式；代码块显式设置 `pre code` 样式，避免代码可读性回退。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`手撕经典算法 #1 Attention 篇整理`
+  - URL：`/notes/tech-analysis/manual-coding-attention.html`
+  - 类型：`Study Resource`
+
+### 设计决策
+
+- 采用单页 HTML 笔记而不是新增完整 subsite：当前材料只有一篇，且原文代码表格存在重复抓取内容，单页整理更简单、可维护。
+- 代码实现采用最小可解释版本，避免引入 FlashAttention、paged cache 等当前材料没有覆盖的扩展能力。
+- 对原文中的 TODO 和示例边界做显式标注：MLA 不虚构实现，KV Cache 示例强调 prefill/decode 语义、mask shape 和每层缓存边界。
+
+### 验证结果
+
+- 运行 `git diff --check` 通过。
+- 静态 HTML 解析通过：
+  - 新增页面包含 `source`、`map`、`sdpa`、`mha`、`cache`、`gqa`、`issues`、`interview`、`insight` 必要锚点。
+  - 新增页面本地资源和页内锚点缺失数为 `0`。
+- 首次运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 失败，原因是临时 gem 目录缺少 `jekyll` 可执行文件；随后运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle install` 补齐依赖。
+- 重新运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功。
+  - 构建期间仅出现 GitHub Metadata 未认证和 GitHub API rate limit warning，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/manual-coding-attention.html` 生成，并包含 `手撕经典算法 #1 Attention 篇整理`、`GroupedQueryAttention`、`KV Cache`、`我的判断` 等核心内容。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/manual-coding-attention.html`。
+- 本地预览 `http://127.0.0.1:4000/notes/tech-analysis/manual-coding-attention.html` 返回 `200`，`http://127.0.0.1:4000/notes/` 返回 `200`。
+- 使用 Playwright CLI 截取桌面端 `1280x900` 和移动端 `390x844` 快照，首屏标题、摘要、指标卡和站内导航正常；移动端无明显横向溢出或内容遮挡。
+- 使用 Playwright CLI 等待 `mjx-container` 成功，确认 MathJax 公式在真实 Chromium 中完成渲染。
+
 ## 2026-05-13 Notes 板块轻量迁移
 
 ### 背景
