@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZCube 推理网络架构解读 | Z.ai X Article 梳理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f1b16;
+      --muted: #665f56;
+      --subtle: #8b8176;
+      --paper: #f6efe5;
+      --panel: #fffdf8;
+      --panel-2: #f0e7da;
+      --line: #d8c9b6;
+      --line-strong: #a9967f;
+      --accent: #b14e2b;
+      --accent-soft: #f3d6c8;
+      --blue: #275d8f;
+      --blue-soft: #dbe8f4;
+      --green: #346b57;
+      --green-soft: #dce9e1;
+      --violet: #604b9f;
+      --violet-soft: #e4def2;
+      --gold: #946515;
+      --gold-soft: #efe0b7;
+      --red: #963c2f;
+      --red-soft: #f0d8d2;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --shadow: 0 18px 44px rgba(38, 31, 22, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(31, 27, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(31, 27, 22, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(39, 93, 143, 0.32);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 58px;
+      gap: 18px;
+      padding: 10px clamp(18px, 4vw, 54px);
+      background: rgba(246, 239, 229, 0.94);
+      border-bottom: 1px solid rgba(31, 27, 22, 0.14);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+    }
+
+    .mark {
+      width: 25px;
+      height: 25px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 40%, var(--accent) 41% 56%, transparent 57%),
+        linear-gradient(45deg, transparent 0 42%, var(--blue) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: clamp(30px, 5vw, 72px);
+      align-items: end;
+      min-height: 84vh;
+      padding: clamp(58px, 9vw, 110px) clamp(20px, 5vw, 72px) 46px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.94) 0 38%, rgba(255, 253, 248, 0.72) 39% 100%),
+        url("zai-zcube-inference-network-assets/img_002.png") right 7% bottom 20% / min(52vw, 780px) auto no-repeat;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 88px);
+      font-weight: 800;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 50px);
+      font-weight: 800;
+    }
+
+    h3 {
+      margin-top: 26px;
+      font-size: clamp(20px, 2.2vw, 25px);
+      font-weight: 820;
+    }
+
+    p { margin: 14px 0 0; }
+
+    .lead {
+      max-width: 860px;
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: clamp(18px, 2.2vw, 24px);
+      line-height: 1.55;
+      font-weight: 520;
+    }
+
+    .hero-side {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 14px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 34px;
+      max-width: 850px;
+    }
+
+    .metric {
+      min-height: 116px;
+      padding: 16px;
+      border: 1px solid rgba(31, 27, 22, 0.16);
+      background: rgba(255, 253, 248, 0.82);
+      box-shadow: 0 10px 26px rgba(38, 31, 22, 0.08);
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--ink);
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+      line-height: 1.45;
+    }
+
+    .side-note {
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .side-note .label {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .side-note p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 72px 0;
+    }
+
+    section {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(240px, 0.42fr) minmax(0, 0.58fr);
+      gap: clamp(24px, 5vw, 64px);
+      align-items: end;
+      margin-bottom: 34px;
+    }
+
+    .section-kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+      box-shadow: 0 12px 30px rgba(38, 31, 22, 0.07);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      font-size: 21px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      font-size: 15.5px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .callout {
+      margin-top: 24px;
+      padding: 20px 22px;
+      border-left: 5px solid var(--accent);
+      background: var(--panel);
+      box-shadow: 0 10px 26px rgba(38, 31, 22, 0.07);
+    }
+
+    .callout strong {
+      color: var(--ink);
+    }
+
+    .callout p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .warning {
+      border-left-color: var(--red);
+      background: linear-gradient(90deg, var(--red-soft), var(--panel) 44%);
+    }
+
+    .bluebox {
+      border-left-color: var(--blue);
+      background: linear-gradient(90deg, var(--blue-soft), var(--panel) 44%);
+    }
+
+    figure {
+      margin: 26px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 14px 34px rgba(38, 31, 22, 0.08);
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #ffffff;
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .figure-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 26px rgba(38, 31, 22, 0.06);
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 14.5px;
+    }
+
+    th {
+      color: var(--ink);
+      background: var(--panel-2);
+      font-weight: 780;
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    ul, ol {
+      margin: 12px 0 0;
+      padding-left: 22px;
+    }
+
+    li + li { margin-top: 8px; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      padding: 0.13em 0.32em;
+      background: #efe3d4;
+      color: #3c2a1d;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 20px 0 0;
+      padding: 18px;
+      background: #201b16;
+      color: #f7efe2;
+      border: 1px solid #4a392b;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    pre code {
+      display: block;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre;
+    }
+
+    .formula {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #fffaf2;
+      font-family: var(--serif);
+      color: var(--ink);
+    }
+
+    .formula .line {
+      overflow-x: auto;
+      white-space: nowrap;
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.55;
+    }
+
+    .formula .explain {
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 14px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .step .num {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-weight: 820;
+      background: var(--accent-soft);
+    }
+
+    .step h3 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 15.5px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-item {
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .source-item strong {
+      display: block;
+      font-size: 16px;
+    }
+
+    .source-item span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer-note {
+      padding: 36px clamp(20px, 5vw, 72px);
+      color: var(--muted);
+      background: #211b16;
+    }
+
+    .footer-note p {
+      max-width: 980px;
+      margin: 0 auto;
+      color: #e8dcca;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        background:
+          linear-gradient(120deg, rgba(255, 253, 248, 0.95), rgba(255, 253, 248, 0.82)),
+          url("zai-zcube-inference-network-assets/img_002.png") center bottom 14px / min(92vw, 720px) auto no-repeat;
+        padding-bottom: 210px;
+      }
+
+      .hero-side {
+        display: none;
+      }
+
+      .metric-grid,
+      .grid-2,
+      .grid-3,
+      .section-head,
+      .figure-pair {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .wrap {
+        width: min(100% - 28px, 1180px);
+        padding: 56px 0;
+      }
+
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      th, td {
+        min-width: 170px;
+      }
+
+      .step {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/notes/">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Ricardokevins Notes</span>
+    </a>
+    <nav class="nav" aria-label="文章导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#traffic">拥塞机制</a>
+      <a href="#zcube">ZCube</a>
+      <a href="#evidence">证据</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">X Article · Inference Network · ZCube</div>
+        <h1>ZCube：当 LLM 推理把网络推上关键路径</h1>
+        <p class="lead">
+          这篇 Z.ai 文章真正有价值的地方，不是宣布“换个网络拓扑更快”，而是把一个正在发生的系统拐点讲清楚：Prefill-Decode 分离让 KV Cache 迁移变成动态、非对称、跨节点的主流流量，传统按训练流量优化的 ROFT/Fat-Tree 很容易出现“总带宽够，但局部路径被打爆”的结构性低效。
+        </p>
+        <div class="metric-grid" aria-label="Z.ai 官方博客给出的生产部署指标">
+          <div class="metric">
+            <strong>+15%</strong>
+            <span>GLM-5.1 coding 推理服务中，平均 GPU 推理吞吐提升</span>
+          </div>
+          <div class="metric">
+            <strong>-40.6%</strong>
+            <span>P99 TTFT 下降，慢尾用户首 token 延迟显著改善</span>
+          </div>
+          <div class="metric">
+            <strong>-33%</strong>
+            <span>交换机和光模块 CapEx 降低，GPU、软件栈和应用不变</span>
+          </div>
+        </div>
+      </div>
+      <aside class="hero-side">
+        <div class="side-note">
+          <div class="label">核心判断</div>
+          <p>
+            ZCube 的本质是把“拥塞控制”前移到“拓扑设计”：在流量进入交换网络之前，就通过扁平二部图和单轨/多轨混合接入，让更多源宿对天然落到不同路径上。
+          </p>
+        </div>
+        <div class="side-note">
+          <div class="label">阅读对象</div>
+          <p>
+            适合关注推理集群、PD disaggregation、RDMA/RoCE 网络、KV Cache 传输、GPU 利用率和在线服务尾延迟的工程读者。
+          </p>
+        </div>
+      </aside>
+    </section>
+
+    <section id="source">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Source Map</div>
+            <h2>读了哪些材料，如何核验</h2>
+          </div>
+          <p>
+            主材料是 Z.ai 在 X 上发布的长文，短链解析到 X Article。为了避免只读社交媒体版本，我同步读取了 Z.ai 官方博客、SIGCOMM 2025 program 页面和 DBLP 元数据。
+          </p>
+        </div>
+
+        <div class="source-list">
+          <div class="source-item">
+            <strong>X 原帖与 X Article</strong>
+            <span>原帖 ID：2057216685040443743；原帖正文只有短链，解析到 X Article 2057206923208884224。OpenCLI 抓取到 18 条线程记录，回复区主要围绕 ZCube、PD 分离、KV Cache 流量和 TTFT P99 40.6% 改善展开。</span>
+          </div>
+          <div class="source-item">
+            <strong>Z.ai 官方博客：Next-generation LLM Inference Network</strong>
+            <span>这是本报告的主事实来源。博客给出生产部署 claim、12 张图、ZCube 架构描述、带宽 ablation 和 GLM-5.1 coding 推理服务的前后对比。</span>
+          </div>
+          <div class="source-item">
+            <strong>ACM SIGCOMM 2025 program 与 DBLP</strong>
+            <span>用于确认论文身份：From ATOP to ZCube: Automated Topology Optimization Pipeline and A Highly Cost-Effective Network Topology for Large Model Training。SIGCOMM program 摘要显示论文主线是 ATOP 自动拓扑优化和训练网络拓扑，博客则是把 ZCube 部署到推理生产集群后的工程延展。</span>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <strong>一个需要显式记录的来源差异：</strong>
+          <p>
+            X Article 抓取文本里，带宽 ablation 写作“512-GPU cluster”；Z.ai 官方博客同一段写作“32-GPU testbed”。两者其他内容高度一致。这里我把官方博客作为更可能被修正过的 canonical 版本，报告中引用“32-GPU testbed”，并保留这个差异作为可信度边界。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Problem</div>
+            <h2>为什么推理网络突然变重要</h2>
+          </div>
+          <p>
+            传统视角里，LLM 推理优化更容易盯 GPU kernel、batching、KV Cache 管理、调度器和量化。但长上下文和 Prefill-Decode 分离把大量 KV Cache 迁移放到了跨 GPU、跨节点网络上，网络不再只是后台连接层，而是直接影响吞吐、尾延迟和单 token 成本。
+          </p>
+        </div>
+
+        <div class="grid-3">
+          <article class="card">
+            <h3>Prefill 和 Decode 被拆开</h3>
+            <p>
+              Prefill 阶段吞吐型更强，负责处理长 prompt 并生成 KV Cache；Decode 阶段延迟敏感，逐 token 生成。为了提高资源利用率，生产系统越来越倾向把两类任务放到不同节点池。
+            </p>
+          </article>
+          <article class="card">
+            <h3>KV Cache 开始跨节点流动</h3>
+            <p>
+              一旦 prefill 和 decode 不在同一节点，prompt 对应的 KV Cache 就要通过网络转移。长上下文越长，KV Cache 越大；服务越动态，源节点和目标节点的组合越不可预测。
+            </p>
+          </article>
+          <article class="card">
+            <h3>尾延迟比平均带宽更敏感</h3>
+            <p>
+              用户感知首先落在 TTFT，也就是从请求发出到第一个 token 返回的时间。局部链路队列堆积、PFC Pause 和热点交换机，会把少数请求拖成 P99 慢尾。
+            </p>
+          </article>
+        </div>
+
+        <figure>
+          <div class="figure-pair">
+            <img src="zai-zcube-inference-network-assets/img_003.png" alt="Z.ai 图 2：不同网络带宽设置下的整体吞吐" />
+            <img src="zai-zcube-inference-network-assets/img_004.png" alt="Z.ai 图 2：不同网络带宽设置下的 TTFT" />
+          </div>
+          <figcaption>
+            Z.ai 官方博客的带宽 ablation：在 GPU、模型、软件栈和应用逻辑不变时，把网络带宽从 100Gbps 提高到 200Gbps，整体推理吞吐约提升 19%，TTFT 约下降 22%。这说明瓶颈已经不只在 GPU 算子。
+          </figcaption>
+        </figure>
+
+        <div class="callout bluebox">
+          <strong>关键点：</strong>
+          <p>
+            这里的网络瓶颈不是简单的“所有链路都不够快”。更危险的是“全局总带宽看起来够，但某些 Leaf、端口队列或 rail 被流量映射集中击中”。这种局部拥塞更难靠加机器、加 GPU 或平均带宽指标发现。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="traffic">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Traffic Pattern</div>
+            <h2>ROFT 为什么在 PD 推理里容易失效</h2>
+          </div>
+          <p>
+            ROFT，Rail-Optimized Fat-Tree，是为降低跨层转发和适配规则训练通信而设计的 Fat-Tree 变体。它把相同 GPU index 的设备连到同一类 rail，训练中的 AllReduce 或 All-to-All 通常更规则；但 PD 推理里的 KV Cache 源宿关系动态变化，rail 映射很容易从“有序”变成“集中冲突”。
+          </p>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <h3>训练通信更像规则矩阵</h3>
+            <p>
+              大规模训练里，很多通信模式来自 collective：AllReduce、ReduceScatter、AllGather、All-to-All。它们依然复杂，但通信对象和节奏相对可预期，拓扑可以围绕这些模式做 rail 优化。
+            </p>
+          </article>
+          <article class="card">
+            <h3>推理 KV 迁移更像在线调度结果</h3>
+            <p>
+              在线推理里，哪个 prefill 节点把 KV Cache 发给哪个 decode 节点，取决于请求长度、队列状态、batching、模型副本、调度器和可用 GPU。源、宿、流量大小都更动态。
+            </p>
+          </article>
+        </div>
+
+        <figure>
+          <img src="zai-zcube-inference-network-assets/img_005.png" alt="Z.ai 图 3：ROFT 中 Leaf switch 间流量不均衡" />
+          <figcaption>
+            ROFT 的 rail 映射在特定流量下可以减少跨 Spine 转发，但当多个 KV Cache 流被映射到同一批 Leaf 或同一组链路时，局部冲突会放大。
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="figure-pair">
+            <img src="zai-zcube-inference-network-assets/img_006.png" alt="Z.ai 图 4：同一机器不同 NIC 上的 KV Cache 传输负载不均衡" />
+            <img src="zai-zcube-inference-network-assets/img_007.png" alt="Z.ai 图 5：部分 Leaf 交换机端口频繁出现 PFC Pause" />
+          </div>
+          <figcaption>
+            官方博客把现象落到了两个观测上：同机不同 NIC 的 KV Cache 迁移负载高度不均，部分 Leaf 端口出现频繁 PFC Pause。PFC Pause 是 RoCE 等无损以太网环境下的背压信号，表示下游队列压力已经传回上游。
+          </figcaption>
+        </figure>
+
+        <table>
+          <thead>
+            <tr>
+              <th>拥塞类型</th>
+              <th>形成原因</th>
+              <th>处理方式</th>
+              <th>ZCube 关注点</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>不可避免拥塞</td>
+              <td>多个发送方同时打向同一个最终目的地，最后一跳物理链路天然会竞争。</td>
+              <td>拥塞控制、流量整形、调度、限速。</td>
+              <td>不能完全消除，只能缓解。</td>
+            </tr>
+            <tr>
+              <td>可避免拥塞</td>
+              <td>拓扑、端口映射、路径选择或 multipath 利用不均，让本不该冲突的流量被压到同一路径。</td>
+              <td>自适应路由、packet spraying、MRC，或直接重做网络架构。</td>
+              <td>核心目标：在拓扑层减少这类冲突的发生概率。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <figure>
+          <img src="zai-zcube-inference-network-assets/img_008.png" alt="Z.ai 图 6：两类网络拥塞示意" />
+          <figcaption>
+            这张图是理解整篇文章的中心：ZCube 不是替代所有拥塞控制，而是优先消除“拓扑诱发的、原本可避免的拥塞”。
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="zcube">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Mechanism</div>
+            <h2>ZCube 如何从拓扑层解决问题</h2>
+          </div>
+          <p>
+            ZCube 的核心不是“多买交换机”，而是反过来去掉 Spine 层，把 Leaf 分成两个集合，做完全二部图互联，再让 GPU 的双端口 NIC 分别以互补模式接入两组交换机。这样既保留可扩展性，又让源宿对更自然地分散到不同路径。
+          </p>
+        </div>
+
+        <div class="timeline">
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <h3>扁平化：去掉 Spine 层</h3>
+              <p>
+                传统 Clos/Fat-Tree 依赖 Leaf-Spine 分层扩展。ZCube 直接移除 Spine，把交换机分成奇数和偶数两组，让两组之间形成 complete bipartite graph，也就是每个奇数组交换机都连接每个偶数组交换机。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <h3>双端口 NIC：一端接单轨，一端接多轨</h3>
+              <p>
+                每个 GPU/NIC 有两个端口，分别连到两组交换机。一个连接模式按连续 GPU range 接入，另一个按相对 index 跨组接入。两种模式互补，避免所有流量都被同一种 rail 规则绑定。
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <div>
+              <h3>唯一最优路径：减少 ECMP 式随机冲突</h3>
+              <p>
+                官方博客称 ZCube routing strategy 能让 GPU pair 拥有唯一最优路径。工程含义是：少依赖哈希运气来做负载均衡，让拓扑和路由直接把不同 pair 映射到更均匀的路径空间。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <figure>
+          <img src="zai-zcube-inference-network-assets/img_009.png" alt="Z.ai 图 7：ZCube architecture overview" />
+          <figcaption>
+            ZCube 架构概览。官方例子使用双端口 NIC，假设 GPU 数为 n，每台交换机连接 k 个 GPU，总交换机数量为 2n/k。
+          </figcaption>
+        </figure>
+
+        <div class="formula" aria-label="ZCube 双端口连接公式">
+          <div class="line">port<sub>1</sub>(GPU i) → odd switch = ((i - 1) mod (n/k)) × 2 + 1</div>
+          <div class="line">port<sub>2</sub>(GPU i) → even switch = ceil(i/k) × 2</div>
+          <div class="explain">
+            这组公式的直觉：一个端口按 GPU 在各组中的相对位置打散，另一个端口按连续 GPU 区间聚合。两组交换机之间又是完全二部互联，因此任意 GPU pair 可以通过两跳交换机路径互通。
+          </div>
+        </div>
+
+        <figure>
+          <img src="zai-zcube-inference-network-assets/img_010.png" alt="Z.ai 图 8：ZCube 架构下的负载均衡" />
+          <figcaption>
+            同样的流量在 ROFT 下可能压到相同 Leaf 或相同链路，在 ZCube 下可以被映射到更分散的路径。这里的“更快”来自更少局部排队，而不是 GPU 本身变快。
+          </figcaption>
+        </figure>
+
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>ROFT / Clos 视角</th>
+              <th>ZCube 视角</th>
+              <th>对 PD 推理的影响</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>拓扑形态</td>
+              <td>Leaf-Spine 分层，依赖跨层转发和负载均衡。</td>
+              <td>Leaf 级完全二部扁平互联，网络直径约为两跳交换机。</td>
+              <td>减少层级带来的路径集中和额外转发。</td>
+            </tr>
+            <tr>
+              <td>GPU 接入</td>
+              <td>按 rail 优化，适合某些规则 collective。</td>
+              <td>单轨和多轨混合接入，连接模式互补。</td>
+              <td>更适合源宿关系动态变化的 KV Cache 迁移。</td>
+            </tr>
+            <tr>
+              <td>冲突来源</td>
+              <td>ECMP、静态端口映射、热点 Leaf 可能叠加。</td>
+              <td>通过拓扑和路由降低不必要路径冲突。</td>
+              <td>降低 PFC、排队和 TTFT 慢尾概率。</td>
+            </tr>
+            <tr>
+              <td>成本结构</td>
+              <td>Spine 层和对应光模块成本高。</td>
+              <td>移除 Spine，官方称交换机和光模块成本下降约三分之一。</td>
+              <td>同等 GPU 规模下，用网络架构释放更多有效推理容量。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Evidence</div>
+            <h2>证据强在哪里，弱在哪里</h2>
+          </div>
+          <p>
+            这篇材料有两层证据：SIGCOMM 论文层面证明 ZCube 是 ATOP 搜索出的高性价比训练拓扑；Z.ai 博客层面报告它在 GLM-5.1 coding 推理服务中的生产部署结果。两层相关，但不能混为一谈。
+          </p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>来源</th>
+              <th>评估对象</th>
+              <th>关键结果</th>
+              <th>可解释性边界</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SIGCOMM 2025 program 摘要</td>
+              <td>ATOP 自动拓扑优化，规模覆盖 256、1024、4096、16384 GPU，目标包含训练流量、collective 性能、容错和网络成本。</td>
+              <td>ZCube 相比 ROFT、Rail-only、HPN，模拟中端到端 LLM 训练速度提升 3% 到 7%，网络硬件成本下降 26% 到 46%；真实 testbed 中成本下降 25%，AllReduce 和 All-to-All 性能保持。</td>
+              <td>这是训练拓扑论文，不是 GLM-5.1 推理生产报告。它证明 ZCube 的拓扑来源和训练通信性能，不直接证明推理业务指标。</td>
+            </tr>
+            <tr>
+              <td>Z.ai 官方博客带宽 ablation</td>
+              <td>32-GPU testbed，保持 GPU、软件栈、模型和应用逻辑不变，只调整 NIC 带宽 cap。</td>
+              <td>100Gbps 到 200Gbps 时，整体推理吞吐约提升 19%，TTFT 约下降 22%。</td>
+              <td>能说明网络是瓶颈之一，但不是 ZCube 前后对比；而且没有公开完整 workload mix 和误差区间。</td>
+            </tr>
+            <tr>
+              <td>Z.ai 官方博客生产部署</td>
+              <td>千卡级 GLM-5.1 coding 推理服务，网络从 ROFT 升级到 ZCube，GPU、server、软件栈和应用不变。</td>
+              <td>平均 GPU 推理吞吐提升超过 15%，P99 TTFT 下降 40.6%，交换机和光模块 CapEx 下降约 33%，发布时稳定运行超过两周。</td>
+              <td>这是最贴近业务价值的证据，但公开材料没有给原始数据、请求分布、调度策略、PFC 配置、故障注入和长期稳定性细节。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <figure>
+          <div class="figure-pair">
+            <img src="zai-zcube-inference-network-assets/img_011.png" alt="Z.ai 图 9：ZCube 与 ROFT 的吞吐对比" />
+            <img src="zai-zcube-inference-network-assets/img_012.png" alt="Z.ai 图 9：ZCube 与 ROFT 的 TTFT 对比" />
+          </div>
+          <figcaption>
+            官方生产部署对比：同一集群的 GLM-5.1 coding 推理服务，在网络架构升级后吞吐和 TTFT 同时改善。报告中不把这个结果外推为所有模型、所有集群都能复制同等增益。
+          </figcaption>
+        </figure>
+
+        <div class="callout">
+          <strong>评估时最容易误读的地方：</strong>
+          <p>
+            “网络成本下降 33% 同时吞吐提升 15%”不是说每个小集群都应该立刻重构拓扑。它更准确的适用范围是：已经有跨节点 PD 分离、长上下文、KV Cache 迁移、RoCE/PFC 压力和尾延迟问题的大规模推理集群。没有这些流量特征，ZCube 的部署复杂度可能超过收益。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Limitations</div>
+            <h2>这篇文章还没有回答什么</h2>
+          </div>
+          <p>
+            这是一篇生产部署介绍，不是完整 benchmark paper。因此它的方向性很清楚，但公开证据的粒度还不足以让外部团队直接复现全部结论。
+          </p>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <h3>缺少 workload 细节</h3>
+            <p>
+              GLM-5.1 coding workload 的请求长度分布、并发、batching 策略、prefill/decode ratio、cache size、模型副本布局没有展开。这些因素会显著影响 KV Cache 迁移压力。
+            </p>
+          </article>
+          <article class="card">
+            <h3>缺少统计置信信息</h3>
+            <p>
+              公开图里能看到前后对比，但没有置信区间、重复实验次数、峰谷时段划分和异常日剔除策略。P99 TTFT 很容易被流量分布和调度策略影响。
+            </p>
+          </article>
+          <article class="card">
+            <h3>部署工程成本被低估</h3>
+            <p>
+              博客提到原有 cabling、IP addressing、routing policies 和 switch configuration 不能直接复用，需要 ZCube Controller、布局设计工具和线缆校验程序。这不是“换个拓扑图”那么简单。
+            </p>
+          </article>
+          <article class="card">
+            <h3>拓扑不是唯一变量</h3>
+            <p>
+              虽然 GPU、软件栈和应用不变，但实际迁移中 routing、cabling correctness、交换机配置和运维自动化都会变。外部读者应把结果理解为“ZCube 网络方案”收益，而不只是数学拓扑收益。
+            </p>
+          </article>
+        </div>
+
+        <div class="callout warning">
+          <strong>我的保守判断：</strong>
+          <p>
+            ZCube 的 claim 是可信且重要的，但它不是一个通用“网络银弹”。它解决的是特定规模、特定通信模式下 topology-induced congestion。若瓶颈主要在模型 kernel、scheduler、memory fragmentation、speculative decoding 命中率或外部业务网关，ZCube 不会自动带来同等收益。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Practice</div>
+            <h2>对推理系统工程的启发</h2>
+          </div>
+          <p>
+            这篇文章最值得带走的是诊断框架：别只问“GPU 利用率为什么不高”，还要问“网络把哪些本可并行的 KV Cache 流错误地压到同一组路径上了”。
+          </p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>工程动作</th>
+              <th>为什么重要</th>
+              <th>可观察信号</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>按 PD 流量重放网络仿真</td>
+              <td>训练 collective trace 不等于在线推理 trace。需要用真实 prefill/decode placement 和 KV size 分布评估拓扑。</td>
+              <td>flow size、source/destination pair、per-rail load、per-leaf load。</td>
+            </tr>
+            <tr>
+              <td>把 TTFT P99 和交换机队列联动分析</td>
+              <td>慢尾可能来自局部队列，不一定来自 decode GPU 算力。</td>
+              <td>PFC Pause、egress queue depth、ECN/CNP、端口利用率、per-request TTFT。</td>
+            </tr>
+            <tr>
+              <td>让 scheduler 感知拓扑</td>
+              <td>即使拓扑更好，调度器仍可能把大量 KV 迁移压向同一局部路径。PD placement 和拓扑应该协同。</td>
+              <td>prefill/decode assignment、cache transfer path、热 Leaf 命中率。</td>
+            </tr>
+            <tr>
+              <td>把网络 CapEx 纳入 token cost</td>
+              <td>推理成本不只是 GPU 租金或折旧。交换机、光模块、布线和故障恢复都决定长期 token economics。</td>
+              <td>每 1K token 的 GPU cost、network hardware amortization、可服务 RPS。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Insight</div>
+            <h2>这件事真正说明了什么</h2>
+          </div>
+          <p>
+            ZCube 的深层意义，是 LLM 推理基础设施正在从“把训练集群改一改拿来 serving”，进入“围绕模型流量形态重新设计系统”的阶段。
+          </p>
+        </div>
+
+        <div class="callout bluebox">
+          <strong>我的结论：</strong>
+          <p>
+            过去很多推理优化是点状的：更快的 attention kernel、更好的 batching、更低精度、更省 KV 的 cache policy。ZCube 展示的是另一类优化：当模型服务规模足够大时，流量形态本身会反过来定义数据中心网络。PD 分离把 KV Cache 变成在线系统的“热数据迁移层”，而 ZCube 试图让这个迁移层在拓扑上天然少冲突。
+          </p>
+          <p>
+            换句话说，ZCube 不是把网络从 100Gbps 换成 200Gbps 那种线性扩容故事，而是“让同样的带宽更可用”。这正是大规模推理系统里最有价值的系统工程：不是追求纸面峰值，而是减少局部结构性浪费，让更多 GPU 时间真正变成 token。
+          </p>
+        </div>
+
+        <h3>一句话复盘</h3>
+        <p>
+          如果一个推理集群已经进入长上下文、PD 分离、跨节点 KV Cache 迁移和 P99 延迟敏感的阶段，那么网络拓扑就不再是通用基础设施，而是模型 serving pipeline 的一部分；ZCube 的价值在于把这个事实落实成了可部署的拓扑和生产指标。
+        </p>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Reproducibility</div>
+            <h2>本地获取与校验命令</h2>
+          </div>
+          <p>
+            以下是本次材料抓取和核验的关键命令，保留在报告中方便之后复查来源。
+          </p>
+        </div>
+
+        <pre><code>opencli list -f yaml | rg -i "twitter|x.com"
+opencli twitter --help
+opencli twitter thread --help
+opencli twitter thread "https://x.com/Zai_org/status/2057216685040443743" --limit 80 -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w "%{url_effective}\n" "https://t.co/jaOMnP7Yud"
+opencli web read --url "https://x.com/i/article/2057206923208884224" --output "results/zai-zcube-x-2057216685040443743/x-article" --download-images true --wait 6 -f json --trace retain-on-failure
+opencli web read --url "https://z.ai/blog/zcube" --output "results/zai-zcube-x-2057216685040443743/zai-blog" --download-images true --wait 5 -f json --trace retain-on-failure
+opencli web read --url "https://conferences.sigcomm.org/sigcomm/2025/program/papers-info/" --output "results/zai-zcube-x-2057216685040443743/sigcomm" --download-images false --wait 5 -f json --trace retain-on-failure
+opencli web read --url "https://dblp.org/rec/conf/sigcomm/Yan00XGZYZZJYL25" --output "results/zai-zcube-x-2057216685040443743/dblp" --download-images false --wait 4 -f json --trace retain-on-failure</code></pre>
+
+        <div class="tag-row">
+          <span class="tag">LLM Inference</span>
+          <span class="tag">Prefill-Decode Disaggregation</span>
+          <span class="tag">KV Cache</span>
+          <span class="tag">RDMA / RoCE</span>
+          <span class="tag">Datacenter Network</span>
+          <span class="tag">ZCube</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer-note">
+    <p>
+      本页为中文技术阅读笔记。结论区分了 Z.ai 官方博客的生产部署 claim、SIGCOMM 2025 program 对 ATOP/ZCube 论文的公开摘要，以及作者的工程机制判断。所有本地图片来自本次抓取的 Z.ai 官方博客图像资源。
+    </p>
+  </footer>
+</body>
+</html>

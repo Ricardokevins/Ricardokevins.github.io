@@ -1,5 +1,124 @@
 # Ricardokevins.github.io Progress
 
+## 2026-05-25 NITP X 线程与 ICML Poster 笔记
+
+### 背景
+
+- 用户要求深度解析 `https://x.com/aHpaBean/status/2058137485654536538`，并将最终 HTML 笔记输出到新的个人主页 repo：`/Users/bytedance/Documents/Ricardokevins.github.io`。
+- 原帖内容是 NITP（Next Implicit Token Prediction）发布预告；作者回复补充了与 JEPA、Self-Distillation-MTP、Cut Cross-Entropy 的边界。
+- 目标不是复制 X 原帖，而是形成站内可读的技术分析：解释 NTP 为什么可能欠约束表示空间，NITP 如何加入 hidden/representation space 辅助目标，以及当前证据边界。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/ahpabean-nitp-analysis.html`。
+  - 覆盖来源地图、问题背景、方法机制、公开结果、方法对比、失败模式、复现草图、个人 insight 和本地抓取命令。
+  - 明确标注 NITP 论文 PDF 与官方实现代码在写作时仍未公开，不能把 README/ICML 摘要外推成完整复现实验。
+- 新增本地资源目录 `notes/assets/ahpabean-nitp/`。
+  - 保存原帖配图、NITP overview、representation dynamics、NITP loss curve、MoE results table、dense results table。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`NITP：Next Implicit Token Prediction 技术解读`
+  - URL：`/notes/tech-analysis/ahpabean-nitp-analysis.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/` 而不是 `notes/paper-reviews/`：当前可验证材料主要是 X 线程、ICML poster 摘要和 GitHub README；论文 PDF/Citation 仍为 TBD。
+- 报告使用单页 HTML，不新增子站或多版本文档，符合现有 Notes 结构。
+- 使用 MathJax 表达 NTP/NITP loss，使用官方仓库图片作为证据图，不添加纯装饰图。
+- 对 JEPA、distillation、CCE 的比较保持机制边界：NITP 与 JEPA 都做 representation prediction，但 NITP 是 autoregressive LM setting 且保留 NTP；CCE 是 CE 计算优化，不改变目标。
+
+### 验证结果
+
+- 静态 HTML 解析通过：核心章节 `source/problem/method/evidence/compare/failure/practice/insight/commands` 均存在。
+- 本地资源引用检查通过：`notes/assets/ahpabean-nitp/` 下 6 张图片均存在且非空；新增页面未发现缺失的本地 CSS/图片引用或页内锚点。
+- 内容可读性检查通过：未发现 Unicode replacement character；`pre code` 已设置显式样式覆盖；页面包含 MathJax 配置与 NTP/NITP 公式。
+- 运行 `git diff --check` 通过。
+- 运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/ahpabean-nitp-analysis.html` 生成，并包含标题、NITP 正文与本地图片引用。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/ahpabean-nitp-analysis.html`。
+
+## 2026-05-25 ZCube 推理网络架构 X Article 笔记
+
+### 背景
+
+- 用户要求深度解读并梳理 `https://x.com/Zai_org/status/2057216685040443743`。
+- 原帖正文只有一个 `t.co` 短链；短链解析到 X Article `https://x.com/i/article/2057206923208884224`。
+- 用户指定最终 HTML 笔记写入新 repo：`/Users/bytedance/Documents/Ricardokevins.github.io`。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/zai-zcube-inference-network.html`。
+  - 覆盖来源与获取方式、Prefill-Decode 分离、KV Cache 跨节点迁移、ROFT/Fat-Tree 拥塞机制、ZCube 扁平二部拓扑、单轨/多轨混合接入、生产部署指标、SIGCOMM 论文摘要边界、限制和个人 insight。
+  - 明确区分 Z.ai 官方博客的生产部署 claim、SIGCOMM 2025 program 的 ATOP/ZCube 论文摘要，以及报告中的工程机制判断。
+- 新增资源目录 `notes/tech-analysis/zai-zcube-inference-network-assets/`。
+  - 保存 Z.ai 官方博客图像 `img_001.png` 到 `img_012.png`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`ZCube 推理网络架构解读：KV Cache 流量如何改变数据中心拓扑`
+  - URL：`/notes/tech-analysis/zai-zcube-inference-network.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 采用单页 HTML 放入 `notes/tech-analysis/`，与站内已有 X Article / 技术解读笔记保持一致。
+- 报告按“问题 -> 流量形态变化 -> ROFT 失效机制 -> ZCube 拓扑机制 -> 证据与边界 -> 工程启发”的顺序组织，而不是逐段复述原文。
+- 对 X Article 与官方博客的一个差异做显式标注：X Article 抓取文本中带宽 ablation 写为 `512-GPU cluster`，Z.ai 官方博客同段写为 `32-GPU testbed`；报告采用官方博客版本，并记录为可信度边界。
+
+### 验证结果
+
+- HTML parser 解析通过；核心章节 `source/problem/traffic/zcube/evidence/limits/implications/insight/commands` 均存在。
+- 本地资源引用检查通过：页面引用的 10 张正文图片均存在且非空；资源目录共保存 12 张 Z.ai 官方博客图片。
+- `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证和 GitHub API rate limit warning，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/zai-zcube-inference-network.html` 生成，并包含页面标题、正文图片引用和核心章节。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/zai-zcube-inference-network.html`。
+- Chrome headless 已渲染桌面端 `1280x900` 和移动端 `390x844` 截图到 `/tmp/zcube-note-1280.png`、`/tmp/zcube-note-390.png`；两个 PNG 文件均非空、PNG header 正常、首段字节包含完整 256 种取值，说明不是空白截图。
+
+## 2026-05-25 Test-Time Scaling / Training-Free RL X Article 笔记
+
+### 背景
+
+- 用户要求深度解读并梳理 `https://x.com/sheriyuo/status/2042072816712085577`。
+- 主帖正文只有一个 `t.co` 短链；短链解析到 X Article `https://x.com/i/article/2042067717436715008`，标题为 `Test-Time Scaling and Training-Free RL`。
+- 用户指定最终 HTML 笔记写入新 repo：`/Users/bytedance/Documents/Ricardokevins.github.io`。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/sheriyuo-tts-training-free-rl.html`。
+  - 覆盖来源与获取方式、TTS 分类、RLHF/GRPO KL 正则闭式最优策略、ETS energy-guided sampling、Monte Carlo energy estimation、ETS-IS importance sampling、实验结果、Self-Evolving/TTRL/RSE 边界、限制和个人 insight。
+  - 使用 MathJax 渲染核心公式；`pre code` 有显式样式覆盖，避免代码块可读性回退。
+- 新增资源目录 `notes/tech-analysis/sheriyuo-tts-training-free-rl-assets/`。
+  - 保存 X Article 配图 `x-article-01` 到 `x-article-21`。
+  - 保存 ETS 论文 PDF 副本 `2601.21484-ets.pdf`。
+  - 保存 `sheriyuo/ETS` README 与 `maxzuo/mh-llm` README 本地副本。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Test-Time Scaling 与 Training-Free RL 深度解读`
+  - URL：`/notes/tech-analysis/sheriyuo-tts-training-free-rl.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 采用单页 HTML 放入 `notes/tech-analysis/`，与站内已有 X Article / 技术解读笔记保持一致。
+- 报告不按原文段落复述，而按“问题 -> TTS 地图 -> ETS 数学机制 -> 证据 -> Self-Evolving 边界 -> 局限 -> insight”的读者理解顺序组织。
+- 将 X Article 观点、ETS 论文/仓库可核验证据和个人机制判断分开写，避免把作者观点、论文实验和外推结论混在一起。
+
+### 验证结果
+
+- HTML parser 校验通过：新增页面 `41,657` bytes，核心章节 `source/problem/map/mechanism/evidence/self-evolving/limits/implications/insight` 均存在。
+- 本地资源引用检查通过：页面内 `13` 个本地引用均可解析；未发现 Unicode replacement character；`pre code` 样式覆盖存在；MathJax 源公式存在。
+- `git diff --check` 通过。
+- 运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功。
+  - 构建仅出现 GitHub Metadata 未认证和 GitHub API rate limit warning，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/sheriyuo-tts-training-free-rl.html` 生成，文件大小 `41,657` bytes。
+- 已确认 `_site/notes/index.html` 包含 `Test-Time Scaling 与 Training-Free RL 深度解读` 入口。
+- 已确认 `_site/notes/tech-analysis/sheriyuo-tts-training-free-rl-assets/2601.21484-ets.pdf` 和 `x-article-16.png` 等资源生成。
+- 本地 HTTP 验证通过：
+  - `/notes/tech-analysis/sheriyuo-tts-training-free-rl.html` 返回 `200 OK`。
+  - `/notes/` 返回 `200 OK`。
+  - `/notes/tech-analysis/sheriyuo-tts-training-free-rl-assets/x-article-16.png` 返回 `200 OK`。
+- Chrome headless 打开本地页面并截图成功：`/tmp/sheriyuo-tts-training-free-rl.png`，大小约 `643K`。
+- Chrome headless `--dump-dom` 检查通过：DOM 中 `mjx-container/MathJax` 命中 `18` 处，标题命中 `2` 处。
+- Playwright CLI wrapper 当前失败，原因是 `npx --package @playwright/mcp playwright-cli` 未暴露 `playwright-cli` 二进制；已用系统 Chrome headless 完成等价渲染/DOM 验证。
+
 ## 2026-05-21 Manual-Coding Attention 笔记导入
 
 ### 背景
