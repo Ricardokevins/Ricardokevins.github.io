@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grok V9、Cursor 数据与 Mid-training | Elie Bakouch X 帖深度梳理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #211c17;
+      --muted: #665f56;
+      --subtle: #8b8176;
+      --paper: #f7f0e6;
+      --panel: #fffdf8;
+      --panel-2: #f0e6d9;
+      --line: #d9c9b7;
+      --line-strong: #aa9680;
+      --accent: #aa4f2c;
+      --accent-soft: #f1d8c7;
+      --blue: #265f86;
+      --blue-soft: #dce8ef;
+      --green: #356c58;
+      --green-soft: #dce8df;
+      --violet: #5d5580;
+      --violet-soft: #e4e0ef;
+      --gold: #8a641a;
+      --gold-soft: #efe0b8;
+      --red: #944133;
+      --red-soft: #f0d8d2;
+      --code-bg: #24201b;
+      --code-fg: #f5eadc;
+      --shadow: 0 18px 48px rgba(55, 45, 31, 0.12);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(33, 28, 23, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(33, 28, 23, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(38, 95, 134, 0.3);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 58px);
+      border-bottom: 1px solid rgba(33, 28, 23, 0.14);
+      background: rgba(247, 240, 230, 0.93);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 40%, var(--accent) 41% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--blue) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+      flex: 0 0 auto;
+    }
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      align-items: end;
+      gap: clamp(28px, 5vw, 70px);
+      min-height: 86vh;
+      padding: clamp(54px, 8vw, 108px) clamp(20px, 5vw, 76px) 44px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(115deg, rgba(255, 253, 248, 0.98) 0 36%, rgba(255, 253, 248, 0.82) 39% 58%, rgba(220, 232, 239, 0.58) 59% 100%),
+        url("eliebakouch-grok-v9-midtraining-assets/cursor-composer25-5.png") center right / min(54vw, 860px) auto no-repeat;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 48%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(247, 240, 230, 0));
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    h1 {
+      max-width: 1000px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.2vw, 96px);
+      font-weight: 780;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.3vw, 56px);
+      font-weight: 780;
+    }
+    h3 {
+      font-size: clamp(20px, 2.2vw, 27px);
+      font-weight: 760;
+    }
+    p { margin: 14px 0 0; }
+    .hero-lead {
+      max-width: 820px;
+      margin: 24px 0 0;
+      color: #38332c;
+      font-size: clamp(18px, 2.05vw, 24px);
+      line-height: 1.62;
+    }
+    .hero-side {
+      align-self: center;
+      display: grid;
+      gap: 14px;
+      padding-top: 110px;
+    }
+    .thesis-card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(10px);
+    }
+    .thesis-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .thesis-card p {
+      margin: 0;
+      color: #312d27;
+      font-size: 16px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .meta {
+      min-height: 112px;
+      padding: 14px;
+      border: 1px solid rgba(33, 28, 23, 0.14);
+      background: rgba(255, 253, 248, 0.82);
+    }
+    .meta span {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--subtle);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .meta b {
+      display: block;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+    .meta small {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 58px 0 80px;
+    }
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    section:first-child { padding-top: 12px; }
+    section:last-child { border-bottom: 0; }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.78fr) minmax(280px, 0.42fr);
+      gap: clamp(22px, 4vw, 54px);
+      align-items: start;
+      margin-bottom: 28px;
+    }
+    .section-kicker {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .section-note {
+      color: var(--muted);
+      font-size: 16px;
+      border-left: 3px solid var(--accent);
+      padding-left: 16px;
+    }
+    .content {
+      max-width: 880px;
+      color: #302b25;
+      font-size: 17px;
+    }
+    .content.wide { max-width: none; }
+    .content strong { color: var(--ink); }
+    .muted { color: var(--muted); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.88);
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(55, 45, 31, 0.07);
+    }
+    .card h3 {
+      margin-bottom: 10px;
+      font-size: 21px;
+    }
+    .card p {
+      margin-top: 8px;
+      color: #38332c;
+      font-size: 15.5px;
+    }
+    .card .tag {
+      display: inline-flex;
+      margin-bottom: 10px;
+      padding: 3px 8px;
+      color: var(--accent);
+      border: 1px solid rgba(170, 79, 44, 0.26);
+      background: var(--accent-soft);
+      font-size: 12px;
+      font-weight: 760;
+    }
+    .quote {
+      margin: 24px 0;
+      padding: 20px;
+      border-left: 4px solid var(--blue);
+      background: rgba(220, 232, 239, 0.62);
+      color: #243744;
+      font-size: 17px;
+      line-height: 1.7;
+    }
+    .quote b {
+      color: #1f445d;
+    }
+    .callout {
+      margin: 24px 0;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+    }
+    .callout.warning {
+      border-color: rgba(148, 65, 51, 0.28);
+      background: var(--red-soft);
+    }
+    .callout.good {
+      border-color: rgba(53, 108, 88, 0.26);
+      background: var(--green-soft);
+    }
+    .callout.gold {
+      border-color: rgba(138, 100, 26, 0.26);
+      background: var(--gold-soft);
+    }
+    .callout strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .timeline {
+      margin-top: 26px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+    }
+    .event {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .event:last-child { border-bottom: 0; }
+    .event time {
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .event p {
+      margin: 0;
+      color: #332e28;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .stage {
+      position: relative;
+      min-height: 230px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+    }
+    .stage::after {
+      content: "";
+      position: absolute;
+      top: 32px;
+      right: -12px;
+      width: 12px;
+      height: 2px;
+      background: var(--line-strong);
+    }
+    .stage:last-child::after { display: none; }
+    .stage .num {
+      display: inline-grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      margin-bottom: 12px;
+      color: #fff;
+      background: var(--accent);
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .stage h3 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .stage p {
+      color: #38332c;
+      font-size: 15px;
+    }
+
+    table {
+      width: 100%;
+      margin: 24px 0 0;
+      border-collapse: collapse;
+      background: rgba(255, 253, 248, 0.9);
+      border: 1px solid var(--line);
+      font-size: 15px;
+    }
+    th, td {
+      vertical-align: top;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+    th {
+      color: var(--ink);
+      background: var(--panel-2);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    figure {
+      margin: 28px 0 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+      box-shadow: 0 10px 24px rgba(55, 45, 31, 0.07);
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(33, 28, 23, 0.1);
+      background: #fff;
+    }
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      color: #5b2e1f;
+      background: rgba(170, 79, 44, 0.1);
+      padding: 0.1em 0.28em;
+    }
+    pre {
+      margin: 24px 0 0;
+      overflow-x: auto;
+      padding: 18px;
+      color: var(--code-fg);
+      background: var(--code-bg);
+      border: 1px solid rgba(33, 28, 23, 0.25);
+      line-height: 1.55;
+    }
+    pre code {
+      color: inherit;
+      background: transparent;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .source-item {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+    }
+    .source-item b {
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .source-item p { margin: 0; }
+
+    .checklist {
+      display: grid;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .check {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+    }
+    .check span {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      color: #fff;
+      background: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .check p { margin: 0; }
+
+    .footer {
+      padding: 40px clamp(20px, 5vw, 76px);
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255, 253, 248, 0.68);
+      font-size: 14px;
+    }
+
+    @media (max-width: 960px) {
+      .hero,
+      .section-head,
+      .grid-2,
+      .grid-3,
+      .pipeline {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: auto;
+        padding-top: 70px;
+      }
+      .hero-side { padding-top: 8px; }
+      .stage { min-height: auto; }
+      .stage::after { display: none; }
+      .event,
+      .source-item {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 680px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .nav { width: 100%; }
+      main { width: min(100% - 28px, 1180px); }
+      .meta-grid { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+      h1 { font-size: clamp(38px, 12vw, 58px); }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/notes/">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Ricardo Kevin Notes</span>
+    </a>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#source">来源</a>
+      <a href="#question">问题</a>
+      <a href="#pipeline">阶段</a>
+      <a href="#cursor">Cursor 数据</a>
+      <a href="#composer">Composer 对照</a>
+      <a href="#evals">评估</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Thread Reading · 2026-05-25</div>
+      <h1>Grok V9、Cursor 数据与 Mid-training</h1>
+      <p class="hero-lead">
+        Elie Bakouch 这条帖子的重点不是“1.5T 参数很大”，而是：如果 Grok V9 在补充训练阶段已经吸收大量 Cursor 编程数据，而 SFT/RL 到公开发布只剩 2-3 周，那么真正决定 coding agent 能力的重心很可能前移到了 code-heavy mid-training、真实工作流数据和 harness 对齐。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis-card">
+        <strong>一句话结论</strong>
+        <p>短 RL 窗口并不必然代表 RL 不重要，它更像说明 RL 正在从“创造全部能力”变成“在已经代码化的 prior 上做 agentic policy shaping”。</p>
+      </div>
+      <div class="meta-grid">
+        <div class="meta">
+          <span>原帖对象</span>
+          <b>Elie Bakouch</b>
+          <small>X 主帖 2058796025091871141，讨论 Grok V9 训练节奏。</small>
+        </div>
+        <div class="meta">
+          <span>触发事实</span>
+          <b>2-3 周</b>
+          <small>Elon 称 fine-tuning 已开始，RL 几天后开始，2-3 周公开发布。</small>
+        </div>
+        <div class="meta">
+          <span>关键变量</span>
+          <b>Cursor 数据</b>
+          <small>补充训练/中训练阶段加入，目标尤其指向 difficult coding tasks。</small>
+        </div>
+        <div class="meta">
+          <span>对照材料</span>
+          <b>Composer 2/2.5</b>
+          <small>Cursor 官方技术路线：持续预训练 + 大规模 agentic RL。</small>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Source Map</span>
+          <h2>读了什么，怎么核验</h2>
+        </div>
+        <p class="section-note">
+          本报告把公开事实、社区推断和我的机制判断拆开。Grok V9 没有论文、训练配方和评估表，因此不能把 X 更新写成模型能力已经被验证。
+        </p>
+      </div>
+
+      <div class="source-list">
+        <div class="source-item">
+          <b>Elie 原帖</b>
+          <p>抓取 `https://x.com/eliebakouch/status/2058796025091871141` 及回复上下文。原帖判断：1.5T 模型 RL 阶段只剩 2-3 周是有意思的数据点；Cursor 数据在 post-training 前加入，可能类似 Composer 2.5 做 heavy mid-training，并强烈聚焦 code。</p>
+        </div>
+        <div class="source-item">
+          <b>Elon 更新</b>
+          <p>抓取 3 条关键 X 更新：5 月 15 日称 Grok V9 1.5T 已完成、Cursor 数据尚未加入；5 月 17 日称下一步是 Cursor 数据 supplemental training、SFT、RL；5 月 25 日称 V9-Medium 1.5T 已训练完，Cursor 数据已大量加入，fine-tuning 进行中，RL 几天后开始，2-3 周公开发布。</p>
+        </div>
+        <div class="source-item">
+          <b>Cursor 官方</b>
+          <p>读取 Cursor Composer 2 技术报告、Composer 2.5 发布博客、Cursor 与 SpaceX 模型训练合作公告、Cursor 数据使用与隐私说明。用于理解“Cursor 数据”和“Composer-like training pipeline”具体可能指什么。</p>
+        </div>
+        <div class="source-item">
+          <b>xAI 公开页</b>
+          <p>读取 xAI Colossus 页面。它给出 180K H100 单一互联集群、roadmap to 1M GPUs、每服务器 2.8Tb/s 网络、超过 0.5 EB 存储等公开基础设施信息。社区关于 Colossus 2 的 GPU 分配估算没有一手公开细节，本报告只作为不确定推断处理。</p>
+        </div>
+        <div class="source-item">
+          <b>本地归档</b>
+          <p>所有抓取结果归档在 `results/eliebakouch-x-2058796025091871141/`。页面证据图保存在 `notes/tech-analysis/eliebakouch-grok-v9-midtraining-assets/`。</p>
+        </div>
+      </div>
+
+      <pre><code>opencli twitter thread "https://x.com/eliebakouch/status/2058796025091871141" --limit 100 -f json
+opencli twitter thread "https://x.com/elonmusk/status/2058787384364265734" --limit 80 -f json
+opencli web read --url "https://cursor.com/blog/composer-2-5" --stdout true --download-images true
+opencli arxiv paper "2603.24477" -f json
+curl -L "https://arxiv.org/pdf/2603.24477" -o "results/eliebakouch-x-2058796025091871141/2603.24477-composer2.pdf"</code></pre>
+    </section>
+
+    <section id="question">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">What Is The Real Question</span>
+          <h2>这条帖真正问的不是参数量，而是能力来自哪个阶段</h2>
+        </div>
+        <p class="section-note">
+          对 coding agent 来说，模型会不会写代码只是底层能力；能不能在真实 repo 里读文件、改多处、运行测试、处理错误、压缩上下文、继续推进，才是产品体验里的关键能力。
+        </p>
+      </div>
+
+      <div class="content">
+        <p>Elie 的判断可以拆成两个观察。</p>
+        <p><strong>第一，2-3 周 release window 很短。</strong>如果 RL 几天后才开始，而公开发布只剩 2-3 周，那么后训练阶段不会是一个从零塑造 coding agent 的超长周期。它可能仍然消耗巨大算力，但从训练策略上看，许多能力需要在更早阶段准备好。</p>
+        <p><strong>第二，Cursor 数据在 post-training 前加入。</strong>Elon 的说法使用了 “supplementary training”，并在另一条更新里直接补充 “others call this mid-training”。这意味着 Cursor 数据不是只用于最后的 RL 奖励或偏好微调，而可能已经进入了 foundation model 之后、SFT/RL 之前的继续训练阶段。</p>
+
+        <div class="quote">
+          <b>核心翻译：</b>Elie 不是在说 “RL 没用”，而是在提醒：如果一个 1.5T 模型的 coding 提升主要被预期发生在短 release window 内，那就要看它在 RL 前是否已经拥有足够强的 code-shaped prior。Cursor 数据和 mid-training 可能才是这轮能力跃迁的主要资产。
+        </div>
+
+        <div class="timeline">
+          <div class="event">
+            <time>2026-05-15</time>
+            <p>Elon 回复称 Grok V9 1.5T run 看起来很好，而且这是在 Cursor 数据加入 supplemental training 之前。</p>
+          </div>
+          <div class="event">
+            <time>2026-05-17</time>
+            <p>Elon 称 1.5T V9 刚完成训练，下一步加入 Cursor 数据做 supplemental training，别人称之为 mid-training，然后 SFT 和 RL，大约 3-4 周发布。</p>
+          </div>
+          <div class="event">
+            <time>2026-05-25</time>
+            <p>Elon 称 Grok foundation model V9-Medium 1.5T 完成训练，已加入大量 Cursor 数据且后续还有更多；fine-tuning underway，RL 几天后开始，2-3 周公开发布，尤其会改进 difficult coding tasks。</p>
+          </div>
+          <div class="event">
+            <time>同日</time>
+            <p>Elie 把这三段信息合起来解读：短 RL 窗口 + Cursor 数据前置加入，指向类似 Composer 2.5 的 heavy mid-training 与 code focus。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pipeline">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Training Pipeline</span>
+          <h2>把训练阶段拆开，争议就清楚了</h2>
+        </div>
+        <p class="section-note">
+          “Pretraining / mid-training / SFT / RL” 不是营销词差异，而是训练信号密度、数据形态和最终能力来源不同。
+        </p>
+      </div>
+
+      <div class="pipeline">
+        <div class="stage">
+          <span class="num">1</span>
+          <h3>Foundation training</h3>
+          <p>通用 next-token 训练，建立语言、代码、世界知识和基本推理能力。Grok V9 的 1.5T 规模属于这一层公开叙事，但 xAI 没有公开 active parameters、数据混合和训练 token 数。</p>
+        </div>
+        <div class="stage">
+          <span class="num">2</span>
+          <h3>Supplemental / mid-training</h3>
+          <p>在基础模型后继续用领域数据做交叉熵训练，改变模型 prior。这里的关键是 Cursor 数据：真实开发场景、prompt、编辑动作、代码片段和可能的 agent trajectory，比普通 web code 更贴近产品工作流。</p>
+        </div>
+        <div class="stage">
+          <span class="num">3</span>
+          <h3>SFT / fine-tuning</h3>
+          <p>让模型学会目标交互格式、工具调用语法、回答风格、拒答边界和产品行为。它通常比大规模持续预训练和 RL 更便宜，但对产品可用性很关键。</p>
+        </div>
+        <div class="stage">
+          <span class="num">4</span>
+          <h3>Agentic RL</h3>
+          <p>在可验证环境中通过 rollout 和 reward 改善多步执行、工具选择、测试修复、长程一致性和成本控制。它更像 policy shaping，不适合承担“补齐全部 coding knowledge”的任务。</p>
+        </div>
+      </div>
+
+      <div class="content wide">
+        <table>
+          <thead>
+            <tr>
+              <th>阶段</th>
+              <th>训练信号</th>
+              <th>最擅长改变什么</th>
+              <th>不擅长解决什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>基础训练</td>
+              <td>大规模 next-token prediction</td>
+              <td>通用知识、语言能力、代码语法、基础推理</td>
+              <td>具体产品工具链、真实 repo 长任务行为</td>
+            </tr>
+            <tr>
+              <td>补充训练 / 中训练</td>
+              <td>领域数据上的继续交叉熵训练</td>
+              <td>代码领域 prior、API/错误/编辑模式、长上下文代码知识</td>
+              <td>直接优化任务成功率和 reward-aligned 策略</td>
+            </tr>
+            <tr>
+              <td>SFT</td>
+              <td>示范轨迹、格式数据、行为数据</td>
+              <td>工具调用格式、语气、产品协议、初始策略</td>
+              <td>大规模探索与复杂失败归因</td>
+            </tr>
+            <tr>
+              <td>RL</td>
+              <td>rollout reward、verifier、偏好或局部反馈</td>
+              <td>多步任务成功率、探索路径、错误恢复、成本和稳定性</td>
+              <td>在短时间内灌入大量新知识或补齐贫弱基础模型</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cursor">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Cursor Data</span>
+          <h2>Cursor 数据为什么可能比普通代码语料更值钱</h2>
+        </div>
+        <p class="section-note">
+          这里必须谨慎：Elon 没公开 Grok 具体用了哪些 Cursor 数据，Cursor 隐私页也说明不同隐私设置下数据使用不同。报告只能说“可能的数据形态”和“为什么这类数据有训练价值”。
+        </p>
+      </div>
+
+      <div class="content">
+        <p>普通代码预训练数据通常像 GitHub 快照：文件、仓库、README、issue、patch。它能教模型语法、库用法、项目结构，但很难完整呈现开发者如何从问题到修改、从失败测试到下一步动作。</p>
+        <p>Cursor 的官方数据使用说明里明确区分隐私模式：开启隐私模式时，代码不会被 Cursor 或第三方用于训练；关闭隐私模式时，Cursor 可能使用和存储代码库数据、prompts、编辑器操作、代码片段以及其他代码相关数据和操作，用于改进 AI 功能并训练模型。这个边界非常重要，因为它说明 Cursor 数据的价值来自真实产品交互，但不能推断“所有用户代码都被训练”。</p>
+
+        <div class="grid-3">
+          <div class="card">
+            <span class="tag">语料密度</span>
+            <h3>不只是 raw code</h3>
+            <p>对 coding agent 来说，prompt、错误信息、工具调用、编辑动作、测试输出和最终 patch 都是训练信号。它们比单独文件更接近“开发过程”。</p>
+          </div>
+          <div class="card">
+            <span class="tag">工作流贴近</span>
+            <h3>更像真实 IDE</h3>
+            <p>真实用户会给模糊任务、半坏代码库、局部上下文和中途反馈。这样的数据能让模型学到任务分解和状态跟踪，而不只是补全函数。</p>
+          </div>
+          <div class="card">
+            <span class="tag">竞争壁垒</span>
+            <h3>外部难以复制</h3>
+            <p>公开 web code 大家都能抓，IDE 内部工作流和高质量交互数据更难获得。因此 Elie 和回复区会把 Cursor 数据视为 xAI/Cursor 合作里的关键资产。</p>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <strong>不要过度外推</strong>
+          “Cursor data” 不是一个公开数据集名称。它可能包含多种来源和过滤规则，也可能只覆盖允许训练的数据。任何关于 5T、10T、30T 或 100T token 的具体估计，除非来自官方训练报告，否则都只能作为社区量级猜测。
+        </div>
+      </div>
+    </section>
+
+    <section id="composer">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Composer Analogy</span>
+          <h2>为什么 Elie 会拿 Composer 2.5 作类比</h2>
+        </div>
+        <p class="section-note">
+          Composer 2/2.5 是目前最接近“Cursor 数据 + coding agent 训练栈”的公开参考，但它不是 Grok V9 的训练报告。类比只能用于理解机制，不能用于直接预测分数。
+        </p>
+      </div>
+
+      <div class="content">
+        <p>Composer 2 技术报告明确写到训练分两阶段：先 continued pretraining 改善 coding knowledge 和 latent coding ability，再 large-scale reinforcement learning 改善端到端 coding performance、stronger reasoning、multi-step execution 和 long-horizon realistic coding problems。</p>
+        <p>这正是 Elie 这条帖背后的训练逻辑：如果后续 RL 时间看起来短，判断模型 coding 能力时就不能只看 RL，还要看前面是否做了足够强的 continued pretraining 或 mid-training。</p>
+      </div>
+
+      <figure>
+        <img src="eliebakouch-grok-v9-midtraining-assets/cursor-composer25-1.png" alt="Cursor Composer 2.5 benchmark table" />
+        <figcaption>Cursor 官方 Composer 2.5 博客的 benchmark 图。这里用作证据图，不代表 Grok V9 已达到相同结果。</figcaption>
+      </figure>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="tag">Composer 2</span>
+          <h3>持续预训练的作用</h3>
+          <p>报告中 Composer 2 从 Kimi K2.5 基础模型出发，做 code-dominated continued pretraining，并展示较低 codebase perplexity 与后续 RL reward 有关系。这说明中训练不是“多训一点 token”，而是在为 RL 提供更好的初始策略。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Composer 2</span>
+          <h3>RL 的作用</h3>
+          <p>RL 在真实 Cursor-like 环境中运行，任务覆盖 debugging、new feature、refactor、code review、testing、devops 等类别。它优化的是 agent 在长轨迹中的决策，而不是单纯背更多 API。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Composer 2.5</span>
+          <h3>更复杂的 RL 环境</h3>
+          <p>Composer 2.5 官方博客称通过扩大训练规模、生成更复杂的 RL 环境、引入新学习方法来改进模型。合成任务数量是 Composer 2 的 25 倍，并动态筛选更难任务。</p>
+        </div>
+        <div class="card">
+          <span class="tag">Composer 2.5</span>
+          <h3>文本反馈式局部信号</h3>
+          <p>Composer 2.5 用定向文本反馈缓解长 rollout credit assignment：在模型本可以表现更好的位置插入局部反馈，把反馈后的模型分布当教师，再用 on-policy distillation KL 训练学生。</p>
+        </div>
+      </div>
+
+      <figure>
+        <img src="eliebakouch-grok-v9-midtraining-assets/cursor-composer25-7.png" alt="Cursor Composer 2.5 textual feedback training diagram" />
+        <figcaption>Composer 2.5 的 textual feedback 图。它说明 coding agent RL 正在补充更密的局部行为信号，而不是只依赖整条轨迹的最终 reward。</figcaption>
+      </figure>
+
+      <div class="callout good">
+        <strong>类比的正确用法</strong>
+        把 Grok V9 看成“一个更大 foundation model + Cursor code-heavy supplemental training + SFT/RL”的管线，而不是把 Composer 2.5 的所有技术细节强行套到 Grok V9 上。Grok V9 是否真的用了类似 textual feedback、CursorBench-style eval、Anyrun-like environment，目前没有公开证据。
+      </div>
+    </section>
+
+    <section id="evals">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Evidence And Evaluation</span>
+          <h2>“Evals look good” 还不是可审计结果</h2>
+        </div>
+        <p class="section-note">
+          这条线索最需要等的不是更多参数传闻，而是可复现、可比较、和真实 agent workflow 对齐的评估。
+        </p>
+      </div>
+
+      <div class="content">
+        <p>Elon 对 Grok V9 的公开信息目前只有方向性表述：V9-Medium 1.5T 完成训练，evals look good，大量 Cursor 数据已加入，fine-tuning 和 RL 接近完成，尤其会改进 difficult coding tasks。这里缺少评估集、pass 数、成本、延迟、refusal、工具 harness、上下文长度和统计方差。</p>
+        <p>Composer 2 的公开材料则给了一个可参考的评估结构：CursorBench 来自真实软件工程问题和大代码库，任务 prompt 更短、更模糊、改动文件和行数更多；同时报告 SWE-bench Multilingual 和 Terminal-Bench。即便如此，CursorBench 本身是内部 benchmark，外部只能读它的方法描述和结果摘要，不能直接复现。</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>要看什么</th>
+              <th>为什么重要</th>
+              <th>常见误读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>真实 coding agent benchmark</td>
+              <td>需要覆盖多文件修改、测试、debug、工具调用和长上下文，不只是单函数补全。</td>
+              <td>把 HumanEval 或短题分数当作 IDE agent 能力。</td>
+            </tr>
+            <tr>
+              <td>成本和延迟</td>
+              <td>1.5T 总参数模型若推理成本过高，产品默认流量可能仍依赖小模型或 fast variant。</td>
+              <td>只看 accuracy，不看每任务 token、wall time 和美元成本。</td>
+            </tr>
+            <tr>
+              <td>pass@k 与稳定性</td>
+              <td>coding agent 可以多次尝试；要区分偶然成功、重复稳定成功和高成本搜索成功。</td>
+              <td>把 best run 当作典型用户体验。</td>
+            </tr>
+            <tr>
+              <td>泛化任务</td>
+              <td>如果 Cursor 数据过度塑造 code prior，需确认一般问答、数学、写作、长上下文和安全行为是否回退。</td>
+              <td>把 code-heavy gain 外推成全域 general intelligence gain。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout gold">
+          <strong>我的判断</strong>
+          如果 Grok V9 发布后 coding 明显提升，而通用聊天没有同等幅度提升，更可能说明 Cursor/supplemental training 在 coding domain 上有效，而不是“短期 RL 直接创造了全部能力”。如果 coding、工具、长任务和成本同时改善，才说明 xAI/Cursor 在训练栈、数据和 serving 上同时打通了。
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Limits</span>
+          <h2>必须保留的证据边界</h2>
+        </div>
+        <p class="section-note">
+          这类 X 线程很容易滑向“内部训练细节已确定”。当前能确定的是发布时间线和官方措辞，不能确定的是数据量、训练 token、GPU 分配、RL 算法和最终模型能力。
+        </p>
+      </div>
+
+      <div class="checklist">
+        <div class="check">
+          <span>1</span>
+          <p><strong>“2-3 周”是公开发布窗口，不是严格 RL 训练时长。</strong>Elon 的原话是 fine-tuning underway、RL begins in a few days、2 to 3 weeks to public release。它暗示 post-training 时间紧，但不能直接换算 RL token 数。</p>
+        </div>
+        <div class="check">
+          <span>2</span>
+          <p><strong>“Cursor data” 没有公开成分表。</strong>隐私页说明不同设置下数据使用不同。不能把所有用户代码、所有 prompt 或所有编辑历史都默认纳入训练。</p>
+        </div>
+        <div class="check">
+          <span>3</span>
+          <p><strong>“1.5T” 缺少架构细节。</strong>没有公开 MoE 稀疏率、active parameters、context length、训练 token 和 serving 方案。社区关于 active parameter 和 H100-second 的估算误差可能很大。</p>
+        </div>
+        <div class="check">
+          <span>4</span>
+          <p><strong>Composer 2.5 是机制对照，不是 Grok V9 证据。</strong>Cursor 的公开技术报告能说明 Cursor 做 coding agent 的训练路线，但不能证明 Grok V9 完全复用了 Composer 的算法、环境和评估。</p>
+        </div>
+        <div class="check">
+          <span>5</span>
+          <p><strong>公开 eval 缺失。</strong>“Evals look good” 没有指标、样本、harness 和对比。任何“将超过 Claude Code/Codex”的判断都应该等发布后的同环境评测。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Practical Implications</span>
+          <h2>这条线索对训练和产品的启发</h2>
+        </div>
+        <p class="section-note">
+          如果目标是做强 coding agent，最值得学习的不是“买更大模型”这件事，而是数据、环境、评估和后训练目标如何闭环。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="tag">For model labs</span>
+          <h3>中训练数据要像产品使用</h3>
+          <p>仅抓开源代码不足以训练强 IDE agent。更有价值的是任务 prompt、编辑序列、工具结果、失败测试、修复路径和用户反馈构成的开发过程。</p>
+        </div>
+        <div class="card">
+          <span class="tag">For RL teams</span>
+          <h3>RL 要站在好 prior 上</h3>
+          <p>长轨迹 RL 的 credit assignment 很难。若基础模型没有代码化 prior，最终 reward 很难告诉模型“哪个中间动作错了”。Composer 2.5 的 textual feedback 方向正是补密信号。</p>
+        </div>
+        <div class="card">
+          <span class="tag">For evaluators</span>
+          <h3>要测真实工作流</h3>
+          <p>Grok V9 该被放到同一 IDE/harness、同一工具、同一预算下测多文件任务、长期任务和失败恢复，而不是只看单轮 benchmark。</p>
+        </div>
+        <div class="card">
+          <span class="tag">For users</span>
+          <h3>隐私设置是产品选择</h3>
+          <p>Cursor 数据价值越高，用户越需要明确自己的隐私模式和企业数据策略。训练收益和数据治理不是两个独立问题。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Insight</span>
+          <h2>真正的变化：coding 模型的能力重心前移</h2>
+        </div>
+        <p class="section-note">
+          这条 X 帖的价值在于抓住了训练范式的重心变化，而不是预测 Grok V9 会排第几。
+        </p>
+      </div>
+
+      <div class="content">
+        <p>过去讨论 coding model 时，很多人会把注意力放在最后的 RL：是不是能跑测试、是不是能用 verifier、是不是有强 reward。但从 Composer 2/2.5 到 Grok V9 这条线索，越来越明显的一点是：<strong>RL 的上限高度依赖前面已经塑造好的代码世界模型和工具行为 prior。</strong></p>
+        <p>Cursor 数据的关键，不是它神秘，而是它把“开发”从静态文本变成了动态行为数据。模型看到的不只是最终代码，还可能看到用户意图、上下文缺口、编辑路径、工具调用、错误反馈和修复尝试。这样的数据放在 mid-training 阶段，会改变模型对“下一步该做什么”的默认分布；后面的 SFT/RL 再把这个默认分布压成更可靠的 agent policy。</p>
+        <p>所以我对 Elie 这条帖的最终解读是：<strong>Grok V9 如果成功，故事不会是“1.5T + 2 周 RL 创造奇迹”，而会是“更大基础模型 + Cursor 真实工作流数据 + code-heavy mid-training + agentic RL 工程化闭环”共同起作用。</strong>如果失败，也未必说明 Cursor 数据没价值，可能是数据治理、任务过滤、harness mismatch、RL credit assignment、serving 成本或通用能力回退中的任何一环没接好。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>生成日期：2026-05-25。资料归档：`results/eliebakouch-x-2058796025091871141/`。本页为中文技术解读，不代表 xAI、Cursor 或 Elie Bakouch 的官方结论。</p>
+  </footer>
+</body>
+</html>

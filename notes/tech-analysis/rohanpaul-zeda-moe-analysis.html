@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZEDA：后训练 MoE 如何跳过一半专家计算</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20242a;
+      --muted: #64707b;
+      --paper: #f7f3eb;
+      --panel: #fffdf8;
+      --panel-2: #f0e9df;
+      --line: #d7cec0;
+      --line-strong: #a8957f;
+      --accent: #1f6678;
+      --accent-2: #9a5b24;
+      --accent-soft: #e3eef0;
+      --warn: #9a4d1c;
+      --warn-soft: #f6e4d7;
+      --ok: #326b53;
+      --ok-soft: #e1eee7;
+      --red: #9c3d32;
+      --red-soft: #f3ded9;
+      --violet: #5c5b86;
+      --violet-soft: #e7e4f0;
+      --code-bg: #171b20;
+      --code-fg: #e8edf2;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --shadow: 0 18px 44px rgba(35, 41, 47, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 102, 120, 0.26);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) clamp(18px, 4vw, 46px) 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.38fr);
+      gap: clamp(22px, 4vw, 44px);
+      align-items: end;
+      min-height: calc(70vh - var(--notes-shell-height, 46px));
+      padding: clamp(30px, 7vw, 86px) 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 920px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6vw, 76px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 10px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 24px;
+      font-size: clamp(20px, 2vw, 26px);
+      font-weight: 760;
+    }
+
+    p { margin: 0.78rem 0 0; }
+
+    .lead {
+      max-width: 830px;
+      color: #3f4852;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .toc,
+    .source-card,
+    .step-card,
+    .metric,
+    .evidence,
+    .quote-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: #43505b;
+      font-size: 14px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0 0;
+    }
+
+    .metric {
+      padding: 16px;
+      background: rgba(255, 253, 248, 0.78);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: 24px;
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section {
+      padding: clamp(34px, 6vw, 64px) 0 0;
+    }
+
+    .section > .section-lead {
+      max-width: 850px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .toc {
+      margin-top: 24px;
+      padding: 18px;
+      background: var(--panel-2);
+      box-shadow: none;
+    }
+
+    .toc a {
+      display: inline-block;
+      margin: 5px 14px 5px 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .source-card,
+    .step-card,
+    .panel,
+    .evidence,
+    .quote-card {
+      padding: 18px;
+    }
+
+    .source-card b,
+    .step-card b,
+    .evidence b,
+    .quote-card b {
+      display: block;
+      color: var(--accent-2);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .source-card p,
+    .step-card p,
+    .evidence p,
+    .quote-card p { color: #424b54; }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px 20px;
+      background: var(--accent-soft);
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn {
+      background: var(--warn-soft);
+      border-left-color: var(--warn);
+    }
+
+    .callout.ok {
+      background: var(--ok-soft);
+      border-left-color: var(--ok);
+    }
+
+    .callout.red {
+      background: var(--red-soft);
+      border-left-color: var(--red);
+    }
+
+    .callout.violet {
+      background: var(--violet-soft);
+      border-left-color: var(--violet);
+    }
+
+    .figure {
+      margin: 24px 0 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      color: #29313a;
+      background: var(--panel-2);
+      font-weight: 800;
+    }
+
+    td { color: #3f4852; }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .scroll-table {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .scroll-table table {
+      margin-top: 0;
+      min-width: 760px;
+      border: 0;
+    }
+
+    code {
+      padding: 0.14em 0.34em;
+      border-radius: 4px;
+      background: #eee5d8;
+      color: #3b2f25;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 0;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border: 1px solid #2d3540;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+      line-height: 1.62;
+    }
+
+    .formula {
+      margin-top: 18px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      background: #fbf8f1;
+      border: 1px solid var(--line);
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 6px 6px 0 0;
+      padding: 4px 8px;
+      color: #33414c;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .divider {
+      height: 1px;
+      margin: 30px 0 0;
+      background: var(--line);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    ul, ol { padding-left: 1.35rem; }
+    li { margin-top: 0.55rem; }
+
+    @media (max-width: 880px) {
+      .hero,
+      .grid-2,
+      .grid-3,
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 36px;
+      }
+
+      .metric b { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">X Thread + Paper Reading</div>
+        <h1>ZEDA：后训练 MoE 如何跳过一半专家计算</h1>
+        <p class="lead">Rohan Paul 这条 X 帖的核心不只是“MoE 省了一半专家 FLOPs”，而是指出一个更实用的路线：已经训练好的静态 MoE，也可以在不重新预训练的前提下，学会按 token 决定是否真的需要专家计算。</p>
+        <div class="meta-grid">
+          <div class="metric"><b>51.2% / 53.0%</b><span>Qwen3 / GLM 的平均 zero-expert activation ratio</span></div>
+          <div class="metric"><b>74.9 → 74.2</b><span>Qwen3-30B-A3B 平均分，专家 FLOPs 约减半</span></div>
+          <div class="metric"><b>~1.20×</b><span>论文报告的端到端推理吞吐提升量级</span></div>
+          <div class="metric"><b>30h / 61h</b><span>两模型在 8 张 H200 上的适配总时间</span></div>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <strong>一句话判断</strong>
+        <p>ZEDA 的新意不是发明 MoE，也不是普通剪枝；它把“是否调用真实专家”变成一个可蒸馏、可正则、可部署的路由决策。</p>
+        <div class="divider"></div>
+        <p class="small">材料：Rohan Paul X 主帖、arXiv:2605.18643、TsinghuaC3I/ZEDA README、论文 PDF 图表与本地抽取文本。</p>
+      </aside>
+    </section>
+
+    <nav class="toc">
+      <a href="#source">来源地图</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">方法机制</a>
+      <a href="#evaluation">实验结果</a>
+      <a href="#dynamics">动态计算</a>
+      <a href="#limits">边界与误读</a>
+      <a href="#practice">工程启发</a>
+      <a href="#insight">我的判断</a>
+      <a href="#commands">复现记录</a>
+    </nav>
+
+    <section id="source" class="section">
+      <h2>来源地图</h2>
+      <p class="section-lead">这次阅读的主材料是 Rohan Paul 对论文的技术摘要；真正的机制、公式、实验表和局限来自论文与官方仓库。报告中的结论以论文 PDF 为主，X 帖只作为问题入口和观点提示。</p>
+      <div class="grid-2">
+        <div class="source-card">
+          <b>X 主帖</b>
+          <p>主帖 ID 为 <code>2058620038693999012</code>，作者 Rohan Paul。帖子强调“很多 token 不需要真实专家”“ZEDA 像 attention to computational doubt”，并给出论文 arXiv ID <code>2605.18643</code>。</p>
+        </div>
+        <div class="source-card">
+          <b>论文</b>
+          <p>题名为 <em>Post-Trained MoE Can Skip Half Experts via Self-Distillation</em>，作者来自 Tsinghua University、Shanghai AI Lab、WeChat AI、Kuaishou Technology、Frontis.AI。PDF 共 25 页。</p>
+        </div>
+        <div class="source-card">
+          <b>官方仓库</b>
+          <p><code>TsinghuaC3I/ZEDA</code> 提供 README、训练脚本说明、模型和数据集发布入口。仓库说明了基于 slime、SGLang、Megatron 的训练与评估流程。</p>
+        </div>
+        <div class="source-card">
+          <b>本地归档</b>
+          <p>线程 JSON、作者 profile、arXiv HTML/PDF、PDF 文本、GitHub README、搜索结果和精确主帖图片都保存到本仓库 <code>results/rohanpaul-ai-x-2058620038693999012/</code>。</p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="rohanpaul-zeda-moe-assets/x-post-paper-overview.png" alt="Rohan Paul X post attached paper overview image">
+        <figcaption>主帖的精确媒体 URL 只包含这一张图，内容是论文首页与 ZEDA 总览图。此前通用下载命令混入了页面推荐内容，本报告没有引用那些未匹配主帖的图片。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem" class="section">
+      <h2>问题背景</h2>
+      <p class="section-lead">标准 MoE 已经不是“每个 token 都跑所有参数”，但它通常仍然保持固定的 top-k 专家预算。例如一个 token 无论是逗号、格式符号、代码缩进，还是难题关键推理词，都可能激活同样数量的专家。</p>
+
+      <div class="callout">
+        <p><strong>关键区别：</strong>稀疏 MoE 解决的是“不要跑所有专家”，动态 MoE 进一步问“这个 token 到底要跑几个真实专家”。ZEDA 关注的是更现实的一步：已经 pre-training + post-training 完成的 MoE，能否低成本迁移成动态 MoE。</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="step-card">
+          <b>静态 top-k MoE</b>
+          <p>router 为每个 token 选择 top-k 专家，但 k 是固定的。它能省掉未选专家的计算，却不能表达“这个 token 只需要 2 个专家，而不是 8 个”。</p>
+        </div>
+        <div class="step-card">
+          <b>动态 MoE 的难点</b>
+          <p>如果从头训练动态 MoE，代价很大；如果在后训练模型上粗暴改 router，很容易破坏已经学好的专家分工、路由分布和指令能力。</p>
+        </div>
+        <div class="step-card">
+          <b>ZEDA 的目标</b>
+          <p>保留原模型主体和原专家能力，只增加“零输出专家”作为跳过选项，再用原模型当 teacher，把新 router 适配到可用状态。</p>
+        </div>
+      </div>
+
+      <p>Rohan 帖子里说“many MoE tokens do not need real experts, only permission to skip them”，这句话抓住了论文的工程本质：不是每个 token 都缺模型容量，很多 token 只是缺一个合法的低计算路径。</p>
+    </section>
+
+    <section id="mechanism" class="section">
+      <h2>方法机制</h2>
+      <p class="section-lead">ZEDA 的结构很克制：不重训大模型，不重写 MoE 层，不把正常专家压缩掉。它只给 router 增加一组输出恒为 0 的候选专家，并通过两阶段自蒸馏恢复质量。</p>
+
+      <div class="grid-2">
+        <div class="step-card">
+          <b>Step 1：注入 zero experts</b>
+          <p>原 MoE 层有 \(N\) 个正常专家，每个 token 激活 \(K\) 个。ZEDA 加入 \(N_Z\) 个 zero experts，它们的输出恒为 0，router 候选池变成 \(N+N_Z\)，但 top-\(K\) 预算不变。</p>
+        </div>
+        <div class="step-card">
+          <b>Step 2：保持正常专家不被打乱</b>
+          <p>正常专家的 router 参数保留；新增 zero experts 的 router 参数按原 router 参数的均值和方差初始化。这样做的目的，是让新选项进入同一个 logit 尺度，而不是从异常尺度开始破坏路由。</p>
+        </div>
+        <div class="step-card">
+          <b>Step 3：SFT 自蒸馏</b>
+          <p>原后训练 MoE 冻结为 teacher，先生成 rollout；增强后的动态 MoE 作为 student，在 teacher response 上做 SFT，同时带上 group auxiliary loss。</p>
+        </div>
+        <div class="step-card">
+          <b>Step 4：OPD 自蒸馏</b>
+          <p>第二阶段进入 on-policy distillation：student 自己采样 response，teacher 在相同轨迹上提供 token-level reverse KL 目标。这样可以修正 student 测试时会进入自己分布的问题。</p>
+        </div>
+      </div>
+
+      <div class="formula">
+        \[
+        \tilde y(h)=\sum_{i \in \tilde S(h)\cap \mathcal{E}}\tilde g_i(h) E_i(h)
+        \]
+        <p class="small">如果 top-\(K\) 里包含 zero experts，它们不在上式求和中出现，因为 \(Z_j(h)=0\)。因此同样是 top-\(K\)，真实专家 FFN 的计算量会按 token 变化。</p>
+      </div>
+
+      <div class="formula">
+        \[
+        \mathcal{L}_{GA}=\alpha \cdot \frac{N+N_Zw}{K}
+        \left(\frac{f_{\mathcal{E}}P_{\mathcal{E}}}{N}
+        +\frac{f_{\mathcal{Z}}P_{\mathcal{Z}}}{N_Zw}\right)
+        \]
+        <p class="small">这不是普通的 expert-level load balancing。它只在“正常专家组”和“零专家组”之间做约束，目标是控制 zero-expert activation ratio，同时尽量保留正常专家内部原本非均匀、输入相关的路由结构。</p>
+      </div>
+
+      <figure class="figure">
+        <img src="rohanpaul-zeda-moe-assets/paper-page-01.png" alt="ZEDA paper first page">
+        <figcaption>论文首页图把 ZEDA 分成两个动作：zero-expert injection 与 self-distillation。左边是架构转换，右边是 teacher/student 适配流程。</figcaption>
+      </figure>
+
+      <div class="callout ok">
+        <p><strong>为什么不是 copy expert？</strong>论文附录专门比较了 zero expert 与 copy expert。copy expert 输出输入 \(h\)，会额外把隐藏状态注入 MoE 残差分支，引入 scale 和 direction mismatch；数学推理平均分从原模型 82.8 掉到 20.7。zero expert 才是真正的“跳过专家”。</p>
+      </div>
+    </section>
+
+    <section id="evaluation" class="section">
+      <h2>实验结果</h2>
+      <p class="section-lead">论文的结果强在两点：一是两个不同 MoE 架构上都能约减半 expert FLOPs；二是它和 AdaMoE、Dynamic Skipping、naive expert truncation 相比，没有出现明显的能力局部崩塌。</p>
+
+      <div class="scroll-table">
+        <table>
+          <thead>
+            <tr>
+              <th>模型 / 方法</th>
+              <th>Avg Acc</th>
+              <th>Avg \(r_{ZE}\)</th>
+              <th>观察</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Qwen3-30B-A3B 原模型</td>
+              <td>74.9</td>
+              <td>0.0</td>
+              <td>固定专家预算，是 ZEDA 的 teacher 与质量参照。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-30B-A3B + ZEDA</td>
+              <td>74.2</td>
+              <td>51.2</td>
+              <td>平均分只降 0.7，同时约一半激活专家变成 zero experts。</td>
+            </tr>
+            <tr>
+              <td>GLM-4.7-Flash 原模型</td>
+              <td>72.5</td>
+              <td>0.0</td>
+              <td>第二个架构，用来验证方法不是只适配 Qwen。</td>
+            </tr>
+            <tr>
+              <td>GLM-4.7-Flash + ZEDA</td>
+              <td>71.8</td>
+              <td>53.0</td>
+              <td>平均分降 0.7，zero-expert 利用率略高于 50%。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid-3">
+        <div class="evidence">
+          <b>评测范围</b>
+          <p>11 个 benchmark，覆盖数学推理、代码生成和指令跟随：AIME 24/25/26、GSM8K、MATH-500、LiveCodeBench v5/v6、HumanEval+、MBPP+、IFBench、IFEval。</p>
+        </div>
+        <div class="evidence">
+          <b>适配数据</b>
+          <p>60k prompts：17k math、15k code、28k chat。SFT 用 teacher rollout，OPD 用 student rollout + teacher token-level targets。</p>
+        </div>
+        <div class="evidence">
+          <b>适配成本</b>
+          <p>Qwen 总计 30.12 小时，GLM 总计 61.37 小时，硬件为 8 张 NVIDIA H200。与重新 pre-training 相比，这是后处理级别成本。</p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="rohanpaul-zeda-moe-assets/paper-page-07.png" alt="ZEDA main results table">
+        <figcaption>主结果表：ZEDA 的优势不是某一列特别高，而是在约 50% zero-expert activation 下仍保持数学、代码、指令跟随的整体稳定性。</figcaption>
+      </figure>
+
+      <figure class="figure">
+        <img src="rohanpaul-zeda-moe-assets/paper-page-08.png" alt="ZEDA inference efficiency figure">
+        <figcaption>推理吞吐图：8192 sequence length、SGLang、1 张 H200、最大并发 32。ZEDA 对 prefill 和 decode 都有提升，但提升是 18%-26% / 19% 左右，不是 2×。</figcaption>
+      </figure>
+
+      <div class="callout warn">
+        <p><strong>必须避免的误读：</strong>“跳过一半专家 FLOPs”不等于“模型推理整体快一倍”。Attention、router、非 MoE 组件、通信和框架开销仍然存在，所以端到端吞吐提升约 20%。这恰好说明论文没有夸张：它把 expert FFN 这块省下来，但没有假装整个系统只剩 expert FFN。</p>
+      </div>
+    </section>
+
+    <section id="dynamics" class="section">
+      <h2>动态计算到底跟什么相关</h2>
+      <p class="section-lead">Rohan 帖子里最有洞察的一句是：compute use did not simply track task difficulty。论文也验证了这一点，但更精确的说法是：zero-expert activation 与 token-level teacher-student gap、entropy、response pattern 更相关，而不是与整道题的难度标签直接对应。</p>
+
+      <div class="grid-2">
+        <div class="panel">
+          <h3>不是按任务难度粗粒度分配</h3>
+          <p>论文在 MATH-500 不同难度级别和 AIME24 上比较 \(r_{ZE}\)，发现不同难度级别的 \(r_{ZE}\) 很接近。这说明模型不是看到“难题”就全程少跳专家，也不是看到“简单题”就全程多跳专家。</p>
+        </div>
+        <div class="panel">
+          <h3>更像按 token 不确定性分配</h3>
+          <p>当 student 与 teacher 的 token log probability 差距更大，或 student entropy 更高时，\(r_{ZE}\) 往往更低，也就是调用更多真实专家。这里的“doubt”可以理解为局部轨迹上的分布不确定性，而不是人类主观题目难度。</p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="rohanpaul-zeda-moe-assets/paper-page-09.png" alt="ZEDA zero expert activation dynamics">
+        <figcaption>论文分析图：token-level \(r_{ZE}\) 与 teacher-student logp-diff、entropy、response pattern 相关。结构化代码片段和数学表达式经常能用更高 zero-expert ratio 通过。</figcaption>
+      </figure>
+
+      <div class="callout">
+        <p><strong>我的理解：</strong>ZEDA 不是让模型学一个显式 difficulty classifier，而是让 router 在蒸馏损失和 group auxiliary loss 的拉扯中自然形成计算预算偏好。容易保持 teacher 分布的 token 会更愿意走 zero expert；teacher/student 分歧大的 token 会被任务损失拉回真实专家。</p>
+      </div>
+    </section>
+
+    <section id="limits" class="section">
+      <h2>边界与误读</h2>
+      <p class="section-lead">这篇工作有很强的部署价值，但不能把它外推成“MoE 都可以免费省一半计算”。论文自己也给出了不少边界。</p>
+
+      <div class="grid-2">
+        <div class="step-card">
+          <b>不是无需训练的 inference trick</b>
+          <p>ZEDA 需要 teacher rollout、SFT、OPD、group auxiliary loss 和工程栈改造。它是低成本后训练适配，不是运行时改几个阈值。</p>
+        </div>
+        <div class="step-card">
+          <b>不是所有组件都省</b>
+          <p>zero experts 只减少正常专家 FFN 计算；attention、router、shared layers、通信和采样成本仍在。序列越长，attention 占比越高，理论和实测 speedup 都会衰减。</p>
+        </div>
+        <div class="step-card">
+          <b>规模验证还有限</b>
+          <p>论文主要在 30B 级 MoE 上验证，作者明确说还没有评估 substantially larger-scale MoE deployments。</p>
+        </div>
+        <div class="step-card">
+          <b>Agent workload 未覆盖</b>
+          <p>评测集中在标准后训练任务，没有覆盖长程工具调用、真实 agent 环境、状态恢复、多轮外部反馈等 workload。</p>
+        </div>
+        <div class="step-card">
+          <b>OOD 并非完全无损</b>
+          <p>Qwen OOD 平均从 76.7 到 76.2 很稳；GLM OOD 平均从 76.1 到 72.9，尤其 GPQA-Diamond 从 62.4 到 56.8，需要按业务域重新校验。</p>
+        </div>
+        <div class="step-card">
+          <b>质量-效率旋钮有代价</b>
+          <p>group weight \(w\) 提高会推高 \(r_{ZE}\)，但平均分会下降。部署时应按 SLA 校准，而不是盲目追求更高跳过率。</p>
+        </div>
+      </div>
+
+      <div class="callout red">
+        <p><strong>最危险的产品化误读：</strong>把 \(r_{ZE}\) 当成“token 简单程度”的直接解释。论文支持的是统计相关：它与 teacher-student gap、entropy、response pattern 相关；它不是独立验证过的语义难度标签。</p>
+      </div>
+    </section>
+
+    <section id="practice" class="section">
+      <h2>工程启发</h2>
+      <p class="section-lead">如果要把 ZEDA 当作部署路线，关键不是复述论文分数，而是把它嵌入现有 serving、监控和回归测试流程。</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>问题</th>
+            <th>建议</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>适配哪些模型</td>
+            <td>优先选已经完成 post-training、服务成本高、MoE FFN 占比较大的模型。</td>
+            <td>ZEDA 的收益来自减少真实专家 FFN；如果瓶颈在 attention、KV cache 或 IO，收益会被稀释。</td>
+          </tr>
+          <tr>
+            <td>怎么选 \(w\)</td>
+            <td>把 \(w\) 当质量-成本 knob，从保守值开始，按真实业务集评估延迟、吞吐、质量和拒答率。</td>
+            <td>论文里 \(w=2\) 是 50% 附近的平衡点，但不同模型和任务域可能不同。</td>
+          </tr>
+          <tr>
+            <td>如何做回归</td>
+            <td>除了平均分，记录分任务分数、长输出、代码执行、科学问答、格式遵循、越狱安全与多轮一致性。</td>
+            <td>平均分相近可能掩盖某个高价值业务域的退化，GLM OOD 结果已经提示这个风险。</td>
+          </tr>
+          <tr>
+            <td>如何监控线上</td>
+            <td>按 token / layer 记录 zero-expert ratio 分布、p95/p99 latency、输出长度、router 异常漂移和高不确定性片段。</td>
+            <td>ZEDA 的动态性本身就是系统行为，不能只看最终答案。router 分布漂移可能先于质量退化出现。</td>
+          </tr>
+          <tr>
+            <td>与推理框架关系</td>
+            <td>需要 serving runtime 真正跳过 zero experts 并减少通信/调度开销，不能只在理论 FLOPs 上省。</td>
+            <td>论文使用 SGLang 做实测；真实收益取决于 kernel、expert parallel、通信框架和 batch 形态。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="insight" class="section">
+      <h2>我的判断</h2>
+      <p class="section-lead">ZEDA 的深层价值，是把 MoE 的“稀疏激活”从容量扩展技术推进到预算控制技术。</p>
+
+      <div class="quote-card">
+        <b>核心 insight</b>
+        <p>传统 MoE 让模型在“调用哪些专家”上稀疏；ZEDA 让模型在“要不要调用真实专家”上也稀疏。这个差异很重要，因为它把算力从架构超参变成了 token-level policy。</p>
+      </div>
+
+      <p>我不认为这篇论文的结论应该被理解为“模型一半计算都是浪费”。更准确的说法是：在后训练 MoE 中，有一部分 token 的专家 FFN 更新对 teacher behavior 的边际贡献很低，因此可以通过自蒸馏把它们迁移到零计算路径上。这个迁移是否成立，取决于 teacher/student 分布差距、router 正则、业务域覆盖和 serving runtime 的实际开销。</p>
+
+      <p>它真正打开的是一个方向：未来的大模型不只要学会输出 token，还要学会为每个 token 选择计算强度。现在的 test-time scaling 通常是在样本级别加算力，例如多采样、多轮搜索、verifier rerank；ZEDA 是在模型内部把算力分配下沉到 token 与 layer 级别。两条线最终可能会合并：外层决定一道任务值得多少预算，内层决定每个 token 值得多少专家计算。</p>
+
+      <div class="callout violet">
+        <p><strong>最值得继续追的问题：</strong>如果 router 的 zero-expert ratio 真的反映局部分布不确定性，那么它能否成为在线 serving 的自诊断信号？例如当某类请求的 \(r_{ZE}\) 长期异常下降，是否意味着模型遇到了分布漂移、提示攻击或业务输入变难？论文没有回答，但这是 ZEDA 除了省钱之外更有想象力的地方。</p>
+      </div>
+    </section>
+
+    <section id="commands" class="section">
+      <h2>复现记录</h2>
+      <p class="section-lead">以下是本次材料获取和校验的关键路径，保留用于后续复查。</p>
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com|web"
+opencli twitter --help
+opencli twitter thread --help
+opencli web read --help
+
+opencli twitter thread "https://x.com/rohanpaul_ai/status/2058620038693999012" \
+  --limit 100 -f json --trace retain-on-failure \
+  &gt; "results/rohanpaul-ai-x-2058620038693999012/thread-2058620038693999012.json"
+
+curl -L "https://arxiv.org/pdf/2605.18643" \
+  -o "results/rohanpaul-ai-x-2058620038693999012/refs/2605.18643-zeda.pdf"
+pdfinfo "results/rohanpaul-ai-x-2058620038693999012/refs/2605.18643-zeda.pdf"
+pdftotext -layout \
+  "results/rohanpaul-ai-x-2058620038693999012/refs/2605.18643-zeda.pdf" \
+  "results/rohanpaul-ai-x-2058620038693999012/refs/2605.18643-zeda.txt"
+
+curl -L "https://raw.githubusercontent.com/TsinghuaC3I/ZEDA/main/README.md" \
+  -o "results/rohanpaul-ai-x-2058620038693999012/refs/github-zeda-readme.md"</code></pre>
+      <p class="small">媒体说明：<code>opencli twitter download</code> 曾下载到 3 张图片和 2 个失败视频，但 OCR 显示其中图片不是主帖材料；最终只采用线程 JSON 中 <code>media_urls</code> 精确指向的主帖图。</p>
+    </section>
+  </main>
+</body>
+</html>

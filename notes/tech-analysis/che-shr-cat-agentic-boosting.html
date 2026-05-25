@@ -1,0 +1,1130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agentic Systems as Boosting Weak Reasoning Models 深度解读</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f1c18;
+      --muted: #665f56;
+      --subtle: #8f8579;
+      --paper: #f7f1e8;
+      --panel: #fffdf8;
+      --panel-2: #efe5d7;
+      --line: #d9cbb8;
+      --line-strong: #a9967e;
+      --accent: #b24d2c;
+      --accent-soft: #f2d5c7;
+      --blue: #285e86;
+      --blue-soft: #dbe8f2;
+      --green: #386a54;
+      --green-soft: #dfe9df;
+      --violet: #624f97;
+      --violet-soft: #e6def1;
+      --gold: #926717;
+      --gold-soft: #efe1bc;
+      --red: #923c30;
+      --red-soft: #efd8d3;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --shadow: 0 18px 44px rgba(37, 31, 23, 0.11);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(31, 28, 24, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(31, 28, 24, 0.022) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(40, 94, 134, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 54px);
+      background: rgba(247, 241, 232, 0.94);
+      border-bottom: 1px solid rgba(31, 28, 24, 0.14);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+    }
+
+    .mark {
+      width: 25px;
+      height: 25px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 40%, var(--accent) 41% 56%, transparent 57%),
+        linear-gradient(45deg, transparent 0 42%, var(--blue) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
+      gap: clamp(30px, 5vw, 70px);
+      align-items: end;
+      min-height: 82vh;
+      padding: clamp(56px, 9vw, 110px) clamp(20px, 5vw, 72px) 46px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.96) 0 43%, rgba(255, 253, 248, 0.78) 44% 100%),
+        url("che-shr-cat-agentic-boosting-assets/x-protocol.png") right 8% bottom 23% / min(42vw, 620px) auto no-repeat;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 920px;
+      font-family: var(--serif);
+      font-size: clamp(40px, 6.6vw, 84px);
+      font-weight: 800;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 48px);
+      font-weight: 800;
+    }
+
+    h3 {
+      margin-top: 26px;
+      font-size: clamp(20px, 2.2vw, 25px);
+      font-weight: 800;
+    }
+
+    p { margin: 14px 0 0; }
+
+    .lead {
+      max-width: 860px;
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: clamp(18px, 2.2vw, 24px);
+      line-height: 1.58;
+      font-weight: 520;
+    }
+
+    .hero-side {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 14px;
+      align-self: stretch;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 920px;
+      margin-top: 34px;
+    }
+
+    .metric {
+      min-height: 112px;
+      padding: 16px;
+      border: 1px solid rgba(31, 28, 24, 0.16);
+      background: rgba(255, 253, 248, 0.85);
+      box-shadow: 0 10px 26px rgba(37, 31, 23, 0.08);
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--ink);
+      font-size: clamp(23px, 3vw, 34px);
+      line-height: 1.02;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .side-card,
+    .panel,
+    .callout,
+    .figure,
+    .source-card,
+    .claim,
+    .step,
+    .formula,
+    .mini-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .side-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .side-card b,
+    .source-card b,
+    .claim b,
+    .step b,
+    .mini-card b {
+      display: block;
+      color: var(--ink);
+    }
+
+    .side-card span,
+    .source-card span,
+    .claim span,
+    .step span,
+    .mini-card span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 clamp(18px, 4vw, 52px) 76px;
+    }
+
+    section {
+      padding-top: clamp(42px, 7vw, 74px);
+    }
+
+    .section-lead {
+      max-width: 870px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 26px;
+    }
+
+    .toc a {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 10px 13px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+      color: var(--ink);
+      font-weight: 700;
+      line-height: 1.32;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .source-card,
+    .claim,
+    .step,
+    .mini-card {
+      padding: 18px;
+    }
+
+    .source-card small,
+    .claim small,
+    .step small {
+      display: inline-flex;
+      margin-bottom: 9px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .panel {
+      padding: clamp(20px, 3vw, 30px);
+      margin-top: 22px;
+    }
+
+    .panel.wide {
+      background: rgba(255, 253, 248, 0.9);
+    }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border-left: 5px solid var(--accent);
+      background: linear-gradient(90deg, rgba(242, 213, 199, 0.55), rgba(255, 253, 248, 0.96));
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: linear-gradient(90deg, rgba(219, 232, 242, 0.7), rgba(255, 253, 248, 0.96));
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: linear-gradient(90deg, rgba(223, 233, 223, 0.78), rgba(255, 253, 248, 0.96));
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: linear-gradient(90deg, rgba(239, 216, 211, 0.75), rgba(255, 253, 248, 0.96));
+    }
+
+    .callout b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--ink);
+    }
+
+    .formula {
+      margin-top: 18px;
+      padding: 18px;
+      overflow-x: auto;
+      background: #fffaf1;
+    }
+
+    .formula-title {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #312b25;
+      font-size: 15px;
+    }
+
+    .figure {
+      margin: 24px 0 0;
+      padding: 12px;
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .figure figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      gap: 18px;
+      margin-top: 22px;
+      align-items: start;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.76);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border: 1px solid rgba(31, 28, 24, 0.16);
+      background: rgba(242, 213, 199, 0.42);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    ul,
+    ol {
+      margin: 14px 0 0;
+      padding-left: 1.25rem;
+    }
+
+    li { margin: 7px 0; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: #efe4d4;
+      color: #3d2e22;
+      padding: 0.12em 0.34em;
+    }
+
+    pre {
+      margin: 18px 0 0;
+      padding: 18px;
+      overflow-x: auto;
+      background: #1c1a17;
+      color: #f2ece4;
+      border: 1px solid #453a31;
+    }
+
+    pre code {
+      display: block;
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre;
+    }
+
+    .footer-note {
+      margin-top: 52px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        background:
+          linear-gradient(120deg, rgba(255, 253, 248, 0.96), rgba(255, 253, 248, 0.88)),
+          url("che-shr-cat-agentic-boosting-assets/x-protocol.png") right 10% bottom 6% / min(82vw, 520px) auto no-repeat;
+      }
+
+      .metric-grid,
+      .grid-4,
+      .toc {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3,
+      .grid-2,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav {
+        width: 100%;
+        padding-bottom: 2px;
+      }
+
+      .hero {
+        padding-top: 42px;
+        background:
+          linear-gradient(120deg, rgba(255, 253, 248, 0.98), rgba(255, 253, 248, 0.94));
+      }
+
+      .metric-grid,
+      .grid-4,
+      .grid-3,
+      .grid-2,
+      .toc {
+        grid-template-columns: 1fr;
+      }
+
+      h1 { font-size: clamp(34px, 12vw, 48px); }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/notes/">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Ricardo Notes</span>
+    </a>
+    <nav class="nav" aria-label="Page sections">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#protocol">机制</a>
+      <a href="#math">公式</a>
+      <a href="#evidence">证据</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Thread + arXiv Paper Reading</div>
+      <h1>Agentic Systems as Boosting Weak Reasoning Models</h1>
+      <p class="lead">
+        这篇论文真正讨论的不是“多 Agent 更强”，而是一个更硬的工程命题：
+        弱模型的候选池里经常已经有正确解，系统瓶颈从生成转向选择；但选择能力只有在存在局部可验证信号时才会被推理期编排放大。
+      </p>
+      <div class="metric-grid" aria-label="Key numbers">
+        <div class="metric">
+          <strong>67.0%</strong>
+          <span>GPT-5.4 nano 单次 proposal 在 SWE-bench Verified 上的论文摘要数值。</span>
+        </div>
+        <div class="metric">
+          <strong>76.4%</strong>
+          <span>同一 nano 模型加上 \( \Pi(8,5,5) \) critic-comparator harness 后的 resolve rate。</span>
+        </div>
+        <div class="metric">
+          <strong>79.0%</strong>
+          <span>同一 8-proposal pool 的 oracle best-of-8 上界，使用隐藏测试做诊断，不能部署。</span>
+        </div>
+        <div class="metric">
+          <strong>78.3%</strong>
+          <span>最佳 critic threshold 下的 oracle-gap recovery，表示 selector 回收了多少候选池潜能。</span>
+        </div>
+      </div>
+    </div>
+    <aside class="hero-side" aria-label="Reading stance">
+      <div class="side-card">
+        <b>一句话结论</b>
+        <span>这篇工作把 test-time scaling 从“多采样”推进到“proposal coverage + local identifiability + progress + diversity”的可诊断框架。</span>
+      </div>
+      <div class="side-card">
+        <b>需要特别小心的点</b>
+        <span>“弱模型追平 frontier model”不是模型权重能力追平，而是在 SWE-bench Verified、固定候选池和特定选择 harness 下，系统级 solve rate 接近部分强模型。</span>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <h2>来源地图</h2>
+      <p class="section-lead">
+        本报告以 X 线程为入口，但主要结论来自 arXiv 论文正文和源码级公式核对。Substack 文章只作为作者对外传播版本的辅助上下文，不作为实验结论的唯一依据。
+      </p>
+      <div class="grid-3">
+        <div class="source-card">
+          <small>X Thread</small>
+          <b>che_shr_cat 线程</b>
+          <span>抓取主帖、作者后续 10 条线程内容、讨论区回复和 6 张配图。线程负责提出传播性 claim：弱模型候选池里有正确解，critic-comparator harness 可以把它选出来。</span>
+        </div>
+        <div class="source-card">
+          <small>Primary Paper</small>
+          <b>arXiv:2605.14163</b>
+          <span>下载并核验 PDF，题名为 <em>Agentic Systems as Boosting Weak Reasoning Models</em>。使用 PDF 正文、arXiv API 元数据和 LaTeX 源码交叉核对公式与实验表。</span>
+        </div>
+        <div class="source-card">
+          <small>Author Breakdown</small>
+          <b>arXiv IQ Substack</b>
+          <span>原帖短链指向作者的完整 breakdown。当前可抓取正文含 TL;DR 和付费墙前的背景段，因此只用于确认作者解读角度，不扩展不可见内容。</span>
+        </div>
+      </div>
+
+      <div class="callout blue">
+        <b>核验路径</b>
+        <p>
+          原帖短链解析到 Substack 和 arXiv；arXiv API 显示论文于 2026-05-13 提交，分类为 <code>cs.AI</code>，作者为 Varun Sunkaraneni、Pierfrancesco Beneventano、Riccardo Neumarker、Tomaso Poggio、Tomer Galanti。PDF 用 <code>pdfinfo</code> 确认为 32 页；源码中关键误差项是 \(k^2 e^{-\beta m - 2r\sigma^2}\)，其中 \(\sigma^2\) 来自 Hoeffding bound，而不是简单的一次项。
+        </p>
+      </div>
+
+      <figure class="figure">
+        <img src="che-shr-cat-agentic-boosting-assets/x-root.jpg" alt="X thread opening card for Agentic Systems as Boosting Weak Reasoning Models" />
+        <figcaption>原帖首图：它把论文包装成“弱模型 latent space 已经有正确解，但不会选择”。报告后文会把这个说法拆成更精确的 proposal coverage 与 identifiability。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <h2>问题到底是什么</h2>
+      <p class="section-lead">
+        软件工程、证明、程序合成这类任务和普通问答不同。一次回答不是只输出一个 label，而是要在状态空间里连续做局部动作：读仓库、定位文件、改 patch、跑测试、修复副作用。每一步都可能局部看似合理但全局失败。
+      </p>
+
+      <div class="grid-4">
+        <div class="claim">
+          <small>Coverage</small>
+          <b>好候选有没有出现</b>
+          <span>多次采样可以增加候选池覆盖率。这里的关键指标是 oracle best-of-k：如果隐藏测试允许你事后挑最好的，候选池能解决多少任务。</span>
+        </div>
+        <div class="claim">
+          <small>Identifiability</small>
+          <b>能不能识别好候选</b>
+          <span>候选出现不等于系统能选中。critic、comparator、测试、类型检查、执行轨迹都是选择信号，但它们必须对正确性有正 edge。</span>
+        </div>
+        <div class="claim">
+          <small>Progress</small>
+          <b>局部选择能否组合</b>
+          <span>一次局部正确不够。论文用 rank/depth 建模：如果每步都保持 validity 且降低距离，最多 \(L_x\) 步到达终态。</span>
+        </div>
+        <div class="claim">
+          <small>Diversity</small>
+          <b>更多调用是否真正不同</b>
+          <span>如果所有 proposer 在同一类问题上都不给正确动作分配概率，增加调用数只能降低采样噪声，不能消除 blind-spot floor。</span>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <h3>为什么“多采样”不是完整答案</h3>
+        <p>
+          论文反复强调一个分离：coverage 不自动产生 identifiability。你可以让模型均匀地产生很多动作，但如果系统观测不到隐藏世界参数，critic 和 comparator 仍然无法知道哪个动作错。对应到真实工程任务：候选 patch 里可能有一个通过隐藏测试，但如果 visible tests、执行日志、代码 review 信号无法区分它和过拟合 patch，selector 就会失败。
+        </p>
+        <p>
+          这也是这篇论文相对一般 best-of-N / self-consistency 讨论更有价值的地方。它不是只说“采样越多越强”，而是要求报告四个量：pass@1、oracle best-of-k、implemented system success 和 oracle-gap recovery。只有这四个量同时出现，才能诊断瓶颈到底在生成、选择还是共享盲点。
+        </p>
+      </div>
+    </section>
+
+    <section id="protocol">
+      <h2>\(\Pi(k,m,r)\) 协议怎么工作</h2>
+      <p class="section-lead">
+        论文把一个 agentic workflow 抽象成 bounded-depth search。每个非终止状态 \(s\) 上，系统先生成候选动作，再用 critic 粗过滤，最后用 pairwise comparator 排名，选择 Copeland winner 并推进到下一状态。
+      </p>
+
+      <div class="grid-3">
+        <div class="step">
+          <small>Step 1</small>
+          <b>Proposer: 生成 \(k\) 个候选动作</b>
+          <span>在 SWE-bench 实验中，动作是 candidate patch。每个任务固定生成 \(k=8\) 个 GPT-5.4 nano proposer patch，并在所有 ablation 中复用。</span>
+        </div>
+        <div class="step">
+          <small>Step 2</small>
+          <b>Critic: 每个候选做 \(m\) 次二元过滤</b>
+          <span>critic 判断 patch 是否 plausibly resolve issue。它不是隐藏测试，也不是正确性 oracle；最佳用法是 permissive pre-filter，主要丢掉 0-yes patch。</span>
+        </div>
+        <div class="step">
+          <small>Step 3</small>
+          <b>Comparator: 每对候选做 \(r\) 次偏好比较</b>
+          <span>survivors 之间做 pairwise tournament，用 Copeland-style voting 汇总。论文还做 position-swap debiasing，只有两个展示顺序一致选择同一 patch 才算一场 win。</span>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="che-shr-cat-agentic-boosting-assets/x-protocol.png" alt="Protocol diagram showing propose critique compare loop" />
+        <figcaption>线程配图对协议做了直观表达：proposer 负责 breadth，critic 删除明显坏候选，comparator 在剩余候选里做局部排序。</figcaption>
+      </figure>
+
+      <div class="panel">
+        <h3>Copeland-style voting 为什么重要</h3>
+        <p>
+          单轮 bracket 容易被偶然噪声污染：一个好 patch 如果早期遇到某个噪声判断就可能被淘汰。Copeland-style aggregation 更像完整 round-robin：每个候选和其他候选比较，按 pairwise win 计分。因此它保留了更多局部偏好证据。论文附录表 1 显示：Copeland round-robin 和 strict dominance 都到 75.8%，single-elimination bracket 只有 74.6%。
+        </p>
+      </div>
+    </section>
+
+    <section id="math">
+      <h2>数学结构：错误来自哪里</h2>
+      <p class="section-lead">
+        这篇论文的核心公式不难，但很容易被误读。它不是在证明“任意多 Agent 都会指数变强”，而是在说明：在 coverage、critic edge、comparator edge、trajectory depth 都满足条件时，局部错误可以被分解并控制。
+      </p>
+
+      <div class="formula">
+        <div class="formula-title">Local Error Decomposition</div>
+        \[
+          \varepsilon_{\mathrm{loc}}(s)
+          \le
+          \varepsilon_{\mathrm{prop}}(k;s)
+          + k^2(1-\beta)^m e^{-2r\sigma^2}
+          \le
+          \varepsilon_{\mathrm{prop}}(k;s)
+          + k^2 e^{-\beta m - 2r\sigma^2}.
+        \]
+        <p>
+          第一项是 proposal failure：\(k\) 个候选里没有任何 progressing-sound action。第二项是 identification failure：坏候选通过了 critic，并且在 comparator 投票中击败了好候选。
+        </p>
+      </div>
+
+      <div class="formula">
+        <div class="formula-title">Global Failure Bound</div>
+        \[
+          \mathrm{err}_x(k,m,r)
+          \le
+          L_x\left(\varepsilon_{\mathrm{prop}}(k) + k^2 e^{-\beta m - 2r\sigma^2}\right).
+        \]
+        <p>
+          \(L_x\) 是轨迹深度上界。含义很工程化：局部选择错误会沿轨迹累积，所以越长的任务越需要更强的局部选择信号，或者更低的每步错误率。
+        </p>
+      </div>
+
+      <div class="formula">
+        <div class="formula-title">Blind-Spot Floor</div>
+        \[
+          \varepsilon_{\mathrm{prop}}(k;s)
+          =
+          \mathbb{E}[(1-q_s(Z))^k]
+          =
+          B_s + R_k(s),
+          \qquad
+          B_s = \mathbb{P}(q_s(Z)=0).
+        \]
+        <p>
+          \(R_k(s)\) 是有限采样残差，增加 proposal width 可以降低它；\(B_s\) 是 blind-spot floor，如果某类任务上 proposer 对正确动作分配零概率，那么再强的 selector 也无候选可选。
+        </p>
+      </div>
+
+      <div class="callout green">
+        <b>我对公式的读法</b>
+        <p>
+          \(k^2\) 不是说多采样有害，而是 pairwise 错误机会随候选对数增加。增加 \(k\) 同时做两件相反的事：提升覆盖率，扩大选择难度。所以系统设计不能只调 proposal width，还要同步提高 critic/comparator 的边际质量和调用预算。
+        </p>
+      </div>
+
+      <figure class="figure">
+        <img src="che-shr-cat-agentic-boosting-assets/x-bound.jpg" alt="Thread screenshot containing global error bound" />
+        <figcaption>线程中的简化公式抓住了方向，但报告采用论文 LaTeX 源码核对后的形式：comparator edge 的指数项是 \(2r\sigma^2\)。</figcaption>
+      </figure>
+    </section>
+
+    <section id="evidence">
+      <h2>实验证据：SWE-bench Verified</h2>
+      <p class="section-lead">
+        实验用 SWE-bench Verified 的 500 个真实软件工程任务。每个任务先用 GPT-5.4 nano 生成 8 个独立候选 patch，所有 selector ablation 复用同一候选池，因此性能差异主要来自选择规则，而不是生成阶段变化。
+      </p>
+
+      <div class="two-col">
+        <figure class="figure">
+          <img src="che-shr-cat-agentic-boosting-assets/x-results.png" alt="Thread results table showing GPT-5.4 nano orchestration and model comparisons" />
+          <figcaption>线程配图中的主结果：同一 nano proposal pool 加 full orchestration 后达到 76.4%，接近 79.0% oracle best-of-8。</figcaption>
+        </figure>
+        <div class="panel">
+          <h3>指标怎么解释</h3>
+          <ul>
+            <li><strong>Pass@1 / single proposal</strong>：一次生成直接提交 patch，测的是 proposer 的单次终端成功率。</li>
+            <li><strong>Oracle best-of-k</strong>：事后用隐藏测试挑候选池中是否存在正确 patch，不能部署，只能诊断 proposal coverage。</li>
+            <li><strong>Implemented system success</strong>：真实 selector 只能看 issue、patch、visible tests、execution traces 等局部信号。</li>
+            <li><strong>Oracle-gap recovery</strong>：\((p_{\mathrm{system}}-p_1)/(p_{\mathrm{oracle}}-p_1)\)，衡量 selector 回收了多少候选池潜能。</li>
+          </ul>
+        </div>
+      </div>
+
+      <table aria-label="Main result table">
+        <thead>
+          <tr>
+            <th>系统或诊断量</th>
+            <th>论文报告值</th>
+            <th>含义</th>
+            <th>不能外推成什么</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GPT-5.4 nano one-shot</td>
+            <td>67.0%</td>
+            <td>摘要中的单 proposal solve rate。</td>
+            <td>不是 nano 的全部可恢复能力，只是单次选择路径。</td>
+          </tr>
+          <tr>
+            <td>GPT-5.4 nano 图中 baseline</td>
+            <td>69.8%</td>
+            <td>Figure 1 虚线标注的 standalone resolve rate。论文摘要与图中 baseline 存在 67.0% / 69.8% 两个上下文数值，报告保留差异。</td>
+            <td>不应混用不同实验语境下的数值做精确差值。</td>
+          </tr>
+          <tr>
+            <td>\(\Pi(8,5,5)\) full orchestration</td>
+            <td>76.4%</td>
+            <td>8 个 proposal、5 个 critic votes、5 个 comparator votes per pair 的系统级结果。</td>
+            <td>不是权重训练提升；是推理期 harness 在特定 benchmark 上的系统性能。</td>
+          </tr>
+          <tr>
+            <td>Oracle best-of-8</td>
+            <td>79.0%</td>
+            <td>候选池里只要有一个 patch 过隐藏测试就算成功，代表候选池暴露的上界。</td>
+            <td>不是可部署算法，因为它读取隐藏测试结果。</td>
+          </tr>
+          <tr>
+            <td>Gemini 3 Pro / Claude Opus 4.5 Thinking</td>
+            <td>76.4%</td>
+            <td>论文图中作为 standalone frontier comparison 的水平线。</td>
+            <td>不代表所有强模型、所有任务或相同成本下都被 nano 系统追平。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>关键 ablation</h3>
+      <table aria-label="Ablation table">
+        <thead>
+          <tr>
+            <th>Ablation</th>
+            <th>Resolve rate</th>
+            <th>Oracle-gap recovery</th>
+            <th>工程解释</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Critics only</td>
+            <td>72.0%</td>
+            <td>论文图 3 读数</td>
+            <td>二元过滤能丢掉明显坏 patch，但无法稳定选择多个 plausible patch 中最好的。</td>
+          </tr>
+          <tr>
+            <td>Comparators only / no critic gate</td>
+            <td>75.8%</td>
+            <td>73.3%</td>
+            <td>pairwise ranking 是主力，但会被明显坏候选消耗比较预算和噪声空间。</td>
+          </tr>
+          <tr>
+            <td>Drop 0-yes patches, \(\tau \ge 1\)</td>
+            <td>76.4%</td>
+            <td>78.3%</td>
+            <td>critic 最好作为宽松 gate，而不是严格 correctness certificate。</td>
+          </tr>
+          <tr>
+            <td>Unanimous critic gate, \(\tau \ge 5\)</td>
+            <td>76.0%</td>
+            <td>75.0%</td>
+            <td>过严过滤会误杀潜在正确 patch，削弱 proposal coverage。</td>
+          </tr>
+          <tr>
+            <td>Single-elimination bracket</td>
+            <td>74.6%</td>
+            <td>63.3%</td>
+            <td>便宜 tournament 牺牲证据覆盖，说明 pairwise evidence aggregation 的结构很重要。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <figure class="figure">
+        <img src="che-shr-cat-agentic-boosting-assets/x-ablation.jpg" alt="Thread ablation screenshot showing comparator and critic threshold effects" />
+        <figcaption>线程配图对应论文附录表 1：最强贡献来自 comparator，critic 的最佳角色是宽松预过滤。</figcaption>
+      </figure>
+
+      <div class="callout">
+        <b>最值得带走的实验结论</b>
+        <p>
+          76.4% 和 79.0% 的距离只有 2.6 个百分点，说明在这个候选池上 selector 已经回收了大部分可选潜能。剩余更大的瓶颈不是“更会选”，而是“候选池根本没有正确 patch”的 oracle-unreachable 任务。
+        </p>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与失败模式</h2>
+      <p class="section-lead">
+        这篇论文的边界非常重要，因为它容易被传播成“弱模型只要套 harness 就能打强模型”。更准确的说法是：当任务有局部可验证信号，并且正确候选能以非零概率进入候选池时，harness 可以高效回收一部分 latent capability。
+      </p>
+
+      <div class="grid-3">
+        <div class="mini-card">
+          <b>1. Blind-spot floor 不能靠投票解决</b>
+          <span>如果 proposer 对某类任务的正确动作概率为 0，oracle best-of-k 也无法成功。解决方案是改 proposer：换模型、换 prompt、加工具、加检索、改变任务分解，或者引入真正不同的 proposal family。</span>
+        </div>
+        <div class="mini-card">
+          <b>2. Local soundness signal 是强前提</b>
+          <span>代码任务有 tests、linters、execution traces、patch diff；定理证明有 proof checker。开放写作、策略建议、产品判断很难定义同等强度的局部正确性。</span>
+        </div>
+        <div class="mini-card">
+          <b>3. 成本和延迟会快速上升</b>
+          <span>每步大致需要 \(k\) 次 proposal、\(mk\) 次 critic、\(rk^2\) 级别 pairwise comparator 调用。结果提升必须和调用成本、排队延迟、token 成本一起报告。</span>
+        </div>
+        <div class="mini-card">
+          <b>4. Comparator 也有共享偏见</b>
+          <span>同一个弱模型既生成又评审时，可能共享错误模式。position-swap debiasing 只能处理展示顺序偏差，不能消除概念盲点或 reward hacking。</span>
+        </div>
+        <div class="mini-card">
+          <b>5. Hidden-test oracle 只是诊断</b>
+          <span>oracle best-of-k 是事后分析候选池有没有正确 patch，不是部署方法。生产系统只能用可见信号和本地验证工具做近似选择。</span>
+        </div>
+        <div class="mini-card">
+          <b>6. Benchmark 范围很窄</b>
+          <span>SWE-bench Verified 是真实软件工程任务，但仍是 500 题 benchmark。结果不能直接外推到长周期产品开发、跨服务调试或无测试覆盖的工程场景。</span>
+        </div>
+      </div>
+
+      <div class="callout red">
+        <b>一个容易忽略的风险</b>
+        <p>
+          如果团队只看到“comparator 很强”，可能会把更多预算投入 LLM-as-judge，而不是改进 candidate generation。论文的 failure decomposition 恰好提示相反方向：当 oracle-reachable-but-missed 已经很小，继续强化 selector 的收益会递减，真正要攻的是 oracle-unreachable 的 coverage failure。
+        </p>
+      </div>
+    </section>
+
+    <section id="implications">
+      <h2>对 Agent 工程的启发</h2>
+      <p class="section-lead">
+        这篇论文给的是一个诊断框架，而不是一个固定 recipe。落到工程上，最有价值的是把 agent 性能拆成候选生成、局部验证、比较聚合、轨迹深度和成本曲线，而不是只看最终榜单。
+      </p>
+
+      <table aria-label="Engineering checklist">
+        <thead>
+          <tr>
+            <th>工程问题</th>
+            <th>应该记录的量</th>
+            <th>对应动作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>模型是不是不会做，还是做了但不会选？</td>
+            <td>pass@1、oracle best-of-k、implemented success。</td>
+            <td>先用离线隐藏评测估候选池上界，再决定该投 proposal 还是 selector。</td>
+          </tr>
+          <tr>
+            <td>critic 是过滤器还是裁判？</td>
+            <td>不同 threshold 下的 false reject、solve rate、oracle-gap recovery。</td>
+            <td>优先把 critic 设计成 permissive gate，避免过早删除可能正确的候选。</td>
+          </tr>
+          <tr>
+            <td>comparator 是否只是随机 judge？</td>
+            <td>position-swap agreement、tie rate、pairwise consistency、不同 judge family 的 disagreement。</td>
+            <td>用双顺序比较、保守计胜、Copeland aggregation 和多 judge family 做稳健化。</td>
+          </tr>
+          <tr>
+            <td>继续加 k 是否值得？</td>
+            <td>oracle best-of-k 曲线斜率、selector gap、latency/token cost。</td>
+            <td>如果 oracle 曲线还涨，投 proposal diversity；如果 oracle 高但 system 低，投 selector。</td>
+          </tr>
+          <tr>
+            <td>失败主要来自哪里？</td>
+            <td>solved、oracle reachable missed、oracle unreachable 三类 breakdown。</td>
+            <td>reachable missed 对应选择改进；unreachable 对应生成、工具、检索、任务拆分改进。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="panel wide">
+        <h3>一个可落地的最小实验模板</h3>
+        <pre><code>For each benchmark task:
+  1. Generate k candidate solutions with fixed proposer settings.
+  2. Run hidden or gold verifier offline to compute oracle best-of-k.
+  3. Run deployable selector using only allowed local evidence.
+  4. Split failures:
+       solved_by_selector
+       oracle_reachable_but_missed
+       oracle_unreachable
+  5. Plot pass@1, oracle best-of-k, system success, cost and latency.
+
+Decision:
+  if oracle_reachable_but_missed is large:
+      improve critics, comparators, aggregation, evidence extraction
+  if oracle_unreachable is large:
+      improve proposer diversity, retrieval, tools, task decomposition
+  if both are small:
+      benchmark may be saturated or metric too narrow</code></pre>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断</h2>
+      <p class="section-lead">
+        这篇论文的长远价值，不在于某个 76.4% 的 leaderboard 数字，而在于把 agentic system 的能力来源从黑箱“编排玄学”变成可测的四个轴。
+      </p>
+
+      <div class="callout green">
+        <b>核心 insight</b>
+        <p>
+          过去很多 agent 讨论把“模型能力”和“系统能力”混在一起。这个框架强迫我们分开看：模型分布里是否有正确候选，系统是否有足够信号选中它，局部选择能否沿轨迹组合，以及多样性是否真的覆盖不同失败模式。这个拆分比单一榜单更接近真实工程决策。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <h3>我认为真正新的是诊断语言</h3>
+          <p>
+            “弱模型 latent capability”这个说法并不新，best-of-N、self-consistency、verifier selection 都在暗示它。但这篇论文把它变成了一套可报告的量：\(p_1\)、\(p_{\mathrm{oracle}}(k)\)、\(p_{\mathrm{system}}\)、Rec、blind-spot floor。它让我们能问：系统差，是因为没生成、没识别、没组合，还是没多样性？
+          </p>
+        </div>
+        <div class="panel">
+          <h3>我认为最该警惕的是传播表述</h3>
+          <p>
+            “nano matches frontier giants”是传播上有冲击力的句子，但工程上必须补三层限定：同一 benchmark、特定 k 和 selector budget、以及未计入相同成本和延迟的完整对比。更稳的表述是：在 SWE-bench Verified 上，nano proposal pool 暴露出接近 frontier-level 的候选池潜能，而 critic-comparator harness 回收了其中大部分。
+          </p>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <h3>和近期 Agent 研究的连接</h3>
+        <p>
+          这篇工作可以和 SWE-ZERO-12M、NanoGPT-Bench、ECHO、VPO 放在同一条线上看：大家都在从“单模型一次输出”转向“生成分布 + 评估/验证 + 搜索/训练闭环”。区别在于这篇更偏理论和诊断，VPO 偏训练分布多样性，ECHO 偏利用环境 observation 做稠密监督，NanoGPT-Bench 偏评估 agent 是否能做研究。共同趋势是：Agent 时代的能力不再只是参数规模，还是候选空间、反馈信号和预算分配问题。
+        </p>
+      </div>
+    </section>
+
+    <section id="commands">
+      <h2>本地复现材料</h2>
+      <p class="section-lead">
+        下面是本次阅读保留的主要本地材料和抓取命令，便于后续复查数字、公式和来源边界。
+      </p>
+
+      <pre><code># X 线程抓取
+opencli twitter thread "https://x.com/che_shr_cat/status/2058713325106614301" \
+  --limit 100 -f json --trace retain-on-failure \
+  > "results/che-shr-cat-x-2058713325106614301/thread-2058713325106614301.json"
+
+# 作者 profile
+opencli twitter profile "che_shr_cat" -f json --trace retain-on-failure \
+  > "results/che-shr-cat-x-2058713325106614301/profile-che-shr-cat.json"
+
+# Substack 解读抓取
+opencli web read --url "https://arxiviq.substack.com/p/agentic-systems-as-boosting-weak" \
+  --output "results/che-shr-cat-x-2058713325106614301/substack" \
+  --download-images true --wait 5 -f json --trace retain-on-failure
+
+# 论文 PDF、API 元数据和源码
+curl -L --fail "https://arxiv.org/pdf/2605.14163" \
+  -o "results/che-shr-cat-x-2058713325106614301/2605.14163-agentic-systems-boosting.pdf"
+pdftotext -layout "results/che-shr-cat-x-2058713325106614301/2605.14163-agentic-systems-boosting.pdf" \
+  "results/che-shr-cat-x-2058713325106614301/2605.14163-agentic-systems-boosting.txt"
+curl -L --fail "https://export.arxiv.org/api/query?id_list=2605.14163" \
+  -o "results/che-shr-cat-x-2058713325106614301/arxiv-2605.14163.xml"
+curl -L --fail "https://arxiv.org/e-print/2605.14163" \
+  -o "results/che-shr-cat-x-2058713325106614301/2605.14163-source.tar"</code></pre>
+
+      <div class="footer-note">
+        生成时间：2026-05-25 20:43 CST。报告作者：Ricardo Notes 本地阅读流程。页面资源位于 <code>notes/tech-analysis/che-shr-cat-agentic-boosting-assets/</code>。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

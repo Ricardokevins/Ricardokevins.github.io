@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SaaS-Bench 解读：Computer-Use Agent 为什么还不是可靠的 SaaS 工作者</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: { fontCache: 'global' },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #211d18;
+      --muted: #665f57;
+      --subtle: #8a8178;
+      --paper: #f7f0e6;
+      --panel: #fffdf8;
+      --panel-2: #efe4d6;
+      --line: #d9c9b8;
+      --line-strong: #a88f78;
+      --accent: #9d4f2f;
+      --accent-2: #28637a;
+      --accent-3: #5b5a87;
+      --accent-soft: #f3dfd2;
+      --blue-soft: #deebf0;
+      --violet-soft: #e7e3f0;
+      --green: #416d57;
+      --green-soft: #e1ede5;
+      --red: #9f3f33;
+      --red-soft: #f3dcd7;
+      --warn: #8c6126;
+      --warn-soft: #f3e5ce;
+      --code-bg: #1f1a16;
+      --code-fg: #f5eadb;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --shadow: 0 18px 46px rgba(50, 41, 31, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(33, 29, 24, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(33, 29, 24, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent-2);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(40, 99, 122, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) clamp(18px, 4vw, 46px) 76px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(310px, 0.55fr);
+      gap: clamp(22px, 4vw, 48px);
+      align-items: end;
+      min-height: calc(76vh - var(--notes-shell-height, 46px));
+      padding: clamp(28px, 6vw, 80px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6.4vw, 82px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 10px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.7vw, 46px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 24px;
+      font-size: clamp(20px, 2vw, 26px);
+      font-weight: 760;
+    }
+
+    p { margin: 0.78rem 0 0; }
+
+    .lead {
+      max-width: 840px;
+      color: #3c352d;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .toc,
+    .source-card,
+    .claim-card,
+    .step-card,
+    .metric,
+    .evidence,
+    .quote-card,
+    .result-row,
+    .failure-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: #433a32;
+      font-size: 14px;
+    }
+
+    .tweet-card {
+      margin-top: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .tweet-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0 0;
+    }
+
+    .metric {
+      padding: 16px;
+      background: rgba(255, 253, 248, 0.78);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: 25px;
+      line-height: 1.05;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section {
+      padding: clamp(34px, 6vw, 64px) 0 0;
+    }
+
+    .section > .section-lead {
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .toc {
+      position: sticky;
+      top: calc(var(--notes-shell-height, 46px) + 14px);
+      z-index: 8;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 22px 0 0;
+      padding: 10px;
+      background: rgba(255, 253, 248, 0.9);
+      backdrop-filter: blur(10px);
+      box-shadow: none;
+    }
+
+    .toc a {
+      min-height: 32px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: var(--paper);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .source-card,
+    .claim-card,
+    .step-card,
+    .failure-card {
+      padding: 18px;
+    }
+
+    .source-card strong,
+    .claim-card strong,
+    .step-card strong,
+    .failure-card strong {
+      display: block;
+      color: var(--accent-2);
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .source-card p,
+    .claim-card p,
+    .step-card p,
+    .failure-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .panel {
+      margin-top: 20px;
+      padding: clamp(18px, 3vw, 28px);
+    }
+
+    .panel h3:first-child { margin-top: 0; }
+
+    .callout {
+      margin-top: 20px;
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      background: linear-gradient(90deg, rgba(243, 223, 210, 0.72), rgba(255, 253, 248, 0.92));
+    }
+
+    .callout strong {
+      display: block;
+      color: var(--accent);
+      font-size: 15px;
+    }
+
+    .callout p {
+      color: #3e352d;
+    }
+
+    .evidence {
+      margin-top: 20px;
+      overflow: hidden;
+      background: #fffaf2;
+    }
+
+    .evidence img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #fff;
+    }
+
+    .evidence figcaption {
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .quote-card {
+      margin-top: 20px;
+      padding: 18px;
+      background: #241f1a;
+      color: #f4eadc;
+      box-shadow: none;
+    }
+
+    .quote-card p {
+      color: #f4eadc;
+      font-family: var(--serif);
+      font-size: 19px;
+      line-height: 1.55;
+    }
+
+    .quote-card span {
+      display: block;
+      margin-top: 10px;
+      color: #cdbda9;
+      font-size: 13px;
+    }
+
+    .results-table {
+      width: 100%;
+      margin-top: 18px;
+      border-collapse: collapse;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .results-table th,
+    .results-table td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .results-table th {
+      color: var(--accent);
+      background: var(--panel-2);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .results-table tr:last-child td { border-bottom: 0; }
+
+    .score-high { color: var(--green); font-weight: 800; }
+    .score-low { color: var(--red); font-weight: 800; }
+
+    .formula {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      overflow-x: auto;
+    }
+
+    .formula p {
+      margin-top: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .flow div {
+      min-height: 128px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .flow b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+    }
+
+    .flow span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(310px, 0.55fr);
+      gap: 18px;
+      align-items: start;
+      margin-top: 20px;
+    }
+
+    .result-row {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr);
+      gap: 14px;
+      margin-top: 12px;
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .result-row b {
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .result-row p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tag-list span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: #51483f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    code {
+      padding: 0.14em 0.35em;
+      border: 1px solid rgba(33, 29, 24, 0.12);
+      background: #f0e5d6;
+      color: #4b3326;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.62;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .small {
+      color: var(--subtle);
+      font-size: 13px;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .check-list div {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .check-list b {
+      color: var(--accent-2);
+    }
+
+    .check-list p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      color: var(--subtle);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-2,
+      .grid-3,
+      .split,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .toc {
+        position: static;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        padding-inline: 16px;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .result-row {
+        grid-template-columns: 1fr;
+      }
+
+      .results-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      h1 {
+        font-size: clamp(34px, 13vw, 52px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" id="top">
+      <div>
+        <div class="eyebrow">X Thread + Paper Reading</div>
+        <h1>SaaS-Bench 解读：Computer-Use Agent 为什么还不是可靠的 SaaS 工作者</h1>
+        <p class="lead">@sheriyuo 的判断很锋利：只要评分从“每一步点对了多少”切换到“真实 SaaS 后端状态是否全部正确”，当前 Computer-Use Agent 的可靠性就会塌陷。SaaS-Bench 的价值不只是给模型排榜，而是把 agent 评测从网页操作迁移到专业工作流终态验证。</p>
+        <div class="meta-grid">
+          <div class="metric"><b>23</b><span>真实开源 SaaS 系统，可 Docker 部署</span></div>
+          <div class="metric"><b>106</b><span>专业工作流任务，覆盖 6 个领域</span></div>
+          <div class="metric"><b>93.4%</b><span>任务涉及至少 2 个应用</span></div>
+          <div class="metric"><b>&lt;4%</b><span>论文主榜最强模型端到端完成率</span></div>
+        </div>
+      </div>
+      <aside>
+        <div class="hero-card">
+          <strong>一句话结论</strong>
+          <p>SaaS-Bench 说明：会使用浏览器不等于会完成业务。真实瓶颈是长程规划、跨应用状态传递、后端实体语义、错误恢复和终态自检。</p>
+        </div>
+        <figure class="tweet-card">
+          <img src="saas-bench-cua-analysis-assets/tweet-card.jpg" alt="@sheriyuo 关于 SaaS-Bench 的推文配图">
+        </figure>
+      </aside>
+    </section>
+
+    <nav class="toc" aria-label="本文导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#design">Benchmark 设计</a>
+      <a href="#metrics">评分</a>
+      <a href="#results">结果</a>
+      <a href="#failures">失败机制</a>
+      <a href="#implications">工程启发</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+
+    <section class="section" id="source">
+      <h2>1. 来源地图：这次读了什么</h2>
+      <p class="section-lead">本报告以 X 原帖为入口，交叉阅读官方 blog、arXiv 论文、GitHub README、验证协议和任务格式文档。核心事实优先采用论文、官方 blog 和仓库文档；推文用于理解问题意识和传播语境。</p>
+      <div class="grid-3">
+        <div class="source-card">
+          <strong>X 原帖</strong>
+          <p>@sheriyuo 指出 SaaS-Bench 把 Computer-Use Agent benchmark theater 拉到真实业务结果面前：Checkpoint Score 和 Resolved Score 的落差才是重点。</p>
+          <p><a href="https://x.com/sheriyuo/status/2058815872249286743">原帖链接</a></p>
+        </div>
+        <div class="source-card">
+          <strong>官方 blog / leaderboard</strong>
+          <p>提供 2026-05-25 更新后的 leaderboard、任务案例、图表和 failure mode 解释。blog 中包含 Claude Opus 4.7、GPT-5.5 High 等新模型结果。</p>
+          <p><a href="https://unipat.ai/blog/SaaS-Bench">官方 blog</a></p>
+        </div>
+        <div class="source-card">
+          <strong>论文与仓库</strong>
+          <p>arXiv 2605.15777 是正式论文版本；GitHub README 和 docs 描述 eval harness、Browser-Use reference agent、Docker 部署、任务格式和 verify.py 协议。</p>
+          <p><a href="https://arxiv.org/abs/2605.15777">arXiv</a> · <a href="https://github.com/UniPat-AI/SaaS-Bench">GitHub</a></p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>核验方式</strong>
+        <p>使用 OpenCLI 抓取原帖与官方页面；解析 t.co 短链到 blog、GitHub 和 arXiv；下载 PDF 并用 <code>pdfinfo</code> 核验为 22 页；用 <code>pdftotext -layout</code> 抽取正文；另外读取 GitHub 的 <code>verify_protocol.md</code> 与 <code>task_format.md</code> 来核对评分协议。</p>
+      </div>
+    </section>
+
+    <section class="section" id="problem">
+      <h2>2. 它到底在解决什么问题</h2>
+      <p class="section-lead">SaaS-Bench 针对的是一个评测错觉：很多 CUA benchmark 证明 agent 能完成短页面交互、单应用任务或简化网页任务，但不能证明它能在真实业务软件里完成跨系统流程。</p>
+      <div class="quote-card">
+        <p>“Agents look fine if you score per click. Once you require the actual outcome, they collapse.”</p>
+        <span>对 @sheriyuo 原帖观点的短引。报告后文会解释为什么这个落差不是偶然，而是长程组合任务的结构性结果。</span>
+      </div>
+      <div class="grid-3">
+        <div class="claim-card">
+          <strong>网页操作 ≠ 业务完成</strong>
+          <p>点击、输入、滚动只是低层动作。业务完成需要正确创建记录、更新状态、生成文档、发送邮件，并保持数据在多个系统间一致。</p>
+        </div>
+        <div class="claim-card">
+          <strong>前端可见状态 ≠ 后端真实状态</strong>
+          <p>真实 SaaS 有数据库、API、权限、缓存、异步提交和业务约束。页面上看起来像成功，不等于 verify.py 能在 DB/API/文件系统里找到正确结果。</p>
+        </div>
+        <div class="claim-card">
+          <strong>局部成功 ≠ 端到端可靠</strong>
+          <p>长任务由多个 checkpoint 组成。一个早期实体类型错误可能让后续 invoice、payment、report 和 event 全部挂掉。</p>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>为什么 SaaS 是更接近真实工作的评测环境</h3>
+        <p>SaaS 系统承载的是现代知识工作的常规基础设施：CRM、财务、HR、医疗记录、项目管理、文档协作、文件存储和邮件。它们不是静态网页，而是带登录、带持久数据库、带业务规则、带跨应用依赖的生产型软件。一个 agent 如果只会从屏幕上识别按钮，却不知道“客户”“供应商”“公司客户”“个人客户”在不同应用中的实体语义，就很容易把表面顺畅的操作链变成后端不可验证的错误状态。</p>
+      </div>
+    </section>
+
+    <section class="section" id="design">
+      <h2>3. SaaS-Bench 的设计：真实系统、真实状态、严格验证</h2>
+      <p class="section-lead">SaaS-Bench 把 23 个开源 SaaS 系统容器化，给 agent 浏览器访问权限，然后用任务自带的 verify.py 在任务结束后检查真实系统状态。这个设计让评测对象从“agent 会不会操作 UI”升级为“agent 能不能完成专业工作”。</p>
+      <figure class="evidence">
+        <img src="saas-bench-cua-analysis-assets/evaluation-overview.svg" alt="SaaS-Bench 评测总览图">
+        <figcaption>官方总览图：任务输入 -> Browser-Use agent -> 本地 SaaS 应用 -> State/Content/LLM Judge 验证 -> Checkpoint 与 Resolved 分数。</figcaption>
+      </figure>
+      <div class="flow" aria-label="SaaS-Bench 执行流程">
+        <div><b>1. 任务说明</b><span>自然语言需求、应用入口 URL、登录凭据；不暴露标准答案、数据库 schema、verifier 或后端 API。</span></div>
+        <div><b>2. 环境启动</b><span>按任务所需 sites 启动 Docker 容器，把 SaaS 恢复到预定义初始状态。</span></div>
+        <div><b>3. 浏览器执行</b><span>reference agent 基于 Browser-Use 观察 DOM/截图，只能做点击、输入、导航、滚动、文件读取等受限动作。</span></div>
+        <div><b>4. 终态验证</b><span>任务结束后运行 verify.py，通过 DB/API/Page、内容规则、LLM Judge 检查最终状态和产物。</span></div>
+        <div><b>5. 聚合评分</b><span>checkpoint score 衡量局部进展；resolved score 只有所有 checkpoint 通过才计 1。</span></div>
+      </div>
+      <div class="grid-2">
+        <figure class="evidence">
+          <img src="saas-bench-cua-analysis-assets/task-composition.svg" alt="SaaS-Bench 任务组成图">
+          <figcaption>任务覆盖 text-only 与 multimodal 两条 track，跨 6 个专业领域与 23 个 SaaS 应用。</figcaption>
+        </figure>
+        <figure class="evidence">
+          <img src="saas-bench-cua-analysis-assets/apps-steps.svg" alt="每个任务应用数和操作步数分布">
+          <figcaption>99/106 个任务至少涉及 2 个应用；72/74 个 text-only 任务超过 100 步，强调长程依赖。</figcaption>
+        </figure>
+      </div>
+      <div class="panel">
+        <h3>任务不是让 LLM 随便生成的</h3>
+        <p>论文描述了一条 Builder-Challenger-Refiner 流程：从领域和职业角色出发构造 workflow seed，LLM Builder 生成任务模板和实例，human Challenger 检查歧义、可执行性、专业真实性和可验证性，human Refiner 决定接受、修订或拒绝。之后还要过 static check 和 execution check。官方 blog 声称只有 45% candidate tasks 能通过全流程，这说明作者试图避免“看起来像业务任务、实际上不可执行或不可验证”的 benchmark 垃圾数据。</p>
+      </div>
+    </section>
+
+    <section class="section" id="metrics">
+      <h2>4. 最关键的评分差异：Checkpoint Score vs Resolved Score</h2>
+      <p class="section-lead">SaaS-Bench 的思想核心是双指标：既记录 agent 做对了多少局部检查，也记录它是否真正完成整件事。@sheriyuo 把这点概括成：Checkpoint 和 Resolved 的 gap 是尸体埋着的地方。</p>
+      <div class="grid-2">
+        <div class="step-card">
+          <strong>Checkpoint Score</strong>
+          <p>每个任务有多个带权重的 checkpoint，验证 expected final state 或 artifact。Checkpoint Score 是通过 checkpoint 权重除以总权重，表示“局部进展”。它适合诊断 agent 卡在哪一步。</p>
+        </div>
+        <div class="step-card">
+          <strong>Resolved Score</strong>
+          <p>只有任务所有 checkpoint 通过才为 1，否则为 0。它回答的是生产环境最关心的问题：这个工作流最后有没有真的完成。</p>
+        </div>
+      </div>
+      <div class="formula">
+        <p>长程组合任务为什么容易“局部不错、整体失败”？假设每个 checkpoint 独立通过概率为 \(p\)，任务有 \(N\) 个 checkpoint，则全任务通过概率近似为：</p>
+        \[
+          P(\text{resolved}) = p^N
+        \]
+        <p>即使 \(p = 0.95\)、\(N = 12\)，\(p^N \approx 0.54\)。如果真实 per-checkpoint pass rate 更低，且 checkpoint 之间还存在依赖传播，Resolved Score 近零就不是意外，而是组合可靠性的数学结果。</p>
+      </div>
+      <div class="callout">
+        <strong>重要理解</strong>
+        <p>这也是为什么只优化 step-level reward 或单步 action prediction 不够。长程业务任务需要的是 checkpoint 级别的闭环确认、依赖图上的错误隔离，以及最终 artifact 的可验证一致性。</p>
+      </div>
+    </section>
+
+    <section class="section" id="results">
+      <h2>5. 结果：能做一点事，但还不可靠</h2>
+      <p class="section-lead">论文主榜和官方 blog 的 leaderboard 都显示了同一件事：总体 checkpoint 能到 20% 到 40% 多，但 resolved 仍低到不能称为可靠业务执行。注意：blog 在 2026-05-25 更新了比论文更多的新模型结果，因此本文分别标注来源。</p>
+      <div class="split">
+        <div>
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>来源</th>
+                <th>模型</th>
+                <th>Checkpoint / Overall</th>
+                <th>Resolved</th>
+                <th>含义</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>官方 blog leaderboard</td>
+                <td>Claude Opus 4.7</td>
+                <td class="score-high">43.9%</td>
+                <td class="score-low">3.8%</td>
+                <td>截至 blog 抓取时最高 checkpoint 分数；端到端完成仍低。</td>
+              </tr>
+              <tr>
+                <td>官方 blog leaderboard</td>
+                <td>GPT-5.5 High</td>
+                <td class="score-high">43.8%</td>
+                <td class="score-low">1.9%</td>
+                <td>局部分数接近 Opus 4.7，但严格完成率更低。</td>
+              </tr>
+              <tr>
+                <td>论文 Table 2</td>
+                <td>Claude Opus 4.6</td>
+                <td class="score-high">43.2%</td>
+                <td class="score-low">1.9%</td>
+                <td>论文版最强 checkpoint 分数，但 resolved 仍不到 2%。</td>
+              </tr>
+              <tr>
+                <td>论文 Table 2</td>
+                <td>GPT-5.4 High</td>
+                <td>37.0%</td>
+                <td class="score-low">3.8%</td>
+                <td>论文版最高 resolved，但也只有 4/106 左右的量级。</td>
+              </tr>
+              <tr>
+                <td>论文 Table 2</td>
+                <td>Gemini 3.1 Pro</td>
+                <td>27.1%</td>
+                <td class="score-low">0.0%</td>
+                <td>能获得部分 checkpoint，但没有完整解决任务。</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="small">注：论文 PDF 的主图列出 Claude Opus 4.6、GPT-5.4 High、Qwen 3.6 Plus、Kimi K2.5、Gemini 3.1 Pro、Doubao Seed 2.0 Pro、Claude Sonnet 4.6；官方 blog 后续加入 Claude Opus 4.7、GPT-5.5 High、Kimi K2.6、Gemini 3.5 Flash High、GLM-5.1 等。</p>
+        </div>
+        <div>
+          <div class="result-row"><b>Teamwork</b><p>文档、分享、邮件类任务整体更容易，因为实体结构和业务约束相对弱。</p></div>
+          <div class="result-row"><b>Business</b><p>财务、CRM、报销、发票等任务更难，数字、日期、实体类型和账户状态都要严格对齐。</p></div>
+          <div class="result-row"><b>Healthcare</b><p>医疗记录、合并审计、合规报告对信息保持和文档结构要求高，错误代价更明显。</p></div>
+          <div class="result-row"><b>Short ≠ good</b><p>较短 trajectory 不一定高效，可能只是过早放弃或误判完成。</p></div>
+        </div>
+      </div>
+      <figure class="evidence">
+        <img src="saas-bench-cua-analysis-assets/pass-k.svg" alt="SaaS-Bench pass@k 结果图">
+        <figcaption>pass@k 增加会提升平均 best score，说明 run-level variance 存在；但它不能消除严格完成率低的问题。</figcaption>
+      </figure>
+    </section>
+
+    <section class="section" id="failures">
+      <h2>6. 失败机制：不是“点错按钮”这么简单</h2>
+      <p class="section-lead">SaaS-Bench 最有价值的部分是 failure analysis。它把 agent 失败拆成四类结构性问题：长程组合脆弱性、跨应用错误级联、自我验证缺失、单次运行不可靠。</p>
+      <figure class="evidence">
+        <img src="saas-bench-cua-analysis-assets/complexity-drop.svg" alt="SaaS-Bench 任务复杂度与得分下降图">
+        <figcaption>随着应用数、操作长度和 checkpoint 数增加，平均分下降。低分集中在 benchmark 真正想测的复杂区间。</figcaption>
+      </figure>
+      <div class="grid-2">
+        <div class="failure-card">
+          <strong>1. 长程完成的脆弱性</strong>
+          <p>Business reimbursement 任务中，Opus 4.6 拿到 0.80 checkpoint score：claim 批准、vendor 创建、items 正确、payment settled、CRM task 创建。但 bill date 写成 2026-03-19 而不是 2026-03-20，任务仍不能 resolved。</p>
+          <p>这说明业务工作流里的小字段错误不是“小错”，而是严格终态失败。</p>
+        </div>
+        <div class="failure-card">
+          <strong>2. 跨应用错误级联</strong>
+          <p>Arcturus Digital 案例中，agent 在 BigCapital 中创建了个人客户 Elena Vasquez，而不是公司客户 Arcturus Digital。UI 显示 “Elena Vasquez (Arcturus Digital)” 看起来合理，但 verifier 按公司客户查询时找不到目标实体。</p>
+          <p>一个权重只有 1 的 chokepoint 最终拖垮 10/33 分，因为 invoice、payment、balance 都依赖同一客户实体。</p>
+        </div>
+        <div class="failure-card">
+          <strong>3. Agent 不知道自己失败了</strong>
+          <p>同一个报销任务中，agent 曾在 step 124 识别出日期错误，却没有在尝试修复后重新读取字段。后续它把“想要的日期”写进终止总结，而不是依据当前页面或数据库状态确认。</p>
+          <p>这暴露了缺失 closed-loop outcome verification：动作执行后没有对动作效果做独立验证。</p>
+        </div>
+        <div class="failure-card">
+          <strong>4. 单次运行不足以评价 agent</strong>
+          <p>Claude Sonnet 4.6 在同一 HR grievance 任务三次运行中，从 0.000 到 0.679 大幅波动。初始状态相同，差异来自 path dependence：早期路径选择和 UI 解释错误会消耗后续恢复预算。</p>
+          <p>评测上只报 pass@1 会误导；部署上需要 retry、checkpoint recovery 或 ensemble。</p>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>失败分布透露的真实瓶颈</h3>
+        <p>论文 Figure 7 中，失败 checkpoint 最大类是 Entity Missing，而不是简单 value mismatch。这非常关键：当前 CUA 最常见的不是“记录创建了但值差一点”，而是“目标 artifact 根本没有被创建，或创建到了错误实体/错误位置”。这说明下一代 agent 框架必须显式管理业务对象生命周期：创建前确认 entity type，创建后重新定位 record，跨应用引用时保存 canonical identifier，而不是只把 UI 文本塞进短期 memory。</p>
+      </div>
+    </section>
+
+    <section class="section" id="implications">
+      <h2>7. 对 Agent 工程的启发</h2>
+      <p class="section-lead">SaaS-Bench 最直接的启发不是“换更强模型就行”，而是 agent runtime 和软件接口都需要变化。模型智能、执行框架、状态验证和 SaaS 产品形态要一起改。</p>
+      <div class="check-list">
+        <div>
+          <b>1. 从 action loop 升级到 state loop</b>
+          <p>当前很多 agent loop 是 observe -> reason -> action。SaaS 任务需要 observe -> plan -> action -> verify effect -> update state model。每个关键动作之后都要有“当前真实系统状态是否符合预期”的检查，而不是只依赖上一轮 action 是否执行成功。</p>
+        </div>
+        <div>
+          <b>2. 给 agent 显式的业务对象模型</b>
+          <p>把“客户”“供应商”“病人记录”“账单”“工单”“事件”等业务实体作为 first-class objects 管理，记录它们在不同 SaaS 中的主键、显示名、状态和依赖关系。这样才能避免 Arcturus Digital 这类 entity-type mismatch。</p>
+        </div>
+        <div>
+          <b>3. 以 checkpoint 组织执行和恢复</b>
+          <p>每个子目标应有可复查的 completion criterion。失败时回滚到最近 checkpoint，而不是在一个坏路径上继续推进。对长任务，agent 需要像 workflow engine 一样维护 DAG，不只是像浏览器用户一样顺序点击。</p>
+        </div>
+        <div>
+          <b>4. 让 SaaS 暴露 agent-native affordance</b>
+          <p>如果未来 agent 真要成为主要操作者，传统人类 UI 会成为瓶颈。更合理的产品形态可能是：可验证操作 API、结构化 action schema、状态 diff、dry-run、事务边界、审计日志和机器可读错误信息。</p>
+        </div>
+        <div>
+          <b>5. 评测应该同时报告成功率、局部分数、成本和方差</b>
+          <p>一个模型单次拿高分但方差大，不等于可部署。真实业务关心的是稳定完成、可恢复、可审计，以及单位成功任务成本。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="limits">
+      <h2>8. 局限与不要误读的地方</h2>
+      <p class="section-lead">SaaS-Bench 很有价值，但不能直接外推成“所有 CUA 都无用”或“真实产品只能做到 4%”。它测的是特定 harness、特定动作空间、特定任务分布和特定模型组合下的结果。</p>
+      <div class="grid-2">
+        <div class="claim-card">
+          <strong>Browser-Use reference agent 不是所有生产 agent 架构</strong>
+          <p>如果一个生产系统能使用深度 SaaS API、MCP、数据库只读查询、专用 action schema 或人工审批点，表现可能不同。SaaS-Bench 的意义在于隔离 browser-only CUA 能力，而不是覆盖所有自动化架构。</p>
+        </div>
+        <div class="claim-card">
+          <strong>严格 resolved score 对 benchmark 很合理，对产品可分层</strong>
+          <p>生产系统可以设置 partial automation：agent 做草稿、人工确认付款、自动生成 audit trail。严格全自动完成率低，不代表所有半自动价值都为零。</p>
+        </div>
+        <div class="claim-card">
+          <strong>LLM-Judge checkpoint 需要关注一致性</strong>
+          <p>State-Check 和 Content-Check 更客观；开放式产物用 LLM-Judge 是合理工程折中，但仍需监控 judge 稳定性、rubric 明确性和模型偏差。</p>
+        </div>
+        <div class="claim-card">
+          <strong>新模型和专用 agent runtime 会快速改变榜单</strong>
+          <p>blog 已比论文 PDF 多出更新模型。后续 agent 如果加入更强 self-verification、planner、state memory 或 tool interface，分数可能明显上升；因此报告重点应放在 failure mechanism，而不是固定榜单排名。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="insight">
+      <h2>9. 我的判断：这是 agent 评测从“动作智能”走向“业务可靠性”的分水岭</h2>
+      <p class="section-lead">SaaS-Bench 的真正价值不是告诉我们某个模型几分，而是把 agent 的评价对象换掉了。</p>
+      <div class="panel">
+        <h3>核心 insight</h3>
+        <p>早期 Computer-Use Agent benchmark 很容易奖励“看起来在工作”：页面打开了、按钮点了、表单填了、总结写了。但业务系统奖励的是另一件事：数据库里的实体是否存在、状态是否正确、金额是否平衡、文档是否共享给正确的人、审计报告是否包含所有必要证据。</p>
+        <p>SaaS-Bench 把这个差别变成了可量化落差。Checkpoint Score 是“agent 产生了多少局部有效动作”；Resolved Score 是“业务是否真的闭环”。这两者之间的巨大差距，就是从 demo 到产品之间最硬的鸿沟。</p>
+        <p>因此，下一阶段 CUA 研发的重点不应只是更好的视觉 grounding 或更长 step budget，而是把 agent 从“浏览器操作员”升级成“带验证器的工作流执行器”：它要理解业务对象、维护依赖图、用证据更新 memory、在关键节点自检，并在失败时能局部恢复。没有这些机制，模型越会点击，越可能只是更快地把错误传播到多个 SaaS 系统里。</p>
+      </div>
+      <div class="callout">
+        <strong>一句话带走</strong>
+        <p>Computer-Use Agent 的产品化门槛不是“能不能操作电脑”，而是“能不能在真实系统中稳定地产生可验证的正确终态”。SaaS-Bench 正是在测这个门槛。</p>
+      </div>
+    </section>
+
+    <section class="section" id="commands">
+      <h2>10. 本地复现与抓取命令</h2>
+      <p class="section-lead">以下是本次材料获取和校验的关键路径，方便后续复查。</p>
+      <pre><code>opencli twitter thread "https://x.com/sheriyuo/status/2058815872249286743" --limit 80 -f json --trace retain-on-failure
+opencli web read --url "https://unipat.ai/blog/SaaS-Bench" --download-images true -f json --trace retain-on-failure
+opencli web read --url "https://github.com/UniPat-AI/SaaS-Bench" --stdout true --download-images false -f json --trace retain-on-failure
+opencli arxiv paper 2605.15777 -f json
+curl -L -o results/sheriyuo-x-2058815872249286743/refs/2605.15777-saas-bench.pdf "https://arxiv.org/pdf/2605.15777"
+pdfinfo results/sheriyuo-x-2058815872249286743/refs/2605.15777-saas-bench.pdf
+pdftotext -layout results/sheriyuo-x-2058815872249286743/refs/2605.15777-saas-bench.pdf results/sheriyuo-x-2058815872249286743/refs/2605.15777-saas-bench.txt</code></pre>
+      <div class="tag-list">
+        <span>Computer-Use Agent</span>
+        <span>SaaS-Bench</span>
+        <span>Browser-Use</span>
+        <span>Agent Evaluation</span>
+        <span>Workflow Reliability</span>
+        <span>State Verification</span>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>生成日期：2026-05-25。报告为站内技术解读，事实依据来自 @sheriyuo X 原帖、UniPat AI 官方 blog、arXiv 2605.15777、UniPat-AI/SaaS-Bench GitHub README 与 docs。PDF 副本保存在 <a href="saas-bench-cua-analysis-assets/2605.15777-saas-bench.pdf">本地资源目录</a>。</p>
+    </footer>
+  </main>
+</body>
+</html>

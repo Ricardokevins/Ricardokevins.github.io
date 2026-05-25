@@ -349,6 +349,101 @@
       font-size: 16px;
     }
 
+    .deep-block {
+      margin-top: 26px;
+      padding: 24px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: 0 16px 36px rgba(38, 31, 22, 0.08);
+    }
+
+    .deep-block h3 {
+      margin-top: 0;
+    }
+
+    .deep-block p,
+    .deep-block li {
+      color: var(--muted);
+      font-size: 15.5px;
+    }
+
+    .microcase {
+      display: grid;
+      grid-template-columns: minmax(0, 0.56fr) minmax(0, 0.44fr);
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .mini-panel {
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #fffaf2;
+    }
+
+    .mini-panel strong {
+      display: block;
+      color: var(--ink);
+      font-size: 15px;
+    }
+
+    .mini-panel p {
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .calc {
+      padding: 15px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .calc strong {
+      display: block;
+      color: var(--accent);
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .calc span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .trace {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .trace-row {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 16px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .trace-row strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .trace-row span {
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+
     .warning {
       border-left-color: var(--red);
       background: linear-gradient(90deg, var(--red-soft), var(--panel) 44%);
@@ -572,7 +667,9 @@
       .grid-2,
       .grid-3,
       .section-head,
-      .figure-pair {
+      .figure-pair,
+      .microcase,
+      .calc-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -600,6 +697,10 @@
       .step {
         grid-template-columns: 1fr;
       }
+
+      .trace-row {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -612,8 +713,10 @@
     <nav class="nav" aria-label="文章导航">
       <a href="#source">来源</a>
       <a href="#problem">问题</a>
+      <a href="#request-flow">请求链路</a>
       <a href="#traffic">拥塞机制</a>
       <a href="#zcube">ZCube</a>
+      <a href="#diagnosis">诊断</a>
       <a href="#evidence">证据</a>
       <a href="#limits">边界</a>
       <a href="#insight">Insight</a>
@@ -747,6 +850,82 @@
       </div>
     </section>
 
+    <section id="request-flow">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Request Flow</div>
+            <h2>把一次请求拆开看，网络卡在哪里</h2>
+          </div>
+          <p>
+            要理解 ZCube，最好不要先看拓扑图，而是先跟随一次长上下文请求。PD 分离之后，请求不是“进一张 GPU，出一串 token”这么简单，而是先在 prefill 池生成大块 KV Cache，再把这块热数据交给 decode 池继续逐 token 生成。
+          </p>
+        </div>
+
+        <div class="trace">
+          <div class="trace-row">
+            <strong>1. 请求进入</strong>
+            <span>网关和调度器拿到 prompt、历史上下文、模型类型、SLO、租户信息，决定把 prefill 放到哪一组 GPU。此时决策通常更关注 prompt 长度和 prefill 队列。</span>
+          </div>
+          <div class="trace-row">
+            <strong>2. Prefill 计算</strong>
+            <span>Prefill GPU 对整段 prompt 做一次大矩阵计算，为每层 attention 生成 key/value 张量。这个阶段吞吐敏感，长 prompt 能把 GPU 吃满，但用户还没看到首 token。</span>
+          </div>
+          <div class="trace-row">
+            <strong>3. KV Cache 迁移</strong>
+            <span>如果 decode 不在同一 GPU 或同一节点，prefill 产生的 KV Cache 要通过 RDMA/RoCE 网络转移到 decode GPU。这里就是 ZCube 讨论的关键流量：它大、短时爆发、源宿动态、对 TTFT 很敏感。</span>
+          </div>
+          <div class="trace-row">
+            <strong>4. Decode 接管</strong>
+            <span>Decode GPU 收到 KV Cache 后开始逐 token 生成。首 token 返回时间包含排队、prefill、KV transfer 和第一次 decode；所以网络队列抖动会直接进入 TTFT P99。</span>
+          </div>
+          <div class="trace-row">
+            <strong>5. 后续 token</strong>
+            <span>后续 decode 阶段每步计算量较小但延迟敏感。若 KV transfer 慢，decode GPU 可能空等；若 transfer 挤爆局部路径，少数请求会被拖进长尾。</span>
+          </div>
+        </div>
+
+        <div class="deep-block">
+          <h3>KV Cache 到底有多大</h3>
+          <p>
+            一个常用估算是：单个请求的 KV Cache 字节数约等于
+            <code>layers × tokens × 2(K,V) × kv_heads × head_dim × bytes_per_element</code>。
+            这个公式不依赖 Z.ai 的私有模型细节，工程上用于判断“跨节点搬 KV”是不是已经大到足以影响网络。
+          </p>
+
+          <div class="formula" aria-label="KV Cache size estimation">
+            <div class="line">KV bytes ≈ L × T × 2 × H<sub>kv</sub> × D × B</div>
+            <div class="explain">
+              L 是层数，T 是 prompt token 数，H<sub>kv</sub> 是 KV head 数，D 是 head dim，B 是每个元素字节数。GQA/MQA 会降低 H<sub>kv</sub>，KV 量化会降低 B，但长上下文会把 T 直接放大。
+            </div>
+          </div>
+
+          <div class="calc-grid">
+            <div class="calc">
+              <strong>长上下文放大 T</strong>
+              <span>从 4K 到 128K tokens，KV Cache 体积线性放大 32 倍。</span>
+            </div>
+            <div class="calc">
+              <strong>GQA/MQA 降 Hkv</strong>
+              <span>减少 KV head 能显著降低迁移量，但不能消除跨节点路径冲突。</span>
+            </div>
+            <div class="calc">
+              <strong>量化降 B</strong>
+              <span>FP16 到 INT8 近似减半传输体积，但会引入精度和内核适配成本。</span>
+            </div>
+            <div class="calc">
+              <strong>并发放大峰值</strong>
+              <span>单请求可控不代表集群可控，真正危险的是大量 KV transfer 同时爆发。</span>
+            </div>
+          </div>
+
+          <p>
+            所以网络瓶颈不是“每个 token 都要跨节点传一次”。关键在于 prefill 完成后的 KV handoff 往往是大块、同步、短时间窗口内发生的流量；当调度器把很多 handoff 指向相似路径时，局部队列会立刻变成 TTFT 慢尾。
+          </p>
+        </div>
+      </div>
+    </section>
+
     <section id="traffic">
       <div class="wrap">
         <div class="section-head">
@@ -772,6 +951,35 @@
               在线推理里，哪个 prefill 节点把 KV Cache 发给哪个 decode 节点，取决于请求长度、队列状态、batching、模型副本、调度器和可用 GPU。源、宿、流量大小都更动态。
             </p>
           </article>
+        </div>
+
+        <div class="deep-block">
+          <h3>ROFT 的问题不是“设计错了”，而是 workload 变了</h3>
+          <p>
+            ROFT 的出发点很合理：训练时经常希望同一个 rail 上的 GPU 走更短、更规则的路径，减少跨层转发，让 collective 的通信模式更稳定。但 PD 推理不是同一张通信矩阵。它的边是由在线调度实时生成的：今天一批长 prompt 可能从 prefill group A 打到 decode group D，下一分钟又因为 decode 队列变化打到 group B。
+          </p>
+          <p>
+            这会让一个原本为“规则集合通信”服务的 rail 映射，突然承担“动态大对象搬运”的任务。只要多个 prefill 节点的 KV handoff 被映射到同一批 Leaf、同一组上行链路或同一个 NIC rail，系统就会出现一个很反直觉的现象：总体 bisection bandwidth 看起来还可以，单机网卡也没满，但某些交换机端口已经排队很深。
+          </p>
+
+          <div class="microcase">
+            <div class="mini-panel">
+              <strong>训练 collective 的典型直觉</strong>
+              <p>
+                通信对象由并行策略决定，节奏与 iteration 同步，消息大小和参与集合相对可预测。拓扑优化可以围绕 tensor/pipeline/expert parallel 的稳定模式展开。
+              </p>
+            </div>
+            <div class="mini-panel">
+              <strong>PD KV transfer 的典型直觉</strong>
+              <p>
+                通信对象由线上请求、prompt 长度、队列状态、batch 合并和调度策略共同决定。它更像一张不断变化的二部图：prefill 实例在左边，decode 实例在右边，边权是 KV Cache 大小。
+              </p>
+            </div>
+          </div>
+
+          <p>
+            因此，ZCube 文章里最重要的概念其实是 topology-induced congestion：不是目的地本身太热，而是拓扑和路径选择把本可以分开的流压到了同一路径。这个问题靠简单升级网卡速率只能缓解，不能从结构上消除。
+          </p>
         </div>
 
         <figure>
@@ -882,6 +1090,33 @@
           </div>
         </div>
 
+        <div class="deep-block">
+          <h3>为什么“单轨 + 多轨”会比纯 rail 更稳</h3>
+          <p>
+            可以把 ZCube 想成给每个 GPU 两种不同的身份证：一个身份证按连续 GPU 分组，另一个按跨组相对位置分散。只用一种身份证时，调度器一旦连续选中某类 GPU，流量就容易落到同一批 Leaf；两种身份证叠加后，同一批 GPU 在另一侧交换机上的分布会被打散，源宿对自然更难全部挤到同一条局部路径。
+          </p>
+          <p>
+            这不是传统意义上“多路径哈希更随机”的思路。ZCube 更接近“让连接关系本身具备均匀性”：路径选择不完全依赖 ECMP 哈希碰运气，而是在布线和路由层面让不同 GPU pair 更容易拥有互不冲突的短路径。
+          </p>
+
+          <div class="microcase">
+            <div class="mini-panel">
+              <strong>路径分散带来的收益</strong>
+              <p>
+                KV handoff 从 prefill 池打到 decode 池时，更多流会自然落到不同 Leaf-pair 或不同 inter-switch link 上，队列深度和 PFC Pause 更少，TTFT P99 更稳定。</p>
+            </div>
+            <div class="mini-panel">
+              <strong>成本降低的来源</strong>
+              <p>
+                移除 Spine 层后，交换机与光模块数量减少。官方 claim 的成本下降不是靠牺牲 GPU 或软件能力，而是改变网络层级和互联方式。</p>
+            </div>
+          </div>
+
+          <p>
+            这里最容易误解的是“扁平二部图是不是会限制规模”。Z.ai 的论点不是所有规模都用同一张小图，而是在给定 GPU 数量、交换机端口数和双端口 NIC 假设下，通过二部互联获得足够短的网络直径与更好的路径分散；规模继续上升时，仍需要和端口密度、线缆长度、机柜布局、故障域一起设计。
+          </p>
+        </div>
+
         <figure>
           <img src="zai-zcube-inference-network-assets/img_010.png" alt="Z.ai 图 8：ZCube 架构下的负载均衡" />
           <figcaption>
@@ -925,6 +1160,64 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="diagnosis">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Diagnosis</div>
+            <h2>如果在自己集群里验证，应先看什么</h2>
+          </div>
+          <p>
+            ZCube 给外部团队最有价值的不是“照抄拓扑”，而是一套诊断顺序：先确认 KV transfer 是否真的进入关键路径，再判断问题是带宽总量不足、调度热点，还是拓扑诱发的局部拥塞。
+          </p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>问题</th>
+              <th>应该采集的数据</th>
+              <th>如何解释</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>TTFT 慢尾是否和 KV transfer 同步出现？</td>
+              <td>per-request 时间线：排队、prefill、KV transfer、首步 decode、首 token 返回。</td>
+              <td>如果 P99 TTFT 主要卡在 KV handoff 窗口，网络和调度应进入第一优先级。</td>
+            </tr>
+            <tr>
+              <td>平均带宽低但仍然排队，是否存在局部热点？</td>
+              <td>per-port utilization、egress queue depth、PFC Pause、ECN/CNP、per-rail load、per-leaf load。</td>
+              <td>端口或 Leaf 维度的尖峰比集群平均带宽更关键；平均值平滑掉的正是慢尾来源。</td>
+            </tr>
+            <tr>
+              <td>热点来自目的地过载，还是路径映射冲突？</td>
+              <td>source/destination pair、flow size、decode GPU 排队、目标节点入站端口利用率。</td>
+              <td>如果目的地确实过热，优先改调度和限流；如果目的地不热但中间链路热，才更像拓扑诱发拥塞。</td>
+            </tr>
+            <tr>
+              <td>调度器是否在放大网络冲突？</td>
+              <td>prefill/decode placement、batch 形成规则、模型副本布局、cache transfer path。</td>
+              <td>拓扑和调度要一起看。一个 topology-aware scheduler 可能在不改硬件时先释放部分收益。</td>
+            </tr>
+            <tr>
+              <td>升级网络速率是否足够？</td>
+              <td>100G/200G cap ablation、链路热点分布、TTFT 与吞吐曲线。</td>
+              <td>如果提高带宽收益明显但热点仍集中，说明既有带宽问题也有有效带宽利用问题。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout bluebox">
+          <strong>工程判断顺序：</strong>
+          <p>
+            先把请求级时间线和交换机指标对齐，再判断是否需要拓扑级改造。不要因为看到 P99 变差就直接归因于网络，也不要因为 GPU utilization 不满就只调 batching。PD 分离之后，GPU 空等、网络排队和调度热点会互相伪装。
+          </p>
+        </div>
       </div>
     </section>
 
@@ -1034,6 +1327,16 @@
           <p>
             ZCube 的 claim 是可信且重要的，但它不是一个通用“网络银弹”。它解决的是特定规模、特定通信模式下 topology-induced congestion。若瓶颈主要在模型 kernel、scheduler、memory fragmentation、speculative decoding 命中率或外部业务网关，ZCube 不会自动带来同等收益。
           </p>
+        </div>
+
+        <div class="deep-block">
+          <h3>还有几个更细的外推边界</h3>
+          <ul>
+            <li><strong>小规模集群不一定需要它。</strong> 如果 prefill 和 decode 大多在同节点，或者上下文长度较短，KV transfer 还没有形成主流流量，ZCube 的布线和运维成本可能不划算。</li>
+            <li><strong>更好的拓扑不能替代更好的 placement。</strong> 如果调度器持续把大 KV 请求压到同一批 decode 节点，再好的网络也会遇到不可避免拥塞。</li>
+            <li><strong>RoCE 配置仍然是关键变量。</strong> PFC、ECN、CNP、buffer 配置和交换机队列策略会影响观测到的尾延迟，不能把所有收益都归因于拓扑数学形态。</li>
+            <li><strong>训练与推理的最优拓扑可能不同。</strong> ZCube 源自训练拓扑优化论文，但这篇博客的推理价值来自 PD/KV traffic；如果一个集群同时承担训练和 serving，需要权衡两类 traffic。</li>
+          </ul>
         </div>
       </div>
     </section>

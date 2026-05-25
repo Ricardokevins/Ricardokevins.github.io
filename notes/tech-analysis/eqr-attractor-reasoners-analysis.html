@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EqR 与 Neural Attractors：从 Feedforward 到 Iterative Reasoner</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #222326;
+      --muted: #626970;
+      --subtle: #858b91;
+      --paper: #f7f3ea;
+      --panel: #fffdf8;
+      --panel-2: #eee8dc;
+      --line: #d8cec0;
+      --line-strong: #a99782;
+      --accent: #1d6574;
+      --accent-2: #9a5c2e;
+      --accent-soft: #e2eef0;
+      --violet: #5d5482;
+      --violet-soft: #e7e3f1;
+      --warn: #9b4e25;
+      --warn-soft: #f3e2d6;
+      --ok: #356852;
+      --ok-soft: #e2eee7;
+      --code-bg: #171b20;
+      --code-fg: #e9edf2;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --shadow: 0 18px 46px rgba(34, 35, 38, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(29, 101, 116, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: clamp(26px, 4vw, 54px) clamp(18px, 4vw, 46px) 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(290px, 0.42fr);
+      gap: clamp(24px, 4vw, 46px);
+      align-items: end;
+      min-height: calc(72vh - var(--notes-shell-height, 46px));
+      padding: clamp(32px, 7vw, 86px) 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6.1vw, 76px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 10px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 43px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 24px;
+      font-size: clamp(20px, 2vw, 26px);
+      font-weight: 760;
+    }
+
+    p { margin: 0.78rem 0 0; }
+
+    .lead {
+      max-width: 830px;
+      color: #404850;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .toc,
+    .source-card,
+    .claim-card,
+    .step-card,
+    .metric,
+    .figure,
+    .quote-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: #43505a;
+      font-size: 14px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0 0;
+    }
+
+    .metric {
+      padding: 16px;
+      background: rgba(255, 253, 248, 0.78);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: 25px;
+      line-height: 1.05;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section {
+      padding: clamp(34px, 6vw, 64px) 0 0;
+    }
+
+    .section > .section-lead {
+      max-width: 870px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .toc {
+      position: sticky;
+      top: calc(var(--notes-shell-height, 46px) + 14px);
+      z-index: 2;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 28px 0 0;
+      padding: 10px;
+      background: rgba(255, 253, 248, 0.92);
+      backdrop-filter: blur(10px);
+    }
+
+    .toc a {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      color: #43505a;
+      background: rgba(247, 243, 234, 0.7);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .source-card,
+    .claim-card,
+    .step-card,
+    .panel,
+    .callout,
+    .quote-card {
+      padding: 18px;
+    }
+
+    .source-card strong,
+    .claim-card strong,
+    .step-card strong,
+    .panel strong,
+    .callout strong,
+    .quote-card strong {
+      color: var(--ink);
+    }
+
+    .source-card .label,
+    .claim-card .label,
+    .step-card .label {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .source-card p,
+    .claim-card p,
+    .step-card p,
+    .panel p,
+    .callout p,
+    .quote-card p {
+      color: #46505a;
+    }
+
+    .callout {
+      margin-top: 22px;
+      border-left: 5px solid var(--warn);
+      background: var(--warn-soft);
+      box-shadow: none;
+    }
+
+    .callout.ok {
+      border-left-color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .callout.violet {
+      border-left-color: var(--violet);
+      background: var(--violet-soft);
+    }
+
+    .formula {
+      overflow-x: auto;
+      margin: 18px 0 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: #fbf8f1;
+    }
+
+    .figure {
+      overflow: hidden;
+      margin-top: 22px;
+      background: #fffdf8;
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #fff;
+    }
+
+    .figure figcaption {
+      margin: 0;
+      padding: 12px 14px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      border-top: 1px solid var(--line);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      color: #38424a;
+      background: var(--panel-2);
+      font-weight: 780;
+    }
+
+    td {
+      color: #414b54;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    code {
+      padding: 0.12em 0.32em;
+      border: 1px solid rgba(216, 206, 192, 0.9);
+      background: #f2ece1;
+      color: #2d3d45;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 18px 0 0;
+      padding: 16px;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      line-height: 1.62;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      background: #faf6ee;
+      color: #4b555f;
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .quote-card {
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+      background: #faf7f0;
+    }
+
+    .quote-card p {
+      font-family: var(--serif);
+      font-size: 20px;
+      line-height: 1.55;
+      color: #30363b;
+    }
+
+    .muted { color: var(--muted); }
+
+    .small { font-size: 13px; }
+
+    .footer {
+      margin-top: 58px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .hero,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 48px;
+      }
+
+      .meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .toc {
+        position: static;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .page { padding-left: 15px; padding-right: 15px; }
+      .meta-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 34px; }
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">X Thread + Paper Reading</div>
+        <h1>EqR 与 Neural Attractors：从 Feedforward 到 Iterative Reasoner</h1>
+        <p class="lead">
+          这条 X side-post 的核心不是“Sudoku 上又刷了一个分数”，而是在受控任务里拆解一个更基础的问题：
+          为什么同样的 layer-eval 预算，weight tying、online training、hierarchy 和 learned halting 会把一个几乎只会记忆的前馈模型，变成可以随 test-time compute 继续收敛的迭代推理器。
+        </p>
+        <div class="meta-grid" aria-label="关键指标">
+          <div class="metric"><b>2.6%</b><span>64-layer feedforward 在 Sudoku-Extreme 的 exact accuracy</span></div>
+          <div class="metric"><b>84.8%</b><span>side-post construction path 中加入 ACT training 后的 Sudoku 表现</span></div>
+          <div class="metric"><b>99.8%</b><span>EqR 在 Sudoku-Extreme 上结合 depth + breadth scaling 的最终结果</span></div>
+          <div class="metric"><b>93.0%</b><span>EqR 在 Maze-Unique 上结合 depth + breadth scaling 的最终结果</span></div>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <strong>Thesis</strong>
+        <p>
+          EqR 的真正贡献是把“循环多跑几步为什么有用”从经验技巧改写成一个可诊断命题：
+          只有当 latent dynamics 的低 residual attractor 与任务的低 error basin 对齐时，额外迭代和多次 restart 才会变成可靠的推理扩展，而不是更快地收敛到错误答案。
+        </p>
+      </aside>
+    </section>
+
+    <nav class="toc" aria-label="目录">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#mechanism">机制</a>
+      <a href="#recipe">训练路径</a>
+      <a href="#evidence">证据</a>
+      <a href="#limits">边界</a>
+      <a href="#implications">启发</a>
+      <a href="#insight">Insight</a>
+      <a href="#commands">复现</a>
+    </nav>
+
+    <section id="source" class="section">
+      <h2>来源地图：读了什么，如何核验</h2>
+      <p class="section-lead">
+        本文把用户给出的 side-post 作为入口，但不只复述原帖。真正的技术上下文来自同一作者的 EqR 主帖、arXiv 论文、GitHub README、作者在回复中的澄清，以及 side-post 中的训练动态配图。
+      </p>
+
+      <div class="grid-2">
+        <div class="source-card">
+          <span class="label">Primary Thread</span>
+          <strong>Benhao Huang 的 side-post</strong>
+          <p>
+            抓取 X 主帖 <code>2058320088475037801</code> 及 14 条相关记录。原帖给出从 feedforward 到 capable iterative model 的五段式构造：
+            feedforward 2.6%、weight-tying 32.6%、online training 74.7%、hierarchy 76.5%、adaptive compute 84.8%。
+          </p>
+        </div>
+        <div class="source-card">
+          <span class="label">Main Paper</span>
+          <strong>Equilibrium Reasoners: Learning Attractors Enables Scalable Reasoning</strong>
+          <p>
+            下载 arXiv <code>2605.21488v1</code> PDF，本地核验为 30 页。论文给出 EqR 的固定点视角、RI/NI 两个 landscape-shaping intervention、depth/breadth scaling、ACT 计算效率实验和附录中的训练动态消融。
+          </p>
+        </div>
+        <div class="source-card">
+          <span class="label">Code</span>
+          <strong>locuslab/EqR</strong>
+          <p>
+            读取 GitHub README：仓库用于复现 Sudoku-Extreme 和 Maze-Unique 实验，提供 Hugging Face 模型/数据、训练脚本、评估脚本、CUDA 依赖说明。报告只把 README 作为可复现性证据，不把未运行的训练结果当成本地复现实验。
+          </p>
+        </div>
+        <div class="source-card">
+          <span class="label">Context</span>
+          <strong>EqR 主帖、bonus 帖与作者回复</strong>
+          <p>
+            主帖 <code>2057641657580064941</code> 解释 EqR 的完整叙事：weight tying 把网络变成 latent dynamical system，depth 是跑更长轨迹，breadth 是多次随机初始化并用 convergence-based selection 选低 residual 轨迹。bonus 回复中作者确认部分 ACT gain 来自训练动态，而不只是测试时 early halting。
+          </p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="eqr-attractor-reasoners-assets/construction-path.jpg" alt="从 feedforward 到 iterative model 的构造路径截图">
+        <figcaption>
+          原帖的中心图：同一条 Sudoku-Extreme 构造路径中，每个模块都不是孤立技巧，而是在改变 latent dynamics 能否形成可达、稳定且任务对齐的 attractor basin。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="problem" class="section">
+      <h2>真正的问题：不是“多跑几层”，而是“多跑是否会向正确状态收敛”</h2>
+      <p class="section-lead">
+        一个前馈模型可以堆更多不同参数的层，一个 weight-tied 模型则反复应用同一个 update rule。两者在计算量上可能相近，但归纳偏置完全不同：前者像一次性函数逼近，后者像在 latent space 里运行一个求解器。
+      </p>
+
+      <div class="grid-3">
+        <div class="claim-card">
+          <span class="label">Feedforward</span>
+          <strong>顺序花掉预算，但没有状态收敛语义</strong>
+          <p>
+            论文 Table 1 和 side-post 都显示，4/16/64-layer feedforward 在 Sudoku-Extreme 上只到 1.8/2.1/2.6%，Maze 为 0.0%。这说明单纯增加非共享层数没有学到可泛化的约束求解过程，更像在小训练集上记忆或拟合表面模式。
+          </p>
+        </div>
+        <div class="claim-card">
+          <span class="label">Weight Tying</span>
+          <strong>把层变成重复的转移算子</strong>
+          <p>
+            权重共享后，模型不再是 \(F_L \circ \cdots \circ F_1(x)\)，而更接近 \(z_{k+1}=f_\theta(z_k;x)\)。这个形式让“更多 test-time compute”有了明确对象：不是再发明新层，而是继续运行同一个 latent solver。
+          </p>
+        </div>
+        <div class="claim-card">
+          <span class="label">Attractor</span>
+          <strong>正确答案必须成为稳定吸引子</strong>
+          <p>
+            如果正确解附近没有稳定 basin，更多迭代不会创造正确性；如果错误解是低 residual attractor，更多迭代反而会更稳定地错。EqR 的核心就是让模型的内部 attractor landscape 与任务 metric landscape 对齐。
+          </p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>关键区分：</strong>
+        <p>
+          “低 residual”只表示 \(z\) 接近 \(f_\theta(z;x)\) 的固定点或低变化区域，不自动表示答案正确。只有在局部稳定、attractor 本身正确、输出 margin 足够时，residual 才能作为 correctness proxy。论文附录把这个条件写得很清楚，所以不能把 EqR 简化成“残差越小必然越对”。
+        </p>
+      </div>
+    </section>
+
+    <section id="mechanism" class="section">
+      <h2>Attractor 视角：EqR 到底在优化什么</h2>
+      <p class="section-lead">
+        论文把 iterative reasoner 写成输入条件化的 latent dynamical system。给定输入 \(x\)，模型维护 latent state \(z_k\)，每一步用同一个参数化算子更新：
+      </p>
+
+      <div class="formula">
+        \[
+          z_{k+1}=f_\theta(z_k;x)
+        \]
+      </div>
+
+      <p>
+        如果推理过程真的学成了“求解器”，那么它应该把不同初始状态的轨迹推向某些稳定状态 \(z^\star\)。EqR 把这些稳定状态称作 task-conditioned neural attractors：
+      </p>
+
+      <div class="formula">
+        \[
+          z^\star=f_\theta(z^\star;x),\qquad R_\theta(z;x)=z-f_\theta(z;x)
+        \]
+      </div>
+
+      <div class="grid-2">
+        <div class="step-card">
+          <span class="label">Depth</span>
+          <strong>单条轨迹跑更久</strong>
+          <p>
+            增加 depth \(D\) 等价于对同一个初始状态继续应用 update rule。它只有在轨迹已经进入有用 basin 后才可靠：此时更多迭代会降低 fixed-point residual，并让 decoded output 更接近正确解。
+          </p>
+        </div>
+        <div class="step-card">
+          <span class="label">Breadth</span>
+          <strong>多条轨迹探索不同 basin</strong>
+          <p>
+            增加 breadth \(B\) 是从多个随机初始化或随机路径出发，覆盖更多 attractor basin。EqR 的主张不是 majority vote，而是选择最终几步平均 residual 最小的轨迹；这个选择只有在 residual 与 correctness 已经重新对齐时才有效。
+          </p>
+        </div>
+      </div>
+
+      <div class="callout ok">
+        <strong>一个实用判断：</strong>
+        <p>
+          如果一个 iterative model 的 residual 随 depth 降低，但 exact accuracy 不升反降，说明它可能只是更稳定地进入了 spurious attractor。此时问题不在“推理步数不够”，而在训练阶段没有塑造好 attractor landscape。
+        </p>
+      </div>
+    </section>
+
+    <section id="recipe" class="section">
+      <h2>从 2.6% 到 84.8%：side-post 拆开的五个选择</h2>
+      <p class="section-lead">
+        用户给出的 side-post 最有价值的地方，是它没有只展示最终 EqR，而是拆解“loop model 如何先变得可训练、可泛化”。这条路径的每一步都对应一个具体的动力系统问题。
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>阶段</th>
+              <th>Sudoku-Extreme exact acc.</th>
+              <th>做了什么</th>
+              <th>attractor 解释</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Feedforward</td>
+              <td>2.6%</td>
+              <td>64-layer 或 matched layer-eval 的一次性前馈预测器。</td>
+              <td>没有显式 latent solver 结构；增加层数主要增加拟合容量，不保证形成可重复收敛的状态转移。</td>
+            </tr>
+            <tr>
+              <td>Weight tying</td>
+              <td>32.6%</td>
+              <td>把少量可训练 block 反复应用到 latent state。</td>
+              <td>引入可迭代的 update operator，模型开始具有“同一规则反复修正状态”的能力。</td>
+            </tr>
+            <tr>
+              <td>Segmented online training</td>
+              <td>74.7%</td>
+              <td>长轨迹被切成 segment；模型沿轨迹前进时交替做 latent update 和 parameter update。</td>
+              <td>避免只在长 rollout 末端一次性回传，让学习信号跟随模型当前能到达的状态；相当于逐段把可达 basin 修正到更有用的位置。</td>
+            </tr>
+            <tr>
+              <td>Hierarchy</td>
+              <td>76.5%</td>
+              <td>加入不同频率更新的高/低层 latent state。</td>
+              <td>不是独立魔法开关。论文附录显示 hierarchy 的收益强依赖 truncation 与 halting 训练方式，说明架构和优化动态耦合。</td>
+            </tr>
+            <tr>
+              <td>ACT training</td>
+              <td>84.8%</td>
+              <td>加入 learned halting head，让模型学习什么时候停止或继续。</td>
+              <td> learned halting 不只是省推理算力，也改变训练动态；外部 verifier/oracle halting 反而可能让模型走向捷径和记忆。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="figure">
+        <img src="eqr-attractor-reasoners-assets/supervision-attractor-basins.jpg" alt="监督位置与 attractor basin 的关系截图">
+        <figcaption>
+          监督位置是训练动态的一部分。早期 latent states 仍在 transient regime，强行让每一步都贴近答案可能教错 dynamics；后期状态进入有用 basin 后，同样的监督才更像在加固正确 attractor。
+        </figcaption>
+      </figure>
+
+      <figure class="figure">
+        <img src="eqr-attractor-reasoners-assets/segmented-online-training.jpg" alt="Segmented Online Training 原帖截图">
+        <figcaption>
+          Segmented Online Training 的作用不是简单“减少显存”，而是把参数更新插入轨迹生成过程：后续 segment 由更新后的 operator 继续生成，训练目标因此贴近模型真实可到达的状态分布。
+        </figcaption>
+      </figure>
+
+      <div class="grid-2">
+        <div class="panel">
+          <strong>为什么 full trajectory backprop 不理想</strong>
+          <p>
+            长轨迹全量反传既贵，也会让许多 recurrent Jacobian 串联，梯度条件数变差。更重要的是，轨迹上不同时间点的状态语义不同：早期状态还没进入 basin，晚期状态更接近候选 attractor，把它们同等监督会混合可靠与不可靠梯度。
+          </p>
+        </div>
+        <div class="panel">
+          <strong>为什么 oracle halting 会崩</strong>
+          <p>
+            side-post 中最反直觉的消融是 external verifier halting 只有 13.6%，learned ACT 到 84.8%。这说明“知道正确答案时停”给了模型一个外部捷径；模型没有学会内部收敛信号，只是依赖标签侧停止规则，泛化反而被破坏。
+          </p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="eqr-attractor-reasoners-assets/act-halting.jpg" alt="ACT halting 训练动态截图">
+        <figcaption>
+          ACT 的关键不只是测试时少跑几步。作者在 bonus 回复中也澄清：默认对比里部分模型推理时仍用固定 depth，zL-halt gain 很大程度来自更好的训练动态。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="evidence" class="section">
+      <h2>论文证据：EqR 如何把 scaling ceiling 推高</h2>
+      <p class="section-lead">
+        主论文在 side-post 的训练路径之外，进一步提出两个 landscape-shaping intervention：randomized state initialization 和 path stochasticity via noise injection。它们不是为了让模型更随机，而是为了让正确 attractor 更可达、更稳定、更适合 depth/breadth scaling。
+      </p>
+
+      <div class="grid-2">
+        <div class="step-card">
+          <span class="label">RI</span>
+          <strong>Randomized State Initialization</strong>
+          <p>
+            训练时不再使用固定 latent 初始状态，而是采样 \(z_0\sim\mu_0(\cdot|x)\)。这扩大模型见过的初始状态区域，减少训练时单一路径与测试时多 restart 之间的 mismatch，并鼓励不同路径对同一任务收敛到一致输出。
+          </p>
+        </div>
+        <div class="step-card">
+          <span class="label">NI</span>
+          <strong>Noise Injection / Path Stochasticity</strong>
+          <p>
+            每一步更新加入轻量随机扰动：
+          </p>
+          <div class="formula">
+            \[
+              z_{k+1}=z_k+(1-\lambda)r_\theta(z_k;x)+\beta\epsilon_k
+            \]
+          </div>
+          <p>
+            论文主实验使用轻微 damping 与小路径噪声，让轨迹不要过早卡进错误稳定点。
+          </p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>证据块</th>
+              <th>结果</th>
+              <th>应该如何理解</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Table 1: Feedforward vs iterative</td>
+              <td>Feedforward 最高 2.6% Sudoku / 0.0% Maze；EqR 99.8% / 93.0%。</td>
+              <td>硬约束任务上，泛化差异不是单纯参数量差异，而是是否存在可扩展的迭代状态转移结构。</td>
+            </tr>
+            <tr>
+              <td>Table 3: Landscape shaping</td>
+              <td>baseline 84.8 / 44.9；RI 86.0 / 68.6；RI+NI 86.4 / 82.2。</td>
+              <td>Maze-Unique 上 RI/NI 的收益尤其大，说明可达 basin 和 path stability 是关键瓶颈。</td>
+            </tr>
+            <tr>
+              <td>Table 4: Test-time scaling</td>
+              <td>D=16,B=1: 86.4 / 82.2；D=64,B=1: 93.0 / 88.9；D=64,B=128: 99.8 / 93.0。</td>
+              <td>depth 先让单轨迹更好收敛，breadth 再覆盖更多 basin；两者不是替代关系。</td>
+            </tr>
+            <tr>
+              <td>Table 5: ACT efficiency</td>
+              <td>Sudoku-Lite 上 D=1024,B=1 从 1024 NFE 降到 58.7 NFE，accuracy 96.1 到 95.3。</td>
+              <td>learned halting 能把大预算变成按样本难度分配的弹性预算，但会有小幅准确率折衷。</td>
+            </tr>
+            <tr>
+              <td>Appendix A.3/A.4</td>
+              <td>learnable initializer 未超过简单 RI；路径独立性 TRM 3.58/28.60 降到 RI+NI 0.13/1.33。</td>
+              <td>KISS/YAGNI 上，简单随机初始化和固定噪声已经足够支撑主结论，没必要把机制过早复杂化。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout violet">
+        <strong>评估对象要说清楚：</strong>
+        <p>
+          Sudoku-Extreme 是 9x9 长程约束满足任务，论文复用 HRM 设置并有大验证集；Maze-Unique 是作者构造的 30x30 唯一路径 shortest-path 任务，训练/测试各 1000 个实例。指标是 exact accuracy：完整序列所有 token 都对才算 1。它不同于“局部 token accuracy”，也不同于 LLM benchmark 的自由文本评分。
+        </p>
+      </div>
+    </section>
+
+    <section id="limits" class="section">
+      <h2>边界和容易误读的地方</h2>
+      <p class="section-lead">
+        EqR 很有启发，但不能被过度外推。它给的是 controlled reasoning setting 下的机制证据，不是对所有 LLM 推理、所有递归模型、所有 benchmark 的通用证明。
+      </p>
+
+      <div class="grid-2">
+        <div class="claim-card">
+          <span class="label">Residual</span>
+          <strong>低 residual 不是 correctness certificate</strong>
+          <p>
+            论文附录明确：低 residual 只有在局部稳定、正确 attractor、正输出 margin 三个条件下才支持正确性。否则它只证明“收敛”，不证明“收敛到对的地方”。
+          </p>
+        </div>
+        <div class="claim-card">
+          <span class="label">Task Scope</span>
+          <strong>Sudoku/Maze 是受控任务，不等价于开放语言推理</strong>
+          <p>
+            Sudoku 和 Maze 的输入输出结构固定、答案可精确验证、任务 metric 明确。开放域 LLM 推理里的状态空间、目标函数和 verifier 都更脏，不能直接把 99.8% 外推成通用 reasoning scaling law。
+          </p>
+        </div>
+        <div class="claim-card">
+          <span class="label">Compute</span>
+          <strong>40,000 effective layers 是预算表达，不是免费收益</strong>
+          <p>
+            论文使用 NLE/NFE accounting 表示 test-time compute 的放大。depth/breadth scaling 的收益要和延迟、吞吐、内存、batching 策略一起看；ACT 只是让预算分配更弹性，并没有让大规模迭代成本消失。
+          </p>
+        </div>
+        <div class="claim-card">
+          <span class="label">Architecture</span>
+          <strong>Hierarchy 不是独立可复用结论</strong>
+          <p>
+            附录消融显示 hierarchy 的效果依赖 gradient truncation、SOT 和 ACT。把“加 hierarchy”从训练 recipe 中拆出来，很可能复现不到同样收益。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications" class="section">
+      <h2>工程和研究启发</h2>
+      <p class="section-lead">
+        如果把 EqR 当成一个设计原则，而不是 Sudoku 技巧，它给循环/迭代模型训练提供了几条很实际的判断标准。
+      </p>
+
+      <div class="grid-3">
+        <div class="step-card">
+          <span class="label">Diagnostic</span>
+          <strong>同时画 residual 与 task error</strong>
+          <p>
+            只看 accuracy 会把训练失败、收敛失败和错误 attractor 混在一起；只看 residual 会误把 spurious convergence 当成成功。二者一起看，才能判断 scaling 是否在走向正确 basin。
+          </p>
+        </div>
+        <div class="step-card">
+          <span class="label">Training</span>
+          <strong>监督不一定越早越密越好</strong>
+          <p>
+            对长轨迹模型，早期状态可能只是过渡态。更合理的做法是识别模型已经接近有用 basin 的阶段，把强监督集中在可靠梯度上。
+          </p>
+        </div>
+        <div class="step-card">
+          <span class="label">Inference</span>
+          <strong>breadth 需要可选择信号</strong>
+          <p>
+            多 restart 不是天然有用；如果没有内部 convergence 信号，majority vote 可能只是放大偏差。EqR 的 convergence-based selection 依赖训练阶段先让 residual 变得有语义。
+          </p>
+        </div>
+      </div>
+
+      <figure class="figure">
+        <img src="eqr-attractor-reasoners-assets/takeaways.jpg" alt="原帖总结图">
+        <figcaption>
+          原帖总结把 weight tying、supervision placement、SOT、hierarchy、ACT 放在同一个训练动态框架里。这个框架比单个技巧本身更重要。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="insight" class="section">
+      <h2>我的判断</h2>
+      <div class="quote-card">
+        <p>
+          EqR 最值得记住的不是“递归模型能在 Sudoku 上跑到 99.8%”，而是它把 test-time scaling 的一个隐藏前提显性化了：额外计算只有在模型内部有正确、可达、可选择的收敛结构时才是 reasoning；否则只是把同一个错误动力系统运行得更久。
+        </p>
+      </div>
+      <p>
+        这条 side-post 的价值在于揭示“迭代能力”不是 weight tying 自动带来的。Weight tying 只是给了模型一个可以反复应用的算子；SOT、监督位置、RI/NI 和 learned halting 才是在塑造这个算子产生什么 landscape。换句话说，loop model 的核心不是 loop，而是 loop 的相空间。
+      </p>
+      <p>
+        对更大的 LLM 或 agent 系统，最直接的迁移不是照搬 Sudoku 架构，而是引入类似诊断：内部状态是否随着额外计算稳定改善；停止信号是模型自己学到的还是外部 verifier 送来的捷径；多样本搜索是否有比 vote 更接近机制的 selection signal。只要这些问题答不上来，“test-time compute scaling”就仍然可能只是昂贵采样，而不是可解释的迭代推理。
+      </p>
+    </section>
+
+    <section id="commands" class="section">
+      <h2>本地抓取与验证记录</h2>
+      <p class="section-lead">
+        以下命令用于复现本次材料抓取路径。报告中的分析基于本地保存的 JSON、PDF、README 和图片资源。
+      </p>
+
+      <pre><code>opencli list -f yaml | rg -i "twitter|x.com|web"
+opencli twitter --help
+opencli twitter thread --help
+opencli web read --help
+
+opencli twitter thread "https://x.com/huskydogewoof/status/2058320088475037801" \
+  --limit 100 -f json --trace retain-on-failure \
+  > "results/huskydogewoof-x-2058320088475037801/thread-2058320088475037801.json"
+
+opencli twitter thread "https://x.com/huskydogewoof/status/2057641657580064941" \
+  --limit 100 -f json --trace retain-on-failure \
+  > "results/huskydogewoof-x-2058320088475037801/thread-main-eqr-2057641657580064941.json"
+
+curl -L --fail "https://arxiv.org/pdf/2605.21488v1" \
+  -o "results/huskydogewoof-x-2058320088475037801/refs/2605.21488v1.pdf"
+pdfinfo "results/huskydogewoof-x-2058320088475037801/refs/2605.21488v1.pdf"
+pdftotext -layout "results/huskydogewoof-x-2058320088475037801/refs/2605.21488v1.pdf" \
+  "results/huskydogewoof-x-2058320088475037801/refs/2605.21488v1.txt"
+
+curl -L --fail "https://raw.githubusercontent.com/locuslab/eqr/main/README.md" \
+  -o "results/huskydogewoof-x-2058320088475037801/refs/eqr-readme.md"</code></pre>
+
+      <div class="panel">
+        <strong>本地证据位置</strong>
+        <p>
+          线程 JSON、论文 PDF/text、GitHub README 和原帖配图保存在
+          <code>results/huskydogewoof-x-2058320088475037801/</code>。站内可访问资源保存在
+          <code>notes/tech-analysis/eqr-attractor-reasoners-assets/</code>，其中包含论文 PDF 本地副本
+          <a href="eqr-attractor-reasoners-assets/2605.21488v1.pdf">2605.21488v1.pdf</a>。
+        </p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>
+        生成日期：2026-05-25。材料类型：X thread、arXiv paper、GitHub README。本文为技术解读，不替代论文全文复现；所有数值均按已抓取公开材料归纳。
+      </p>
+    </footer>
+  </main>
+</body>
+</html>

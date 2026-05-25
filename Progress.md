@@ -1,5 +1,277 @@
 # Ricardokevins.github.io Progress
 
+## 2026-05-25 SaaS-Bench / Computer-Use Agent 评测笔记
+
+### 背景
+
+- 用户要求深入理解和介绍 `https://x.com/sheriyuo/status/2058815872249286743`。
+- 原帖评论 UniPat AI 的 SaaS-Bench：23 个真实开源 SaaS 系统、106 个长程任务，强调 Checkpoint Score 与 Resolved Score 的落差暴露了 Computer-Use Agent 的产品化鸿沟。
+- 本次按 Notes 站点结构生成 self-contained 中文 HTML 技术解读，并保留官方 blog 图、原帖配图和论文 PDF 本地资源。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/saas-bench-cua-analysis.html`。
+  - 覆盖来源地图、问题背景、benchmark 设计、评分协议、论文/blog 结果、四类失败机制、工程启发、局限和个人 insight。
+  - 明确区分官方 blog leaderboard 与 arXiv PDF Table 2：blog 已包含 Claude Opus 4.7、GPT-5.5 High 等更新模型，论文主榜为 2026-05-15 arXiv 版本。
+- 新增资源目录 `notes/tech-analysis/saas-bench-cua-analysis-assets/`。
+  - 保存原帖配图、官方 blog 的 evaluation overview、task composition、apps/steps、pass@k、complexity drop 图，以及 arXiv PDF 副本。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`SaaS-Bench 解读：Computer-Use Agent 为什么还不是可靠的 SaaS 工作者`
+  - URL：`/notes/tech-analysis/saas-bench-cua-analysis.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/` 而不是 `notes/paper-reviews/`：用户入口是 X 帖，材料同时包含官方 blog、GitHub 仓库和论文，重点是技术/产品评测解读。
+- 报告不逐段复述论文，而按“评测错觉 -> 环境设计 -> 双指标 -> 结果落差 -> 失败机制 -> 工程改造”的理解顺序组织。
+- 对 blog 与论文的榜单时间差做显式标注，避免把后续 leaderboard 更新误写成 arXiv PDF 原始实验。
+
+### 待验证
+
+- 静态 HTML 解析、资源引用、MathJax 配置、Jekyll build、站内索引生成和必要的 headless 渲染检查。
+
+## 2026-05-25 Agentic Systems as Boosting Weak Reasoning Models 笔记
+
+### 背景
+
+- 用户要求深入梳理和理解 `https://x.com/che_shr_cat/status/2058713325106614301`。
+- 原帖是 Grigory Sapunov 对 arXiv 论文 `Agentic Systems as Boosting Weak Reasoning Models` 的线程解读，主张弱模型候选池里经常已有正确解，关键在于用 critic-comparator harness 选出来。
+- 本次目标是把 X 线程、Substack 公开段落、arXiv 论文正文和源码公式核验整合成站内可读的技术分析。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/che-shr-cat-agentic-boosting.html`。
+  - 覆盖来源地图、proposal coverage / local identifiability / progress / diversity 四轴框架、`\Pi(k,m,r)` 协议、局部错误分解、blind-spot floor、SWE-bench Verified 实验、ablation、局限和工程实践清单。
+  - 明确区分 X 线程传播说法、Substack 摘要、arXiv 论文可核验证据和本报告的工程判断。
+- 新增资源目录 `notes/tech-analysis/che-shr-cat-agentic-boosting-assets/`。
+  - 保存 X 线程关键图：root、protocol、bound、results、ablation。
+  - 保存 arXiv PDF 副本 `2605.14163-agentic-systems-boosting.pdf`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Agentic Systems as Boosting Weak Reasoning Models 深度解读`
+  - URL：`/notes/tech-analysis/che-shr-cat-agentic-boosting.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/`：本次入口是 X thread + arXiv paper 的综合技术解读，重点是 agent harness 的机制诊断，而不是逐节论文翻译。
+- 报告采用单页 HTML，不新增多版本文档；只保留支撑机制解释的 5 张 X 图和论文 PDF。
+- 对传播性结论保持克制：`nano matches frontier giants` 被写成 SWE-bench Verified、固定候选池、特定 selector budget 下的系统级 solve rate 接近，不外推为权重能力追平。
+- 对公式做源码核对：局部 identifiability error 使用 `k^2 e^{-βm-2rσ^2}`，避免把 `pdftotext` 中丢失上标的 OCR 片段写成结论。
+
+### 验证结果
+
+- HTML parser 解析通过：新增页面 `41,654` bytes，核心章节 `source/problem/protocol/math/evidence/limits/implications/insight/commands` 均存在。
+- 本地资源引用检查通过：页面引用的 5 张图片与 1 个 PDF 均存在且非空；未发现 Unicode replacement character；`pre code` 样式覆盖存在；MathJax 配置存在。
+- 运行 `git diff --check` 通过。
+- 运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/che-shr-cat-agentic-boosting.html` 生成，并包含标题、Blind-Spot Floor、公式和本地图片引用。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/che-shr-cat-agentic-boosting.html`。
+- Chrome headless 已渲染桌面端和移动端截图：
+  - `/tmp/che-shr-cat-agentic-boosting-1280.png`
+  - `/tmp/che-shr-cat-agentic-boosting-390.png`
+- Chrome DOM dump 中已出现 `mjx-container`，确认 MathJax 完成渲染。
+
+## 2026-05-25 ZEDA 后训练 MoE 动态路由 X 帖与论文笔记
+
+### 背景
+
+- 用户要求详细深入理解 `https://x.com/rohanpaul_ai/status/2058620038693999012`。
+- 主帖解读论文 `Post-Trained MoE Can Skip Half Experts via Self-Distillation`，核心方法是 ZEDA（Zero-Expert Self-Distillation Adaptation）。
+- 本次目标是形成站内可读的中文技术分析，而不是逐条复述 X 原帖。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/rohanpaul-zeda-moe-analysis.html`。
+  - 覆盖来源地图、问题背景、zero expert 注入、两阶段自蒸馏、group auxiliary loss、主结果、动态计算分析、局限、工程启发和个人 insight。
+  - 明确区分 Rohan Paul 的 X 摘要、论文 PDF 可核验证据、GitHub README/模型发布信息与个人机制判断。
+- 新增资源目录 `notes/tech-analysis/rohanpaul-zeda-moe-assets/`。
+  - 保存主帖精确媒体图、论文 PDF 副本、PDF 第 1/7/8/9 页证据图。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`ZEDA：后训练 MoE 如何跳过一半专家计算`
+  - URL：`/notes/tech-analysis/rohanpaul-zeda-moe-analysis.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/`：材料入口是 X thread，但核心依据是 arXiv 论文和官方仓库，属于技术分析。
+- 报告强调 ZEDA 不是剪枝，也不是无需训练的 inference trick；它是低成本后训练适配，把“是否调用真实专家”转成 router 可学习决策。
+- 对 `opencli twitter download` 抓到的非主帖推荐图不做引用；只使用线程 JSON 中 `media_urls` 精确指向的主帖图。
+
+### 验证结果
+
+- HTML parser 解析通过，文件大小 `31,057` bytes。
+- 核心章节 `source/problem/mechanism/evaluation/dynamics/limits/practice/insight/commands` 均存在。
+- 本地资源引用检查通过：页面内 `6` 个本地引用均存在且非空；`_site` 中同名资源目录已生成。
+- 可读性检查通过：未发现 Unicode replacement character；`pre code` 有显式样式覆盖；MathJax 配置存在。
+- `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/rohanpaul-zeda-moe-analysis.html` 生成，文件大小 `31,057` bytes。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/rohanpaul-zeda-moe-analysis.html`。
+- Chrome headless 已渲染桌面端 `1280x900` 和移动端 `390x844` 截图到 `/tmp/rohanpaul-zeda-moe-1280.png`、`/tmp/rohanpaul-zeda-moe-390.png`；两个 PNG 文件均非空。
+- Chrome headless `--dump-dom` 检查通过：DOM 中出现 `mjx-container`，标题和 zero expert 正文均可检索，说明 MathJax 公式实际渲染。
+
+## 2026-05-25 可信 Audio LLM Survey X 线程与论文笔记
+
+### 背景
+
+- 用户要求深度理解分析 `https://x.com/HuggingPapers/status/2058588611172258039`。
+- X 主帖推荐论文 `A Survey of Large Audio Language Models: Generalization, Trustworthiness, and Outlook`；回复短链解析到 Hugging Face paper `2605.20266` 和 GitHub 资源清单 `Kwwwww74/Awesome-Trustworthy-AudioLLMs`。
+- 目标是形成站内可读的技术分析：解释 Audio LLM 为什么不能只沿用文本 LLM safety，尤其是连续声学信号如何扩展 attack surface。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/huggingpapers-audio-llm-trust.html`。
+  - 覆盖来源核验、LALM 机制、六维可信风险、攻防不对称、Fidelity/Stability/Alignment 评测框架、局限、工程实践清单和个人 insight。
+  - 明确区分 X 传播内容、HF/arXiv 论文正文、GitHub awesome list 补充资源和本报告的机制判断。
+- 新增资源目录 `notes/tech-analysis/huggingpapers-audio-llm-trust-assets/`。
+  - 保存原帖图、论文 Figure 1/2/3/4/5/6、arXiv PDF 副本和 GitHub README 副本。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`可信 Audio LLM Survey 深度解读`
+  - URL：`/notes/tech-analysis/huggingpapers-audio-llm-trust.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/` 而不是 `notes/paper-reviews/`：本次入口是 X/HuggingPapers 推荐，报告重点是把 survey 转换为技术路线图和工程判断，而不是逐节论文精读。
+- 页面使用单页 HTML 和本地论文图表，不新增多版本文档；复用站内 Notes shell。
+- 报告按“来源 -> 问题 -> 机制 -> 风险 taxonomy -> 评测 -> 实践”的理解顺序组织，避免简单翻译 abstract。
+
+### 验证结果
+
+- HTML parser 解析通过：新增页面 `35,647` bytes，核心章节 `source/problem/mechanism/taxonomy/asymmetry/evaluation/limits/implications/insight/commands` 均存在。
+- 本地资源引用检查通过：页面内 `7` 个本地引用均可解析；资源目录包含原帖图、6 张论文图表、PDF 副本和 GitHub README 副本；未发现 Unicode replacement character；`pre code` 样式覆盖存在；MathJax 源公式存在。
+- `_data/notes.yml` YAML 解析通过；目标 repo `git diff --check` 通过。
+- 运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/huggingpapers-audio-llm-trust.html` 生成，`_site/notes/index.html` 包含新 Notes 卡片入口，本地资源同步到 `_site/notes/tech-analysis/huggingpapers-audio-llm-trust-assets/`。
+- 本地 HTTP 验证通过：页面、Notes 索引和 `safety.png` 均返回 `200 OK`。
+- Chrome headless 渲染验证通过：桌面截图 `/tmp/huggingpapers-audio-llm-trust-1280.png` 为 `1280x900`，移动截图 `/tmp/huggingpapers-audio-llm-trust-390.png` 为 `390x844`，均为非空 PNG；`--dump-dom` 中出现 `mjx-container` 和 `TrustScore`，确认 MathJax 渲染。
+
+## 2026-05-25 EqR / Neural Attractors X 线程与论文笔记
+
+### 背景
+
+- 用户要求详细深入分析 `https://x.com/huskydogewoof/status/2058320088475037801`。
+- 原帖是 Benhao Huang 关于 Equilibrium Reasoners（EqR）的 side-post，重点不是主论文发布，而是拆解从标准 feedforward model 到 capable iterative model 的训练路径。
+- 本次目标是把 side-post、EqR 主帖、arXiv 论文 `2605.21488v1`、GitHub README 和相关 bonus/回复信息整合成站内可读的技术分析。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/eqr-attractor-reasoners-analysis.html`。
+  - 覆盖来源地图、问题背景、attractor 机制、从 feedforward 到 iterative reasoner 的训练 recipe、RI/NI landscape shaping、depth/breadth scaling、ACT、证据边界、工程启发和个人 insight。
+  - 明确区分 side-post 的 construction path、主论文 EqR 的最终 scaling 结果、GitHub README 可复现性信息，以及报告中的机制判断。
+- 新增资源目录 `notes/tech-analysis/eqr-attractor-reasoners-assets/`。
+  - 保存 5 张关键 X 原帖证据图：construction path、supervision placement、segmented online training、ACT halting、takeaways。
+  - 保存论文 PDF 本地副本 `2605.21488v1.pdf`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`EqR 与 Neural Attractors：从 Feedforward 到 Iterative Reasoner`
+  - URL：`/notes/tech-analysis/eqr-attractor-reasoners-analysis.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/`：本次阅读对象是 X thread + paper + code README 的综合技术解读，不是只按论文结构做 paper review。
+- 报告采用单页 HTML，不新增多版本文档；资源只保留能支撑机制解释的 5 张截图和论文 PDF。
+- 将 residual convergence 与 correctness 明确分开：低 residual 只有在局部稳定、正确 attractor、正输出 margin 条件下才可作为 correctness proxy。
+- 对 EqR 的外推保持克制：Sudoku-Extreme 和 Maze-Unique 是受控结构化任务，不能直接等价为开放域 LLM 推理能力。
+
+### 验证结果
+
+- HTML parser 解析通过：新增页面 `35,523` bytes，核心章节 `source/problem/mechanism/recipe/evidence/limits/implications/insight/commands` 均存在。
+- 本地资源引用检查通过：页面内 `7` 个本地引用均可解析；5 张证据图与 1 个 PDF 均存在且非空；未发现 Unicode replacement character；`pre code` 样式覆盖存在；MathJax 配置存在。
+- `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/eqr-attractor-reasoners-analysis.html` 生成，文件大小 `35,523` bytes，并包含标题、Segmented Online Training 正文和本地图片引用。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/eqr-attractor-reasoners-analysis.html`。
+- 本地 HTTP 验证通过：页面、`/notes/` 索引和 `construction-path.jpg` 均返回 `200 OK`。
+- Chrome headless 已渲染桌面端 `1280x900` 和移动端 `390x844` 截图到 `/tmp/eqr-attractor-note-1280.png`、`/tmp/eqr-attractor-note-390.png`；两个 PNG 文件均非空。
+- Chrome headless `--dump-dom` 检查通过：DOM 中出现 `mjx-container`，说明 MathJax 公式实际渲染。
+
+## 2026-05-25 Grok V9 / Cursor 数据 / Mid-training X 线程笔记
+
+### 背景
+
+- 用户要求深度梳理 `https://x.com/eliebakouch/status/2058796025091871141`。
+- 原帖讨论 Elon 关于 Grok foundation model V9-Medium 1.5T 的更新：Cursor 数据在补充训练阶段加入，fine-tuning 已开始，RL 几天后开始，2-3 周公开发布。
+- 本次目标是把 X 线程、Elon 原始更新、Cursor 官方 Composer 2/2.5 材料、xAI Colossus 公开页和 Cursor 数据使用说明合并成站内可读的技术分析。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/eliebakouch-grok-v9-midtraining.html`。
+  - 覆盖来源地图、问题背景、训练阶段拆解、Cursor 数据价值、Composer 2/2.5 对照、评估缺口、证据边界、工程启发和个人 insight。
+  - 明确区分公开事实、社区估算和机制判断，避免把 Grok V9 尚未公开的训练细节写成事实。
+- 新增资源目录 `notes/tech-analysis/eliebakouch-grok-v9-midtraining-assets/`。
+  - 保存 8 张 Cursor Composer 2.5 官方博客图片，用于说明 benchmark、训练、文本反馈和合成任务证据。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Grok V9、Cursor 数据与 Mid-training 深度解读`
+  - URL：`/notes/tech-analysis/eliebakouch-grok-v9-midtraining.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/`：当前材料是 X 线程、产品博客、技术报告和公开网页，不是单篇论文精读。
+- 页面采用单文件 HTML，资源只保留必要官方证据图，不新增多版本文档。
+- 对 “2-3 weeks” 做严格解释：这是公开发布窗口和后训练节奏信号，不直接等价为完整 RL 训练时长。
+- 对 Cursor 数据做隐私边界标注：只有关闭隐私模式时，Cursor 官方说明才称可能用代码库数据、prompts、编辑器操作、代码片段等改进 AI 功能并训练模型；不能外推为所有用户代码。
+
+### 验证结果
+
+- HTML parser 校验通过：新增页面 `41,189` bytes，核心章节 `source/question/pipeline/cursor/composer/evals/limits/implications/insight` 均存在。
+- 本地资源引用检查通过：页面引用的本地图片均可解析；资源目录 8 张 Cursor Composer 2.5 官方博客图片均存在且非空。
+- 内容可读性检查通过：未发现 Unicode replacement character；`pre code` 样式覆盖存在。
+- 目标 repo `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/eliebakouch-grok-v9-midtraining.html` 生成，文件大小 `41,189` bytes。
+- 已确认 `_site/notes/index.html` 包含 `Grok V9、Cursor 数据与 Mid-training 深度解读` 入口。
+
+## 2026-05-25 LLM Interview Question Bank 推理网络 Infra 覆盖 Review
+
+### 背景
+
+- 用户要求 review `notes/llm-interview-question-bank/` 是否覆盖以下 infra 主线：
+  - Prefill-Decode 分离让 KV Cache 迁移变成动态、非对称、跨节点的主流流量。
+  - 传统按训练流量优化的 ROFT/Fat-Tree 容易出现“总带宽够，但局部路径被打爆”的结构性低效。
+  - 重点关注 Prefill/Decode、KV Cache、ROFT/Fat-Tree、跨节点 KV transfer、拓扑诱发拥塞等内容。
+
+### 已完成
+
+- 本地检索 `notes/llm-interview-question-bank/`：
+  - 第 09 章覆盖 serving 总览、Prefill/Decode、KV cache、PagedAttention、continuous batching、prefix caching、SLO 和观测。
+  - 第 42 章覆盖核心完整答案，其中第 61 题显式解释 Prefill/Decode 分离部署、KV transfer、适用条件和排障点。
+  - 第 53 章覆盖知识点索引，明确把 Prefill/Decode 分离、多租户、观测、KV transfer、跨节点调度、cache 生命周期放在推理系统复盘清单里。
+  - 第 88 章覆盖 KV Cache 压缩、驱逐、量化、GQA/MQA、长上下文下显存/带宽瓶颈。
+- 本地检索确认题库内目前没有实质覆盖：
+  - `ROFT`、`Rail-Optimized Fat-Tree`、`Fat-Tree`、`Leaf/Spine`、`PFC Pause`、`RoCE/RDMA` 在 PD KV transfer 场景下的结构性拥塞机制。
+  - “aggregate bandwidth sufficient but localized congestion” 这类网络拓扑诊断语言。
+  - 训练 collective trace 与在线推理 KV transfer trace 的流量形态差异。
+- 对照仓库内 `notes/tech-analysis/zai-zcube-inference-network.html`：
+  - ZCube 技术分析页已完整覆盖这条主线，包括 PD 分离、KV Cache 跨节点迁移、ROFT/Fat-Tree 局部拥塞、ZCube 扁平二部拓扑、单轨/多轨混合接入、P99 TTFT 与吞吐指标。
+  - 但该内容目前作为独立 Tech Analysis 存在，没有进入 LLM Interview Question Bank 的章节体系和搜索/学习路径。
+
+### Review 结论
+
+- 题库对“单机/单服务层面的推理系统”覆盖较完整：Prefill/Decode、KV cache、PagedAttention、batching、prefix caching、量化、投机解码、SLO 和多租户都已经足够支撑常规推理平台面试。
+- 题库对“集群网络层面的推理 infra”覆盖不足：它提到了跨节点 KV transfer 和网络带宽，但没有把 KV transfer 上升为新的主流流量模型，也没有解释为什么按训练 collective 优化的 ROFT/Fat-Tree 会在 PD 推理里产生局部热点。
+- 关键缺口不是再补一个 KV cache 定义，而是补“推理 workload 改变网络拓扑假设”的系统题：
+  - 训练流量：AllReduce / AllGather / ReduceScatter / All-to-All 更规则、可预测，拓扑可按 collective/rail 优化。
+  - 推理流量：prefill/decode placement 随请求长度、队列状态、batching、模型副本、SLO 动态变化，KV Cache 源宿和流量大小非对称、不稳定。
+  - 结构性低效：平均带宽和总带宽不能代表有效带宽；热点 Leaf、rail、端口队列、PFC/ECN 信号和 TTFT P99 更能暴露问题。
+
+### 建议补强
+
+- 在第 42 章第 61 题后新增一个追问块或新增第 62 题：
+  - “为什么 Prefill/Decode 分离会把网络推上关键路径？KV Cache 跨节点迁移如何改变流量模型？”
+  - “ROFT/Fat-Tree 为什么在训练 collective 中合理，但在 PD 推理 KV transfer 中可能局部拥塞？”
+  - “如何诊断‘总带宽够，但局部路径被打爆’？应该看哪些指标？”
+- 在第 53 章知识点索引新增一小节：
+  - `PD disaggregation -> KV transfer -> topology-aware scheduling -> network observability`
+  - 指标包括 per-flow KV size、source/destination pair、per-rail load、per-leaf load、PFC Pause、ECN/CNP、egress queue depth、TTFT p99。
+- 在题库首页的训练/推理平台岗学习路径里，补一个“推理网络/拓扑专项”入口，链接到现有 `notes/tech-analysis/zai-zcube-inference-network.html` 或后续题库章节。
+
+### 当前状态
+
+- 本次只完成 review 和过程记录，尚未修改题库正文。
+- 如果后续要补内容，最小改动方案是 in-place 修改第 42、53、index 三处，不新建大文档；更完整方案是新增一章“推理网络与 PD KV Transfer 专项”，但会增加目录维护成本。
+
 ## 2026-05-25 NITP X 线程与 ICML Poster 笔记
 
 ### 背景
