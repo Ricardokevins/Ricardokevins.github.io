@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Applied Compute RMSD：把 OOD 企业行为拉回模型分布内</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f3ea;
+      --ink: #1e1b18;
+      --muted: #675f56;
+      --subtle: #8a8176;
+      --line: #d7ccbb;
+      --line-strong: #a99a86;
+      --panel: #fffdf8;
+      --panel-2: #f0e8dc;
+      --accent: #a94f32;
+      --accent-soft: #f2d9cf;
+      --blue: #2f638f;
+      --blue-soft: #dce9f2;
+      --green: #3f715c;
+      --green-soft: #dfeae2;
+      --gold: #946c21;
+      --gold-soft: #f0e2bc;
+      --red: #9a4037;
+      --red-soft: #f0ddd9;
+      --violet: #6158a4;
+      --violet-soft: #e5e1f1;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --shadow: 0 16px 42px rgba(44, 35, 23, 0.11);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(30, 27, 24, 0.034) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(30, 27, 24, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(47, 99, 143, 0.3);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(30, 27, 24, 0.14);
+      background: rgba(247, 243, 234, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 760;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--green) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 253, 248, 0.62);
+    }
+
+    .hero {
+      min-height: 82vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: clamp(28px, 5vw, 70px);
+      align-items: end;
+      padding: clamp(58px, 9vw, 108px) clamp(20px, 5vw, 74px) 48px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 80% 18%, rgba(47, 99, 143, 0.10), transparent 32%),
+        linear-gradient(120deg, rgba(255, 253, 248, 0.78), rgba(255, 253, 248, 0.24));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.72);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 780;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 18px;
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 6vw, 78px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.55;
+    }
+
+    .hero-meta {
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-meta h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .meta-row:first-of-type { border-top: 0; padding-top: 0; }
+    .meta-row b { color: var(--ink); }
+    .meta-row span { color: var(--muted); }
+
+    main {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 54px clamp(18px, 4vw, 42px) 90px;
+    }
+
+    section {
+      margin: 0 0 58px;
+      padding-bottom: 44px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      margin-bottom: 0;
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.33fr) minmax(0, 0.67fr);
+      gap: clamp(20px, 4vw, 46px);
+      align-items: start;
+      margin-bottom: 24px;
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 790;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 4px 0 0;
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 20px;
+      line-height: 1.32;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.68;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .note,
+    .claim,
+    .metric,
+    .warning {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.8);
+      padding: 18px;
+    }
+
+    .claim {
+      border-left: 5px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-soft), rgba(255, 253, 248, 0.82));
+    }
+
+    .warning {
+      border-left: 5px solid var(--red);
+      background: linear-gradient(90deg, var(--red-soft), rgba(255, 253, 248, 0.82));
+    }
+
+    .metric {
+      background: var(--panel);
+      min-height: 126px;
+    }
+
+    .metric b,
+    .note b,
+    .warning b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    .metric span,
+    .note span,
+    .warning span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-item {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 16px;
+      padding: 15px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .source-item:first-child { border-top: 0; }
+    .source-item b { color: var(--ink); }
+    .source-item span { color: var(--muted); }
+
+    .flow {
+      margin: 28px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.72);
+    }
+
+    .flow svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .flow text {
+      font-family: var(--sans);
+      fill: var(--ink);
+      font-size: 14px;
+    }
+
+    .flow .small {
+      fill: var(--muted);
+      font-size: 12px;
+    }
+
+    .equation {
+      margin: 20px 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 8px;
+      background: rgba(255, 253, 248, 0.78);
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-weight: 760;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+    .best { color: var(--green); font-weight: 800; }
+    .bad { color: var(--red); font-weight: 760; }
+
+    code {
+      padding: 1px 5px;
+      border: 1px solid rgba(30, 27, 24, 0.12);
+      background: rgba(255, 253, 248, 0.78);
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: #211d19;
+      color: #f6efe3;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .comparison .note:nth-child(1) { border-top: 5px solid var(--blue); }
+    .comparison .note:nth-child(2) { border-top: 5px solid var(--gold); }
+    .comparison .note:nth-child(3) { border-top: 5px solid var(--green); }
+
+    .footer {
+      color: var(--subtle);
+      font-size: 13px;
+      margin-top: 32px;
+    }
+
+    @media (max-width: 860px) {
+      .hero,
+      .section-head,
+      .grid-2,
+      .grid-3,
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 46px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .meta-row,
+      .source-item {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span>RMSD 技术笔记</span></div>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#sources">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">机制</a>
+      <a href="#evidence">实验</a>
+      <a href="#limits">局限</a>
+      <a href="#insight">判断</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Applied Compute · X Thread · 2026-05-22</div>
+      <h1>把企业 OOD 行为拉回模型分布内</h1>
+      <p class="subtitle">Applied Compute 的 RMSD 不是又一个“更强 RL”叙事，而是把自然语言 hint 转成被过滤过的 token-level 蒸馏信号：先让模型知道该往哪里变，再讨论如何稳定优化。</p>
+      <div class="pill-row" aria-label="关键词">
+        <span class="pill">Relevance-Masked Self-Distillation</span>
+        <span class="pill">OPSD</span>
+        <span class="pill">OOD 行为学习</span>
+        <span class="pill">Token-level Credit Assignment</span>
+      </div>
+    </div>
+    <aside class="hero-meta" aria-label="核心结论">
+      <h2>一句话结论</h2>
+      <p>RMSD 的关键不在于提供更多监督，而在于只训练真正承载目标行为的少数 token，减少 self-distillation 中由风格、模板和无关措辞造成的梯度噪声。</p>
+      <div class="meta-row"><b>原帖</b><span>@appliedcompute，status 2057917618175267170</span></div>
+      <div class="meta-row"><b>长文</b><span>Bringing Capabilities in Distribution via Relevance-Masked Self-Distillation</span></div>
+      <div class="meta-row"><b>代理任务</b><span>在热带食物问题里把 pineapple 稳定写成 pinapple</span></div>
+      <div class="meta-row"><b>核心风险</b><span>toy task 到真实企业流程的外推仍需谨慎</span></div>
+    </aside>
+  </div>
+
+  <main>
+    <section id="sources">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Source Map</div>
+          <h2>读了什么，如何核对</h2>
+        </div>
+        <div>
+          <p class="lead">本笔记基于 X 线程正文和 Applied Compute 官方长文。X 线程用于确认作者公开主张；长文用于核对方法细节、实验设置、指标定义和表格数字。</p>
+        </div>
+      </div>
+      <div class="source-list">
+        <div class="source-item">
+          <b>X 线程</b>
+          <span>使用 `opencli twitter thread "https://x.com/appliedcompute/status/2057917618175267170" --limit 80 -f json` 抓取。线程包含 4 条作者内容：主帖、企业 OOD 背景、RMSD 方法摘要、Read more 链接。</span>
+        </div>
+        <div class="source-item">
+          <b>官方长文</b>
+          <span>短链解析到 `https://www.appliedcompute.com/research/relevance-masked-self-distillation`。使用 `opencli web read` 抽取正文，核对 OPSD 公式、RMSD 两阶段 mask、Qwen3-4B 实验和结果表。</span>
+        </div>
+        <div class="source-item">
+          <b>验证边界</b>
+          <span>没有独立复现实验，也没有检查未公开训练代码或原始日志。本文把长文数字视作作者报告结果，并重点分析机制是否自洽、比较是否狭窄、外推是否成立。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Problem</div>
+          <h2>为什么 RL 和 SFT 在这里都别扭</h2>
+        </div>
+        <div>
+          <p class="lead">企业定制模型的难点经常不是“模型知道但成功率低”，而是“目标行为根本不在模型当前策略的高概率区域里”。这种情况下，后训练方法需要先让模型进入目标 token space。</p>
+        </div>
+      </div>
+
+      <div class="comparison">
+        <div class="note">
+          <b>SFT：能教行为，但容易整体拉分布</b>
+          <span>传统监督微调直接让模型靠近离线示例分布。对内部格式、私有 API、特定拼写/术语这类行为，SFT 可能有效，但也更容易把通用能力和原有输出习惯一起改掉。</span>
+        </div>
+        <div class="note">
+          <b>RL：需要可爬的坡</b>
+          <span>如果基础模型一开始几乎从不成功，序列级 reward 大多为 0，GRPO/RL 就没有足够的成功轨迹可放大。没有 verifier 的企业任务更困难。</span>
+        </div>
+        <div class="note">
+          <b>OPSD：信号密，但噪声也密</b>
+          <span>On-policy self-distillation 给每个 token 一个老师-学生分布差异信号；问题是老师和学生会因为风格、模板、开头措辞等无关原因分歧。</span>
+        </div>
+      </div>
+
+      <div class="claim">
+        <b>RMSD 的问题定义</b>
+        <p>如何把自然语言 hint、纠错说明或 hindsight feedback 转换成更干净的 token-level 学习信号，使模型学会 OOD 行为，同时尽量不破坏已有能力。</p>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Mechanism</div>
+          <h2>RMSD 到底怎么做</h2>
+        </div>
+        <div>
+          <p class="lead">RMSD 可以看成 OPSD 上的一层 relevance filter。OPSD 负责把 teacher hint 转成 dense token distribution signal；RMSD 负责删掉大部分无关 token，只保留真正能改变目标行为的位置。</p>
+        </div>
+      </div>
+
+      <h3>第一步：构造学生 prompt 和老师 prompt</h3>
+      <p>学生看到普通任务 `x`，例如“除了 maple syrup，pancake 或 waffle 还能配什么 topping？”老师看到增强版任务 `x'`，多了一段 hint：回答里要出现 `pinapple`，并且永远把 `pineapple` 拼成 `pinapple`。</p>
+
+      <h3>第二步：在学生自己的 rollout 上比较分布</h3>
+      <p>学生先生成回答 `y`。训练不是让学生模仿一个外部 reference answer，而是在学生自己写出的每个 prefix `y&lt;i` 上，比较学生分布 `P_student(·|x,y&lt;i)` 和老师分布 `P_teacher(·|x',y&lt;i)`。</p>
+
+      <div class="equation" aria-label="OPSD loss">
+        L = (1 / R) * Σ_i KL_topK(P_student(· | x, y_&lt;i) || P_teacher(· | x', y_&lt;i)), 其中 K = 500
+      </div>
+
+      <h3>第三步：两阶段过滤 token</h3>
+      <div class="flow" aria-label="RMSD 流程图">
+        <svg viewBox="0 0 1040 330" role="img" aria-labelledby="flow-title flow-desc">
+          <title id="flow-title">RMSD token filtering flow</title>
+          <desc id="flow-desc">Student rollout, logprob gap selection, LLM judge selection, masked reverse KL training.</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#675f56"></path>
+            </marker>
+          </defs>
+          <rect x="24" y="52" width="200" height="116" rx="6" fill="#dce9f2" stroke="#2f638f"></rect>
+          <text x="46" y="88">学生 rollout</text>
+          <text x="46" y="116" class="small">x → y</text>
+          <text x="46" y="140" class="small">保持 on-policy</text>
+
+          <line x1="224" y1="110" x2="314" y2="110" stroke="#675f56" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="314" y="52" width="220" height="116" rx="6" fill="#f0e2bc" stroke="#946c21"></rect>
+          <text x="338" y="88">按 logprob 差异选 Top T</text>
+          <text x="338" y="116" class="small">teacher - student</text>
+          <text x="338" y="140" class="small">实验中 T = 20</text>
+
+          <line x1="534" y1="110" x2="624" y2="110" stroke="#675f56" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="624" y="52" width="196" height="116" rx="6" fill="#e5e1f1" stroke="#6158a4"></rect>
+          <text x="648" y="88">LLM judge 再筛</text>
+          <text x="648" y="116" class="small">选最多 S 个相关 token</text>
+          <text x="648" y="140" class="small">实验中 S = 5</text>
+
+          <line x1="820" y1="110" x2="910" y2="110" stroke="#675f56" stroke-width="2" marker-end="url(#arrow)"></line>
+
+          <rect x="910" y="52" width="108" height="116" rx="6" fill="#dfeae2" stroke="#3f715c"></rect>
+          <text x="932" y="88">Masked</text>
+          <text x="932" y="113">reverse</text>
+          <text x="932" y="138">KL</text>
+
+          <rect x="286" y="222" width="468" height="70" rx="6" fill="#fffdf8" stroke="#d7ccbb"></rect>
+          <text x="312" y="252">关键变化：不是训练所有 token，而是只训练“对目标行为有贡献”的 token。</text>
+          <text x="312" y="276" class="small">这把 dense signal 变成更接近 dense-but-targeted credit assignment。</text>
+        </svg>
+      </div>
+
+      <p>第一层筛选追求高召回：teacher 和 student logprob 差异大的 token 里，大概率包含目标行为相关位置。第二层 judge 追求高精度：把“老师更喜欢 Absolutely 而不是 That”这类风格差异剔除，只留下和 `pineapple → pinapple` 真正相关的位置。</p>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Evidence</div>
+          <h2>实验评估了什么</h2>
+        </div>
+        <div>
+          <p class="lead">官方长文使用一个受控 toy task 测试 RMSD：在热带食物相关回答中输出 `pinapple` 而不是 `pineapple`。这个任务刻意违背预训练分布，目的是模拟企业内部特殊格式。</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="metric">
+          <b>训练模型</b>
+          <span>Qwen3-4B。OPSD 和 RMSD 都用同架构同权重模型构造 teacher/student，只是 teacher prompt 有额外 hint。</span>
+        </div>
+        <div class="metric">
+          <b>任务规模</b>
+          <span>1000 个 tropical food 相关问题，8 种 teacher hint phrasing，总计 8000 个任务。</span>
+        </div>
+        <div class="metric">
+          <b>SFT 数据</b>
+          <span>Haiku 4.5 生成示例，再把回答里的 pineapple 替换为 pinapple；不含 pineapple 的样本被丢弃。</span>
+        </div>
+      </div>
+
+      <h3>指标含义</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>指标</th>
+            <th>评估对象</th>
+            <th>容易误读的点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PinappleExists</code></td>
+            <td>答案里是否至少出现一次 <code>pinapple</code>。</td>
+            <td>只说明模型会提到目标拼写，不说明它彻底放弃 <code>pineapple</code>。</td>
+          </tr>
+          <tr>
+            <td><code>PinappleOnly</code></td>
+            <td>答案里出现 <code>pinapple</code>，且不再使用 <code>pineapple</code>。</td>
+            <td>这是更严格的目标行为指标，更能说明行为是否稳定迁移。</td>
+          </tr>
+          <tr>
+            <td><code>Specificity</code></td>
+            <td>不相关问题上是否避免乱提 <code>pineapple</code>/<code>pinapple</code>。</td>
+            <td>防止模型把局部规则泛化成全局癖好；这是企业定制中很重要的副作用检查。</td>
+          </tr>
+          <tr>
+            <td>GSM8K / DAPO / MMLU-Pro / SuperGPQA</td>
+            <td>通用数学、推理、知识或困难 QA 能力。</td>
+            <td>用于检查 catastrophic forgetting，但这组 benchmark 不覆盖所有企业真实任务。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>核心结果表</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Eval</th>
+            <th>Base</th>
+            <th>SFT</th>
+            <th>OPSD 初始</th>
+            <th>RMSD 初始</th>
+            <th>OPSD continuation</th>
+            <th>RMSD continuation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PinappleExists</code></td>
+            <td class="num">0.000</td>
+            <td class="num">0.700</td>
+            <td class="num">0.980</td>
+            <td class="num">0.970</td>
+            <td class="num best">1.000</td>
+            <td class="num best">1.000</td>
+          </tr>
+          <tr>
+            <td><code>PinappleOnly</code></td>
+            <td class="num">0.000</td>
+            <td class="num">0.670</td>
+            <td class="num">0.430</td>
+            <td class="num">0.470</td>
+            <td class="num">0.480</td>
+            <td class="num best">0.740</td>
+          </tr>
+          <tr>
+            <td><code>Specificity</code></td>
+            <td class="num best">1.000</td>
+            <td class="num best">1.000</td>
+            <td class="num">0.930</td>
+            <td class="num best">1.000</td>
+            <td class="num bad">0.650</td>
+            <td class="num">0.935</td>
+          </tr>
+          <tr>
+            <td>GSM8K</td>
+            <td class="num">0.933</td>
+            <td class="num">0.895</td>
+            <td class="num">0.930</td>
+            <td class="num best">0.940</td>
+            <td class="num">0.925</td>
+            <td class="num best">0.940</td>
+          </tr>
+          <tr>
+            <td>DAPO</td>
+            <td class="num">0.166</td>
+            <td class="num">0.125</td>
+            <td class="num">0.152</td>
+            <td class="num">0.141</td>
+            <td class="num">0.137</td>
+            <td class="num">0.145</td>
+          </tr>
+          <tr>
+            <td>MMLU-Pro</td>
+            <td class="num">0.556</td>
+            <td class="num">0.574</td>
+            <td class="num">0.564</td>
+            <td class="num">0.572</td>
+            <td class="num best">0.582</td>
+            <td class="num">0.558</td>
+          </tr>
+          <tr>
+            <td>SuperGPQA</td>
+            <td class="num">0.342</td>
+            <td class="num">0.312</td>
+            <td class="num">0.333</td>
+            <td class="num">0.341</td>
+            <td class="num">0.326</td>
+            <td class="num">0.341</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="claim">
+        <b>作者的主张</b>
+        <p>RMSD 在这个设置里约用 OPSD 一半的 step 达成目标行为；即使计入 LLM judge 调用带来的额外延迟，到达 peak performance 的 wall-clock 也约少 5%。更重要的是，它在 continuation 后比 OPSD 更稳定：`PinappleOnly` 更高，`Specificity` 掉得更少。</p>
+      </div>
+    </section>
+
+    <section id="analysis">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Analysis</div>
+          <h2>这个结果说明了什么</h2>
+        </div>
+        <div>
+          <p class="lead">如果只看 `PinappleExists`，OPSD 和 RMSD 都很快成功；真正的差异在更严格的 `PinappleOnly` 和副作用指标 `Specificity` 上。这正是企业定制模型最关心的地方：不仅要学会规则，还不能把规则乱泛化。</p>
+        </div>
+      </div>
+
+      <h3>1. Dense signal 不是越密越好</h3>
+      <p>OPSD 的吸引力在于每个 token 都有 teacher/student 分布差异，比 RL 的单个 scalar reward 更细。但如果 teacher 和 student 在开头语气、列表格式、转折词上也有巨大差异，这些 token 的梯度会稀释真正任务信号。RMSD 的贡献是把 dense signal 进一步转成 dense-but-targeted signal。</p>
+
+      <h3>2. On-policy 是关键，不只是 self-distillation 这个名字</h3>
+      <p>作者在附录里用接近 on-policy 的 SFT 做了 thought experiment：用 Qwen3-4B 自己生成回答，再替换 `pineapple` 为 `pinapple`，效果比 Haiku 生成的普通 SFT 更好。这支持一个判断：自蒸馏方法强，不只是因为 teacher 更聪明，而是因为训练发生在学生自己会走到的状态分布上。</p>
+
+      <h3>3. RMSD 处理的是 token-level credit assignment</h3>
+      <p>这和 agent/RL 里常见的问题是同构的：长轨迹里到底哪个动作导致成功？在 RMSD 里，问题变成一段回答里到底哪些 token 承载目标行为。它用 logprob gap 找候选，再用 judge 做语义相关性筛选，本质是在给 token 级训练信号做 credit assignment。</p>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Limitations</div>
+          <h2>不能过度外推的地方</h2>
+        </div>
+        <div>
+          <p class="lead">这条线程值得关注，但它不是“RMSD 已经解决企业模型定制”的证据。更准确的读法是：它证明了一条机制路径在受控 OOD token 行为上有效。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="warning">
+          <b>Toy task 很窄</b>
+          <span>`pineapple → pinapple` 是 lexical-level 行为。真实企业任务可能涉及多步工具调用、状态更新、权限约束、私有 schema、错误恢复和长上下文依赖，难度不是同一量级。</span>
+        </div>
+        <div class="warning">
+          <b>Judge 成为新依赖</b>
+          <span>RMSD 依赖 LLM judge 判断哪些 token 相关。judge 的稳定性、prompt 敏感性、模型成本和 bias 都会影响训练效果。</span>
+        </div>
+        <div class="warning">
+          <b>Teacher 不完美时会封顶</b>
+          <span>作者也提到 teacher 即便看到 hint 仍可能写 `pineapple`。如果 teacher 本身不能稳定展示目标行为，学生的上限会受限制，需要多轮 teacher update 或 bootstrap。</span>
+        </div>
+        <div class="warning">
+          <b>更新时机敏感</b>
+          <span>continuation phase 中用学生 checkpoint 更新 teacher 可以继续提升，但更新太早可能导致 collapse。如何动态选择 teacher update 时间仍是开放问题。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Practice</div>
+          <h2>什么时候该考虑 RMSD 类方法</h2>
+        </div>
+        <div>
+          <p class="lead">RMSD 最适合“目标行为可用语言描述，但很难用离线示例或稀疏 reward 稳定教会”的场景。它不是 SFT/RL 的通用替代品，而是 OOD 行为引导工具。</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>RMSD 是否合适</th>
+            <th>理由</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>内部文档格式、公司私有术语、特殊拼写或输出规范</td>
+            <td>较合适</td>
+            <td>目标 token space 明确，可用 hint 描述，且需要避免全局能力退化。</td>
+          </tr>
+          <tr>
+            <td>有清晰 verifier，基础模型已有一定成功率的任务</td>
+            <td>未必优先</td>
+            <td>RL 可以直接放大成功轨迹，RMSD 的 judge/filter 成本未必值得。</td>
+          </tr>
+          <tr>
+            <td>大量高质量、接近学生分布的示例数据</td>
+            <td>可以对比 SFT</td>
+            <td>如果 SFT 数据近似 on-policy，普通 SFT 的劣势会缩小。</td>
+          </tr>
+          <tr>
+            <td>长程工具任务、复杂业务流程</td>
+            <td>需要谨慎实验</td>
+            <td>token 相关性不等于动作因果性；需要轨迹级、状态级和工具级 credit assignment。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Insight</div>
+          <h2>我对这条帖子的判断</h2>
+        </div>
+        <div>
+          <p class="lead">这条线程的价值，不是宣称 RMSD 已经成为企业定制模型标准答案，而是把一个被忽略的问题讲清楚了：很多企业任务不是缺 reward，而是缺能把模型带进目标行为分布的第一批梯度。</p>
+        </div>
+      </div>
+
+      <p>RL 的隐含前提是模型偶尔能成功，reward 才能放大成功；SFT 的隐含前提是离线样本足够接近学生会遇到的状态分布。企业 OOD 任务经常同时违反这两个前提。RMSD 的工程意义在于，它把“人能用语言说清楚的目标行为”转化成 teacher/student 分布差异，再通过 relevance mask 避免把无关风格差异一起学进去。</p>
+
+      <p>更一般地看，RMSD 是后训练从“结果打分”向“过程定位”移动的一小步：不是只问整段回答对不对，而是问哪几个 token 真正承载了应该学习的行为。这对内部格式、私有 API、工具调用习惯和 agent 轨迹训练都有启发。不过，真实系统里需要把 token-level mask 扩展到 action、observation、state transition 和 error recovery，否则只能解决局部输出习惯，不能解决完整工作流能力。</p>
+
+      <pre><code>最短可执行结论：
+1. 如果基础模型零成功率，先别急着 RL，先想办法提供方向性 token/action 信号。
+2. 如果用 self-distillation，不要默认所有 token 都有价值，必须做 relevance filtering。
+3. 评估时同时看目标行为、specificity 和通用能力退化，否则会奖励“学会但乱泛化”的模型。</code></pre>
+
+      <p class="footer">生成日期：2026-05-25。本文为 X 线程与官方长文的中文技术梳理，不代表作者或 Applied Compute 官方立场。</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VPO：为什么多样性训练会改善测试时搜索</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f1e7;
+      --panel: #fffdf8;
+      --panel-2: #f0e5d6;
+      --ink: #1d1a16;
+      --muted: #6b655c;
+      --subtle: #8c8174;
+      --line: #d9cdbc;
+      --line-strong: #aa9b87;
+      --accent: #a84f2b;
+      --accent-soft: #f2d9ca;
+      --blue: #285d82;
+      --blue-soft: #dbe8ef;
+      --green: #3d725f;
+      --green-soft: #dfebe3;
+      --violet: #5e557f;
+      --violet-soft: #e7e1ef;
+      --red: #9d3f35;
+      --red-soft: #f0ddd8;
+      --code-bg: #241f1a;
+      --code-fg: #f4eadc;
+      --shadow: 0 18px 50px rgba(55, 45, 31, 0.12);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(40, 93, 130, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 58px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(247, 241, 231, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 40%, var(--accent) 41% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--blue) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+      flex: none;
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 253, 248, 0.62);
+    }
+
+    .hero {
+      min-height: 66vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(320px, 0.94fr);
+      gap: clamp(28px, 5vw, 70px);
+      align-items: center;
+      padding: clamp(44px, 6vw, 76px) clamp(20px, 5vw, 74px) 42px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.76);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin-top: 18px;
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7vw, 84px);
+      font-weight: 780;
+    }
+
+    .lede {
+      max-width: 760px;
+      margin: 24px 0 0;
+      color: #3c342d;
+      font-size: clamp(18px, 2vw, 24px);
+      line-height: 1.62;
+    }
+
+    .hero-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .meta-card,
+    .panel,
+    .callout,
+    .source-card,
+    .metric-card,
+    .quote {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+      box-shadow: var(--shadow);
+    }
+
+    .meta-card {
+      padding: 14px 16px;
+      min-height: 88px;
+    }
+
+    .meta-card strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .meta-card span {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .hero-figure {
+      margin: 0;
+      align-self: center;
+    }
+
+    .hero-figure img,
+    .evidence img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    main {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 54px 0 82px;
+    }
+
+    section {
+      scroll-margin-top: 78px;
+      margin-top: 56px;
+    }
+
+    section:first-child { margin-top: 0; }
+
+    .section-kicker {
+      margin-bottom: 12px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 46px);
+      margin-bottom: 18px;
+    }
+
+    h3 {
+      margin-top: 26px;
+      margin-bottom: 10px;
+      color: #28221d;
+      font-size: 21px;
+    }
+
+    p {
+      margin: 12px 0;
+      color: #2d2822;
+      font-size: 16px;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .source-card,
+    .metric-card,
+    .panel {
+      padding: 20px;
+    }
+
+    .source-card strong,
+    .metric-card strong,
+    .panel strong {
+      color: var(--ink);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      margin: 3px 4px 3px 0;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .callout {
+      padding: 20px 22px;
+      margin: 22px 0;
+      border-left: 5px solid var(--accent);
+      background: linear-gradient(90deg, var(--accent-soft), rgba(255, 253, 248, 0.86));
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: linear-gradient(90deg, var(--blue-soft), rgba(255, 253, 248, 0.86));
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: linear-gradient(90deg, var(--green-soft), rgba(255, 253, 248, 0.86));
+    }
+
+    .callout.violet {
+      border-left-color: var(--violet);
+      background: linear-gradient(90deg, var(--violet-soft), rgba(255, 253, 248, 0.86));
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: linear-gradient(90deg, var(--red-soft), rgba(255, 253, 248, 0.86));
+    }
+
+    .callout p:first-child { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+      margin: 20px 0;
+    }
+
+    .step {
+      position: relative;
+      padding: 18px 18px 18px 58px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.84);
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      background: var(--ink);
+      color: #fff7ed;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .formula {
+      margin: 18px 0;
+      padding: 18px 20px;
+      overflow-x: auto;
+      border: 1px solid var(--line-strong);
+      background: #fff8ed;
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: 21px;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+
+    .formula small {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 13px;
+      white-space: normal;
+    }
+
+    .frac {
+      display: inline-grid;
+      vertical-align: middle;
+      text-align: center;
+      line-height: 1.1;
+      margin: 0 2px;
+    }
+    .frac .top { border-bottom: 1px solid currentColor; padding: 0 4px 2px; }
+    .frac .bottom { padding: 2px 4px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      background: rgba(255, 253, 248, 0.9);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+
+    code {
+      padding: 2px 5px;
+      border: 1px solid rgba(216, 203, 187, 0.8);
+      background: #f1e6d8;
+      color: #4a3428;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 18px 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid #493f35;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      box-shadow: var(--shadow);
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    ul {
+      padding-left: 21px;
+      margin: 10px 0 18px;
+    }
+
+    li {
+      margin: 8px 0;
+      color: #2d2822;
+    }
+
+    .quote {
+      padding: 18px 20px;
+      border-left: 5px solid var(--line-strong);
+      color: #3a332c;
+      font-family: var(--serif);
+      font-size: 19px;
+      line-height: 1.62;
+    }
+
+    .evidence {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .strong-line {
+      border-top: 2px solid var(--line-strong);
+      padding-top: 18px;
+    }
+
+    @media (max-width: 880px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .hero {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        padding-top: 46px;
+      }
+
+      .hero-meta,
+      .grid-2,
+      .grid-3,
+      .evidence {
+        grid-template-columns: 1fr;
+      }
+
+      h1 { font-size: clamp(38px, 12vw, 62px); }
+      main { width: min(100% - 28px, 1160px); }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="返回顶部">
+      <span class="mark" aria-hidden="true"></span>
+      <span>VPO / Test-Time Search</span>
+    </a>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#evaluation">评估</a>
+      <a href="#results">结果</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <div class="hero" id="top">
+    <div>
+      <div class="eyebrow">X thread deep reading · 2026-05-25</div>
+      <h1>VPO：把 RL 后训练从“找一个答案”改成“保留可搜索的解空间”</h1>
+      <p class="lede">
+        Ryan Boldi 这条线程背后的关键不是“多目标奖励很酷”，而是一个更强的工程命题：
+        当部署阶段一定会做 best-of-N、pass@k 或进化式搜索时，训练阶段过早把向量奖励压成单一标量，
+        可能会毁掉测试时搜索最需要的候选多样性。
+      </p>
+      <div class="hero-meta">
+        <div class="meta-card">
+          <strong>主材料</strong>
+          <span>X 线程：RyanBoldi/status/2057847412819906658；论文：arXiv:2605.22817v1。</span>
+        </div>
+        <div class="meta-card">
+          <strong>一句话结论</strong>
+          <span>VPO 的价值是把“探索”留在模型分布里，把“利用”交给测试时搜索。</span>
+        </div>
+        <div class="meta-card">
+          <strong>最关键证据</strong>
+          <span>MuSiQue、EUREQA、Maze、ToolRL 的 best@k；LiveCodeBench + OpenEvolve case study。</span>
+        </div>
+        <div class="meta-card">
+          <strong>最大边界</strong>
+          <span>奖励维度必须真的有非共线 trade-off；单发 pass@1 场景下 scalar GRPO 可能更适合。</span>
+        </div>
+      </div>
+    </div>
+    <figure class="hero-figure">
+      <img src="ryanboldi-vpo-test-time-search-assets/overview.jpg" alt="VPO 与 GRPO 在 Pareto front、LiveCodeBench pass@k 和 OpenEvolve hard subset 上的对比图" />
+      <figcaption>原线程配图：左侧是 VPO 与 GRPO 对 Pareto frontier 覆盖的直觉图；右侧是 LiveCodeBench pass@k 与 OpenEvolve hard subset 的结果概览。</figcaption>
+    </figure>
+  </div>
+
+  <main>
+    <section id="source">
+      <div class="section-kicker">01 · source map</div>
+      <h2>我读了什么，如何核验</h2>
+      <div class="grid-2">
+        <div class="source-card">
+          <h3>X 线程</h3>
+          <p>使用 <code>opencli twitter thread</code> 抓取原帖、主线程、作者回复和讨论区上下文，共 47 条记录。主帖声称：传统 RL 后训练把所有奖励预先压缩为单一标量，可能破坏 test-time scaling；VPO 用向量奖励和集合级目标改善测试时搜索。</p>
+          <p class="small">本地归档：<code>results/ryanboldi-x-2057847412819906658/thread-2057847412819906658.json</code></p>
+        </div>
+        <div class="source-card">
+          <h3>论文原文</h3>
+          <p>解析线程短链 <code>https://t.co/XWFuQ2REtV</code> 到 <code>https://arxiv.org/abs/2605.22817</code>。下载 PDF 后用 <code>pdfinfo</code> 核验：题名为 <em>Vector Policy Optimization: Training for Diversity Improves Test-Time Search</em>，作者 9 人，24 页，arXiv v1 提交日期 2026-05-21。</p>
+          <p class="small">本地归档：<code>results/ryanboldi-x-2057847412819906658/2605.22817.pdf</code> 与 <code>2605.22817.txt</code></p>
+        </div>
+        <div class="source-card">
+          <h3>媒体证据</h3>
+          <p>线程中 4 张图片已保存并嵌入本报告，分别覆盖论文首页概览、VPO 方法图、MuSiQue/EUREQA test-time scaling、LiveCodeBench/OpenEvolve case study。</p>
+          <p class="small">报告资产目录：<code>tech-analysis/ryanboldi-vpo-test-time-search-assets/</code></p>
+        </div>
+        <div class="source-card">
+          <h3>讨论区信号</h3>
+          <p>作者在回复中澄清了几个容易误读的点：VPO 与 GDPO 不同；向量奖励通常已经存在，只是被 GRPO 聚合；VPO 不是 token-level dense credit assignment，优势仍按 trajectory tokens 广播；代码会发布但抓取时尚未公开。</p>
+        </div>
+      </div>
+
+      <pre><code>opencli twitter thread "https://x.com/RyanBoldi/status/2057847412819906658" --limit 80 -f json --trace retain-on-failure
+curl -L "https://arxiv.org/pdf/2605.22817" -o "results/ryanboldi-x-2057847412819906658/2605.22817.pdf"
+pdfinfo "results/ryanboldi-x-2057847412819906658/2605.22817.pdf"
+pdftotext -layout "results/ryanboldi-x-2057847412819906658/2605.22817.pdf" "results/ryanboldi-x-2057847412819906658/2605.22817.txt"</code></pre>
+    </section>
+
+    <section id="problem">
+      <div class="section-kicker">02 · problem</div>
+      <h2>问题不是“奖励标量化错了”，而是部署形态变了</h2>
+      <p>
+        传统 RL 后训练默认模型最终只需要交出一个答案，所以可以先把所有奖励维度压成一个标量：
+        代码任务里把所有 test cases 变成 pass rate，工具调用里把格式、工具名、参数键、参数值平均，
+        多跳问答里把证据 hop 和 answer F1 加权合成一个分数。这个设定在 <strong>单发回答</strong> 场景中是合理的。
+      </p>
+      <p>
+        但很多新系统不再直接使用模型的一次输出，而是把模型当作候选生成器：先采样多个方案，再用 verifier、unit tests、reward model、best-of-N、pass@k、AlphaEvolve/OpenEvolve 这类搜索程序选择或改写。此时模型分布的角色从“直接给答案”变成“给搜索算法提供可选材料”。
+      </p>
+      <div class="callout">
+        <p><strong>核心矛盾：</strong>scalar GRPO 在训练时会把概率质量推向当前标量奖励下最高的一小簇响应，导致候选池越来越像。测试时搜索需要的是一组彼此不同、各自有局部优势的候选；训练却在奖励它们变成同一个答案。</p>
+      </div>
+      <div class="quote">
+        真正的目标不是“让输出文本看起来多样”，而是让候选在奖励空间里覆盖不同 trade-off。一个答案多写几种措辞没有用；它们必须在不同测试用例、不同子目标、不同工具调用维度上各有擅长。
+      </div>
+
+      <h3>为什么固定最终标量目标下，保留多样性仍可能更好？</h3>
+      <p>
+        论文最值得认真看的地方是 Maze 实验：VPO 训练时采样随机 Dirichlet 权重，但评估时仍然用 GRPO 直接优化的 uniform mean 标量。也就是说，最终目标没有变，变的是训练过程中是否允许模型保留多个奖励方向的解。结果 VPO 在 best@30 上达到 0.593，而 GRPO 固定在 0.432。这个现象说明 VPO 不只是“为未知偏好做 multi-objective policy”，而是在固定目标下也能通过 structured exploration 帮助搜索找到更高分解。
+      </p>
+      <p>
+        直觉上，某个候选在最终平均分下暂时不是最优，但它可能掌握了“少踩 lava”“多拿 diamond”“先走某条绕路”这类局部策略。scalar RL 早期会压掉这些局部策略；VPO 则让它们在某些随机权重下获得正梯度，保留到后续被模型改良或被搜索利用。
+      </p>
+    </section>
+
+    <section id="method">
+      <div class="section-kicker">03 · method</div>
+      <h2>VPO 怎么做：多答案链 + 随机标量化 + 集合级奖励</h2>
+      <figure class="evidence">
+        <img src="ryanboldi-vpo-test-time-search-assets/method.jpg" alt="VPO 方法图：模型一次生成多个答案，每个答案得到向量奖励，对多个 Dirichlet 权重取集合内最大值再求均值" />
+        <figcaption>论文方法图：VPO 让模型在一个自回归 rollout 中输出多个答案，对每个答案计算向量奖励，然后用多个随机权重计算集合级 best-of-m 奖励。</figcaption>
+      </figure>
+
+      <div class="steps">
+        <div class="step">
+          <strong>任务先给出自然向量奖励。</strong>
+          <p>对 prompt <code>x</code> 和回答 <code>y</code>，奖励不是一个数，而是向量 <code>r(x,y) = [r1, ..., rd]</code>。例如代码生成可以把每个 test case 是否通过作为一个维度；工具调用可以把 format、tool_name、arg_key、arg_value 分开；多跳 QA 可以把每个 supporting paragraph 或 entity exact-match 分开。</p>
+        </div>
+        <div class="step">
+          <strong>模型一次输出 m 个候选。</strong>
+          <p>VPO 借用 multi-answer chain：同一个 rollout 里按顺序生成 <code>y1, y2, ..., ym</code>。第 i 个答案能看到前面的答案，因此多样性不只来自采样噪声，而可以成为上下文内探索：模型知道前面覆盖了什么，再往别的方向尝试。</p>
+        </div>
+        <div class="step">
+          <strong>训练时采样多个奖励权重。</strong>
+          <p>每次从 <code>Dir(1)</code> 采样权重 <code>w</code>，均匀覆盖奖励单纯形。一个候选集如果只包含重复答案，只能在很小区域得分高；如果不同候选分别擅长不同维度，就会在更多权重下成为集合最优。</p>
+        </div>
+        <div class="step">
+          <strong>奖励整个候选集，而不是单个答案。</strong>
+          <p>VPO 对每个权重先在集合内取最佳候选，再对权重取平均；这个集合级奖励再进入 GRPO advantage 估计。论文强调它本质上是 GRPO advantage estimator 的替换项，不需要新增 critic 或改变模型结构。</p>
+        </div>
+      </div>
+
+      <div class="formula">
+        R(S) = E<sub>w ~ Dir(α)</sub> [ max<sub>y ∈ S</sub> w<sup>T</sup> r(x,y) ]
+        <small>集合 S = {y1, ..., ym}。含义：随机抽一个奖励偏好 w，看集合里哪个候选在该偏好下最好；VPO 最大化不同偏好下的平均“集合最优”。论文使用 α = 1。</small>
+      </div>
+
+      <div class="formula">
+        R&#770;(S<sup>(g)</sup>) =
+        <span class="frac"><span class="top">1</span><span class="bottom">K</span></span>
+        Σ<sub>k=1..K</sub> max<sub>s ∈ S<sup>(g)</sup></sub> (w<sup>(k)</sup>)<sup>T</sup> r(x,s)
+        <small>训练中对每个 prompt 采样 G 个 rollout，每个 rollout 是一个候选集合；K 个权重在组内共享，保证不同 rollout 的集合奖励可比较。之后像 GRPO 一样做组内优势归一化，并把 advantage 广播到该 rollout 的所有 response tokens。</small>
+      </div>
+
+      <div class="callout blue">
+        <p><strong>容易误解的点：</strong>VPO 的向量奖励不是 token-level dense credit。作者在回复中明确说，模型输出一组 solution，每个 solution 由环境评估得到一个分数向量；VPO 根据这个 reward matrix 计算 objective，然后把 advantage 均匀应用到 trajectory tokens。它解决的是候选集合覆盖问题，不是细粒度 token credit assignment。</p>
+      </div>
+    </section>
+
+    <section id="evaluation">
+      <div class="section-kicker">04 · evaluation</div>
+      <h2>到底评估了什么：best@k 是主线，pass@1 不是它的强项</h2>
+      <div class="grid-3">
+        <div class="metric-card">
+          <h3>best@k</h3>
+          <p>从同一 prompt 采样 k 个候选，用部署时的 gold scalar <code>w*</code> 给每个候选打分，取最高分。它评估的是“候选池能否让后续选择器找到好答案”。</p>
+          <p><span class="tag">主指标</span><span class="tag">连续奖励可用</span></p>
+        </div>
+        <div class="metric-card">
+          <h3>pass@k</h3>
+          <p>常用于代码或 binary success：k 个候选里至少有一个通过就算成功。它评估的是“搜索预算增加时，成功覆盖率是否增加”。</p>
+          <p><span class="tag">代码任务</span><span class="tag">二值成功</span></p>
+        </div>
+        <div class="metric-card">
+          <h3>reward-space diversity</h3>
+          <p>计算候选奖励向量之间的平均 pairwise L1 distance。它不看文本表面差异，只看候选在奖励维度上的实际分布。</p>
+          <p><span class="tag">机制证据</span><span class="tag">非语义多样性</span></p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>输入与输出</th>
+            <th>向量奖励</th>
+            <th>模型/数据设置</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Maze</td>
+            <td>9x9 文本迷宫，输出移动序列。</td>
+            <td>completion、gold、diamond、avoid_lava 四维；GRPO 标量是均值。</td>
+            <td>Qwen3-4B；100 个 held-out mazes。</td>
+          </tr>
+          <tr>
+            <td>MuSiQue</td>
+            <td>多跳阅读理解，输出 supporting paragraphs 和 answer。</td>
+            <td>4 个 citation binary indicators + answer F1；answer 权重 3 倍。</td>
+            <td>Qwen3-1.7B；300 个 hop-stratified held-out questions。</td>
+          </tr>
+          <tr>
+            <td>EUREQA</td>
+            <td>5-hop chain reasoning，输出 5 个 masked entities。</td>
+            <td>每个 entity exact match 一维，共 5 维。</td>
+            <td>Qwen3-8B；hard_5 held-out split，4 个 eval seeds。</td>
+          </tr>
+          <tr>
+            <td>ToolRL</td>
+            <td>function calling，输出 tool call。</td>
+            <td>format、tool_name、arg_key、arg_value 四维。</td>
+            <td>Qwen3-1.7B；80 个 test prompts，4 个 eval seeds。</td>
+          </tr>
+          <tr>
+            <td>LiveCodeBench</td>
+            <td>竞争编程题，输出代码。</td>
+            <td>每个 test case 是否通过是一个维度；gold scalar 是 pass rate。</td>
+            <td>Qwen2.5-Coder-7B-Instruct；279 个时间 held-out 题；OpenEvolve 用最难 32 题。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout green">
+        <p><strong>对比基线设计得比较干净：</strong>GRPO 测试 scalar RL；Multi-RLVR 测试“多答案但固定标量”是否足够；Random-weighting GRPO 测试“随机权重但单答案”是否足够；Max-at-K/MaxRL 测试已有 search-aware scalar objective；Goal-conditioned GRPO 测试显式输入目标权重能否替代集合内探索。</p>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-kicker">05 · evidence</div>
+      <h2>结果：VPO 的优势随搜索预算增长而扩大</h2>
+      <figure class="evidence">
+        <img src="ryanboldi-vpo-test-time-search-assets/musique-eureqa.jpg" alt="MuSiQue 和 EUREQA 的 best@k 曲线，VPO 随 k 增加持续提升，scalar baselines 更早平台化" />
+        <figcaption>MuSiQue 与 EUREQA 的 best@k 曲线：VPO 在 k 增大时继续获得收益，scalar baselines 更早饱和。</figcaption>
+      </figure>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>GRPO best@3</th>
+            <th>GRPO best@30</th>
+            <th>VPO best@3</th>
+            <th>VPO best@30</th>
+            <th>读法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MuSiQue</td>
+            <td class="num">0.711</td>
+            <td class="num">0.728</td>
+            <td class="num">0.742</td>
+            <td class="num">0.832</td>
+            <td>GRPO 基本平台化；VPO 继续从更多候选中获益，F1@30 也从 GRPO 的 0.447 到 VPO 的 0.678。</td>
+          </tr>
+          <tr>
+            <td>Maze</td>
+            <td class="num">0.432</td>
+            <td class="num">0.432</td>
+            <td class="num">0.512</td>
+            <td class="num">0.593</td>
+            <td>最有力反例：评估仍用 uniform mean，scalar GRPO 直接优化这个目标，但 VPO 仍赢。</td>
+          </tr>
+          <tr>
+            <td>EUREQA</td>
+            <td class="num">0.212</td>
+            <td class="num">0.236</td>
+            <td class="num">0.213</td>
+            <td class="num">0.279</td>
+            <td>起点接近，但 k 增大后 VPO 拉开差距；Multi-RLVR 在该域也较强，因为它的 reward-space diversity 没完全坍缩。</td>
+          </tr>
+          <tr>
+            <td>ToolRL</td>
+            <td class="num">0.921</td>
+            <td class="num">0.925</td>
+            <td class="num">0.897</td>
+            <td class="num">0.952</td>
+            <td>任务接近 ceiling，低 k 时 GRPO 更强，但 VPO 在更大搜索预算下追上并超过。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>消融的含义</h3>
+      <p>
+        Multi-RLVR 说明“让模型一次输出多个答案”本身不够；如果训练目标还是固定标量，梯度仍然把每个位置推向同一个标量最优。Random-weighting GRPO 说明“随机奖励权重”本身也不够；单个输出承载不了集合覆盖。VPO 要把两者组合起来：有集合容量，也有集合级覆盖奖励。
+      </p>
+      <p>
+        GDPO 对比也很重要。作者回复说 GDPO 是按 reward component 归一化 advantage 后再求和，本质仍是在 RL update 前聚成一个单一 trade-off。论文的 MuSiQue ablation 中，GRPO/GDPO 即使用 3 倍 rollout 和 3 倍 LM compute 也没追上 VPO n=8，说明 VPO 收益不能简单归因于“看了更多 evaluator signal”或“归一化更稳”。
+      </p>
+
+      <figure class="evidence">
+        <img src="ryanboldi-vpo-test-time-search-assets/livecodebench-openevolve.jpg" alt="LiveCodeBench 上 VPO 与 GRPO 的 pass@k、best@k、OpenEvolve pass@t 和 best@t 对比" />
+        <figcaption>LiveCodeBench case study：pass@1 时 GRPO 更强；但 k 增大后 VPO 追上并反超。在 OpenEvolve hardest-32 上，VPO 解出 4 题，GRPO 为 0。</figcaption>
+      </figure>
+
+      <div class="callout violet">
+        <p><strong>这张图的正确读法：</strong>VPO 不是免费提高所有指标。它用 pass@1 换 pass@k/search headroom。没有搜索预算时，scalar RL 的 exploitation bias 是优点；有搜索预算时，它变成候选池坍缩的缺点。</p>
+      </div>
+    </section>
+
+    <section id="discussion">
+      <div class="section-kicker">06 · thread discussion</div>
+      <h2>讨论区里最有价值的澄清</h2>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>“向量奖励从哪里来？”</h3>
+          <p>作者回复 Shuo Chen：多数时候奖励本来就是向量，只是为了 GRPO 才被聚合成标量。代码不是只能看 passed/failed；每个 test case 都可以是一维 binary reward。</p>
+        </div>
+        <div class="panel">
+          <h3>“VPO 是多目标优化吗？”</h3>
+          <p>是，但不是经典意义上“部署时让用户输入偏好权重”的 multi-objective policy。论文强调，即使部署目标 <code>w*</code> 已知，保留覆盖 Pareto front 的候选集也可能改善 <code>w*</code> 下的 search outcome。</p>
+        </div>
+        <div class="panel">
+          <h3>“与 rewarded soups 有什么关系？”</h3>
+          <p>作者说 VPO 可以理解为把 rewarded soup policies internalize 到同一个模型里。换句话说，不是训练多个 reward-specific policies 再混合，而是让单个模型在一次候选集合里表达多个 trade-off。</p>
+        </div>
+        <div class="panel">
+          <h3>“代码是否公开？”</h3>
+          <p>作者在多个回复中说 code、official implementation 和 website 会很快发布；截至本次抓取与检索，报告未找到已公开官方仓库，因此复现边界需要标注为“论文描述可读，代码尚未核验”。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-kicker">07 · limitations</div>
+      <h2>边界：VPO 什么时候不该赢</h2>
+      <div class="callout red">
+        <p><strong>最重要限制：</strong>VPO 依赖奖励维度真的代表不同方向。如果所有 nominal reward components 高度共线，所谓“向量奖励”只是一个标量换皮，随机权重不会创造有意义的 Pareto frontier。</p>
+      </div>
+      <p>
+        论文用 UltraFeedback + ArmoRM-5 做 sanity check：五个 reward model 维度在 on-policy 分布上接近共线，VPO 在 absolute best@k 上低于 GRPO；Table 9 中 UltraFeedback 的 best@16 为 VPO 0.767、GRPO 0.772，差值 -0.004。这个失败例子反而让论文更可信，因为它说明 VPO 有明确适用条件，而不是声称万能提升。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>限制</th>
+            <th>为什么重要</th>
+            <th>实际使用时怎么检查</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>单发 pass@1 可能下降</td>
+            <td>VPO 训练模型探索多个方向，不是把单次输出压到最高概率最优解。</td>
+            <td>如果产品只能调用一次模型且没有 verifier/search，不应默认用 VPO。</td>
+          </tr>
+          <tr>
+            <td>向量奖励可能是伪向量</td>
+            <td>奖励维度共线时，覆盖 reward simplex 没有意义。</td>
+            <td>记录 on-policy reward vectors，计算维度相关性、pairwise L1、Pareto non-dominance 比例。</td>
+          </tr>
+          <tr>
+            <td>compute 对齐复杂</td>
+            <td>VPO 一次 rollout 输出 m 个候选，长度和 evaluator calls 与单答案方法不同。</td>
+            <td>同时报告 token budget、rollout count、evaluator calls、wall-clock、best@k under fixed inference budget。</td>
+          </tr>
+          <tr>
+            <td>trajectory-level credit 仍粗</td>
+            <td>VPO 没有解决 token 级归因，失败候选中的局部好步骤仍可能被整体 advantage 稀释。</td>
+            <td>可与 process reward、step verifier、test-case-to-code-span attribution 结合，但这是下一步，不是论文已解决内容。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="insight">
+      <div class="section-kicker">08 · insight</div>
+      <h2>我的判断：VPO 把“模型后训练”的目标函数对齐到了 agent/search 系统现实</h2>
+      <p>
+        这篇工作的真正价值，不在于“向量奖励”这个数学对象本身。多目标 RL、Pareto frontier、reward randomization 都不是新概念。它的新意在于把这些概念放回 LLM agent 的真实部署形态：模型输出越来越少是终局答案，越来越多是搜索、验证、改写、执行循环里的候选材料。
+      </p>
+      <p>
+        如果后续系统会做搜索，那么训练阶段追求单点最优反而是错配。VPO 的核心工程洞察是：<strong>训练不必同时承担探索和利用；训练负责保持一组高质量、有互补性的候选分布，测试时搜索负责选择和利用。</strong> 这与 AlphaEvolve、OpenEvolve、coding agent、tool-use agent 的方向高度一致。
+      </p>
+      <p>
+        它也提示了一个更通用的 post-training 设计原则：不要在数据管线早期过度压缩监督信号。很多任务天然产生结构化反馈：测试用例、子目标、步骤、工具字段、用户偏好维度、风险维度。把它们压成一个 scalar 可以让 PPO/GRPO 更方便，但也会丢掉搜索系统最需要的可分解结构。
+      </p>
+
+      <div class="callout green">
+        <p><strong>落地建议：</strong>如果你在训练 coding/reasoning/tool-use agent，且部署时有 verifier 或 search budget，应该优先保留 per-test/per-hop/per-field reward logs，而不是只保存最终 pass/fail。即使暂时不用 VPO，这些向量奖励也是后续做 search-aware training、diagnostics、credit assignment 的核心资产。</p>
+      </div>
+
+      <h3>下一步值得问的问题</h3>
+      <ul>
+        <li>VPO 与 dense process reward 是否互补？一个负责 reward-space coverage，一个负责 step/token-level credit，组合后可能比任一单独方法更强。</li>
+        <li>m=3 是否只是工程折中？更大的 candidate chain 会不会让上下文内探索更强，还是会因为长度和干扰导致收益递减？</li>
+        <li>Dirichlet(1) 是否适合所有任务？实际产品偏好通常不是均匀覆盖 simplex，而是有风险约束和硬 veto。</li>
+        <li>在 multi-agent 或 long-horizon tool-use 环境中，向量维度该按子目标、工具字段、时间阶段还是外部 evaluator 拆分？拆得太粗会损失结构，拆得太细可能增加噪声。</li>
+        <li>能否用训练早期的 reward collinearity 诊断自动判断是否启用 VPO？论文 Appendix F 已经给了一个很实用的方向。</li>
+      </ul>
+
+      <div class="strong-line">
+        <p><strong>最终判断：</strong>VPO 不是对 GRPO 的小修小补，而是把 RL 后训练目标从“最大化一个答案的标量分数”改成“最大化一个候选集合对未来搜索的可用性”。它牺牲的是单次回答的贪心性，换来的是搜索预算增长时的边际收益。只要 LLM 继续被嵌入 verifier、unit test、evolutionary search 和 agent execution loop，这个方向就值得持续跟踪。</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
