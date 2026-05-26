@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rosinality：Shannon Scaling Law 与 Token Noise 极限解读</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d1a16;
+      --muted: #625d55;
+      --subtle: #84786b;
+      --paper: #f7f1e7;
+      --panel: #fffdf8;
+      --panel-2: #f0e5d4;
+      --line: #d7c8b4;
+      --line-strong: #a58f73;
+      --accent: #a84f2b;
+      --accent-soft: #f2d7c6;
+      --blue: #285d82;
+      --blue-soft: #dce8ef;
+      --violet: #655784;
+      --violet-soft: #e6e0f0;
+      --amber: #8d6426;
+      --amber-soft: #f0dfbd;
+      --code-bg: #241f1a;
+      --code-fg: #f4eadc;
+      --shadow: 0 18px 48px rgba(55, 45, 31, 0.11);
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", "Songti SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(29, 26, 22, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(29, 26, 22, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(40, 93, 130, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 58px);
+      border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+      background: rgba(247, 241, 231, 0.92);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+    }
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 40%, var(--accent) 41% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--blue) 43% 57%, transparent 58%);
+      transform: rotate(-3deg);
+    }
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.54);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      align-items: end;
+      gap: clamp(28px, 5vw, 70px);
+      min-height: 86vh;
+      padding: clamp(54px, 8vw, 110px) clamp(20px, 5vw, 76px) 44px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(115deg, rgba(255, 253, 248, 0.99) 0 38%, rgba(255, 253, 248, 0.84) 43% 63%, rgba(240, 216, 199, 0.46) 64% 100%),
+        url("rosinality-shannon-scaling-law-assets/paper-fig1-fig2.png") center right / contain no-repeat;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 48%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(247, 241, 231, 0));
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.08; letter-spacing: 0; }
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(40px, 7.1vw, 94px);
+      font-weight: 760;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.5vw, 56px);
+      font-weight: 760;
+    }
+    h3 {
+      font-size: clamp(20px, 2.1vw, 27px);
+      font-weight: 760;
+    }
+    .hero-lead {
+      max-width: 820px;
+      margin: 24px 0 0;
+      color: #3a342d;
+      font-size: clamp(18px, 2.05vw, 23px);
+      line-height: 1.62;
+    }
+    .hero-side {
+      align-self: center;
+      display: grid;
+      gap: 14px;
+      padding-top: 106px;
+    }
+    .thesis-card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(10px);
+    }
+    .thesis-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .thesis-card p {
+      margin: 0;
+      color: #312d27;
+      font-size: 16px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .meta {
+      border: 1px solid rgba(29, 26, 22, 0.13);
+      background: rgba(255, 253, 248, 0.82);
+      padding: 12px;
+    }
+    .meta b {
+      display: block;
+      color: var(--subtle);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .meta span {
+      display: block;
+      margin-top: 4px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 720;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 34px));
+      margin: 0 auto;
+    }
+    section {
+      padding: clamp(58px, 8vw, 96px) 0;
+      border-bottom: 1px solid rgba(29, 26, 22, 0.1);
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.5fr);
+      gap: clamp(22px, 5vw, 64px);
+      align-items: start;
+      margin-bottom: 30px;
+    }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 790;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .section-head p,
+    .text p {
+      margin: 0;
+      color: #342f29;
+      font-size: 18px;
+    }
+    .text {
+      display: grid;
+      gap: 18px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.88);
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(55, 45, 31, 0.07);
+    }
+    .card h3 { margin-bottom: 10px; }
+    .card p,
+    .card li {
+      color: #352f28;
+      font-size: 16px;
+      line-height: 1.68;
+    }
+    .card p { margin: 0; }
+    .card ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .card li + li { margin-top: 8px; }
+    .quote {
+      border-left: 4px solid var(--accent);
+      background: rgba(255, 253, 248, 0.9);
+      padding: 18px 20px;
+      color: #302a24;
+      font-family: var(--serif);
+      font-size: 22px;
+      line-height: 1.55;
+    }
+    .formula {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 18px;
+      box-shadow: 0 10px 26px rgba(55, 45, 31, 0.07);
+    }
+    .formula-title {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .math-source {
+      margin-top: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 13px;
+      white-space: normal;
+    }
+    .callout {
+      border: 1px solid rgba(168, 79, 43, 0.32);
+      background: linear-gradient(180deg, rgba(242, 215, 198, 0.72), rgba(255, 253, 248, 0.82));
+      padding: 18px;
+    }
+    .callout b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .callout p {
+      margin: 0;
+      color: #332c24;
+      font-size: 17px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255, 253, 248, 0.92);
+      border: 1px solid var(--line);
+    }
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid rgba(216, 203, 187, 0.8);
+      text-align: left;
+      vertical-align: top;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    th {
+      color: var(--ink);
+      background: rgba(240, 229, 212, 0.78);
+      font-weight: 780;
+    }
+    td { color: #332d26; }
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+
+    figure {
+      margin: 24px 0 0;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+      box-shadow: var(--shadow);
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+    figcaption {
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .evidence-row {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 12px;
+    }
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.9);
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(168, 79, 43, 0.45);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 790;
+    }
+    .step h3 {
+      margin-bottom: 6px;
+      font-size: 19px;
+    }
+    .step p {
+      margin: 0;
+      color: #352f28;
+      font-size: 16px;
+    }
+    code {
+      padding: 0.12em 0.34em;
+      border-radius: 3px;
+      background: rgba(141, 100, 38, 0.12);
+      color: #5d3d12;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 18px;
+      border: 1px solid rgba(36, 31, 26, 0.32);
+      background: var(--code-bg);
+      color: var(--code-fg);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.58;
+    }
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+    .footer-note {
+      padding: 34px clamp(18px, 4vw, 58px) 44px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        position: static;
+        flex-wrap: wrap;
+      }
+      .nav { width: 100%; }
+      .hero,
+      .section-head,
+      .grid-2,
+      .grid-3,
+      .evidence-row {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: auto;
+        padding-top: 54px;
+      }
+      .hero-side { padding-top: 0; }
+      .hero::before {
+        background:
+          linear-gradient(180deg, rgba(255, 253, 248, 0.98) 0 52%, rgba(255, 253, 248, 0.9) 100%),
+          url("rosinality-shannon-scaling-law-assets/paper-fig1-fig2.png") center bottom / 120% auto no-repeat;
+      }
+      .meta-grid { grid-template-columns: 1fr; }
+      th, td { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/notes/">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Ricardo Notes</span>
+    </a>
+    <nav class="nav" aria-label="章节导航">
+      <a href="#source">来源</a>
+      <a href="#problem">问题</a>
+      <a href="#model">公式</a>
+      <a href="#evidence">证据</a>
+      <a href="#exponents">指数</a>
+      <a href="#rosinality">判断</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Thread Reading · 2026-05-25</div>
+      <h1>Shannon Scaling Law：当 token noise 的指数超过 signal 指数</h1>
+      <p class="hero-lead">
+        rosinality 的一句话抓住了这篇论文最尖锐的推论：如果 \(D^\delta\) 的噪声增长长期快于 \(D^\beta\) 的信号增长，那么“继续加 token 必然降低 loss”的单调信念不再成立；但这不是说今天的大模型一多训练就会坏，而是说 scaling law 需要显式建模 SNR。
+      </p>
+    </div>
+    <aside class="hero-side">
+      <div class="thesis-card">
+        <strong>核心判断</strong>
+        <p>
+          这篇工作的价值不在于把 Shannon-Hartley 公式机械套到 LLM 上，而在于给“过训练、量化崩塌、SFT 扰动下的 U 型 loss”一个可拟合、可外推的二维结构：signal、data noise、model-interaction noise 必须同时看。
+        </p>
+      </div>
+      <div class="meta-grid">
+        <div class="meta">
+          <b>原帖</b>
+          <span>@rosinality · 2026-05-25</span>
+        </div>
+        <div class="meta">
+          <b>上游材料</b>
+          <span>@gm8xx8 引用论文梳理</span>
+        </div>
+        <div class="meta">
+          <b>论文</b>
+          <span>arXiv:2605.23901</span>
+        </div>
+        <div class="meta">
+          <b>验证</b>
+          <span>PDF 22 页 · HTML parser/Jekyll 待校验</span>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="source">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Source Map</div>
+          <h2>读了什么，如何核验</h2>
+        </div>
+        <p>
+          本次材料链条是：rosinality 对一条引用帖做简短判断；引用帖来自 @gm8xx8，对《LLMs as Noisy Channels》做摘要；真正需要分析的是论文里的 Shannon Scaling Law 公式、实验设置和指数解释。
+        </p>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. rosinality 原帖</h3>
+          <p>
+            原帖只有一句话：如果 token noise exponent 总是大于 signal exponent，增加训练 tokens 最终会让 loss 开始上升。OpenCLI 抓取时间为 2026-05-25，线程 API 只返回主帖，没有额外回复。
+          </p>
+          <div class="badges">
+            <span class="badge">status/2058824080837456031</span>
+            <span class="badge">1 条主帖</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>2. gm8xx8 引用帖</h3>
+          <p>
+            引用帖把论文称为 Shannon Scaling Law，强调 LLM 训练可看作 noisy channel：model size 对应 bandwidth，tokens 对应 signal，data/model/perturbation 对应 noise。帖子附图保存为本地证据图。
+          </p>
+          <div class="badges">
+            <span class="badge">status/2058757168862482523</span>
+            <span class="badge">1 张配图</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>3. arXiv 论文</h3>
+          <p>
+            论文题名为《LLMs as Noisy Channels: A Shannon Perspective on Model Capacity and Scaling Laws》，作者 Xu Ouyang 等，arXiv 提交日期为 2026-05-22，注释为 Accepted by ICML 2026。本地 PDF 经 `pdfinfo` 核验为 22 页。
+          </p>
+          <div class="badges">
+            <span class="badge">arXiv:2605.23901</span>
+            <span class="badge">Pythia / OLMo2</span>
+          </div>
+        </div>
+      </div>
+      <figure>
+        <img src="rosinality-shannon-scaling-law-assets/gm8xx8-quoted-card.jpg" alt="gm8xx8 对 Shannon Scaling Law 论文的 X 摘要截图" />
+        <figcaption>
+          上游引用帖的视觉摘要。报告正文不依赖截图 OCR，而是以 X API 文本、arXiv 元数据和 PDF 正文为主。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Problem</div>
+          <h2>这篇论文想修正什么 scaling law 直觉</h2>
+        </div>
+        <p>
+          传统 OpenAI / Chinchilla 风格 scaling law 的默认形状是单调的：参数 \(N\) 越大、训练 tokens \(D\) 越多，loss 越低，只是边际收益递减。问题是，真实系统里有几类现象不是单调曲线能解释的。
+        </p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>经典 scaling law 的盲点</h3>
+          <p>
+            单调 power law 很适合拟合“干净 pretraining 轨迹中的前半段”：更多参数、更长训练通常降低 test loss。但它很难解释三类反例：训练太久后退化、低比特量化后大模型/长训练点反而更差、SFT 学习率较大时出现 loss basin。
+          </p>
+        </div>
+        <div class="card">
+          <h3>论文要捕捉的对象</h3>
+          <p>
+            作者把这些反例归为同一件事：有效信号没有继续支撑扩张，而噪声项随参数、token 或扰动快速放大。于是 loss surface 从“向右下持续变好”的开放等高线，变成中间有最优区、边界重新升高的 U 型 basin。
+          </p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:18px;">
+        <b>不要误读</b>
+        <p>
+          论文不是说 Chinchilla 结论完全错了，也不是说继续 pretraining 总会立刻变差。更精确的说法是：Chinchilla 类单调规律是高 SNR、扰动较小、训练区间尚未跨过反转点时的局部近似。
+        </p>
+      </div>
+    </section>
+
+    <section id="model">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Mechanism</div>
+          <h2>Shannon Scaling Law 的公式机制</h2>
+        </div>
+        <p>
+          作者借用 Shannon-Hartley theorem 的形状，而不是声称 LLM 真的等同于通信信道。核心映射是：模型大小 \(N\) 类比 bandwidth，训练 tokens \(D\) 类比 signal power，噪声由数据噪声、模型交互噪声和不可约噪声组成。
+        </p>
+      </div>
+      <div class="formula">
+        <div class="formula-title">Full Shannon Scaling Law</div>
+        \[
+          C_{\mathrm{LLM}}
+          =
+          aN^{\alpha}
+          \log_2
+          \left(
+            1 +
+            \frac{bD^{\beta}}
+                 {c(DN)^{\gamma} + dD^{\delta} + e}
+          \right)
+        \]
+        \[
+          L(N, D) = \frac{1}{C_{\mathrm{LLM}}}
+        \]
+        <div class="math-source">
+          其中 \(a,b,c,d,e,\alpha,\beta,\gamma,\delta\) 是拟合正参数；\(D^\beta\) 是 token signal，\(D^\delta\) 是 data-induced noise，\((DN)^\gamma\) 是 data-model interaction noise，\(e\) 是不可约 noise floor。
+        </div>
+      </div>
+      <div class="steps" style="margin-top:18px;">
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>先把容量写成 SNR 函数</h3>
+            <p>
+              Shannon-Hartley 的直觉是：capacity 与 bandwidth 成正相关，并且与 \(\log(1 + S/N)\) 成正相关。论文把 \(S/N\) 改写成 token signal 除以几类训练噪声。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>再把 loss 写成容量倒数</h3>
+            <p>
+              \(L=1/C\) 是一个建模选择：capacity 越高，test loss 越低；capacity 接近 0，loss 会很大。这个连接让信号和噪声的变化直接变成 loss landscape 的形状变化。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>U 型曲线来自分母增长过快</h3>
+            <p>
+              当 \(D^\beta\) 的增长无法抵消 \(D^\delta\) 或 \((DN)^\gamma\) 的增长时，SNR 开始下降。于是继续增加 token 或模型大小不再提升 capacity，loss 反而上升。
+            </p>
+          </div>
+        </div>
+      </div>
+      <figure>
+        <img src="rosinality-shannon-scaling-law-assets/paper-fig1-fig2.png" alt="论文前两张图：SFT loss basin 与 Shannon Scaling Law 示意" />
+        <figcaption>
+          论文第 2 页截图：Figure 1 展示 pretraining 与 downstream SFT loss landscape 的形状差异；Figure 2 展示作者的 Shannon Scaling Law 架构。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Evidence</div>
+          <h2>实验到底评估了什么</h2>
+        </div>
+        <p>
+          论文不是直接训练一个前沿 frontier model，而是在公开 checkpoint 网格上评估 test loss，并对不同扰动下的 loss surface 做拟合和外推。评估对象是 scaling law 的拟合/预测能力，不是模型能力榜单。
+        </p>
+      </div>
+      <div class="evidence-row">
+        <div class="card">
+          <h3>设置</h3>
+          <ul>
+            <li><strong>模型族：</strong>Pythia-dedup 160M、410M、1B、2.8B、6.9B、12B；OLMo2 1B、7B、13B、32B stage-1 checkpoints。</li>
+            <li><strong>拟合目标：</strong>这些 checkpoint 在 Wikitext-2 上的 test loss。</li>
+            <li><strong>扰动：</strong>Gaussian weight noise、GPTQ 4/3/2-bit quantization、GSM8K/SiQA/StarCoder-Python SFT。</li>
+            <li><strong>比较对象：</strong>OpenAI law、Chinchilla law、QiD、Law of Precision、作者扩展的 symmetric/asymmetric laws。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>关键结果</h3>
+          <ul>
+            <li><strong>Gaussian noise：</strong>Pythia 平均 \(R^2=0.9613\pm0.03\)，OLMo2 平均 \(R^2=0.9585\pm0.06\)；10 dB 高噪声下仍能拟合 U 型区域。</li>
+            <li><strong>SFT：</strong>在 GSM8K、SiQA、StarCoder 上平均 \(R^2\) 分别为 0.936、0.916、0.937，单调 law 在高学习率扰动下出现负 \(R^2\)。</li>
+            <li><strong>量化：</strong>GPTQ 2-bit 极端区间中，传统 power law 明显崩塌；Shannon law 在 Pythia 2-bit 仍有 \(R^2=0.9602\)。</li>
+            <li><strong>联合外推：</strong>只用 \(\le 6.9B\) 与 \(\le 180B\) tokens 拟合，预测 12B、180.4B-307B tokens 区间，full law pooled \(R^2=0.847\)。</li>
+          </ul>
+        </div>
+      </div>
+      <figure>
+        <img src="rosinality-shannon-scaling-law-assets/paper-fig4-gaussian.png" alt="论文 Figure 4：不同 Gaussian noise 水平下 Pythia loss contours" />
+        <figcaption>
+          论文第 8 页截图：Gaussian noise 从低到高时，loss contour 从近似单调转向有 basin 的非单调形状。这里的“加 token 变差”是在噪声增强、SNR 下降后的 loss surface 上观察到的。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="exponents">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Exponent Reading</div>
+          <h2>rosinality 关注的 \(\delta > \beta\)</h2>
+        </div>
+        <p>
+          rosinality 的解读来自论文 Table 9：作者比较了 model size 轴上的 bandwidth exponent \(\alpha\) 与 model noise exponent \(\gamma\)，以及 token 轴上的 signal exponent \(\beta\) 与 data noise exponent \(\delta\)。
+        </p>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>轴</th>
+            <th>有益项</th>
+            <th>噪声项</th>
+            <th>论文观察</th>
+            <th>含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>模型大小 \(N\)</td>
+            <td>\(N^\alpha\)：更大 bandwidth / representation space</td>
+            <td>\((DN)^\gamma\)：模型与训练步数耦合的 interaction noise</td>
+            <td>高 SNR 时 \(\alpha>\gamma\)，强扰动时可反转为 \(\gamma>\alpha\)</td>
+            <td>模型变大通常有用，但在强扰动或低 SNR 下，大模型也可能放大噪声。</td>
+          </tr>
+          <tr>
+            <td>训练 tokens \(D\)</td>
+            <td>\(D^\beta\)：从更多 tokens 得到的信息信号</td>
+            <td>\(D^\delta\)：数据噪声、矛盾、模糊、typo、训练轨迹累积噪声</td>
+            <td>Table 9 中 \(\delta\) 持续大于 \(\beta\)，包括 pretraining setting</td>
+            <td>在该拟合模型内，足够大的 \(D\) 会让噪声增长压过信号增长，token 轴存在远端反转可能。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout" style="margin-top:18px;">
+        <b>我对这句话的严格版本</b>
+        <p>
+          “token noise exponent is always larger than signal exponent” 不应翻译成“每多训练一点都会变差”。它的严格含义是：在作者拟合出的幂律结构里，随着 \(D\to\infty\)，\(\frac{D^\beta}{D^\delta}\to0\)；因此如果其他条件不改变，SNR 会在某个足够远的 token budget 后下降，loss 可能出现 U 型反转。
+        </p>
+      </div>
+      <figure>
+        <img src="rosinality-shannon-scaling-law-assets/paper-tables-extrapolation-exponents.png" alt="论文第 11 页：外推表格与 exponent comparison table" />
+        <figcaption>
+          论文第 11 页截图：Table 8 给出联合外推结果，Table 9 给出 \(\alpha,\gamma,\beta,\delta\) 的拟合指数。rosinality 的判断主要对应 Table 9 的 token 轴结论。
+        </figcaption>
+      </figure>
+    </section>
+
+    <section id="rosinality">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Interpretation</div>
+          <h2>rosinality 这句话对在哪里，容易误读在哪里</h2>
+        </div>
+        <p>
+          这条 X 的价值在于抓住论文最反常识的极限推论：token 不是纯 signal，token 也携带 noise；当 token noise 的幂指数更高时，训练更久不是无条件安全的。
+        </p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>成立的地方</h3>
+          <p>
+            如果模型继续吃相同分布、相同质量、相同去重程度的数据，并且优化与模型结构没有主动提高信息密度或降低噪声，那么 \(D^\delta\) 超过 \(D^\beta\) 的模型确实预示：继续加 token 的边际收益会先下降，最终可能变成负收益。
+          </p>
+        </div>
+        <div class="card">
+          <h3>需要收紧的地方</h3>
+          <p>
+            “eventually loss would start to increase” 是模型内外推，不是已经在 frontier pretraining 中无条件实证的自然定律。现实训练会改变数据过滤、dedup、curriculum、sampling mixture、optimizer、regularization、模型架构和 checkpoint selection，这些都会改变有效 \(\beta,\delta,\gamma\)。
+          </p>
+        </div>
+      </div>
+      <div class="quote" style="margin-top:18px;">
+        更准确的工程读法不是“别再加 token”，而是“别把 token count 当成纯净 signal count；继续扩 scale 时，必须同时报告数据质量、噪声来源、扰动强度和 SNR proxy。”
+      </div>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Limits</div>
+          <h2>这篇论文的边界与风险</h2>
+        </div>
+        <p>
+          论文提出了一个很有启发的形状，但它仍是经验 scaling law，不是从 SGD、数据分布和 Transformer 表示动力学严格推导出的物理定律。
+        </p>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. Shannon 类比可能过强</h3>
+          <p>
+            \(N\) 到 bandwidth、\(D\) 到 signal power 的映射很清楚，但只是建模类比。LLM 训练不是固定编码器/信道/解码器的通信过程，数据分布和模型状态会共同演化。
+          </p>
+        </div>
+        <div class="card">
+          <h3>2. loss target 较窄</h3>
+          <p>
+            实验主要用 Wikitext-2 test loss 拟合扰动后的 checkpoint。它能说明 perplexity/loss surface 形状，但不能直接推出 downstream reasoning、agentic coding、long-context 能力也同样 U 型。
+          </p>
+        </div>
+        <div class="card">
+          <h3>3. 反转点依赖数据工程</h3>
+          <p>
+            \(D^\delta\) 不是天然常数。高质量去重、合成数据校验、curriculum、domain balancing 和更好的目标函数都可能改变噪声增长速度，让反转点后移。
+          </p>
+        </div>
+        <div class="card">
+          <h3>4. 参数量不等于有效 bandwidth</h3>
+          <p>
+            同样参数量的 architecture、MoE routing、attention 机制、tokenizer 和 optimizer 可以给出完全不同的有效容量。用 \(N^\alpha\) 概括 bandwidth 是必要简化。
+          </p>
+        </div>
+        <div class="card">
+          <h3>5. 拟合参数多</h3>
+          <p>
+            full law 有 9 个拟合常数。论文用简化 law 和外推实验回应过拟合风险，但生产决策中仍需要足够的 \(N\times D\) 网格和 held-out validation 才能信任。
+          </p>
+        </div>
+        <div class="card">
+          <h3>6. 过训练不是单一机制</h3>
+          <p>
+            SFT 高学习率、低比特量化、Gaussian weight noise、预训练继续加 token 是不同扰动。统一模型很有用，但不要把所有 loss basin 都解释成同一种数据噪声。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Practical Implications</div>
+          <h2>对训练决策有什么启发</h2>
+        </div>
+        <p>
+          如果接受这篇论文的方向，训练规划应该从“给定 compute 下尽量扩大 N 和 D”升级为“在扩大 N 和 D 的同时测量并压低噪声增长”。
+        </p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>做小规模 \(N \times D\) 网格，而不是单条曲线</h3>
+            <p>
+              论文最有价值的外推来自同时跨模型大小和 token checkpoint 拟合。只看单一模型的 training loss 曲线，很难识别 \((DN)^\gamma\) 这种交互噪声。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>把数据质量视为 scaling variable</h3>
+            <p>
+              token count 需要拆成 raw token、dedup token、high-quality token、domain-relevant token。真正应该提升的是有效 signal density，而不是机械提高 \(D\)。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>后训练要避免把扰动当成训练收益</h3>
+            <p>
+              SFT/RL 阶段的学习率、数据混合和格式化会改变 loss basin。checkpoint 选择不能只看训练集任务指标，也要看 general loss、OOD eval 和表示稳定性。
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div></div>
+          <div>
+            <h3>量化策略要和训练阶段联合评估</h3>
+            <p>
+              低比特 quantization 不是简单把所有模型向上平移 loss；它可能改变 loss surface 的形状。越大、越长训练的模型在低比特下未必总是越稳。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Insight</div>
+          <h2>这篇材料真正教了什么</h2>
+        </div>
+        <p>
+          这条 X 和这篇论文最重要的地方，是把 scaling 的讨论从“资源越多越好”推进到“资源是否仍在提高有效 SNR”。
+        </p>
+      </div>
+      <div class="text">
+        <p>
+          我认为这里最有价值的不是 Shannon 这个名字，而是 denominator 里的三个噪声项。它提醒我们：LLM scaling 的关键矛盾正在从稀缺 compute 逐渐转向稀缺高密度信号。早期 scaling 里，新增 token 大多提供新信息；到了更大规模，新增 token 更可能包含重复、矛盾、低质格式、错解、污染 benchmark 的轨迹、不可学习的长尾和优化扰动。
+        </p>
+        <p>
+          这也解释了为什么近年的训练工程越来越强调数据过滤、合成数据 verifier、curriculum、domain mixture、post-training 数据隔离和 evaluation hygiene。它们不是边缘清洁工作，而是在推迟 \(\delta>\beta\) 导致的反转点，或者直接改变有效 \(\delta\)。
+        </p>
+        <p>
+          所以，rosinality 的评论可以理解为一个很好的“极限提醒”：如果我们只会把 token 当作 signal，那么 scaling law 会过于乐观；如果我们开始把 token 同时看作 signal carrier 和 noise carrier，就会更自然地解释为什么同样的 compute，在不同数据工程和扰动条件下会得到完全不同的 scaling shape。
+        </p>
+      </div>
+    </section>
+
+    <section id="commands">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Reproducibility</div>
+          <h2>本地抓取与核验记录</h2>
+        </div>
+        <p>
+          以下命令已在本地执行，用于获取 X 线程、作者资料、arXiv 元数据、PDF、正文文本和报告图片资源。
+        </p>
+      </div>
+      <pre><code>opencli twitter thread "https://x.com/rosinality/status/2058824080837456031" --limit 80 -f json --trace retain-on-failure
+opencli web read --url "https://x.com/rosinality/status/2058824080837456031" --stdout true --download-images true --wait 5 -f json --trace retain-on-failure
+opencli twitter thread "https://x.com/gm8xx8/status/2058757168862482523" --limit 80 -f json --trace retain-on-failure
+opencli arxiv paper "2605.23901" -f json --trace retain-on-failure
+curl -L "https://arxiv.org/pdf/2605.23901" -o "results/rosinality-x-2058824080837456031/2605.23901.pdf"
+pdfinfo "results/rosinality-x-2058824080837456031/2605.23901.pdf"
+pdftotext -layout "results/rosinality-x-2058824080837456031/2605.23901.pdf" "results/rosinality-x-2058824080837456031/2605.23901.txt"
+pdftoppm -f 2 -l 2 -png -r 160 "results/rosinality-x-2058824080837456031/2605.23901.pdf" "notes/tech-analysis/rosinality-shannon-scaling-law-assets/page"</code></pre>
+    </section>
+  </main>
+
+  <footer class="footer-note">
+    本报告写于 2026-05-25。材料范围：rosinality X 主帖、gm8xx8 引用帖、arXiv:2605.23901 PDF 与本地抽取文本。报告中的机制判断为基于公开材料的分析，不代表论文作者或帖子作者立场。
+  </footer>
+</body>
+</html>

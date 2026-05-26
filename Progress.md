@@ -1,5 +1,281 @@
 # Ricardokevins.github.io Progress
 
+## 2026-05-26 Hwcoder 算法笔记读书笔记迁移
+
+### 背景
+
+- 用户要求把 `https://hewei2001.pages.dev/categories/` 中的算法笔记内容迁移到当前站点。
+- 源站为 Hexo/Fluid 博客，分类页中的“算法笔记”下实际包含三组内容：
+  - 算法入门：2 篇；
+  - 力扣刷题：15 篇；
+  - 手撕经典算法：6 篇。
+- 本轮采用“详细读书笔记 / 学习地图”方式迁移：不做第三方页面逐段全文镜像，而是读取结构后重写为站内原创整理，保留完整来源清单和阅读定位。
+
+### 已完成
+
+- 抓取并解析源站分类页、站点地图和 `local-search.xml`：
+  - 算法相关条目共 `23` 篇；
+  - 源站搜索索引中可解析内容合计约 `212,929` 字符；
+  - 代码块规模约 `1,635` 个。
+- 新增站内读书笔记：
+  - `notes/tech-analysis/hwcoder-algorithm-notes-reading.html`
+- 更新 `_data/notes.yml`，新增 Notes 入口：
+  - 标题：`Hwcoder 算法笔记体系读书笔记`
+  - URL：`/notes/tech-analysis/hwcoder-algorithm-notes-reading.html`
+  - 类型：`Study Resource`
+
+### 内容设计
+
+- 读书笔记按五段组织：
+  - 来源与整理原则；
+  - 总学习地图：基础工具、力扣专题、手撕模型组件三层；
+  - 力扣专题精读：按“维护什么信息”重构数组、位运算、数据结构、二分、DP、图论、贪心、链表、数学、搜索、栈队列、字符串和树；
+  - 通用模板：二分答案、动态规划、回溯、单调结构；
+  - 手撕经典算法：Attention、神经网络、Transformer、经典函数、机器学习、RLHF；
+  - 复习路线与源笔记清单。
+- 页面保留 23 篇源笔记的标题、来源链接、lastmod 日期和本页阅读定位，便于回源站查具体代码。
+
+### 当前验证
+
+- HTML 解析通过，标题、7 个 H2 章节和 33 个链接均可解析。
+- 编码检查通过，未发现 Unicode replacement character。
+- `ruby scripts/validate_notes_index.rb` 通过：
+  - `_data/notes.yml` 共 59 条。
+  - 顶层 note HTML 共 59 个。
+  - 未发现漏登记入口或缺失本地资源引用。
+- `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata API rate limit 和 Faraday retry 提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/hwcoder-algorithm-notes-reading.html` 生成，并在 `_site/notes/index.html` 中出现新卡片入口。
+
+## 2026-05-26 SkillEvolBench 论文与项目材料深度调研
+
+### 背景
+
+- 用户要求深入梳理和调研 SkillEvolBench：
+  - 项目主页：`https://skillevolbench.github.io`
+  - Hugging Face Paper：`https://huggingface.co/papers/2605.24117`
+- 本任务与当前 GitHub Pages 代码仓库功能无直接关系，按仓库规则将论文笔记归档到 Obsidian，并在本仓库记录过程。
+
+### 已完成
+
+- 抓取并阅读 arXiv PDF / HTML、Hugging Face Paper API、项目主页 HTML。
+- 核验 Hugging Face Dataset `skillevolbench/skillevolbench`：
+  - `skills` config：30 个 skill family。
+  - `tasks` config：180 个 task。
+  - 6 个 environment，每个 30 个任务。
+  - 6 个 role 各 30 个任务：`canonical / enriched / variant / context-shift / adversarial / composition`。
+- 从项目页内嵌 leaderboard 数据中解析 curated/self-generated 条件的模型平均指标和 ESR delta。
+- 检查项目页按钮状态：Paper 指向 `assets/skillevolbench.pdf`，Code/Data 按钮当前为占位 `#`；HF dataset 已可访问，GitHub 组织 API 因 403/rate limit 未能核验代码仓库。
+- 新增 Obsidian 论文笔记：
+  - `/Users/bytedance/Library/Mobile Documents/iCloud~md~obsidian/Documents/obsidian-example-lifeos-main/3.Resources/PaperNotes/26-05-26 SkillEvolBench - Benchmarking the Evolution from Episodic Experience to Procedural Skills.md`
+
+### 关键观察
+
+- SkillEvolBench 的核心不是评估 agent 能否“使用 skill”，而是评估 agent 能否把 episodic trajectory + verifier feedback 抽象为 frozen deployment 中可复用的 procedural skill。
+- Benchmark 结构是 `6 environments x 5 families x 6 roles = 180 tasks`，每个 family 构成从 acquisition 到 frozen deployment 的 skill-evolution arc。
+- 主指标应重点看 ESR/CSSR/ARSR/CompSR，而不是只看 LSR/RSR；acquisition 或 replay 变好可能只是局部适应。
+- 项目页 leaderboard 的 10 模型平均结果显示：
+  - No-Skill ESR 为 `34.7%`。
+  - Curated-Revision-Always ESR 为 `35.5%`，平均 `+0.77 pp`。
+  - SelfGen-Always ESR 为 `35.1%`，平均 `+0.44 pp`。
+  - Curated-Static、SelfGen-Zero-Shot、SelfGen-Revision 平均降低 ESR。
+- Raw-Trajectory control 是论文最关键的对照：直接复用压缩轨迹常常强于 distilled skills，说明当前 skill abstraction 会丢失任务上下文、检查点、失败路径和程序性触发线索。
+- Tier-3 capacity ablation 表明“写更多 skill 文件/脚本/引用”不是充分条件；更大的 library 可能带来 episode-specific drift 和 procedural clutter。
+
+### 当前判断
+
+- 这篇论文对 agent memory / skill system 的最大价值，是把“经验沉淀”从主观叙事变成可诊断协议：只有冻结后在 context shift、adversarial shortcut 和 multi-skill composition 上提升，才更接近 reusable procedural skill。
+- 对实践的直接启发是：skill library 不应替代 raw trajectory memory，而应和 episodic traces 组成双层记忆；skill 提供稳定程序骨架，trace 提供局部证据和失败线索。
+- 后续如果设计 agent skill 系统，重点不是“每次都总结”，而是建立 selective abstraction、skill trigger evaluation、skill regression tests、stale/duplicate cleanup 和 trace-to-skill loss analysis。
+
+## 2026-05-26 arXiv 2605.23857 论文深度解读与 Obsidian 归档
+
+### 背景
+
+- 用户要求深度解读 `arxiv.org/abs/2605.23857`，并特别追问：
+  - 从 smaller model 蒸馏是否有用；
+  - 除蒸馏外，跨尺度 loss difference 是否可以提供额外信号。
+- 本任务与当前 GitHub Pages 代码仓库功能无直接关系，按仓库规则将论文笔记归档到 Obsidian，并在本仓库记录过程。
+
+### 已完成
+
+- 下载并解析 arXiv PDF，确认论文为 `Strong Teacher Not Needed? On Distillation in LLM Pretraining`，作者为 Taiming Lu 和 Zhuang Liu。
+- 阅读论文主实验、loss mixing、student-size ablation、Qwen 架构消融、300B token 消融和 token-level 机制分析。
+- 检查论文 PDF 标注的 GitHub 仓库 `zlab-princeton/strong-teacher-not-needed`，当前访问为 404；本次解读以 arXiv PDF 为主要证据。
+- 新增 Obsidian 论文笔记：
+  - `/Users/bytedance/Library/Mobile Documents/iCloud~md~obsidian/Documents/obsidian-example-lifeos-main/3.Resources/PaperNotes/26-05-26 Strong Teacher Not Needed - On Distillation in LLM Pretraining.md`
+- 新增仓库根目录 `AGENTS.md`，记录用户长期偏好和本仓库执行规则。
+
+### 关键观察
+
+- smaller teacher 可以有用，但应作为低权重、局部门控的互补信号，而不是纯 KD teacher。
+- 论文中弱到强蒸馏在 OOD PPL 和 downstream accuracy 上更容易产生收益；in-domain PPL 更容易退步。
+- 更强 teacher 不一定更好：对 `1.7B / 50B` student，`1.7B / 300B` teacher 在 downstream 上优于 `8B / 300B` teacher。
+- 蒸馏收益集中在 hard tokens；收益来自 teacher-only tokens，伤害来自 baseline-only / teacher-wrong tokens。
+- 跨尺度 loss difference 可作为 token-level KD gating、data diagnosis、curriculum、teacher selection 和 mixture-of-teachers 的信号。
+
+### 当前判断
+
+- 如果要做后续实验，推荐方向不是简单 small-to-large KD，而是 `Scale-Difference Gated Distillation`：
+  - 计算 `ell_student - ell_teacher` 作为 teacher advantage proxy；
+  - 结合 student entropy 和 KL compatibility；
+  - 对 KD 使用 token-level 权重，保留 CE/LM loss；
+  - 按 in-domain、OOD、downstream、hard-token bin 分层验证。
+
+## 2026-05-26 Notes 索引与仓库卫生修复
+
+### 背景
+
+- 用户要求核实并修复仓库维护问题，重点包括 Git 体积、`.DS_Store` 污染、`_data/notes.yml` 手动同步风险和 Notes 入口一致性。
+- 只处理已经核实且低风险的工程问题；媒体压缩、PDF 迁移、URL 结构调整和 Git 历史重写暂不混入本轮修复。
+
+### 已完成
+
+- 更新 `.gitignore`，新增 `.DS_Store` 忽略规则。
+- 新增根目录 `AGENTS.md`，把当前仓库的沟通语言、工程原则、Obsidian 规则、Progress 维护和自主工作模式固化为仓库级说明。
+- 从 Git 索引移除已跟踪的 5 个 `.DS_Store`：
+  - `.DS_Store`
+  - `_includes/.DS_Store`
+  - `assets/.DS_Store`
+  - `files/.DS_Store`
+  - `notes/paper-reviews/fast-slow-training-analysis-assets/.DS_Store`
+- 补齐 `_data/notes.yml` 中漏登记的两个 Tech Analysis 入口：
+  - `notes/tech-analysis/ryanboldi-vpo-test-time-search.html`
+  - `notes/tech-analysis/appliedcompute-rmsd-thread-analysis.html`
+- 新增 `scripts/validate_notes_index.rb`：
+  - 校验 `_data/notes.yml` URL 是否都有对应文件。
+  - 校验顶层 Notes HTML 是否已登记到 `_data/notes.yml`。
+  - 允许两个多章节题库使用目录 URL 指向 `index.html`。
+  - 校验 Notes HTML 中本地 CSS/JS/图片/PDF/文本资源引用是否存在。
+- 更新 `.github/workflows/deploy.yml`，在 Pages 构建流程中运行 `ruby scripts/validate_notes_index.rb`，避免 Notes 入口漏登记再次静默进入主分支。
+- 同格式压缩 `notes/paper-reviews/g-zero-thread-analysis-assets/method.png`：
+  - 文件大小从 `5,982,010` bytes 降到 `1,555,756` bytes。
+  - 保持 PNG 格式、原路径和 `7130x2490` 分辨率不变，不需要修改 HTML 引用。
+
+### 设计决策
+
+- 校验脚本使用 Ruby 标准库实现，复用 Jekyll 项目的语言栈，不引入新依赖。
+- 只校验 `notes/*/*.html` 作为 Notes 首页入口，不把 `chapters/*.html` 当作独立卡片，避免误报多章节题库。
+- 本轮不执行图片/PDF 批量压缩：当前最大收益来自当前 HEAD 中的资源文件，后续应单独做压缩前后尺寸、清晰度和页面渲染对比，再决定是否迁移 PDF 或重写历史。
+- 对媒体资源采用最小可逆风险策略：只处理无需改 URL、无需改格式、试压缩收益明确的 PNG；WebP 转换虽然对若干图有明显收益，但会引入引用迁移和兼容性验证，留作独立任务。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：
+  - `_data/notes.yml` 共 58 条。
+  - 顶层 note HTML 共 58 个。
+  - 未发现漏登记入口或缺失本地资源引用。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 GitHub Metadata 未认证和 Faraday retry 提示，不影响静态页面生成。
+
+## 2026-05-26 Agentic Systems 推文补充核验与 Obsidian 归档
+
+### 背景
+
+- 用户要求深度分析和解析 `https://x.com/che_shr_cat/status/2058713325106614301`。
+- 本次任务与当前 GitHub Pages 代码仓库功能无直接关系，按仓库指令将研究结论归档到 Obsidian，同时保留本仓库研发过程记录。
+
+### 已完成
+
+- 使用 X syndication JSON 核验原帖主文、作者、发布时间、配图和互动字段。
+- 使用 Twitter Snowflake 解码确认原帖时间：`2026-05-25T00:54:40Z`，北京时间 `2026-05-25 08:54:40`。
+- 下载并阅读论文 PDF `arXiv:2605.14163`，确认论文题名为 `Agentic Systems as Boosting Weak Reasoning Models`，核心机制是 verifier-backed committee search / inference-time boosting。
+- 核对当前仓库已有站内 HTML 分析 `notes/tech-analysis/che-shr-cat-agentic-boosting.html`，本次未覆盖该文件。
+- 新增 Obsidian 笔记：
+  - `/Users/bytedance/Library/Mobile Documents/iCloud~md~obsidian/Documents/obsidian-example-lifeos-main/3.Resources/PaperNotes/26-05-26 Agentic Systems as Boosting Weak Reasoning Models.md`
+
+### 关键观察
+
+- 原帖的传播性表达是“弱模型 latent space 中经常已有正确解，只是不会选择”。
+- 论文中更精确的拆分是 `proposal coverage`、`local identifiability`、`progress`、`diversity` 四个量。
+- `GPT-5.4 nano + critic-comparator harness` 在 SWE-bench Verified 上从 `67.0%` 提升到 `76.4%`，接近 `79.0%` oracle best-of-8；该结论应理解为系统级 solve rate 接近，不应外推成 nano 权重能力等价强模型。
+- 剩余失败主要是 proposal coverage / blind-spot floor 问题时，继续堆 selector 不会凭空创造正确候选，应优先改 proposer、工具、检索、任务分解和 diversity。
+
+### 工具与边界
+
+- `opencli grok ask` 因浏览器预导航失败不可用；`opencli twitter thread` 与 `opencli twitter tweets` 因 fetch 失败未能抓完整线程；`opencli twitter search` 对该 status id 返回空列表。
+- AutoGLM open-link 因本地 token 服务未启动不可用。
+- X 普通页面与 Nitter 镜像受限；最终以 X syndication JSON、原帖配图、arXiv 页面、论文 PDF 和 SWE-bench Verified 页面为核验依据。
+
+## 2026-05-25 rosinality / Shannon Scaling Law / Token Noise X 帖笔记
+
+### 背景
+
+- 用户要求详细分析梳理 `https://x.com/rosinality/status/2058824080837456031`。
+- 原帖评论 @gm8xx8 对 arXiv `2605.23901`《LLMs as Noisy Channels: A Shannon Perspective on Model Capacity and Scaling Laws》的解读。
+- 核心问题是理解 `token noise exponent` 始终大于 `signal exponent` 是否意味着继续增加训练 tokens 最终会让 loss 上升。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/rosinality-shannon-scaling-law.html`。
+  - 覆盖来源地图、传统 scaling law 的单调假设、Shannon Scaling Law 公式、Gaussian/SFT/quantization 三类证据、Table 9 指数解释、rosinality 判断的成立条件和误读边界。
+  - 明确区分 X 原帖、引用帖传播说法、论文可核验证据和本报告的工程判断。
+- 新增资源目录 `notes/tech-analysis/rosinality-shannon-scaling-law-assets/`。
+  - 保存 gm8xx8 引用帖配图、论文 PDF 副本、论文页截图 `paper-fig1-fig2.png`、`paper-fig4-gaussian.png`、`paper-tables-extrapolation-exponents.png`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Shannon Scaling Law 与 Token Noise 极限解读`
+  - URL：`/notes/tech-analysis/rosinality-shannon-scaling-law.html`
+  - 类型：`Tech Analysis`
+
+### 设计决策
+
+- 放入 `notes/tech-analysis/`：用户入口是 X 帖，但主分析对象是论文机制与工程含义，不作为纯论文 review 单独归档。
+- 采用单页 HTML + 本地资源目录，不新增多版本文档。
+- 对 `δ > β` 做严格解释：这是拟合模型内的极限趋势，表示足够大的 token budget 下 \(D^\delta\) 可能压过 \(D^\beta\)，不等于现实训练中每增加一点 token 都会立刻变差。
+
+### 验证结果
+
+- 静态 HTML 解析通过；核心章节 `source/problem/model/evidence/exponents/rosinality/limits/implications/insight/commands` 均存在。
+- 本地资源引用检查通过：页面引用的 4 张图片均存在且非空；资源目录中的 PDF 副本与抓取 PDF SHA256 一致，`pdfinfo` 均显示 22 页。
+- `_data/notes.yml` YAML 解析通过；`git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/rosinality-shannon-scaling-law.html` 和 `_site/notes/index.html` 中的新 Notes 卡片入口生成。
+- Chrome headless DOM dump 中出现 `mjx-container`，说明 MathJax 已渲染；桌面截图 `/tmp/rosinality-shannon-scaling-law-1280.png` 与移动截图 `/tmp/rosinality-shannon-scaling-law-390.png` 均为非空 PNG。
+
+## 2026-05-25 RL Memory Agent Curriculum 论文笔记
+
+### 背景
+
+- 用户要求深入梳理理解 arXiv `2605.23067`。
+- 论文题名为 `What Training Data Teaches RL Memory Agents: An Empirical Study of Curriculum Effects in Memory-Augmented QA`，关注 memory-augmented QA 中 RL 训练数据来源如何塑造 Answer Agent 的细分能力。
+- 按当前 Notes 规则，将 self-contained 中文 HTML 报告输出到 `/Users/bytedance/Documents/Ricardokevins.github.io/notes/paper-reviews/`。
+
+### 已完成
+
+- 新增 `notes/paper-reviews/rl-memory-curriculum-effects.html`。
+  - 覆盖来源与核验、问题背景、外部记忆问答任务、LoCoMo/LongMemEval/mixed 三种 curriculum、GRPO 训练机制、overall/per-type F1 证据、memory bank preprocessing、single-GPU GRPO reward sparsity、复现仓库边界、实践 checklist 和个人 insight。
+  - 明确区分论文主实验结果和当前 GitHub 仓库可见状态。
+- 新增资源目录 `notes/paper-reviews/rl-memory-curriculum-effects-assets/`。
+  - 保存 arXiv HTML 原始论文图：`fig1-experimental-design.png`、`fig2-per-type-heatmap.png`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`RL Memory Agent 训练数据效应：Curriculum 如何塑造外部记忆问答能力`
+  - URL：`/notes/paper-reviews/rl-memory-curriculum-effects.html`
+  - 类型：`Paper Note`
+
+### 设计决策
+
+- 放入 `notes/paper-reviews/`：本次主材料是 arXiv 论文，GitHub 仓库只作为复现材料核验来源。
+- 报告采用单页 HTML，不新增多版本文档；公式使用离线 HTML/CSS 呈现，避免页面依赖 MathJax。
+- 使用 arXiv HTML 公开的两张论文图作为证据图，并在正文中重建关键表格，避免整页 PDF 截图降低可读性。
+- 对复现边界做显式标注：本次检查远端未发现论文声明的 `v1.0-arxiv` tag；当前公开 `results/` 是 Phase 1 Qwen-2.5-3B 参考结果；默认 YAML config 与论文主实验口径存在差异。
+
+### 验证结果
+
+- HTML parser 解析通过：新增页面 `40,825` bytes，核心章节 `source/problem/method/evidence/limits/insight` 均存在。
+- 本地资源引用检查通过：页面引用的 `fig1-experimental-design.png` 与 `fig2-per-type-heatmap.png` 均存在且非空；构建输出 `_site/notes/paper-reviews/rl-memory-curriculum-effects-assets/` 中两张图也存在。
+- 内容可读性检查通过：未发现 Unicode replacement character；`pre code` 有显式样式覆盖；公式使用离线 `math-display` 样式。
+- `git -C /Users/bytedance/Documents/Ricardokevins.github.io diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 已确认 `_site/notes/paper-reviews/rl-memory-curriculum-effects.html` 生成，并包含标题、`G=4 时 EM reward 会塌缩`、`v1.0-arxiv` 复现边界和两张本地论文图引用。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/paper-reviews/rl-memory-curriculum-effects.html`。
+- 本地 HTTP 验证通过：
+  - `/notes/paper-reviews/rl-memory-curriculum-effects.html` 返回 `200 OK`。
+  - `/notes/` 返回 `200 OK`。
+  - `/notes/paper-reviews/rl-memory-curriculum-effects-assets/fig2-per-type-heatmap.png` 返回 `200 OK`。
+- Chrome headless 已渲染桌面端和移动端截图：
+  - `/tmp/rl-memory-curriculum-effects-1280.png`，`1280x900`，约 `462K`。
+  - `/tmp/rl-memory-curriculum-effects-390.png`，`390x844`，约 `194K`。
+- Chrome DOM dump 检查通过：命中 `RL Memory Agent`、`fig2-per-type-heatmap`、`G=4 时 EM reward` 和 `v1.0-arxiv`。
+
 ## 2026-05-25 SaaS-Bench / Computer-Use Agent 评测笔记
 
 ### 背景
@@ -26,9 +302,19 @@
 - 报告不逐段复述论文，而按“评测错觉 -> 环境设计 -> 双指标 -> 结果落差 -> 失败机制 -> 工程改造”的理解顺序组织。
 - 对 blog 与论文的榜单时间差做显式标注，避免把后续 leaderboard 更新误写成 arXiv PDF 原始实验。
 
-### 待验证
+### 验证结果
 
-- 静态 HTML 解析、资源引用、MathJax 配置、Jekyll build、站内索引生成和必要的 headless 渲染检查。
+- 静态 HTML 解析通过：新增页面 `37,597` bytes，核心章节 `source/problem/design/metrics/results/failures/implications/limits/insight/commands` 均存在。
+- 本地资源引用检查通过：页面内 `8` 个本地引用均可解析；资源目录中的原帖图、官方 SVG 图和 PDF 副本均存在且非空。
+- 内容可读性检查通过：未发现 Unicode replacement character；`pre code` 有显式样式覆盖；MathJax 配置和组合可靠性公式源文本存在。
+- `_data/notes.yml` YAML 解析通过，SaaS-Bench 入口唯一；`git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证/超时提示，不影响静态页面生成。
+- 已确认 `_site/notes/tech-analysis/saas-bench-cua-analysis.html` 生成，并包含页面标题、公式源和核心正文。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/saas-bench-cua-analysis.html`。
+- Chrome headless 已渲染桌面端和移动端截图：
+  - `/tmp/saas-bench-cua-analysis-1280.png`，`1280x900`，约 `221K`。
+  - `/tmp/saas-bench-cua-analysis-390.png`，`390x844`，约 `101K`。
+- Chrome `--dump-dom` 因外部脚本等待未及时退出，已终止；用截图文件非空、PNG header 正常和静态 MathJax 源检查替代 DOM 渲染证据。
 
 ## 2026-05-25 Agentic Systems as Boosting Weak Reasoning Models 笔记
 
@@ -153,6 +439,7 @@
 - 用户要求详细深入分析 `https://x.com/huskydogewoof/status/2058320088475037801`。
 - 原帖是 Benhao Huang 关于 Equilibrium Reasoners（EqR）的 side-post，重点不是主论文发布，而是拆解从标准 feedforward model 到 capable iterative model 的训练路径。
 - 本次目标是把 side-post、EqR 主帖、arXiv 论文 `2605.21488v1`、GitHub README 和相关 bonus/回复信息整合成站内可读的技术分析。
+- 2026-05-26 复核：用户再次要求深度分析同一 X 链接；已确认站内 HTML 报告完整覆盖该链接，并按 Obsidian 规则补充 PaperNotes 版复习笔记。
 
 ### 已完成
 
@@ -166,6 +453,9 @@
   - 标题：`EqR 与 Neural Attractors：从 Feedforward 到 Iterative Reasoner`
   - URL：`/notes/tech-analysis/eqr-attractor-reasoners-analysis.html`
   - 类型：`Tech Analysis`
+- 新增 Obsidian 笔记：
+  - `/Users/bytedance/Library/Mobile Documents/iCloud~md~obsidian/Documents/obsidian-example-lifeos-main/3.Resources/PaperNotes/26-05-26 Equilibrium Reasoners.md`
+  - 作为站内 HTML 长文的复习版，重点记录原帖五段式路径、attractor 判断框架、SOT/ACT 的机制解释和对 LLM/Agent 的迁移边界。
 
 ### 设计决策
 
@@ -185,6 +475,7 @@
 - 本地 HTTP 验证通过：页面、`/notes/` 索引和 `construction-path.jpg` 均返回 `200 OK`。
 - Chrome headless 已渲染桌面端 `1280x900` 和移动端 `390x844` 截图到 `/tmp/eqr-attractor-note-1280.png`、`/tmp/eqr-attractor-note-390.png`；两个 PNG 文件均非空。
 - Chrome headless `--dump-dom` 检查通过：DOM 中出现 `mjx-container`，说明 MathJax 公式实际渲染。
+- 2026-05-26 复核验证：HTML parser 检查通过，章节 `source/problem/mechanism/recipe/evidence/limits/implications/insight/commands` 均存在；页面内本地资源引用无缺失；未发现 Unicode replacement character。
 
 ## 2026-05-25 Grok V9 / Cursor 数据 / Mid-training X 线程笔记
 
@@ -322,12 +613,19 @@
 - 新增 `notes/tech-analysis/zai-zcube-inference-network.html`。
   - 覆盖来源与获取方式、Prefill-Decode 分离、KV Cache 跨节点迁移、ROFT/Fat-Tree 拥塞机制、ZCube 扁平二部拓扑、单轨/多轨混合接入、生产部署指标、SIGCOMM 论文摘要边界、限制和个人 insight。
   - 明确区分 Z.ai 官方博客的生产部署 claim、SIGCOMM 2025 program 的 ATOP/ZCube 论文摘要，以及报告中的工程机制判断。
+- 2026-05-25 20:52 原地增强该页面。
+  - 新增 `request-flow` 章节：把一次 PD 请求拆成请求进入、prefill、KV Cache 迁移、decode 接管、后续 token 五段。
+  - 新增 KV Cache 体积估算公式：`layers × tokens × 2 × kv_heads × head_dim × bytes_per_element`，解释长上下文、GQA/MQA、KV 量化和并发峰值如何影响网络压力。
+  - 在 `traffic` 与 `zcube` 章节补充 ROFT workload mismatch、topology-induced congestion、单轨/多轨混合接入的路径分散直觉。
+  - 新增 `diagnosis` 章节：给出 TTFT/KV transfer、PFC/ECN、per-rail/per-leaf load、source/destination pair、topology-aware placement 的诊断清单。
+  - 增强 `limits` 与 `implications`：补充小集群外推边界、RoCE 配置变量、训练/推理拓扑目标差异，以及研发优先级建议。
 - 新增资源目录 `notes/tech-analysis/zai-zcube-inference-network-assets/`。
   - 保存 Z.ai 官方博客图像 `img_001.png` 到 `img_012.png`。
 - 更新 `_data/notes.yml`，新增 Notes 卡片入口：
   - 标题：`ZCube 推理网络架构解读：KV Cache 流量如何改变数据中心拓扑`
   - URL：`/notes/tech-analysis/zai-zcube-inference-network.html`
   - 类型：`Tech Analysis`
+  - 2026-05-25 20:52 更新摘要与时间，反映本次深读增强。
 
 ### 设计决策
 
@@ -344,6 +642,12 @@
 - 已确认 `_site/notes/tech-analysis/zai-zcube-inference-network.html` 生成，并包含页面标题、正文图片引用和核心章节。
 - 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口，链接到 `/notes/tech-analysis/zai-zcube-inference-network.html`。
 - Chrome headless 已渲染桌面端 `1280x900` 和移动端 `390x844` 截图到 `/tmp/zcube-note-1280.png`、`/tmp/zcube-note-390.png`；两个 PNG 文件均非空、PNG header 正常、首段字节包含完整 256 种取值，说明不是空白截图。
+- 2026-05-25 20:52 增强后复验通过：
+  - 静态结构检查通过：文件 `56,761` bytes；新增章节 `request-flow/diagnosis` 与原核心章节均存在；页面内 `10` 张本地图片引用均可解析；未发现 Unicode replacement character；`pre code` 样式覆盖存在。
+  - `_data/notes.yml` YAML 解析通过；目标文件 `git diff --check` 通过。
+  - 运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 GitHub Metadata 未认证提示，不影响静态页面生成。
+  - 已确认 `_site/notes/tech-analysis/zai-zcube-inference-network.html` 包含新增的“把一次请求拆开看”“KV Cache 到底有多大”“如果在自己集群里验证”等章节。
+  - 已确认 `_site/notes/index.html` 的 ZCube 卡片摘要更新为包含“KV Cache 体积公式”和“集群诊断清单”。
 
 ## 2026-05-25 Test-Time Scaling / Training-Free RL X Article 笔记
 
