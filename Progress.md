@@ -1,5 +1,76 @@
 # Ricardokevins.github.io Progress
 
+## 2026-05-30 BES 双向演化搜索 X 线程解读与笔记导出
+
+### 背景
+
+- 用户要求“深度梳理解读并导出笔记”：`https://x.com/Kevin_GuoweiXu/status/2060022930172506200`。
+- 原帖主题为 **BES: Bidirectional Evolutionary Search**，对应论文 `Self-Improving Language Models with Bidirectional Evolutionary Search`。
+
+### 已完成
+
+- 按仓库规则读取 `AGENTS.md`、`.agent/codex-experience-profile.md`、`Progress.md`、`notes/NOTE_TEMPLATE.md`。
+- 使用 `opencli twitter thread` 获取原帖 8 条线程和评论区关键问答：
+  - 原帖指出 Best-of-N / GRPO 与 tree search 的两个瓶颈：verification signals sparse、candidates stay within model distribution。
+  - 线程定义 BES 为 forward candidate evolution + backward goal decomposition。
+  - 评论区确认 backward search 当前生成的是 subgoals，不是完整 backward solution；子目标 cleanly verifiable 时会显著加速搜索。
+- 使用 `opencli twitter profile` 核验作者 Kevin / Guowei Xu 的公开简介。
+- 解析原帖短链：
+  - 论文：`https://huggingface.co/papers/2605.28814` / `https://arxiv.org/abs/2605.28814`
+  - 代码：`https://github.com/Embodied-Minds-Lab/BES`
+  - 模型集合：`https://huggingface.co/collections/Xkev/bes`
+  - 项目页：`https://guoweixu.com/bes`
+- 使用 `opencli arxiv paper 2605.28814`、`opencli hf paper 2605.28814`、PDF 下载与 `pdfinfo` 核验论文元数据和正文：
+  - arXiv v1 发布日期：2026-05-27。
+  - PDF 36 页，标题和作者与原帖一致。
+- 读取 GitHub README、`logical/README.md`、`multihop/README.md`、`inference/README.md` 和 inference 关键源码，核验：
+  - forward operators：combination、deletion、translocation、crossover；
+  - backward goal tree / recursive scoring / bucket interpolation；
+  - Knights-and-Knaves、MuSiQue、Circle Packing、Heilbronn 的实验设置与复现入口；
+  - HF collection 中公开的 K&K 和 multihop BES 模型条目。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/bes-bidirectional-evolutionary-search.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`BES：把搜索从同分布采样推进到目标反推与轨迹重组`
+  - URL：`/notes/paper-reviews/bes-bidirectional-evolutionary-search.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- BES 的核心不是“再做一个 tree search”，而是把 hard problem 上的稀疏终局命中拆成两个更可操作的问题：用 backward goal tree 让部分进展可见，用 evolutionary operators 把不同错误轨迹中的局部正确片段重组。
+- 理论部分的工程含义是：expansion-only rollout 高概率停留在模型原分布的 entropy shell；evolution operators 通过跨轨迹 block recombination 打破原有依赖；backward sub-goals 把完整解的乘法命中概率转成局部证据收集问题。
+- 实验收益集中在 baseline 采样已经明显不足的 hard setting：
+  - MuSiQue 3B：Base 4.0%，GRPO 2.1%，Tree-GRPO 3.9%，BES 7.0%。
+  - MuSiQue 8B：Base 6.6%，Tree-GRPO 7.4%，BES 10.4%。
+  - open problem solving 中 BES 的平均值优于 OpenEvolve、GEPA、ShinkaEvolve，但 best value 仍接近而未超过 AlphaEvolve / human high-compute 参考。
+- 真正的工程难点是 domain verifier 与 sub-goal 设计：
+  - K&K 使用模板化目标树；
+  - MuSiQue 使用 embedding similarity 覆盖 atomic sub-question；
+  - 程序优化使用 Python verifier expression，并用 bucket interpolation 防止 backward score 压过 raw objective。
+
+### 当前判断
+
+- BES 更适合作为“难样本生成 / 工具轨迹搜索 / 程序候选重组”的框架，而不是通用推理补丁。
+- 它要求 objective reward、可分解子目标和可重组候选同时成立；主观任务、弱 decomposition 模型、语义不闭合的轨迹拼接都会削弱收益。
+- `opencli web read` 读取项目页时遇到 stale page identity，已降级使用论文、GitHub、HF API 和 raw 文件作为主证据；项目页仅作为链接一致性核验。
+
+### 验证结果
+
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 69 entries, 69 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/bes-bidirectional-evolutionary-search.html" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/Users/bytedance/Downloads`、`Exported as a single HTML note`、Unicode replacement character 等公开生成痕迹。
+- 首次 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 失败，原因是临时 gem 目录缺少 `jekyll` 可执行文件；随后运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle install` 补齐依赖。
+- 重新运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 `faraday-retry` 与 GitHub Metadata 未认证 warning，不影响 `_site` 生成。
+- 本地静态服务打开新增页面返回 `HTTP 200`，`notes-shell.css` 与 `favicon.ico` 均返回 `200`。
+- OpenCLI browser 检查新增页面：
+  - title 正确；
+  - `body.notes-shell-page`、`.notes-sitebar`、`main`、证据附录均存在；
+  - `main section` 数量为 9；
+  - `badImages: []`；
+  - 桌面视口 `overflow: 0`；
+  - browser console message 数量为 0。
+- 系统 Chrome headless 以 `390x844` 移动视口打开并截图成功；PNG 文件 `390 x 844`、约 `97K`、PNG header 正常，页面非空。
+
 ## 2026-05-26 Hwcoder 算法笔记读书笔记迁移
 
 ### 背景
