@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LRPO：把语言选择变成多语言后训练的可学习变量</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --panel: #fffdf8;
+      --panel-2: #e7ece8;
+      --ink: #202421;
+      --muted: #5f6863;
+      --line: #d2d8d2;
+      --line-strong: #98a79d;
+      --accent: #24665d;
+      --accent-2: #8a5730;
+      --accent-3: #345b83;
+      --accent-soft: #dceae6;
+      --warm-soft: #efe2c8;
+      --cool-soft: #dde8f1;
+      --red-soft: #ead9d6;
+      --shadow: 0 18px 44px rgba(35, 42, 38, 0.1);
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 33, 0.035) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 36, 33, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        radial-gradient(circle at 82% 12%, rgba(36, 102, 93, 0.13), transparent 32%),
+        radial-gradient(circle at 12% 18%, rgba(138, 87, 48, 0.1), transparent 30%),
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(36, 102, 93, 0.32);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    code { font-family: var(--mono); }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b19; }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 54px) clamp(18px, 4vw, 46px) 80px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.56fr);
+      gap: clamp(26px, 4.6vw, 58px);
+      align-items: end;
+      min-height: calc(80vh - var(--notes-shell-height, 46px));
+      padding: clamp(34px, 6vw, 84px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 940px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6vw, 78px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: clamp(20px, 2vw, 24px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 850px;
+      color: #343b37;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .metric,
+    .term-card,
+    .risk-card,
+    .source-list a {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .fact {
+      min-height: 98px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(231, 236, 232, 0.66);
+    }
+
+    .fact b {
+      display: block;
+      margin-bottom: 4px;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .fact span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 24px 0 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.74);
+    }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.4fr) minmax(0, 1fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: start;
+    }
+
+    .kicker {
+      margin-bottom: 9px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .content {
+      min-width: 0;
+      color: #323a36;
+    }
+
+    .panel { padding: clamp(18px, 3vw, 26px); }
+
+    .panel + .panel,
+    .panel + .callout,
+    .callout + .panel { margin-top: 16px; }
+
+    .callout {
+      padding: 18px;
+      border-left: 5px solid var(--accent-3);
+      box-shadow: none;
+      background: rgba(255, 253, 248, 0.76);
+    }
+
+    .metric-grid,
+    .term-grid,
+    .risk-grid {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .term-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .risk-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .metric,
+    .term-card,
+    .risk-card {
+      min-width: 0;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-family: var(--serif);
+      font-size: 30px;
+      line-height: 1.05;
+    }
+
+    .metric span,
+    .term-card p,
+    .risk-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .term-card h3,
+    .risk-card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+      counter-reset: flow;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 16px 16px 16px 58px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+    }
+
+    .flow-step::before {
+      counter-increment: flow;
+      content: counter(flow);
+      position: absolute;
+      left: 16px;
+      top: 17px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 820;
+    }
+
+    .flow-step h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .flow-step p { color: var(--muted); }
+
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    td { color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      box-shadow: none;
+    }
+
+    .source-list small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-head { grid-template-columns: 1fr; }
+      .hero { min-height: auto; align-items: start; }
+      .metric-grid,
+      .term-grid,
+      .risk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .page { padding-inline: 16px; }
+      .fact-grid,
+      .metric-grid,
+      .term-grid,
+      .risk-grid { grid-template-columns: 1fr; }
+      .toc a { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Paper Note · Multilingual RL</div>
+        <h1>LRPO：把语言选择变成多语言后训练的可学习变量</h1>
+        <p class="lead">
+          这篇 ICML 2026 论文的关键 insight 是：语言不是单纯的输入输出格式，而是访问模型内部知识分布的一条路径。多语言后训练不应默认沿着源语言或英语中心路径生成 rollout，而应让模型学习“这个问题用哪种语言探索，能带来更可靠的训练信号”。
+        </p>
+        <nav class="toc" aria-label="Table of contents">
+          <a href="#takeaway">核心判断</a>
+          <a href="#problem">问题背景</a>
+          <a href="#mechanism">机制拆解</a>
+          <a href="#evidence">实验信号</a>
+          <a href="#terms">术语解释</a>
+          <a href="#implications">工程启发</a>
+          <a href="#limits">边界风险</a>
+          <a href="#sources">资料索引</a>
+        </nav>
+      </div>
+      <aside class="hero-card" aria-label="Key facts">
+        <strong>Reading map</strong>
+        <p>对象：CherylolGuo 的 X 线程，以及论文《Learning to Route Languages for Multilingual Policy Optimization》。</p>
+        <div class="fact-grid">
+          <div class="fact"><b>LRPO</b><span>Language-Routed Policy Optimization，把 rollout 语言作为可选训练变量。</span></div>
+          <div class="fact"><b>ICML</b><span>论文页面标注 Accepted at ICML 2026，arXiv ID 为 2605.25360。</span></div>
+          <div class="fact"><b>5</b><span>实验覆盖 CARE、CARE-pro、mGSM-v2、Global-MMLU-Lite、Include-Lite。</span></div>
+          <div class="fact"><b>38.25</b><span>Qwen2.5-1.5B 在 mGSM-v2 上由 GRPO 的 32.33 提升到 LRPO 的 38.25。</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <section id="takeaway">
+        <div class="section-head">
+          <div>
+            <div class="kicker">01 · thesis</div>
+            <h2>核心判断</h2>
+          </div>
+          <div class="content">
+            <div class="panel">
+              <p>
+                这个帖子最值得带走的不是“多语言训练又多了一个方法”，而是一个更基础的判断：<strong>模型里的知识不是均匀分布在所有语言路径里的</strong>。同一个问题，用中文、英文、阿拉伯语、法语或日语生成，可能会触发不同语料来源、文化背景和事实记忆。传统 GRPO 往往让每个训练问题只在源语言里 rollout，英语中心方法又默认英语是更强监督语言；LRPO 反过来把“该用什么语言 rollout”变成训练时要学习的变量。
+              </p>
+              <p>
+                这使 LRPO 更像一个多语言知识路由器，而不是简单的数据增强。它利用多语言 rollout 组找出更有信息量的答案，再把这些相对质量信号用于 policy update。语言在这里不是翻译层，而是训练时的探索维度。
+              </p>
+            </div>
+            <div class="callout">
+              <p>
+                工程上可以这样理解：如果英文是很多任务的强路径，区域知识和文化语境却常常存在于非英语路径中。LRPO 的价值在于让模型训练阶段就学会何时绕开默认路径，而不是等到推理阶段靠 prompt 猜测。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="problem">
+        <div class="section-head">
+          <div>
+            <div class="kicker">02 · problem</div>
+            <h2>为什么这个问题重要</h2>
+          </div>
+          <div class="content">
+            <p>
+              多语言模型虽然在大规模异构语料上训练，但后训练阶段常常把问题收缩回单一语言路径。源语言 rollout 的好处是稳定，英语 pivot 的好处是高资源，但二者都会错过一个事实：知识质量和覆盖率会随语言、地区、领域变化。一个关于希腊礼仪的问题，英语或中文生成可能给出通用误解，阿拉伯语或更接近特定文化讨论的语言路径反而可能捕捉到冒犯含义。
+            </p>
+            <p>
+              这类问题在区域知识、跨文化信息需求、地方事实、政策语境和非英语互联网材料里尤其明显。传统“翻译成英文再回答”的 pipeline 在通用知识上很有效，但它把语言差异压平成格式转换，忽略了语言本身可能承载不同来源和不同可靠性。
+            </p>
+            <div class="metric-grid" aria-label="Problem dimensions">
+              <div class="metric"><b>语言</b><span>不同语言不是等价包装，而可能对应不同知识来源。</span></div>
+              <div class="metric"><b>任务</b><span>区域知识和跨文化问题比通用选择题更依赖语言语境。</span></div>
+              <div class="metric"><b>训练</b><span>只在源语言 rollout 会限制探索空间和偏好信号多样性。</span></div>
+              <div class="metric"><b>奖励</b><span>跨语言相似度原始分数存在语言对偏差，不能直接比较。</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mechanism">
+        <div class="section-head">
+          <div>
+            <div class="kicker">03 · mechanism</div>
+            <h2>LRPO 怎么做</h2>
+          </div>
+          <div class="content">
+            <div class="flow">
+              <div class="flow-step">
+                <h3>构造多语言 rollout 组</h3>
+                <p>
+                  对每个训练问题，LRPO 不只生成源语言回答，而是在固定 rollout budget 下生成多种目标语言的回答。为了保留 on-policy 稳定性，它会保留一部分源语言 rollout，再把剩余配额交给语言 router 采样。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>用语言 router 决定探索方向</h3>
+                <p>
+                  Router 根据问题主题和可选地区标签给候选语言分配概率。论文把它建模为 contextual multi-armed bandit：每种语言是一条 arm，训练中要在探索低使用语言和利用高收益语言之间平衡。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>用跨语言语义相似度评估质量</h3>
+                <p>
+                  每个 rollout 会与高质量 reference 比较。质量信号来自跨语言 semantic similarity，而不是要求所有答案先翻译成同一种语言后再打分。这样可以保留不同语言路径暴露出的内容差异。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>校准 reward，避免语言对偏差</h3>
+                <p>
+                  原始相似度会因为语言对不同而系统性偏移。LRPO 先离线统计语义等价、自然错配和 hard contrastive pair 的相似度分布，再在线训练时做 mean-based 或 quantile-based calibration，让不同语言的 reward 更可比。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>同时更新 policy 和 router</h3>
+                <p>
+                  Policy 使用校准后的质量 reward 和语言一致性 reward 做 GRPO 式更新。Router 则根据最近一段训练中不同主题、地区、语言组合的平均 reward 做指数滑动更新，并通过 epsilon-greedy 与 temperature annealing 避免过早塌缩到少数语言。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence">
+        <div class="section-head">
+          <div>
+            <div class="kicker">04 · evidence</div>
+            <h2>实验信号怎么看</h2>
+          </div>
+          <div class="content">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>观察</th>
+                    <th>含义</th>
+                    <th>我的解读</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Qwen2.5-1.5B 在 mGSM-v2 上，GRPO 为 32.33，LRPO 为 38.25。</td>
+                    <td>多语言 rollout 在数学推理类开放生成任务上带来明显收益。</td>
+                    <td>这说明收益不局限于文化知识；不同语言路径可能也影响推理样式和中间知识调用。</td>
+                  </tr>
+                  <tr>
+                    <td>CARE、CARE-pro、mGSM-v2 的收益更明显，Global-MMLU-Lite 和 Include-Lite 更接近保持。</td>
+                    <td>开放生成任务更容易从多语言探索中获益。</td>
+                    <td>选择题任务的答案空间被格式限制，语言路径差异不一定能充分转化成分数。</td>
+                  </tr>
+                  <tr>
+                    <td>固定多语言混合通常好于单语言，但动态 router 的整体表现最好。</td>
+                    <td>“多语言”本身有价值，但 naive uniform sampling 不够。</td>
+                    <td>关键不是把语言种类堆满，而是让模型学会在题目上下文下选择高信息语言。</td>
+                  </tr>
+                  <tr>
+                    <td>跨语言 reward calibration 优于未校准基线。</td>
+                    <td>多语言评估不是简单调用 embedding 相似度即可。</td>
+                    <td>如果 reward 没校准，训练可能奖励语言对偏差，而不是奖励真实语义质量。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              这些结果的合理读法是：LRPO 提供了一条更细的后训练路径，尤其适合知识来源和语言语境强耦合的任务。它不是证明“任何问题都应该多语言生成”，而是证明“训练时允许语言路由，并用校准 reward 比较 rollout，会比固定单语言或固定英语中心策略更有弹性”。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms">
+        <div class="section-head">
+          <div>
+            <div class="kicker">05 · terms</div>
+            <h2>术语解释</h2>
+          </div>
+          <div class="content">
+            <div class="term-grid">
+              <div class="term-card">
+                <h3>LRPO</h3>
+                <p>Language-Routed Policy Optimization，指把 rollout 语言作为可学习变量的在线 policy optimization 方法。</p>
+              </div>
+              <div class="term-card">
+                <h3>Rollout language</h3>
+                <p>模型被要求生成回答的目标语言。这里它不只是输出格式，而是训练时可选择的探索动作。</p>
+              </div>
+              <div class="term-card">
+                <h3>Language router</h3>
+                <p>根据问题主题、地区和训练反馈，为不同候选语言分配采样概率的路由器。</p>
+              </div>
+              <div class="term-card">
+                <h3>Reward calibration</h3>
+                <p>对跨语言相似度分数做校准，减少不同语言对之间的系统性打分偏差。</p>
+              </div>
+              <div class="term-card">
+                <h3>Contextual multi-armed bandit</h3>
+                <p>一种在上下文条件下选择 action 并从 reward 中更新选择策略的在线学习框架；在 LRPO 中，action 是语言。</p>
+              </div>
+              <div class="term-card">
+                <h3>Language consistency reward</h3>
+                <p>检查模型是否真的按被路由的目标语言回答。若不遵守语言指令，质量 reward 会被门控掉。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="implications">
+        <div class="section-head">
+          <div>
+            <div class="kicker">06 · implications</div>
+            <h2>工程启发</h2>
+          </div>
+          <div class="content">
+            <div class="panel">
+              <p>
+                对多语言 RAG 和国际化 agent，LRPO 的启发是不要把语言只当成前后处理。更稳的系统应该同时考虑资料来源语言、推理语言和最终用户输出语言。一个关于日本地方制度的问题，资料检索可能应优先日文；一个关于法国品牌历史的问题，法文 rollout 可能比英文更可靠；一个关于跨境法规的问题，可能需要多语言候选答案互相校验。
+              </p>
+              <p>
+                对后训练平台，LRPO 提醒我们：reward model 要支持跨语言公平比较，否则多语言探索会被评估偏差污染。实际落地时至少需要记录语言对、source language、target language、reference language 和 reward 分布，避免把 embedding model 的语言偏置误当成模型能力提升。
+              </p>
+            </div>
+            <div class="callout">
+              <p>
+                一个可执行的系统设计是：检索阶段按地区和语言路由资料，生成阶段保留多个语言候选，评价阶段做跨语言校准，最终再把答案回写到用户语言。这样做比“统一翻译成英文处理”复杂，但更接近真实跨文化信息需求。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="limits">
+        <div class="section-head">
+          <div>
+            <div class="kicker">07 · limits</div>
+            <h2>边界与风险</h2>
+          </div>
+          <div class="content">
+            <div class="risk-grid">
+              <div class="risk-card">
+                <h3>Reward 依赖仍然很重</h3>
+                <p>如果跨语言相似度模型或 reward model 本身偏差很大，校准只能缓解，不能保证评价等于真实质量。</p>
+              </div>
+              <div class="risk-card">
+                <h3>Router 学到的是局部最优</h3>
+                <p>语言偏好依赖训练数据、模型能力和 reward 设计，不能把某地区固定映射到某语言作为通用规则。</p>
+              </div>
+              <div class="risk-card">
+                <h3>训练成本更高</h3>
+                <p>论文报告 LRPO 在同硬件和同 rollout group size 下训练 step 时间高于 GRPO，额外成本来自路由、校准和更多非英语 token。</p>
+              </div>
+              <div class="risk-card">
+                <h3>收益分布不均匀</h3>
+                <p>开放生成任务收益更明显，部分选择题类 benchmark 只是保持或小幅波动，不应过度泛化。</p>
+              </div>
+              <div class="risk-card">
+                <h3>Reference 质量仍是天花板</h3>
+                <p>LRPO 需要高质量 reference 来构造语义质量反馈；如果 reference 本身错或过窄，多语言探索会围绕错误目标优化。</p>
+              </div>
+              <div class="risk-card">
+                <h3>语言控制需要训练</h3>
+                <p>基础模型未必天然遵守“用指定语言回答”的指令，论文中 warm-start SFT 对稳定多语言 rollout 有帮助。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources" data-note-role="evidence-appendix">
+        <div class="section-head">
+          <div>
+            <div class="kicker">08 · sources</div>
+            <h2>证据边界与资料索引</h2>
+          </div>
+          <div class="content">
+            <p>
+              本文基于 CherylolGuo 的 X 线程、arXiv 论文元数据和 PDF 正文、官方 GitHub README 进行整理。X 线程给出了宣传式摘要和关键例子；arXiv/PDF 用于核验方法、实验表格、消融和成本；GitHub README 用于核验实现入口、数据格式和训练参数。GitHub REST API 在当前匿名环境下触发额度限制，因此仓库元信息以公开页面和 raw README 为准。
+            </p>
+            <div class="source-list">
+              <a href="https://x.com/CherylolGuo/status/2059695145679790165">CherylolGuo X thread：Knowledge is not evenly distributed across languages<small>原帖与 1/n 到 5/n 线程，包含 thumb-up in Greece 例子、LRPO 组件和论文/代码链接。</small></a>
+              <a href="https://arxiv.org/abs/2605.25360">arXiv：Learning to Route Languages for Multilingual Policy Optimization<small>论文元数据、摘要、作者、发布日期与 ICML 2026 标注。</small></a>
+              <a href="https://arxiv.org/pdf/2605.25360">Paper PDF：Learning to Route Languages for Multilingual Policy Optimization<small>方法、实验表格、reward calibration、router dynamics、训练成本和统计显著性依据。</small></a>
+              <a href="https://github.com/Guochry/LRPO">GitHub：Guochry/LRPO<small>官方实现入口，README 描述 language-routed rollouts、calibrated multilingual rewards 和 trainable language router。</small></a>
+              <a href="https://huggingface.co/datasets/geyang627/care_pro">Hugging Face dataset：CARE-pro<small>论文 README 指向的 CARE-pro 数据集页面，用于理解新增评测集边界。</small></a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

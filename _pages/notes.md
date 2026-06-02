@@ -18,6 +18,12 @@ author_profile: true
     --notes-accent-2: #8a5a22;
     --notes-accent-soft: #e8f2f4;
     --notes-warm: #fbf7ef;
+    min-width: 0;
+  }
+
+  .notes-index,
+  .notes-index * {
+    box-sizing: border-box;
   }
 
   .notes-lead {
@@ -43,15 +49,21 @@ author_profile: true
     align-items: center;
     margin-bottom: 0.8rem;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-width: 0;
   }
 
   .notes-count {
+    min-width: 0;
     color: var(--notes-muted);
     font-size: 0.85rem;
+    overflow-wrap: anywhere;
   }
 
   .notes-search {
+    box-sizing: border-box;
     width: min(100%, 19rem);
+    max-width: 100%;
+    min-width: 0;
     min-height: 2.15rem;
     padding: 0.42rem 0.65rem;
     border: 1px solid var(--notes-line);
@@ -59,6 +71,10 @@ author_profile: true
     background: #fff;
     color: var(--notes-ink);
     font: inherit;
+  }
+
+  .notes-index input.notes-search {
+    box-sizing: border-box;
   }
 
   .notes-search:focus {

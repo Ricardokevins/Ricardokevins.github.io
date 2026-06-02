@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CUA-Gym：Computer-Use Agent 的 RLVR 数据基础设施</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20211d;
+      --muted: #5f645b;
+      --subtle: #858b80;
+      --paper: #f4f1e8;
+      --panel: #fffdf6;
+      --panel-2: #e9eadf;
+      --line: #d1d2c2;
+      --line-strong: #9fa38e;
+      --accent: #315f5b;
+      --accent-2: #8b4b36;
+      --accent-3: #4b5f92;
+      --accent-soft: #dbe9e4;
+      --blue-soft: #dce6ef;
+      --green-soft: #dde9da;
+      --gold: #8d6424;
+      --gold-soft: #efe2c3;
+      --red: #963f35;
+      --red-soft: #f0d9d5;
+      --code-bg: #20211d;
+      --code-fg: #f7f1e5;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --shadow: 0 18px 46px rgba(44, 45, 35, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 33, 29, 0.034) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 33, 29, 0.024) 1px, transparent 1px) 0 0 / 36px 36px,
+        radial-gradient(circle at 88% 12%, rgba(49, 95, 91, 0.16), transparent 28%),
+        radial-gradient(circle at 8% 22%, rgba(139, 75, 54, 0.12), transparent 30%),
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 95, 91, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    code { font-family: var(--mono); }
+
+    .page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) clamp(18px, 4vw, 46px) 78px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.03fr) minmax(300px, 0.58fr);
+      gap: clamp(24px, 4vw, 52px);
+      align-items: end;
+      min-height: calc(78vh - var(--notes-shell-height, 46px));
+      padding: clamp(30px, 6vw, 82px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 820;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 950px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6.1vw, 82px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 10px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 46px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 24px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    p { margin: 0.78rem 0 0; }
+
+    .lead {
+      max-width: 850px;
+      color: #343730;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .toc,
+    .metric,
+    .claim-card,
+    .step-card,
+    .source-list a,
+    .risk-card,
+    .diff-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .fact {
+      min-height: 98px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(233, 234, 223, 0.55);
+    }
+
+    .fact b {
+      display: block;
+      margin-bottom: 4px;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .fact span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 24px 0 0;
+      padding: 14px;
+      box-shadow: none;
+      background: rgba(255, 253, 246, 0.74);
+    }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: start;
+    }
+
+    .kicker {
+      margin-bottom: 9px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .content {
+      min-width: 0;
+      color: #32352f;
+    }
+
+    .panel {
+      padding: clamp(18px, 3vw, 26px);
+      background: rgba(255, 253, 246, 0.9);
+    }
+
+    .panel + .panel,
+    .panel + .callout,
+    .callout + .panel { margin-top: 16px; }
+
+    .callout {
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent-2);
+      background: rgba(255, 253, 246, 0.9);
+      color: #35312b;
+      font-weight: 650;
+    }
+
+    .callout.green {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .callout.gold {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .claim-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .claim-card {
+      min-height: 184px;
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .claim-card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 17px;
+    }
+
+    .claim-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .pipeline {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .step-card {
+      display: grid;
+      grid-template-columns: 154px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 16px;
+      box-shadow: none;
+      background: rgba(255, 253, 246, 0.86);
+    }
+
+    .step-card b {
+      color: var(--accent-2);
+      font-size: 15px;
+    }
+
+    .step-card span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      padding: 16px;
+      box-shadow: none;
+      background: rgba(255, 253, 246, 0.88);
+    }
+
+    .metric b {
+      display: block;
+      margin-bottom: 6px;
+      font-family: var(--serif);
+      font-size: clamp(26px, 3vw, 36px);
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .diff-card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .diff-card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent-3);
+    }
+
+    .diff-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+
+    .risk-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .risk-card {
+      padding: 18px;
+      box-shadow: none;
+      border-top: 4px solid var(--red);
+    }
+
+    .risk-card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--red);
+    }
+
+    .risk-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    ol,
+    ul {
+      margin: 16px 0 0;
+      padding-left: 22px;
+    }
+
+    li { margin: 8px 0; }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 13px 15px;
+      border-color: var(--line);
+      color: var(--accent);
+      box-shadow: none;
+    }
+
+    footer {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 0 clamp(18px, 4vw, 46px) 46px;
+      color: var(--subtle);
+      font-size: 13px;
+    }
+
+    @media (max-width: 880px) {
+      .hero,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+
+      .claim-grid,
+      .metrics,
+      .diff-grid,
+      .risk-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .fact-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .step-card {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+
+<nav class="notes-sitebar" aria-label="Notes navigation">
+  <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+  <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+</nav>
+
+<div class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">X Thread Analysis · CUA-Gym</div>
+        <h1>CUA-Gym：Computer-Use Agent 的 RLVR 数据基础设施</h1>
+        <p class="lead">Bowen Wang 的线程真正重要的地方，不是又展示一个 GUI agent 分数，而是把 CUA 后训练的瓶颈从“算法不够强”改写成“缺少可复位、可检查、可程序化奖励的训练世界”。</p>
+        <nav class="toc" aria-label="目录">
+          <a href="#thesis">核心判断</a>
+          <a href="#terms">术语边界</a>
+          <a href="#pipeline">生成闭环</a>
+          <a href="#environment">环境层</a>
+          <a href="#results">结果与差异</a>
+          <a href="#risks">风险边界</a>
+          <a href="#practice">实践启发</a>
+          <a href="#sources">材料来源</a>
+        </nav>
+      </div>
+      <aside class="hero-card">
+        <strong>分析对象</strong>
+        <p>BowenWangNLP X 线程、CUA-Gym 论文页、项目主页、GitHub README、Hugging Face Dataset 与 CUA-Gym-Hub 仓库。</p>
+        <div class="fact-grid">
+          <div class="fact"><b>32K</b><span>论文与项目材料宣称的 verified RLVR tuples 规模。</span></div>
+          <div class="fact"><b>110</b><span>线程宣称覆盖的 desktop + mock web environments。</span></div>
+          <div class="fact"><b>7,897</b><span>当前 HF public preview 中可见的 task rows。</span></div>
+          <div class="fact"><b>RLVR</b><span>训练价值来自 deterministic reward，而不是单纯轨迹堆叠。</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <section id="thesis">
+        <div class="section-head">
+          <div>
+            <div class="kicker">01 · Thesis</div>
+            <h2>这不是 benchmark，而是数据基础设施</h2>
+          </div>
+          <div class="content">
+            <p>这条线程的核心判断是：RLVR 已经在数学、工具使用和软件工程任务中证明价值，但迁移到 Computer-Use Agents 时，真正卡住的不是 GSPO、PPO 或其它 RL recipe，而是训练数据的可验证性。</p>
+            <div class="callout green">
+              GUI agent 需要的不是普通文本样本，而是一个可执行三元组：任务说明、可复现初始环境、可程序化验证的奖励函数。
+            </div>
+            <p>这也是 CUA-Gym 和普通 GUI benchmark 的分水岭。benchmark 主要回答“模型现在能不能做”；CUA-Gym 更接近回答“我们如何大规模制造能用于 RL 的任务世界”。如果这个方向成立，后续 CUA 进展会更多依赖环境工程、reward 工程和数据过滤，而不是只依赖更大的视觉语言模型。</p>
+            <div class="claim-grid">
+              <div class="claim-card">
+                <b>训练样本是世界</b>
+                <p>每个样本都需要 setup、state、reward 和执行依赖；它不是一行 instruction-response。</p>
+              </div>
+              <div class="claim-card">
+                <b>reward 是核心资产</b>
+                <p>程序化 reward 能让 RLVR 成立，但也会带来 specification gap 和 reward hacking 风险。</p>
+              </div>
+              <div class="claim-card">
+                <b>环境覆盖决定迁移</b>
+                <p>更多轨迹和更多环境不是同一个维度；前者强化熟练度，后者训练跨 UI 抽象。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms">
+        <div class="section-head">
+          <div>
+            <div class="kicker">02 · Terms</div>
+            <h2>术语和概念边界</h2>
+          </div>
+          <div class="content">
+            <div class="diff-grid">
+              <div class="diff-card">
+                <b>CUA</b>
+                <p>Computer-Use Agent，指通过屏幕、键鼠、浏览器或桌面应用完成任务的 agent，而不是只在文本 API 里回答问题的模型。</p>
+              </div>
+              <div class="diff-card">
+                <b>RLVR</b>
+                <p>Reinforcement Learning from Verifiable Rewards，指 reward 能由程序、状态差异或可复现判题器直接给出，而不是依赖主观偏好打分。</p>
+              </div>
+              <div class="diff-card">
+                <b>Setup-gen / reward-gen</b>
+                <p>Setup-gen 负责构造任务初态和目标状态；reward-gen 负责写判分器。二者隔离是为了减少 reward 偷看实现细节。</p>
+              </div>
+              <div class="diff-card">
+                <b>Orchestrator</b>
+                <p>训练数据生成中的调度器，用来执行初态、目标态和 reward 检查，并把失败样本送回生成环节修正。</p>
+              </div>
+              <div class="diff-card">
+                <b>Programmatic reward</b>
+                <p>用代码检查最终状态是否满足任务语义。它比 VLM judge 更稳定，但如果规格写窄，也会产生 reward hacking。</p>
+              </div>
+              <div class="diff-card">
+                <b>Privileged state API</b>
+                <p>判分器可读的内部状态接口，例如 mock app 的数据库或状态文件。训练 agent 不应该访问这些接口，否则会绕过 UI 任务。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pipeline">
+        <div class="section-head">
+          <div>
+            <div class="kicker">03 · Pipeline</div>
+            <h2>把任务生成变成软件工程闭环</h2>
+          </div>
+          <div class="content">
+            <p>CUA-Gym 的关键设计，是用多个 coding agents 协同生成任务、环境状态和奖励函数，再通过执行结果来关闭一致性循环。它不是先生成一堆自然语言任务，再事后找人验收；而是在生成阶段就把可执行性和可验证性放进循环里。</p>
+            <div class="pipeline">
+              <div class="step-card">
+                <b>Task / context</b>
+                <span>从目标领域、真实软件使用分布、教程、论坛和资产文件中生成任务意图与初始上下文。</span>
+              </div>
+              <div class="step-card">
+                <b>Setup-gen</b>
+                <span>构造 initial state 和 golden state，通常体现为 <code>initial_setup.py</code>、<code>golden_patch.py</code> 或桌面文件资产。</span>
+              </div>
+              <div class="step-card">
+                <b>Reward-gen</b>
+                <span>只从任务描述写 <code>reward.py</code>，不看 setup-gen 的实现，避免 reward 直接检查生成脚本里的捷径。</span>
+              </div>
+              <div class="step-card">
+                <b>Orchestrator</b>
+                <span>执行 initial 和 golden 两端，要求 <code>reward(initial)=0</code>、<code>reward(golden)=1</code>，不满足就迭代修复。</span>
+              </div>
+              <div class="step-card">
+                <b>Filtering</b>
+                <span>再用 LLM majority voting 和 teacher rollouts 检查 ambiguity、executability、hack-risk 和任务清晰度。</span>
+              </div>
+            </div>
+            <div class="callout gold">
+              information barrier 是这里最值得学习的设计。没有隔离，reward-gen 很容易偷看 setup 的实现细节，生成一个“能过测试但不理解任务语义”的 verifier。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="environment">
+        <div class="section-head">
+          <div>
+            <div class="kicker">04 · Environment</div>
+            <h2>CUA-Gym-Hub 的真正价值是控制面</h2>
+          </div>
+          <div class="content">
+            <p>真实网站不适合直接做大规模 RL：账号、权限、速率限制、状态污染、网络波动、服务条款和安全风险都会让 rollout 难以稳定复现。CUA-Gym-Hub 选择构建 mock web apps，不是因为真实度不重要，而是因为训练首先需要可控性。</p>
+            <div class="diff-grid">
+              <div class="diff-card">
+                <b>State injection</b>
+                <p>任务可以把 JSON 初始状态注入 mock app，使同一个 Gmail-like 或 Notion-like 环境承载大量不同任务世界。</p>
+              </div>
+              <div class="diff-card">
+                <b>Session isolation</b>
+                <p>每个 rollout 使用独立 session id，状态文件、上传文件和 reset 都隔离，支持并行训练。</p>
+              </div>
+              <div class="diff-card">
+                <b>State diff reward</b>
+                <p>reward 直接读 final state 和 initial state 的差异，而不是依赖截图、DOM 选择器或 VLM judge。</p>
+              </div>
+              <div class="diff-card">
+                <b>No external calls</b>
+                <p>mock 应用把分享、通知、协作和文件操作本地化，降低训练时对真实服务的依赖和风险。</p>
+              </div>
+            </div>
+            <p>因此，CUA-Gym-Hub 的本质不是 UI 仿真，而是 RL environment control plane。对训练系统来说，能否 reset、inspect、diff、isolate，往往比界面像不像真实产品更决定吞吐和可复现性。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="results">
+        <div class="section-head">
+          <div>
+            <div class="kicker">05 · Results</div>
+            <h2>结果有价值，但数字需要按版本读</h2>
+          </div>
+          <div class="content">
+            <p>作者线程报告，Qwen3.5-based CUA models 用 CUA-Gym + GSPO 训练后，在 OSWorld-Verified 和 WebArena 上获得提升。方向上，这支持 synthetic verifiable tasks 能迁移到 held-out benchmark；但当前材料存在若干版本差异，引用时要谨慎。</p>
+            <div class="metrics">
+              <div class="metric"><b>54.5 → 62.1</b><span>A3B 在线程和项目材料中报告的 OSWorld-Verified 提升。</span></div>
+              <div class="metric"><b>62.2 → 72.6</b><span>A17B 在线程 / HF / README 中报告的 OSWorld-Verified 提升。</span></div>
+              <div class="metric"><b>40.8 → 44.5</b><span>A3B 在 WebArena 上的作者报告提升。</span></div>
+              <div class="metric"><b>54.0 → 56.0</b><span>A17B 在 WebArena 上的作者报告提升。</span></div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>项目</th>
+                  <th>当前观察</th>
+                  <th>解读方式</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>数据规模</strong></td>
+                  <td>HF abstract 写 32,112；X 线程和 README 多处写 32,122；HF Dataset 当前 preview 显示 7,897 rows。</td>
+                  <td>区分完整论文规模、项目 README 口径和当前已公开子集。</td>
+                </tr>
+                <tr>
+                  <td><strong>环境数量</strong></td>
+                  <td>线程写 110 environments；CUA-Gym-Hub README 写 98 mocks；作者博客出现 99 mock applications。</td>
+                  <td>可能是版本更新或统计口径差异，正式引用前应注明抓取日期。</td>
+                </tr>
+                <tr>
+                  <td><strong>A17B 分数</strong></td>
+                  <td>线程 / HF / README 强调 72.6；作者博客结果段出现 70.2。</td>
+                  <td>不能把单一宣传数字当成最终定稿，最好回到论文 PDF 或官方表格版本。</td>
+                </tr>
+                <tr>
+                  <td><strong>迁移证据</strong></td>
+                  <td>WebArena 上有提升，但幅度小于 OSWorld-Verified。</td>
+                  <td>说明 mock 环境有效，但真实浏览器任务仍有明显 domain gap。</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout red">
+              这些不一致不否定 CUA-Gym 的方向价值，但要求我们在报告里写“作者报告 / 当前项目页显示”，而不是写成完全独立复现的事实。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="risks">
+        <div class="section-head">
+          <div>
+            <div class="kicker">06 · Limits</div>
+            <h2>五个风险边界</h2>
+          </div>
+          <div class="content">
+            <div class="risk-grid">
+              <div class="risk-card">
+                <b>Programmatic reward 不等于真实完成</b>
+                <p>final state 可以正确，但过程可能破坏其它状态、绕过用户预期或遗漏审计要求。</p>
+              </div>
+              <div class="risk-card">
+                <b>Privileged API 泄漏</b>
+                <p>如果 agent 能访问 <code>/go</code>、<code>/state</code>、<code>/post</code> 等 evaluator 接口，就可能绕过 UI 直接读答案或改状态。</p>
+              </div>
+              <div class="risk-card">
+                <b>Mock-to-real gap</b>
+                <p>真实 SaaS 有登录、权限、异步状态、灰度 UI、第三方集成和失败恢复，mock 只能覆盖其中一部分。</p>
+              </div>
+              <div class="risk-card">
+                <b>Query 质量上限</b>
+                <p>自动 reward 和环境解决后，瓶颈转向高质量 query：长程、多应用、含糊目标和专业工作流仍难自动生成。</p>
+              </div>
+              <div class="risk-card">
+                <b>过程信号缺失</b>
+                <p>只看终态 reward 会低估观察、确认、等待、撤销、错误恢复这些真实 computer-use 能力。</p>
+              </div>
+              <div class="risk-card">
+                <b>安全执行隔离</b>
+                <p>公开数据集包含 Python / shell / office artifacts，执行 setup 和 reward 必须在一次性 VM 或容器内完成。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="practice">
+        <div class="section-head">
+          <div>
+            <div class="kicker">07 · Practice</div>
+            <h2>如果要做自己的 CUA RLVR 平台</h2>
+          </div>
+          <div class="content">
+            <div class="panel">
+              <ol>
+                <li>先做环境控制面：reset、state injection、state inspection、state diff、session isolation、artifact management。</li>
+                <li>任务格式固定为 instruction、setup、reward、golden state、negative state、执行依赖和安全边界。</li>
+                <li>reward 至少覆盖 initial negative、golden positive、counterfactual negative，避免只验证 happy path。</li>
+                <li>agent 可访问的 UI 面和 evaluator 可访问的 privileged state API 必须物理或网络层隔离。</li>
+                <li>训练集同时扩 task 数和 environment 数；不要只在少数 app 上刷 trajectory volume。</li>
+                <li>synthetic mock 用于 RL curriculum，真实网站、OSWorld、WebArena 或内部业务回放用于 held-out transfer evaluation。</li>
+                <li>指标同时记录 task success、reward false positive、reward false negative、环境覆盖、平均步数、失败类型、执行成本和安全违规率。</li>
+              </ol>
+            </div>
+            <div class="callout green">
+              最直接的工程启发：训练 CUA 不应先问“用哪个 RL 算法”，而应先问“我的环境能不能被程序可靠复位和判分”。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources" data-note-role="evidence-appendix">
+        <div class="section-head">
+          <div>
+            <div class="kicker">08 · Evidence</div>
+            <h2>证据边界与资料索引</h2>
+          </div>
+          <div class="content">
+            <p>分析以作者线程为主线；论文页、项目页、数据集和仓库用于核对机制、数字和发布状态。文中的规模和分数均按公开材料口径解读，尚不等同于独立复现实验。</p>
+            <div class="source-list">
+              <a href="https://x.com/BowenWangNLP/status/2059282533775245383">Bowen Wang X 线程：CUA-Gym 发布与 1/6 到 6/6 说明</a>
+              <a href="https://arxiv.org/abs/2605.25624">arXiv：CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents</a>
+              <a href="https://huggingface.co/papers/2605.25624">Hugging Face Paper：2605.25624</a>
+              <a href="https://cua-gym.xlang.ai/">CUA-Gym 项目主页</a>
+              <a href="https://huggingface.co/datasets/xlangai/CUA-Gym">Hugging Face Dataset：xlangai/CUA-Gym</a>
+              <a href="https://github.com/xlang-ai/CUA-Gym">GitHub：xlang-ai/CUA-Gym</a>
+              <a href="https://github.com/xlang-ai/CUA-Gym-Hub">GitHub：xlang-ai/CUA-Gym-Hub</a>
+              <a href="https://bowenbryanwang.github.io/blog/introducing-cua-gym">作者博客：We Spent a Year Building Verifiable Training Tasks for GUI Agents</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-Distillation 的两面性：World-Bayesian 与 Self-Bayesian 推理</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f2ea;
+      --surface: #fffdf8;
+      --surface-2: #eef4ef;
+      --ink: #202522;
+      --muted: #5f6964;
+      --line: #d7d2c7;
+      --line-strong: #9d9588;
+      --accent: #17695f;
+      --accent-2: #8a5528;
+      --accent-3: #315f87;
+      --rose: #9a4260;
+      --soft-green: #dfece7;
+      --soft-blue: #e2ebf4;
+      --soft-rose: #f0dfe5;
+      --soft-gold: #efe2c1;
+      --shadow: 0 18px 46px rgba(35, 33, 28, 0.1);
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 37, 34, 0.03) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 37, 34, 0.022) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(23, 105, 95, 0.32);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    code { font-family: var(--mono); }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b1a; }
+
+    .page {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: clamp(30px, 5vw, 60px) 0 78px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.48fr);
+      gap: clamp(26px, 4.6vw, 58px);
+      align-items: end;
+      min-height: calc(82vh - var(--notes-shell-height, 46px));
+      padding: clamp(32px, 5vw, 76px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      font-family: var(--serif);
+      font-size: clamp(37px, 6vw, 76px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: clamp(19px, 2vw, 24px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 870px;
+      color: #333d39;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .metric,
+    .term-card,
+    .source-list a {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .fact {
+      min-height: 98px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(238, 244, 239, 0.78);
+    }
+
+    .fact b {
+      display: block;
+      margin-bottom: 4px;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .fact span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 24px 0 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.74);
+    }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: start;
+    }
+
+    .section-kicker {
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .body-text {
+      min-width: 0;
+      color: #303935;
+      font-size: 16px;
+    }
+
+    .body-text > p:first-child { margin-top: 0; }
+
+    .callout {
+      margin: 18px 0 0;
+      padding: 18px 20px;
+      border-left: 5px solid var(--accent);
+      background: var(--soft-green);
+      box-shadow: none;
+    }
+
+    .callout.warning {
+      border-left-color: var(--rose);
+      background: var(--soft-rose);
+    }
+
+    .callout.gold {
+      border-left-color: var(--accent-2);
+      background: var(--soft-gold);
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 20px 0 0;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 20px;
+    }
+
+    .panel.world { border-top: 5px solid var(--accent); }
+    .panel.self { border-top: 5px solid var(--rose); }
+    .panel h3 { margin-top: 0; }
+    .panel ul,
+    .body-text ul,
+    .body-text ol {
+      margin: 12px 0 0;
+      padding-left: 1.2rem;
+    }
+
+    .panel li,
+    .body-text li {
+      margin: 0.38rem 0;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .paper-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 18px;
+      border-top: 5px solid var(--accent-3);
+    }
+
+    .metric h3 {
+      margin-top: 0;
+      color: var(--ink);
+      font-size: 20px;
+    }
+
+    .metric .tag {
+      display: inline-flex;
+      margin-bottom: 10px;
+      padding: 3px 8px;
+      border: 1px solid rgba(49, 95, 135, 0.24);
+      background: var(--soft-blue);
+      color: var(--accent-3);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .metric:nth-child(2) { border-top-color: var(--accent); }
+    .metric:nth-child(3) { border-top-color: var(--rose); }
+    .metric:nth-child(4) { border-top-color: var(--accent-2); }
+
+    .term-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .term-card {
+      min-width: 0;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .term-card h3 {
+      margin-top: 0;
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+    }
+
+    .flow-step b {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: 2px solid var(--line-strong);
+      color: var(--accent-2);
+      font-family: var(--serif);
+      font-size: 22px;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 18px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: #33403b;
+      font-size: 13px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 16px;
+      color: var(--ink);
+      border-bottom: 0;
+      box-shadow: none;
+    }
+
+    .source-list span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .page { width: min(100% - 24px, 1180px); }
+      .hero,
+      .section-head,
+      .comparison,
+      .paper-grid,
+      .term-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        align-items: start;
+      }
+
+      .flow-step {
+        grid-template-columns: 54px minmax(0, 1fr);
+      }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-05-28</div>
+        <h1>Self-Distillation 的两面性：World-Bayesian 与 Self-Bayesian 推理</h1>
+        <p class="lead">
+          这条 X 线程的核心判断是：自蒸馏不是总能增强推理。它在有外部环境反馈的 agent 任务里像经验压缩，在纯内部数学推理里却可能压掉模型发现自己走偏所需的不确定性外显。
+        </p>
+        <nav class="toc" aria-label="本文目录">
+          <a href="#takeaway">核心判断</a>
+          <a href="#problem">问题背景</a>
+          <a href="#terms">术语解释</a>
+          <a href="#mechanism">机制拆解</a>
+          <a href="#papers">四篇工作</a>
+          <a href="#implications">训练启发</a>
+          <a href="#limits">边界风险</a>
+        </nav>
+      </div>
+      <aside class="hero-card">
+        <strong>Reading Lens</strong>
+        <p>不要把帖子读成个人实习总结。它真正提出的是一个训练信号诊断框架：当模型推理走偏时，错误检测信号来自外部世界，还是来自模型内部语言化的不确定性？</p>
+        <div class="fact-grid" aria-label="关键事实">
+          <div class="fact"><b>4</b><span>四篇相关工作串成同一条 post-training 主线</span></div>
+          <div class="fact"><b>2</b><span>两类推理：world-Bayesian 与 self-Bayesian</span></div>
+          <div class="fact"><b>128.6%</b><span>EMPO² 在 ScienceWorld 上相对 GRPO 报告的提升</span></div>
+          <div class="fact"><b>40%</b><span>自蒸馏论文中报告的 OOD 性能退化上限</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <section id="takeaway">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Thesis</div>
+            <h2>关键不是自蒸馏好不好，而是它蒸馏掉了什么</h2>
+          </div>
+          <div class="body-text">
+            <p>作者 Jeonghye Kim 把 MSRA 实习期间围绕 self-distillation 与 exploration 的四篇工作，压缩成一个更 general 的判断：同一种训练技术，在不同推理反馈结构里可能方向相反。agent 长程任务有环境状态、失败反馈和奖励，自蒸馏能把外部世界经验内化进参数；数学和纯符号推理没有即时环境反馈，模型很大程度上依赖自己说出的“wait / perhaps / hmm”来触发回看、换路和纠错。</p>
+            <div class="callout">
+              <strong>一句话判断：</strong>如果错误检测来自外部世界，自蒸馏常常是在压缩经验；如果错误检测只能来自模型内部的不确定性外显，自蒸馏可能是在删除推理系统的刹车。
+            </div>
+            <p>所以，这不是“长 CoT vs 短 CoT”的审美问题，也不是“teacher trace 更干净所以更好”的工程常识问题。真正的问题是：teacher 的轨迹为什么看起来更干净？是因为它吸收了可验证的外部反馈，还是因为它已经知道答案，因此不再需要真实求解者会经历的怀疑和检查？</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="problem">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Problem</div>
+            <h2>为什么同样的 self-distillation 会一边提升、一边退化</h2>
+          </div>
+          <div class="body-text">
+            <p>自蒸馏通常被理解成让模型从自己或更强版本的输出里学习：保留正确解法、压缩轨迹、减少无效探索。这在很多后训练流程里很自然，因为它看起来同时改善效率、稳定性和样本利用率。帖子挑战的是这个默认假设：如果 teacher 的轨迹缺少不确定性，那么 student 学到的可能不是“更强推理”，而是“更自信地沿着单一路径走下去”。</p>
+            <p>作者先在 long-horizon agent 场景里看到正向结果：带 memory 的 agent 从失败经验、环境反馈和文本 tip 中获得可迁移信息，再通过 hybrid on-policy / off-policy optimization 把这些信息写进模型参数。这个过程符合直觉，因为 agent 任务的错误检测由环境提供。</p>
+            <p>但当她把这个思路移到 single-turn math reasoning 时，多个实现和模型上都出现类似现象：早期短暂提升，随后性能下降。这个差异迫使问题从“蒸馏方法怎么调”转成“模型在没有外部反馈时如何知道自己正在错”。</p>
+            <figure>
+              <img src="beanie-self-distillation-bayesian-reasoning-assets/effects-of-self-distillation.png" alt="图示对比 world-Bayesian reasoning 与 self-Bayesian reasoning 中自蒸馏的相反作用">
+              <figcaption>原帖配图把两类推理拆开：world-Bayesian reasoning 中，自蒸馏吸收 world knowledge；self-Bayesian reasoning 中，普通自蒸馏可能让学生模仿 teacher 的确定性轨迹，反向蒸馏则尝试强化学生成功偏离 teacher 的探索。</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Terms</div>
+            <h2>几个概念先对齐</h2>
+          </div>
+          <div class="body-text">
+            <p>这些术语很容易被读成新瓶装旧酒，但在这条研究线里它们分别对应不同的训练信号来源和失败模式。</p>
+            <div class="term-grid">
+              <div class="term-card">
+                <h3>Self-Distillation</h3>
+                <p>这里指模型从自己、强 teacher、带提示 teacher 或更丰富条件下的轨迹中学习。它不只传递答案，也会传递轨迹风格、犹豫程度、检查习惯和探索偏好。</p>
+              </div>
+              <div class="term-card">
+                <h3>World-Bayesian Reasoning</h3>
+                <p>指推理依赖外部环境交互的任务。环境会告诉模型动作是否有效、状态如何变化、奖励是否出现，因此错误检测信号主要来自世界。</p>
+              </div>
+              <div class="term-card">
+                <h3>Self-Bayesian Reasoning</h3>
+                <p>指主要依赖模型内部知识和文本轨迹完成的推理，例如数学题。外部 verifier 缺位时，模型只能靠内部不确定性来触发检查和换路。</p>
+              </div>
+              <div class="term-card">
+                <h3>Epistemic Verbalization</h3>
+                <p>指模型把“不确定、怀疑、可能错了”显式写进 token 轨迹，例如 wait、hmm、perhaps。它不是装饰词，而可能是触发后续控制动作的开关。</p>
+              </div>
+              <div class="term-card">
+                <h3>RLVR</h3>
+                <p>指 reinforcement learning with verifiable rewards，即用可验证答案或程序性检查给奖励的后训练方式。它比纯偏好奖励更硬，但仍会受到探索质量影响。</p>
+              </div>
+              <div class="term-card">
+                <h3>Teacher Signal</h3>
+                <p>指 teacher 在每个 token、轨迹或答案上的监督方向。它有时是纠偏信息，有时是保守约束；关键要看 student 偏离 teacher 时是否仍然成功。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mechanism">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Mechanism</div>
+            <h2>错误检测信号决定了蒸馏的方向</h2>
+          </div>
+          <div class="body-text">
+            <div class="comparison">
+              <article class="panel world">
+                <h3>外部世界给反馈：蒸馏是经验压缩</h3>
+                <p>在 agent 场景里，模型通过行动看到环境反应。失败、成功、状态变化、reward 和文本 tip 都是外部反馈。自蒸馏把这些经验写进参数，降低未来推理时重新探索的成本。</p>
+                <ul>
+                  <li>输入：轨迹、memory、失败经验、环境反馈。</li>
+                  <li>处理：把文本反馈和成功/失败经验转成训练信号。</li>
+                  <li>输出：不依赖 inference-time memory 时也能少走弯路。</li>
+                  <li>主要风险：反馈覆盖不全时，可能把局部环境策略过拟合进模型。</li>
+                </ul>
+              </article>
+              <article class="panel self">
+                <h3>没有外部反馈：蒸馏可能删除纠错触发器</h3>
+                <p>在数学推理里，teacher 如果已经知道答案，它的轨迹自然更确定、更少怀疑。student 模仿这种轨迹后，也会减少不确定性表达，导致走偏时缺少回看和改路机制。</p>
+                <ul>
+                  <li>输入：正确答案、提示、teacher 的干净轨迹。</li>
+                  <li>处理：压缩为更短、更确定、更少犹豫的推理风格。</li>
+                  <li>输出：分布内可能更利落，OOD 上更容易 silent divergence。</li>
+                  <li>主要风险：把“答案已知后的 hindsight trace”误当成真实求解策略。</li>
+                </ul>
+              </article>
+            </div>
+            <div class="flow">
+              <div class="flow-step">
+                <b>1</b>
+                <div><strong>模型进入不充分信息状态。</strong><p>推理轨迹已经偏离正确方向，但最终答案还没暴露错误；这时如果没有外部 verifier，模型不会天然知道自己错了。</p></div>
+              </div>
+              <div class="flow-step">
+                <b>2</b>
+                <div><strong>不确定性外显触发控制动作。</strong><p>“wait / hmm / perhaps” 的功能不是提供内容，而是让模型重新检查假设、回溯中间结论、尝试另一条路径。</p></div>
+              </div>
+              <div class="flow-step">
+                <b>3</b>
+                <div><strong>普通自蒸馏可能降低这种触发概率。</strong><p>teacher 因为知道答案而更少表达不确定性，student 学到的就是更少怀疑。推理轨迹变干净，但错误恢复能力变弱。</p></div>
+              </div>
+              <div class="flow-step">
+                <b>4</b>
+                <div><strong>反向利用 teacher signal 可以保留成功探索。</strong><p>如果 student 偏离 teacher 但仍然答对，这些 token 可能代表有价值的自驱动探索，而不是应被压制的噪声。</p></div>
+              </div>
+            </div>
+            <div class="callout warning">
+              <strong>最容易误读的点：</strong>作者不是说模型应该更啰嗦，也不是说所有 “wait” token 都有价值。她说的是，在没有外部错误检测的任务里，某些不确定性外显承担了控制功能；盲目蒸馏掉它，会伤害鲁棒推理。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="papers">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Evidence Chain</div>
+            <h2>四篇工作如何组成同一条证据链</h2>
+          </div>
+          <div class="body-text">
+            <p>原帖列出的四篇工作不是平行罗列，而是从 agent 正例、机制解释、退化诊断到反向训练方案的递进。</p>
+            <div class="paper-grid">
+              <article class="metric">
+                <span class="tag">[1] Agent 正例</span>
+                <h3>EMPO²</h3>
+                <p>Exploratory Memory-Augmented LLM Agent via Hybrid On- and Off-Policy Optimization 关注 long-horizon LLM agent 的 exploration。它用 memory 与文本反馈帮助 agent 从失败中积累经验，再通过混合 on-policy / off-policy 优化写入参数；论文报告 ScienceWorld 上相对 GRPO 提升 128.6%，WebShop 上提升 11.3%。</p>
+              </article>
+              <article class="metric">
+                <span class="tag">[2] 机制解释</span>
+                <h3>Strategic Information Allocation</h3>
+                <p>Understanding Reasoning in LLMs through Strategic Information Allocation under Uncertainty 把 reasoning 中的信息分成 procedural information 与 epistemic verbalization。后者帮助模型在 silent divergence 前重新分配计算和检查路径。</p>
+              </article>
+              <article class="metric">
+                <span class="tag">[3] 退化诊断</span>
+                <h3>Self-Distillation Degradation</h3>
+                <p>Why Does Self-Distillation (Sometimes) Degrade the Reasoning Capability of LLMs? 直接指出，数学推理中的自蒸馏可能压制 epistemic verbalization。teacher 越像“已经知道答案”，student 越可能学到过度自信的短轨迹，OOD 性能最高报告下降 40%。</p>
+              </article>
+              <article class="metric">
+                <span class="tag">[4] 反向方案</span>
+                <h3>Rebellious Student / RLRT</h3>
+                <p>Rebellious Student: Reversing Teacher Signals for Reasoning Exploration with Self-Distilled RLVR 不是无条件靠近 teacher，而是在正确 rollout 中强化 student 偏离 teacher 且仍然成功的 token，把它们视为 self-driven reasoning。</p>
+              </article>
+            </div>
+            <div class="table-wrap" aria-label="四篇工作对比表">
+              <table>
+                <thead>
+                  <tr>
+                    <th>工作</th>
+                    <th>任务类型</th>
+                    <th>错误检测信号</th>
+                    <th>对 self-distillation 的含义</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>EMPO²</td>
+                    <td>长程 agent 任务</td>
+                    <td>环境状态、reward、失败反馈</td>
+                    <td>把外部世界反馈压缩进参数，通常是正向作用</td>
+                  </tr>
+                  <tr>
+                    <td>Strategic Information Allocation</td>
+                    <td>内部推理机制分析</td>
+                    <td>不确定性外显触发自我检查</td>
+                    <td>解释 “wait / hmm” 这类 token 为什么可能有功能性</td>
+                  </tr>
+                  <tr>
+                    <td>Self-Distillation Degradation</td>
+                    <td>数学推理与 OOD 泛化</td>
+                    <td>被 teacher 的确定性轨迹削弱</td>
+                    <td>普通自蒸馏可能删除纠错触发器</td>
+                  </tr>
+                  <tr>
+                    <td>RLRT</td>
+                    <td>RLVR reasoning exploration</td>
+                    <td>正确 rollout 中的成功偏离</td>
+                    <td>teacher signal 可以反向使用，以奖励 student 的有效探索</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="implications">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Implications</div>
+            <h2>对后训练的直接启发</h2>
+          </div>
+          <div class="body-text">
+            <h3>先判断任务的 feedback topology</h3>
+            <p>训练策略不应先问“要不要蒸馏”，而应先问“错误检测信号在哪里”。coding 任务有单测时更接近 world-Bayesian，写代码前的设计推理又更接近 self-Bayesian；研究 agent、网页 agent、数学证明也常常是混合结构。后训练应该按阶段处理，而不是给所有轨迹套同一种 teacher imitation。</p>
+            <h3>不要只奖励最终答案，也要保留控制动作</h3>
+            <p>如果训练只看最终 answer correctness，模型可能学会把轨迹变短、变干净、变确定，却没有学会如何在不充分信息下纠错。更合理的对象是 reasoning behavior：什么时候暂停、什么时候验证中间结论、什么时候回溯假设、什么时候换一条路径。</p>
+            <h3>teacher 不是单调正则项</h3>
+            <p>teacher signal 有两种角色：失败轨迹上，它可能是纠偏信息；成功轨迹上，student 偏离 teacher 的 token 可能是有价值的新路径。RLRT 的重要性在于把 teacher-student disagreement 从“错误”重新解释为“需要条件化判断的探索信号”。</p>
+            <div class="callout gold">
+              <strong>工程判断：</strong>对有 verifier 的任务，可以更积极地蒸馏环境反馈；对无 verifier 或 weak verifier 的任务，要显式保护不确定性、检查和回溯行为。否则短轨迹提升可能只是把错误发现能力转移到了看不见的风险里。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="limits">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Limits</div>
+            <h2>边界与风险</h2>
+          </div>
+          <div class="body-text">
+            <p>world-Bayesian 与 self-Bayesian 不是绝对二分。真实任务通常交替出现外部验证和内部规划：coding agent 会先做无验证的设计，再跑测试获得外部反馈；浏览器 agent 会在局部步骤里看到页面变化，但高层目标是否正确仍可能需要内部判断。因此，这套框架更像诊断工具，而不是任务分类标签。</p>
+            <p>epistemic verbalization 也不必永远以自然语言 token 存在。未来可以用 value head、process verifier、latent control token、search controller 或工具化检查来承担同样功能。当前论文之所以关注 “wait / hmm / perhaps”，是因为这些 token 在现有 CoT 与 RLVR 训练里可见、可统计、可干预。</p>
+            <p>最后，鼓励不确定性不等于鼓励冗长。模型输出更多犹豫词不一定更强；真正要保留的是能触发有效验证和路径切换的 calibrated uncertainty。没有后续控制动作的犹豫，只是另一种风格噪声。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources" data-note-role="evidence-appendix">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Sources</div>
+            <h2>证据边界与资料索引</h2>
+          </div>
+          <div class="body-text">
+            <p>本文基于原 X 线程及其四条论文补充帖、原帖配图、公开论文页面与项目页面整理。X 线程正文由本地 Twitter/X adapter 读取；公开网页侧主要用于核验论文题名、摘要、版本日期、公开结果和链接边界。Grok 检索曾尝试调用，但本地会话未能提交，因此未作为事实来源。</p>
+            <ul class="source-list">
+              <li><a href="https://x.com/beanie0__0/status/2059609540140875921">Jeonghye Kim 关于 self-distillation 与 LLM post-training 的 X 线程<span>原帖提出 world-Bayesian / self-Bayesian 对比，并列出四篇相关工作。</span></a></li>
+              <li><a href="https://arxiv.org/abs/2602.23008">Exploratory Memory-Augmented LLM Agent via Hybrid On- and Off-Policy Optimization<span>EMPO²；长程 agent exploration 与 memory/self-distillation 正例。</span></a></li>
+              <li><a href="https://arxiv.org/abs/2603.15500">Understanding Reasoning in LLMs through Strategic Information Allocation under Uncertainty<span>分析 procedural information 与 epistemic verbalization 的信息分配机制。</span></a></li>
+              <li><a href="https://arxiv.org/abs/2603.24472">Why Does Self-Distillation (Sometimes) Degrade the Reasoning Capability of LLMs?<span>诊断自蒸馏压制 epistemic verbalization 后导致 OOD 推理退化。</span></a></li>
+              <li><a href="https://arxiv.org/abs/2605.10781">Rebellious Student: Reversing Teacher Signals for Reasoning Exploration with Self-Distilled RLVR<span>提出 RLRT，用正确 rollout 中 student 对 teacher 的成功偏离作为探索信号。</span></a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

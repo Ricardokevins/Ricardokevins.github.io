@@ -1,5 +1,14 @@
 # Dr. Post-Training
 
+<style>
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+</style>
+
 This is the official implementation of [Dr. Post-Training: A Data Regularization Perspective on LLM Post-Training](https://arxiv.org/abs/2605.07063).
 
 ## Getting Started

@@ -1,17 +1,6 @@
 # 🎧 Awesome Trustworthy Audio-LLMs  
 
-<div align="center">
-  <img src="./images/logo.png" alt="Awesome Trustworthy Audio-LLMs" width="40%" style="margin-top: -20px; margin-bottom: -10px;">
-</div>
-
-<p align="center">
-<a href="https://arxiv.org/abs/2605.20266"> <img src="https://img.shields.io/badge/arXiv-Paper-b31b1b?style=flat-square&logo=arxiv" alt="arXiv"></a>
-<a href="https://huggingface.co/papers/2605.20266"> <img src="https://img.shields.io/badge/Hugging%20Face-Resources-ffd21e?style=flat-square&logo=huggingface" alt="Hugging Face"></a>
-<a href=""> <img src="https://img.shields.io/github/stars/Kwwwww74/Awesome-Trustworthy-AudioLLMs?style=flat-square&logo=github" alt="GitHub stars"></a>
-<a href=""> <img src="https://img.shields.io/github/forks/Kwwwww74/Awesome-Trustworthy-AudioLLMs?style=flat-square&logo=github" alt="GitHub forks"></a>
-<a href=""> <img src="https://img.shields.io/github/issues/Kwwwww74/Awesome-Trustworthy-AudioLLMs?style=flat-square&logo=github" alt="GitHub issues"></a>
-<a href=""> <img src="https://img.shields.io/github/last-commit/Kwwwww74/Awesome-Trustworthy-AudioLLMs?style=flat-square&logo=github" alt="GitHub Last commit"></a>
-</p>
+[arXiv paper](https://arxiv.org/abs/2605.20266) · [Hugging Face resources](https://huggingface.co/papers/2605.20266) · [GitHub repository](https://github.com/Kwwwww74/Awesome-Trustworthy-AudioLLMs)
 
 
 
@@ -134,7 +123,8 @@ If you want to learn more about Audio Large Language Models, you can take a look
 ---
 
 ## 🌟 Rising Stars
-[![Star History Chart](https://api.star-history.com/svg?repos=Kwwwww74/Awesome-Trustworthy-AudioLLMs&type=Date)](https://star-history.com/#Kwwwww74/Awesome-Trustworthy-AudioLLMs&Date)
+
+[Star history](https://star-history.com/#Kwwwww74/Awesome-Trustworthy-AudioLLMs&Date)
 
 ---
 

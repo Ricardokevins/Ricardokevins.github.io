@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KPop：用自适应 Mask 稳住 Agentic RL 的训练-推理错配</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f3ea;
+      --ink: #1e1b18;
+      --muted: #675f56;
+      --subtle: #8a8176;
+      --line: #d8ccbb;
+      --line-strong: #a99984;
+      --panel: #fffdf8;
+      --panel-2: #efe7db;
+      --accent: #a94f32;
+      --accent-soft: #f2d9cf;
+      --blue: #2f638f;
+      --blue-soft: #dce9f2;
+      --green: #3f715c;
+      --green-soft: #dfeae2;
+      --gold: #946c21;
+      --gold-soft: #f0e2bc;
+      --red: #9a4037;
+      --red-soft: #f0ddd9;
+      --violet: #6158a4;
+      --violet-soft: #e5e1f1;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Georgia", serif;
+      --shadow: 0 16px 42px rgba(44, 35, 23, 0.11);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(30, 27, 24, 0.034) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(30, 27, 24, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(47, 99, 143, 0.3);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0 0 16px; }
+    strong { color: #17130f; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(30, 27, 24, 0.14);
+      background: rgba(247, 243, 234, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+      border-bottom: 0;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--green) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span:last-child {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .nav {
+      max-width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .nav a:hover {
+      color: var(--ink);
+      border-color: var(--line);
+      background: rgba(255, 253, 248, 0.62);
+    }
+
+    .hero {
+      min-height: 84vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: clamp(30px, 5vw, 72px);
+      align-items: end;
+      padding: clamp(58px, 9vw, 108px) clamp(20px, 5vw, 74px) 48px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 82% 18%, rgba(63, 113, 92, 0.13), transparent 32%),
+        linear-gradient(118deg, rgba(255, 253, 248, 0.86), rgba(255, 253, 248, 0.32));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.72);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 780;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 18px;
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 6.1vw, 80px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.55;
+    }
+
+    .hero-meta {
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.84);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-meta h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 116px minmax(0, 1fr);
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .meta-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .meta-row b { color: var(--ink); }
+    .meta-row span { color: var(--muted); }
+
+    main {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 54px clamp(18px, 4vw, 42px) 90px;
+    }
+
+    section {
+      margin: 0 0 58px;
+      padding-bottom: 44px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      margin-bottom: 0;
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.32fr) minmax(0, 0.68fr);
+      gap: clamp(20px, 4vw, 46px);
+      align-items: start;
+      margin-bottom: 24px;
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 790;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 4px 0 0;
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 20px;
+      line-height: 1.32;
+      letter-spacing: 0;
+    }
+
+    .content {
+      min-width: 0;
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 16.5px;
+    }
+
+    .lead {
+      color: #342e27;
+      font-size: 20px;
+      line-height: 1.62;
+    }
+
+    .callout {
+      margin: 22px 0;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      background: var(--panel);
+      box-shadow: 0 10px 28px rgba(44, 35, 23, 0.07);
+      color: #352f28;
+    }
+
+    .callout.green { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.blue { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.gold { border-left-color: var(--gold); background: var(--gold-soft); }
+    .callout.red { border-left-color: var(--red); background: var(--red-soft); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 22px 0;
+    }
+
+    .card {
+      min-height: 150px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.78);
+      box-shadow: 0 8px 24px rgba(44, 35, 23, 0.06);
+    }
+
+    .card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14.5px;
+      line-height: 1.62;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      margin: 22px 0;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .metric div {
+      min-height: 118px;
+      padding: 18px;
+      background: var(--panel);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--subtle);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin: 8px 0 6px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1;
+    }
+
+    .metric p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.48;
+    }
+
+    .equation {
+      max-width: 100%;
+      margin: 20px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.86);
+      overflow-x: auto;
+      color: #27211b;
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.75;
+      white-space: pre;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      min-width: 0;
+      margin: 22px 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      background: var(--panel-2);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    ul,
+    ol {
+      margin: 12px 0 18px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 8px 0;
+      color: var(--muted);
+    }
+
+    code {
+      padding: 2px 5px;
+      border: 1px solid rgba(169, 153, 132, 0.4);
+      background: rgba(255, 253, 248, 0.82);
+      color: #2b2722;
+      font-family: var(--mono);
+      font-size: 0.92em;
+      overflow-wrap: anywhere;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 24px 0;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 118px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -9px;
+      width: 16px;
+      height: 1px;
+      background: var(--line-strong);
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.68);
+    }
+
+    footer {
+      padding: 36px clamp(18px, 4vw, 56px);
+      border-top: 1px solid var(--line);
+      color: var(--subtle);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .hero,
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .hero { min-height: auto; }
+      .grid,
+      .metric {
+        grid-template-columns: 1fr;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .step:not(:last-child)::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .hero {
+        padding-top: 44px;
+      }
+
+      h1 {
+        font-size: clamp(36px, 12vw, 48px);
+      }
+
+      .meta-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+
+      main {
+        padding-bottom: 64px;
+      }
+    }
+
+    .topbar,
+    .hero,
+    main,
+    section,
+    .section-head,
+    .section-head > *,
+    .grid,
+    .grid > *,
+    .metric,
+    .metric > *,
+    .card,
+    .callout,
+    .flow,
+    .step,
+    .source-list,
+    .source-list > *,
+    .table-wrap {
+      min-width: 0;
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+
+<nav class="notes-sitebar" aria-label="Notes navigation">
+  <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+  <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+</nav>
+
+<header class="topbar">
+    <a class="brand" href="/notes/">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Ricardo Kevin Notes</span>
+    </a>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#thesis">判断</a>
+      <a href="#terms">术语</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#experiments">实验</a>
+      <a href="#practice">落地</a>
+      <a href="#sources">来源</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">X Thread · Agentic RL · MoE</div>
+      <h1>KPop：用自适应 Mask 稳住 Agentic RL 的训练-推理错配</h1>
+      <p class="subtitle">Jia Guo 关于 KPop 的推文和博客，真正值得关注的不是一个新的 mask trick，而是把大规模 MoE / agentic RL 里的 training-inference mismatch 变成可诊断、可约束的 token-level trust region。</p>
+    </div>
+    <aside class="hero-meta" aria-label="笔记元信息">
+      <h2>阅读定位</h2>
+      <div class="meta-row"><b>对象</b><span>Jia Guo X 主帖与 KPop Notion 博客</span></div>
+      <div class="meta-row"><b>发布时间</b><span>主帖 2026-05-26；博客 2026-05-26</span></div>
+      <div class="meta-row"><b>主张</b><span>用 symmetric binary KL 代替 IcePop 的固定 ratio mask</span></div>
+      <div class="meta-row"><b>结果口径</b><span>作者报告 Ring-2.6-1T 在 SWE-bench Verified 从 70.8% 到 76.28%</span></div>
+      <div class="meta-row"><b>结论</b><span>KPop 是低侵入的 token-level hard trust region，不是完整的系统一致性修复。</span></div>
+    </aside>
+  </section>
+
+  <main>
+    <section id="thesis">
+      <div class="section-head">
+        <div>
+          <div class="kicker">01 · Thesis</div>
+          <h2>核心判断</h2>
+        </div>
+        <div class="content">
+          <p class="lead">KPop 的工程价值在于承认 rollout engine 与 training engine 不可能总是完全一致，然后只更新那些两套 engine 都“足够信任”的 token。</p>
+          <div class="callout green">
+            <strong>一句话概括：</strong>IcePop 用固定概率比值区间判断 token 是否可信；KPop 用 token 二元事件上的 symmetric binary KL 判断 token 是否可信。前者是假设所有 token 的 ratio 噪声同质，后者让容忍度随 token probability 自适应变化。
+          </div>
+          <p>这不是奖励函数创新，也不是新的 agent scaffold。它更像 policy gradient 前的一层 hard sample filter：可信 token 参与更新，不可信 token 直接跳过。这个设计非常符合大规模训练系统的现实，因为在 MoE、异步 rollout、serving/training 分离和长轨迹工具调用里，完全消除 training-inference mismatch 的成本很高。</p>
+          <div class="metric" aria-label="关键数字">
+            <div>
+              <span>Reported SWE</span>
+              <strong>76.28%</strong>
+              <p>作者博客报告 Ring-2.6-1T 在 SWE-bench Verified 的 pure RL 结果。</p>
+            </div>
+            <div>
+              <span>Baseline</span>
+              <strong>70.8%</strong>
+              <p>博客报告的 cold-start SFT baseline。</p>
+            </div>
+            <div>
+              <span>Updated Tokens</span>
+              <strong>70-80%</strong>
+              <p>作者称只更新约 70% 到 80% token 仍能稳定收敛。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="terms">
+      <div class="section-head">
+        <div>
+          <div class="kicker">02 · Terms</div>
+          <h2>术语和概念边界</h2>
+        </div>
+        <div class="content">
+          <div class="grid">
+            <div class="card">
+              <b>KPop</b>
+              <p>KPop 指作者提出的 adaptive masking rule：用 token 二元事件上的 symmetric binary KL 判断训练路径和推理路径是否足够一致。</p>
+            </div>
+            <div class="card">
+              <b>IcePop</b>
+              <p>IcePop 指前置的 fixed ratio mask 思路，用 <code>p_train / p_infer</code> 是否落在固定区间来决定 token 是否参与更新。</p>
+            </div>
+            <div class="card">
+              <b>Training-inference mismatch</b>
+              <p>这里的 mismatch 指 rollout 时的 inference engine 和训练回放时的 training engine 对同一 token 给出不同概率。</p>
+            </div>
+            <div class="card">
+              <b>Binary KL</b>
+              <p>Binary KL 指把 sampled token 压成“当前 token / 非当前 token”的二元分布后计算 KL，而不是比较完整 vocabulary 分布。</p>
+            </div>
+            <div class="card">
+              <b>Phi</b>
+              <p><code>phi</code> 是 KPop 的阈值参数。双向 binary KL 都不超过该阈值时，token 才会被认为可用于 policy gradient 更新。</p>
+            </div>
+            <div class="card">
+              <b>Rollout staleness</b>
+              <p>Rollout staleness 指异步 RL 中轨迹采样模型版本落后于当前训练模型。版本差越大，回放概率和采样概率越容易偏离。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <div>
+          <div class="kicker">03 · Problem</div>
+          <h2>为什么会有 training-inference mismatch</h2>
+        </div>
+        <div class="content">
+          <p>在大规模 RL 中，轨迹通常由 inference engine 采样，训练时再由 training engine 重新计算 log probability 和梯度。两者可能因为 kernel、精度、batching、router、专家负载、cache、异步 staleness、serving/training 代码路径不同而给同一个 token 不同概率。</p>
+          <p>这个问题在 agentic RL 中更严重：轨迹更长，tool call 更多，每一步动作会改变后续状态。早期 token 的概率偏差会沿着多轮工具调用放大，最后表现为梯度噪声、reward 曲线抖动、甚至训练 collapse。</p>
+          <div class="flow" aria-label="agentic RL mismatch 流程">
+            <div class="step"><b>Rollout</b><span>inference engine 生成长轨迹、工具调用和终止动作。</span></div>
+            <div class="step"><b>Replay</b><span>training engine 读取轨迹并重新计算 token logprob。</span></div>
+            <div class="step"><b>Mismatch</b><span>同一 token 的 p_train 与 p_infer 出现偏差。</span></div>
+            <div class="step"><b>Gradient</b><span>极端 ratio 或不可信 token 污染 policy gradient。</span></div>
+            <div class="step"><b>Mask</b><span>KPop 只保留 binary KL 足够小的 token。</span></div>
+          </div>
+          <div class="callout blue">
+            作者在回复中补充，实验使用 asynchronous RL，stale rollouts 通过 version-based staleness 控制；KPop 不依赖特定 kernel implementation 或 routing replay。这说明 KPop 试图作为训练算法层面的低侵入补丁，而不是替换训练基础设施。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="kicker">04 · Method</div>
+          <h2>从固定 ratio 到 binary KL</h2>
+        </div>
+        <div class="content">
+          <h3>IcePop 的静态边界</h3>
+          <p>IcePop 判断 token 是否可信的核心是概率比值：如果 <code>p_train(y_t) / p_infer(y_t)</code> 落在固定区间 <code>[alpha, beta]</code>，该 token 参与更新；否则 mask 掉。</p>
+          <p>问题在于这个规则把所有 token 当作同质样本。低概率 token 的 ratio 天然更容易剧烈波动，而高概率 token 的绝对概率质量变化即使 ratio 不大，也可能改变分布语义。固定 ratio 既可能对低概率 token 过度敏感，也可能放过高概率 token 的重要偏差。</p>
+
+          <h3>KPop 的二元事件视角</h3>
+          <p>KPop 不比较完整 vocabulary 分布，而是把每个 sampled token 压成一个二元事件：当前 token 与非当前 token。这样就能用 binary KL 衡量训练路径和推理路径对这个 token 的分歧。</p>
+          <pre class="equation">D_KL^B(p_train || p_infer)
+= p_train * log(p_train / p_infer)
+  + (1 - p_train) * log((1 - p_train) / (1 - p_infer))</pre>
+          <p>最终 mask 需要双向 KL 都小于阈值 <code>phi</code>：</p>
+          <pre class="equation">M_KPop(t) = 1[D_KL^B(p_train || p_infer) <= phi]
+          * 1[D_KL^B(p_infer || p_train) <= phi]</pre>
+          <p>这就是作者强调的 one parameter。相比 <code>[alpha, beta]</code>，<code>phi</code> 的几何意义更稳定：它限制的是二元概率分布的偏离程度，而不是一个对低概率区域非常敏感的裸 ratio。</p>
+
+          <div class="grid">
+            <div class="card">
+              <b>低概率 token</b>
+              <p>ratio 可以很大，但对二元分布贡献可能仍小。KPop 不会像固定 ratio 那样天然过度惩罚。</p>
+            </div>
+            <div class="card">
+              <b>高概率 token</b>
+              <p>ratio 可能不夸张，但概率质量变化已经重要。binary KL 会更敏感。</p>
+            </div>
+            <div class="card">
+              <b>双向约束</b>
+              <p>forward-only 或 reverse-only 会留下单侧泄漏区域；symmetric KL 把接受区压回对角线附近。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="experiments">
+      <div class="section-head">
+        <div>
+          <div class="kicker">05 · Evidence</div>
+          <h2>实验应该怎么读</h2>
+        </div>
+        <div class="content">
+          <p>博客报告了两类实验：一类是 Ring-flash-2.0 上的混合复杂推理 RLVR，覆盖 math、coding、logic、STEM；另一类是 Ring-2.6-1T 上的 long-horizon SWE agentic RL。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>维度</th>
+                  <th>作者报告</th>
+                  <th>我的解读</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Reasoning RL</td>
+                  <td>Ring-flash-2.0，100B total、6.1B activated；KPop 稳定 reward，并在多项 benchmark 上优于 IcePop。</td>
+                  <td>支持 KPop 对一般 MoE RL 的稳定性价值，但仍需要看不同任务上 phi 的敏感性。</td>
+                </tr>
+                <tr>
+                  <td>SWE Agentic RL</td>
+                  <td>Ring-2.6-1T，1T total、63B activated；约 2,500 instances、1,550 repos、30+ languages。</td>
+                  <td>这是更关键的场景，因为长轨迹和工具调用会放大 train/infer mismatch。</td>
+                </tr>
+                <tr>
+                  <td>SWE-bench Verified</td>
+                  <td>从 70.8% 到 76.28%，三次独立运行平均。</td>
+                  <td>应理解为作者报告的系统级结果，受模型、agent scaffold、训练数据、sandbox、reward、防作弊和 KPop 共同影响。</td>
+                </tr>
+                <tr>
+                  <td>Mask ratio</td>
+                  <td>KPop 可 mask 约 10% 到 30% token，仍保持训练收敛。</td>
+                  <td>最有启发：长轨迹 RL 中有效梯度可能高度稀疏，token selection 本身可能成为提效方向。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout gold">
+            需要谨慎的一点：我没有在 SWE-bench 官方站点搜索到 Ring-2.6-1T 或 76.28 的独立 leaderboard 条目。因此这里应该写成“作者博客报告的 SWE-bench Verified 结果”，而不是“官方排行榜已确认结果”。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="risks">
+      <div class="section-head">
+        <div>
+          <div class="kicker">06 · Limits</div>
+          <h2>局限和风险</h2>
+        </div>
+        <div class="content">
+          <div class="grid">
+            <div class="card">
+              <b>它治的是症状</b>
+              <p>如果 mismatch 来自 logprob bug、router 语义错误或训练/推理路径严重不等价，mask 只能止血，不能替代系统修复。</p>
+            </div>
+            <div class="card">
+              <b>Hard mask 会引入 bias</b>
+              <p>被跳过的 token 恰好来自分布差异大的区域，可能既有噪声，也有有价值的新策略探索。</p>
+            </div>
+            <div class="card">
+              <b>phi 仍需调参</b>
+              <p>博客显示数学/代码任务与逻辑任务偏好的约束松紧不同，KPop 不是完全免调参。</p>
+            </div>
+          </div>
+          <p>所以 KPop 更合理的定位是低侵入的训练稳定性组件，而不是 agentic RL 的完整解决方案。它的强处是简单、可接入、可诊断；边界是无法保证训练和推理路径真的一致。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="practice">
+      <div class="section-head">
+        <div>
+          <div class="kicker">07 · Practice</div>
+          <h2>如果要复现或落地</h2>
+        </div>
+        <div class="content">
+          <ol>
+            <li>先记录 <code>logp_train(y_t)</code>、<code>logp_infer(y_t)</code>、position、token type、tool-call boundary、advantage、reward，而不是直接追大 benchmark。</li>
+            <li>画 <code>p_train</code> vs <code>p_infer</code> scatter、binary KL histogram、mask ratio over steps，先确认 mismatch 是否真实存在。</li>
+            <li>对比无 mask、fixed ratio mask、asymmetric KL、symmetric KL 四个 baseline。</li>
+            <li>加一个 soft weighting 版本：按 KL 连续降权，验证 hard mask 是否必要。</li>
+            <li>在 agent 任务里按 segment 分析自然语言 token、工具名、参数 JSON、文件 diff、终止 token，找出最容易 mismatch 的部分。</li>
+            <li>单独测 rollout staleness：不同 version gap 下 KPop 是否仍稳定。</li>
+            <li>最后再看 benchmark，因为 agentic RL 很容易把 reward 曲线训练好，却把真实任务能力训练偏。</li>
+          </ol>
+          <div class="callout red">
+            最值得继续追的问题不是 KPop 能否把一个模型刷到更高分，而是被 mask 掉的 20% 到 30% token 到底是什么。如果这些 token 主要是 off-policy 噪声、工具格式噪声和无效模板，那么 selective optimization 可能是 agentic RL 提效的长期方向。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <div class="section-head">
+        <div>
+          <div class="kicker">08 · Evidence</div>
+          <h2>证据边界与资料索引</h2>
+        </div>
+        <div class="content">
+          <p>X 原帖与 Notion 博客是核心材料；外部页面用于核验模型、环境和 benchmark 背景。文中的 SWE-bench Verified 数字按作者报告处理，未写成官方排行榜独立确认。</p>
+          <div class="source-list">
+            <a href="https://x.com/Jia__Guo/status/2059291333496553797">Jia Guo X 主帖：KPop 与 Ring-2.6-1T SWE-bench Verified 结果</a>
+            <a href="https://ringtech.notion.site/kpop">KPop Notion 博客：Taming Training-Inference Mismatch in Reinforcement Learning with Adaptive Masking Regions</a>
+            <a href="https://huggingface.co/inclusionAI/Ring-2.6-1T">Hugging Face：inclusionAI/Ring-2.6-1T</a>
+            <a href="https://github.com/inclusionAI/AEnvironment">GitHub：inclusionAI/AEnvironment</a>
+            <a href="https://www.swebench.com/">SWE-bench 官方站点</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>

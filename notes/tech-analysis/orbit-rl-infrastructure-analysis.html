@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbit：把万亿模型 RL 后训练改写成部署一致性问题</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #ece6da;
+      --ink: #20242a;
+      --muted: #606a72;
+      --line: #d4cbc0;
+      --line-strong: #9a8d7e;
+      --accent: #1d6b76;
+      --accent-soft: #dcebed;
+      --amber: #8a6424;
+      --amber-soft: #f0e1bd;
+      --red: #9d463a;
+      --red-soft: #f1ddd8;
+      --green: #346d59;
+      --green-soft: #dfece5;
+      --blue: #315f90;
+      --blue-soft: #dce7f4;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --shadow: 0 18px 44px rgba(36, 42, 48, 0.10);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.025) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(29, 107, 118, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.8rem 0 0; }
+    strong { color: #15191e; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(1200px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 72px;
+    }
+
+    .hero {
+      min-height: calc(72vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.38fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(34px, 7vw, 92px) 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--amber);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 950px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6vw, 76px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 10px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 880px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 20px;
+    }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.72);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-lead {
+      max-width: 920px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .card b {
+      display: block;
+      font-size: 16px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .callout.ok {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 0.27fr 1fr 0.34fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow-row > div {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .flow-row .tag {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-2,
+      .grid-3,
+      .metric-grid,
+      .flow-row {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: min(100% - 24px, 1200px); }
+      .toc { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 12px; }
+      .toc a { flex: 0 0 auto; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-05-28</div>
+        <h1>Orbit：把万亿模型 RL 后训练改写成部署一致性问题</h1>
+        <p class="lead">Orbit 的价值不只是“单节点训练 1T 模型”这个标题，而是把 RL 后训练里的显存、权重同步、低精度服务和 log-prob 漂移放到同一个系统边界里处理：base model 保持部署精度并冻结，梯度只落到 BF16 adapter 上，rollout engine 围绕 adapter 版本热更新。</p>
+        <div class="metric-grid">
+          <div class="metric"><strong>1T+</strong><span>Kimi-K2.6 / DeepSeek V4-Pro 级别系统验证目标</span></div>
+          <div class="metric"><strong>8×B200</strong><span>作者报告的单节点训练硬件形态</span></div>
+          <div class="metric"><strong>2.531s</strong><span>Qwen3-4B OFT async double-buffer warm step time</span></div>
+          <div class="metric"><strong>0.0066-0.0104</strong><span>Kimi-K2.6 run 中报告的 train-rollout log-prob diff 区间</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <b>一句话判断</b>
+        <p>如果 Orbit 的路线被更多外部复现，它会推动 RL infra 从“全参训练任务”转向“部署形态上的可更新策略系统”。</p>
+        <p class="small">这里的关键不是某个单独 kernel，而是 adapter-first、deployment-aligned、runtime parity 和 rollout double-buffer 组合在一起。</p>
+      </aside>
+    </section>
+
+    <nav class="toc" aria-label="Page sections">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#system">系统瓶颈</a>
+      <a href="#terms">术语解释</a>
+      <a href="#limits">边界风险</a>
+      <a href="#practice">工程启发</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+
+    <section id="takeaway" class="section">
+      <h2>核心判断</h2>
+      <p class="section-lead">这个帖子最容易被读成一句 marketing：Orbit 能在单个 8×B200 节点上做万亿参数模型 RL。更准确的读法是：Orbit 在挑战“后训练默认必须 full-parameter、高精度、多节点”的工程假设。</p>
+      <div class="callout">
+        <p><strong>我的判断：</strong>Orbit 的主贡献不是把 LoRA 换成 OFT，也不是某个单独的异步优化，而是把 RL policy 的定义扩大到部署精度、adapter 应用方式、rollout engine 版本、reference policy 和 log-prob 数值路径。只要这些部分不一致，优化器看到的 policy 和 rollout 采样的 policy 就不是同一个对象。</p>
+      </div>
+      <p>因此 Orbit 更像一个 deployment-aligned RL infrastructure 提案。它把 base model 放在 INT4 / FP4 / FP8 这类部署精度中并冻结，把可训练自由度收缩到 BF16 adapter，然后围绕 adapter 的版本同步、异步生成和热切换重写训练流程。它要解决的不是“RL 算法该用 PPO 还是 GRPO”这种上层选择，而是“RL 系统到底有没有在优化自己实际 rollout 的那个策略”。</p>
+    </section>
+
+    <section id="problem" class="section">
+      <h2>问题背景</h2>
+      <p class="section-lead">万亿参数模型后训练的难点不只是参数多。真正麻烦的是 full-parameter update 会把显存、optimizer state、权重同步、serving reload、reference policy 和数值精度差异一起拖进 hot path。</p>
+      <div class="grid-3">
+        <div class="card">
+          <b>显存不是唯一瓶颈</b>
+          <p>full-FT 需要为 base 权重、梯度、optimizer state 和 activation 付费。模型越大，单节点越快被 weight-state footprint 打穿。</p>
+        </div>
+        <div class="card">
+          <b>rollout 不只是推理</b>
+          <p>RL 中 rollout 产生的 token log-prob 会进入训练目标。serving 端和 training 端只要精度、kernel 或 adapter 应用不一致，就会制造 policy drift。</p>
+        </div>
+        <div class="card">
+          <b>权重同步会变成调度税</b>
+          <p>每轮都把 full model 推给 rollout engine，会触发权重导出、格式转换、分发和暂停生成。这个成本会掩盖算法本身的训练效率。</p>
+        </div>
+      </div>
+      <p>Orbit 的切入点是承认一个现实：很多 RLVR、数学、代码和推理后训练并不一定需要全参可塑性。对于已经很强的 base model，策略移动可能可以被限制在一个小得多的 adapter 子空间中。这个约束牺牲了一部分表达自由度，但换来了显存、训推一致性和 rollout 编排上的巨大简化。</p>
+    </section>
+
+    <section id="mechanism" class="section">
+      <h2>机制拆解</h2>
+      <p class="section-lead">Orbit 的机制可以拆成四层：低精度 frozen base、BF16 adapter、adapter-native rollout sync、以及 double-buffered async activation。四层都成立时，单节点 1T 级 RL 才有现实意义。</p>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="tag">Layer 1</div>
+          <div><strong>base model 固定在部署精度。</strong><br>训练和 rollout 不再分别使用高精度 base 与低精度 serving base，而是共享同一份低精度权重。这样做的目标是从结构上减少 train-rollout log-prob gap。</div>
+          <div>解决：精度错配</div>
+        </div>
+        <div class="flow-row">
+          <div class="tag">Layer 2</div>
+          <div><strong>梯度只落到 BF16 adapter。</strong><br>adapter 很小，权重态、梯度态和 optimizer state 都集中在 PEFT 参数上。base 的巨大参数量仍然参与 forward，但不再承担 backward 更新成本。</div>
+          <div>解决：weight-state footprint</div>
+        </div>
+        <div class="flow-row">
+          <div class="tag">Layer 3</div>
+          <div><strong>rollout server 长驻，只同步 adapter delta。</strong><br>base 不变，serving engine 不需要每步重建；trainer 只把新 adapter 版本传给 rollout backend。</div>
+          <div>解决：权重推送与重启</div>
+        </div>
+        <div class="flow-row">
+          <div class="tag">Layer 4</div>
+          <div><strong>异步生成与双缓冲 adapter 切换。</strong><br>新 adapter 可以先写入 inactive slot，旧 adapter 继续服务 in-flight 请求，切换点再做短暂停顿和原子激活。</div>
+          <div>解决：rollout bubble</div>
+        </div>
+      </div>
+      <div class="callout ok">
+        <p><strong>为什么 OFT 重要：</strong>OFT 指 Orthogonal Finetuning，这里的 adapter 更像对权重空间施加局部正交变换。作者选择 OFT 的理由包括低精度 base 上的稳定性、对预训练能力的保留、serving 时更低的跨卡通信成本，以及对 fused projection / split-projection kernel 的工程适配。</p>
+      </div>
+    </section>
+
+    <section id="system" class="section">
+      <h2>系统瓶颈</h2>
+      <p class="section-lead">Orbit 补充页里最关键的实验不是 1T 曲线，而是五种 rollout 架构的对照。它说明：只把 full-weight push 换成 adapter push，但训练和生成仍串行，系统不会真正快起来。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>架构</th>
+              <th>关键行为</th>
+              <th>观察</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Sync full-weight</td>
+              <td>生成、训练、全量权重推送串行</td>
+              <td>trainer 和 rollout pool 轮流等待，straggler waste 明显</td>
+            </tr>
+            <tr>
+              <td>Sync adapter-only</td>
+              <td>只推 adapter，但 loop 仍串行</td>
+              <td>Qwen3-4B OFT warm step time 仍约 8.651s，说明 push payload 不是唯一瓶颈</td>
+            </tr>
+            <tr>
+              <td>Async full-weight</td>
+              <td>训练和生成重叠，但每次更新仍要推 full model</td>
+              <td>overlap 有帮助，但 full-weight update 会让 rollout engine 滞后多个版本</td>
+            </tr>
+            <tr>
+              <td>Async adapter single-slot</td>
+              <td>只推 adapter，更新时短暂停止生成</td>
+              <td>warm step time 降到约 3.165s，rollout throughput 明显改善</td>
+            </tr>
+            <tr>
+              <td>Async adapter double-buffer</td>
+              <td>新 adapter 先广播到 inactive slot，再短暂停顿原子切换</td>
+              <td>warm step time 约 2.531s，train wait 和 rollout throughput 继续改善</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这组对照的 insight 是：万亿模型 RL infra 的核心瓶颈往往不是“某个函数慢”，而是同步边界放错了。adapter 让更新 payload 变小，async 让训练和生成重叠，double-buffer 让版本切换不阻塞绝大多数 in-flight 请求。三者叠加才构成 Orbit 的系统收益。</p>
+    </section>
+
+    <section id="terms" class="section">
+      <h2>术语和概念边界</h2>
+      <div class="grid-2">
+        <div class="card">
+          <b>RL post-training</b>
+          <p>这里指在预训练和常规指令调优之后，用 reward / verifier / environment feedback 继续优化模型策略的阶段。它关注的不是语言建模 loss，而是任务奖励和行为分布。</p>
+        </div>
+        <div class="card">
+          <b>train-rollout gap</b>
+          <p>指训练端计算出的 policy log-prob 与 rollout / serving 端实际采样策略之间的差异。差异可能来自量化、kernel、temperature、adapter 版本或 tokenization 路径。</p>
+        </div>
+        <div class="card">
+          <b>OFT</b>
+          <p>Orthogonal Finetuning，一类通过正交变换调整模型权重行为的 PEFT 方法。本文语境中，它是 Orbit 默认使用的 BF16 adapter 形态。</p>
+        </div>
+        <div class="card">
+          <b>deployment-aligned</b>
+          <p>意思是训练时的 base 权重、量化精度和 rollout / serving 时尽量一致。它不是单纯追求低精度，而是让优化目标对应真实部署策略。</p>
+        </div>
+        <div class="card">
+          <b>reference policy</b>
+          <p>RL 中用于 KL 约束或行为比较的参考策略。Orbit 的 PEFT 路线可以通过禁用 adapter 来恢复 frozen base，减少单独加载 reference model 的成本。</p>
+        </div>
+        <div class="card">
+          <b>double-buffered rollout</b>
+          <p>rollout engine 维护两个 adapter slot：active slot 继续服务当前请求，inactive slot 接收新版本。切换时只做短暂停顿和原子激活。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits" class="section">
+      <h2>边界与风险</h2>
+      <p class="section-lead">Orbit 的公开材料很有工程价值，但不能把博客中的系统能力验证直接等同于完整论文级结论。它证明的是路线可行性，而不是所有后训练任务都应放弃 full-FT。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>PEFT 子空间可能不够</b>
+          <p>如果任务需要深度改写知识、专家路由、工具协议或长上下文行为，adapter-only 可能会撞到表达上限。OFT 的稳定性不等于无限能力。</p>
+        </div>
+        <div class="card">
+          <b>log-prob diff 不是最终指标</b>
+          <p>train-rollout gap 小只是系统健康条件。最终质量仍取决于 reward 设计、数据分布、采样策略、KL 约束和 eval 是否真实。</p>
+        </div>
+        <div class="card">
+          <b>复现门槛高</b>
+          <p>Orbit 依赖 Megatron / SGLang / CUDA / quantization / checkpoint conversion 的组合工程。普通团队拿到代码后，仍需要很强的底层维护能力。</p>
+        </div>
+        <div class="card">
+          <b>公开证据以博客为主</b>
+          <p>Kimi-K2.6 与 DeepSeek V4-Pro 的结果目前主要来自作者报告。数据集、reward、失败案例、长期训练稳定性和外部复现仍是关键缺口。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <p><strong>容易误读的一点：</strong>“单节点 1T RL”不是说在单节点上做完整全参 RL，而是说通过 frozen low-precision base + adapter-only update，把训练状态和 rollout 编排压缩到单节点可承受范围内。</p>
+      </div>
+    </section>
+
+    <section id="practice" class="section">
+      <h2>工程启发</h2>
+      <p class="section-lead">对做 agentic RL、数学 RLVR、代码 RL 或垂直模型后训练的团队，Orbit 的启发不是照搬 OFT，而是先把数值一致性和 rollout 热路径整理清楚。</p>
+      <div class="grid-3">
+        <div class="card">
+          <b>先监控 policy parity</b>
+          <p>每轮训练都记录 training forward 与 rollout engine 的 log-prob diff。没有这个指标，很难判断 reward 波动是算法问题还是系统漂移。</p>
+        </div>
+        <div class="card">
+          <b>把 adapter 作为版本化 artifact</b>
+          <p>adapter 不只是参数文件，还应该有 monotonic version、active / inactive slot、staleness metric 和回滚策略。</p>
+        </div>
+        <div class="card">
+          <b>reference policy 要省显存</b>
+          <p>如果使用 PEFT，优先评估能否通过禁用 adapter 得到 reference log-prob，避免额外复制一个巨大的 base。</p>
+        </div>
+        <div class="card">
+          <b>不要只优化 update_weights</b>
+          <p>如果训练和生成仍然串行，单个权重更新函数再快也有限。应先看 trainer wait、rollout utilization 和 straggler waste。</p>
+        </div>
+        <div class="card">
+          <b>低精度路径要做 preflight</b>
+          <p>Megatron 训练端和 SGLang rollout 端应该在 tokenization、quantization、attention backend、adapter application 上做启动前一致性检查。</p>
+        </div>
+        <div class="card">
+          <b>把 full-FT 作为对照而非默认</b>
+          <p>对于已有强 base 的后训练，先用 adapter-first 路线测 reward 和 eval 边界，再决定是否值得支付 full-FT 的系统成本。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" class="section" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p class="section-lead">这篇笔记基于 X 原帖、作者公开 profile、Orbit 英文博客、GitHub README、rollout 架构补充页、仓库 raw 配置与示例文档。中文微信短链当前会进入验证码页，因此没有把中文稿作为独立证据展开。GitHub REST API 当时触发未认证限流，仓库核验改用公开页面、raw 文件和 git remote 引用。</p>
+      <ul class="source-list">
+        <li><a href="https://x.com/Besteuler/status/2059849677626085642">Besteuler 关于 Orbit 的 X 原帖</a></li>
+        <li><a href="https://spherelab.ai/orbit/">Orbit 英文博客：Stable and Efficient Reinforcement Learning for Trillion-Parameter LLMs</a></li>
+        <li><a href="https://spherelab.ai/orbit/orbit-adapter-async-db.html">Orbit rollout architectures：adapter async 与 double-buffer 补充页</a></li>
+        <li><a href="https://github.com/Sphere-AI-Lab/orbit">Sphere-AI-Lab/orbit GitHub 仓库</a></li>
+        <li><a href="https://raw.githubusercontent.com/Sphere-AI-Lab/orbit/main/pyproject.toml">Orbit pyproject.toml raw 配置</a></li>
+        <li><a href="https://raw.githubusercontent.com/Sphere-AI-Lab/orbit/main/examples/README.md">Orbit examples README raw 文档</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

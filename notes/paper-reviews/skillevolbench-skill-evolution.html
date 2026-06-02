@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SkillEvolBench 深度解读：从一次性经验到可复用程序性技能</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #171511;
+      --muted: #665f55;
+      --subtle: #8a8175;
+      --paper: #f6f0e6;
+      --panel: #fffdf8;
+      --panel-2: #f0e7d9;
+      --line: #d7caba;
+      --line-strong: #9c8c78;
+      --accent: #a94f32;
+      --accent-soft: #f0d7c9;
+      --blue: #2f5f87;
+      --blue-soft: #dbe7f0;
+      --green: #2f735f;
+      --green-soft: #dce9e2;
+      --red: #9f3e34;
+      --red-soft: #efd8d4;
+      --gold: #9a6823;
+      --gold-soft: #f2dfb9;
+      --violet: #594f91;
+      --violet-soft: #e5e0f2;
+      --shadow: 0 18px 48px rgba(42, 34, 24, 0.12);
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+      --sans: "Avenir Next", "Gill Sans", "Trebuchet MS", "Helvetica Neue", sans-serif;
+      --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(23, 21, 17, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+        linear-gradient(0deg, rgba(23, 21, 17, 0.025) 1px, transparent 1px) 0 0 / 32px 32px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(47, 95, 135, 0.32);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      min-height: 58px;
+      padding: 10px clamp(18px, 4vw, 56px);
+      border-bottom: 1px solid rgba(23, 21, 17, 0.14);
+      background: rgba(246, 240, 230, 0.93);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--ink);
+      font-weight: 760;
+      border-bottom: 0;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 42%, var(--accent) 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, var(--ink) 43% 57%, transparent 58%);
+      transform: rotate(-4deg);
+      flex: 0 0 auto;
+    }
+
+    .brand span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .nav a:hover {
+      border-color: var(--line);
+      background: rgba(255, 253, 248, 0.72);
+      color: var(--ink);
+    }
+
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.03fr) minmax(320px, 0.97fr);
+      gap: clamp(30px, 5vw, 72px);
+      align-items: center;
+      min-height: 86vh;
+      padding: clamp(54px, 9vw, 112px) clamp(20px, 5vw, 72px) 48px;
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        linear-gradient(106deg, rgba(255, 253, 248, 0.98) 0 36%, rgba(255, 253, 248, 0.83) 37% 61%, rgba(240, 215, 201, 0.58) 62% 100%),
+        url("skillevolbench-skill-evolution-assets/fig2-taxonomy.png") center right / min(58vw, 900px) auto no-repeat;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 36%;
+      z-index: -1;
+      background: linear-gradient(0deg, var(--paper), rgba(246, 240, 230, 0));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      color: var(--ink);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 1000px;
+      font-family: var(--serif);
+      font-size: clamp(42px, 7.8vw, 88px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(30px, 4.4vw, 54px);
+      font-weight: 740;
+    }
+
+    h3 {
+      font-size: clamp(20px, 2.2vw, 27px);
+      font-weight: 760;
+    }
+
+    p { margin: 0 0 16px; }
+
+    .hero-lead {
+      max-width: 780px;
+      margin: 22px 0 0;
+      color: #342e27;
+      font-size: clamp(18px, 2.05vw, 23px);
+      line-height: 1.62;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+      align-self: stretch;
+      align-content: center;
+    }
+
+    .thesis {
+      padding: 20px;
+      border: 1px solid rgba(47, 115, 95, 0.34);
+      border-left: 5px solid var(--green);
+      border-radius: 8px;
+      background: rgba(220, 233, 226, 0.92);
+      color: #1d362d;
+      font-size: 17px;
+      line-height: 1.65;
+      box-shadow: var(--shadow);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      min-height: 118px;
+      padding: 18px;
+      border: 1px solid rgba(156, 140, 120, 0.55);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.86);
+      box-shadow: 0 14px 34px rgba(42, 34, 24, 0.08);
+    }
+
+    .metric b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-family: var(--serif);
+      font-size: 31px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    section {
+      padding: clamp(54px, 8vw, 94px) 0;
+      border-bottom: 1px solid rgba(215, 202, 186, 0.78);
+    }
+
+    section > .wrap > .section-head {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.38fr) minmax(0, 0.62fr);
+      gap: clamp(24px, 5vw, 58px);
+      align-items: start;
+      margin-bottom: 30px;
+    }
+
+    .kicker {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card, .callout, .figure, .table-wrap, .source-item {
+      border: 1px solid rgba(156, 140, 120, 0.5);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.88);
+      box-shadow: 0 14px 34px rgba(42, 34, 24, 0.08);
+    }
+
+    .card { padding: 22px; }
+    .card h3 { margin-bottom: 12px; font-size: 22px; }
+    .card p:last-child, .callout p:last-child { margin-bottom: 0; }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .source-item { padding: 18px; }
+    .source-item b {
+      display: block;
+      margin-bottom: 8px;
+      color: #362f27;
+    }
+
+    .source-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .callout {
+      padding: 22px;
+      border-left: 5px solid var(--accent);
+      background: var(--panel);
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .callout.gold {
+      border-left-color: var(--gold);
+      background: var(--gold-soft);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    caption {
+      padding: 15px 18px 0;
+      color: var(--muted);
+      text-align: left;
+      font-weight: 680;
+    }
+
+    th, td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(215, 202, 186, 0.9);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: rgba(240, 231, 217, 0.88);
+      color: #352e27;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    td.num, th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    .best { color: var(--green); font-weight: 780; }
+    .bad { color: var(--red); font-weight: 760; }
+    .neutral { color: var(--muted); }
+
+    .figure {
+      padding: 14px;
+      margin: 22px 0;
+      background: var(--panel);
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(215, 202, 186, 0.74);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .figure figcaption {
+      margin: 12px 4px 2px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid rgba(156, 140, 120, 0.42);
+      border-radius: 8px;
+      background: rgba(255, 253, 248, 0.76);
+    }
+
+    .step-num {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fffdf8;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .step h3 {
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+
+    .compact-list {
+      margin: 0;
+      padding-left: 1.1em;
+    }
+
+    .compact-list li { margin: 0 0 9px; }
+
+    code {
+      padding: 0.1em 0.28em;
+      border-radius: 4px;
+      background: #efe5d5;
+      color: #34271d;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 16px;
+      border: 1px solid rgba(156, 140, 120, 0.52);
+      border-radius: 8px;
+      background: #201b16;
+      color: #f7efe2;
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid rgba(47, 95, 135, 0.22);
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: #284d72;
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .final {
+      padding: clamp(58px, 8vw, 94px) 0;
+      background: #1f1a15;
+      color: #f8f0e5;
+    }
+
+    .final .wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(280px, 0.5fr);
+      gap: clamp(24px, 5vw, 58px);
+      align-items: start;
+    }
+
+    .final h2 { color: #fffaf1; }
+    .final p { color: #e4d7c7; }
+    .final .callout {
+      background: rgba(255, 250, 241, 0.08);
+      border-color: rgba(255, 250, 241, 0.2);
+      border-left-color: #e59a59;
+      box-shadow: none;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      section > .wrap > .section-head,
+      .grid.two,
+      .grid.three,
+      .source-list,
+      .final .wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .hero { min-height: auto; }
+      .metric-grid { grid-template-columns: 1fr; }
+      h1 { font-size: clamp(38px, 13vw, 66px); }
+      .nav { max-width: 54vw; }
+    }
+
+    @media (max-width: 560px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav { max-width: 100%; }
+      .hero { padding-top: 42px; }
+      table { min-width: 620px; }
+    }
+  </style>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+
+<nav class="notes-sitebar" aria-label="Notes navigation">
+  <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+  <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+</nav>
+
+<header class="topbar">
+    <a class="brand" href="/notes/">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Ricardo Notes</span>
+    </a>
+    <nav class="nav" aria-label="页面导航">
+      <a href="#source">证据</a>
+      <a href="#problem">问题</a>
+      <a href="#design">设计</a>
+      <a href="#protocol">协议</a>
+      <a href="#results">结果</a>
+      <a href="#bottleneck">瓶颈</a>
+      <a href="#insight">Insight</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">arXiv 2605.24117 · Paper Note</div>
+        <h1>SkillEvolBench：从一次性经验到可复用程序性技能</h1>
+        <p class="hero-lead">
+          这篇论文问的不是 agent 会不会调用 skill，而是更关键的一步：
+          真实任务留下的工具调用、代码修改、失败尝试、verifier feedback，
+          能否被压缩成未来 agent 在上下文迁移、诱导捷径和多技能组合中仍可复用的程序性技能。
+        </p>
+      </div>
+      <aside class="hero-side" aria-label="论文速览">
+        <div class="thesis">
+          一句话结论：当前 agent 经常能在 acquisition 或 replay 上局部适应，但很难形成稳健 reusable skill。
+          甚至很多时候，直接复用原始轨迹比提炼后的 skill 更有效，说明现有抽象方法丢掉了关键程序线索。
+        </div>
+        <div class="metric-grid">
+          <div class="metric">
+            <b>180</b>
+            <span>六个真实 agent 环境中的任务总数，按角色条件化 family 组织。</span>
+          </div>
+          <div class="metric">
+            <b>30</b>
+            <span>skill family 数量：每个环境 5 个 family，每个 family 6 个角色任务。</span>
+          </div>
+          <div class="metric">
+            <b>+0.77pp</b>
+            <span>Curated-Revision-Always 对 No-Skill 的平均 ESR 增益，远非压倒性。</span>
+          </div>
+          <div class="metric">
+            <b>37.6%</b>
+            <span>Raw-Trajectory 的平均 ESR，论文中强于多数 distilled skill 条件。</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+
+
+    <section id="problem">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Problem</span>
+            <h2>它补的是 agent memory 的哪块空白</h2>
+          </div>
+          <p class="section-copy">
+            轨迹复用、反思记忆、workflow memory 都说明旧经验有用；agent skills 说明程序性指导有用。
+            SkillEvolBench 关心中间缺失的一步：一次性经验能否变成 durable procedural knowledge。
+          </p>
+        </div>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>轨迹不是技能</h3>
+            <p>
+              一个 episodic trajectory 记录了“这一次发生了什么”：读了哪些文件、运行了哪些命令、哪里失败、怎样修复、最终 verifier 如何反馈。
+              这些信息很有价值，但它混有 fixture-specific 细节、失败假设和偶然上下文。
+            </p>
+            <p>
+              一个 procedural skill 应该回答另一个问题：未来遇到同类任务时，什么时候触发、按什么步骤做、检查什么、避开什么捷径。
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>已有评测少测“形成过程”</h3>
+            <p>
+              SWE-bench、WebArena、OSWorld 等更偏“能不能完成任务”；SkillsBench 证明 curated skills 有用，
+              但 self-generated setting 更接近 cold-start，尚未回答 agent 能不能从真实执行和 verifier feedback 中沉淀 skill。
+            </p>
+            <p>
+              SkillEvolBench 的贡献，是把每次 acquisition attempt 变成一次抽象机会，再把 library 冻结后放到 deployment 任务上检验。
+            </p>
+          </article>
+        </div>
+
+        <div class="callout blue" style="margin-top: 18px;">
+          <p>
+            判断标准很严格：如果 skill 只提升 acquisition 或 replay，它可能只是本地补丁；只有 frozen deployment 的 context-shift、adversarial、composition 也提升，才更接近 reusable skill。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="design">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Benchmark Design</span>
+            <h2>180 个任务怎样组织成 skill-evolution arcs</h2>
+          </div>
+          <p class="section-copy">
+            每个环境包含 5 个 recurring procedural families。每个 family 包含 6 个 role-conditioned tasks：
+            前 3 个暴露经验，后 3 个冻结评测。
+          </p>
+        </div>
+
+        <figure class="figure">
+          <img src="skillevolbench-skill-evolution-assets/fig2-taxonomy.png" alt="SkillEvolBench taxonomy：6 个环境、5 个 families、6 个 role progression" />
+          <figcaption>
+            论文 Figure 2。六个环境覆盖代码、API、数据、文档、研究和沟通操作；每个 family 都从 canonical 学习任务推进到 context-shift、adversarial 与 composition deployment。
+          </figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <caption>六个环境与对应 procedural families。</caption>
+            <thead>
+              <tr>
+                <th>环境</th>
+                <th>五个 skill family</th>
+                <th>它主要测什么</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>E1 Code</td>
+                <td>系统错误诊断、依赖冲突、安全重构、多文件 bug、merge conflict</td>
+                <td>代码修改中的根因追踪、行为保持、跨文件协调和冲突合并。</td>
+              </tr>
+              <tr>
+                <td>E2 Tool/API</td>
+                <td>参数校验、重试退避、分页拉取、多步编排、响应校验 fallback</td>
+                <td>API discipline、状态依赖和接口边界条件。</td>
+              </tr>
+              <tr>
+                <td>E3 Data</td>
+                <td>schema 检查、类型归一化、join key 对齐、null-safe 聚合、结果 sanity check</td>
+                <td>表格处理里的前置检查、清洗和结果验证。</td>
+              </tr>
+              <tr>
+                <td>E4 Docs</td>
+                <td>字段抽取、格式迁移、模板填充、文档 diff、多源合并</td>
+                <td>结构化转换和源目标一致性验证。</td>
+              </tr>
+              <tr>
+                <td>E5 Research</td>
+                <td>多源筛选、证据比较、引用核验、约束摘要、矛盾检测</td>
+                <td>信息综合中的 evidence grounding 和 source fidelity。</td>
+              </tr>
+              <tr>
+                <td>E6 Communication</td>
+                <td>邮件 triage、上下文回复、follow-up 跟踪、会议排期、action item 抽取</td>
+                <td>开放式沟通任务里的多约束执行和上下文保真。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid two" style="margin-top: 18px;">
+          <article class="card">
+            <h3>Acquisition roles</h3>
+            <ul class="compact-list">
+              <li><strong>canonical</strong>：给出基础 procedure。</li>
+              <li><strong>enriched</strong>：暴露 naive skill 缺失的子能力。</li>
+              <li><strong>variant</strong>：改变表面形式，但保留核心程序。</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Frozen deployment roles</h3>
+            <ul class="compact-list">
+              <li><strong>context-shift</strong>：技能需求嵌入更宽泛请求。</li>
+              <li><strong>adversarial</strong>：提供可能骗过浅层检查的 shortcut。</li>
+              <li><strong>composition</strong>：需要目标 skill 与其他 skill 组合。</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="protocol">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Protocol</span>
+            <h2>从 trajectory 到 skill library 的执行链路</h2>
+          </div>
+          <p class="section-copy">
+            每个 environment 是一个独立 lifelong episode。skills 可以在同环境内累积，但切换环境时 reset，避免跨环境泄漏。
+          </p>
+        </div>
+
+        <div class="flow">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div>
+              <h3>初始化 skill library</h3>
+              <p>
+                Self-generated 从空 skill 开始；curated-start 从 gap-exposed curated skill 开始；zero-shot 只根据 metadata 写 fixed skill。
+              </p>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">2</div>
+            <div>
+              <h3>完成 acquisition tasks</h3>
+              <p>
+                agent 依次处理 canonical、enriched、variant。每次尝试后，系统记录指令、文件访问、工具调用、命令、编辑、输出、测试和最终响应。
+              </p>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">3</div>
+            <div>
+              <h3>压缩轨迹并接收 verifier feedback</h3>
+              <p>
+                rich compaction 给 Skill Author 使用；rough compaction 给 Raw-Trajectory control 使用。作者特别说明不访问 hidden model state 或 private chain-of-thought。
+              </p>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">4</div>
+            <div>
+              <h3>Skill Author 写入、修订或跳过</h3>
+              <p>
+                Skill Author 是 host-side LLM call，与 task-solving agent 分离。它只接收 same-family skills 和 same-family acquisition history。
+              </p>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">5</div>
+            <div>
+              <h3>冻结 deployment 与 replay</h3>
+              <p>
+                library 冻结后，agent 只能读取和应用 skills，不能继续修订。deployment 后再 replay 原 acquisition tasks，用来区分 local recovery 与 transfer。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top: 22px;">
+          <table>
+            <caption>实验条件。核心是区分 base capability、直接轨迹复用、人类先验和经验诱导 skill。</caption>
+            <thead>
+              <tr>
+                <th>条件</th>
+                <th>含义</th>
+                <th>它排除什么混淆</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>No-Skill</td>
+                <td>没有 persistent memory 或 skill library。</td>
+                <td>base agent capability。</td>
+              </tr>
+              <tr>
+                <td>Raw-Trajectory</td>
+                <td>检索同 family acquisition 轨迹，不生成 skill。</td>
+                <td>直接 episodic reuse 是否已经足够。</td>
+              </tr>
+              <tr>
+                <td>Curated-Static / Revision / Always</td>
+                <td>从 gap-exposed curated skill 开始，静态或按策略修订。</td>
+                <td>人类初始程序知识和经验修订的贡献。</td>
+              </tr>
+              <tr>
+                <td>SelfGen-ZeroShot / Revision / Always</td>
+                <td>空起点或 metadata 起点，由 agent 从轨迹诱导 skill。</td>
+                <td>agent 自己从经验形成 skill 的能力。</td>
+              </tr>
+              <tr>
+                <td>Always+Tier3</td>
+                <td>强制写入或更新 <code>scripts/</code>、<code>references/</code>、<code>assets/</code>。</td>
+                <td>library 容量是否是瓶颈。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Results</span>
+            <h2>局部适应有，但 reusable skill 不稳</h2>
+          </div>
+          <p class="section-copy">
+            我从项目页内嵌 leaderboard 解析出十个模型的平均指标。结论很清楚：
+            always-update 略好，但绝大多数 skill 条件没有形成稳定 deployment 优势。
+          </p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption>十模型平均结果。ESR/CSSR/ARSR/CompSR 才是判断 reusable skill 的关键。</caption>
+            <thead>
+              <tr>
+                <th>条件</th>
+                <th class="num">LSR</th>
+                <th class="num">RSR</th>
+                <th class="num">ESR</th>
+                <th class="num">CSSR</th>
+                <th class="num">ARSR</th>
+                <th class="num">CompSR</th>
+                <th>ESR 变化</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>No-Skill</td>
+                <td class="num">40.1</td>
+                <td class="num neutral">-</td>
+                <td class="num">34.7</td>
+                <td class="num">38.3</td>
+                <td class="num">43.7</td>
+                <td class="num">22.0</td>
+                <td>baseline</td>
+              </tr>
+              <tr>
+                <td>Curated-Static</td>
+                <td class="num">41.8</td>
+                <td class="num neutral">-</td>
+                <td class="num bad">32.2</td>
+                <td class="num">38.0</td>
+                <td class="num">39.7</td>
+                <td class="num">19.0</td>
+                <td class="bad">-2.46 pp</td>
+              </tr>
+              <tr>
+                <td>Curated-Revision</td>
+                <td class="num">41.2</td>
+                <td class="num">46.0</td>
+                <td class="num">34.0</td>
+                <td class="num">38.0</td>
+                <td class="num">41.3</td>
+                <td class="num">22.7</td>
+                <td class="bad">-0.68 pp</td>
+              </tr>
+              <tr>
+                <td>Curated-Revision-Always</td>
+                <td class="num">40.6</td>
+                <td class="num">41.8</td>
+                <td class="num best">35.5</td>
+                <td class="num best">41.0</td>
+                <td class="num">40.7</td>
+                <td class="num best">24.7</td>
+                <td class="best">+0.77 pp</td>
+              </tr>
+              <tr>
+                <td>SelfGen-ZeroShot</td>
+                <td class="num">41.0</td>
+                <td class="num neutral">-</td>
+                <td class="num bad">32.1</td>
+                <td class="num">37.0</td>
+                <td class="num">37.7</td>
+                <td class="num">21.7</td>
+                <td class="bad">-2.57 pp</td>
+              </tr>
+              <tr>
+                <td>SelfGen-Revision</td>
+                <td class="num">41.7</td>
+                <td class="num">44.1</td>
+                <td class="num bad">32.1</td>
+                <td class="num">37.0</td>
+                <td class="num">38.3</td>
+                <td class="num">21.0</td>
+                <td class="bad">-2.58 pp</td>
+              </tr>
+              <tr>
+                <td>SelfGen-Always</td>
+                <td class="num">40.8</td>
+                <td class="num">43.1</td>
+                <td class="num best">35.1</td>
+                <td class="num">40.7</td>
+                <td class="num">41.0</td>
+                <td class="num">23.7</td>
+                <td class="best">+0.44 pp</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid three" style="margin-top: 18px;">
+          <article class="card">
+            <h3>LSR / RSR 会骗人</h3>
+            <p>
+              acquisition 或 replay 变好不代表 skill 真可复用。论文中多个模型在 LSR/RSR 上涨，但 ESR、CSSR 或 CompSR 下降。
+            </p>
+          </article>
+          <article class="card">
+            <h3>部署轴是分裂的</h3>
+            <p>
+              context-shift、adversarial robustness、composition 暴露的是不同 failure mode。单一 success rate 会把 missed invocation、shortcut reliance 和 weak modularity 混在一起。
+            </p>
+          </article>
+          <article class="card">
+            <h3>模型依赖很强</h3>
+            <p>
+              Opus 4.5、GPT-5.4 等模型更容易从 procedural memory 获益；Gemini 2.5 Pro 在多数 memory variants 下反而受损。
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="bottleneck">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Bottleneck</span>
+            <h2>为什么 raw trajectory 经常赢过 distilled skill</h2>
+          </div>
+          <p class="section-copy">
+            这是论文最刺痛当前 agent memory 方法的结果：如果 skill abstraction 真保留了可复用程序，
+            distilled skills 应该至少不输直接轨迹复用；但实验中不是这样。
+          </p>
+        </div>
+
+        <figure class="figure">
+          <img src="skillevolbench-skill-evolution-assets/fig4-rawtraj-vs-skills.png" alt="Skill-based conditions relative to Raw-Trajectory 的 heatmap" />
+          <figcaption>
+            论文 Figure 4。大面积负值说明 skill-based conditions 经常低于 Raw-Trajectory。也就是说，抽象后的 skill 丢掉了 raw trajectory 中仍然有用的上下文和程序线索。
+          </figcaption>
+        </figure>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>raw trajectory 保留了过程证据</h3>
+            <ul class="compact-list">
+              <li>具体跑过哪些命令和测试。</li>
+              <li>哪个错误暴露了根因。</li>
+              <li>哪些 schema、字段、边界条件曾经被验证。</li>
+              <li>agent 怎样从失败假设中回退。</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>distilled skill 容易过度清洁</h3>
+            <ul class="compact-list">
+              <li>泛化建议删掉了触发条件。</li>
+              <li>反例和失败路径被当作噪声过滤。</li>
+              <li>validator / template 没被持久化。</li>
+              <li>metadata 描述不准导致未来 skill 不触发。</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="callout red" style="margin-top: 18px;">
+          <p>
+            我的判断：这不是“总结写得不够长”的问题，而是 selective procedural abstraction 的问题。
+            当前 agent 不稳定地知道哪些 execution details 是未来程序的一部分，哪些只是当前 episode 的噪声。
+          </p>
+        </div>
+
+        <figure class="figure">
+          <img src="skillevolbench-skill-evolution-assets/fig5-library-size.png" alt="Library size versus frozen evaluation success by model" />
+          <figcaption>
+            论文 Figure 5。Tier-3 forcing 让 library 变大，但很多点只是向右移动，ESR 不升反降。容量扩张不能替代选择性抽象。
+          </figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <caption>Tier-3 capacity diagnostic 的正反例。</caption>
+            <thead>
+              <tr>
+                <th>现象</th>
+                <th>例子</th>
+                <th>解释</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>资源文件有时有用</td>
+                <td>Claude Opus 4.6 在 SelfGen-Always+Tier3 中 ESR 从 37.8% 到 40.0%。</td>
+                <td>某些脚本、模板、参考确实能保存 compact SKILL.md 放不下的稳定程序。</td>
+              </tr>
+              <tr>
+                <td>容量也会伤害</td>
+                <td>Gemini 3 Flash 的 SelfGen-Always+Tier3 ESR 从 No-Skill 35.6% 掉到 27.8%。</td>
+                <td>额外资源可能变成 stale context、过拟合 validator 或弱触发文件，增加检索和判断负担。</td>
+              </tr>
+              <tr>
+                <td>Always update 不单调</td>
+                <td>Self-generated Always 平均略好，但也会降低部分模型或指标。</td>
+                <td>更多写入提高 coverage，也增加 episode-specific drift。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Engineering</span>
+            <h2>如果我们要做 agent skill system，该学什么</h2>
+          </div>
+          <p class="section-copy">
+            这篇论文不是给出一个最终算法，而是给 skill 系统设计提供了很明确的失败清单。
+          </p>
+        </div>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>skill 不应替代 trace memory</h3>
+            <p>
+              更合理的架构是双层记忆：skill library 保存稳定 procedure，episodic trace memory 保存具体执行证据。
+              未来 agent 用 skill 做骨架，用 trace 还原局部上下文。
+            </p>
+          </article>
+          <article class="card">
+            <h3>skill 要写验证，不只写原则</h3>
+            <p>
+              比起“validate input before using it”，更有用的是“merge 前检查 dtype、case、unmatched keys；
+              merge 后 assert row count 和 critical NaN”。技能的核心是可执行检查点。
+            </p>
+          </article>
+          <article class="card">
+            <h3>update policy 要有过滤器</h3>
+            <p>
+              每次任务都可以提取 candidate lesson，但只有 stable、repeated、verifier-backed、future-triggerable 的内容才应该进入 skill body。
+            </p>
+          </article>
+          <article class="card">
+            <h3>library 需要生命周期治理</h3>
+            <p>
+              真实系统需要 skill retirement、duplicate merge、trigger collision check、usage audit、stale resource detection 和 skill-level regression tests。
+            </p>
+          </article>
+        </div>
+
+        <div class="callout gold" style="margin-top: 18px;">
+          <p>
+            一个实用 checklist：写清触发条件；写具体流程；保留失败线索；写验证方法；区分稳定程序和局部细节；
+            Tier-3 文件必须被 SKILL.md 明确引用；修订后问它是否能帮助未来不同上下文的任务。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight" class="final">
+      <div class="wrap">
+        <div>
+          <span class="kicker">Insight</span>
+          <h2>我的判断</h2>
+          <p>
+            SkillEvolBench 最好的地方，是它用 Raw-Trajectory control 逼所有 skill 方法面对一个朴素问题：
+            你提炼出的技能，为什么比原始经验更好？如果答案说不清，skill 很可能只是看起来更干净的 lossy compression。
+          </p>
+          <p>
+            当前 agent 的核心瓶颈不是“不会总结”，而是“不知道哪些执行细节是未来程序的一部分”。
+            很多命令、schema 检查、异常路径、失败尝试和 verifier 诊断，在摘要时看像局部噪声，
+            但在 deployment 的 context shift 或 adversarial task 里恰好是关键线索。
+          </p>
+          <p>
+            所以我会把这篇论文当作 agent skill system 的评测框架，而不是只当 benchmark 榜单。
+            后续真正有价值的方向，是 trace-to-skill loss analysis、skill trigger evaluation、skill regression tests 和 hybrid skill+trace retrieval。
+          </p>
+        </div>
+        <aside class="callout">
+          <p>
+            一句话落地：不要只问“agent 写了多少 skill”，要问“冻结后，这些 skill 在不同上下文、恶意捷径和组合任务中是否仍能让未来 agent 少犯错”。
+          </p>
+          <div class="tag-row">
+            <span class="tag">Agent Skills</span>
+            <span class="tag">Experience Reuse</span>
+            <span class="tag">Evaluation</span>
+            <span class="tag">Procedural Memory</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+    <section id="source" data-note-role="evidence-appendix">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="kicker">Source Map</span>
+            <h2>证据边界与资料索引</h2>
+          </div>
+          <p class="section-copy">
+            本报告以 arXiv PDF/HTML、项目主页、Hugging Face Paper API 和 Hugging Face Dataset 为主证据。
+            本地额外下载了 dataset parquet，核验 30 个 skills 与 180 个 tasks 的结构。
+          </p>
+        </div>
+
+        <div class="source-list">
+          <div class="source-item">
+            <b>论文主体</b>
+            <span>arXiv:2605.24117v1，标题为 <em>SkillEvolBench: Benchmarking the Evolution from Episodic Experience to Procedural Skills</em>，提交日期 2026-05-22。</span>
+          </div>
+          <div class="source-item">
+            <b>项目主页</b>
+            <span>读取 <code>skillevolbench.github.io</code> 页面和内嵌 leaderboard 数据；Paper 链接可用，Code/Data 按钮当前在页面 HTML 中仍是占位 <code>#</code>。</span>
+          </div>
+          <div class="source-item">
+            <b>HF Paper</b>
+            <span>Hugging Face Paper API 提供标题、作者、摘要、提交信息、项目页链接与 AI summary；未显示 linked models/datasets/spaces。</span>
+          </div>
+          <div class="source-item">
+            <b>HF Dataset</b>
+            <span><code>skillevolbench/skillevolbench</code> 可访问，包含 <code>skills</code> 与 <code>tasks</code> 两个 config；本地核验 <code>skills=30</code>、<code>tasks=180</code>。</span>
+          </div>
+        </div>
+
+        <figure class="figure">
+          <img src="skillevolbench-skill-evolution-assets/fig1-protocol.png" alt="SkillEvolBench 从 episodic attempts 到 skill library 的协议图" />
+          <figcaption>
+            论文 Figure 1。SkillEvolBench 把一次任务执行压缩为 trajectory summary，并结合 verifier feedback 交给 Skill Author，随后冻结 skill library 到更难任务上测试。
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>

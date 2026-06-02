@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cracks in the Foundation：长上下文扩展为什么会被小架构选择击穿</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f2ec;
+      --surface: #fffdf8;
+      --surface-2: #eee7da;
+      --ink: #1c1b17;
+      --muted: #686258;
+      --subtle: #8b8378;
+      --line: #d8cfc0;
+      --line-strong: #a59683;
+      --accent: #c24f77;
+      --accent-soft: #f2d7e2;
+      --blue: #2d6288;
+      --blue-soft: #dce9f2;
+      --green: #2f725c;
+      --green-soft: #dceae3;
+      --gold: #9a6b1e;
+      --gold-soft: #f2e3bd;
+      --red: #a04336;
+      --red-soft: #f0dad5;
+      --shadow: 0 16px 40px rgba(47, 40, 29, 0.10);
+      --radius: 8px;
+      --max: 1220px;
+      --sans: "Avenir Next", "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Georgia", "Songti SC", "Noto Serif CJK SC", serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; background: var(--paper); }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(28, 27, 23, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(28, 27, 23, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+      font-size: 16px;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .local-nav {
+      position: sticky;
+      top: var(--notes-shell-height, 46px);
+      z-index: 30;
+      border-bottom: 1px solid var(--line);
+      background: rgba(245, 242, 236, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 10px 22px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .brand {
+      margin-right: 10px;
+      color: var(--accent);
+      font-weight: 850;
+    }
+
+    .nav-inner a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .nav-inner a:hover { color: var(--ink); }
+
+    header,
+    main,
+    footer {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding-left: 22px;
+      padding-right: 22px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.62fr);
+      gap: 28px;
+      align-items: center;
+      padding-top: clamp(42px, 7vw, 78px);
+      padding-bottom: 34px;
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      color: var(--ink);
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.8vw, 72px);
+      font-weight: 780;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 42px);
+      font-weight: 780;
+    }
+
+    h3 {
+      margin: 22px 0 9px;
+      font-size: 19px;
+      font-weight: 820;
+    }
+
+    p { margin: 10px 0; }
+
+    .subtitle {
+      max-width: 880px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.66;
+    }
+
+    .hero-card,
+    .card,
+    .callout,
+    .figure {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .hero-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .meta-grid,
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .meta-card,
+    .card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .meta-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--subtle);
+      font-size: 12px;
+    }
+
+    .meta-card span,
+    .card span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .card h3 { margin-top: 0; }
+
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 54px;
+    }
+
+    section {
+      border-top: 1px solid var(--line);
+      padding-top: 30px;
+    }
+
+    .section-lead {
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .callout {
+      margin: 16px 0;
+      padding: 15px 17px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.good { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.warn { border-left-color: var(--gold); background: var(--gold-soft); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.blue { border-left-color: var(--blue); background: var(--blue-soft); }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      margin: 14px 0 20px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+      display: table;
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: var(--ink);
+      font-weight: 850;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    ul,
+    ol {
+      margin: 10px 0;
+      padding-left: 22px;
+    }
+
+    li { margin: 6px 0; }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: #efe6d7;
+      color: #3b2d20;
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    .figure {
+      margin: 20px 0;
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+    }
+
+    .figure figcaption {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .source-list li { word-break: break-word; }
+
+    footer {
+      padding-top: 18px;
+      padding-bottom: 34px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 960px) {
+      header { grid-template-columns: 1fr; }
+      .meta-grid, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+    }
+
+    @media (max-width: 620px) {
+      h1 { font-size: 36px; }
+      header, main, footer { padding-left: 16px; padding-right: 16px; }
+      .nav-inner { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <nav class="local-nav" aria-label="Page sections">
+    <div class="nav-inner">
+      <span class="brand">OlmPool</span>
+      <a href="#thesis">一句话</a>
+      <a href="#source">证据</a>
+      <a href="#problem">问题</a>
+      <a href="#method">方法</a>
+      <a href="#findings">发现</a>
+      <a href="#engineering">工程启发</a>
+      <a href="#limits">边界</a>
+      <a href="#insight">Insight</a>
+    </div>
+  </nav>
+
+  <header>
+    <div>
+      <div class="kicker">X thread + Ai2 paper reading report</div>
+      <h1>Cracks in the Foundation：长上下文扩展为什么会被小架构选择击穿</h1>
+      <p class="subtitle">
+        Gabriele Berton 的 X 主帖推荐了 Ai2 / CMU / UW 的 OlmPool 论文。它真正重要的地方不是又做了一个长上下文 benchmark，而是用 26 个受控 7B 模型说明：QK norm、GQA、sliding window attention、预训练上下文长度这些局部选择，会在 context extension 阶段形成复合瓶颈。
+      </p>
+      <div class="meta-grid">
+        <div class="meta-card"><strong>入口</strong><span>Gabriele Berton X 主帖，2026-05-24 23:06:29 UTC</span></div>
+        <div class="meta-card"><strong>论文</strong><span>Cracks in the Foundation</span></div>
+        <div class="meta-card"><strong>实验</strong><span>OlmPool：26 个可比 7B dense Transformer</span></div>
+        <div class="meta-card"><strong>核心数字</strong><span>组合 3 个以上架构选择，长上下文分数最多下降约 47%</span></div>
+      </div>
+    </div>
+    <aside class="hero-card">
+      <b>最短结论</b>
+      <span>长上下文能力不是训练末期把窗口拉长的功能，而是架构、预训练长度、注意力表达能力和 extension recipe 共同决定的端到端属性。</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="thesis">
+      <h2>一句话结论</h2>
+      <div class="callout good">
+        <strong>这条推文的重点：</strong>很多 LLM 的长上下文失败不是单纯数据不够、recipe 不好或 benchmark 偏差，而是基础架构在注意力表达能力上已经做了过多局部折中。后期 context extension 只能在这个架构边界内补救。
+      </div>
+      <p>
+        这篇论文的价值是把“长上下文可扩展性”从一个后训练技巧问题，重新定义成一个前置架构问题。它提醒模型研发者：如果 base model 在预训练阶段已经选择了过强的效率压缩、局部窗口或 attention score 正则化策略，那么后续再用 64K 长文档继续训练，可能已经错过了最便宜的修正时机。
+      </p>
+    </section>
+
+    <section id="problem">
+      <h2>它到底在解决什么问题</h2>
+      <p class="section-lead">
+        过去很多长上下文工作默认一个前提：基础模型先短上下文预训练，之后用长文档、RoPE scaling、position interpolation 或 midtraining recipe 扩到 32K/64K/128K。论文挑战的是这个前提：同一套 extension recipe 在不同架构上不一定迁移。
+      </p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>公开模型比较很混乱</h3>
+          <span>不同模型的数据、tokenizer、训练长度、后训练 recipe、架构细节同时变化，很难归因长上下文差异。</span>
+        </div>
+        <div class="card">
+          <h3>Llama recipe 不一定迁移</h3>
+          <span>许多 context extension 技巧在 Llama-family 上验证，但 Llama 3 的训练数据不公开，无法分清成功来自数据还是架构。</span>
+        </div>
+        <div class="card">
+          <h3>短指标看不出长问题</h3>
+          <span>训练 loss、perplexity、短 benchmark 可以正常，但长上下文检索、跨段聚合和位置泛化仍然失败。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>方法：OlmPool 怎么控制变量</h2>
+      <p>
+        作者构造了 OlmPool：26 个可比的 7B 级 dense Transformer 模型。实验固定训练数据、tokenizer 和 context extension recipe，只改变若干注意力相关架构选择。这样做的目标是隔离因果因素，而不是把公开模型排行榜再横向比较一遍。
+      </p>
+      <table>
+        <thead><tr><th>实验组件</th><th>设置</th><th>为什么重要</th></tr></thead>
+        <tbody>
+          <tr><td>模型规模</td><td>7-8B dense Transformer</td><td>规模足够接近实用模型，同时还能支撑 26 个模型的受控消融。</td></tr>
+          <tr><td>预训练</td><td>相同数据上约 140B tokens</td><td>减少“数据导致差异”的混杂因素。</td></tr>
+          <tr><td>Context extension</td><td>相同长上下文数据与过程，扩展到 64K</td><td>让架构差异成为主要解释变量。</td></tr>
+          <tr><td>总训练量</td><td>约 150B tokens，含 10B context extension</td><td>GitHub README 明确说明最终 checkpoint 的训练量与阶段划分。</td></tr>
+          <tr><td>发布资产</td><td>训练配置、OLMo-core checkpoint、Hugging Face 格式模型</td><td>方便社区复核架构配置和复用模型池。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>四个被研究的架构选择</h3>
+      <div class="grid-4">
+        <div class="card">
+          <h3>QK norm</h3>
+          <span>稳定 attention score，但可能改变 attention sink 和长距离路由行为。</span>
+        </div>
+        <div class="card">
+          <h3>GQA</h3>
+          <span>减少 KV cache 成本，但 key/value head 独立性下降，检索表达能力变窄。</span>
+        </div>
+        <div class="card">
+          <h3>SWA</h3>
+          <span>局部窗口降低计算成本，但天然限制远距离 token 的直接交互。</span>
+        </div>
+        <div class="card">
+          <h3>预训练上下文长度</h3>
+          <span>短上下文预训练更省成本，但模型更晚接触长程依赖，extension 阶段补课更难。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="findings">
+      <h2>关键发现</h2>
+      <h3>1. 小选择会复合放大</h3>
+      <p>
+        论文最有传播力的结论是：任意单个架构选择对长上下文表现影响可能较小，但组合三个或更多后，长上下文 benchmark 分数最多下降约 47%。这不是线性叠加，而是多个设计同时压缩 attention expressivity 后形成的系统性瓶颈。
+      </p>
+      <div class="callout risk">
+        <strong>工程翻译：</strong>每个组件都“只牺牲一点能力换效率”的直觉在长上下文场景中不可靠。GQA、SWA、QK norm 可能各自合理，但如果共同限制远距离检索和注意力分配，它们的组合代价会超过单项消融显示的代价。
+      </div>
+
+      <h3>2. 短上下文验证不能提前报警</h3>
+      <p>
+        官方材料强调，training loss、perplexity 和 16 个标准短上下文 benchmark 都无法可靠预测长上下文表现。也就是说，模型在短任务上看起来正常，不代表它在 32K/64K 下能稳定检索、聚合和利用远处信息。
+      </p>
+
+      <h3>3. Llama 3 的长上下文优势可能很大程度来自架构</h3>
+      <p>
+        Ai2 博客明确提出：很多 context extension recipe 在 Llama-family 上开发和验证，但迁移到其他架构时不一定成立。OlmPool 的控制实验支持一种解释：Llama 3 容易扩长上下文，不只是数据或 recipe 的问题，架构本身也是关键驱动。
+      </p>
+
+      <h3>4. Attention sink 可能不是纯缺陷</h3>
+      <p>
+        论文分析了 attention sink 与 attention distribution。一个值得谨慎理解的点是：过去常把 sink 看成坏现象，但在某些没有强 QK norm 的模型里，sink 可能是模型组织注意力、处理长距离上下文的一种机制。过度压制 attention score 的极端行为，未必总是对长上下文有利。
+      </p>
+    </section>
+
+    <section id="engineering">
+      <h2>对训练和产品的工程启发</h2>
+      <table>
+        <thead><tr><th>问题</th><th>错误做法</th><th>更稳的做法</th></tr></thead>
+        <tbody>
+          <tr><td>何时测长上下文</td><td>模型预训练结束后才做 64K extension</td><td>在预训练 5%-20% 阶段抽 checkpoint 做小规模 context extension probe。</td></tr>
+          <tr><td>如何评估架构组件</td><td>只做单组件 ablation</td><td>对 QK norm、GQA、SWA、pretraining context length 做组合消融。</td></tr>
+          <tr><td>如何看训练曲线</td><td>只看 loss / perplexity / 短 benchmark</td><td>加入长文档检索、needle-in-haystack、跨段 QA、长代码库理解等直接任务。</td></tr>
+          <tr><td>如何迁移 recipe</td><td>把 Llama 上有效的 extension recipe 直接套到其他架构</td><td>先做低成本架构可扩展性探针，再决定是否投入完整 long-context midtraining。</td></tr>
+          <tr><td>如何诊断失败</td><td>只看最终 accuracy</td><td>跟踪 attention sink、跨距离 attention entropy、远距离 retrieval success 和位置分桶表现。</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout blue">
+        <strong>对 agent / RAG 的含义：</strong>如果底层模型的长上下文路由能力已经被架构压缩，外部 memory、retrieval、tool use 可以缓解，但不能完全替代模型内部对长输入的稳定注意力分配。长轨迹 agent、长文档 RAG 和代码库级理解都应该把 base architecture 的 long-context extensibility 当成选型指标。
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>局限和容易误读的地方</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 规模仍是 7B 级</h3>
+          <span>结论对 controlled study 很强，但不能自动外推到 70B、MoE、hybrid attention 或闭源 frontier 模型。</span>
+        </div>
+        <div class="card">
+          <h3>2. 训练 token 量低于完整商用模型</h3>
+          <span>150B tokens 足以做受控消融，但不是完整 foundation model 的训练规模。</span>
+        </div>
+        <div class="card">
+          <h3>3. 模型不是聊天模型</h3>
+          <span>GitHub README 提醒这些 checkpoint 仍处于较早预训练阶段，几乎没有 instruction-format data，不适合按聊天能力评价。</span>
+        </div>
+        <div class="card">
+          <h3>4. Benchmark 不等于产品场景</h3>
+          <span>长上下文 benchmark 能暴露结构性问题，但真实产品还受检索、prompt 结构、工具调用和后训练影响。</span>
+        </div>
+        <div class="card">
+          <h3>5. Qwen / RULER 是重要反例提醒</h3>
+          <span>线程回复中有人指出 Qwen3 在使用 QK norm、较少 KV heads 和较短预训练上下文的情况下仍有很强 RULER 表现。作者回应认为可能来自更好的 extension recipe、benchmark 适配、RULER 本身差异，或多因素叠加；这说明论文结论不能简化成“一见到某个组件就判死刑”。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断</h2>
+      <p>
+        我认为这篇论文最重要的价值是给模型研发流程加了一个架构 gate：如果目标产品依赖长上下文，不能等模型训练完才发现不可扩展。需要在架构选型阶段就把长上下文 probe、组合消融和 attention diagnostics 放进去。
+      </p>
+      <p>
+        推文里“most LLMs have architectural issues”的说法比较强，但方向是对的：很多主流模型的效率优化都作用在 attention 上。单看短上下文，它们可能是合理 tradeoff；放到长上下文，它们可能共同削弱模型在远距离检索、跨段组合和位置泛化上的能力。
+      </p>
+      <div class="callout warn">
+        <strong>最终 takeaway：</strong>长上下文不是一个 context length 参数，而是一种可扩展性属性。它必须在 architecture review、pretraining probe、midtraining recipe 和 product eval 中连续验证。
+      </div>
+    </section>
+  </main>
+    <section id="source" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <ul class="source-list">
+        <li>X 线程：Gabriele Berton 写道，这是一篇 AllenAI 和 CMU 关于如何为长上下文理解预训练 LLM 的论文，并评价实验设置可信、发现有意思；后续帖把论文压缩成四点工程建议：不要使用 QK norm、不要使用 GQA、不要使用 sliding window attention、并尽量用更长序列做预训练。</li>
+        <li>配图：确认论文标题为 <em>Cracks in the Foundation: Seemingly Minor Architectural Choices Impact Long Context Extension</em>，作者来自 Allen Institute for AI、Carnegie Mellon University、University of Washington，部分作者当前在 Microsoft SuperIntelligence。</li>
+        <li>官方论文页：<code>https://allenai.org/papers/olmpool</code>。</li>
+        <li>官方博客：<code>https://allenai.org/blog/olmpool</code>。</li>
+        <li>代码与模型：<code>https://github.com/allenai/olmpool</code> 与 Hugging Face <code>allenai/olmpool</code> collection。</li>
+        <li>边界：本次已通过 <code>opencli twitter thread</code> 读取主线程及部分回复。线程中关于 Qwen / RULER 的讨论属于作者和回复者的推测性解释，本文只把它作为“外推风险”参考，不当作论文结论。</li>
+      </ul>
+      <figure class="figure">
+        <img src="cracks-foundation-long-context-assets/paper-title.jpg" alt="Paper title screenshot for Cracks in the Foundation" />
+        <figcaption>主帖配图：论文标题和作者信息。本文把它作为论文识别证据，不直接从图片推断实验结果。</figcaption>
+      </figure>
+    </section>
+
+
+  <footer>
+    <p>本文正文优先保留结论、机制、边界和可迁移启发；资料索引只作为复查附录。</p>
+  </footer>
+</body>
+</html>

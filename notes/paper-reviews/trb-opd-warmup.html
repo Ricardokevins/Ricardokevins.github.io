@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TRB：把 OPD 的早期采样问题改写成受约束的教师引导</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --surface: #fffdf8;
+      --surface-2: #e9edf0;
+      --ink: #20242a;
+      --muted: #5d6871;
+      --line: #d5d9d4;
+      --line-strong: #98a79d;
+      --accent: #1f6a72;
+      --accent-2: #8a6124;
+      --blue: #315f8f;
+      --green: #2f7159;
+      --red: #a24a3f;
+      --gold: #8b6723;
+      --soft-blue: #dce8f4;
+      --soft-green: #dfece5;
+      --soft-red: #f0ded9;
+      --soft-gold: #efe3c4;
+      --shadow: 0 18px 42px rgba(34, 39, 46, 0.1);
+      --radius: 8px;
+      --max: 1220px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    p { margin: 10px 0; }
+    strong { color: #15191d; }
+    code { font-family: var(--mono); }
+    ul { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+
+    header,
+    main,
+    footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: calc(72vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 90px) 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(36px, 5.7vw, 72px);
+      font-weight: 760;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 42px);
+      font-weight: 760;
+    }
+
+    h3 {
+      margin: 22px 0 9px;
+      font-size: 19px;
+      font-weight: 820;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.62;
+    }
+
+    .hero-note,
+    .card,
+    .metric,
+    .callout,
+    .flow-step,
+    .table-wrap,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+    }
+
+    .hero-note {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-note b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-note span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 18px 0 4px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    main { padding-bottom: 64px; }
+
+    section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+
+    .section-lead {
+      max-width: 950px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+      line-height: 1.68;
+    }
+
+    .grid-2,
+    .grid-3,
+    .metric-grid,
+    .flow {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card,
+    .metric,
+    .flow-step {
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card b,
+    .flow-step b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.02;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warning { border-left-color: var(--red); }
+    .callout.good { border-left-color: var(--green); }
+
+    .formula {
+      max-width: 100%;
+      margin: 16px 0;
+      padding: 14px 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(233, 237, 240, 0.68);
+      font-family: var(--mono);
+      line-height: 1.55;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 18px 0;
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      background: var(--surface);
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #172026;
+      background: rgba(233, 237, 240, 0.86);
+      font-weight: 820;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      margin: 3px 5px 3px 0;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: var(--soft-blue);
+      color: #244b70;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    figure {
+      margin: 20px 0;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    figure img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .source-list a,
+    .source-list span {
+      display: block;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .source-list small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        align-items: start;
+        padding-top: 42px;
+      }
+
+      .metric-grid,
+      .grid-3,
+      .flow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      header,
+      main,
+      footer {
+        width: min(100% - 24px, var(--max));
+      }
+
+      .grid-2,
+      .grid-3,
+      .metric-grid,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      h1 { font-size: clamp(31px, 10vw, 44px); }
+      table { min-width: 640px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div>
+      <div class="kicker">Paper Note · 2026-06-02</div>
+      <h1>TRB：把 OPD 的早期采样问题改写成受约束的教师引导</h1>
+      <p class="subtitle">Trust-Region Behavior Blending 的价值不在于发明新的蒸馏 loss，而是精准处理 on-policy distillation 的启动分布问题：早期 student rollout 太弱，但直接交给 teacher 又会偏离 student 分布。TRB 用 student-centered KL trust region 暂时扶住 rollout，再在 warmup 结束后撤掉。</p>
+      <nav class="toc" aria-label="Page sections">
+        <a href="#takeaway">核心判断</a>
+        <a href="#problem">问题背景</a>
+        <a href="#mechanism">机制拆解</a>
+        <a href="#results">实验证据</a>
+        <a href="#insight">工程含义</a>
+        <a href="#limits">边界风险</a>
+        <a href="#sources">资料索引</a>
+      </nav>
+    </div>
+    <aside class="hero-note">
+      <b>Reading Handle</b>
+      <span>这篇工作更像 OPD recipe 的 warmup 组件，而不是通用后训练新范式。它回答的是一个窄但重要的问题：如何在不放弃 on-policy 目标的前提下，让第一批 prefix 不至于太差。</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>TRB 的核心贡献是把 <strong>teacher guidance</strong> 从一个二选一问题变成一个可控预算问题：不是完全用 student rollout，也不是完全用 teacher rollout，而是在离当前 student 不超过局部 KL 预算的范围内，选一个尽量接近 teacher 的 behavior policy。</p>
+      <p>这个设计很克制。论文不改变 per-prefix reverse-KL OPD loss，不做 teacher forcing，不替换 token，不长期保持 teacher 混合；它只在 warmup 阶段改变采样策略，并把 KL 预算线性退火到 0。换句话说，TRB 是给 OPD 加了一个“受约束的起步辅助”，不是把 OPD 改成离线蒸馏。</p>
+      <div class="metric-grid">
+        <div class="metric">
+          <strong>33.2</strong>
+          <span>Qwen3-1.7B ← Qwen3-8B 设置下 TRB 的平均 pass@1；vanilla OPD 为 32.3。</span>
+        </div>
+        <div class="metric">
+          <strong>44.4</strong>
+          <span>Qwen3-0.6B ← Qwen3-4B 设置下 TRB 的平均 pass@1；vanilla OPD 为 44.0。</span>
+        </div>
+        <div class="metric">
+          <strong>0</strong>
+          <span>warmup 结束后 KL 预算退火到 0，rollout 回到纯 student sampling。</span>
+        </div>
+        <div class="metric">
+          <strong>15 页</strong>
+          <span>arXiv v1 短论文，证据集中在两个 Qwen3 数学推理蒸馏设置。</span>
+        </div>
+      </div>
+      <div class="callout good">
+        <p><strong>最重要的 insight：</strong>OPD 的 early rollout 不是普通噪声，而是决定 teacher supervision 落在哪些状态上的训练分布问题。早期 prefix 如果已经 off-task，teacher 在那些 prefix 上再给分布，信号也可能低效。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：OPD 为什么会卡在开头</h2>
+      <p>On-policy distillation 的动机是修正离线蒸馏的 prefix mismatch。传统 KD 或 teacher-generated data 会让 student 在 teacher 或数据集 prefix 上学习，但推理时 student 会访问自己的 prefix 分布；训练和推理状态不一致，容易形成 exposure bias。</p>
+      <p>OPD 让 student 自己 rollout，然后在 student 实际访问的 prefix 上匹配 teacher。这保留了 on-policy 优点，但代价是早期 student 太弱。第一批 rollout 可能格式崩坏、离题、推理状态低质，teacher supervision 被迫落在这些弱 prefix 上。</p>
+      <div class="grid-3">
+        <div class="card">
+          <b>纯 student rollout</b>
+          <p>保持 on-policy，但 early prefix 质量差，teacher signal 可能被放在低价值状态上。</p>
+        </div>
+        <div class="card">
+          <b>纯 teacher rollout</b>
+          <p>prefix 更干净，但训练分布不再是 student 自己会访问的分布，重新引入 off-policy 问题。</p>
+        </div>
+        <div class="card">
+          <b>TRB 方案</b>
+          <p>只在 warmup 期间让 behavior policy 向 teacher 靠近，并用 student-centered KL 限制偏离幅度。</p>
+        </div>
+      </div>
+      <p>所以 TRB 要处理的不是“teacher 强不强”这个粗问题，而是“早期能不能用有限 off-policy 预算买到更有学习价值的 prefix”。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：在 student 信任域内找最像 teacher 的采样策略</h2>
+      <p>设 student policy 为 \(\pi_S\)，teacher policy 为 \(\pi_T\)，TRB 在每个 prefix \(h\) 上构造一个 behavior policy \(\mu\)。它解的是下面这个局部约束优化问题：</p>
+      <div class="formula">
+        \[
+        \mu^*(\cdot | h) = \arg\min_\mu D_{\mathrm{KL}}(\mu \| \pi_T)
+        \quad \text{s.t.} \quad
+        D_{\mathrm{KL}}(\mu \| \pi_S) \le \varepsilon.
+        \]
+      </div>
+      <p>直觉是：在不离开 student 太远的情况下，尽量向 teacher 靠近。这个问题的闭式解是 student 和 teacher 的几何混合：</p>
+      <div class="formula">
+        \[
+        \mu_\beta(a | h) =
+        \frac{\pi_S(a | h)^{1-\beta}\pi_T(a | h)^\beta}{Z_\beta(h)}.
+        \]
+      </div>
+      <p>\(\beta\) 控制向 teacher 移动的强度。实现上选择满足 \(D_{\mathrm{KL}}(\mu_\beta \| \pi_S) \le \varepsilon\) 的最大 \(\beta\)。论文附录证明这个 KL 随 \(\beta\) 单调不减，所以可以二分搜索。</p>
+      <div class="flow">
+        <div class="flow-step">
+          <b>输入</b>
+          <p>当前 prefix、student next-token distribution、teacher next-token distribution。</p>
+        </div>
+        <div class="flow-step">
+          <b>约束</b>
+          <p>behavior policy 对 student 的 KL 不超过当前预算 \(\varepsilon_k\)。</p>
+        </div>
+        <div class="flow-step">
+          <b>采样</b>
+          <p>用 \(\mu_\beta\) 生成 warmup rollout prefix，而不是直接用 teacher token。</p>
+        </div>
+        <div class="flow-step">
+          <b>退火</b>
+          <p>\(\varepsilon_k = \varepsilon_0(1-k/K)\)，warmup 结束后回到 pure student rollout。</p>
+        </div>
+      </div>
+      <p>这也是 TRB 和 SKD、SFT warmup、fixed-epsilon blending 的关键区别：TRB 不直接替换 token，也不先做一段离线 SFT；它只临时改变 rollout behavior，并且这个改变必须被 student-centered KL 预算约束。</p>
+    </section>
+
+    <section id="results">
+      <h2>实验证据：小幅但一致，不能读成压倒性突破</h2>
+      <p class="section-lead">论文的证据集中在两个 Qwen3 math distillation setting。主表显示 TRB 在 average 上最好，但并非每个单项 benchmark 都赢，因此更准确的判断是：TRB 是一个稳定的 recipe 改进，而不是大幅能力跃迁。</p>
+      <figure>
+        <img src="trb-opd-warmup-assets/main-results.png" alt="TRB 与 OPD、Veto、SKD、temperature warmup、SFT warmup、fixed-epsilon blending 的主表 pass@1 对比">
+        <figcaption>主表：TRB 在两个模型对的平均 pass@1 上最高，但部分单项仍由 vanilla OPD、Veto 或 fixed-epsilon blending 领先。</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>设置</th>
+              <th>TRB</th>
+              <th>Vanilla OPD</th>
+              <th>相对判断</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Qwen3-1.7B-Base ← Qwen3-8B</td>
+              <td>Avg 33.2</td>
+              <td>Avg 32.3</td>
+              <td>平均提升约 0.9 点；AIME25 上不是最好。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-0.6B-Base ← Qwen3-4B</td>
+              <td>Avg 44.4</td>
+              <td>Avg 44.0</td>
+              <td>平均提升约 0.4 点；AMC 上 Veto 更高。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <figure>
+        <img src="trb-opd-warmup-assets/warmup-ablation.jpg" alt="不同 early training 干预的训练曲线，显示早期快起步不一定带来最终最好结果">
+        <figcaption>早期训练曲线：SFT warmup、SKD、fixed-epsilon 等都可能让曲线更快上升，但 early bump 不稳定地转化为最终收益。</figcaption>
+      </figure>
+      <figure>
+        <img src="trb-opd-warmup-assets/diagnostics.png" alt="TRB warmup 期间 teacher token-mean entropy 更低，warmup 后与 vanilla OPD 接近但 pass@1 曲线保持更高">
+        <figcaption>诊断图：TRB 在 warmup 阶段访问到的 prefix 上 teacher entropy 更低；warmup 后 entropy 与 vanilla OPD 接近，但 pass@1 曲线仍略高。</figcaption>
+      </figure>
+      <p>论文附录还给了 sweep-level 结果：两个设置中最强 TRB setting 高于最强 SKD setting，且很多 SKD 配置落在 TRB 区间下方。这支持一个更细的结论：直接 token injection 或更快 early rise 不等于更好的最终 checkpoint。</p>
+    </section>
+
+    <section id="insight">
+      <h2>工程含义：rollout 分布本身就是后训练控制面</h2>
+      <p>TRB 的启发是：很多 OPD / online KD / RLVR pipeline 的问题不一定出在 objective，而是出在 early sampling distribution。弱 student 早期访问的状态太差，reward 或 teacher distribution 再准确，也可能无法形成高质量学习轨迹。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>应该借鉴的地方</b>
+          <p>把 teacher guidance 写成显式 KL 预算，分清 rollout policy 和 training objective，只在最需要的 early phase 使用。</p>
+        </div>
+        <div class="card">
+          <b>不要误读的地方</b>
+          <p>TRB 不是证明“更多 teacher 参与一定更好”。fixed-epsilon blending 更弱，说明持续 off-policy guidance 可能伤害后期。</p>
+        </div>
+      </div>
+      <p>如果要在自己的后训练系统里尝试，我会把它当成一个 warmup module：保持 OPD loss 不变，对比 vanilla OPD、SFT warmup、temperature warmup、SKD 和 fixed-epsilon blending；不要只看 early curve，而要看同一 checkpoint-selection protocol 下的最终平均表现。</p>
+      <div class="callout">
+        <p><strong>适用场景：</strong>student 早期 rollout 经常 off-task、格式崩或推理轨迹跑偏；teacher 明显更强；系统能承受 warmup 阶段 teacher 在线 decoding；任务有可自动验证的 correctness signal。</p>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语边界</h2>
+      <div class="grid-2">
+        <div class="card">
+          <b>OPD</b>
+          <p>On-policy distillation。student 自己生成 trajectory，再在这些 prefix 上匹配 teacher，目标是减少训练和推理时 prefix 分布不一致。</p>
+        </div>
+        <div class="card">
+          <b>Behavior policy</b>
+          <p>用于采样 rollout 的策略。TRB 改的是 behavior policy，不是 per-prefix distillation loss。</p>
+        </div>
+        <div class="card">
+          <b>Student-centered KL trust region</b>
+          <p>限制 \(\mu\) 相对 \(\pi_S\) 的偏离，避免 teacher guidance 直接把采样推到 student 不会访问的远端分布。</p>
+        </div>
+        <div class="card">
+          <b>Warmup annealing</b>
+          <p>初始允许较多 teacher guidance，随后把 KL 预算退火到 0。这个退火是 TRB 优于 fixed-epsilon blending 的关键。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <p>第一，证据域很窄。作者明确把研究限定在两个 Qwen3-Base student-teacher pair、数学推理任务和 correctness-based evaluation protocol 上；不能直接外推到代码、开放问答、agent trajectory 或主观生成任务。</p>
+      <p>第二，收益幅度不大。主表平均提升是 0.9 点和 0.4 点级别，这足以说明 recipe 有价值，但不足以支持“范式突破”。</p>
+      <p>第三，系统成本真实存在。vanilla OPD 可以先 student rollout，再 batch 计算 teacher logprobs；TRB 要在 decoding 时同时查询 student 和 teacher，并维护 teacher weights 与 KV cache。论文认为 teacher FLOP 数量级相近，但在线 decoding 的 wall-clock 和 peak memory 压力更高。</p>
+      <p>第四，TRB 依赖 teacher-student gap 的形态。如果 teacher 太远，KL trust region 可能只能轻微移动；如果 teacher 和 student 太近，收益又可能很小；如果任务没有稳定 verifier，warmup prefix 是否真的更有用也难以判断。</p>
+      <div class="callout warning">
+        <p><strong>我的结论：</strong>TRB 是一个值得在 OPD 系统里尝试的 warmup 控制面，尤其适合 early rollout 质量明显差的数学或可验证推理任务。但它目前不是通用后训练方法论，只是把一个被忽略的启动分布问题处理得比较干净。</p>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本笔记基于 X thread、arXiv 论文、Hugging Face paper 元数据、PDF 正文和线程配图交叉核验。X 页面公开抓取不稳定时，线程正文采用本机登录态下的 OpenCLI Twitter adapter；论文与图表以 arXiv PDF 和本地化配图为主证据。回复区里有一个外部注册页链接，与 TRB 技术主线无关，未纳入核心分析。</p>
+      <div class="source-list">
+        <a href="https://x.com/AMyashka/status/2061431653797425288">AMyashka X thread：TRB / OPD warmup 解读
+          <small>7 条 thread，包含主张、实验数值摘要和配图短链。</small>
+        </a>
+        <a href="https://arxiv.org/abs/2605.31159">arXiv:2605.31159 · Trust-Region Behavior Blending for On-Policy Distillation
+          <small>论文 v1，发布于 2026-05-29；PDF 15 页。</small>
+        </a>
+        <a href="https://huggingface.co/papers/2605.31159">Hugging Face Papers · 2605.31159
+          <small>论文页元数据、摘要和关键词。</small>
+        </a>
+        <span>核验命令摘要
+          <small><code>opencli twitter thread ... --limit 100 -f json</code>；<code>opencli twitter profile AMyashka -f json</code>；<code>opencli arxiv paper 2605.31159 -f json</code>；<code>opencli hf paper 2605.31159 -f json</code>；PDF 下载后使用 <code>pdfinfo</code>、<code>pdftotext -layout</code> 和图表渲染核对。</small>
+        </span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

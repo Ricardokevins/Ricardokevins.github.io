@@ -1,8 +1,6 @@
 # ETS: Energy-Guided Test-Time Scaling for Training-Free RL Alignment
 
-[![arXiv](https://img.shields.io/badge/arXiv-2601.21484-b31b1b.svg)](https://arxiv.org/abs/2601.21484)
-[![Zhihu](https://img.shields.io/badge/Zhihu-ETS-blue)](https://zhuanlan.zhihu.com/p/2001982062979215914)
-[![X](https://img.shields.io/badge/X-Article-black)](https://x.com/sheriyuo/status/2042072816712085577)
+[arXiv](https://arxiv.org/abs/2601.21484) · [Zhihu](https://zhuanlan.zhihu.com/p/2001982062979215914) · [X Article](https://x.com/sheriyuo/status/2042072816712085577)
 
 ## News
 
@@ -24,7 +22,7 @@ For RL objective, the optimal policy admits a closed-form structure. ETS leverag
 - a **reference transition** given by a base model $p_{\mathrm{ref}}$, and  
 - an **energy term** that is a conditional expectation of exponentiated rewards.
 
-![](main_fig.png)
+> Figure note: the upstream README references `main_fig.png`, but that image was not included in this local snapshot.
 
 ## Setup
 Run the following script to setup environment.

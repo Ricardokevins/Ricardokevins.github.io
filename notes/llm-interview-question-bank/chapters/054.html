@@ -33,7 +33,16 @@
       </div>
       <nav class="toc-group" aria-label="本章目录">
         <div class="toc-group-title">本章小节</div>
-        <span class="toc-link">本章无更多小节</span>
+        <a class="toc-link" href="#h-0859">一、先把 RAG 看成一条证据流水线</a>
+        <a class="toc-link" href="#h-0860">二、离线侧：chunking、embedding 与索引</a>
+        <a class="toc-link" href="#h-0861">三、在线侧：BM25、向量、混合召回与重排</a>
+        <a class="toc-link" href="#h-0862">四、上下文组织、引用与 faithfulness</a>
+        <a class="toc-link" href="#h-0863">五、权限过滤、更新机制与系统边界</a>
+        <a class="toc-link" href="#h-0864">六、GraphRAG 与知识增强的扩展</a>
+        <a class="toc-link" href="#h-0867">七、纠错型 RAG 与 evidence verifier</a>
+        <a class="toc-link" href="#h-0868">八、企业知识库的缓存、版本和审计</a>
+        <a class="toc-link" href="#h-0865">九、常见误区与复盘清单</a>
+        <a class="toc-link" href="#h-0866">十、面试追问链路</a>
       </nav>
       <nav id="toc" aria-label="全部章节">
 <div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
@@ -157,7 +166,7 @@
 </nav>
     </aside>
     <main class="content">
-      <nav class="chapter-nav"><a href="053.html">← 53. 模块五：推理优化、Serving 与部署工程知识点</a><a href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点 →</a></nav>
+
       <article class="chapter-page">
         <section class="chapter" id="section-h-0858" data-category="answers" data-title="模块六：RAG、检索、重排与知识增强知识点">
 <h2 id="h-0858"><a class="anchor-link" href="#h-0858" aria-label="跳转到本节">#</a>模块六：RAG、检索、重排与知识增强知识点</h2>
@@ -185,19 +194,30 @@
 
 <h3 id="h-0864"><a class="anchor-link" href="#h-0864" aria-label="跳转到本节">#</a>六、GraphRAG 与知识增强的扩展</h3>
 <p>GraphRAG 解决的是普通向量检索不擅长的结构化、多跳和全局归纳问题。向量检索擅长找“与 query 相似的段落”，但用户问“某公司近三年战略变化背后的关键人物和合作关系是什么”时，答案可能分散在多个文档、多个实体和多条关系里。GraphRAG 会抽取实体、关系、事件和社区，把文本块挂到图节点或边上；查询时先定位相关实体与子图，再做路径扩展、社区摘要或多跳证据聚合。它的优势是关系可解释、适合复杂知识依赖；代价是抽取成本、图谱噪声、更新复杂度和评估难度更高。面试里不要把 GraphRAG 神化，它是为关系密集型问题服务的增强层，不是向量检索的全面替代品。</p>
+<p>如果进一步细分，GraphRAG 通常有两类 query mode：local search 偏实体邻域和具体事实，适合问某个公司、人物、系统组件的关系；global search 偏社区摘要和全局主题，适合问“整个材料集合里有哪些主要风险/趋势/阵营”。这个区别很适合面试追问，因为它能说明你理解 GraphRAG 不是简单“建个图”，而是在不同问题类型下选择不同证据聚合方式。</p>
 
-<h3 id="h-0865"><a class="anchor-link" href="#h-0865" aria-label="跳转到本节">#</a>七、常见误区与复盘清单</h3>
+<h3 id="h-0867"><a class="anchor-link" href="#h-0867" aria-label="跳转到本节">#</a>七、纠错型 RAG 与 evidence verifier</h3>
+<p>Self-RAG、CRAG 和 verifier 型 RAG 的共同问题意识是：检索结果本身不一定可信。传统 RAG 往往默认 top-k 就是可用证据，但真实系统里会出现召回无关文档、旧版本文档、冲突文档、无权限文档和证据不足。纠错型 RAG 会在生成前加入 evidence verifier，判断证据是否 relevant、sufficient、fresh、authorized；如果证据不足，就触发 query rewrite、二次检索、扩大数据源、冲突说明或拒答。</p>
+<p>面试里可以把这套机制压成一条链：retrieve -> verify -> route -> generate -> cite -> post-verify。verify 不是只看相似度分数，还要看证据能否支撑具体断言。post-verify 则检查最终答案的每个关键句是否被引用支持。这样讲能把 RAG 从“找几段材料让模型答”提升到“证据质量控制系统”。代价也要说清楚：纠错链路增加延迟、judge 成本和错误传播风险，所以应按任务风险分层启用。</p>
+
+<h3 id="h-0868"><a class="anchor-link" href="#h-0868" aria-label="跳转到本节">#</a>八、企业知识库的缓存、版本和审计</h3>
+<p>企业 RAG 的缓存不能只按 query 字符串命中。两个用户问同一句话，权限不同，能看的证据就不同；同一用户隔一天问同一句话，索引版本和文档版本可能已经变了。因此缓存 key 至少要包含 tenant、权限摘要、index_version、document_version watermark、retrieval config、prompt version 和 model id。高风险场景宁可牺牲命中率，也不能跨租户、跨权限或跨版本复用答案。</p>
+<p>日志也不应只保留最终问答。可复现 trace 至少要包含 raw query、rewrite 后的 query、检索配置、top-k 文档 ID 与分数、rerank 后排序、最终塞进 prompt 的 evidence ids、模型和 prompt 版本、生成答案、citation、verifier 结果、拒答原因、延迟、token 成本和 cache hit。没有这些信息，线上 bad case 只能靠猜；有了这些信息，才能把失败样本回流到召回、重排、引用和权限的回归评测集中。</p>
+
+<h3 id="h-0865"><a class="anchor-link" href="#h-0865" aria-label="跳转到本节">#</a>九、常见误区与复盘清单</h3>
 <ul>
 <li><strong>误区一：只调 prompt。</strong>如果正确证据没有进入 top-k，再好的 prompt 也只能组织错误材料。</li>
 <li><strong>误区二：只看最终答案。</strong>要分开看 retrieval recall、rerank MRR/nDCG、context 利用率、citation faithfulness 和 answer correctness。</li>
 <li><strong>误区三：chunk 越大越安全。</strong>大 chunk 会带来主题漂移和窗口浪费，真正重要的是语义边界、overlap 与后处理。</li>
 <li><strong>误区四：向量检索取代关键词检索。</strong>生产系统里错误码、合同编号、API 名称、专有名词通常仍需要 BM25 或过滤条件。</li>
 <li><strong>误区五：有引用就可信。</strong>引用必须能支持具体句子，否则只是“看起来有来源”。</li>
+<li><strong>误区六：缓存只看 query。</strong>RAG 缓存还必须看权限、索引版本、文档版本、prompt 版本和模型版本。</li>
+<li><strong>误区七：GraphRAG 一定更高级。</strong>如果问题只是局部事实问答，普通 hybrid retrieval + rerank 往往更便宜、更稳。</li>
 </ul>
 <p>复盘一个 RAG 问题时，可以按这张清单走：用户问题是否被正确改写；权限过滤是否漏掉或误杀；正确文档是否在库中且版本正确；chunk 是否包含完整证据；BM25、向量、hybrid 的 top-k 是否召回正确证据；reranker 是否把它排到前面；context packing 是否把证据放在模型能注意到的位置；生成 prompt 是否要求基于证据回答并允许拒答；引用是否逐句可验证；线上日志是否能复现这次链路。这个清单比“换个 embedding 模型试试”更像工程诊断。</p>
 
-<h3 id="h-0866"><a class="anchor-link" href="#h-0866" aria-label="跳转到本节">#</a>八、面试追问链路</h3>
-<p>如果面试官从“什么是 RAG”继续追问，可以按链路展开：先讲端到端 pipeline；再解释 chunk size、overlap 和 embedding 如何影响召回；接着比较 BM25、vector、hybrid 的适用边界；然后说明 retriever 与 reranker 的速度、成本和指标权衡；再讲 context packing、Lost in the Middle、引用和 faithfulness；随后补上权限过滤、增量更新、索引版本和日志可观测性；最后讨论 RAG vs fine-tuning、RAG vs long context、GraphRAG 适合什么问题。一个成熟回答的重点不是背工具名，而是能把每个组件的输入、输出、失败模式和评估指标讲清楚。</p>
+<h3 id="h-0866"><a class="anchor-link" href="#h-0866" aria-label="跳转到本节">#</a>十、面试追问链路</h3>
+<p>如果面试官从“什么是 RAG”继续追问，可以按链路展开：先讲端到端 pipeline；再解释 chunk size、overlap、Contextual Retrieval 和 parent-child 如何影响召回；接着比较 BM25、vector、hybrid、ColBERT / cross-encoder rerank 的适用边界；然后说明 context packing、Lost in the Middle、引用和 faithfulness；随后补上权限过滤、增量更新、缓存版本和 trace 可观测性；最后讨论 RAG vs fine-tuning、RAG vs long context、GraphRAG、Self-RAG/CRAG 适合什么问题。一个成熟回答的重点不是背工具名，而是能把每个组件的输入、输出、失败模式、评估指标和启用代价讲清楚。</p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="053.html">← 53. 模块五：推理优化、Serving 与部署工程知识点</a><a href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点 →</a></nav>

@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RHELM：长期记忆评测为什么必须超越静态对话</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1e9;
+      --surface: #fffdf8;
+      --surface-2: #edf1ec;
+      --ink: #1f2529;
+      --muted: #5d6870;
+      --line: #d4dbd2;
+      --line-strong: #9ca99c;
+      --accent: #1f6678;
+      --accent-2: #8a5a22;
+      --accent-3: #3e6a53;
+      --warn: #9a4f26;
+      --soft-blue: #ddebf0;
+      --soft-green: #e1ece5;
+      --soft-amber: #efe3c7;
+      --soft-red: #efded8;
+      --shadow: 0 18px 44px rgba(31, 37, 41, 0.1);
+      --radius: 8px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(31, 37, 41, 0.032) 1px, transparent 1px) 0 0 / 40px 40px,
+        linear-gradient(0deg, rgba(31, 37, 41, 0.022) 1px, transparent 1px) 0 0 / 40px 40px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 102, 120, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    code { font-family: var(--mono); }
+    strong { color: #14191d; }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 78px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+      gap: clamp(24px, 4vw, 52px);
+      align-items: end;
+      min-height: calc(74vh - var(--notes-shell-height, 46px));
+      padding: clamp(34px, 6vw, 84px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 820;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 940px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.8vw, 74px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 860px;
+      margin-top: 22px;
+      color: #354047;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.66;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .step,
+    .source-list a,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.93);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-panel b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .fact {
+      min-height: 94px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(237, 241, 236, 0.75);
+    }
+
+    .fact b {
+      display: block;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1.05;
+    }
+
+    .fact span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    main {
+      display: grid;
+      gap: clamp(36px, 6vw, 70px);
+      padding-top: clamp(34px, 5vw, 60px);
+    }
+
+    section {
+      padding-top: 4px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-lead {
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 17px;
+    }
+
+    .card h3,
+    .step h3 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    .card p,
+    .step p {
+      color: #3f4a51;
+    }
+
+    .metric {
+      padding: 17px;
+      background: rgba(255, 253, 248, 0.82);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-family: var(--serif);
+      font-size: 34px;
+      line-height: 1.04;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 18px;
+      border-left: 5px solid var(--accent-3);
+      box-shadow: none;
+      background: var(--soft-green);
+    }
+
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: var(--soft-amber);
+    }
+
+    .steps {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .step .label {
+      color: var(--accent);
+      font-weight: 820;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: #2e3940;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #354047;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 16px;
+      color: var(--ink);
+      border-bottom: 0;
+    }
+
+    .source-list span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 880px) {
+      .hero,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: 0;
+      }
+
+      .step {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: min(100% - 24px, 1180px); }
+      .fact-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 36px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Paper Note · 2026-06-02</div>
+        <h1>RHELM：长期记忆评测为什么必须超越静态对话</h1>
+        <p class="lead">RHELM 的价值不在于把上下文做得更长，而在于把个人助手的记忆问题重新定义成动态用户状态、异构资料流和冲突请求的联合评测：真正困难的不是“找到一句旧话”，而是在一年轨迹里判断用户现在是谁、哪些信息仍有效、哪些请求表面合理但与记忆矛盾。</p>
+      </div>
+
+      <aside class="hero-panel">
+        <b>Benchmark Snapshot</b>
+        <p>Microsoft / Renmin University 论文与公开数据集，围绕 10 个合成 persona、一年模拟轨迹、对话、邮件、附件和 1,305 个 QA 对构造长期记忆压力测试。</p>
+        <div class="fact-grid">
+          <div class="fact"><b>10</b><span>合成用户画像与长期轨迹</span></div>
+          <div class="fact"><b>1,305</b><span>已发布 QA pairs</span></div>
+          <div class="fact"><b>1,053</b><span>Markdown / HTML 附件</span></div>
+          <div class="fact"><b>38.1</b><span>项目页标注的最佳平均分</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <section id="takeaway">
+        <h2>核心判断</h2>
+        <p>RHELM 把长期记忆评测从“静态聊天记录检索”推进到“用户状态建模”。这一区别很关键：静态 benchmark 主要考查模型能不能在长文本里定位事实；RHELM 试图考查模型能不能跟踪一个人随时间变化的身份、偏好、关系、身体状态、物品和计划，并在当前问题出现时判断哪些历史信息仍然约束回答。</p>
+        <p>因此，它对 memory system 的要求比普通 RAG 更高。普通 RAG 可以把 conversation turns、邮件和附件都切成 chunk，再按 query 相似度召回；但用户真正问的问题往往需要跨天、跨来源、跨状态聚合。一个 chunk 命中并不等于记忆成立，因为正确答案可能依赖“先发生什么”“后来是否被更新”“附件表格里哪一行和聊天中哪件事共同约束当前请求”。</p>
+        <div class="callout">
+          <strong>最值得注意的 insight：</strong>RHELM 暴露的是 memory architecture 的统一性问题，而不是单纯 embedding recall 问题。它迫使系统同时维护 episodic memory、semantic/user-profile memory、document memory、temporal validity 和 conflict detection；只把所有材料塞进向量库，仍然会在 mixed、misleading、hallucination 和 cross-source aggregation 上失效。
+        </div>
+      </section>
+
+      <section id="problem">
+        <h2>问题背景：现有记忆评测太像“找针”</h2>
+        <p>很多长期上下文或长期对话评测，把历史记录看成一个事实仓库：问题问某个事实，模型在历史里找答案。这类设置有价值，但它低估了个人助手的真实难点。真实助手面对的是连续生活轨迹，用户会搬家、生病、换计划、改变偏好、产生新关系，也会上传报告、邮件、日记和表格。旧事实不是永久有效，外部资料也不是独立知识块。</p>
+        <p>RHELM 的出发点就是弥补这三类缺口：对话需要语义连贯和行为一致性，资料来源需要从单一聊天扩展到邮件/附件/报告，问题设计需要覆盖用户状态冲突，而不是只问显式事实。它特别强调 memory-conditioned misleading queries：用户提出一个看似自然的请求，但这个请求和自己的历史状态冲突，助手应该主动识别冲突，而不是机械服从。</p>
+
+        <figure>
+          <img src="rhelm-long-horizon-memory-assets/huggingpapers-root.jpg" alt="HuggingPapers 原帖配图，展示 RHELM 长期记忆 benchmark 的主题和主要信息">
+          <figcaption>HuggingPapers 原帖把 RHELM 概括为 Microsoft 发布的 long-horizon memory benchmark：现实化、演化式 persona，覆盖邮件、附件和对话，并包含 1,305 个 QA pairs。</figcaption>
+        </figure>
+      </section>
+
+      <section id="construction">
+        <h2>构造机制：LOOP 让 persona 不是静态设定</h2>
+        <p>RHELM 的生成流程可以理解为“先造一个会变化的人，再围绕这个人的生活轨迹生成材料和问题”。论文把核心模块称为 LOOP，即 pLan、rOllout、evOlve、Prune。它不是一次性写一堆背景设定，而是让 persona 在模拟的一年里不断经历计划、结果、状态变化和信息裁剪。</p>
+
+        <div class="steps">
+          <div class="step">
+            <div class="label">Plan</div>
+            <div>
+              <h3>计划生成</h3>
+              <p>基于当前 profile 生成短期安排和长期事件，例如社交、日常活动、职业进展、生活里程碑。这里决定了后续记忆不是随机对话拼接，而是围绕一个人的生活轨迹展开。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="label">Rollout</div>
+            <div>
+              <h3>事件展开</h3>
+              <p>对计划进行正负结果采样，形成每天的事件叙事。负面结果很重要，因为受伤、失败、迁移这类状态改变会让后续请求出现真实约束。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="label">Evolve</div>
+            <div>
+              <h3>画像演化</h3>
+              <p>把事件结果写回 profile，区分客观事实变化和内在偏好/状态变化。这样用户的“当前状态”不是由最近一句话决定，而是由长期历史累积形成。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="label">Prune</div>
+            <div>
+              <h3>周期裁剪</h3>
+              <p>为了避免长时间生成带来的语义漂移，系统周期性重新校准 profile，裁剪过时实体，再进入下一轮。这个环节对应真实记忆系统里的归档、合并和遗忘。</p>
+            </div>
+          </div>
+        </div>
+
+        <figure>
+          <img src="rhelm-long-horizon-memory-assets/rhelm-overview.png" alt="RHELM benchmark 构造流程图，包含 profile、LOOP、外部资料、对话和 QA 生成">
+          <figcaption>RHELM 的构造流程围绕 persona trajectory 展开：先生成并演化 profile，再同步生成对话、外部来源和 QA。这让问题可以引用长期状态，而不是只引用孤立文本。</figcaption>
+        </figure>
+      </section>
+
+      <section id="dataset">
+        <h2>数据结构：难点来自多源同步，不只是长度</h2>
+        <p>公开数据集的核心统计很直接：10 个 persona，629 个 conversation sessions，625 个 email 文件，1,053 个附件文件，1,305 个 QA pairs。附件以 Markdown / HTML 为主，邮件是文本文件，QA 以 JSONL 发布。每个 QA item 包含问题、答案、提问日期、问题类型、支撑证据和 fine-grained characteristics。</p>
+
+        <div class="grid-3">
+          <div class="metric"><b>629</b><span>conversation sessions，形成长期对话流</span></div>
+          <div class="metric"><b>625</b><span>email files，提供跨时间外部信息</span></div>
+          <div class="metric"><b>964 / 1,053</b><span>API tree 与 README 对附件计数存在口径差异；README 和项目页标注为 1,053</span></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>问题类型</th>
+                <th>数量</th>
+                <th>主要考点</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>attachment</td>
+                <td>249</td>
+                <td>附件事实、表格推理、结构定位和表格聚合。</td>
+              </tr>
+              <tr>
+                <td>mixed</td>
+                <td>210</td>
+                <td>对话和外部资料之间的上下文跳转、相对位置和修改后状态。</td>
+              </tr>
+              <tr>
+                <td>fact</td>
+                <td>207</td>
+                <td>多跳追踪、实体消歧、状态依赖属性和负约束。</td>
+              </tr>
+              <tr>
+                <td>hallucination</td>
+                <td>197</td>
+                <td>识别错误归因、虚构事实、偏好冲突和上下文矛盾。</td>
+              </tr>
+              <tr>
+                <td>aggregation</td>
+                <td>192</td>
+                <td>条件计数、趋势、极值和缺失检测。</td>
+              </tr>
+              <tr>
+                <td>temporal</td>
+                <td>185</td>
+                <td>间接识别、序列理解、长程综合和隐式时间查找。</td>
+              </tr>
+              <tr>
+                <td>misleading</td>
+                <td>65</td>
+                <td>用户显式请求和隐含状态冲突，要求主动拒绝或改写方案。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="note">一个小但重要的口径差异：论文摘要和正文说覆盖 27 个 memory characteristics；当前 GitHub README、项目页和 taxonomy 文档写的是 26 个 challenge characteristics。释放版 QA 的 characteristics 字段还包含若干 taxonomy 文档没有列出的标签，例如 Relationship Analysis、fuzzy_anchor、sequential_recall、multi_turn_synthesis。严谨引用时应区分论文叙述、项目页统计和数据文件实际标签。</p>
+      </section>
+
+      <section id="taxonomy">
+        <h2>术语解释：RHELM 真正在考什么</h2>
+        <p class="section-lead">这些术语很容易被误解成普通长上下文任务。更准确地说，它们分别对应 memory system 的不同失效面。</p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>State-Dependent Attribute</h3>
+            <p>指某个属性只在特定时间状态下成立。例如用户某天吃了什么、某个计划后来是否改变、某个健康状态是否仍约束当前行为。模型不能只找最新或最高频事实。</p>
+          </div>
+          <div class="card">
+            <h3>Memory-Conditioned Misleading Query</h3>
+            <p>指用户问题本身带有陷阱：显式请求看似合理，但与长期记忆里的用户状态冲突。正确行为不是迎合，而是提醒约束、拒绝危险或提出替代方案。</p>
+          </div>
+          <div class="card">
+            <h3>Mixed Query</h3>
+            <p>指答案需要同时利用对话历史和外部资料，例如用户先在对话中提到修改文档，再问文档某个相邻栏目或修改后的数值状态。孤立检索任何一边都不够。</p>
+          </div>
+          <div class="card">
+            <h3>Cross-Source Aggregation</h3>
+            <p>指多个答案片段分散在邮件、附件、表格和对话中，系统需要合并后才能回答。它暴露了 chunk 边界、表格结构和证据归因三类问题。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="results">
+        <h2>实验结果：长上下文和 RAG 都没有自然解决记忆</h2>
+        <p>项目页和论文的主结果都指向同一个判断：即使强模型和更长上下文可用，当前系统在 RHELM 上仍然低分。项目页特别标出 Claude Opus 4.5 在带外部来源设置下平均分为 38.1；这不是“模型很弱”的简单结论，而是说明 benchmark 把任务推到了 memory integration 的层面。</p>
+        <p>RAG 的失败模式尤其有启发。增加 top-k 并不总是提升效果，因为检索更多 evidence 会引入更多冲突、旧状态和无关片段；而 mixed 类型要求跨来源建立同一个用户事件链，单纯相似度召回很容易命中局部但错过结构。长上下文模型虽然能看到更多材料，但也会在证据归因和 hallucinated justification 上出问题：答案数字可能接近正确，解释却编造了不存在的支撑事实。</p>
+
+        <figure>
+          <img src="rhelm-long-horizon-memory-assets/rhelm-main-results.png" alt="RHELM 主实验结果表，比较 RAG、长上下文模型和 memory frameworks 在多种 QA 类型上的表现">
+          <figcaption>主实验结果显示：RAG、长上下文模型和 memory framework 都在 hallucination、misleading、mixed 与 cross-source aggregation 上暴露明显缺口。这里的关键不是单项 benchmark 排名，而是 failure pattern。</figcaption>
+        </figure>
+
+        <div class="callout warn">
+          <strong>工程含义：</strong>长期记忆系统不能只评估 recall@k 或“能否回答事实问题”。必须单独评估证据是否来自正确时间、是否仍有效、是否跨来源合并、是否能抵抗用户问题中的错误前提，以及是否在拒绝/纠正时给出可追溯依据。
+        </div>
+      </section>
+
+      <section id="system-design">
+        <h2>对记忆系统设计的启发</h2>
+        <p>RHELM 给出的方向不是“把向量库调大一点”，而是把个人助手记忆拆成可审计的层。一个更稳的系统至少需要四类状态：原始事件日志、随时间演化的用户 profile、可结构化查询的外部资料索引、以及回答时的 evidence graph。没有 evidence graph，系统很难知道答案是否由正确证据支撑；没有 temporal validity，系统会把旧偏好、旧地点、旧伤病和当前状态混在一起。</p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>先建事件账本，再建摘要记忆</h3>
+            <p>摘要 profile 适合快速 personalization，但不能替代原始事件账本。任何涉及健康、位置、关系、承诺、偏好变化的问题，都需要能回溯到具体日期和 evidence。</p>
+          </div>
+          <div class="card">
+            <h3>把附件当结构，不当纯文本</h3>
+            <p>RHELM 的 attachment 和 mixed 问题显示，Markdown / HTML 表格被切 chunk 后容易丢行、丢表头或丢相邻关系。真实系统需要保留文档结构、表格坐标和章节路径。</p>
+          </div>
+          <div class="card">
+            <h3>显式建模当前状态</h3>
+            <p>Misleading query 要求系统知道“用户现在是否适合做这件事”。这需要当前状态对象，而不是每次从所有历史文本临时猜。</p>
+          </div>
+          <div class="card">
+            <h3>把拒绝也纳入记忆评测</h3>
+            <p>长期助手不能只做有问必答。遇到用户请求和历史状态冲突时，拒绝、提醒、替代方案和证据说明都是 memory capability 的组成部分。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="limits">
+        <h2>边界与风险</h2>
+        <p>RHELM 的最大优势也是它的主要边界：数据是合成的。合成 persona 让研究者可以控制长期轨迹、支撑证据和答案唯一性，但它仍然不等于真实用户的噪声、隐私边界、许可撤回、模糊表达和多模态行为流。论文也明确没有覆盖视频、图像、音频和工具使用交互等模态。</p>
+        <p>另一个边界是评测依赖 LLM-as-judge。对于 hallucination 和 misleading 类型，精确匹配确实不够，所以 judge 有合理性；但这也意味着 benchmark 分数受到 judge prompt、模型偏好和长答案评分一致性的影响。RHELM 更适合作为系统 failure analysis 和回归测试集，而不是唯一的排行榜式结论。</p>
+        <p>最后，RHELM 目前公开了数据和评测框架，但生成管线在 README 中仍标注为待论文接收后释放。也就是说，我们可以复用 benchmark 做评测和诊断，但暂时不能完整复现其 persona/LOOP/外部资料生成过程。</p>
+      </section>
+
+      <section id="verdict">
+        <h2>当前判断</h2>
+        <p>如果要评估一个个人 AI 助手是否真的有长期记忆，RHELM 比普通 long-context QA 更接近真实需求。它迫使系统回答三个问题：它记住了什么，它怎么知道这些记忆仍然有效，它能否在用户请求和历史状态冲突时保护用户而不是顺从用户。</p>
+        <p>对工程团队来说，最有价值的用法不是直接追求 RHELM 分数，而是把它拆成 diagnostic suite：单独测试 temporal validity、cross-source aggregation、misleading refusal、hallucination correction、attachment structure retrieval 和 evidence attribution。只有这些模块都能被观测和回归，长期记忆才不只是“更长上下文 + 向量检索”的包装。</p>
+      </section>
+
+      <section id="sources" data-note-role="evidence-appendix">
+        <h2>证据边界与资料索引</h2>
+        <p>本笔记基于 HuggingPapers 原帖、Hugging Face Papers 页面、arXiv 论文、Microsoft RHELM GitHub 仓库、项目页源码和 Hugging Face dataset card / dataset API 交叉核验。X 原帖只作为入口，结论以论文、公开数据集和项目文档为主。</p>
+        <div class="source-list">
+          <a href="https://x.com/HuggingPapers/status/2061535298652147770">HuggingPapers X 原帖<span>入口材料：Microsoft long-horizon memory benchmark 推荐帖。</span></a>
+          <a href="https://huggingface.co/papers/2605.31086">Hugging Face Papers: Beyond Static Dialogues<span>论文页面与摘要元数据。</span></a>
+          <a href="https://arxiv.org/abs/2605.31086">arXiv: 2605.31086<span>论文当前版本、PDF 与实验表。</span></a>
+          <a href="https://huggingface.co/datasets/microsoft/RHELM">Hugging Face Dataset: microsoft/RHELM<span>公开 QA、conversation、emails、attachments 与 dataset card。</span></a>
+          <a href="https://github.com/microsoft/RHELM">GitHub: microsoft/RHELM<span>README、taxonomy、evaluation harness 和项目页源码。</span></a>
+          <a href="https://microsoft.github.io/RHELM/">RHELM Project Page<span>项目页统计、主结果表和可视化材料。</span></a>
+        </div>
+        <p class="note">已核验的主要命令包括：读取 X thread、解析 t.co 短链、读取 HF paper API / dataset API、下载 arXiv PDF、读取 GitHub README / taxonomy / evaluation code、抽样 QA JSONL。GitHub API 在匿名请求下出现 rate limit，因此仓库内容主要通过 raw 文件与 Hugging Face dataset API 校验。</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-Verified Distillation：模型如何把自验证变成后训练数据引擎</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --surface: #fffdf8;
+      --surface-2: #ece7dc;
+      --ink: #20242a;
+      --muted: #5e6870;
+      --line: #d4cabe;
+      --line-strong: #9b8d7f;
+      --accent: #1f6d75;
+      --accent-soft: #dcebed;
+      --blue: #315f8f;
+      --blue-soft: #dce7f4;
+      --green: #2f7059;
+      --green-soft: #dcebe3;
+      --gold: #8f6822;
+      --gold-soft: #f0e1bd;
+      --red: #a0493d;
+      --red-soft: #f1ddd8;
+      --shadow: 0 18px 42px rgba(38, 42, 48, 0.10);
+      --radius: 8px;
+      --max: 1220px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.032) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.024) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    p { margin: 10px 0; }
+    strong { color: #15191e; }
+    code { font-family: var(--mono); }
+
+    header,
+    main,
+    footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: calc(70vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 88px) 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.8vw, 72px);
+      font-weight: 760;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 42px);
+      font-weight: 760;
+    }
+
+    h3 {
+      margin: 22px 0 9px;
+      font-size: 19px;
+      font-weight: 820;
+    }
+
+    .subtitle {
+      max-width: 880px;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.62;
+    }
+
+    .hero-note,
+    .card,
+    .metric,
+    .callout,
+    .flow-step,
+    .table-wrap {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+    }
+
+    .hero-note {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-note b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-note span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 18px 0 4px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.76);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    main {
+      padding-bottom: 64px;
+    }
+
+    section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-lead {
+      max-width: 940px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+      line-height: 1.68;
+    }
+
+    .grid-2,
+    .grid-3,
+    .metric-grid,
+    .flow {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card,
+    .metric,
+    .flow-step {
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h3,
+    .flow-step h3 {
+      margin-top: 0;
+    }
+
+    .card p,
+    .flow-step p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .metric {
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--accent);
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .flow-step {
+      position: relative;
+      border-top: 4px solid var(--accent);
+    }
+
+    .flow-step:nth-child(2) { border-top-color: var(--blue); }
+    .flow-step:nth-child(3) { border-top-color: var(--green); }
+    .flow-step:nth-child(4) { border-top-color: var(--gold); }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      margin: 4px 6px 4px 0;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px;
+      border-left: 5px solid var(--blue);
+      box-shadow: none;
+    }
+
+    .callout.warning { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.good { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.gold { border-left-color: var(--gold); background: var(--gold-soft); }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 18px 0;
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      background: var(--surface);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .compact-list li {
+      margin: 8px 0;
+    }
+
+    .source-list {
+      margin: 14px 0 0;
+      padding-left: 20px;
+    }
+
+    .source-list li {
+      margin: 9px 0;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        min-height: 0;
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .metric-grid,
+      .flow,
+      .grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      header,
+      main,
+      footer {
+        width: min(100% - 24px, var(--max));
+      }
+
+      .grid-2,
+      .grid-3,
+      .metric-grid,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header>
+    <div>
+      <div class="kicker">Paper Note · 2026-05-28</div>
+      <h1>Self-Verified Distillation：模型如何把自验证变成后训练数据引擎</h1>
+      <p class="subtitle">Tony Lee 与 Percy Liang 这篇工作真正讨论的不是“模型能否无限自我进化”，而是一个更窄也更有工程价值的问题：已有 reasoning model 能否把自己的验证能力转化为高精度数据过滤器，再用 SFT 把离线验证计算摊销进单次推理能力。</p>
+      <div class="toc" aria-label="Page sections">
+        <a href="#takeaway">核心判断</a>
+        <a href="#problem">问题背景</a>
+        <a href="#mechanism">机制拆解</a>
+        <a href="#experiments">实验信号</a>
+        <a href="#terms">术语解释</a>
+        <a href="#limits">边界风险</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </div>
+    <aside class="hero-note">
+      <b>一句话定位</b>
+      <span>Self-Verified Distillation 把无标签问题、自生成候选解、多阶段自验证和监督微调接成一个离线数据构造流程。它的价值不在于凭空创造能力，而在于回收模型 near-frontier 区域里“偶尔做对、但单次输出不稳定”的能力。</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p class="section-lead">这篇论文最重要的结论是：同一个语言模型作为生成器时可能产生大量噪声，但作为验证器时仍可能提供更高 precision 的筛选信号。只要通过验证的样本分布优于原始自生成样本，SFT 就能把一次性数据构造成本变成测试时的单次生成收益。</p>
+      <div class="metric-grid">
+        <div class="metric"><strong>+16.7</strong><span>Qwen3-4B 在 math held-out 汇总上的 pass@1 提升。</span></div>
+        <div class="metric"><strong>+11.1</strong><span>Qwen3-4B 在 science held-out 汇总上的 pass@1 提升。</span></div>
+        <div class="metric"><strong>+8.3</strong><span>Qwen3-4B 在 coding held-out 汇总上的 pass@1 提升。</span></div>
+        <div class="metric"><strong>168</strong><span>UQ-TTC 在最佳 math 设置下每个测试题最多需要的推理调用数。</span></div>
+      </div>
+      <div class="callout good">
+        <strong>核心 insight：</strong>模型不必完全知道真答案，也可能知道哪些答案更不像错答案。这种不完美但高精度的自验证能力，可以被转化成后训练数据。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景</h2>
+      <p>后训练 reasoning model 通常依赖标准答案、人工标注、工具反馈、外部 teacher model、reward model 或 verifier。Self-Verified Distillation 刻意把这些依赖拿掉：只给模型一批无标签 seed questions，不使用已有答案和 reasoning traces，让模型自己生成候选解、自己判断哪些候选解可以训练。</p>
+      <p>这个设定的难点很直接：普通 self-training 会把模型自己的错答案重新喂给模型，导致错误被强化。论文把问题转成 generator-validator consistency：模型作为 generator 的行为，是否能被模型作为 validator 的行为有效筛选。验证器不需要完美，但必须比原始生成分布更高精度。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>更强约束</h3>
+          <p>没有 ground-truth final answer，没有外部 teacher，没有工具反馈，也没有训练好的外部 verifier。</p>
+        </div>
+        <div class="card">
+          <h3>更清晰目标</h3>
+          <p>目标不是证明模型能无限自举，而是验证自验证过滤能否构造比原始自生成更有用的 SFT 数据。</p>
+        </div>
+        <div class="card">
+          <h3>更贴近部署</h3>
+          <p>把多次采样和验证放到离线数据构造阶段，测试时仍保持单次模型调用。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解</h2>
+      <p class="section-lead">Self-Verified Distillation 的流程很短，但每一步都有明确失败条件。它不是简单“生成更多数据”，而是用更宽的候选池和更严格的验证器共同提高训练样本质量。</p>
+      <div class="flow">
+        <div class="flow-step">
+          <h3>1. Seed Questions</h3>
+          <p>从 OpenThoughts 派生数据中只取问题文本，丢弃答案和推理轨迹，保持无标签设定。</p>
+        </div>
+        <div class="flow-step">
+          <h3>2. Candidate Sampling</h3>
+          <p>每个问题采样 <code>n</code> 个候选解。<code>n</code> 控制探索宽度，让验证器有更多候选可选。</p>
+        </div>
+        <div class="flow-step">
+          <h3>3. UQ Verification</h3>
+          <p>每个候选解经过 cycle-consistency、factuality、total correctness 三阶段检查，每阶段重复 <code>v</code> 次。</p>
+        </div>
+        <div class="flow-step">
+          <h3>4. SFT</h3>
+          <p>只把全阶段、全重复 judge call 都通过的样本加入训练集，再对原模型做监督微调。</p>
+        </div>
+      </div>
+
+      <h3>为什么 UQ-style verifier 比一句 correctness prompt 更强</h3>
+      <p>简单 correctness prompt 直接问“这个答案是否正确”，实现容易，但容易漏掉答非所问、局部事实错误、推理过程不完整等问题。UQ-style verifier 把判断拆成三个互补问题：答案是否真的在回答原题，答案内部是否有事实、算术或逻辑错误，答案是否完整解决原题。这个结构让 verifier 不只是更严格，而是覆盖了更多失败模式。</p>
+      <div class="callout gold">
+        <strong>计算分配的关键：</strong><code>n</code> 太小而 <code>v</code> 太大时，验证器可能把可训练样本筛得过少；<code>n</code> 足够大时，强验证才有充足候选可挑。探索宽度和过滤强度必须配合。
+      </div>
+    </section>
+
+    <section id="experiments">
+      <h2>实验信号</h2>
+      <p class="section-lead">论文中最有价值的部分不是最终分数本身，而是消融实验显示了“过滤质量”比“自生成数据数量”更关键。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>实验观察</th>
+              <th>含义</th>
+              <th>解读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>未过滤自生成数据在 coding 上会让 Qwen3-4B 低于初始模型。</td>
+              <td>自生成本身不是收益来源。</td>
+              <td>没有验证的自训练可能强化错误轨迹，尤其是 code 这种错误可执行但模式复杂的任务。</td>
+            </tr>
+            <tr>
+              <td>完整 UQ verifier 在 math 上优于简单 correctness verifier。</td>
+              <td>验证结构比单纯严格度重要。</td>
+              <td>拆分检查可以覆盖答非所问、事实错误、解法不完整等不同失败面。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B 收益最强，0.6B 收益更小且 HLE 略降。</td>
+              <td>模型能力和 seed 难度需要匹配。</td>
+              <td>太弱的模型可能既不会生成好解，也不会可靠验证；太强的模型可能已吃掉部分 easy seed 收益。</td>
+            </tr>
+            <tr>
+              <td>UQ-TTC 每题最多 168 次推理，SVD 测试时只需 1 次。</td>
+              <td>离线摊销 test-time compute。</td>
+              <td>这使方法更接近真实部署：训练阶段付验证成本，线上保持低延迟。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>因此，这篇工作的工程价值可以概括为：把测试时的多样本搜索和验证，迁移到训练数据构造阶段；把昂贵的 per-query verification cost 变成一次性数据资产；再用 SFT 让模型在单次推理时继承一部分验证收益。</p>
+      <h3>工程启发</h3>
+      <p>如果把这套方法放进真实 post-training 流水线，最关键的不是一次性跑出更高分，而是把 seed 选择、候选采样、验证器审计和训练集回放做成可观测闭环。每一批被接受的数据都应该保留问题来源、候选数量、各阶段 judge 结果、拒绝原因和训练后指标变化，否则很难判断收益来自更好推理，还是来自 verifier 偏好被模型模仿。</p>
+      <p>另一个直接启发是把 test-time compute 分成两类：线上临时投入和离线数据资产化。前者适合高价值、低吞吐、可等待任务；后者适合把昂贵验证提前摊销到训练阶段。Self-Verified Distillation 的价值就在于把一部分线上搜索收益前移，但它仍需要持续监控 accepted sample 的多样性、错误率和领域覆盖。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Self-Verified Distillation</h3>
+          <p>这里指模型用自己的输出构造候选训练数据，再用自己的验证判断筛选数据，最后通过监督微调学习这些被接受的样本。</p>
+        </div>
+        <div class="card">
+          <h3>Generator-Validator Consistency</h3>
+          <p>指模型作为生成器和作为验证器时能力是否一致。如果验证器视角能比生成分布更准确地识别好答案，自验证就有利用价值。</p>
+        </div>
+        <div class="card">
+          <h3>UQ Verification</h3>
+          <p>UQ 指 Unsolved Questions，这里借用其 oracle-free validation 思路，用多阶段 prompt verifier 检查候选答案，而不依赖标准答案。</p>
+        </div>
+        <div class="card">
+          <h3>Cycle Consistency</h3>
+          <p>指从候选答案反推出它似乎在回答的问题，再和原始问题比较，判断答案是否真正对应原题。</p>
+        </div>
+        <div class="card">
+          <h3>Factuality Check</h3>
+          <p>指检查候选答案中是否存在事实、数字、公式、算术、逻辑或误导性解释错误。</p>
+        </div>
+        <div class="card">
+          <h3>Total Correctness</h3>
+          <p>指判断答案是否完整、正确、足够详细地解决原题。部分正确、高层概述或缺关键步骤的答案会被拒绝。</p>
+        </div>
+        <div class="card">
+          <h3>UQ-TTC</h3>
+          <p>Test-time compute baseline，在每个测试题上临时采样多个答案并运行同样的验证流程，性能可能提升但推理成本很高。</p>
+        </div>
+        <div class="card">
+          <h3>Near-frontier Capability</h3>
+          <p>指模型偶尔能解出、但 pass@1 不稳定的能力区域。Self-Verified Distillation 更像是在回收这一区域的能力，而不是凭空创造完全不会的技能。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <p>这篇工作不应被解读成“LLM 可以完全脱离外部数据无限自我进化”。更准确的结论是：在 math、science、coding 这些相对可验证的 reasoning 任务上，prompt-based self-verification 可以作为一个低依赖的数据过滤器，为 post-training 提供额外信号。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>不能保证验证正确</h3>
+          <p>多阶段和重复投票只是降低误接受率。模型仍可能接受错误答案、拒绝有用答案，或在不同领域表现出不均匀的判断能力。</p>
+        </div>
+        <div class="card">
+          <h3>可能过拟合 verifier 偏好</h3>
+          <p>训练数据来自 verifier 接受的样本，模型可能学到更像“会被自己接受”的答案风格，而不一定只学到真实推理能力。</p>
+        </div>
+        <div class="card">
+          <h3>seed 分布决定上限</h3>
+          <p>seed questions 太容易会很快耗尽收益；太难则模型既不会生成高质量候选，也无法稳定识别正确解。</p>
+        </div>
+        <div class="card">
+          <h3>泛化还需更多材料</h3>
+          <p>目前主要证据集中在 Qwen3 0.6B、4B、8B 和三个 reasoning 域；对长程 agent、多模态、开放写作任务不能直接外推。</p>
+        </div>
+      </div>
+      <div class="callout warning">
+        <strong>最需要警惕的误读：</strong>Self-Verified Distillation 证明的是“自验证过滤可以构造有用数据”，不是“模型不再需要外部世界、工具、标签或人类监督”。
+      </div>
+      <h3>复盘问题</h3>
+      <p>读完这篇笔记后，最应该追问四件事：验证器在哪些任务上比生成器更可靠，accepted 样本是否真的覆盖了模型 near-frontier capability，SFT 是否只是学习 verifier 偏好的表达风格，以及离线验证成本能否被后续线上调用量摊平。只有这四个问题都能回答，才能判断这套方法是否值得进入实际训练流水线。</p>
+      <p>这个判断必须持续复核。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文依据 Tony Lee 的 X thread、作者公开资料、arXiv metadata、论文 PDF 正文和本地文本抽取结果整理。原 X 帖是普通 thread，不是 X long-form article；thread 中图片未作为独立证据使用，核心数字和方法以 arXiv v1 正文为准。论文版本为 arXiv:2605.26132v1，后续若有新版、代码仓库或更多复现实验，本文判断需要相应更新。</p>
+      <ul class="source-list">
+        <li><a href="https://x.com/tonyh_lee/status/2059671940626080251">Tony Lee 的 X thread：Self-Verified Distillation 发布帖</a></li>
+        <li><a href="https://arxiv.org/abs/2605.26132">arXiv 摘要页：Self-Verified Distillation: Your Language Model Is Secretly Its Own Synthetic Data Pipeline</a></li>
+        <li><a href="https://arxiv.org/pdf/2605.26132">arXiv PDF：论文正文与附录</a></li>
+        <li><a href="https://x.com/tonyh_lee">Tony Lee 的 X profile</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

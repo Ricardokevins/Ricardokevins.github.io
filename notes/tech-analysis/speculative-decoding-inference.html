@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speculative Decoding：投机解码的真实收益、校正采样与生产边界</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f7f3;
+      --surface: #ffffff;
+      --surface-2: #ecf1ea;
+      --ink: #20242a;
+      --muted: #5f6871;
+      --line: #d6ded5;
+      --line-strong: #9aa89f;
+      --accent: #1f6b73;
+      --accent-soft: #dfeff0;
+      --rust: #9a5438;
+      --rust-soft: #f2e2dc;
+      --green: #3f7057;
+      --green-soft: #e2efe6;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 44px rgba(32, 36, 42, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 107, 115, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b20; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 74px;
+    }
+
+    .hero {
+      min-height: calc(76vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.40fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 94px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.7vw, 74px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .flow-step {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel { padding: 20px; }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-panel ul,
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .hero-panel li,
+    .compact-list li { margin-top: 8px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(21px, 2.7vw, 32px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section-lead {
+      max-width: 940px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .card b {
+      display: block;
+      font-size: 16px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn {
+      border-left-color: var(--rust);
+      background: var(--rust-soft);
+    }
+
+    .callout.ok {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .flow-step {
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .flow-step span {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .flow-step b {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .flow-step p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: var(--ink);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .formula {
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag-list span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .source-list {
+      margin-top: 16px;
+      padding-left: 20px;
+    }
+
+    .source-list li { margin-top: 8px; }
+
+    @media (max-width: 920px) {
+      .hero {
+        min-height: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid,
+      .flow,
+      .grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page { width: min(100% - 24px, var(--max)); }
+      .metric-grid,
+      .flow,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-06-02</div>
+        <h1>Speculative Decoding：投机解码的真实收益、校正采样与生产边界</h1>
+        <p class="lead">Mohit 的长文适合入门：用“小模型先猜、大模型验收”解释了为什么 LLM decode 可以被加速。但真正决定这项技术是否严谨、是否能上生产的，不是“猜中 top-1”这个故事，而是 acceptance / correction sampling 是否保持目标分布、draft 成本是否低于节省下来的 target 步数，以及调度、KV cache、batch size 和采样温度是否允许收益落到 wall-clock。</p>
+        <div class="metric-grid" aria-label="Key facts">
+          <div class="metric"><strong>2-3x</strong><span>原始 Google 论文在 T5-XXL 翻译/摘要任务上的加速区间。</span></div>
+          <div class="metric"><strong>2-2.5x</strong><span>DeepMind speculative sampling 在 70B Chinchilla 分布式设置中的报告加速。</span></div>
+          <div class="metric"><strong>Lossless</strong><span>理论目标是保持 target model 输出分布，而不是换一个更快但有偏的近似解码器。</span></div>
+          <div class="metric"><strong>条件收益</strong><span>低 batch、memory-bound、draft 高接受率、长 decode 更容易受益。</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <b>本文主线</b>
+        <ul>
+          <li>先把 Mohit 原文的直觉讲清楚：draft、verify、accept、restart。</li>
+          <li>再补上评论指出的缺口：sampling 场景不能只看 top-1，需要 correction sampling。</li>
+          <li>最后落到生产系统：EAGLE、Medusa、MTP、NGRAM、continuous batching 与 OOM trade-off。</li>
+        </ul>
+      </aside>
+    </header>
+
+    <nav class="toc" aria-label="Table of contents">
+      <a href="#judgment">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#sampling">采样校正</a>
+      <a href="#variants">方法谱系</a>
+      <a href="#production">生产边界</a>
+      <a href="#terms">术语解释</a>
+      <a href="#evidence">证据索引</a>
+    </nav>
+
+    <main>
+      <section class="section" id="judgment">
+        <h2>核心判断</h2>
+        <p class="section-lead">投机解码的本质不是“让小模型替大模型生成”，而是把 autoregressive decode 中最难并行的串行 token 依赖，改写成“便宜 proposal + 昂贵 verifier 的批量验收”。它只有在不改变目标分布的前提下才是 inference acceleration；一旦接受规则变成简单 top-1 match、typical acceptance 或启发式阈值，就要重新说明质量和分布偏差。</p>
+        <div class="callout ok">
+          <strong>关键 insight：</strong>投机解码真正要优化的不是单 token FLOPs，而是每个可交付 token 需要读多少次 target model 权重。现代 GPU/TPU 在 decode 阶段常常受 HBM 读权重和 KV cache 访问限制；如果一次 target forward 能并行验证多个 draft token，就可能用相近的权重读取成本推进多个 token。
+        </div>
+        <p>这也解释了为什么 Mohit 文中“验证比生成便宜”的说法需要改成更精确的系统表述：验证不是数学上免费，也不只是“一次 matmul”。target model 仍然要对 prefix + draft positions 做 forward，draft tree 还会增加 attention、activation 和 KV 管理成本。它便宜的地方在于把多个候选位置合并进一次 target 调用，利用硬件并行度摊薄原本逐 token 的串行读权重成本。</p>
+      </section>
+
+      <section class="section" id="problem">
+        <h2>问题背景：decode 为什么慢</h2>
+        <p class="section-lead">LLM 推理通常分为 prefill 和 decode。Prefill 处理完整 prompt，天然能并行；decode 每一步都依赖上一步生成的 token，天然串行。投机解码只主要解决 decode 阶段的串行瓶颈，不会神奇降低长 prompt 的首 token 延迟。</p>
+        <div class="grid-2">
+          <div class="card">
+            <b>Prefill</b>
+            <p>输入 prompt 已知，Transformer 可以一次处理多个位置。瓶颈通常是长上下文 attention、prompt 长度、batch packing 和首 token SLO。</p>
+          </div>
+          <div class="card">
+            <b>Decode</b>
+            <p>输出 token 未知，第 \(t+1\) 个 token 取决于第 \(t\) 个 token。传统解码每生成一个 token 就要重新调用 target model。</p>
+          </div>
+        </div>
+        <p>投机解码的可乘收益来自两个观察：第一，很多 token 是容易预测的，例如格式化文本、代码模板、重复片段、常见短语；第二，大模型 decode 在很多硬件上不是算力完全饱和，而是 memory-bound。于是可以用小模型或轻量 head 预先提出几个 token，再让 target model 批量检查。</p>
+      </section>
+
+      <section class="section" id="mechanism">
+        <h2>机制拆解：draft / verify / accept</h2>
+        <p class="section-lead">最朴素的流程可以看成四步。这个框架足够解释 Mohit 原文，也足够承载 EAGLE、Medusa、MTP、NGRAM 等变体。</p>
+        <div class="flow">
+          <div class="flow-step">
+            <span>1</span>
+            <b>Draft</b>
+            <p>便宜 proposer 基于当前 prefix 生成 \(K\) 个候选 token，可能是小模型、EAGLE head、Medusa heads、MTP head 或 n-gram cache。</p>
+          </div>
+          <div class="flow-step">
+            <span>2</span>
+            <b>Verify</b>
+            <p>target model 接收 prefix 加 draft tokens，一次 forward 得到每个候选位置下的目标分布。</p>
+          </div>
+          <div class="flow-step">
+            <span>3</span>
+            <b>Accept</b>
+            <p>根据 greedy 或 sampling 接受规则保留若干 draft token。sampling 场景下通常不是简单 top-1 match。</p>
+          </div>
+          <div class="flow-step">
+            <span>4</span>
+            <b>Correct</b>
+            <p>若某处拒绝，从拒绝点用 target 分布或 residual 分布补一个 token，保证每轮至少推进。</p>
+          </div>
+        </div>
+        <p>如果是 greedy decoding，检查 draft token 是否等于 target argmax 可以作为直观近似。但现实服务经常用 temperature、top-p、top-k、repetition penalty 等采样策略，这时“匹配 target top-1 才接受”既过于保守，也不能代表无偏采样。</p>
+      </section>
+
+      <section class="section" id="sampling">
+        <h2>采样校正：评论区指出的关键缺口</h2>
+        <p class="section-lead">SPThole 在回复里说 Mohit 漏了 correction 和 sampling-based speculative decoding，这个提醒是实质性的。因为投机解码最重要的理论卖点是“保持 target model 分布”，而不是“多数时候猜对”。</p>
+        <p>设 draft proposer 的分布为 \(q(x)\)，target model 的分布为 \(p(x)\)。若 draft 采样出 token \(x\)，标准 modified rejection sampling 的核心接受概率可以写成：</p>
+        <div class="formula">
+          \[
+          a(x)=\min\left(1,\frac{p(x)}{q(x)}\right)
+          \]
+        </div>
+        <p>直觉是：如果 draft 对某个 token 的概率低于 target，说明它没有过度提出，可以接受；如果 draft 对某个 token 的概率高于 target，就只能按比例接受，避免输出分布偏向 draft。若拒绝，则从 residual 分布中补采样：</p>
+        <div class="formula">
+          \[
+          r(x)=\frac{\max(p(x)-q(x),0)}{\sum_y \max(p(y)-q(y),0)}
+          \]
+        </div>
+        <p>这一步就是“correction”。没有 correction，拒绝后的 token 很容易变成启发式 fallback；没有 sampling-based acceptance，温度采样下的投机解码就会退化为“看起来更快，但输出分布可能变了”的近似系统。</p>
+        <div class="callout warn">
+          <strong>对 Mohit 原文的校正：</strong>“如果 draft token 在 target top-1 中就接受”只适合解释 greedy 或近似实现，不是完整 speculative sampling。严谨版本需要用 target/draft 概率比来做接受/拒绝，并在拒绝时从 residual 分布补 token。
+        </div>
+      </section>
+
+      <section class="section" id="variants">
+        <h2>方法谱系：从小模型到 self-speculation</h2>
+        <p class="section-lead">所有变体都在回答同一个工程问题：怎样以最低额外成本提出更容易被 target 接受的候选 token。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>方法</th>
+                <th>Draft 来源</th>
+                <th>优势</th>
+                <th>代价与边界</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Standalone draft model</td>
+                <td>同家族小模型，例如 7B target 配 1.5B/2B draft。</td>
+                <td>概念简单，兼容性强，便于直接试验。</td>
+                <td>需要额外模型权重和 KV cache；draft 太弱接受率低，draft 太强又吞掉收益。</td>
+              </tr>
+              <tr>
+                <td>EAGLE / EAGLE-2 / EAGLE-3</td>
+                <td>围绕 target hidden states 或多层特征训练的 draft head / draft model。</td>
+                <td>更贴近 target 表征，接受率通常更高；动态 draft tree 能把不确定性分配给更有希望的分支。</td>
+                <td>需要为特定 target 训练和部署 draft；特征抽取、draft tree、CUDA graph 和验证路径都增加系统复杂度。</td>
+              </tr>
+              <tr>
+                <td>Medusa</td>
+                <td>在 target backbone 上加多个未来 token prediction heads。</td>
+                <td>避免独立 draft 模型，部署形态更集中；tree attention 可并行验证多候选。</td>
+                <td>Medusa heads 需要训练；多步预测基于同一表示，越往后越难准确。</td>
+              </tr>
+              <tr>
+                <td>MTP</td>
+                <td>模型原生 multi-token prediction heads。</td>
+                <td>如果 checkpoint 已带 MTP，额外部署成本低；适合被 serving engine 直接接入 speculative workflow。</td>
+                <td>依赖目标模型训练时是否支持；不同模型的 head 语义和配置差异较大。</td>
+              </tr>
+              <tr>
+                <td>NGRAM / suffix / prompt lookup</td>
+                <td>从当前 prompt、历史输出或全局 suffix cache 中取重复片段。</td>
+                <td>无额外 draft model，内存和部署成本较低；代码、模板化输出、重复上下文场景有效。</td>
+                <td>依赖文本重复性；创意写作、开放问答和高温采样中收益有限。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>SGLang 文档把 EAGLE-3、EAGLE-2、MTP、DFLASH、standalone draft 和 NGRAM 都归入 speculative decoding 配置面；vLLM 文档也把 EAGLE、MTP、draft model、PARD、MLP、N-Gram、Suffix 等列为选择项。这说明“投机解码”已经从单一论文算法扩展成 serving engine 的一类 proposer/verifier 插件接口。</p>
+      </section>
+
+      <section class="section" id="production">
+        <h2>生产边界：什么时候真能快</h2>
+        <p class="section-lead">投机解码不是无条件加速。正确评估要看每个 accepted token 的总成本，而不是只看理论 \(K\) 个 draft token。</p>
+        <div class="grid-3">
+          <div class="card">
+            <b>低 batch 更容易赢</b>
+            <p>单用户、低 QPS、memory-bound decode 场景下，target model 原本并行度不足，投机验证更容易填满硬件。</p>
+          </div>
+          <div class="card">
+            <b>高 batch 可能稀释收益</b>
+            <p>连续批处理已经把 GPU 填满时，再加入 draft/verify 子流程可能增加调度和 cache 压力。</p>
+          </div>
+          <div class="card">
+            <b>长输出更有空间</b>
+            <p>短回答只有少量 decode token，draft warmup、验证、调度、同步开销可能覆盖收益。</p>
+          </div>
+          <div class="card">
+            <b>采样越随机越难猜</b>
+            <p>温度高、top-p 宽、创意任务多样性强时，draft 接受率下降，校正采样更频繁。</p>
+          </div>
+          <div class="card">
+            <b>KV cache 是硬约束</b>
+            <p>独立 draft model 需要额外 KV；tree-based verification 还会保存多分支状态，直接影响最大 batch 和上下文长度。</p>
+          </div>
+          <div class="card">
+            <b>监控要按 token 归因</b>
+            <p>上线时至少记录 acceptance rate、draft latency、verify latency、rejected depth、OOM、batch size 和 per-token latency。</p>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>落地判断：</strong>如果业务目标是降低单次对话的可感知延迟，投机解码值得优先试；如果目标是高 QPS 批量吞吐，先确认 continuous batching、prefix caching、quantization、kernel fusion 和模型路由是否已经做满，再评估投机解码的边际收益。
+        </div>
+      </section>
+
+      <section class="section" id="terms">
+        <h2>术语解释</h2>
+        <div class="grid-2">
+          <div class="card">
+            <b>Target model</b>
+            <p>最终要保持输出分布的大模型。投机解码的正确性目标是输出等价于直接从 target model 解码。</p>
+          </div>
+          <div class="card">
+            <b>Draft model / proposer</b>
+            <p>提出候选 token 的便宜机制。它可以是小模型、轻量 head、n-gram cache 或自定义 proposer。</p>
+          </div>
+          <div class="card">
+            <b>Acceptance rate</b>
+            <p>draft token 被 target 接受的比例。它越高，target 调用摊薄到每个输出 token 的成本越低。</p>
+          </div>
+          <div class="card">
+            <b>Correction sampling</b>
+            <p>拒绝 draft token 后，从 residual 分布补采样 token 的过程，用来保持 target 输出分布。</p>
+          </div>
+          <div class="card">
+            <b>Tree verification</b>
+            <p>一次不只验证线性 token 序列，而是验证多个候选分支。它提高覆盖率，但增加显存和调度复杂度。</p>
+          </div>
+          <div class="card">
+            <b>Lossless acceleration</b>
+            <p>指算法在理论上不改变 target model 输出分布。硬件数值误差、batch 非确定性和启发式接受规则仍可能带来差异。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="limits">
+        <h2>边界与风险</h2>
+        <p class="section-lead">Mohit 的文章把核心直觉讲得清楚，但对 sampling correctness、target/draft 概率比、拒绝后 residual correction、production scheduler 的复杂度讲得不够。这并不削弱文章作为入门材料的价值，但如果把它直接当生产设计说明，会漏掉最重要的正确性门槛。</p>
+        <ul class="compact-list">
+          <li><strong>理论边界：</strong>lossless guarantee 依赖正确的 rejection/correction sampler；typical acceptance 或阈值接受可能是高质量近似，但不等价于严格无偏。</li>
+          <li><strong>系统边界：</strong>draft model、draft tree、CUDA graph、batch expansion 和 KV cache 都会占显存，OOM 不只是模型大小问题。</li>
+          <li><strong>评测边界：</strong>不要只报告 tokens/s。应该同时报告 TTFT、TPOT、p95 latency、接受率、输出长度分布、batch size、采样参数和质量回归。</li>
+          <li><strong>业务边界：</strong>对短输出、高 batch、强随机采样、低重复文本，投机解码可能只有小收益甚至负收益。</li>
+        </ul>
+      </section>
+
+      <section class="section" id="evidence" data-note-role="evidence-appendix">
+        <h2>证据边界与资料索引</h2>
+        <p class="section-lead">本文基于 Mohit 的 X Article、X 回复区补充、作者资料、Google Research 回顾、arXiv 论文元数据，以及 SGLang / vLLM 当前文档交叉梳理。X 原帖只有短链，完整内容来自 X Article；评论区只有一条实质技术补充。本文没有复现实测 benchmark，所有速度数字都作为来源报告值使用。</p>
+        <ul class="source-list">
+          <li><a href="https://x.com/mohitwt_/status/2061127197046555110">Mohit X Article：Everything you need to know about Speculative Decoding Inference</a></li>
+          <li><a href="https://x.com/SPThole/status/2061302405002924146">SPThole 回复：补充 correction 与 sampling based speculative decoding</a></li>
+          <li><a href="https://research.google/blog/looking-back-at-speculative-decoding/">Google Research：Looking back at speculative decoding</a></li>
+          <li><a href="https://arxiv.org/abs/2211.17192">Fast Inference from Transformers via Speculative Decoding</a></li>
+          <li><a href="https://arxiv.org/abs/2302.01318">Accelerating Large Language Model Decoding with Speculative Sampling</a></li>
+          <li><a href="https://arxiv.org/abs/2401.10774">Medusa: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads</a></li>
+          <li><a href="https://arxiv.org/abs/2406.16858">EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees</a></li>
+          <li><a href="https://arxiv.org/abs/2503.01840">EAGLE-3: Scaling up Inference Acceleration of Large Language Models via Training-Time Test</a></li>
+          <li><a href="https://docs.sglang.io/docs/advanced_features/speculative_decoding">SGLang speculative decoding documentation</a></li>
+          <li><a href="https://docs.vllm.ai/en/latest/features/speculative_decoding/">vLLM speculative decoding documentation</a></li>
+        </ul>
+        <div class="tag-list" aria-label="Tags">
+          <span>Speculative Decoding</span>
+          <span>LLM Inference</span>
+          <span>Serving</span>
+          <span>EAGLE</span>
+          <span>Medusa</span>
+          <span>vLLM</span>
+          <span>SGLang</span>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

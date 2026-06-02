@@ -62,6 +62,15 @@
 <a class="toc-link" href="#h-0694" style="padding-left:18px">深度解析</a>
 <a class="toc-link" href="#h-0695">70. GraphRAG 解决的是什么问题，它相比普通向量检索到底多了什么能力？</a>
 <a class="toc-link" href="#h-0696" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0704">73. Contextual Retrieval、Parent-Child 和 Multi-hop RAG 分别解决什么问题？</a>
+<a class="toc-link" href="#h-0705" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0706" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0707">74. RAG 召回错了怎么办？Self-RAG、CRAG 和 verifier 型纠错链路怎么设计？</a>
+<a class="toc-link" href="#h-0708" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0709" style="padding-left:18px">深度解析</a>
+<a class="toc-link" href="#h-0710">75. 企业知识库 RAG 的权限、版本、缓存和日志怎么设计？</a>
+<a class="toc-link" href="#h-0711" style="padding-left:18px">标准答案</a>
+<a class="toc-link" href="#h-0712" style="padding-left:18px">深度解析</a>
       </nav>
       <nav id="toc" aria-label="全部章节">
 <div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
@@ -185,7 +194,7 @@
 </nav>
     </aside>
     <main class="content">
-      <nav class="chapter-nav"><a href="042.html">← 42. 模块五：推理优化、Serving 与部署工程</a><a href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议 →</a></nav>
+
       <article class="chapter-page">
         <section class="chapter" id="section-h-0667" data-category="core" data-title="模块六：RAG、检索、重排与知识增强">
 <h2 id="h-0667"><a class="anchor-link" href="#h-0667" aria-label="跳转到本节">#</a>模块六：RAG、检索、重排与知识增强</h2>
@@ -438,7 +447,7 @@ Prompt = System + 问题 + "参考信息:" + top-n 片段
 <ul>
 <li><strong>"RAG 里的 embedding 模型需要自己训练吗？"</strong>
 <ul>
-<li>答：通常不需要从零训练。通用 embedding（如 BGE、GTE、E5）在大多数场景已经足够。但在垂直领域（如法律、医疗），通用 embedding 可能召不回专业术语，这时可以用领域数据做继续训练或对比学习微调。判断标准：在真实 query-document 对上调 recall，如果通用模型 recall@10 &lt; 80%，值得微调。
+<li>答：通常不需要从零训练。通用 embedding（如 BGE、GTE、E5）在大多数场景已经足够。但在垂直领域（如法律、医疗），通用 embedding 可能召不回专业术语，这时可以用领域数据做继续训练或对比学习微调。判断标准不是固定阈值，而是看真实 query-document 对上的 recall、误召回类型、业务风险和成本；如果通用模型在关键切片上明显漏召回，才值得做领域微调或换模型。
 </li>
 </ul>
 </li>
@@ -450,7 +459,7 @@ Prompt = System + 问题 + "参考信息:" + top-n 片段
 <p>它之所以关键，是因为 RAG 的第一步不是生成，而是”先找对材料”。embedding model 选得不好，后面 reranker、prompt、生成模型再强也很难救。所以回答时最好再补一句：embedding 的好坏不仅影响召回率，还影响多语言能力、专业术语匹配、长文档切块效果，以及整个系统的延迟和索引成本。</p>
 <hr>
 <h4 id="h-0676"><a class="anchor-link" href="#h-0676" aria-label="跳转到本节">#</a>深度解析</h4>
-<p><strong>1. embedding model 的两种架构：Bi-Encoder vs Cross-Encoder</strong></p>
+<p><strong>1. 召回与重排的两种打分架构：Bi-Encoder vs Cross-Encoder</strong></p>
 <div class="table-wrap"><table>
 <thead><tr>
 <th>特性</th>
@@ -484,7 +493,7 @@ Prompt = System + 问题 + "参考信息:" + top-n 片段
 <td>BERT-based cross-encoder</td>
 </tr>
 </tbody></table></div>
-<p>为什么 Bi-Encoder 更快？因为文档向量可以<strong>预计算并索引</strong>，查询时只需编码 query 然后做最近邻搜索。</p>
+<p>这里要避免一个常见误解：只有 Bi-Encoder 这类稠密召回模型会产出可预计算、可入库的文档 embedding；Cross-Encoder 通常不是 embedding model，而是对给定 query-doc 对直接打相关性分数的 reranker。Bi-Encoder 更快，是因为文档向量可以<strong>预计算并索引</strong>，查询时只需编码 query 然后做最近邻搜索。</p>
 <p><strong>2. embedding 训练的核心：对比学习（Contrastive Learning）</strong></p>
 <p>训练目标：让正样本（相关的 query-doc 对）在向量空间中靠近，负样本远离。</p>
 <pre><code class="language-text">InfoNCE Loss:
@@ -523,7 +532,7 @@ L = -log[ exp(sim(q, d⁺)/τ) / Σ exp(sim(q, dᵢ)/τ) ]
 <p><strong>3. embedding model 选择决策树</strong></p>
 <pre><code class="language-text">选择 embedding 模型：
 ├─ 通用中文场景
-│   └─ BGE-large-zh（开源最强中文 embedding）
+│   └─ BGE / GTE / E5 系列中文或多语言模型，按业务评测选型
 ├─ 通用英文场景
 │   └─ GTE-large / E5-large / OpenAI text-embedding-3
 ├─ 多语言混合
@@ -934,7 +943,7 @@ Chunk 2 (80-180)："应用包括影像诊断和药物研发..."</code></pre>
 <tr>
 <td><strong>代表模型</strong></td>
 <td>BGE, E5, GTE</td>
-<td>BGE-Reranker, ColBERT, monoT5</td>
+<td>BGE-Reranker, monoT5 等；ColBERT 属于 late-interaction 折中路线</td>
 </tr>
 </tbody></table></div>
 <p><strong>核心区别</strong>：Bi-Encoder 是”分别理解再比较”，Cross-Encoder 是”放在一起理解关系”。</p>
@@ -1885,6 +1894,225 @@ Round 3: 检索 "公司 A 和 B 的关系" → 发现关联交易</code></pre>
 </li>
 </ul>
 <hr>
+<h3 id="h-0704"><a class="anchor-link" href="#h-0704" aria-label="跳转到本节">#</a>73. Contextual Retrieval、Parent-Child 和 Multi-hop RAG 分别解决什么问题？</h3>
+<h4 id="h-0705"><a class="anchor-link" href="#h-0705" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>这三个方法都在解决传统 RAG 的同一个核心问题：单个 chunk 往往既不够完整，也不一定能单跳命中。<strong>Contextual Retrieval</strong> 给每个 chunk 补上来自整篇文档的上下文说明，让原本孤立的片段在 embedding 和 BM25 中更可检索；<strong>Parent-Child Retrieval</strong> 用小 chunk 做精确召回，但把对应的大段 parent chunk 或章节放进上下文，兼顾召回粒度和证据完整性；<strong>Multi-hop RAG</strong> 则把一个复杂问题拆成多次检索，每一跳根据上一跳找到的实体、条件或中间结论继续查。</p>
+<p>面试里不要把它们背成三个工具名，而要讲清适用场景：如果 chunk 离开原文后指代不明，用 contextual retrieval；如果答案跨段落但直接用大 chunk 会召回不准，用 parent-child；如果问题天然需要多文档、多实体、多条件串联，用 multi-hop。它们的共同代价是 ingestion 成本、检索延迟和评测复杂度都会上升，所以要用坏例和指标证明值得引入。</p>
+<hr>
+<h4 id="h-0706"><a class="anchor-link" href="#h-0706" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 三种增强策略的输入输出</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>方法</th>
+<th>输入侧变化</th>
+<th>检索侧变化</th>
+<th>最适合的问题</th>
+<th>主要代价</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Contextual Retrieval</strong></td>
+<td>为每个 chunk 生成文档级上下文，例如章节主题、实体、时间范围和上下位关系</td>
+<td>把上下文与原 chunk 一起用于 embedding / BM25，降低孤立片段的语义缺失</td>
+<td>长报告、代码库、规章制度中大量“本节/该方法/这些指标”指代不明的片段</td>
+<td>入库时多一次 LLM 生成，索引内容变长，需防止上下文摘要引入错误</td>
+</tr>
+<tr>
+<td><strong>Parent-Child Retrieval</strong></td>
+<td>同时保存小粒度 child chunk 和大粒度 parent block</td>
+<td>先召回 child，再把 parent 或相邻片段带入 prompt</td>
+<td>答案需要完整段落、表格说明、代码函数上下文或合同条款前后文</td>
+<td>上下文 token 增加，parent 太大时会重新引入噪声</td>
+</tr>
+<tr>
+<td><strong>Multi-hop / Iterative RAG</strong></td>
+<td>把复杂 query 分解成子问题或实体链</td>
+<td>多轮检索，每一轮用上一轮 evidence 改写下一轮 query</td>
+<td>需要跨文档合并、比较、时间线、因果链或实体关系的问题</td>
+<td>延迟和错误传播增加，每一跳都要记录 trace 方便复盘</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 为什么它们比“top-k 调大”更稳</strong></p>
+<p>简单把 top-k 调大，只是把更多候选塞进上下文，不能保证候选有正确粒度，也不能保证模型能利用它们。Contextual Retrieval 改的是 chunk 的可检索语义，Parent-Child 改的是“召回粒度”和“阅读粒度”的错配，Multi-hop 改的是复杂问题的一次性召回假设。它们分别在 ingestion、retrieval 和 query planning 三个位置增加结构，而不是在最后阶段堆材料。</p>
+<p><strong>3. 如何判断该不该上这些增强</strong></p>
+<ul>
+<li>抽样 bad case，先标注错误证据是否存在于知识库，以及直接 top-k 是否能召回。</li>
+<li>如果正确 chunk 被召回但缺上下文，优先试 parent-child 或 contextual retrieval。</li>
+<li>如果正确证据分散在多个文档且单跳 query 总是只命中其中一部分，优先试 query decomposition / multi-hop。</li>
+<li>如果只是 embedding 对术语不敏感，先补 BM25、术语表、领域 embedding 或 reranker，不要直接上复杂图谱。</li>
+</ul>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>“Contextual Retrieval 会不会污染原文？”</strong>
+<ul>
+<li>答：会有风险，所以上下文说明应作为可追踪的辅助字段保存，不能覆盖原始 chunk。评测时要同时看 retrieval recall 和 citation faithfulness：如果检索靠摘要命中，但最终引用原文不支持结论，就说明 contextual summary 过度推断了。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>“Parent-Child Retrieval 和直接大 chunk 有什么区别？”</strong>
+<ul>
+<li>答：直接大 chunk 用同一个粒度同时承担召回和阅读，容易向量稀释；parent-child 把两个目标拆开：child 小，方便精确命中；parent 大，方便模型读完整证据。这是粒度解耦，不是单纯调大 chunk size。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>“Multi-hop RAG 最大的工程风险是什么？”</strong>
+<ul>
+<li>答：错误传播。第一跳如果实体识别错，后面会围绕错误方向继续检索。工程上要保存每跳 query、证据、判断和终止原因，并允许 verifier 判定“证据不足，停止继续扩展”。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0707"><a class="anchor-link" href="#h-0707" aria-label="跳转到本节">#</a>74. RAG 召回错了怎么办？Self-RAG、CRAG 和 verifier 型纠错链路怎么设计？</h3>
+<h4 id="h-0708"><a class="anchor-link" href="#h-0708" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>RAG 的关键脆弱点是：生成质量高度依赖检索质量。一旦检索到的证据不相关、过时或互相冲突，模型可能基于错误材料生成更“自信”的错误答案。纠错型 RAG 的核心思路，是在生成前或生成中加入一个 evidence verifier：先判断召回证据是否足够、是否相关、是否冲突，再决定直接回答、重新检索、改写 query、扩大检索源，或者拒答。</p>
+<p>Self-RAG 更强调模型在生成过程中学会“何时检索、证据是否支持、答案是否应继续修正”；CRAG 更像在传统 RAG 外面加一个轻量检索评估器，把 retrieved documents 分成正确、模糊、错误等状态，再触发不同处理路径。工程面试里可以把它们抽象成一套通用链路：retrieve -> verify -> route -> generate -> cite -> post-verify。重点不是背论文名，而是能把“证据不可信时怎么办”讲清楚。</p>
+<hr>
+<h4 id="h-0709"><a class="anchor-link" href="#h-0709" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 纠错型 RAG 的状态机</strong></p>
+<pre><code class="language-text">query
+  -> initial retrieval
+  -> evidence verifier
+       ├─ relevant & sufficient
+       │    -> generate with citation
+       ├─ partially relevant / ambiguous
+       │    -> query rewrite + second retrieval
+       ├─ conflicting evidence
+       │    -> conflict summary + ask for scope / answer with caveat
+       ├─ irrelevant evidence
+       │    -> fallback search / broaden source / refuse
+       └─ permission or freshness risk
+            -> filtered retrieval / index refresh / safe refusal</code></pre>
+<p><strong>2. verifier 应该看什么</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>检查维度</th>
+<th>问题</th>
+<th>可观测信号</th>
+<th>动作</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>相关性</strong></td>
+<td>证据是否真的回答 query</td>
+<td>reranker score、LLM relevance label、人工 gold evidence 命中</td>
+<td>低相关则改写 query 或扩大召回</td>
+</tr>
+<tr>
+<td><strong>充分性</strong></td>
+<td>证据是否足够支持完整答案</td>
+<td>required facts 覆盖率、answerability label</td>
+<td>不足则补检索或拒答</td>
+</tr>
+<tr>
+<td><strong>冲突</strong></td>
+<td>不同文档是否给出相反结论</td>
+<td>时间戳、版本、来源权威度、entailment / contradiction</td>
+<td>按版本/权威度排序，显式说明冲突</td>
+</tr>
+<tr>
+<td><strong>新鲜度</strong></td>
+<td>证据是否过期</td>
+<td>document version、updated_at、policy effective date</td>
+<td>触发增量索引或提示知识边界</td>
+</tr>
+<tr>
+<td><strong>权限</strong></td>
+<td>用户是否有权看这段证据</td>
+<td>tenant、ACL、classification、cache key</td>
+<td>前置过滤，不让无权证据进入 prompt</td>
+</tr>
+</tbody></table></div>
+<p><strong>3. Self-RAG / CRAG 的工程化抽象</strong></p>
+<p>Self-RAG 的价值在于把检索是否需要、证据是否支持和答案是否应修正变成模型可学习的控制信号；CRAG 的价值在于承认检索会错，并把“错了以后怎么走”显式建成路由策略。生产系统不一定要复现论文训练流程，但应吸收它们的思想：证据进入生成前先被评分，生成后再被引用校验，错误样本要回流到检索评测集。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>“verifier 本身如果错了怎么办？”</strong>
+<ul>
+<li>答：verifier 也要被评测。可以用人工标注的 evidence relevance / sufficiency 数据集校准它，重要场景用规则、reranker、LLM judge 多信号投票，并记录 verifier 版本。不要让一个黑盒 judge 成为新的单点故障。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>“RAG 纠错会不会让延迟太高？”</strong>
+<ul>
+<li>答：会，所以应按风险分层。低风险 FAQ 可以一跳检索直接答；高风险法律、金融、权限相关问题才启用 verifier、二次检索和引用校验。纠错链路是按失败代价启用，不是所有请求全量启用。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="h-0710"><a class="anchor-link" href="#h-0710" aria-label="跳转到本节">#</a>75. 企业知识库 RAG 的权限、版本、缓存和日志怎么设计？</h3>
+<h4 id="h-0711"><a class="anchor-link" href="#h-0711" aria-label="跳转到本节">#</a>标准答案</h4>
+<p>企业知识库 RAG 的难点不是“向量库能不能查”，而是每一次回答都要满足四个约束：用户只能看到有权限的材料，答案基于正确版本，缓存不会跨租户或跨权限泄漏，出问题时能复现整条链路。因此权限、版本、缓存和日志必须从入库开始设计，而不是上线后补。</p>
+<p>一个可靠设计通常是：入库时为每个 chunk 保存 tenant、owner、ACL、classification、document_id、chunk_id、version、updated_at、source_url、hash；查询时先做身份解析和 metadata filter，再检索和重排；缓存 key 必须包含租户、用户权限摘要、索引版本、prompt 版本和模型版本；日志要保存 query、rewrite、top-k、rerank、prompt evidence ids、final citation、拒答原因和工具调用结果。这样才能回答“为什么这个用户昨天看到了这个答案”。</p>
+<hr>
+<h4 id="h-0712"><a class="anchor-link" href="#h-0712" aria-label="跳转到本节">#</a>深度解析</h4>
+<p><strong>1. 元数据不是附属字段，而是安全边界</strong></p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>字段</th>
+<th>用途</th>
+<th>缺失后果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>tenant_id</code> / <code>org_id</code></td>
+<td>租户隔离和计费边界</td>
+<td>跨客户召回、缓存污染、严重数据泄漏</td>
+</tr>
+<tr>
+<td><code>acl</code> / <code>classification</code></td>
+<td>权限过滤、密级控制</td>
+<td>无权文档进入 prompt，即使不展示也已经泄露</td>
+</tr>
+<tr>
+<td><code>document_id</code> / <code>chunk_id</code></td>
+<td>引用、复现、去重、回放</td>
+<td>无法判断答案到底来自哪段证据</td>
+</tr>
+<tr>
+<td><code>version</code> / <code>updated_at</code></td>
+<td>处理新旧政策、回滚和增量索引</td>
+<td>旧文档与新文档同时被召回，答案互相矛盾</td>
+</tr>
+<tr>
+<td><code>hash</code></td>
+<td>检测重复、变更和缓存失效</td>
+<td>增量更新无法判断哪些 chunk 需要重算</td>
+</tr>
+</tbody></table></div>
+<p><strong>2. 缓存必须按权限和版本失效</strong></p>
+<p>RAG 缓存常见有 query 结果缓存、embedding 缓存、rerank 结果缓存、prompt / answer 缓存。危险点在于：两个用户问同一句话，不代表他们有权看到同一批证据；同一用户今天和昨天问同一句话，也不代表文档版本相同。因此 cache key 至少要包含 tenant、权限摘要、index_version、document_version watermark、retrieval config、prompt version 和 model id。高风险场景宁可少缓存，也不能跨权限复用答案。</p>
+<p><strong>3. 日志要能复现，而不是只留最终答案</strong></p>
+<pre><code class="language-text">trace_id
+  user / tenant / permission snapshot
+  raw query
+  rewritten queries
+  index version + retrieval config
+  top-k doc ids + scores
+  reranked doc ids + scores
+  packed context doc ids + token counts
+  model / prompt version
+  final answer + citations
+  verifier result / refusal reason
+  latency / token cost / cache hit</code></pre>
+<p>没有这些 trace，线上 bad case 只能靠猜。成熟团队会把失败样本自动进入 eval set：召回漏了就补 retrieval eval，引用错了就补 faithfulness eval，权限异常就补安全回归。</p>
+<p><strong>4. 面试官常见深挖追问</strong></p>
+<ul>
+<li><strong>“权限过滤是在向量检索前做，还是检索后做？”</strong>
+<ul>
+<li>答：原则上越早越好。能下推到 metadata filter 就下推；如果向量库不支持复杂 ACL，至少要先按租户和粗粒度密级切索引，再在 rerank / packing 前做精细过滤。不能等生成后再删，因为无权证据已经影响了答案。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>“文档删除后，历史日志还能不能保留引用内容？”</strong>
+<ul>
+<li>答：要区分审计日志和可见内容。审计侧可以保留不可逆 hash、doc_id、版本和访问事件；原文快照要遵循数据保留和删除策略，必要时做加密、访问审批或脱敏。不能为了可复现而无限期保存敏感全文。</li>
+</ul>
+</li>
+</ul>
 </section>
       </article>
       <nav class="chapter-nav"><a href="042.html">← 42. 模块五：推理优化、Serving 与部署工程</a><a href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议 →</a></nav>

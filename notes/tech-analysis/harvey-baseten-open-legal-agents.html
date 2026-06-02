@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harvey/Baseten：开放法律 Agent 后训练路线</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f0e6;
+      --panel: #fffdf8;
+      --panel-2: #ebe4d6;
+      --ink: #202522;
+      --muted: #626a65;
+      --line: #d6cec0;
+      --line-strong: #a79a88;
+      --accent: #285f59;
+      --accent-2: #8a4d2d;
+      --accent-3: #34517f;
+      --accent-soft: #dce9e5;
+      --gold-soft: #efe0bb;
+      --red-soft: #eedad6;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --shadow: 0 18px 46px rgba(39, 37, 31, 0.11);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 37, 34, 0.032) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 37, 34, 0.022) 1px, transparent 1px) 0 0 / 36px 36px,
+        radial-gradient(circle at 82% 12%, rgba(40, 95, 89, 0.14), transparent 30%),
+        radial-gradient(circle at 12% 20%, rgba(138, 77, 45, 0.10), transparent 30%),
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(40, 95, 89, 0.3);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    code { font-family: var(--mono); }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b1a; }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 54px) clamp(18px, 4vw, 46px) 80px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.56fr);
+      gap: clamp(26px, 4.6vw, 58px);
+      align-items: end;
+      min-height: calc(80vh - var(--notes-shell-height, 46px));
+      padding: clamp(34px, 6vw, 84px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 930px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 6vw, 78px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: clamp(20px, 2vw, 24px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 850px;
+      color: #343b38;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.68;
+    }
+
+    .hero-card,
+    .panel,
+    .callout,
+    .metric,
+    .term-card,
+    .risk-card,
+    .source-list a {
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-card strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .fact {
+      min-height: 98px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(235, 228, 214, 0.62);
+    }
+
+    .fact b {
+      display: block;
+      margin-bottom: 4px;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .fact span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 24px 0 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.74);
+    }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    section {
+      padding: 54px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.4fr) minmax(0, 1fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: start;
+    }
+
+    .kicker {
+      margin-bottom: 9px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .content {
+      min-width: 0;
+      color: #323936;
+    }
+
+    .panel { padding: clamp(18px, 3vw, 26px); }
+
+    .panel + .panel,
+    .panel + .callout,
+    .callout + .panel { margin-top: 16px; }
+
+    .callout {
+      padding: 18px;
+      border-left: 5px solid var(--accent-3);
+      box-shadow: none;
+      background: rgba(255, 253, 248, 0.76);
+    }
+
+    .metric-grid,
+    .term-grid,
+    .risk-grid {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .term-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .risk-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .metric,
+    .term-card,
+    .risk-card {
+      min-width: 0;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-family: var(--serif);
+      font-size: 30px;
+      line-height: 1.05;
+    }
+
+    .metric span,
+    .term-card p,
+    .risk-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .term-card h3,
+    .risk-card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+      counter-reset: flow;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 16px 16px 16px 58px;
+      border: 1px solid var(--line);
+      background: rgba(255, 253, 248, 0.82);
+    }
+
+    .flow-step::before {
+      counter-increment: flow;
+      content: counter(flow);
+      position: absolute;
+      left: 16px;
+      top: 17px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 820;
+    }
+
+    .flow-step h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .flow-step p { color: var(--muted); }
+
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 740px;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--ink);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    td { color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      box-shadow: none;
+    }
+
+    .source-list small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-head { grid-template-columns: 1fr; }
+      .hero { min-height: auto; align-items: start; }
+      .metric-grid,
+      .term-grid,
+      .risk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .page { padding-inline: 16px; }
+      .fact-grid,
+      .metric-grid,
+      .term-grid,
+      .risk-grid { grid-template-columns: 1fr; }
+      .toc a { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Tech Analysis · Legal Agent</div>
+        <h1>Harvey/Baseten：开放法律 Agent 后训练路线</h1>
+        <p class="lead">
+          这篇文章的重点不是又发布了一个法律榜单，而是把法律 benchmark 改造成后训练环境：用真实法律工作单元、闭域材料、expert rubric、agent harness 和长程轨迹，训练模型学会在法律工作流里检索、压缩、推理和交付。
+        </p>
+        <nav class="toc" aria-label="Table of contents">
+          <a href="#takeaway">核心判断</a>
+          <a href="#problem">问题背景</a>
+          <a href="#mechanism">机制拆解</a>
+          <a href="#terms">术语解释</a>
+          <a href="#implications">工程启发</a>
+          <a href="#limits">边界风险</a>
+          <a href="#sources">资料索引</a>
+        </nav>
+      </div>
+      <aside class="hero-card" aria-label="Key facts">
+        <strong>Reading map</strong>
+        <p>对象：Gabe Pereyra 发布的 X Article《Post-Training Open Legal Agents With Baseten Research》。</p>
+        <div class="fact-grid">
+          <div class="fact"><b>LAB</b><span>Legal Agent Benchmark，被用作评测资产，也被推进为训练环境。</span></div>
+          <div class="fact"><b>1.2K+</b><span>官方 LAB 介绍称第一版包含超过 1,200 个法律 agent 任务。</span></div>
+          <div class="fact"><b>24</b><span>任务覆盖 24 个法律实践领域，强调真实 law firm 工作形态。</span></div>
+          <div class="fact"><b>27B</b><span>文章报告对 Qwen3.5-27B 做 iSFT，使其更会使用 compaction harness。</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <section id="takeaway">
+        <div class="section-head">
+          <div>
+            <div class="kicker">01 · thesis</div>
+            <h2>核心判断</h2>
+          </div>
+          <div class="content">
+            <div class="panel">
+              <p>
+                Gabe Pereyra 这篇文章真正有价值的地方，是把垂直法律 agent 的训练问题从“给模型补法律知识”转成“让模型学会在法律工作环境里执行程序化任务”。法律任务的难点不只是知道某个条款、案例或概念，而是从 partner-style instruction 出发，在封闭 client matter 中判断哪些文件重要、读出关键事实、维护工作记忆、形成可审查交付物，并满足专家 rubric 的全部要求。
+              </p>
+              <p>
+                因此，文章里最重要的单位不是某个模型分数，而是一个闭环：<strong>benchmark 定义真实工作单元，harness 限定模型如何行动，rubric 负责评价与训练信号，post-training 让 open-weight model 学会执行这个工作流，compaction 解决长程法律任务的上下文管理</strong>。
+              </p>
+            </div>
+            <div class="callout">
+              <p>
+                用一句工程话概括：这不是“用法律数据微调一个模型”，而是“把法律任务做成可训练的 agent 环境”。这条路线对所有专业服务 agent 都有参考价值，包括合规、税务、投研、保险理赔和企业法务。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="problem">
+        <div class="section-head">
+          <div>
+            <div class="kicker">02 · context</div>
+            <h2>问题背景</h2>
+          </div>
+          <div class="content">
+            <p>
+              Harvey 的 Legal Agent Benchmark，也就是 LAB，试图评估 agent 能否完成真实法律工作，而不是短问答。每个任务包括短指令、一个闭域 client matter、相关文件和 reviewable work product 要求。输出由专家写的 rubric 判定，而且采用 all-pass grading：只要关键 criteria 有遗漏，整项任务就不能算真正完成。
+            </p>
+            <p>
+              这个设定和常见 legal QA benchmark 很不一样。Legal QA 通常测试“读一段材料，回答一个问题”；LAB 测试的是“面对一个真实工作包，先搞清楚任务、再从文件系统里建立事实背景，最后交付可复核的法律文档”。这使 LAB 更像 SWE-bench 之于 coding agent：它评估的是工具使用、上下文构建、长程行动和最终交付，而不是单点知识回忆。
+            </p>
+            <div class="metric-grid" aria-label="LAB dimensions">
+              <div class="metric"><b>任务</b><span>从 partner-style instruction 开始，要求 agent 自行组织工作。</span></div>
+              <div class="metric"><b>材料</b><span>client matter 是 closed-universe 文件环境，包含关键和外围材料。</span></div>
+              <div class="metric"><b>交付</b><span>输出必须是 memo、analysis、risk mapping 等可审查 work product。</span></div>
+              <div class="metric"><b>评价</b><span>rubric 拆成事实、格式、引用、结论、建议等 binary criteria。</span></div>
+            </div>
+            <p>
+              文章的出发点是：如果 LAB 真的捕捉了法律 agent 的关键能力，那么它不应该只被用来排名，也可以被用来训练。这个转换很重要，因为垂直行业 agent 的长期优势不只是访问私有数据，而是能不能把行业工作流转成持续改进模型和 harness 的闭环。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="mechanism">
+        <div class="section-head">
+          <div>
+            <div class="kicker">03 · mechanism</div>
+            <h2>机制拆解</h2>
+          </div>
+          <div class="content">
+            <div class="flow">
+              <div class="flow-step">
+                <h3>先观察强模型的工作策略</h3>
+                <p>
+                  作者观察到，强闭源模型在 LAB 上更倾向于打开并完整阅读多数文件，弱 open-weight 模型则更依赖 <code>grep</code> 找片段。这个差异揭示了一个关键事实：法律 agent 的短板常常不是“不会说法律术语”，而是没有完整建立 matter context。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>用 rubric reward 推动行为迁移</h3>
+                <p>
+                  文章报告对 Qwen3.5-9B 做轻量 GRPO，reward 只来自 LAB rubric，没有显式奖励“多读文件”。结果模型行为从 grep-heavy 向 read-heavy 迁移：criterion pass rate 提升，grep 调用下降，read 工具成为主导。这里最有研究价值的是行为变化，而不只是最终分数。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>用 compaction harness 管理长程上下文</h3>
+                <p>
+                  法律 matter 可以包含大量合同、邮件、模板和背景文件。文章实现了一个朴素的自然语言 compaction harness：模型读几份文件后写 structured memo，记录事实、开放问题和临时判断，然后用 memo 替代旧上下文继续工作。强模型能从这个 harness 中获益，但 Qwen3.5-27B 起初不会写出足够有用的 memo。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>用 iSFT 训练模型在 harness 中行动</h3>
+                <p>
+                  作者随后用 Iterative SFT 训练 Qwen3.5-27B。训练数据来自 teacher 在 harness 中端到端完成任务，并过滤出 rubric-passing rollout。训练目标不是让模型记住答案，而是学会在同样的窗口、同样的工具和同样的 compaction 机制下行动。
+                </p>
+              </div>
+              <div class="flow-step">
+                <h3>把未来方向推向 KV cache compaction</h3>
+                <p>
+                  文章认为自然语言 memo 有结构性上限，因为 summary 必然丢失细粒度事实。法律任务经常需要保留条款、金额、日期、例外条件和跨文件依赖。作者提出未来可研究 KV-cache-space compaction，用 latent 空间保存更多信息，并训练领域内压缩模块识别哪些细节真正重要。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms">
+        <div class="section-head">
+          <div>
+            <div class="kicker">04 · terms</div>
+            <h2>术语解释</h2>
+          </div>
+          <div class="content">
+            <div class="term-grid">
+              <div class="term-card">
+                <h3>LAB</h3>
+                <p>Legal Agent Benchmark，Harvey 开源的法律 agent benchmark。它把法律任务表示为指令、材料、工具环境、交付物和 expert rubric 的组合。</p>
+              </div>
+              <div class="term-card">
+                <h3>closed-universe matter</h3>
+                <p>闭域客户事项，表示 agent 只能在给定文件和材料中工作。这个设定降低外部检索噪声，也更接近 law firm 中的 data room 或 matter file。</p>
+              </div>
+              <div class="term-card">
+                <h3>all-pass grading</h3>
+                <p>一种更贴近法律审查的评价方式：不是按命中比例给部分分，而是要求关键 criteria 全部通过。漏掉一个重大风险，交付物就可能 materially incomplete。</p>
+              </div>
+              <div class="term-card">
+                <h3>compaction harness</h3>
+                <p>长程任务里的上下文压缩机制。这里的朴素版本让 agent 周期性写 memo，把已读材料中的事实、疑问和判断压成可继续使用的工作记忆。</p>
+              </div>
+              <div class="term-card">
+                <h3>iSFT</h3>
+                <p>Iterative SFT，通过筛选或修正高质量轨迹反复监督微调。文章中它被用来训练模型在法律 agent harness 中按正确形状行动。</p>
+              </div>
+              <div class="term-card">
+                <h3>private-mode submit</h3>
+                <p>文章提出的失败轨迹恢复方式：不直接给 teacher 标准答案或 judge feedback，而是让 teacher 以自己的方式发现缺口，减少训练数据偏离 inference 环境。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="implications">
+        <div class="section-head">
+          <div>
+            <div class="kicker">05 · implications</div>
+            <h2>工程启发</h2>
+          </div>
+          <div class="content">
+            <p>
+              对垂直 agent 工程来说，这篇文章给出的路线比“换更强模型”更可操作。真正的能力增长来自任务环境、工具边界、训练数据和评价信号共同设计。只调 prompt 可能让 agent 更会说法律话术，但不一定能让它稳定完成长程工作。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>层次</th>
+                    <th>传统做法</th>
+                    <th>文章暗示的做法</th>
+                    <th>为什么重要</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>任务定义</td>
+                    <td>短问答或单文件抽取</td>
+                    <td>真实工作包：指令、matter、工具、交付物</td>
+                    <td>评估 agent 是否能完成实际工作，而不是只回答片段问题。</td>
+                  </tr>
+                  <tr>
+                    <td>评价信号</td>
+                    <td>单一分数或人工主观判断</td>
+                    <td>专家 rubric 拆成 atomic criteria</td>
+                    <td>既能做 benchmark，也能转成训练信号和错误定位工具。</td>
+                  </tr>
+                  <tr>
+                    <td>模型行为</td>
+                    <td>看最终答案是否像法律文本</td>
+                    <td>观察 read、grep、memo、tool call 等轨迹形状</td>
+                    <td>长程 agent 的能力往往体现在过程，而不是只体现在末尾文本。</td>
+                  </tr>
+                  <tr>
+                    <td>上下文管理</td>
+                    <td>依赖长上下文窗口或一次性 summary</td>
+                    <td>把 compaction 当成可训练、可评估的子系统</td>
+                    <td>法律任务需要保留大量事实细节，压缩质量直接决定推理质量。</td>
+                  </tr>
+                  <tr>
+                    <td>部署治理</td>
+                    <td>闭源 frontier model 直接调用</td>
+                    <td>open-weight model + 私有云 + 可审计 harness</td>
+                    <td>法律行业对安全、审计和数据边界敏感，模型能力必须和治理要求同时满足。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <p>
+                如果要复制这条路线，顺序应该是：先定义真实任务，再写 rubric，然后建 harness，收集强轨迹，观察高质量策略，最后做 SFT/RL。不要反过来先训练模型，再临时找一个 benchmark 证明它有效。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="limits">
+        <div class="section-head">
+          <div>
+            <div class="kicker">06 · limits</div>
+            <h2>边界与风险</h2>
+          </div>
+          <div class="content">
+            <div class="risk-grid">
+              <div class="risk-card">
+                <h3>结果仍需外部复现</h3>
+                <p>文章中的训练结果主要来自作者报告。hold-out 构造、任务模板重合、teacher 质量、rubric 稳定性和 judge calibration 都需要更透明的外部验证。</p>
+              </div>
+              <div class="risk-card">
+                <h3>Rubric 不等于真实法律质量</h3>
+                <p>Rubric 能覆盖事实、格式、引用和建议，但高级法律判断还涉及客户偏好、风险承受能力、司法辖区差异和策略判断。</p>
+              </div>
+              <div class="risk-card">
+                <h3>Compaction 可能固化错误</h3>
+                <p>如果 memo 写错，后续推理会继承错误；如果 memo 太短，会漏掉未来才变重要的细节；如果太长，就没有真正解决上下文成本。</p>
+              </div>
+              <div class="risk-card">
+                <h3>Private-mode submit 仍可能泄漏</h3>
+                <p>即使不直接给标准答案，teacher 的二次修正过程也可能携带隐含 evaluator 信号。它比直接喂答案更合理，但不等于完全 on-policy。</p>
+              </div>
+              <div class="risk-card">
+                <h3>KV cache compaction 的可解释性不足</h3>
+                <p>Latent-space memory 可能提升容量，但法律交付物需要证据可追溯。不能解释为什么保留或丢弃某个事实，会带来治理风险。</p>
+              </div>
+              <div class="risk-card">
+                <h3>后训练不能替代 retrieval grounding</h3>
+                <p>法律变化、来源冲突、事实核验和 jurisdiction divergence 不是更会说法律话术就能解决的问题。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources">
+        <div class="section-head">
+          <div>
+            <div class="kicker">07 · evidence</div>
+            <h2>证据边界与资料索引</h2>
+          </div>
+          <div class="content">
+            <p>
+              本文以 Gabe Pereyra 发布的 X Article 为主材料，结合 Harvey 官方 LAB 介绍、Harvey LAB GitHub 仓库和原帖评论区做交叉理解。训练结果、模型排序和具体实验数字按作者文章陈述处理；尚未把它们视为已由独立第三方复现的结论。
+            </p>
+            <div class="source-list">
+              <a href="https://www.harvey.ai/blog/post-training-open-legal-agents-with-baseten-research">
+                Post-Training Open Legal Agents With Baseten Research
+                <small>Harvey 官方文章，Gabe Pereyra X Article 对应长文。</small>
+              </a>
+              <a href="https://x.com/gabepereyra/status/2059688919256727936">
+                Gabe Pereyra 原始 X 帖
+                <small>原帖发布时间为 2026-05-27，正文入口为 X Article。</small>
+              </a>
+              <a href="https://www.harvey.ai/blog/introducing-harveys-legal-agent-benchmark">
+                Introducing Harvey's Legal Agent Benchmark
+                <small>LAB 官方介绍，说明任务结构、实践领域、rubric 和 all-pass grading。</small>
+              </a>
+              <a href="https://github.com/harveyai/harvey-labs">
+                harveyai/harvey-labs
+                <small>LAB 开源仓库，包含任务数据、execution harness 和文档入口。</small>
+              </a>
+              <a href="https://github.com/harveyai/harvey-labs/blob/main/docs/eval-strategies.md">
+                LAB Evaluation Methodology
+                <small>评价方法文档，解释 rubric scoring 和 judge behavior。</small>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

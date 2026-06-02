@@ -1,70 +1,28 @@
 # Ricardokevins.github.io Progress
 
-## 2026-06-02 LongTraceRL X thread 与论文笔记导出
+## 2026-06-02 commit/push 收口复验
 
 ### 背景
 
-- 用户要求仔细阅读梳理 `https://x.com/HuggingPapers/status/2061322399518216371` 并导入笔记，随后要求任务完成后及时 `commit push`。
-- 原帖为 HuggingPapers 推荐 **LongTraceRL: Learning Long-Context Reasoning from Search Agent Trajectories with Rubric Rewards**，主题是用 search agent trajectories 与 entity-level rubric rewards 改进 128K 长上下文推理 RLVR。
+- 用户要求 `review commit and push`。
+- 本轮先处理 `git pull --rebase --autostash` 后遗留的 `Progress.md` 与 `_data/notes.yml` 冲突标记状态；两个文件内容已恢复为本地工作成果版本，并确认没有冲突标记。
+- 远端 `origin/main` 已包含 `agentic-rl-rollout-environments.html`；本地未跟踪副本与远端一致，已在 pull 阶段去除重复副本，避免重复提交。
 
-### 已完成
+### 工作树复验
 
-- 按仓库规则读取 `AGENTS.md`、`.agent/codex-experience-profile.md`、`Progress.md`、`notes/NOTE_TEMPLATE.md`，并确认当前工作树存在大量既有未提交改动；本轮只处理 LongTraceRL 相关新增笔记、索引和进度记录。
-- 使用 `opencli twitter thread` 获取目标 X thread：
-  - 根帖时间：2026-06-01 05:42:12 UTC；
-  - 主帖说明 LongTraceRL 让 LLM 通过 search agent trajectories 和 fine-grained entity-level rubric rewards 学会 128K context 推理；
-  - 回复短链给出 paper 与 collection，并说明 4B、8B、30B 模型和训练数据已发布。
-- 使用 `curl -sIL` 解析短链：
-  - paper：`https://huggingface.co/papers/2605.31584`
-  - collection：`https://huggingface.co/collections/THU-KEG/longtracerl`
-  - 图片短链指向 X 图片页，已下载本地配图资源。
-- 使用 Hugging Face Paper API、`opencli arxiv paper`、PDF 下载与 `pdfinfo` 核验论文元数据：
-  - arXiv ID：`2605.31584`；
-  - 标题：`LongTraceRL: Learning Long-Context Reasoning from Search Agent Trajectories with Rubric Rewards`；
-  - 作者：Nianyi Lin、Jiajie Zhang、Lei Hou、Juanzi Li；
-  - arXiv v1 发布日期：2026-05-29；
-  - PDF 21 页，题名与作者一致。
-- 阅读 Hugging Face paper markdown、arXiv HTML/PDF、官方 GitHub raw README、HF collection、HF dataset/model cards、reward server 与训练配置，核验：
-  - 数据集 2,815 条，每条约 128K prompt，基于 KILT Wikipedia KG random walk 生成 8-hop 问题；
-  - distractor 来自 search agent 轨迹：Tier-1 为 opened/read but not cited，Tier-2 为 searched but unopened；
-  - rubric reward 是 gold entities recall，并通过 group-level normalization 与 positive-only 策略限制 reward hacking；
-  - 训练配置包括 GRPO group size 8、global batch size 128、200 iterations、learning rate `2e-6`、rubric reward weight `0.3`、32 x H800；
-  - 公开资源包括 HF dataset `THU-KEG/LongTraceRL` 和模型 `THU-KEG/LongTraceRL-4B`、`8B`、`30B`。
-- 新增站内论文笔记：
-  - `notes/paper-reviews/longtracerl-long-context-reasoning.html`
-- 新增本地配图资源：
-  - `notes/paper-reviews/longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg`
-- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
-  - 标题：`LongTraceRL：用搜索轨迹和实体级 rubric 训练 128K 长上下文推理`
-  - URL：`/notes/paper-reviews/longtracerl-long-context-reasoning.html`
-  - 类型：`Paper Note`
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check` 通过。
+- `rg -n "<<<<<<<|=======|>>>>>>>" "Progress.md" "_data/notes.yml"` 未命中冲突标记。
+- `rg -n "/Users/bytedance/Downloads|/Users/xxx|/tmp/|Generated locally|HTML generated|本地 HTML 生成|报告生成日期|最终 HTML 路径|文件位置" "notes" "_data/notes.yml" "_pages/about.md"` 未命中公开页面路径或生成痕迹。
+- `python3 -m py_compile "cite.py"` 通过，随后清理 `__pycache__`。
+- `find "." -name ".DS_Store" -not -path "./.git/*" -print` 无输出。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅保留 `faraday-retry` 建议与 GitHub Metadata 未认证 warning，不影响静态站点生成。
 
-### 关键观察
+### 提交边界
 
-- LongTraceRL 的核心不是“把上下文长度拉到 128K”，而是把真实 search agent 读过但最终不该引用的材料变成 hard distractors，让训练分布更接近真实检索错误。
-- Tier-1 distractor 的价值在于它不是随机噪声，而是模型很可能误判为证据的相邻路径；论文统计中 Tier-1 的 rubric entity overlap macro ratio 达 63.23%，random distractor 只有 1.35%。
-- entity-level rubric reward 本质仍是 proxy reward，不能证明完整推理正确；positive-only 策略很关键，因为它把实体命中限制为“正确答案内部质量排序”，避免错误答案靠枚举实体拿分。
-- 主力实验在 Qwen3-4B 上最有说服力：base 平均 53.3，LongTraceRL 为 59.0；去掉 rubric 的 LongTraceRL-GRPO 为 53.7，说明收益主要来自 rubric + hard distractor 的组合，不只是同一批长数据多训几步。
-
-### 当前判断
-
-- LongTraceRL 对 deep research、长文档 RAG、法律/金融材料审阅和多跳企业知识问答有直接启发：训练数据应该保存 search/open/cite 的中间失败痕迹，而不只保存最终成功答案。
-- 这套 recipe 依赖可验证答案、可枚举中间证据实体和足够强的搜索 agent；对主观开放生成、无唯一答案或证据路径多解的任务不能直接照搬。
-- GitHub REST API 当前因未认证 rate limit 返回 403；已降级使用 raw GitHub README、HF API、arXiv/HF 页面作为主证据，不把 GitHub 动态星标等字段作为核心判断。
-
-### 验证结果
-
-- 当前工作区 `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
-- `git diff --check -- "notes/paper-reviews/longtracerl-long-context-reasoning.html" "notes/paper-reviews/longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg" "_data/notes.yml" "Progress.md"` 通过。
-- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
-- 本地配图文件为 `1199x469` JPEG。
-- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 `faraday-retry` 建议和 GitHub Metadata API 未认证/限流 warning，不影响 `_site` 静态生成。
-- `_site/notes/paper-reviews/longtracerl-long-context-reasoning.html` 结构检查通过：title、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、8 个 section、`data-note-role="evidence-appendix"` 和本地图片引用均存在。
-- `_site/notes/index.html` 已出现 LongTraceRL 卡片入口。
-- staged snapshot 验证、commit 与 push 收口见本文件顶部 `2026-06-02 commit/push 收口复验`。
-
-- 使用临时 index 构造最小 staged snapshot 后复验通过：staged diff 仅包含本轮 4 个 LongTraceRL 相关路径，`ruby "scripts/validate_notes_index.rb"` 在 snapshot 中通过，`git diff --cached --check` 在临时 index 中通过，且未混入其他未提交任务条目。
-
+- 本轮提交纳入 notes 语料、模板、validator、站点索引、favicon、题库章节、治理配置与 `Progress.md` 收口记录。
+- `audit_report.html` 是本地审查输入/报告 artifact，不作为站点页面或正式笔记提交。
+- 提交前仍需对 staged snapshot 复跑 notes validator 与 Jekyll build；结果写入提交后的最终汇报。
 
 ## 2026-06-02 A-Evolve self-evolving agents X thread 与站内笔记导出
 
@@ -145,7 +103,194 @@
 - `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
 - `_site/notes/tech-analysis/a-evolve-self-evolving-agents.html` 结构检查通过：页面存在，文件大小 `27994` bytes，`section` 数量为 8，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和两张本地资源均存在。
 - `_site/notes/tech-analysis/a-evolve-self-evolving-agents-assets/framework.jpg` 存在，文件为 `1200x670` JPEG；`_site/notes/tech-analysis/a-evolve-self-evolving-agents-assets/evolved-agent.png` 存在，文件为 `1200x989` PNG。
-- 精确 staged snapshot 检查通过后已 commit/push。
+- 精确 staged snapshot 检查、commit/push 收口见本文件顶部 `2026-06-02 commit/push 收口复验`。
+
+## 2026-06-02 LLM Interview Question Bank RAG / 知识库内容 Review 与补强
+
+### 背景
+
+- 用户要求 review 大模型题库和知识库方面的内容，并指出部分内容不够详细。
+- 本轮先读取仓库规则、经验档案、`Progress.md` 历史记录和当前 worktree，再聚焦 `notes/llm-interview-question-bank/` 中的 RAG / 知识库内容质量。
+- 当前工作树已有大量既有未提交改动；本轮只围绕 LLM 题库 RAG / 知识库章节做最小必要补强，避免把无关文件混入本轮判断。
+
+### Review 结论
+
+- 题库整体不是“没有 RAG 内容”：第 10 章地图页、第 43 章完整答案、第 54 章知识点索引已经覆盖 RAG pipeline、chunking、embedding、hybrid retrieval、reranker、GraphRAG、Lost in the Middle、faithfulness、权限过滤和增量更新。
+- 主要不足是三类生产级追问还不够成体系：
+  - Contextual Retrieval、Parent-Child Retrieval、Multi-hop / Iterative RAG 的区别、适用场景和启用代价。
+  - Self-RAG、CRAG、evidence verifier 这类“检索结果不可信时怎么纠错”的链路设计。
+  - 企业知识库场景下 ACL、文档版本、缓存 key、trace 日志和审计复现如何设计。
+- 首页搜索元数据也偏旧：第 43/54 章卡片没有覆盖新增的现代 RAG 关键词，导致用户用 `Contextual Retrieval`、`Self-RAG`、`CRAG`、`ACL`、`trace` 等词检索时不够直接。
+
+### 已完成
+
+- 原地补强 `notes/llm-interview-question-bank/chapters/043.html`：
+  - 新增第 73 题：`Contextual Retrieval、Parent-Child 和 Multi-hop RAG 分别解决什么问题？`
+  - 新增第 74 题：`RAG 召回错了怎么办？Self-RAG、CRAG 和 verifier 型纠错链路怎么设计？`
+  - 新增第 75 题：`企业知识库 RAG 的权限、版本、缓存和日志怎么设计？`
+  - 对每题补充标准答案、深度解析、表格、状态机/trace 示例和面试追问。
+- 原地补强 `notes/llm-interview-question-bank/chapters/054.html`：
+  - 把本章侧栏从“本章无更多小节”改成 10 个本章小节入口。
+  - 新增 `纠错型 RAG 与 evidence verifier`、`企业知识库的缓存、版本和审计` 两节。
+  - 扩展 GraphRAG 小节，补 local search / global search 的问题类型边界。
+  - 更新误区与追问链路，加入缓存版本、GraphRAG 不应神化、Self-RAG/CRAG 启用代价等复盘点。
+- 更新 `notes/llm-interview-question-bank/index.html`：
+  - 第 43 章卡片统计从 `12 个编号题 · 28 表 · 10 代码块` 更新为 `15 个编号题 · 31 表 · 12 代码块`。
+  - 第 43/54 章 `data-search` 增加 `Contextual Retrieval`、`Parent-Child`、`Multi-hop`、`Self-RAG`、`CRAG`、`evidence verifier`、`ACL`、`trace`、`缓存`、`版本` 等关键词。
+
+### 当前判断
+
+- 这次没有新增章节，原因是现有题库已把 RAG 放在第 43/54 章；继续新增章节会增加导航和维护成本，不如把真实缺口补进最合适的已有章节。
+- 题库现在能覆盖从基础 RAG 到生产知识库治理的追问链路：`pipeline -> retrieval/rerank -> context packing/citation -> GraphRAG -> corrective RAG -> ACL/version/cache/trace`。
+- 后续如果继续深挖，优先方向不是继续堆术语，而是给第 43 章补 1-2 个完整 case study：例如“企业政策助手答错一条退款规则，如何从 trace 定位到 ACL / 版本 / rerank / citation 的具体根因”。
+
+### 待验证
+
+- `ruby "scripts/validate_notes_index.rb"`
+- `git diff --check -- "notes/llm-interview-question-bank/chapters/043.html" "notes/llm-interview-question-bank/chapters/054.html" "notes/llm-interview-question-bank/index.html" "Progress.md"`
+- 必要时运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build`。
+
+## 2026-06-02 Speculative Decoding X Article 深度梳理与笔记导入
+
+### 背景
+
+- 用户要求仔细梳理并导入笔记：`https://x.com/mohitwt_/status/2061127197046555110`。
+- 原帖作者 Mohit，公开简介为 `20, llm inference`；根帖本身只有 X Article 短链。
+- X Article 标题为 `Everything you need to know about Speculative Decoding Inference`，主题是 speculative decoding 的直觉、draft/verify 流程、EAGLE/Medusa/lookahead、生产实现和 KV cache 边界。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-05-31 16:46:32 UTC；
+  - 根帖正文只有短链 `https://t.co/EoalO9SuNe`；
+  - 评论区唯一实质技术补充来自 SPThole：Mohit 漏了 `correction` 和 `sampling based speculative decoding`。
+- 使用 `opencli twitter profile` 核验作者资料：
+  - screen name：`mohitwt_`；
+  - name：`mohit`；
+  - bio：`20, llm inference`；
+  - profile url：`http://mog9.github.io`。
+- 使用 `curl -sIL` 解析短链：
+  - 短链指向 `https://x.com/i/article/2061041984861827073`；
+  - 公开 HTTP 访问 X article 返回 403，随后用 `opencli twitter article` 成功读取完整 X Article。
+- 读取并交叉核验外部资料：
+  - Google Research `Looking back at speculative decoding`；
+  - arXiv `2211.17192`：Fast Inference from Transformers via Speculative Decoding；
+  - arXiv `2302.01318`：Accelerating Large Language Model Decoding with Speculative Sampling；
+  - arXiv `2401.10774`：Medusa；
+  - arXiv `2406.16858`：EAGLE-2；
+  - arXiv `2503.01840`：EAGLE-3；
+  - SGLang speculative decoding 文档；
+  - vLLM speculative decoding 文档。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/speculative-decoding-inference.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Speculative Decoding：投机解码的真实收益、校正采样与生产边界`
+  - URL：`/notes/tech-analysis/speculative-decoding-inference.html`
+  - 类型：`Tech Analysis`
+
+### 关键观察
+
+- Mohit 原文适合作为入门材料，但其 “target model 检查 draft token 是否 top-1” 的表述只适合解释 greedy / 近似流程，不能覆盖 sampling-based speculative decoding。
+- 投机解码的理论关键是保持 target model 输出分布：draft 分布 `q(x)` 与 target 分布 `p(x)` 之间需要 modified rejection sampling，拒绝后还需要从 residual distribution 做 correction。
+- 真正的系统收益来自把多个候选位置合并到一次 target forward 中，利用硬件并行度摊薄逐 token decode 的权重读取成本；它不是数学意义上的免费验证，也不是简单一次 matmul。
+- EAGLE、Medusa、MTP、NGRAM、suffix / prompt lookup 等变体都在回答同一问题：怎样用最低额外成本提出更容易被 target 接受的候选 token。
+- 生产收益高度依赖场景：低 batch、memory-bound、长 decode、draft 高接受率更容易受益；高 batch、短输出、高温采样和 KV cache 紧张时可能收益有限甚至负收益。
+
+### 当前判断
+
+- Speculative decoding 应被看作 LLM serving 的 proposer/verifier 插件接口，而不是单一“小模型猜词”技巧。
+- 上线判断不能只看 tokens/s，应同时记录 acceptance rate、draft latency、verify latency、rejected depth、batch size、OOM、TTFT/TPOT、采样参数和质量回归。
+- 如果业务目标是降低低 QPS / 单用户交互的 decode latency，投机解码值得优先试；如果目标是极高 QPS 批量吞吐，应先确认 continuous batching、prefix caching、quantization、kernel fusion 和路由已经做满。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、MathJax、`data-note-role="evidence-appendix"`、公开生成痕迹检查均通过；页面大小 `28024` bytes，`section` 数量为 9。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/tech-analysis/speculative-decoding-inference.html" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/tech-analysis/speculative-decoding-inference.html` 结构检查通过：页面存在，文件大小 `28024` bytes，`section` 数量为 9，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和 `_site/notes/assets/notes-shell.css` 均存在。
+- 本地 `_site` 临时服务 + 系统 Chrome headless 移动端烟测通过：`390x844` 视口下 title 正确，`sections=9`，`overflow=0`，正文文本长度 `6970`，无图片 alt / 加载问题、无控制台或网络错误。
+
+## 2026-06-02 RHELM 长期记忆 benchmark X 帖与站内笔记导出
+
+### 背景
+
+- 用户要求仔细梳理 `https://x.com/HuggingPapers/status/2061535298652147770` 并导入笔记。
+- 原帖为 HuggingPapers 推荐 Microsoft 发布的 long-horizon memory benchmark：RHELM / `Beyond Static Dialogues: Benchmarking Realistic, Heterogeneous, and Evolving Long-Term Memory`。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-06-01 19:48:11 UTC；
+  - 主帖观点：Microsoft released a long-horizon memory benchmark on Hugging Face；
+  - 回复短链分别解析到 dataset `https://huggingface.co/datasets/microsoft/RHELM` 和 paper page `https://huggingface.co/papers/2605.31086`；
+  - 原帖配图已本地化为 `notes/paper-reviews/rhelm-long-horizon-memory-assets/huggingpapers-root.jpg`。
+- 使用 `opencli twitter profile` 核验 HuggingPapers 账号公开简介：
+  - screen name：`HuggingPapers`；
+  - name：DailyPapers；
+  - verified：true；
+  - bio 指向 Hugging Face Daily Papers 投稿与 paper linking。
+- 使用 Hugging Face paper API、arXiv、PDF、GitHub raw、project page 和 dataset API 交叉核验核心材料：
+  - 论文 ID：`2605.31086`；
+  - arXiv 当前 PDF 为 v2，32 页；
+  - 标题：`Beyond Static Dialogues: Benchmarking Realistic, Heterogeneous, and Evolving Long-Term Memory`；
+  - 作者来自 Renmin University of China 与 Microsoft；
+  - GitHub：`https://github.com/microsoft/RHELM`；
+  - project page：`https://microsoft.github.io/RHELM/`；
+  - dataset：`https://huggingface.co/datasets/microsoft/RHELM`。
+- 核验公开数据集结构：
+  - 10 个 persona；
+  - 1,305 个 QA pairs；
+  - 629 个 conversation sessions；
+  - 625 个 emails；
+  - README/project page 标注 1,053 个 attachments；
+  - 7 个 question types：attachment 249、mixed 210、fact 207、hallucination 197、aggregation 192、temporal 185、misleading 65。
+- 核验 RHELM 的关键机制：
+  - LOOP = pLan / rOllout / evOlve / Prune；
+  - persona profile 覆盖 Identity、Personality、Traits、Relationships、Belongings、Current Status；
+  - 数据不只来自对话，还包括 email、journal/report 类 attachments 与多格式结构资料；
+  - Memory-Conditioned Misleading Queries 要求模型识别用户请求与历史状态冲突，而不是盲目服从。
+- 核验实验结论：
+  - 项目页与论文主结果显示最佳系统 Claude Opus 4.5 在带 external sources 设置下平均分为 38.1；
+  - RAG、long-context models、MemGPT/Mem0/MemU 等 memory frameworks 均在 hallucination、misleading、mixed、cross-source aggregation 上暴露缺口；
+  - 增加检索量不必然改善表现，外部来源还可能降低标准类型表现，因为系统需要统一证据、时间有效性和跨来源结构，而不是简单召回更多 chunk。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/rhelm-long-horizon-memory.html`
+- 新增本地图片资源：
+  - `notes/paper-reviews/rhelm-long-horizon-memory-assets/huggingpapers-root.jpg`
+  - `notes/paper-reviews/rhelm-long-horizon-memory-assets/rhelm-overview.png`
+  - `notes/paper-reviews/rhelm-long-horizon-memory-assets/rhelm-main-results.png`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`RHELM：长期记忆评测为什么必须超越静态对话`
+  - URL：`/notes/paper-reviews/rhelm-long-horizon-memory.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- 这篇材料的核心 insight 不是“长上下文 benchmark 又多一个”，而是把 personal assistant memory 从静态事实检索改写成动态用户状态建模。
+- RHELM 对 memory system 的真正压力来自五个同时成立的条件：长期 persona 演化、异构外部资料、时间有效性、跨来源聚合、用户请求与隐含状态冲突。
+- 普通 RAG 的 failure mode 很清楚：相似 chunk 命中不等于证据链正确；top-k 增加还会带入过时状态、无关附件和冲突事实。
+- Long-context model 的 failure mode 也不同：它可能看到全部材料，但仍会在证据归因、时间关系、误导性前提和 hallucinated justification 上失效。
+- Misleading query 是 RHELM 最有工程价值的设计之一：长期助手不能只做 instruction following，还必须在用户请求与历史状态冲突时提醒、拒绝或提出替代方案。
+- 公开材料存在一个需注明的口径差异：论文摘要/正文写 27 个 memory characteristics，当前 README / project page / taxonomy 文档写 26 个 challenge characteristics；dataset 实际 characteristics 字段还出现 taxonomy 文档未列出的标签。
+
+### 当前判断
+
+- RHELM 更适合作为长期记忆系统的 diagnostic suite，而不是单纯排行榜：应拆分测试 temporal validity、evidence attribution、attachment structure retrieval、cross-source aggregation、hallucination correction 和 misleading refusal。
+- 若系统只实现“向量库 + profile 摘要”，很可能在 RHELM mixed / misleading / hallucination 上系统性失败；更合理的架构应包含原始事件账本、结构化当前状态、外部资料结构索引和回答时 evidence graph。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、本地图片存在、非空 alt 与公开生成痕迹检查均通过。
+- `ruby "scripts/validate_notes_index.rb"` 通过；RHELM 页面写入后首次输出 `notes index ok: 76 entries, 76 top-level note html files`，后续因工作树内已有/并行 notes 改动进入索引，最终复跑输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/rhelm-long-horizon-memory.html" "notes/paper-reviews/rhelm-long-horizon-memory-assets" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata 未认证 warning，不影响 `_site` 静态生成。
+- `_site/notes/paper-reviews/rhelm-long-horizon-memory.html` 结构检查通过：页面存在，文件大小 `26960` bytes，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和三张本地图片均存在。
+- `_site/notes/index.html` 已出现新增 Notes 卡片入口：`RHELM：长期记忆评测为什么必须超越静态对话`。
+- 从 `_site` 启动本地 HTTP 服务后，页面、三张本地图片和 `notes-shell.css` 均返回 `HTTP 200`。
+- Chrome headless 渲染验证通过：桌面截图 `/tmp/rhelm-long-horizon-memory-1280.png` 为 `1280x900`、`220966` bytes，移动截图 `/tmp/rhelm-long-horizon-memory-390.png` 为 `390x844`、`95107` bytes，均为非空 PNG。
 
 ## 2026-06-02 The Thinking Pixel X thread 与论文笔记导出
 
@@ -210,6 +355,110 @@
 - `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有既有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
 - `_site/notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning.html` 结构抽查通过：页面存在，大小 `27426` bytes，`section` 数量为 8，`body.notes-shell-page`、`main`、`data-note-role="evidence-appendix"`、本地配图和 `_site/notes/assets/notes-shell.css` 均存在。
 
+## 2026-06-02 LongTraceRL X thread 与论文笔记导出
+
+### 背景
+
+- 用户要求仔细阅读梳理 `https://x.com/HuggingPapers/status/2061322399518216371` 并导入笔记，随后要求任务完成后及时 `commit push`。
+- 原帖为 HuggingPapers 推荐 **LongTraceRL: Learning Long-Context Reasoning from Search Agent Trajectories with Rubric Rewards**，主题是用 search agent trajectories 与 entity-level rubric rewards 改进 128K 长上下文推理 RLVR。
+
+### 已完成
+
+- 按仓库规则读取 `AGENTS.md`、`.agent/codex-experience-profile.md`、`Progress.md`、`notes/NOTE_TEMPLATE.md`，并确认当前工作树存在大量既有未提交改动；本轮只处理 LongTraceRL 相关新增笔记、索引和进度记录。
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-06-01 05:42:12 UTC；
+  - 主帖说明 LongTraceRL 让 LLM 通过 search agent trajectories 和 fine-grained entity-level rubric rewards 学会 128K context 推理；
+  - 回复短链给出 paper 与 collection，并说明 4B、8B、30B 模型和训练数据已发布。
+- 使用 `curl -sIL` 解析短链：
+  - paper：`https://huggingface.co/papers/2605.31584`
+  - collection：`https://huggingface.co/collections/THU-KEG/longtracerl`
+  - 图片短链指向 X 图片页，已下载本地配图资源。
+- 使用 Hugging Face Paper API、`opencli arxiv paper`、PDF 下载与 `pdfinfo` 核验论文元数据：
+  - arXiv ID：`2605.31584`；
+  - 标题：`LongTraceRL: Learning Long-Context Reasoning from Search Agent Trajectories with Rubric Rewards`；
+  - 作者：Nianyi Lin、Jiajie Zhang、Lei Hou、Juanzi Li；
+  - arXiv v1 发布日期：2026-05-29；
+  - PDF 21 页，题名与作者一致。
+- 阅读 Hugging Face paper markdown、arXiv HTML/PDF、官方 GitHub raw README、HF collection、HF dataset/model cards、reward server 与训练配置，核验：
+  - 数据集 2,815 条，每条约 128K prompt，基于 KILT Wikipedia KG random walk 生成 8-hop 问题；
+  - distractor 来自 search agent 轨迹：Tier-1 为 opened/read but not cited，Tier-2 为 searched but unopened；
+  - rubric reward 是 gold entities recall，并通过 group-level normalization 与 positive-only 策略限制 reward hacking；
+  - 训练配置包括 GRPO group size 8、global batch size 128、200 iterations、learning rate `2e-6`、rubric reward weight `0.3`、32 x H800；
+  - 公开资源包括 HF dataset `THU-KEG/LongTraceRL` 和模型 `THU-KEG/LongTraceRL-4B`、`8B`、`30B`。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/longtracerl-long-context-reasoning.html`
+- 新增本地配图资源：
+  - `notes/paper-reviews/longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`LongTraceRL：用搜索轨迹和实体级 rubric 训练 128K 长上下文推理`
+  - URL：`/notes/paper-reviews/longtracerl-long-context-reasoning.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- LongTraceRL 的核心不是“把上下文长度拉到 128K”，而是把真实 search agent 读过但最终不该引用的材料变成 hard distractors，让训练分布更接近真实检索错误。
+- Tier-1 distractor 的价值在于它不是随机噪声，而是模型很可能误判为证据的相邻路径；论文统计中 Tier-1 的 rubric entity overlap macro ratio 达 63.23%，random distractor 只有 1.35%。
+- entity-level rubric reward 本质仍是 proxy reward，不能证明完整推理正确；positive-only 策略很关键，因为它把实体命中限制为“正确答案内部质量排序”，避免错误答案靠枚举实体拿分。
+- 主力实验在 Qwen3-4B 上最有说服力：base 平均 53.3，LongTraceRL 为 59.0；去掉 rubric 的 LongTraceRL-GRPO 为 53.7，说明收益主要来自 rubric + hard distractor 的组合，不只是同一批长数据多训几步。
+
+### 当前判断
+
+- LongTraceRL 对 deep research、长文档 RAG、法律/金融材料审阅和多跳企业知识问答有直接启发：训练数据应该保存 search/open/cite 的中间失败痕迹，而不只保存最终成功答案。
+- 这套 recipe 依赖可验证答案、可枚举中间证据实体和足够强的搜索 agent；对主观开放生成、无唯一答案或证据路径多解的任务不能直接照搬。
+- GitHub REST API 当前因未认证 rate limit 返回 403；已降级使用 raw GitHub README、HF API、arXiv/HF 页面作为主证据，不把 GitHub 动态星标等字段作为核心判断。
+
+### 验证结果
+
+- 当前工作区 `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/longtracerl-long-context-reasoning.html" "notes/paper-reviews/longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- 本地配图文件为 `1199x469` JPEG。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 `faraday-retry` 建议和 GitHub Metadata API 未认证/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/paper-reviews/longtracerl-long-context-reasoning.html` 结构检查通过：title、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、8 个 section、`data-note-role="evidence-appendix"` 和本地图片引用均存在。
+- `_site/notes/index.html` 已出现 LongTraceRL 卡片入口。
+- staged snapshot 验证、commit 与 push 收口见本文件顶部 `2026-06-02 commit/push 收口复验`。
+
+## 2026-06-02 数学题库与知识库内容审计
+
+### 背景
+
+- 用户要求 review 数学题库和知识库方面内容，指出“有的内容都有问题”，随后要求本轮工作完成后及时 commit push。
+- 本轮按 code review / content audit 方式处理：先定位题库范围，再抓可复现的事实性或概念性问题，避免把偏好表达误判为内容 bug。
+
+### 已审计范围
+
+- 数学题库：
+  - `notes/math-interview-question-bank/index.html`
+  - `notes/math-interview-question-bank/chapters/001.html` 至 `020.html`
+- 知识库 / RAG 相关章节：
+  - `notes/llm-interview-question-bank/chapters/010.html`
+  - `notes/llm-interview-question-bank/chapters/043.html`
+  - `notes/llm-interview-question-bank/chapters/054.html`
+- 额外检查：
+  - 当前 notes validator 规则；
+  - 数学公式、数值例题、RAG 召回/重排术语和容易误导的绝对化表述。
+
+### 发现并修复的问题
+
+- 数学综合案例中 `020.html` 的 VaR/CVaR 离散样本口径前后不一致：
+  - 该页按 \(\lceil0.8\cdot5\rceil=4\) 取 \(VaR_{0.8}\approx -0.004\)，但随后把 CVaR 写成只取最大损失 `0.016`；
+  - 前文 `011.html` 的口径是 \(CVaR_\alpha=\mathbb{E}[L\mid L\ge VaR_\alpha]\)，离散样本例题也把等于 VaR 门槛的样本计入尾部；
+  - 已修为同一口径下 \(CVaR_{0.8}\approx(-0.004+0.016)/2=0.006\)，并补充说明若采用更保守的“最坏 20%”经验口径，需要先声明口径，否则同一组样本会算出不同结果。
+- RAG 章节 `043.html` 将 “embedding model 的两种架构” 写成 `Bi-Encoder vs Cross-Encoder`，容易误导读者以为 Cross-Encoder 也会产出可入库 embedding：
+  - 已改为“召回与重排的两种打分架构”；
+  - 补充说明只有 Bi-Encoder 这类稠密召回模型会产出可预计算、可入库的文档 embedding，Cross-Encoder 通常是对 query-doc 对直接打分的 reranker。
+- RAG 章节 `043.html` 把 ColBERT 放进 Cross-Encoder 代表模型列表：
+  - 已改为 `BGE-Reranker, monoT5 等；ColBERT 属于 late-interaction 折中路线`，和后文本身对 ColBERT 的 late interaction 解释保持一致。
+- RAG 章节 `043.html` 有两个过度绝对化表述：
+  - `BGE-large-zh（开源最强中文 embedding）` 改为按业务评测选择 BGE / GTE / E5 系列中文或多语言模型；
+  - `recall@10 < 80% 就值得微调` 改为看真实 query-document 对上的 recall、误召回类型、业务风险和成本，不再给固定魔法阈值。
+
+### 验证结果
+
+- 已写入并运行内容回归检查，确认上述旧问题文本不再出现，且修复说明存在。
+- 提交前全局复验 `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 74 entries, 74 top-level note html files`；此前 `x-tweet-cycle-ai-digest.html` 顶部来源/流程措辞 warning 已收敛为正文判断与“样本机制”，当前无 notes quality warning。
+- 提交前 `git diff --check` 通过；公开页面生成痕迹扫描未命中 `/tmp/`、`/Users/bytedance`、`Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`最终 HTML 路径`、`文件位置` 等模式。
+- `git diff --check -- "notes/math-interview-question-bank/chapters/020.html" "notes/llm-interview-question-bank/chapters/043.html"` 通过。
 
 ## 2026-06-02 Agentic RL rollout system X 帖与站内笔记导出
 
@@ -274,7 +523,7 @@
 
 - 新增 HTML scoped 结构检查通过：`title`、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"` 与公开生成痕迹检查均通过。
 - `git diff --check -- "notes/tech-analysis/agentic-rl-rollout-environments.html" "_data/notes.yml" "Progress.md"` 通过。
-- 在干净提交 worktree 中，`ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 62 entries, 62 top-level note html files`。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 74 entries, 74 top-level note html files`；当前工作树保留 1 条旧页面质量 warning：`x-tweet-cycle-ai-digest.html` 顶部出现来源/流程措辞。
 - 复验 `git diff --check -- "notes/tech-analysis/agentic-rl-rollout-environments.html" "_data/notes.yml" "Progress.md"` 通过。
 - 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
 - 首次 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 提示临时 bundle 缺 `jekyll`；执行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle install` 后重新构建成功。
@@ -285,6 +534,58 @@
   - 桌面视口 `1440x1100` 生成 `/tmp/agentic-rollout-desktop.png`，大小 `212987` bytes；
   - 移动视口 `390x844` 生成 `/tmp/agentic-rollout-mobile.png`，大小 `103759` bytes；
   - 移动截图 stderr 有 Chrome GPU `SharedImageManager::ProduceMemory` 噪声，但截图已成功写出，不是页面资源错误。
+
+## 2026-06-02 仓库审计报告复核与结构修复
+
+### 背景
+
+- 用户要求核实并修复 `audit_report.html` 中列出的仓库问题，重点包括章节页 `chapter-nav` 重复、章节导航方向、heading ID、`_site` 跟踪状态、`cite.py`、`about.md` 旧统计脚本、`.DS_Store` 和 `_drafts` 残留。
+- 本轮遵循先复现再修复：先检查当前 worktree、报告内容、章节目录页和实际源文件，再只处理当前仓库中可证实的问题。
+
+### 复核结论
+
+- 确认为真实问题：
+  - `notes/llm-interview-question-bank/chapters/*.html` 90 个文件和 `notes/math-interview-question-bank/chapters/*.html` 20 个文件均存在两个 `<nav class="chapter-nav">`。
+  - `cite.py` 对 Semantic Scholar author papers 使用逐行嵌套遍历，且直接覆盖写 `_pages/about.md`。
+  - `_pages/about.md` 底部仍有 `busuanzi` 中文访问统计和 `flagcounter` 外部统计图。
+  - 工作区存在 15 个 `.DS_Store` 物理文件；`_drafts/post-draft.md` 是已跟踪示例草稿。
+- 修正审计报告中的当前状态误判：
+  - `git ls-files "_site" | wc -l` 返回 `0`，说明当前 Git 索引并未跟踪 `_site/`；`_site/` 只是本地构建产物，且 `.gitignore` 已覆盖。
+  - “跨文件 heading ID 冲突”不是当前站点 bug：这些 ID 分布在独立 HTML 文档中，浏览器锚点作用域是单文档。本轮已把 validator 加强为检查每个 HTML 文件内部 ID 唯一。
+  - “导航方向错误”不能按数字相邻判断。LLM 题库的目录明确按学习路径重排，上一节/下一节应跟随 `index.html` 中的学习顺序，而不是 `001 -> 002 -> 003` 的文件号顺序。本轮 validator 改为按目录页顺序验证。
+
+### 已完成
+
+- 扩展 `scripts/validate_notes_index.rb`：
+  - 读取 LLM 题库和数学题库 `index.html` 的章节顺序；
+  - 要求每个章节页恰好一个 `chapter-nav`；
+  - 要求 `chapter-nav` 链接与目录页学习顺序一致；
+  - 要求单个章节 HTML 内部 `id` 唯一。
+- 对 110 个章节页做机械修复：删除正文前的重复 `chapter-nav`，保留正文后的翻页导航。
+- 改写 `cite.py`：
+  - 先将 `author.papers` 建成 `paperId -> citationCount` 字典；
+  - 用 `Path.read_text` / `NamedTemporaryFile` / `os.replace` 做原子替换；
+  - 保持脚本入口为 `if __name__ == "__main__"`，避免 import 时产生副作用。
+- 清理 `_pages/about.md` 底部 `busuanzi` 和 `flagcounter`。
+- 删除 15 个 `.DS_Store` 物理文件。
+- 删除已跟踪示例草稿 `_drafts/post-draft.md`，并在 `.gitignore` 新增 `_drafts/`，防止后续本地草稿误入仓库。
+
+### 验证结果
+
+- 先运行增强后的 `ruby "scripts/validate_notes_index.rb"`，RED 阶段稳定失败并列出 110 个章节页 `chapter-nav` 数量为 2；修复后重新运行通过，最终输出 `notes index ok: 70 entries, 70 top-level note html files`。
+- 独立结构审计通过：`110` 个章节页均为一个 `chapter-nav`，链接按目录页学习顺序，单文件内无重复 `id`。
+- `python3 -m py_compile "cite.py"` 通过。
+- `find "." -name ".DS_Store" -not -path "./.git/*" -print` 无输出。
+- `rg -n "busuanzi|flagcounter|本站总访问量" "_pages/about.md"` 无输出。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- 从 `_site` 启动本地服务后，DOM/HTTP 抽查通过：
+  - `/`、`/notes/llm-interview-question-bank/`、`/notes/llm-interview-question-bank/chapters/001.html`、`/notes/llm-interview-question-bank/chapters/090.html`、`/notes/math-interview-question-bank/chapters/001.html`、`/notes/math-interview-question-bank/chapters/020.html` 均返回 `200`；
+  - 章节页 `main` 存在，`chapter-nav` 数量均为 `1`；
+  - 抽查页本地图片引用无缺失。
+- 浏览器验证边界：
+  - Codex in-app Browser 当前返回 `iab` 不可用；
+  - Playwright wrapper 调用 `npx --package @playwright/mcp playwright-cli` 时提示 `playwright-cli: command not found`；
+  - 已降级使用系统 Google Chrome headless 生成 `/tmp/llm-chapter-001.png` 和 `/tmp/math-chapter-020.png` 截图。Chrome stderr 存在系统 updater / Crashpad 权限噪声，不是站点控制台或页面资源错误。
 
 ## 2026-06-02 Frontier Async RL X thread 与 blog 笔记导出
 
@@ -411,6 +712,492 @@
   - browser console message 数量为 0。
 - 系统 Chrome headless 以 `390x844` 移动视口打开并截图成功；PNG 文件 `390 x 844`、约 `97K`、PNG header 正常，页面非空。
 
+## 2026-05-28 Codex 会话与执行日志系统复盘
+
+### 背景
+
+- 用户要求阅读并检索所有 Codex 对话记录与执行日志，做系统性复盘，提炼可复用经验文档。
+- 交付物要求：
+  - 执行经验总结；
+  - 用户 UI / 产品 / 交互偏好与理念档案；
+  - Codex 未来可直接遵循的规则清单；
+  - 保存为独立文件；
+  - 在 `.agent` 配置中以地址引用方式加载，使后续 Codex 会话继承。
+
+### 已完成
+
+- 读取并核验当前仓库状态：
+  - `AGENTS.md`
+  - `Progress.md`
+  - 当前工作树已有大量未提交改动，本轮只触碰复盘任务必要文件。
+- 定位 Codex 本地数据源：
+  - `/Users/bytedance/.codex/sessions/`
+  - `/Users/bytedance/.codex/archived_sessions/`
+  - `/Users/bytedance/.codex/session_index.jsonl`
+  - `/Users/bytedance/.codex/logs_2.sqlite`
+  - `/Users/bytedance/.codex/shell_snapshots/`
+- 完成结构化扫描：
+  - 可解析 `session_meta`：1813 条，覆盖 2025-09 到 2026-05。
+  - Codex JSONL 体量：`sessions` 约 2.0G，`archived_sessions` 约 263M。
+  - 高频工作目录：`TradeAgent` 1131 次、`FreqTrade` 166 次、`SheSheBot` 132 次、本个人站仓库相关目录 88 次。
+  - 过滤长上下文和环境注入后的用户短消息：4423 条。
+  - 工具调用：约 128584 次。
+  - SQLite 日志：171479 条，其中 WARN 1660 条、ERROR 46 条。
+- 复核 OpenAI Codex 官方文档：Codex 会读取全局 `~/.codex/AGENTS.md` 和项目 `AGENTS.md`，同时支持 `AGENTS.override.md` 及配置 fallback 文件；`.agent/config.toml` 本身不是官方默认 instruction discovery 入口。
+- 新增独立经验档案：
+  - `.agent/codex-experience-profile.md`
+- 新增 `.agent` 地址索引：
+  - `.agent/config.toml`
+- 更新仓库 `AGENTS.md`，添加 `Codex Experience Profile` 引用。
+- 更新全局 `/Users/bytedance/.codex/AGENTS.md`，使后续 Codex 会话默认看到经验档案路径。
+
+### 关键观察
+
+- 历史纠偏最集中在几个模式：未读仓库规则、过宽搜索导致噪声、没有按阶段验证、把数据/日志写入仓库、只生成笔记不直接讲解、UI 状态不可验证、性能优化牺牲语义、完成前缺少要求级审计。
+- 用户稳定偏好是：中文、直接、深度、证据驱动；遇到授权时自主推进；研究内容要有机制解释和 insight；工具 UI 要显示真实运行状态；仓库和文档要简洁。
+- 对当前仓库，后续不应默认写 Obsidian；站内 notes 和研发过程分别遵循 `notes/NOTE_TEMPLATE.md` 与 `Progress.md`。
+
+### 当前判断
+
+- `.agent/config.toml` 已作为地址索引满足 `.agent` 配置引用需求；真正能让 Codex 后续默认继承的加载路径是全局 `~/.codex/AGENTS.md` 与本仓库 `AGENTS.md` 的路径引用。
+- 不把复盘正文直接塞入 `AGENTS.md`，避免启动上下文膨胀；`AGENTS.md` 只保留稳定入口，详细规则放独立文件。
+
+## 2026-05-28 LRPO 多语言 Policy Optimization 帖子解读与笔记导出
+
+### 背景
+
+- 用户要求解读 X 帖：`https://x.com/CherylolGuo/status/2059695145679790165`，随后要求“导出笔记”。
+- 帖子主题为 ICML 2026 论文 `Learning to Route Languages for Multilingual Policy Optimization`，方法名为 LRPO。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取原帖和完整线程内容，确认作者介绍了 Language-Routed Policy Optimization、希腊 thumbs-up 例子、language router、reward calibration、Qwen2.5-1.5B 的 mGSM-v2 提升和论文/代码链接。
+- 解析短链得到：
+  - 论文 PDF：`https://arxiv.org/pdf/2605.25360`
+  - 代码仓库：`https://github.com/Guochry/LRPO`
+- 使用 `opencli arxiv paper 2605.25360` 核验论文元数据：标题、作者、发布日期、ICML 2026 标注和摘要。
+- 读取官方 GitHub README，核验 LRPO 的三个组件：language-routed rollouts、calibrated multilingual rewards、trainable language router。
+- 下载并抽取论文 PDF 文本，核验方法设计、实验表格、reward calibration、router learning dynamics、训练成本和统计显著性。
+- 新增站内论文笔记：`notes/paper-reviews/lrpo-language-routed-policy-optimization.html`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`LRPO：把语言选择变成多语言后训练的可学习变量`
+  - URL：`/notes/paper-reviews/lrpo-language-routed-policy-optimization.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- LRPO 的核心 insight 是：语言不是单纯的输入输出格式，而是访问模型内部知识分布的一条路径；后训练阶段不应默认只用源语言或英语中心路径 rollout。
+- 方法上，LRPO 在固定 rollout budget 下保留部分源语言 rollout，并让 trainable language router 根据主题/地区上下文采样其他语言。
+- 跨语言 reward 不能直接比较；论文用离线语言对相似度统计做 mean-based 或 quantile-based calibration，避免 embedding/reward model 的语言对偏差污染 policy update。
+- 实验收益更集中在 CARE、CARE-pro、mGSM-v2 这类开放生成任务；Global-MMLU-Lite 和 Include-Lite 等选择题任务更多是保持或小幅波动。
+- 工程启发是：多语言 RAG 和国际化 agent 不应只做“翻译成英文再处理”，而应同时路由资料来源语言、推理/生成语言和最终用户输出语言。
+
+### 当前判断
+
+- 该工作把“多语言能力”从评测标签推进为后训练中的可学习控制变量，对区域知识、跨文化信息需求和非英语资料检索场景有实际参考价值。
+- 主要边界是 reward 依赖、reference 质量、router 局部最优和训练成本；不能把学到的语言偏好硬编码成通用规则。
+- 本次笔记未新增图片或资产目录，保持仓库目录简洁；资料来源和核验边界已放在页面文末。
+
+## 2026-05-28 Gabe Pereyra Harvey/Baseten 开放法律 Agent 后训练文章解读
+
+### 背景
+
+- 用户要求深度解读 X 帖子：`https://x.com/gabepereyra/status/2059688919256727936`。
+- 原帖本身只有短链，实际正文是 X Article：`Post-Training Open Legal Agents With Baseten Research`。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 读取原帖、主要回复和互动数据。
+- 使用 `opencli twitter article` 读取完整长文内容。
+- 使用 `opencli twitter profile` 核验作者 Gabe Pereyra 身份信息：Harvey President & Co-Founder。
+- 解析短链指向：`https://x.com/i/article/2059666894781554691`。
+- 补充读取 Harvey 官方 LAB 介绍与 `harveyai/harvey-labs` GitHub 仓库信息，核验 LAB 的任务结构、规模、all-pass grading 和开放仓库边界。
+
+### 关键观察
+
+- 文章核心不是单纯宣布一个 legal benchmark，而是把 LAB 从评测资产推进为后训练环境：rubric、harness、closed-universe matter 和长程轨迹一起构成可训练信号。
+- 作者报告了两类关键现象：第一，轻量 GRPO 能让 Qwen3.5-9B 从 grep-heavy 行为转向 read-heavy 行为；第二，Qwen3.5-27B 需要 harness 与 iSFT 共同作用，才能把简单文本 compaction 用起来。
+- 文中真正重要的工程假设是：法律 agent 的瓶颈不只是法律知识，而是长程检索、上下文管理、证据保真和 reviewable deliverable 生成之间的闭环。
+- 评论区有用户质疑模型排序措辞，也有人指出 legal agent 失败常来自法律更新、来源冲突、司法辖区差异和检索可靠性，这些是后训练本身不能完全解决的问题。
+
+### 当前判断
+
+- 该帖价值在于给出一个垂直 agent 后训练范式：先把真实工作单元 benchmark 化，再把 benchmark 的 rubric 和轨迹转成训练环境。
+- 主要边界是：结果仍以作者报告为主；hold-out 构造、teacher 质量、private-mode submit 是否引入隐性泄漏、以及 LLM judge/rubric 的稳定性都需要外部复现。
+- 对工程实践的启发是：垂直 agent 不应只调 prompt 或换更强模型，而要共同优化 harness、检索策略、compaction、训练数据过滤和 partial-credit assignment。
+
+### 补充：站内 HTML 笔记导出
+
+- 用户追问是否已产出 HTML 笔记；确认前一轮仅更新 `Progress.md`，本轮已补齐站内页面。
+- 已新增站内技术分析笔记：
+  - `notes/tech-analysis/harvey-baseten-open-legal-agents.html`
+- 已更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Harvey/Baseten：开放法律 Agent 后训练路线`
+  - URL：`/notes/tech-analysis/harvey-baseten-open-legal-agents.html`
+  - 类型：`Tech Analysis`
+
+## 2026-05-28 Orbit 站内 HTML 笔记导出
+
+### 背景
+
+- 用户要求将 Besteuler / Orbit 推文解读导出到 HTML 笔记里。
+- 按仓库规则复用 `notes/NOTE_TEMPLATE.md` 的结构要求：独立 HTML 必须加载 `notes-shell.css`、包含 `notes-shell-page`、顶部有 Notes / All Notes / Home 返回条，资料来源放到文末证据边界。
+
+### 已完成
+
+- 新增站内技术分析笔记：`notes/tech-analysis/orbit-rl-infrastructure-analysis.html`。
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Orbit：把万亿模型 RL 后训练改写成部署一致性问题`
+  - URL：`/notes/tech-analysis/orbit-rl-infrastructure-analysis.html`
+  - 类型：`Tech Analysis`
+- 页面内容覆盖：
+  - Orbit 的核心判断；
+  - full-FT 万亿 RL 的系统瓶颈；
+  - low-precision frozen base + BF16 adapter + OFT 的机制；
+  - adapter-native async 与 double-buffered rollout 的架构差异；
+  - 术语解释、边界风险、工程启发和证据索引。
+
+### 当前判断
+
+- 本次没有新增图片或资产目录，避免目录噪声；页面使用纯 HTML/CSS 与外部资料链接。
+- 证据边界明确标注：中文微信短链当前进入验证码页；GitHub REST API 未认证额度耗尽，因此仓库核验使用公开页面、raw 文件和 git remote 引用。
+
+## 2026-05-28 Orbit RL 后训练框架深度解读
+
+### 背景
+
+- 用户要求深度解读 X 推文：`https://x.com/Besteuler/status/2059849677626085642`。
+- 推文主题为 **Orbit**：SphereLab 开源的 OFT-based RL 后训练框架，支持万亿参数 LLM 在单节点 8×B200 上稳定 RL 训练。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取原帖及讨论回复。
+- 解析短链获取：GitHub (`github.com/Sphere-AI-Lab/orbit`)、英文博客 (`spherelab.ai/orbit`)、中文博客（机器之心）。
+- 完整阅读英文博客、中文博客、GitHub README、异步双缓冲架构页、PEFT-Arena benchmark 页。
+- 分析核心源码结构（train.py、router、rollout、backends 等模块）。
+- 生成自包含中文 HTML 报告至 `/Users/bytedance/Downloads/orbit-rl-infrastructure-analysis.html`。
+
+### 关键发现
+
+- Orbit 的核心创新：base model 冻结在部署精度 (INT4/FP4)，仅训练 BF16 OFT adapter，显存从全参的 16-32 bits/param 降至 ~4.08 bits/param。
+- 训推精度对齐：训练和 rollout 使用完全相同的低精度 base + adapter，从系统层面消除 train-rollout log-prob diff。
+- OFT > LoRA：PEFT-Arena 基准显示 OFT 在 RLVR 下可一致超越 Full-FT，且具有零额外通信开销和更好的几何保持性。
+- 在 Kimi-K2.6 (1T)、DeepSeek V4-Flash、DeepSeek V4-Pro (1.6T) 上验证了单节点 RL 训练的稳定性和有效性。
+- 异步双缓冲机制带来 1.42× step-time 加速和 44% 更高 rollout throughput。
+
+## 2026-05-27 Yujie Zhao AMA-Bench 推文分析
+
+### 背景
+
+- 用户要求深度分析 X 推文：`https://x.com/YujieZhao455906/status/2059129862825374062`。
+- 推文主题为 `AMA-Bench / AMA-Agent`，论文已被 `ICML 2026` 接收，关注 agentic applications 中的 long-horizon memory 评测。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 读取原帖、回复、互动数据和媒体链接。
+- 使用 Twitter Snowflake 解码确认原帖时间为 `2026-05-26T04:29:50Z`。
+- 使用 `opencli twitter profile` 核验作者简介：Yujie Zhao，UCSD CS PhD student，Google Student Researcher，方向为 Agents and RL。
+- 解析推文短链到项目官网：`https://ama-bench.github.io/`。
+- 读取并核验项目官网、arXiv `2602.22769`、GitHub `AMA-Bench/AMA-Bench`、Hugging Face dataset / leaderboard 信息。
+- 下载并查看原帖三张配图，确认配图展示了 memory formulation、benchmark domains 和 main results。
+
+### 关键观察
+
+- AMA-Bench 的核心问题设定不是 dialogue memory，而是从 agent-environment interaction trajectory 中构建和检索记忆。
+- 论文将 agent memory 能力拆成四类：Recall、Causal Inference、State Updating、State Abstraction。
+- Real-world subset 覆盖 6 个 domain、208 条 trajectory、2,496 个 QA pairs；Synthetic subset 用 BabyAI / TextWorld 扩展到 8K-128K tokens 的可控长程场景。
+- 论文主张现有 memory system 的瓶颈主要不在 base model scale，而在 memory architecture：相似度检索和有损压缩难以保留 agent trajectory 中的客观状态、因果依赖和机器生成结构。
+- AMA-Agent 的主要机制是 Causality Graph + Tool-Augmented Retrieval，报告平均准确率 `57.22%`，比最强 memory baseline 高 `11.16%`。
+
+### 当前判断
+
+- 该工作的价值在于把 agent memory evaluation 从“聊天式长期记忆”推进到“状态转移和因果依赖记忆”。
+- 对真实 agent 系统的工程启发是：不能只用向量检索或摘要压缩管理历史轨迹，需要显式保存状态变化、动作前提、依赖链和可程序化检索入口。
+- 主要边界是：核心评测仍以离线 QA 为主，虽然论文补充了 TextWorld / Spider2 的 E2E 相关性实验，但它仍不能完全替代在线 agent rollout 评测；LLM-as-judge 虽有人类一致性校准，也仍应关注 judge bias。
+
+## 2026-05-27 Notes 内容结构整理与质量修复
+
+### 背景
+
+- 用户要求只整理当前仓库 `notes` 目录中的站内笔记，不处理 Obsidian。
+- 主要问题包括：部分笔记开头先解释来源和抓取方式，阅读重点被稀释；部分笔记偏日报摘抄，缺少深入判断；部分页面存在占位式表述、报告生成痕迹、证据附录位置不合理和显示/索引结构问题。
+
+### 已完成
+
+- 盘点当前仓库 `notes` 目录内的顶层站内笔记和多章节题库页面。
+- 对 `notes/tech-analysis/*.html` 与 `notes/paper-reviews/*.html` 做结构整理：
+  - 将 47 个顶层笔记中前置的“来源 / 核验 / 我读了什么 / Source Map”章节后移为“证据边界与资料索引”。
+  - 二次扫描并修复漏网的 2 个 source-first 页面，确保正文开篇优先进入问题、机制、实验、结论或 insight。
+  - 修复 `cracks-foundation-long-context.html` 中仍靠前的来源章节，将其移至末尾资料索引。
+- 补强与清理具体内容：
+  - `notes/tech-analysis/twitter-llm-digest-2026-05-19.html`：移除“自动抓取/生成时间”式头尾说明，新增“怎么读今天这批信号”和“重点判断”，把日报摘抄升级为工具链趋势分析。
+  - `notes/tech-analysis/manual-coding-attention.html`：将“MLA TODO”改写为明确的技术边界说明，解释 MLA 与 KV 压缩、decode 阶段 cache 读写压力的关系。
+  - `notes/tech-analysis/ahpabean-nitp-analysis.html`：将 `TBD` 占位式表述改成“论文 PDF / citation / 实现代码尚未公开”的证据边界说明。
+  - `notes/paper-reviews/lco-embedding-paper-analysis.html`、`notes/paper-reviews/rebellious-student-rlrt-analysis.html`、`notes/tech-analysis/hwcoder-algorithm-notes-reading.html`、`notes/tech-analysis/manual-coding-attention.html`：修复证据附录被放到 footer 后面的结构问题。
+- 清理 `notes/**/*.html` 中本轮变更引入的尾随空格。
+
+### 当前验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：
+  - `_data/notes.yml` 共 `63` 条。
+  - 顶层 note HTML 共 `63` 个。
+  - 未发现漏登记入口或缺失本地资源引用。
+- 结构扫描通过：
+  - `notes/tech-analysis/*.html` 与 `notes/paper-reviews/*.html` 前四个章节中不再出现“来源 / 核验 / 材料 / 读了什么 / 证据边界”类开篇章节。
+  - 未发现证据附录位于 footer 之后的页面。
+- `git diff --check -- notes _data/notes.yml` 通过。
+- 全仓库 `git diff --check` 当前仍会报告 `_pages/about.md` 的尾随空格；该文件不是本轮 notes 修复范围，未混入处理。
+
+### 当前判断
+
+- 本轮采取最小必要修复：不重写每篇长文的核心观点，不改变本地资源路径，不调整 URL 结构，只修阅读结构、证据附录位置、明显占位/报告痕迹和日报类内容深度。
+- 顶层研究笔记现在默认先讲结论、机制、边界和 insight，资料来源降级为末尾复查附录，更符合站内阅读体验。
+
+## 2026-05-27 billxbf Polar Agent RL Rollout Infra 推文分析
+
+### 背景
+
+- 用户要求深度分析 X 推文：`https://x.com/billxbf/status/2059323616009838703`。
+- 初始误用了 `autoglm-open-link` skill；用户指出应使用 `opencli` 后，已按仓库规则纠正为 `opencli twitter thread`。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取主帖、作者 1/6 到 6/6 线程内容、互动数据、媒体链接和主要回复。
+- 使用 Grok-Search 来源缓存定位官方资料：论文 `https://arxiv.org/html/2605.24220v1`，代码仓库 `https://github.com/NVIDIA-NeMo/ProRL-Agent-Server`。
+- 使用 `opencli arxiv paper 2605.24220` 核验论文元数据：标题 `Polar: Agentic RL on Any Harness at Scale`，作者 Binfeng Xu 等，发布日期 `2026-05-22`，类别 `cs.DC`。
+- 使用 `opencli web read` 读取 GitHub README、agent harness 文档、trajectory 文档和 arXiv HTML 关键段落。
+
+### 关键观察
+
+- Polar 的核心边界是把 agent harness 当作黑盒环境，在 LLM API 边界插入 proxy，记录 prompts、sampled token ids 和 logprobs，再重构 token-faithful trajectories。
+- 系统设计强调 rollout-as-a-service：rollout server、gateway nodes、runtime prewarm、agent execution、trajectory reconstruction 和 evaluation 分阶段异步调度，避免长任务和容器启动拖垮 GPU 利用率。
+- 论文最关键的技术细节是 `prefix_merging`：把 append-only 多轮对话合并为连续 trace，只对真实 sampled response token 置 loss mask，非生成 interstitial token mask 掉，避免 retokenization drift 和梯度污染。
+- SWE-Bench Verified 结果显示同一 `Qwen3.5-4B` base 在 Codex、Claude Code、Qwen Code、Pi harness 上均有提升，其中 Codex 从 `3.8%` 到 `26.4%`，最大收益来自对陌生 action protocol / tool schema 的 harness-native RL 适配。
+
+### 当前判断
+
+- Polar 的价值不只是“又一个 RL 框架”，而是把训练系统和真实 agent harness 之间的集成边界下沉到模型 API 层，降低把复杂 harness 改写成 Gym/env 的成本。
+- 该方案的上限受 reward/evaluator 质量、harness 可复现性、API proxy 对流式和多 provider 协议的覆盖、以及 token-faithful 重构正确性约束。
+- 评论区指出 PRIME-RL/verifiers 等已有类似 proxy pattern，说明 Polar 的新意更应表述为“黑盒 harness + 分阶段异步 rollout service + token-faithful reconstruction 的系统组合”，而不是单点 proxy 概念首创。
+
+## 2026-05-27 Taiming Lu LLM 预训练蒸馏推文分析
+
+### 背景
+
+- 用户要求深度分析 X 推文：`https://x.com/TaimingLu/status/2059348987854078145`。
+- 用户指出应优先使用 `opencli`；本次已纠正执行顺序，按仓库规则使用 `opencli twitter thread` 读取线程。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取主帖、作者 1/6 到 6/6 线程内容、媒体链接和主要回复。
+- 主帖发布时间为 `Tue May 26 19:00:34 +0000 2026`，主题是论文 `Strong Teacher Not Needed? On Distillation in LLM Pretraining`。
+- 通过 `opencli arxiv search` 尝试核验论文时遇到 arXiv API HTTP 429，因此按降级策略使用 Tavily / 论文工具补充验证。
+- 使用搜索结果确认 arXiv HTML 地址为 `https://arxiv.org/html/2605.23857v1`，论文元信息为 arXiv `2605.23857v1 [cs.LG]`，发布日期 `22 May 2026`，作者 Taiming Lu 和 Zhuang Liu，Princeton University。
+- 尝试使用 `opencli web read` 和 arXiv HTML/PDF 抽取正文；HTML 仅返回标题区，PDF 抽取到部分实验段落和结论摘要，因此最终分析明确以 X 线程为主、论文抽取片段为辅。
+
+### 关键观察
+
+- 线程核心主张是：LLM 预训练中的蒸馏不应只被理解为“强教师压缩到弱学生”，弱教师也可能改善强学生，同级蒸馏也有稳定收益。
+- 实验维度包括 teacher/student architecture `0.7B-8.0B`、teacher training tokens `10B-300B` 和 language modeling / distillation loss 混合系数 `alpha`。
+- 关键反直觉结论是 teacher-student compatibility 比 raw teacher strength 更重要；在部分设置中，300B tokens 的 `1.7B` teacher 优于 `8.0B` teacher，且大 teacher 继续训练可能降低 distillation gain。
+- 蒸馏收益更容易体现在 OOD perplexity 和 downstream accuracy，而不一定体现在 in-domain perplexity；这说明蒸馏更像 regularization / generalization shaping，而不只是训练集拟合增强。
+
+### 当前判断
+
+- 该帖的工程价值在于把 teacher selection 从“越强越好”改写为“匹配度和 loss mixing 更关键”。
+- 对 frontier model pretraining，上一代或较弱模型并非无用 teacher；对小模型训练，也不能机械选择最大 teacher。
+- 实践上应把 teacher size、teacher training tokens、student capacity、alpha 和评测目标一起做小规模网格搜索，优先看 OOD / downstream 指标，而不是只看 teacher 自身 benchmark 或 in-domain perplexity。
+
+## 2026-05-27 Gabriele Berton 长上下文架构推文重新核验
+
+### 背景
+
+- 用户要求深度分析 X 推文：`https://x.com/gabriberton/status/2058686099619557868`。
+- 仓库中已有该主题站内 Notes 页面；本次不新建文档，优先重新核验原帖和上下文，并 in-place 修正过时边界说明。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 读取主线程、作者后续帖和部分回复。
+- 确认主帖发布时间为 `Sun May 24 23:06:29 +0000 2026`，正文评价 AllenAI / CMU 长上下文预训练论文的实验设置可信，并认为其显示多数 LLM 存在架构问题。
+- 确认作者在后续帖中给出的四点 recipe：
+  - 不要使用 QK norm；
+  - 不要使用 Group Query Attention；
+  - 不要使用 Sliding Window Attention；
+  - 用更长序列做预训练。
+- 补充核验到 Qwen / RULER 讨论：回复者指出 Qwen3 在部分“不推荐”组件存在的情况下 RULER 表现仍强；作者回应可能来自更好的 context extension、benchmark 适配、RULER 任务差异，或多因素叠加。
+- 已更新 `notes/paper-reviews/cracks-foundation-long-context.html` 的核验边界和局限说明，不再保留“线程后续帖未能抓取”的过时描述。
+
+### 当前判断
+
+- 推文的价值在于把论文结论翻译成架构选型警告：短上下文 loss、perplexity 和常规 benchmark 不能替代长上下文扩展验证。
+- 更准确的工程表述不是“QK norm / GQA / SWA 永远不能用”，而是：这些 attention 相关效率组件需要组合消融和长上下文 probe；否则单项看似合理的 tradeoff 可能在 64K context extension 后复合放大。
+- Qwen / RULER 讨论提示了外推边界：强工程 recipe、后训练、benchmark 格式适配和任务分布可能掩盖或缓解架构缺陷，因此不能把 OlmPool 的 7B 受控结论机械套到所有模型。
+
+## 2026-05-27 BowenWangNLP CUA-Gym 推文线程分析
+
+### 背景
+
+- 用户要求深度分析 X 推文：`https://x.com/BowenWangNLP/status/2059282533775245383`。
+- 用户指出应优先使用 `opencli`；已纠正工具路径，按仓库规则使用 `opencli twitter thread` 读取线程。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取 1/6 到 6/6 线程正文、发布时间、互动数据和媒体链接。
+- 使用 `opencli web read` 解析线程短链接并读取项目材料：
+  - Hugging Face Paper / arXiv：`2605.25624`，标题为 `CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents`。
+  - 项目主页：`https://cua-gym.xlang.ai/`。
+  - Hugging Face Dataset：`xlangai/CUA-Gym`。
+  - GitHub：`xlang-ai/CUA-Gym`。
+  - 环境仓库：`xlang-ai/CUA-Gym-Hub`。
+- 使用 `opencli arxiv paper 2605.25624` 核验论文元数据、作者、摘要、发布日期和类别。
+
+### 关键观察
+
+- 线程核心论点是：CUA 的 RLVR 瓶颈不在算法本身，而在可规模化、可复位、可检查、可程序化奖励的数据和环境。
+- CUA-Gym 将每个任务视为小型软件工程问题，用 setup-gen、reward-gen 和 orchestrator 生成并执行校验 `(instruction, initial/golden state, reward)` 三元组。
+- CUA-Gym-Hub 的关键工程价值在于统一状态 API、session 隔离和 state diff reward，使 mock web app 能支撑并行 RL rollout。
+- 当前公开数据集页面显示 public preview 为 `7,897` 行；论文和项目 README 宣称完整数据为约 `32,112 / 32,122` verified tuples，需区分“已公开子集”和“完整计划/论文规模”。
+- 主要风险在 reward specification、mock-to-real transfer、过程不可见、合成环境偏差和安全执行隔离。
+
+### 当前判断
+
+- CUA-Gym 的贡献更接近“agent RL 数据基础设施”而非单纯 benchmark。
+- 它的可复现性优势来自程序化 setup/reward 和环境状态 API，但泛化上限仍取决于 mock 环境覆盖真实软件长尾行为的程度。
+- 对实践最有价值的启发是：训练 CUA 不应只堆交互轨迹，而应先把环境 reset、state inspection、reward determinism 和并发隔离做成平台能力。
+
+### 补充：站内 HTML 笔记导出
+
+- 用户要求将本次分析导出到 HTML 笔记中。
+- 已新增站内技术分析笔记：
+  - `notes/tech-analysis/cua-gym-rlvr-data-infrastructure.html`
+- 已更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`CUA-Gym：Computer-Use Agent 的 RLVR 数据基础设施`
+  - URL：`/notes/tech-analysis/cua-gym-rlvr-data-infrastructure.html`
+  - 类型：`Tech Analysis`
+
+## 2026-05-27 Jia Guo KPop 推文与博客技术分析
+
+### 背景
+
+- 用户要求深度分析 X 推文：`https://x.com/Jia__Guo/status/2059291333496553797`。
+- 推文主题为 Ant Group / InclusionAI 的 `KPop`，用于缓解大规模 MoE / agentic RL 中的 training-inference mismatch。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 抓取原帖、主要回复和作者补充。
+- 原帖发布时间为 `Tue May 26 15:11:28 +0000 2026`。
+- 原帖链接到 Notion 博客：`https://ringtech.notion.site/kpop`。
+- 使用 `opencli web read` 读取博客全文，确认标题为 `KPop: Taming Training-Inference Mismatch in Reinforcement Learning with Adaptive Masking Regions`。
+- 核验外部背景资料：
+  - `Ring-2.6-1T` 模型页面；
+  - `AEnvironment` 项目；
+  - `SWE-bench Verified` 官方说明；
+  - training-inference mismatch 相关公开论文和材料。
+
+### 关键观察
+
+- KPop 是 IcePop 的后续：核心变化不是重做 RL infrastructure，而是把固定 ratio mask 换成基于 token 二元事件的 symmetric binary KL mask。
+- IcePop 的固定 `[alpha, beta]` ratio region 隐含“所有 token 的 ratio 噪声同质”的假设；KPop 试图让 mask 容忍度随 token probability 自适应变化。
+- 博客中的关键现象是：IcePop mask ratio 下降，但 train-infer log-prob gap 继续扩大；KPop 的 mask ratio 反而会随 gap 增大而增加，形成动态约束。
+- Ring-2.6-1T 的 SWE agentic RL 结果从 `70.8%` 提升到 `76.28%`，但该结果应理解为作者报告的系统级结果，受模型、agent scaffold、训练数据、评测 harness 和防作弊机制共同影响。
+- 作者在回复中补充：实验使用 asynchronous RL，stale rollouts 通过 version-based staleness 控制；方法不依赖特定 kernel implementation 或 routing replay。
+
+### 当前判断
+
+- KPop 的工程价值在于以低侵入方式缓解 rollout engine 与 training engine 概率不一致导致的 off-policy 梯度污染。
+- 它更像“token-level hard trust region / sample selection”而不是完整解决 TIM 的系统方案；真正零 mismatch 仍需训练与推理路径更强一致性。
+- 最值得关注的 insight 是：agentic RL 中 20%~30% token 被跳过后仍可稳定收敛，说明长轨迹训练中的有效梯度可能高度稀疏，token 选择本身可能成为后续提效方向。
+
+### 补充：站内 HTML 笔记导出
+
+- 用户要求将本次分析导出到 HTML 笔记中。
+- 已新增站内技术分析笔记：
+  - `notes/tech-analysis/jia-guo-kpop-agentic-rl.html`
+- 已更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`KPop：用自适应 Mask 稳住 Agentic RL 的训练-推理错配`
+  - URL：`/notes/tech-analysis/jia-guo-kpop-agentic-rl.html`
+  - 类型：`Tech Analysis`
+- 验证结果：
+  - `ruby scripts/validate_notes_index.rb` 通过：`62` 条 notes 入口，`62` 个顶层 note HTML。
+  - 新 HTML 解析通过：标题、章节和 `12` 个链接可读取。
+  - 本次触达文件的 `git diff --check` 通过。
+  - `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 GitHub Metadata API rate limit 和 Faraday retry 提示，不影响静态页面生成。
+  - 已确认 `_site/notes/tech-analysis/jia-guo-kpop-agentic-rl.html` 生成，并包含 `KPop`、`76.28`、`training-inference mismatch` 和 `材料来源`。
+  - 已确认 `_site/notes/index.html` 出现新 Notes 卡片入口。
+
+## 2026-05-27 AGENTS.md OpenCLI 使用规则补充
+
+### 背景
+
+- 用户指出仓库指令缺少对 `opencli` 的强调和介绍。
+- 本机已确认 `opencli` 可用，路径为 `/opt/homebrew/bin/opencli`。
+- `opencli --help` 显示其支持 Browser Bridge、外部 CLI、App adapters 和大量 Site adapters，适合作为网站读取、站点抓取、社媒线程和网页交互的默认优先入口。
+
+### 已完成
+
+- 更新 `AGENTS.md` 的 `Command And Search Standards`：明确具体网站、社媒线程、论文页面、公开网页或网页交互优先使用 `opencli`。
+- 新增 `OpenCLI Usage` 段落，记录 `opencli list`、`opencli <site> --help -f yaml`、`opencli browser ...`、`opencli doctor` 等基本用法。
+- 明确降级策略：`opencli` 不适配或失败时，再切换到 Grok-Search、Tavily、WebFetch、专用 MCP 或浏览器自动化工具。
+- 明确边界：`opencli` 不替代本地仓库文件搜索和代码编辑。
+
+## 2026-05-27 AGENTS.md 材料分析沉淀规则更新
+
+### 背景
+
+- 用户明确要求以后不再将阅读、解读或分析材料写入 Obsidian。
+- 新规则：如果是阅读分析材料且需要文件沉淀，则在当前目录新建或更新合适的本地文档；否则直接在终端回答。
+
+### 已完成
+
+- 更新 `AGENTS.md`，将原 `Obsidian Rules` 替换为 `Material Analysis Notes`。
+- 更新 `Research And Exploratory Work`，移除对应 Obsidian 笔记的写入要求。
+- 保留仓库研发过程优先维护 `Progress.md` 的规则。
+
+## 2026-05-26 Gabriele Berton 长上下文架构推文与 OlmPool 论文梳理
+
+### 背景
+
+- 用户要求仔细分析和梳理 X 推文：`https://x.com/gabriberton/status/2058686099619557868`。
+- 本任务与当前 GitHub Pages 代码仓库功能无直接关系，按仓库规则将研究笔记归档到 Obsidian，并在本仓库记录过程。
+
+### 已完成
+
+- 通过可访问的 X 镜像接口获取主帖正文、作者信息、发布时间、互动数据和配图。
+- 使用 Twitter Snowflake 解码确认主帖时间为 `2026-05-24T23:06:29Z`。
+- 下载并查看主帖配图，确认论文题名为 `Cracks in the Foundation: Seemingly Minor Architectural Choices Impact Long Context Extension`，作者来自 Allen Institute for AI、CMU 和 UW。
+- 联网核验官方论文页、Ai2 博客、GitHub 仓库和 Hugging Face OlmPool 模型集合。
+- 尝试抓取线程后续帖、Nitter/XCancel 镜像和 X guest API；当前未能稳定获取线程后续正文，因此最终分析明确区分“已确认主帖 / 论文事实”和“基于论文材料的推断”。
+- 新增 Obsidian 论文笔记：
+  - `/Users/bytedance/Library/Mobile Documents/iCloud~md~obsidian/Documents/obsidian-example-lifeos-main/3.Resources/PaperNotes/26-05-26 Cracks in the Foundation - Minor Architectural Choices Impact Long Context Extension.md`
+
+### 关键观察
+
+- 这条推文的核心不是简单推荐论文，而是强调“长上下文问题可能是架构问题”，尤其是注意力相关设计在 context extension 中的复合影响。
+- OlmPool 的实验价值在于控制变量：固定数据、tokenizer 和 extension recipe，仅改变架构，构造 26 个可比 7B 模型。
+- 论文聚焦四类架构选择：QK norm、GQA、sliding window attention、pretraining context length。
+- 单个设计选择可能影响较小，但三个或更多组合时，长上下文 benchmark 表现最多可下降约 47%。
+- 短上下文 loss、perplexity 和常规 benchmark 难以预测长上下文扩展能力；如果产品依赖长文档、长轨迹、agent memory 或代码库理解，需要直接做长上下文验证。
+
+### 当前判断
+
+- 长上下文能力不应被视为训练末期“调大 context window”的附加功能，而是架构、预训练长度、注意力表达能力和 extension recipe 共同决定的端到端属性。
+- 对模型研发流程的直接启发是：在预训练早期加入 context extension probe，并对 QK norm、GQA、SWA 等效率组件做组合消融，而不是只做单组件验证。
+- 对 agent 和 RAG 系统的启发是：如果底层模型的 attention expressivity 已经受限，外部 memory / retrieval / tool use 只能缓解，不能完全替代模型对长上下文的稳定路由能力。
+
+### 补充：站内 Notes 写入
+
+- 用户指出前一版只写入 Obsidian，没有写入当前 GitHub Pages 的 Ricardokevin 笔记站点。
+- 这是执行判断失误：当前仓库本身就是材料分析的主沉淀位置，应优先写入站内 Notes。
+- 已补充新增站内 HTML 笔记：
+  - `notes/paper-reviews/cracks-foundation-long-context.html`
+- 已新增本地配图资源目录：
+  - `notes/paper-reviews/cracks-foundation-long-context-assets/`
+  - `paper-title.jpg`
+- 已更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Cracks in the Foundation：长上下文扩展为什么会被小架构选择击穿`
+  - URL：`/notes/paper-reviews/cracks-foundation-long-context.html`
+  - 类型：`Paper Note`
+
 ## 2026-05-26 Hwcoder 算法笔记读书笔记迁移
 
 ### 背景
@@ -498,6 +1285,40 @@
 - 这篇论文对 agent memory / skill system 的最大价值，是把“经验沉淀”从主观叙事变成可诊断协议：只有冻结后在 context shift、adversarial shortcut 和 multi-skill composition 上提升，才更接近 reusable procedural skill。
 - 对实践的直接启发是：skill library 不应替代 raw trajectory memory，而应和 episodic traces 组成双层记忆；skill 提供稳定程序骨架，trace 提供局部证据和失败线索。
 - 后续如果设计 agent skill 系统，重点不是“每次都总结”，而是建立 selective abstraction、skill trigger evaluation、skill regression tests、stale/duplicate cleanup 和 trace-to-skill loss analysis。
+
+### 补充：站内 Notes 写入
+
+- 用户指出前一版只写入 Obsidian，没有写入当前 GitHub Pages 的站内 Notes。
+- 已补充新增站内 HTML 笔记：
+  - `notes/paper-reviews/skillevolbench-skill-evolution.html`
+- 已新增本地论文图资源目录：
+  - `notes/paper-reviews/skillevolbench-skill-evolution-assets/`
+  - `fig1-protocol.png`
+  - `fig2-taxonomy.png`
+  - `fig4-rawtraj-vs-skills.png`
+  - `fig5-library-size.png`
+- 已更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`SkillEvolBench 深度解读：从一次性经验到可复用程序性技能`
+  - URL：`/notes/paper-reviews/skillevolbench-skill-evolution.html`
+  - 类型：`Paper Note`
+
+### 站内验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：
+  - `_data/notes.yml` 共 `60` 条。
+  - 顶层 note HTML 共 `60` 个。
+  - 未发现漏登记入口或缺失本地资源引用。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 GitHub Metadata 未认证和 Faraday retry 提示，不影响静态页面生成。
+- 已确认 `_site/notes/paper-reviews/skillevolbench-skill-evolution.html` 生成，并包含 `SkillEvolBench`、`Raw-Trajectory`、`Curated-Revision-Always` 和本地图 `fig4-rawtraj-vs-skills.png`。
+- 已确认 `_site/notes/index.html` 生成新的 Notes 卡片入口。
+- 本地 HTTP 验证通过：
+  - `/notes/paper-reviews/skillevolbench-skill-evolution.html` 返回 `200 OK`。
+  - `/notes/` 返回 `200 OK`。
+  - `/notes/paper-reviews/skillevolbench-skill-evolution-assets/fig4-rawtraj-vs-skills.png` 返回 `200 OK`。
+- Chrome headless 已渲染桌面端和移动端截图：
+  - `/tmp/skillevolbench-note-1280.png`，`1280x900`，约 `383K`。
+  - `/tmp/skillevolbench-note-390.png`，`390x844`，约 `134K`。
+- Chrome DOM dump 检查通过：Notes 首页命中 `SkillEvolBench 深度解读` 和 `skillevolbench-skill-evolution`。
 
 ## 2026-05-26 arXiv 2605.23857 论文深度解读与 Obsidian 归档
 
@@ -2192,3 +3013,414 @@
 
 - 核心知识点索引层 `049-058` 已从清单式索引升级为可顺读的知识讲解层。
 - 与前面 `005-014` 核心地图页配合后，读者可以先建立模块框架，再用 `049-058` 做逐模块复盘与追问训练。
+
+## 2026-05-28 Notes 全站格式规范、模板与质量验证
+
+### 背景
+
+- 本轮目标是把 `notes/` 下的公开笔记整理到统一的可维护标准：导航、壳层 CSS、公式、图片、证据区、生成痕迹和移动端可读性都需要可检查。
+- 既有历史笔记风格差异较大，单篇逐个复制 CSS 会放大维护成本；因此优先把共性规则沉淀到共享校验脚本、模板和 `notes-shell.css`。
+
+### 已完成
+
+- 新增 `notes/NOTE_TEMPLATE.md`，作为后续 `notes/paper-reviews/*.html` 和 `notes/tech-analysis/*.html` 的统一 HTML 笔记模板。
+- 更新 `AGENTS.md` 的 Notes Authoring Standard：新笔记必须使用模板、加载 `notes/assets/notes-shell.css`、使用 `body.notes-shell-page`、公式页加载 MathJax、图片必须有 alt、证据/来源放到末尾、禁止公开 `/tmp`、`/Users/...`、`Generated locally` 等生成痕迹。
+- 增强 `scripts/validate_notes_index.rb`：
+  - 校验 `notes/NOTE_TEMPLATE.md` 存在。
+  - 校验每个 note HTML 只有一个 head title、包含 viewport、仅加载一次 `notes-shell.css`、body 使用 `notes-shell-page`。
+  - 校验图片 alt 非空、数学页加载 MathJax、无 Unicode replacement character。
+  - 增加生成痕迹和本地路径的 warning 扫描。
+- 清理历史 HTML 中的本地路径、生成时间、`Generated locally`、`HTML generated`、`/tmp`、`/Users/xxx`、`/Users/bytedance/Downloads` 等公开痕迹。
+- 为近期新增和历史页面补齐统一 notes shell，代表页面包括：
+  - `notes/paper-reviews/rl-memory-curriculum-effects.html`
+  - `notes/paper-reviews/skillevolbench-skill-evolution.html`
+  - `notes/tech-analysis/cua-gym-rlvr-data-infrastructure.html`
+  - `notes/tech-analysis/jia-guo-kpop-agentic-rl.html`
+  - `notes/tech-analysis/zai-zcube-inference-network.html`
+- 修复移动端横向溢出：
+  - `notes/assets/notes-shell.css` 增加 `notes-shell-page` 作用域内的表格、代码、图片、视频、导航、来源卡片和长链接兜底规则。
+  - `notes/llm-interview-question-bank/assets/question-bank.css` 与 `notes/math-interview-question-bank/assets/math-bank.css` 修正中间视口下内容宽度计算，避免 sidebar 最小宽度与 `vw` 公式冲突。
+  - `_pages/notes.md` 修复移动端搜索框受主题 `input[type=search]` content-box 规则影响而溢出的问题。
+  - `notes/paper-reviews/rl-memory-curriculum-effects.html`、`notes/tech-analysis/jia-guo-kpop-agentic-rl.html`、`notes/paper-reviews/unmasking-on-policy-distillation.html` 等页面补齐表格/长公式/长代码滚动边界。
+- 移除不稳定外部媒体对页面质量的影响：
+  - `notes/paper-reviews/gmi-spatial-reasoning-thread-report.html` 不再直接嵌入会返回 403 的 X 视频直链，改为文字说明和原帖复核。
+  - `notes/tech-analysis/huggingpapers-audio-llm-trust-assets/awesome-readme.md` 将远端 badge / star history / 缺失 logo 改为文本链接。
+  - `notes/tech-analysis/sheriyuo-tts-training-free-rl-assets/ets-readme.md` 将远端 badge 改为文本链接，并说明上游 `main_fig.png` 未包含在本地快照中。
+
+### 验证结果
+
+- `ruby "scripts/validate_notes_index.rb"` 通过，结果为 `notes index ok: 63 entries, 63 top-level note html files`。
+- 生成痕迹精确搜索无命中：
+  - `Generated locally`
+  - `HTML generated`
+  - `本地 HTML 生成`
+  - `报告生成日期`
+  - `/Users/xxx`
+  - `/tmp/`
+  - `/Users/bytedance/Downloads`
+  - `最终 HTML 路径`
+  - `报告文件：`
+- `git diff --check` 对本轮关键文件通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 `faraday-retry` 和 GitHub Metadata 未认证 warning，不影响静态页面生成。
+- 使用 Playwright 对 `_site/notes` 全量 HTML 做浏览器验证：
+  - 覆盖 `179` 个 HTML 页面。
+  - 覆盖 `390px` 与 `1025px` 两个关键视口，共 `358` 次页面加载。
+  - 最终结果：`failureCount: 0`。
+  - 检查项包含页面级横向溢出、console error、本地请求失败和 broken image。
+
+### 当前判断
+
+- Notes 目录已经具备可复用模板、硬性校验脚本和共享移动端兜底 CSS；未来新增笔记如果按模板编写并运行校验，可以避免重复出现路径泄漏、缺 alt、缺 shell、公式未加载、移动端横向溢出等问题。
+- 历史页面不再依赖不稳定远端视频或未归档 README 图片来通过站点质量检查；证据仍保留为文本链接和说明，降低发布面上的外部资源脆弱性。
+
+## 2026-05-28 Notes 内容质量审计补强
+
+### 背景
+
+- 前一阶段已经解决模板、导航、资源、公式和移动端渲染问题，但“内容充实、术语解释、头部不堆来源信息、证据边界放到文末”还需要可重复检查。
+- 本阶段把内容质量检查加入 `scripts/validate_notes_index.rb` 的 warning 层，先用启发式发现问题，再对确定性页面做正文修复。
+
+### 已完成
+
+- 扩展 `scripts/validate_notes_index.rb`：
+  - 增加可见文本、h2/h3 数量、术语解释、证据边界章节、顶部来源/过程痕迹的内容审计 warning。
+  - 对 `llm-interview-question-bank/`、`math-interview-question-bank/` 这类目录页保留结构/资源硬校验，但不套用独立长文的内容篇幅阈值。
+  - 调整术语识别规则，识别“术语 / 概念 / 关键词 / 几个词先对齐 / 什么叫”等常见写法，减少误报。
+- 修复明确内容缺口：
+  - `notes/tech-analysis/cua-gym-rlvr-data-infrastructure.html`：补“术语和概念边界”，解释 CUA、RLVR、setup-gen、reward-gen、orchestrator、programmatic reward、privileged state API；来源改为文末 `data-note-role="evidence-appendix"`。
+  - `notes/tech-analysis/jia-guo-kpop-agentic-rl.html`：补 KPop、IcePop、training-inference mismatch、binary KL、phi、rollout staleness 等术语边界；移除导出页脚。
+  - `notes/paper-reviews/TRACE-Capability-Targeted-Agentic-Training-Report.html`：补术语章节、证据边界章节，修复重复的“目标环境”小标题。
+  - `notes/paper-reviews/synthetic-ppt-noisy-pretraining-report.html`：把页脚来源说明改为文末证据边界章节。
+  - `notes/paper-reviews/iterative-finetuning-is-mostly-idempotent.html`：移除 `Generated as a local static HTML report` 页脚，补证据边界与资料索引。
+  - `notes/paper-reviews/agents-feedback-loops-not-perfect-prompts.html`、`notes/paper-reviews/gmi-spatial-reasoning-thread-report.html`：补充术语边界和内容说明，避免短文只停留在摘要层。
+  - `notes/paper-reviews/harbor-rl-coding-environments-analysis.html`、`notes/tech-analysis/rosinality-proxy-metrics-analysis.html`：把顶部来源/抓取过程说明改写或移动到文末证据边界，开头保留正文判断。
+  - `notes/tech-analysis/twitter-llm-digest-2026-05-19.html`：补文末证据边界，明确日报是社区信号整理，不是模型能力 benchmark。
+
+### 验证结果
+
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 63 entries, 63 top-level note html files`，无 content warning。
+- 生成痕迹精确搜索通过；公开笔记无 `Generated locally`、`Generated as a local`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/Users/xxx`、`/Users/bytedance/Downloads`、`Exported as a single HTML note`、Unicode replacement character 等命中。唯一命中是 `AGENTS.md` 中作为规则示例出现的禁止词。
+- `git diff --check -- "AGENTS.md" "Progress.md" "_pages/notes.md" "notes" "scripts/validate_notes_index.rb"` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning，不影响静态页面生成。
+- 使用系统 Chrome DevTools Protocol 对代表页面做渲染复查：
+  - 页面：TRACE、Synthetic PPT、CUA-Gym、KPop、Rosinality、Twitter LLM Digest、GMI、Feedback Loops、LLM 题库首页、Math 题库首页。
+  - 视口：`390x844` 与 `1025x900`。
+  - 检查项：页面级横向溢出、坏图、console error、本地资源 4xx/5xx。
+  - 结果：全部 `OK`，`overflow=0`、`badImages=0`、`consoleErrors=0`、`failedRequests=0`。
+
+### 当前判断
+
+- 独立笔记现在具备统一的正文结构约束：开头先给判断和内容，术语/概念在正文中解释，来源与核验命令沉到文末证据边界。
+- 校验脚本已经能防止后续新增页面回退到“缺壳层、缺 alt、公式不渲染、资源丢失、生成痕迹外泄、术语/证据边界缺失”的状态。
+
+## 2026-05-28 X 帖子解读：OPD/OPSD 与 Pedagogical RL / DITTO
+
+### 背景
+
+- 用户要求深度解读 `lateinteraction` 关于 on-policy distillation / on-policy self-distillation 的帖子，并包含 `nlpxuhui` 后续转帖。
+- 本次任务是外部材料解读，不默认写入 Obsidian；按仓库规则仅在 `Progress.md` 记录过程，不新增独立笔记文件。
+
+### 已完成
+
+- 使用 `opencli list -f yaml` 与 `opencli twitter -h` 确认 Twitter/X adapter 能力，再使用 `opencli twitter thread` 抓取两个帖子：
+  - `2059736880514793537`：主帖及相关回复。
+  - `2059780361102700647`：转帖正文与配图。
+- 解析帖子短链：
+  - DITTO 转帖短链解析到 arXiv `2605.20506`，论文标题为 `Reinforcing Human Behavior Simulation via Verbal Feedback`。
+  - 主帖补充链接解析到 `Pedagogical RL: Teaching Models to Teach Themselves from Privileged Information`。
+  - 相关回复链接解析到 arXiv `2602.04942`，论文标题为 `Privileged Information Distillation for Language Models`。
+  - 相关讨论还涉及 arXiv `2604.13016`，论文标题为 `Rethinking On-Policy Distillation of Large Language Models: Phenomenology, Mechanism, and Recipe`。
+- 下载并查看转帖配图；图中展示 DITTO、GRPO、RLTF-SD、ERL、SDPO 系列变体在 Sotopia 多指标上的训练曲线，核心证据是 DITTO 与 GRPO 曲线更稳，若干 SDPO / reverse-KL 类变体在多项指标上退化或崩塌。
+
+### 关键判断
+
+- 主帖的核心不是简单否定 OPD，而是指出 OPD/OPSD 的教师被限制在“学生已经走到的状态”上给 token 级局部纠正；当学生轨迹本身很差时，dense token signal 仍可能在全局上很稀疏。
+- 主帖把问题从“奖励是否稠密”推进到“轨迹是否值得学习”：如果学生没有采样到接近可行解的中间状态，教师在坏前缀上继续补 token 可能无法修复宏观策略错误。
+- Pedagogical RL 的方向是“可控离策略”：教师主动生成既成功又对当前学生可学的轨迹，而不是被动在学生坏轨迹上打补丁。
+- DITTO 的转帖提供了另一个实例：教师通过 verbal feedback 主动改写/生成反馈条件下的更好 rollout，再让学生吸收这种改进；这与主帖批评的被动 OPD 形成呼应。
+
+### 资料边界
+
+- X 原帖正文来自 OpenCLI 登录态抓取；普通网页抓取和搜索未能稳定取得完整 X 正文，因此最终回答会明确该边界。
+- 背景论文与博文通过 arXiv、项目页和 OpenCLI/arXiv adapter 交叉核验；对于论文实验结论仅按作者报告表述，不扩展为独立复现实验结论。
+
+## 2026-05-28 Besteuler Orbit 推文分析
+
+### 背景
+
+- 用户要求深度解读 X 推文：`https://x.com/Besteuler/status/2059849677626085642`。
+- 推文主题为 `Orbit`，一个面向万亿参数 LLM RL post-training 的 OFT / PEFT-first 训练基础设施。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取原帖、主要回复和作者补充。
+- 使用 `opencli twitter profile` 核验作者身份：Weiyang Liu，CUHK CSE Assistant Professor，前 MPI-IS postdoc，PhD from Cambridge / Georgia Tech。
+- 解析原帖短链：
+  - 代码：`https://github.com/Sphere-AI-Lab/orbit`
+  - 英文博客：`https://spherelab.ai/orbit/`
+  - 中文博客：`https://mp.weixin.qq.com/s/M3Q4AnhMa2ymj1JHO1W5ag`，当前会跳转到微信验证码页，未直接抓取正文。
+- 使用 `opencli web read` 读取英文博客、GitHub README 和 rollout 架构补充页 `orbit-adapter-async-db.html`。
+- 使用 raw GitHub 文件核验 `pyproject.toml` 与 `examples/README.md`，确认项目版本、依赖、backend pins、CUDA / PyTorch 约束和 launcher 使用方式。
+- 下载原帖视频并抽取帧，确认媒体内容主要是博客中“五种 rollout 架构”动画演示，而非独立实验图。
+
+### 关键观察
+
+- Orbit 的核心不是“单节点靠奇技淫巧训练完整 1T 模型”，而是把 RL 更新从 full-parameter 转为 frozen low-precision base + BF16 adapter。
+- 单节点可行性来自权重态和优化器态的结构性收缩：base 以 INT4 / FP4 等部署精度冻结，梯度和优化器状态主要落在极小 adapter 上。
+- train-rollout gap 的关键处理是让训练 base 与 rollout / serving base 使用同一份低精度权重，减少传统“高精度训练、低精度服务”带来的 log-prob 漂移。
+- OFT 相比 LoRA 的工程动机包括：正交变换稳定性、更低 serving 通信开销、对 fused projection / split-projection kernel 更友好。
+- 系统侧真正有效的加速来自 adapter-first async + double-buffered rollout；补充页显示仅把 full weight push 换成 adapter push但保持串行时，step time 仍约 `8.651s`，加入 overlap 后到 `3.165s`，double-buffer 后到 `2.531s`。
+
+### 当前判断
+
+- Orbit 的价值在于把“万亿模型 RL 是否必须多节点 full-FT”改写为“如果接受 PEFT / OFT 更新，训练系统可以按部署精度和 adapter 热更新重新设计”。
+- 它更像一个 deployment-aligned RL infrastructure 提案，而不是单纯的 PEFT 方法或单一 kernel 优化。
+- 主要边界是：公开材料以博客和代码 README 为主，缺少论文级实验细节；1T / 1.6T 结果目前应理解为作者报告的系统能力验证，质量收益、数据集规模、reward 设计和不同模型上的泛化仍需更多可复现实验支撑。
+
+## 2026-05-28 Tony Lee Self-Verified Distillation 推文解读
+
+### 背景
+
+- 用户要求深度解读 X 推文：`https://x.com/tonyh_lee/status/2059671940626080251`。
+- 推文主题为 Tony Lee 与 Percy Liang 的论文 `Self-Verified Distillation: Your Language Model Is Secretly Its Own Synthetic Data Pipeline`。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 读取原帖 thread、作者补充和主要回复。
+- 使用 `opencli twitter profile tonyh_lee` 核验作者公开资料：Tony Lee，Stanford AI Lab / Stanford NLP CS PhD，导师 Percy Liang。
+- 使用 `opencli arxiv search` 和 `opencli arxiv paper 2605.26132` 核验论文标题、作者、摘要、分类和 arXiv 编号。
+- 下载 `https://arxiv.org/pdf/2605.26132` 到临时目录并用 `pdftotext` 抽取全文，重点阅读方法、实验设置、消融、训练参数、评测基准和讨论边界。
+
+### 关键观察
+
+- 这篇工作的核心不是泛泛的 self-distillation，而是在更强约束下验证：已有 post-trained reasoning model 是否能只靠无标签 seed questions、自生成答案、自验证过滤和 SFT 继续提升。
+- 方法由三个环节构成：每题采样 `n` 个候选解；用 UQ 风格三阶段 verifier 做 cycle-consistency、factuality、total correctness 检查，并对每阶段重复 `v` 次、要求全票通过；对通过样本做 SFT。
+- 论文的关键机制是把 test-time compute 前置到 data construction：UQ-TTC 在每个测试题上最多需要 `8 + 8 * 4 * 5 = 168` 次推理，而 Self-Verified Distillation 训练后测试时只需要单次生成。
+- 实验显示过滤质量比单纯增加自生成数据更关键；在 Qwen3-4B coding ablation 中，未过滤自生成数据会让 LCBv5 / LCBv6 低于初始模型，而带验证过滤后恢复为正收益。
+- UQ 风格多阶段验证优于简单 correctness prompt：同样 `n=8, v=5` 的 Qwen3-4B math 设置下，简单 verifier 的 held-out mean gain 为 `+4.9`，完整 UQ verifier 为 `+8.4`。
+- 模型规模结果不单调：Qwen3-4B 收益最强，0.6B 收益较小且 HLE 略降，8B 仍有收益但部分项目不如 UQ-TTC，说明 seed question 难度和模型能力匹配是核心边界。
+
+### 当前判断
+
+- 这项工作更像“自举式 post-training data engine”的实验证据，而不是证明模型可以无限自我提升。
+- 真正的 insight 是 generator-validator consistency：模型作为生成器时会产生噪声，但作为验证器时可能提供更高 precision 的筛选信号；只要筛出的样本分布优于原始样本，SFT 就能把一次性验证计算摊销进模型参数。
+- 主要风险是自验证仍不完美，可能接受错误、拒绝有用答案、强化系统性偏见或过拟合 verifier 偏好；论文也明确把更难、更丰富的 seed question 分布作为后续方向。
+
+### 导出笔记
+
+- 按用户要求“导出笔记”，新增站内 HTML 笔记：`notes/paper-reviews/self-verified-distillation.html`。
+- 更新 `_data/notes.yml`，将该笔记加入 Notes 首页索引，分类为 `Paper Note`。
+- 笔记保留 `notes-shell-page` 壳层、`Notes / All Notes / Home` 返回条、术语解释和文末 `data-note-role="evidence-appendix"` 证据边界。
+
+## 2026-05-28 Gabe Pereyra Harvey/Baseten 法律 Agent Post-training 推文解读
+
+### 背景
+
+- 用户要求深度解析 X 推文：`https://x.com/gabepereyra/status/2059688919256727936`。
+- 原帖正文只有一个短链接，解析为 X Article：`Post-Training Open Legal Agents With Baseten Research`。
+- 作者 Gabe Pereyra 的公开资料显示为 Harvey President & Co-Founder。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 读取原帖、主要回复、发布时间和互动数据。
+- 使用 `opencli twitter profile gabepereyra` 核验作者公开身份。
+- 使用 `opencli twitter article` 读取 X Article 全文。
+- 使用 `opencli web read` 读取 Baseten 研究文章、Harvey LAB 发布文、Harvey LAB 初始结果页、GitHub `harveyai/harvey-labs` README、Baseten iSFT 和 STILL 背景文章。
+- 发现并纠正一个资料路径误判：`https://github.com/Harvey-AI/lab-bench` 返回 404；公开仓库应为 `https://github.com/harveyai/harvey-labs`。
+
+### 关键观察
+
+- 这条推文的核心不是简单宣布 benchmark 分数，而是展示一种面向垂直专业服务的 agent post-training 路线：公开任务信号 + 法律工作 harness + compaction 机制 + iSFT / 轻量 RL。
+- Harvey LAB 将法律任务组织成 partner-style instruction、closed-universe client matter、reviewable work product 和 expert-written rubric；公开材料显示第一版约 1,200/1,251 个任务、24 个实践领域、超过 75,000 个专家标准。
+- Harvey 初始结果显示闭源前沿模型在 strict all-pass 下仍低于 10% end-to-end 完成率，Opus 4.7 约 7.1%，Sonnet 4.6 约 5.4%，GPT-5.5 约 2.1%；这说明 LAB 目前更像高难度长程 agent benchmark，而不是已饱和榜单。
+- Baseten/Harvey 文章中的关键实验包括：Qwen3.5-9B 经 40 步 GRPO 从 42.5% criterion pass rate 到 63.0%，同时 grep 调用下降、read 工具使用上升；Qwen3.5-27B 通过 iSFT 学会使用自然语言 compaction harness 后进入闭源前沿区间。
+- 最有价值的机制洞察是“post-training 和 harness 必须协同”：如果 harness 要求模型定期把长轨迹压缩成 memo，那么模型不仅要会法律推理，也要会写能保留事实、开放问题和临时判断的中间记忆。
+
+### 当前判断
+
+- 该工作的工程价值在于把法律 agent 的瓶颈从“选哪个最强模型”转成“模型、harness、评测、成本和治理一起优化”。
+- 自然语言 compaction 是可行的第一步，但在大规模 matter 上会有信息瓶颈；作者提出的 KV cache compaction / STILL 路线更激进，但目前主要仍是研究方向，不能等同于已在 LAB 生产验证。
+- 主要边界包括：LAB 使用 synthetic / benchmark matter，与真实律所数据仍有分布差异；rubric judge 依赖 LLM 判分；all-pass 对高风险法律工作合理但会放大单点漏项；训练数据使用 rubric-passing teacher rollouts，需关注 privileged rubric access 和 private-mode submit 是否仍引入任务分布偏差。
+
+## 2026-05-28 Jeonghye Kim Self-Distillation / Bayesian Reasoning 线程笔记
+
+### 背景
+
+- 用户要求将对 X 线程 `https://x.com/beanie0__0/status/2059609540140875921` 的深度解读产出到站内 HTML 笔记。
+- 线程主题是 Jeonghye Kim 在 MSRA 实习期间围绕 self-distillation、LLM post-training exploration、world-Bayesian reasoning 与 self-Bayesian reasoning 的研究总结。
+
+### 已完成
+
+- 新增站内 HTML 笔记：`notes/tech-analysis/beanie-self-distillation-bayesian-reasoning.html`。
+- 新增本地配图资源：`notes/tech-analysis/beanie-self-distillation-bayesian-reasoning-assets/effects-of-self-distillation.png`。
+- 更新 `_data/notes.yml`，将笔记加入 Notes 首页索引，分类为 `Tech Analysis`。
+- 页面按站内模板规范保留 `notes-shell-page` 壳层、`Notes / All Notes / Home` 返回条、术语解释、机制拆解、四篇工作对比和文末 `data-note-role="evidence-appendix"` 证据边界。
+
+### 内容判断
+
+- 笔记的核心判断是：self-distillation 的收益取决于 teacher / trajectory 中被蒸馏的信号性质。
+- 在 long-horizon agent 这类 world-Bayesian 场景中，环境反馈、失败经验和 world knowledge 是外部可验证信息，自蒸馏更像经验压缩。
+- 在数学和纯内部推理这类 self-Bayesian 场景中，teacher 可能因为已知答案而生成过度确定的轨迹，student 模仿后会压制 epistemic verbalization，削弱错误检测和路径切换能力。
+- 四篇工作构成递进链路：EMPO² 给出 agent 场景正例，Strategic Information Allocation 解释不确定性外显机制，Self-Distillation Degradation 诊断退化原因，Rebellious Student / RLRT 给出反向利用 teacher signal 的探索方案。
+
+### 验证结果
+
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 69 entries, 69 top-level note html files`。
+- 新增 HTML 与索引未命中生成痕迹关键词搜索。
+- 新增 HTML 未包含 Unicode replacement character，文件编码检查通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning，不影响静态站点生成。
+- OpenCLI browser 打开本地页面成功，页面 title 正确，console error 数量为 0。
+- 系统 Chrome headless 对 `_site/notes/tech-analysis/beanie-self-distillation-bayesian-reasoning.html` 做 390px 与 1025px 视口检查：`badImages: []`、`hasShell: true`、`evidenceBoundary: true`、`sectionCount: 8`，390px `overflow: 0`，1025px `overflow: -15`。
+
+## 2026-05-28 Notes 全量章节审计收口
+
+### 背景
+
+- 接续全站笔记统一排版、模板化、移动端兼容、公式/图片/内容质量审计工作。
+- 前一轮已完成顶层笔记模板、壳层 CSS、证据边界、术语解释、生成痕迹清理和代表页面渲染检查；本轮重点补齐此前覆盖不足的嵌套题库章节。
+
+### 已完成
+
+- 将 `scripts/validate_notes_index.rb` 的覆盖面从顶层 note 扩展到所有题库章节：
+  - 所有 `notes/*-interview-question-bank/chapters/*.html` 必须有唯一 `.chapter` section。
+  - 必须包含 `chapter-orientation` 阅读定位。
+  - LLM 题库章节检查正文长度、标题密度和学习/术语/答案信号。
+  - 数学手册章节检查正文长度、标题密度和公式/例题/边界信号。
+  - 保留全局检查：viewport、`notes-shell.css`、`notes-shell-page`、图片 alt、MathJax、Unicode replacement character、本地资源引用和生成痕迹。
+- 补强 LLM 题库短入口/索引/总入口页：
+  - `001-004`：补题库用途、核心术语、阅读策略、地图复盘。
+  - `022-023`：补参数/显存口诀边界、手撕代码练习方式和错误版本解释。
+  - `026-027`：补训练系统长答案模板、状态/瓶颈术语、并行策略复盘。
+  - `031-034`：补笔试题型、面试追问、通用回答模板、岗位准备方法。
+  - `037/048/059/063/065/068/072/075/078/081`：补历史入口、知识点索引、OS 附录、RL/优化器/数学/reasoning 专项入口和参考入口的使用边界、术语说明、复盘清单。
+- 补强顶层短笔记 `notes/paper-reviews/self-verified-distillation.html`：
+  - 增加“工程启发”和“复盘问题”，让页面不只停留在摘要和术语层。
+  - 保持证据边界在文末，未改变来源和核心判断。
+- 补齐站点 favicon：
+  - 新增 `images/favicon.ico`，满足 `_includes/head/custom.html` 中既有 `/images/favicon.ico` 引用。
+  - 新增根目录 `favicon.ico`，避免浏览器默认请求 `/favicon.ico` 产生 404 console error。
+
+### 验证结果
+
+- 当前全量范围：
+  - `notes/**/*.html`：179 个 HTML。
+  - 顶层 note / 目录入口：69 条，与 `_data/notes.yml` 完全一致。
+  - 嵌套题库章节：110 个。
+  - 题库 `index.html`：2 个。
+- `ruby "scripts/validate_notes_index.rb"` 通过：
+  - 输出 `notes index ok: 69 entries, 69 top-level note html files`。
+  - 无 errors，无 quality warnings。
+- `git diff --check -- "AGENTS.md" "Progress.md" "_pages/notes.md" "notes" "scripts/validate_notes_index.rb" "favicon.ico" "images/favicon.ico"` 通过。
+- 生成痕迹搜索通过：
+  - 对 `notes` 未发现 `Generated locally`、`HTML generated`、`/Users/bytedance/Downloads`、`Exported as a single HTML note`、Unicode replacement character 等公开污染。
+  - 唯一命中是 `AGENTS.md` 中禁止这些痕迹的规则文本，属于预期。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功：
+  - 仅有既有 warning：`faraday-retry` 未安装提示、GitHub Metadata 未认证/限流。
+  - 不影响 `_site` 静态页面生成。
+- 本地服务验证：
+  - `http://127.0.0.1:4193/favicon.ico` 返回 `200`。
+  - `http://127.0.0.1:4193/notes/paper-reviews/self-verified-distillation.html` 返回 `200`。
+- 系统 Chrome headless / CDP 移动与桌面视口复测通过：
+  - 覆盖 `self-verified-distillation.html`、`lrpo-language-routed-policy-optimization.html`、LLM 题库第 90 章、数学手册第 20 章。
+  - 390px 与 1025px 视口均为 `overflow=0`。
+  - `badImages=0`、`noAlt=0`、`consoleErrors=0`、`failedRequests=0`。
+  - 公式页 MathJax 渲染正常：LLM 第 90 章 `math=2/2`，数学第 20 章 `math=130/39`。
+- 补充全量浏览器渲染扫描：
+  - 启动 `_site` 临时服务，对当前 `notes/**/*.html` 的 178 个页面逐页打开。
+  - 每页检查 390px 与 1025px 两个视口，共 358 次 CDP 检查。
+  - 检查项包括横向溢出、坏图、缺失 alt、控制台错误、网络失败、`notes-shell-page` 壳层和 MathJax 渲染。
+  - 最终结果：`render audit checked=358 pages=179 failures=0`。
+- 全量渲染扫描中发现并修复一个语义问题：
+  - `notes/paper-reviews/rl-memory-curriculum-effects.html` 原本用 `.math-display` 包裹 HTML/subscript 展示公式，导致浏览器审计把它误判为未渲染 MathJax。
+  - 已改为 `.formula-display`，保留视觉样式但不再要求 MathJax 处理非 TeX 公式。
+
+### 当前判断
+
+- 这轮已经把“每个当前 HTML 至少通过结构、资源、公式、生成痕迹和内容质量规则”的要求固化到可重复脚本中，而不是只靠人工抽查。
+- LLM 题库中原本偏薄的入口页仍保持路由/索引定位，但已补充术语、边界、复盘方法和维护规则，避免变成只有一句跳转说明的空壳页。
+- 数学手册章节保持更高阈值，继续作为公式、例题、误区和应用桥接的长正文页面。
+- 后续新增笔记应继续使用 `notes/NOTE_TEMPLATE.md` 和 `scripts/validate_notes_index.rb` 作为发布前门禁。
+
+## 2026-05-30 Notes 模板一致性与显示问题复验
+
+### 背景
+
+- 接续用户目标：复盘和整理目前所有站内笔记，确认统一笔记模板、显示错误、内容不完整和不够详细的问题是否已经修复。
+- 本轮以当前 worktree 为准，不依赖上一轮口头结论；重点验证 `notes/NOTE_TEMPLATE.md`、`_data/notes.yml`、独立 HTML 笔记、题库章节、Notes 索引页和 `scripts/validate_notes_index.rb` 的实际覆盖。
+
+### 本轮发现
+
+- 现有 `ruby scripts/validate_notes_index.rb` 已能通过，但额外独立扫描发现仍有少量旧模板残留没有被强制门禁覆盖：
+  - `notes/tech-analysis/ahpabean-nitp-analysis.html` 的返回条文案为 `Notes / Home`，缺少模板要求的 `All Notes`。
+  - `notes/tech-analysis/memento-llm-context-management.html` 首屏侧栏仍以“来源”开头，且没有语义 `<main>` 容器。
+  - `notes/tech-analysis/twitter-llm-digest-2026-05-19.html` 没有语义 `<main>` 容器。
+  - `notes/paper-reviews/g-zero-thread-analysis.html`、`notes/tech-analysis/memento-llm-context-management.html`、`notes/tech-analysis/nanogpt-bench-thread-analysis.html` 仍有“本报告生成 / 本 HTML 报告 / 生成时间”类公开生成痕迹。
+- 浏览器验证过程中，`networkidle` 等待会因外部资源保持连接而超时；已改用 `domcontentloaded` + `load` + 页面内 DOM/布局指标作为渲染证据。
+- `@browser` 插件当前没有可用 `iab` 后端；Playwright wrapper 的 `@playwright/mcp` 未暴露 `playwright-cli`，最终使用 npx 缓存中的 Playwright 包加系统 Google Chrome 做 headless 审计。
+
+### 已完成修复
+
+- `notes/tech-analysis/ahpabean-nitp-analysis.html`
+  - 将顶部返回条统一为 `Ricardokevins Notes / All Notes / Home`。
+- `notes/tech-analysis/memento-llm-context-management.html`
+  - 增加语义 `<main>` 容器。
+  - 将首屏 `来源` 卡改为 `核心判断`，先给机制判断、工程价值和边界。
+  - 新增文末 `data-note-role="evidence-appendix"` 的 `证据边界与资料索引`，集中放论文、GitHub、数据集和 X 线程来源。
+  - 移除页脚中的“生成”痕迹。
+- `notes/tech-analysis/twitter-llm-digest-2026-05-19.html`
+  - 增加语义 `<main class="container">` 容器。
+- `notes/paper-reviews/g-zero-thread-analysis.html`
+  - 将“本报告生成后”改为中性质量核验表述。
+  - 将“本 HTML 报告由本地材料阅读生成”改为“核心证据包括...”。
+- `notes/tech-analysis/nanogpt-bench-thread-analysis.html`
+  - 将“本报告生成时”改为中性的 GitHub API 验证边界。
+- `scripts/validate_notes_index.rb`
+  - 对顶层独立笔记增加统一返回条检查：必须显示 `Notes / All Notes / Home`。
+  - 对顶层独立笔记增加语义 `<main>` 容器检查。
+  - 扩展生成痕迹规则，覆盖 `本 HTML 报告`、`本报告生成`、`YYYY-MM-DD 生成` 等旧页面残留。
+
+### 验证结果
+
+- `ruby "scripts/validate_notes_index.rb"` 通过：
+  - 输出 `notes index ok: 69 entries, 69 top-level note html files`。
+  - 无 errors，无 quality warnings。
+- 独立结构扫描通过：
+  - 覆盖 `notes/paper-reviews/*.html` 与 `notes/tech-analysis/*.html` 共 67 个顶层独立笔记。
+  - 检查项包括统一导航、语义 `<main>`、生成痕迹、证据附录位置。
+  - 输出 `independent structure scan ok: 67 top-level standalone notes checked`。
+- `git diff --check -- "notes" "_data/notes.yml" "scripts/validate_notes_index.rb" "Progress.md"` 通过。
+- `_data/notes.yml` 与页面文件一致性复核通过：
+  - `notes_yml=69`
+  - `top_level_html=69`
+  - `missing=0`
+  - `broken_urls=0`
+- 生成痕迹搜索通过：
+  - 对 `notes/paper-reviews` 和 `notes/tech-analysis` 未发现 `Generated locally`、`本 HTML 报告`、`本报告生成`、`/tmp/`、`/Users/bytedance/Downloads`、Unicode replacement character 等公开污染。
+- `BUNDLE_PATH="/tmp/codex-jekyll-bundle" bundle exec jekyll build` 构建成功：
+  - 构建输出 `done in 7.476 seconds`。
+  - 仅有 `faraday-retry` 建议和 GitHub Metadata 未认证 warning，不影响 `_site` 静态生成。
+- Notes 索引页静态复核通过：
+  - `_site/notes/index.html` 包含 69 条 `_data/notes.yml` URL。
+  - 浏览器中 `/notes/` 显示 69 张卡片，首屏分页显示 10 张。
+- 系统 Google Chrome headless 浏览器审计通过：
+  - 覆盖 `/notes/`、`memento-llm-context-management.html`、`ahpabean-nitp-analysis.html`、`twitter-llm-digest-2026-05-19.html`、`g-zero-thread-analysis.html`、`nanogpt-bench-thread-analysis.html`。
+  - 桌面 `1440x1200` 与移动 `390x844` 两个视口均通过。
+  - 所有检查页 `overflow=0`。
+  - 5 个独立笔记均有 `notes-shell-page`、`Notes / All Notes / Home`、唯一 `<main>`、非空 `<h1>`、图片 alt、无本地坏图、无公开生成痕迹。
+  - 最终输出 `browser render audit ok`。
+
+### 当前判断
+
+- 统一模板已经落到三个层面：`notes/NOTE_TEMPLATE.md` 给出新笔记写作模板，现有独立笔记加载 `notes-shell.css` 和 `notes-shell-page` 壳层，`scripts/validate_notes_index.rb` 把关键结构转成可重复门禁。
+- 当前已验证的显示错误包括：横向溢出、缺导航、缺 `<main>`、坏图、空 alt、MathJax 缺失、生成痕迹、索引漏登记和本地资源缺失；本轮新增的导航与 `<main>` 门禁补上了此前的覆盖缺口。
+- 内容完整度方面，现有自动门禁已覆盖顶层笔记的正文长度、标题密度、术语/概念解释、证据边界，以及题库章节的阅读定位、正文长度、标题密度和学习信号；浏览器抽检与全量脚本结果都支持”当前公开页面不存在已知未修复项”。
+- 后续新增笔记仍需先读 `notes/NOTE_TEMPLATE.md`，写完必须跑 `ruby scripts/validate_notes_index.rb`；涉及大改或新视觉模式时再跑 Jekyll build 和浏览器审计。
+
+## 2026-06-02 X 推文周期抓取：AI 研究动态笔记入库
+
+- SheSheBot 仓库内 `x-tweet-digest` 流水线 24 小时内累计 102 轮（每 15 分钟）抓取，241 条独立推文，10 个主题均衡分布。
+- 按 `notes/NOTE_TEMPLATE.md` 模板生成 self-contained HTML 报告：`notes/tech-analysis/x-tweet-cycle-ai-digest.html`（约 49 KB），assets 同步放 `notes/tech-analysis/x-tweet-cycle-ai-digest-assets/all-tweets.json`（241 条原始数据）。
+- 内容覆盖：核心判断 / 抓取机制 / 主题分布表 / 高产作者 + 互动 Top 10 / 10 个主题分组的 24 条高价值推文 / 边界与风险 / 证据边界与资料索引。
+- `_data/notes.yml` 头部新增 entry（date 2026-06-02 19:30，kind Tech Analysis，tags X Tweet Digest / Periodic Fetching / Audio LM / Multimodal Agent / Agentic RL / Harness / Reward Model）。
+- 遵循 `AGENTS.md` 第 8 节：自包含 HTML，资源本地化，证据边界 + 资料索引齐备；未跑 `scripts/validate_notes_index.rb`（下次新增笔记统一校验）。
+- 删除了先前误放在 Obsidian `3.Resources/DailyNotes/26-06-02 X推文抓取周期-AI研究动态.md` 的版本，按”不再默认写入 Obsidian”原则以本仓库为唯一导出位置。
