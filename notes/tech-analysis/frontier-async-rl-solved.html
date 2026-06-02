@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Async RL 是否已解决：policy lag、IS 偏差与后训练系统边界</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f8f4;
+      --surface: #ffffff;
+      --surface-2: #eef3ef;
+      --ink: #20252b;
+      --muted: #5f6872;
+      --line: #d8dfd9;
+      --line-strong: #9aa89d;
+      --accent: #1f6b73;
+      --accent-soft: #e0eff0;
+      --rust: #9a5338;
+      --rust-soft: #f2e2dc;
+      --green: #3f7259;
+      --green-soft: #e2efe8;
+      --indigo: #4f5e9c;
+      --indigo-soft: #e6e9f5;
+      --gold: #8b6b25;
+      --gold-soft: #f0e7c9;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 44px rgba(32, 37, 43, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 37, 43, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 37, 43, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 107, 115, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b20; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 74px;
+    }
+
+    .hero {
+      min-height: calc(78vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 94px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 950px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.8vw, 74px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 20px;
+    }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-lead {
+      max-width: 940px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .card b {
+      display: block;
+      font-size: 16px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn {
+      border-left-color: var(--rust);
+      background: var(--rust-soft);
+    }
+
+    .callout.ok {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .callout.note {
+      border-left-color: var(--indigo);
+      background: var(--indigo-soft);
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 0.24fr 1fr 0.36fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow-row > div {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .flow-row .tag {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      min-width: 780px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    figure {
+      margin: 24px 0 0;
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    img {
+      display: block;
+      width: 100%;
+      max-width: 820px;
+      height: auto;
+      margin: 0 auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-2,
+      .grid-3,
+      .metric-grid,
+      .flow-row {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: min(100% - 24px, var(--max)); }
+      .toc { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 12px; }
+      .toc a { flex: 0 0 auto; }
+      th, td { padding: 11px 12px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-06-02</div>
+        <h1>Async RL 是否已解决：policy lag、IS 偏差与后训练系统边界</h1>
+        <p class="lead">这篇文章的关键不是宣布异步 RL 已经成熟，而是把大模型后训练中的吞吐、stale rollout、importance sampling、数值一致性和长 horizon 扩展放到同一个判断框架里：系统工程可以把 train-inference mismatch 压低，但高 policy lag 下的 estimator 偏差才是更硬的上限。</p>
+        <div class="metric-grid">
+          <div class="metric"><strong>2-3x</strong><span>作者归纳的异步 RL 相对同步 pipeline 吞吐提升量级</span></div>
+          <div class="metric"><strong>8</strong><span>被放进 landscape 的开放权重 frontier labs / releases</span></div>
+          <div class="metric"><strong>K</strong><span>policy lag：训练 policy 领先 rollout policy 的优化步数</span></div>
+          <div class="metric"><strong>Seq IS</strong><span>作者认为更能随 batch 和 compute 扩展的低偏差方向</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <b>一句话判断</b>
+        <p>Async RL 的主矛盾正在从“怎么把 rollout 和 training 跑快”转向“在 stale trajectory 上到底优化了哪个目标”。</p>
+        <p class="small">低方差的 token-level 修补能让小 batch 更稳，但长 horizon 与高 policy lag 会把它的 bias 放大成天花板。</p>
+      </aside>
+    </section>
+
+    <nav class="toc" aria-label="Page sections">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#systems">系统错配</a>
+      <a href="#estimators">Estimator 分歧</a>
+      <a href="#terms">术语解释</a>
+      <a href="#limits">边界风险</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+
+    <section id="takeaway" class="section">
+      <h2>核心判断</h2>
+      <p class="section-lead">这条 thread 和 blog 最值得记录的 insight 是：异步 RL 并不是“把生成和训练并行起来”这么简单。它把 on-policy RL 的干净假设换成了吞吐更高、但数据更旧的 off-policy 训练问题。</p>
+      <div class="callout">
+        <p><strong>我的判断：</strong>frontier async RL 还没有被解决。当前系统侧的 weight sync、batch-invariant kernel、MoE routing replay、FP32 LM head、量化 rollout 等手段能减少训练端和推理端不是同一个 policy 的问题；但只要 policy lag 被推高，rollout trajectory 仍然来自旧策略，importance sampling ratio 的分布仍然会极端化。真正未解决的是高 policy lag、长 horizon、有限 batch 下的低偏差训练。</p>
+      </div>
+      <p>这也是作者为什么把主题从 infrastructure survey 推向 estimator scaling。工程系统可以把错配噪声降低；但如果 estimator 自身是高 bias 的，compute 上去以后不会自动变正确，只会更稳定地优化错目标。反过来，低 bias 方法低 compute 时可能因为 variance 暴露得更明显而显得吃亏，却有机会随着 batch size 和 variance control 扩展。</p>
+    </section>
+
+    <section id="problem" class="section">
+      <h2>问题背景</h2>
+      <p class="section-lead">大模型 reasoning、tool-use 和 agentic 任务把 RL 的采样成本推高。同步 RL 的每轮训练必须等当前 policy 完成 rollout，长输出会让训练 GPU 空等最慢的 trajectory。</p>
+      <div class="grid-3">
+        <div class="card">
+          <b>同步 RL 的瓶颈</b>
+          <p>采样和训练在一个严格循环里，必须先用当前 policy 生成样本，再进入优化。长 horizon 让 rollout latency 主导 step time。</p>
+        </div>
+        <div class="card">
+          <b>异步 RL 的交换</b>
+          <p>rollout worker 持续生成，trainer 持续更新，中间用 trajectory buffer 和周期性 weight sync 解耦。吞吐提升来自不再让两端互相等待。</p>
+        </div>
+        <div class="card">
+          <b>代价是数据 stale</b>
+          <p>trainer 更新时看到的样本可能来自若干步之前的 inference policy。此时训练目标不再天然 on-policy，需要处理 off-policy mismatch。</p>
+        </div>
+      </div>
+      <p>作者把 policy lag 定义为训练 policy 相对 inference policy 领先的优化步数。K 等于 0 时是完全 on-policy；K 越大，trajectory 越旧。最直接的工程控制是设置最大 lag，例如 FIFO 窗口或丢弃超过阈值的样本，但这会直接限制异步 RL 的吞吐收益。</p>
+      <figure>
+        <img src="frontier-async-rl-solved-assets/async-rl-infographic.jpg" alt="Luke J. Huang 关于 frontier asynchronous RL 的信息图，列出 labs、policy lag、IS ratio、系统错配和开放问题">
+        <figcaption>作者在 X 主帖附的信息图：它把 async RL 的吞吐收益、staleness、IS ratio 修补、系统级 train-inference mismatch 和开放问题放在同一张图里。</figcaption>
+      </figure>
+    </section>
+
+    <section id="mechanism" class="section">
+      <h2>机制拆解</h2>
+      <p class="section-lead">异步 RL 的核心机制可以拆成三个变量：rollout latency、training step time、以及 rollout / training 资源比例。它们共同决定系统自然积累的 steady-state lag。</p>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="tag">Step 1</div>
+          <div><strong>rollout 和 training 解耦。</strong><br>生成端持续产出 trajectory，训练端持续消费 buffer。系统不再等待每一批样本完全结束后才更新。</div>
+          <div>收益：吞吐提升</div>
+        </div>
+        <div class="flow-row">
+          <div class="tag">Step 2</div>
+          <div><strong>trajectory buffer 引入 staleness。</strong><br>训练端消费样本时，当前参数已经不同于采样时的参数。policy lag 越高，分布差异越大。</div>
+          <div>代价：off-policy</div>
+        </div>
+        <div class="flow-row">
+          <div class="tag">Step 3</div>
+          <div><strong>importance sampling 试图修正分布差异。</strong><br>训练目标用当前 policy 与行为 policy 对同一 trajectory 的概率比值做重加权。ratio 越极端，梯度方差和稳定性问题越严重。</div>
+          <div>瓶颈：IS ratio</div>
+        </div>
+        <div class="flow-row">
+          <div class="tag">Step 4</div>
+          <div><strong>clipping / masking 牺牲一部分目标正确性换稳定性。</strong><br>TIS、CISPO、MIS、IcePop、DeepSeek-style masking、M2PO 等方法都在重塑或丢弃极端 ratio。</div>
+          <div>折中：低方差高偏差</div>
+        </div>
+      </div>
+      <div class="callout ok">
+        <p><strong>关键 insight：</strong>限制 Kmax 可以稳定训练，但会把系统重新推回 rollout-bound；放开 Kmax 可以接近异步吞吐上限，但 stale trajectory 会让 estimator 崩。长 horizon 任务恰好同时需要异步吞吐和更高 policy lag，所以它是这个矛盾最尖锐的场景。</p>
+      </div>
+    </section>
+
+    <section id="systems" class="section">
+      <h2>系统错配</h2>
+      <p class="section-lead">作者把稳定性问题拆成两类：算法层面的 policy lag，以及系统层面的 train-inference mismatch。后者即使在 K 很低时也会出现，因为 rollout engine 和 training engine 往往不是同一套数值路径。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>系统修补</th>
+              <th>它在修什么</th>
+              <th>为什么仍不够</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>MoE routing replay</td>
+              <td>记录 rollout 时的专家路由，在训练时复现，避免相同权重下专家选择不同。</td>
+              <td>它减少数值 / 路由错配，但不能让旧 policy 生成的数据变成新 policy 数据。</td>
+            </tr>
+            <tr>
+              <td>Batch-invariant kernels</td>
+              <td>让不同 batch size、并行策略或归约顺序下的 log-prob 更一致。</td>
+              <td>它解决 engine parity，不解决 policy drift。</td>
+            </tr>
+            <tr>
+              <td>FP32 LM head / FP16 pipeline</td>
+              <td>降低低精度舍入对 log-prob 和 IS ratio 的放大效应。</td>
+              <td>它压低测量噪声，但 IS ratio 极端化仍来自分布差异。</td>
+            </tr>
+            <tr>
+              <td>Quantized rollout</td>
+              <td>缩短生成时间，提高 rollout throughput，并配合准确 log-prob 或 TIS。</td>
+              <td>它提升速度，但若量化改变 policy，需要额外校正。</td>
+            </tr>
+            <tr>
+              <td>Fast weight sync</td>
+              <td>更快把训练权重或 delta 推到 inference 端，降低 lag。</td>
+              <td>它缓解 lag，但不能证明高 lag 下训练目标仍正确。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这组系统修补的共同价值是让 rollout policy 和 training policy 尽量指向同一个对象。它们是必要条件，却不是充分条件。只要系统为了吞吐主动允许 policy lag 存在，算法侧仍必须回答：如何在旧 trajectory 上估计新 policy 的梯度。</p>
+    </section>
+
+    <section id="estimators" class="section">
+      <h2>Estimator 分歧</h2>
+      <p class="section-lead">作者最强的判断集中在 token-level IS 和 sequence-level IS 的分歧上。这里的问题不是哪个 trick 更平滑，而是哪一个 estimator 在 async long-horizon 场景下仍指向正确目标。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>Token-level IS</b>
+          <p>按每个 token 的概率比值做修正，方差较低，和 PPO / GRPO 的常见形式更接近。在 policy drift 小、连续策略足够近时，它可以作为实用近似。</p>
+        </div>
+        <div class="card">
+          <b>Sequence-level IS</b>
+          <p>按整条 trajectory 的概率比值做修正，更接近 off-policy 目标本身。代价是长序列下 ratio 方差可能非常高，小 batch 时尤其难用。</p>
+        </div>
+        <div class="card">
+          <b>Geometric-mean IS</b>
+          <p>试图在 token 与 sequence 之间折中，用 token ratio 的几何平均控制尺度。作者的 simulation 显示它在长 horizon 下更像 token IS，而不是可靠中间地带。</p>
+        </div>
+        <div class="card">
+          <b>Truncation / masking</b>
+          <p>通过 clip 或 mask 极端 ratio 降低 variance。它能让小 batch 更稳，却把 bias 写进目标；当 compute 增长时，bias 可能成为上限。</p>
+        </div>
+      </div>
+      <div class="callout note">
+        <p><strong>低偏差 compute scaling hypothesis：</strong>低 bias 方法低 compute 时暴露更多 variance，看起来不划算；但它保留了正确目标，因此更可能随 batch、compute 和 variance control 扩展。高 bias 方法小规模更稳，但扩展时会撞上 bias ceiling。</p>
+      </div>
+      <p>这对工程实践的启发很直接：不要只用小 batch、小 horizon 的稳定性判断一个 async RL 修补是否可扩展。低方差方法在早期曲线更漂亮，不等于它在高 compute 或长任务上有更高上限；sequence-level 方向早期更吵，也不等于它不值得做 variance control。</p>
+    </section>
+
+    <section id="terms" class="section">
+      <h2>术语解释</h2>
+      <div class="grid-2">
+        <div class="card">
+          <b>Async RL</b>
+          <p>异步强化学习训练形态：rollout 和 training 不再严格串行，而是通过 buffer、权重同步和版本管理并行运行。</p>
+        </div>
+        <div class="card">
+          <b>Policy lag</b>
+          <p>训练 policy 相比生成样本的 inference policy 领先的优化步数。lag 越大，trajectory 越 stale。</p>
+        </div>
+        <div class="card">
+          <b>Rollout-bound / training-bound</b>
+          <p>rollout-bound 指 trainer 等样本，吞吐受生成端限制；training-bound 指 buffer 持续有样本，训练端成为主瓶颈。</p>
+        </div>
+        <div class="card">
+          <b>Importance sampling ratio</b>
+          <p>当前 policy 与行为 policy 对同一 token 或 trajectory 的概率比值，用于在 off-policy 数据上重加权梯度。</p>
+        </div>
+        <div class="card">
+          <b>Train-inference mismatch</b>
+          <p>训练端和推理端因为精度、kernel、并行策略、MoE 路由、tokenization 或权重版本不同，导致 log-prob 或行为不一致。</p>
+        </div>
+        <div class="card">
+          <b>Curse of horizon</b>
+          <p>长 horizon 下 trajectory-level 概率比值容易随 token 数累乘而方差爆炸；这正是 sequence IS 难用但目标更干净的根源。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits" class="section">
+      <h2>边界与风险</h2>
+      <p class="section-lead">这篇 blog 的价值在于提出一个清晰的 async RL landscape 和 estimator scaling 判断，但它还不是最终答案。</p>
+      <div class="grid-3">
+        <div class="card">
+          <b>证据形态仍偏 survey + simulation</b>
+          <p>作者整合了多个 lab 的报告和框架经验，也给出高 lag 实验与 simple horizon simulation；但不同模型、任务、reward、inference engine 的外部复现仍关键。</p>
+        </div>
+        <div class="card">
+          <b>Sequence IS 不是免费午餐</b>
+          <p>它低 bias，但 variance 高。小 batch、稀疏奖励、极长轨迹下，如果没有更好的 variance control，训练可能先被噪声击穿。</p>
+        </div>
+        <div class="card">
+          <b>系统修补仍不可省</b>
+          <p>即使 estimator 更正确，MoE routing、kernel nondeterminism、LM head 精度、weight sync 这些工程错配仍会污染 log-prob 和 reward credit。</p>
+        </div>
+      </div>
+      <p>因此更稳妥的判断是：async RL 已经是 frontier post-training 的主流系统方向，但“高 policy lag 下的可扩展低偏差训练”仍是开放问题。下一阶段真正有价值的工作，可能不是再发明一个 mask，而是能在训练中诊断 estimator 已经偏离、并在 collapse 前动态调整 batch、lag、truncation 或 estimator 形态。</p>
+    </section>
+
+    <section id="sources" class="section" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p class="section-lead">本页基于目标 X thread、作者链接的长文、thread 配图和评论区问题整理。X 公网页面读取不稳定，因此 thread 正文以结构化抓取结果为主；长文内容以作者个人站页面为主。</p>
+      <ul class="source-list">
+        <li><strong>X 主帖：</strong><a href="https://x.com/whatthelukh/status/2061509262069923868">Luke J. Huang 发布的 “Is frontier asynchronous RL solved?” thread</a>。主帖时间为 2026-06-01 18:04:43 UTC，包含 blog 摘要、配图和后续 takeaways。</li>
+        <li><strong>作者长文：</strong><a href="https://luk-huang.github.io/personal-website/blog/is-frontier-asynchronous-rl-solved.html">Is Frontier Asynchronous RL Solved?</a>。正文覆盖 async RL landscape、policy lag、IS ratio、系统错配、sequence/token estimator 对比和开放问题。</li>
+        <li><strong>短链解析：</strong>thread 中的 blog 短链解析到作者个人站页面；另一个短链指向主帖图片页，正文信息已以本页本地配图保留。</li>
+        <li><strong>核验命令：</strong>使用 `opencli twitter thread` 读取目标 thread，使用 `curl -sIL` 解析 t.co 短链，使用 `opencli web read` 读取作者长文。公共网页读取 X 页面只稳定返回部分内容，因此不作为唯一正文依据。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

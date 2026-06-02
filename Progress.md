@@ -1,5 +1,59 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-02 Frontier Async RL X thread 与 blog 笔记导出
+
+### 背景
+
+- 用户要求仔细阅读梳理并导入笔记：`https://x.com/whatthelukh/status/2061509262069923868`。
+- 原帖为 Luke J. Huang 发布的 **Is frontier asynchronous RL solved?** blog/thread，主题是异步 RL 后训练中的 policy lag、train-inference mismatch、importance sampling estimator 和系统修补边界。
+
+### 已完成
+
+- 按仓库规则读取 `AGENTS.md`、`.agent/codex-experience-profile.md`、`Progress.md`、`notes/NOTE_TEMPLATE.md` 和 notes workflow。
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-06-01 18:04:43 UTC；
+  - 原帖说明 blog 调研 8 个开放权重 frontier labs 如何处理 Async RL 的 train-inference mismatch；
+  - 作者补充列出 GLM-5、Ring-1T、DeepSeek V3.2、Minimax M2.5、Qwen 3.5、Intellect-3、NVIDIA Nemotron Super、Laguna M.1；
+  - 线程 takeaways 覆盖 policy lag、rollout-bound/training-bound、TIS/CISPO、MIS/IcePop、sequence IS、token IS 和 low-bias compute scaling hypothesis。
+- 使用 `curl -sIL` 解析短链：
+  - blog 链接：`https://luk-huang.github.io/personal-website/blog/is-frontier-asynchronous-rl-solved.html`
+  - 图片短链指向 X 图片页，已下载并本地化主帖配图。
+- 使用 `opencli web read` 读取作者 blog 正文，核验：
+  - async RL 通过 rollout/training 解耦带来 2-3x 吞吐提升；
+  - policy lag K 让 trajectory stale，Kmax 太低会让系统 rollout-bound，Kmax 放开又放大 off-policy instability；
+  - 算法修补包括 TIS/CISPO、MIS/IcePop、DeepSeek masking、M2PO 等 IS ratio reshaping；
+  - 系统修补包括 MoE routing replay、batch-invariant kernels、FP32 LM head、FP16、quantized rollout、fast weight sync 和 KV cache recomputation；
+  - 作者主张 sequence-level IS 更接近正确 off-policy 目标，更可能随 batch/compute 扩展；token-level IS 在高 policy lag 与长 horizon 下存在结构性 bias。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/frontier-async-rl-solved.html`
+- 新增本地配图资源：
+  - `notes/tech-analysis/frontier-async-rl-solved-assets/async-rl-infographic.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Async RL 是否已解决：policy lag、IS 偏差与后训练系统边界`
+  - URL：`/notes/tech-analysis/frontier-async-rl-solved.html`
+  - 类型：`Tech Analysis`
+
+### 关键观察
+
+- 这篇材料的核心 insight 不是“async RL 已经让 RL 后训练变快”，而是说明异步化把 on-policy RL 的干净假设换成了更高吞吐但更旧的数据分布。
+- 系统侧修补可以压低 rollout engine 与 trainer 的数值错配，但不能把旧 policy 生成的 trajectory 变成新 policy 数据；高 policy lag 下仍要面对 IS ratio 极端化。
+- token-level IS、geometric-mean IS 与 masking/clipping 更像低方差高偏差的工程补丁；sequence-level IS 暴露更高 variance，但在作者论证中更接近正确 off-policy 目标，也更可能随 batch/compute 扩展。
+- 低偏差 compute scaling hypothesis 的工程含义是：不要只用小 batch、小 horizon 的 early stability 判断一个 async RL 修补是否可扩展；高 bias 方法可能在早期更稳，但 compute 上去后 bias 会成为上限。
+
+### 当前判断
+
+- Frontier async RL 已经是大模型 RL post-training 的主流系统形态，但“高 policy lag、长 horizon、有限 batch 下的稳定低偏差训练”还没有被解决。
+- 下一阶段真正有价值的方向可能是 collapse 前诊断与动态控制：识别 estimator 何时偏离，再调整 lag、batch、truncation、mask 或 estimator 形态，而不是只新增固定阈值 mask。
+
+### 验证结果
+
+- 当前工作区 `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 73 entries, 73 top-level note html files`；保留 1 条既有 warning：`notes/tech-analysis/x-tweet-cycle-ai-digest.html` 顶部来源/流程措辞，非本轮新增页面引入。
+- 精确 staged snapshot 导出到 `/private/tmp/frontier-async-rl-staged` 后，`ruby "/private/tmp/frontier-async-rl-staged/scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 61 entries, 61 top-level note html files`。
+- `git diff --cached --check` 通过；staged diff 仅包含 `Progress.md`、`_data/notes.yml`、`notes/tech-analysis/frontier-async-rl-solved.html` 和 `notes/tech-analysis/frontier-async-rl-solved-assets/async-rl-infographic.jpg`。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 在当前工作区构建成功；`BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build --source "/private/tmp/frontier-async-rl-staged" --destination "/private/tmp/frontier-async-rl-staged-site"` 在 staged snapshot 构建成功；仅出现 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning，不影响 `_site` 生成。
+- staged `_site/notes/tech-analysis/frontier-async-rl-solved.html` 结构检查覆盖：title、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、本地配图引用均存在；配图文件为 `802x1174` JPEG。
+
 ## 2026-05-30 BES 双向演化搜索 X 线程解读与笔记导出
 
 ### 背景
