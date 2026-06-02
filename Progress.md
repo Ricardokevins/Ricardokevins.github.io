@@ -144,11 +144,12 @@
 - 题库现在能覆盖从基础 RAG 到生产知识库治理的追问链路：`pipeline -> retrieval/rerank -> context packing/citation -> GraphRAG -> corrective RAG -> ACL/version/cache/trace`。
 - 后续如果继续深挖，优先方向不是继续堆术语，而是给第 43 章补 1-2 个完整 case study：例如“企业政策助手答错一条退款规则，如何从 trace 定位到 ACL / 版本 / rerank / citation 的具体根因”。
 
-### 待验证
+### 验证结果
 
-- `ruby "scripts/validate_notes_index.rb"`
-- `git diff --check -- "notes/llm-interview-question-bank/chapters/043.html" "notes/llm-interview-question-bank/chapters/054.html" "notes/llm-interview-question-bank/index.html" "Progress.md"`
-- 必要时运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build`。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/llm-interview-question-bank/chapters/043.html" "notes/llm-interview-question-bank/chapters/054.html" "notes/llm-interview-question-bank/index.html" "Progress.md"` 通过。
+- `rg -n "<<<<<<<|=======|>>>>>>>|Generated locally|HTML generated|本地 HTML 生成|报告生成日期|/tmp/|/Users/bytedance|最终 HTML 路径|文件位置" "notes/llm-interview-question-bank/chapters/043.html" "notes/llm-interview-question-bank/chapters/054.html" "notes/llm-interview-question-bank/index.html"` 未命中冲突标记、公开生成痕迹或本机路径。
+- 复查当前 `HEAD` 与 `origin/main` 后确认，RAG / 知识库正文补强已经进入版本库；本次收口只补齐该任务的验证记录，不纳入未跟踪的 `audit_report.html`。
 
 ## 2026-06-02 Speculative Decoding X Article 深度梳理与笔记导入
 
