@@ -22,7 +22,7 @@
 
 - 本轮提交纳入 notes 语料、模板、validator、站点索引、favicon、题库章节、治理配置与 `Progress.md` 收口记录。
 - `audit_report.html` 是本地审查输入/报告 artifact，不作为站点页面或正式笔记提交。
-- 提交前仍需对 staged snapshot 复跑 notes validator 与 Jekyll build；结果写入提交后的最终汇报。
+- 已对最终提交边界做复验：`ruby "scripts/validate_notes_index.rb"` 通过，Jekyll build 通过，`origin/main...HEAD` 同步后为 `0 0`；`audit_report.html` 仍作为本地未跟踪 artifact 保留，不纳入提交。
 
 ## 2026-06-02 A-Evolve self-evolving agents X thread 与站内笔记导出
 
