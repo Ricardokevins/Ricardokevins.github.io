@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic RL 的 rollout 层：从 Agent Loop 到 Agent Environment</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f6f1;
+      --surface: #ffffff;
+      --surface-2: #edf1eb;
+      --ink: #20242a;
+      --muted: #5d6670;
+      --line: #d8ded5;
+      --line-strong: #9ba79c;
+      --accent: #1f6b70;
+      --accent-soft: #dfeff0;
+      --rust: #9a4f3f;
+      --rust-soft: #f2dfda;
+      --green: #3f7256;
+      --green-soft: #e2efe6;
+      --violet: #59568e;
+      --violet-soft: #e7e6f3;
+      --gold: #8a6a22;
+      --gold-soft: #f0e5c5;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 42px rgba(32, 36, 42, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.032) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.024) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 107, 112, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #161b20; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 74px;
+    }
+
+    .hero {
+      min-height: calc(76vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.40fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 94px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.7vw, 74px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .flow-step {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel { padding: 20px; }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-panel ul,
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .hero-panel li,
+    .compact-list li { margin-top: 8px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(21px, 2.7vw, 32px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section-lead {
+      max-width: 940px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .card b {
+      display: block;
+      font-size: 16px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn {
+      border-left-color: var(--rust);
+      background: var(--rust-soft);
+    }
+
+    .callout.ok {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .flow-step::before {
+      content: attr(data-step);
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .flow-step b {
+      display: block;
+      font-size: 16px;
+    }
+
+    .flow-step p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      margin-top: 22px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+
+    .term {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      margin: 4px 6px 0 0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .evidence-list a {
+      display: block;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: none;
+    }
+
+    .evidence-list span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-2,
+      .grid-3,
+      .flow,
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        align-items: start;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .page { width: min(100% - 24px, var(--max)); }
+      .hero { padding-top: 34px; }
+      .metric strong { font-size: 24px; }
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-06-02</div>
+        <h1>Agentic RL 的 rollout 层：从 Agent Loop 到 Agent Environment</h1>
+        <p class="lead">Yuan He 这组材料最值得记住的判断是：multi-turn agent 后训练的问题，不能从 KL、advantage、GRPO 这些算法词开始看，而要先问 rollout system 是否忠实地产生了可训练轨迹。token 漂移、工具调用被悄悄修复、终止原因混在一起、环境并发阻塞，都会让“看似在线”的 RL 实际学到脏数据。</p>
+      </div>
+      <aside class="hero-panel">
+        <b>source bundle</b>
+        <ul>
+          <li>X 主帖：multi-turn RL 需要正确且高效的 rollouts。</li>
+          <li>Slide deck：From Agent Loops to Agent Environments。</li>
+          <li>代码语境：strands-env 与 strands-sglang。</li>
+          <li>相关讨论：A2E 从协议层强调 agent-environment interface。</li>
+        </ul>
+      </aside>
+    </header>
+
+    <nav class="toc" aria-label="Table of contents">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#correctness">正确性</a>
+      <a href="#efficiency">效率</a>
+      <a href="#terms">术语</a>
+      <a href="#limits">边界</a>
+      <a href="#engineering">工程启发</a>
+      <a href="#evidence">资料索引</a>
+    </nav>
+
+    <section class="section" id="takeaway">
+      <h2>核心判断：rollout 不是日志，是训练分布本身</h2>
+      <p class="section-lead">这条 X 帖只有一句话，但它指向的是 agentic RL 的基础设施层：在多轮工具调用任务里，模型不是一次性输出答案，而是在环境中不断 action、observe、recover、terminate。训练看到的不是静态文本，而是一条带 token、tool、reward、termination 和 metadata 的轨迹。</p>
+      <p>因此，<strong>rollout 层的错误会直接变成训练目标的错误</strong>。如果 text API 把模型生成 token decode 再 re-encode，on-policy 条件就被破坏；如果 inference server 帮模型补全坏掉的 JSON，模型会把格式错误当成成功动作；如果 timeout、context overflow、max tool iterations 都被混成普通失败，reward 就无法区分环境故障、模型啰嗦、任务完成和策略失控。</p>
+      <div class="metric-grid">
+        <div class="metric"><strong>1</strong><span>一个坏 turn 可以污染整条 episode，尤其是工具链任务。</span></div>
+        <div class="metric"><strong>TITO</strong><span>token-in / token-out 是 on-policy agentic RL 的底线。</span></div>
+        <div class="metric"><strong>strict</strong><span>工具解析要 fail loud，而不是静默修复。</span></div>
+        <div class="metric"><strong>env</strong><span>agent orchestration 应被视为可复用环境，而不是 demo scaffold。</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="problem">
+      <h2>问题背景：agent loop 一旦进入训练，就不再只是产品编排</h2>
+      <p class="section-lead">普通 agent 应用关心“用户能不能得到答案”。RL 训练关心的是“这条交互轨迹是否忠实反映当前 policy 在环境中的行为”。这两个目标经常冲突。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>产品 runtime 喜欢容错</b>
+          <p>生产系统会修复 JSON、重试工具、吞掉部分异常、自动 fallback、用自然语言包装工具错误。这些做法能提升用户体验，却会抹掉模型真实行为和环境真实反馈。</p>
+        </div>
+        <div class="card">
+          <b>训练 runtime 需要可归因</b>
+          <p>训练需要知道每个 token 是否应计入 loss、工具错误来自模型还是环境、终止是成功还是截断、logprob 是否来自同一 policy、reward 是否绑定到正确 turn。</p>
+        </div>
+        <div class="card">
+          <b>单轮推理可以只看结果</b>
+          <p>数学题或普通问答常把最终答案作为主要监督信号，轨迹细节是辅助信息。agent 任务则不一样，错误工具调用、坏观察、过早停止都会改变后续状态。</p>
+        </div>
+        <div class="card">
+          <b>多轮 rollout 是状态机</b>
+          <p>同一个 prompt 下，agent 每一步看到的上下文由前面 action 决定。只保存最终文本，相当于丢掉训练最需要的 state-action-reward chain。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <strong>我的判断：</strong>这组材料是在提醒大家，agentic RL 的第一性问题不是“选哪个 policy optimization loss”，而是先把 environment contract 说清楚。没有可信 rollout，算法越强越容易把系统缺陷放大。
+      </div>
+    </section>
+
+    <section class="section" id="mechanism">
+      <h2>机制拆解：从 loop 到 environment 的抽象迁移</h2>
+      <p class="section-lead">deck 里的关键迁移是：把“agent loop”从应用逻辑提升为“agent environment”。一次 <code>env.step(action)</code> 不是单个模型调用，而是一整段 prompt、tool call、tool response、final response、reward 和 termination 的执行闭环。</p>
+      <div class="flow">
+        <div class="flow-step" data-step="1">
+          <b>Action</b>
+          <p>输入 message 与 task context，作为当前 policy 在环境中的动作入口。</p>
+        </div>
+        <div class="flow-step" data-step="2">
+          <b>Agent loop</b>
+          <p>模型生成、调用工具、接收观察，再继续生成，直到完成或被环境截断。</p>
+        </div>
+        <div class="flow-step" data-step="3">
+          <b>Observation</b>
+          <p>保留最终响应、工具结果、token 轨迹、logprob、loss mask 与可选 metadata。</p>
+        </div>
+        <div class="flow-step" data-step="4">
+          <b>Reward</b>
+          <p>根据任务、终止原因和 verifier 计算训练信号，而不是只看最终文本。</p>
+        </div>
+      </div>
+      <p>这个抽象的好处是统一了三件原本分散的事情：benchmark evaluation、data synthesis、RL post-training。评测时它生成可复现轨迹；合成数据时它批量生成带结果的 episode；训练时它把轨迹转成 observation、reward 和 token-level metadata。</p>
+      <p>这也是 <code>strands-env</code> 和 <code>strands-sglang</code> 的配合点：前者把环境建成 gym-like 接口，后者把 SGLang 的高并发推理和 token metadata 暴露给 agent loop。一个管 step/observe/reward，一个管 token-faithful generation。</p>
+    </section>
+
+    <section class="section" id="correctness">
+      <h2>正确性：四个最容易被低估的污染源</h2>
+      <p class="section-lead">rollout correctness 的难点不在“能不能跑”，而在“训练看到的是不是当前模型真实产生的东西”。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>污染源</th>
+              <th>表面现象</th>
+              <th>训练后果</th>
+              <th>工程处理</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Retokenization drift</strong></td>
+              <td>SDK 只返回文本，系统再把文本重新 tokenize。</td>
+              <td>token 序列不等于原 policy 采样序列，on-policy 训练假设被破坏。</td>
+              <td>保留 token-in / token-out；只对新增 chunk 做 incremental chat templating。</td>
+            </tr>
+            <tr>
+              <td><strong>Chat template drift</strong></td>
+              <td>多轮拼接时缺 separator、意外插入 BOS、工具响应模板不一致。</td>
+              <td>训练上下文和推理上下文不一致，logprob 与 loss mask 对不上。</td>
+              <td>显式维护 message boundary，必要时 patch chat template。</td>
+            </tr>
+            <tr>
+              <td><strong>Silent tool repair</strong></td>
+              <td>工具 parser 自动修 JSON、执行 think block 里的草稿 tool call。</td>
+              <td>模型格式错误被标成成功，reward 给错动作。</td>
+              <td>严格解析；think 内部内容不进入工具层；坏调用变成下一轮可见错误反馈。</td>
+            </tr>
+            <tr>
+              <td><strong>Termination blur</strong></td>
+              <td>timeout、throttling、context overflow、max iterations、task complete 混在一起。</td>
+              <td>reward 无法区分环境故障、策略过长、任务成功和执行预算耗尽。</td>
+              <td>把 termination reason 作为 reward shaping 与 sampling 的一等字段。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout ok">
+        <strong>关键 insight：</strong>严格工具解析不是为了让系统更脆弱，而是为了把错误反馈留给模型。产品系统的“帮你修好”会让模型错过学习机会；训练系统的“暴露错误”才是可用监督。
+      </div>
+    </section>
+
+    <section class="section" id="efficiency">
+      <h2>效率：rollout 速度由整条环境链路决定，不只由推理吞吐决定</h2>
+      <p class="section-lead">agentic rollout 的 wall-clock 往往花在等待工具、网页、沙箱、外部 API、文件系统或数据库上。只把模型 serving 做快，并不能保证训练吞吐。</p>
+      <div class="grid-3">
+        <div class="card">
+          <b>Async 不等于 parallelism</b>
+          <p>Python async 可以重叠 I/O，但一个事件循环仍会被 CPU 段阻塞。网页转 Markdown、JSON 解析、沙箱清理这些小 CPU 段在成千上万条 rollout 里会堆起来。</p>
+        </div>
+        <div class="card">
+          <b>分布式环境 actor</b>
+          <p>把 environment step 放进多个进程或 actor，可以让每个 actor 有自己的 event loop 和 GIL，单 actor 内 async，actor 间 parallel。</p>
+        </div>
+        <div class="card">
+          <b>工具瓶颈各不相同</b>
+          <p>搜索环境受 rate limit 约束，代码环境受 sandbox 生命周期和长运行程序约束。没有一个通用并发参数能解决所有环境。</p>
+        </div>
+      </div>
+      <p>fully async rollout 进一步把 trainer 从同步 batch 等待中释放出来，让谁先完成就先被训练使用。代价是 stale rollout：吞吐更高，但数据更 off-policy。这个问题与 async RL 的 policy lag 是同一类系统-算法耦合，不能只靠工程加速忽略。</p>
+    </section>
+
+    <section class="section" id="terms">
+      <h2>术语对齐</h2>
+      <p class="section-lead">这些词经常被混用，但在 agentic RL 里边界很重要。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>Agent loop</b>
+          <p>模型与工具反复交互的控制循环。它可以只是应用 runtime，也可以被包装成训练环境。</p>
+        </div>
+        <div class="card">
+          <b>Agent environment</b>
+          <p>对训练而言的环境接口：reset、step、observe、reward、termination、cleanup。它让 agent 任务变成可复用 rollout 生成器。</p>
+        </div>
+        <div class="card">
+          <b>Rollout system</b>
+          <p>负责从当前 policy 生成完整 trajectory 的基础设施。它包括模型 serving、工具执行、状态记录、metadata 保存、reward 与异常分类。</p>
+        </div>
+        <div class="card">
+          <b>Harness</b>
+          <p>包住模型的工具、记忆、环境、反馈、子 agent 与 orchestration 层。A2E 讨论把 harness 作为可拥有的协议接口，和这里的 environment 抽象互相呼应。</p>
+        </div>
+      </div>
+      <p>
+        <span class="term">TITO</span>
+        <span class="term">loss mask</span>
+        <span class="term">logprob</span>
+        <span class="term">termination reason</span>
+        <span class="term">tool parser</span>
+        <span class="term">stale rollout</span>
+        <span class="term">train-inference match</span>
+      </p>
+    </section>
+
+    <section class="section" id="limits">
+      <h2>边界：这不是算法替代品，也不是一个通用标准答案</h2>
+      <p class="section-lead">这组材料的价值在工程底座，而不是声称某个库已经解决 agentic RL。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>它不解决 reward 本身</b>
+          <p>环境能把 rollout 产干净，但 verifier 是否准确、reward 是否可 hack、任务是否过难或过易，仍然是独立问题。</p>
+        </div>
+        <div class="card">
+          <b>它不自动消除 off-policy</b>
+          <p>fully async rollout 提高吞吐，但 stale policy 的代价需要算法层处理。越长 horizon、越高 lag，importance correction 和稳定性问题越难。</p>
+        </div>
+        <div class="card">
+          <b>它依赖底层 serving 能力</b>
+          <p>token metadata、logprob、routing replay、loss mask 和 incremental templating 都要求推理服务暴露足够低层的信息。</p>
+        </div>
+        <div class="card">
+          <b>协议层与环境层不是同一件事</b>
+          <p>A2E 关心 agent-to-environment 的开放协议和插件所有权；strands-env 更像具体 RL environment harness。二者互补，但不能混为一个项目。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="engineering">
+      <h2>工程启发：先把 rollout audit 做成标准门禁</h2>
+      <p class="section-lead">如果要在自己的 agent 后训练系统里吸收这条线，我会先加四类审计，而不是先换 RL 算法。</p>
+      <div class="grid-2">
+        <div class="card">
+          <b>1. Token fidelity audit</b>
+          <p>随机抽样 trajectory，检查原始 token、decode 文本、re-encode token 是否发生 drift；把 drift rate 做成训练前门禁。</p>
+        </div>
+        <div class="card">
+          <b>2. Tool parser audit</b>
+          <p>保留 raw tool-call text，统计 malformed call、think block call、parser failure、environment error 的比例，不允许 silent repair 混入 success。</p>
+        </div>
+        <div class="card">
+          <b>3. Termination taxonomy</b>
+          <p>把 timeout、rate-limit、context overflow、max iteration、task complete、verifier fail 分开记录，分别决定 retry、drop、penalty 或 reward。</p>
+        </div>
+        <div class="card">
+          <b>4. Throughput decomposition</b>
+          <p>把 wall-clock 拆成 model time、tool wait、CPU postprocess、sandbox setup、cleanup、trainer wait，找到真正阻塞 rollout 的层。</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>最终结论：</strong>Agentic RL 的可扩展性首先来自可信环境，而不是单个 loss。rollout system 一旦被当成训练分布的控制面，很多“算法不稳定”的现象会重新归因到 token、工具、终止和并发这些更具体、也更可修的工程问题。
+      </div>
+    </section>
+
+    <section class="section" id="evidence" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p class="section-lead">本文基于 X 主帖、作者 slide deck、项目 README 与相关回复链接综合判断。X 主帖本身很短，主要实质内容来自 slide deck 与两个代码仓库；A2E 链接来自回复区，作为外部架构对照，不作为 strands 系列实现证据。</p>
+      <div class="evidence-list">
+        <a href="https://x.com/lawhy_X/status/2061685069513892043">X 主帖：Multi-turn RL needs correct and efficient rollouts<span>Yuan He 发布，指向 slide deck，强调在数据和算法之前先把 agentic rollouts 做对。</span></a>
+        <a href="https://yuanhe.wiki/posts/technical/strands-env/">From Agent Loops to Agent Environments<span>slide deck 主材料，覆盖 agent loop、gym-like interface、retokenization drift、strict tool parsing、termination reasons、distributed rollouts 与 fully async rollouts。</span></a>
+        <a href="https://github.com/strands-rl/strands-env">strands-rl/strands-env<span>README 将每次 env.step 视为完整 agent loop，并提供 step、observe、reward、benchmark 与 RL training integration。</span></a>
+        <a href="https://github.com/strands-rl/strands-sglang">strands-rl/strands-sglang<span>README 强调 token-in / token-out rollouts、strict tool-call parsing、TokenManager、loss mask、logprobs 与 termination reason。</span></a>
+        <a href="https://a2eprotocol.github.io/docs/">A2E Protocol 文档<span>回复区相关链接，提供 agent-to-environment 协议和 harness ownership 的对照视角。</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

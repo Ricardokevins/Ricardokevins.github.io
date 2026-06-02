@@ -1,5 +1,80 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-02 Agentic RL rollout system X 帖与站内笔记导出
+
+### 背景
+
+- 用户要求充分梳理理解并导入笔记：`https://x.com/lawhy_X/status/2061685069513892043`。
+- 原帖作者 Yuan He，公开简介为 Applied Scientist @Amazon Rufus working on agent post-training；主帖内容是 “Multi-turn RL needs correct and efficient rollouts”，并指向 slide deck `From Agent Loops to Agent Environments`。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-06-02 05:43:19 UTC；
+  - 主帖观点：multi-turn RL 在数据和算法之前，先需要正确且高效的 agentic rollouts；
+  - 回复区共识包括：rollout layer 基本上是 data collection step，一轮坏掉会让整条 episode 变成噪声；
+  - 回复区还出现 A2E Protocol 链接和关于 policy agent / environment layer / reward layer / learning layer 分层的架构讨论。
+- 使用 `opencli twitter profile` 核验作者资料：
+  - screen name：`lawhy_X`；
+  - name：Yuan He；
+  - bio：Applied Scientist @Amazon Rufus working on agent post-training；
+  - profile url：`https://www.yuanhe.wiki/`。
+- 解析 X 短链：
+  - 主材料：`https://yuanhe.wiki/posts/technical/strands-env/`；
+  - 回复区 A2E blog：`https://a2eprotocol.github.io/docs/blog/2026-05-21-the-harness-is-the-product.html`；
+  - 回复区 A2E docs：`https://a2eprotocol.github.io/docs/`。
+- 使用 `opencli web read` 读取 slide deck 正文，核验核心内容：
+  - agent environment 本质是 rollout system；
+  - correctness 包括 tokens、tool calls、terminations、train-inference match；
+  - retokenization drift 会破坏 on-policy RL；
+  - chat template 需要 incremental application，否则会引入 separator / BOS 问题；
+  - tool parser 不应静默修复 malformed call，也不应执行 `<think>` 中的草稿工具调用；
+  - termination reason 应区分 throttling timeout、context window overflow、max tool iterations、task complete；
+  - async 不等于 parallelism，Python event loop 中 CPU 段会在大规模 rollout 下堆积；
+  - distributed rollouts 可用多进程 / actor 绕开单 event loop / GIL；
+  - fully async rollouts 提高吞吐但引入 stale rollout / off-policy data trade-off。
+- 读取官方 GitHub README：
+  - `strands-env` 将每次 `env.step()` 视为完整 agent loop：prompt -> tool_call/tool_response -> response，并提供 step/observe/reward、benchmark 和 RL training integration；
+  - `strands-sglang` 强调 token-in / token-out rollouts、strict tool-call parsing、TokenManager、loss mask、logprobs 与 termination reason。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/agentic-rl-rollout-environments.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Agentic RL 的 rollout 层：从 Agent Loop 到 Agent Environment`
+  - URL：`/notes/tech-analysis/agentic-rl-rollout-environments.html`
+  - 类型：`Tech Analysis`
+
+### 关键观察
+
+- 这条材料的核心 insight 不是“又一个 agent SDK”，而是把 agent orchestration 从产品编排重新定义成 RL 训练里的 rollout system。
+- 产品 runtime 倾向于容错：修 JSON、重试工具、自动 fallback、吞掉异常；训练 runtime 则需要可归因：原始 token、loss mask、logprob、tool raw text、termination reason 和 reward 必须能对齐。
+- retokenization drift 是 on-policy agentic RL 的底层破坏项：如果训练看到的是 `encode(decode(tokens))`，就不再是当前 policy 真正采样的 token 序列。
+- strict tool parsing 的工程价值在于把错误留给模型学习，而不是把错误工具调用伪装成成功。
+- termination taxonomy 是 reward shaping 的前置条件：环境限流、上下文溢出、工具迭代过多、任务完成不能混成同一种失败。
+- rollout efficiency 的瓶颈不只在模型 serving；网页解析、沙箱启动、rate limit、CPU postprocess、cleanup、trainer waiting 都可能成为 wall-clock 主因。
+- A2E 回复区材料与主帖互相呼应，但层次不同：A2E 强调开放 agent-to-environment protocol 和 harness ownership，strands-env / strands-sglang 更像具体 rollout environment 与 token-faithful serving 实现。
+
+### 当前判断
+
+- Agentic RL 的第一道质量门禁应是 rollout audit，而不是直接比较 GRPO/PPO/DPO 或 KL 参数。
+- 真正可操作的审计项包括 token fidelity、tool parser failure、termination taxonomy、throughput decomposition 和 stale rollout 统计。
+- 如果一个系统无法证明每条 trajectory 的 token、工具、观察、终止、reward 是可信且可归因的，那么后续算法优化可能只是在更高效率地拟合基础设施噪声。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：`title`、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"` 与公开生成痕迹检查均通过。
+- `git diff --check -- "notes/tech-analysis/agentic-rl-rollout-environments.html" "_data/notes.yml" "Progress.md"` 通过。
+- 在干净提交 worktree 中，`ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 62 entries, 62 top-level note html files`。
+- 复验 `git diff --check -- "notes/tech-analysis/agentic-rl-rollout-environments.html" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- 首次 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 提示临时 bundle 缺 `jekyll`；执行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle install` 后重新构建成功。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 通过；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/tech-analysis/agentic-rl-rollout-environments.html` 结构检查通过：页面存在，文件大小 `26009` bytes，`section` 数量为 9，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和 `_site/notes/assets/notes-shell.css` 均存在。
+- 本地 `_site` 静态服务 HTTP 检查通过：`http://127.0.0.1:4177/notes/tech-analysis/agentic-rl-rollout-environments.html` 返回 `200`，DOM 检查显示 `section=9`、`bytes=26009`。
+- Chrome headless 截图通过：
+  - 桌面视口 `1440x1100` 生成 `/tmp/agentic-rollout-desktop.png`，大小 `212987` bytes；
+  - 移动视口 `390x844` 生成 `/tmp/agentic-rollout-mobile.png`，大小 `103759` bytes；
+  - 移动截图 stderr 有 Chrome GPU `SharedImageManager::ProduceMemory` 噪声，但截图已成功写出，不是页面资源错误。
+
 ## 2026-06-02 Frontier Async RL X thread 与 blog 笔记导出
 
 ### 背景
