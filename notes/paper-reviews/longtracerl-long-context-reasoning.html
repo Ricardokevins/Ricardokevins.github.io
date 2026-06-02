@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LongTraceRL：用搜索轨迹和实体级 rubric 训练 128K 长上下文推理</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f4ef;
+      --surface: #fffdf8;
+      --surface-2: #e7edf0;
+      --ink: #20242a;
+      --muted: #5e6870;
+      --line: #d5dad5;
+      --line-strong: #96a59b;
+      --accent: #1f6a72;
+      --accent-2: #8a5d24;
+      --blue: #315f8c;
+      --green: #34705a;
+      --red: #9e493d;
+      --gold: #8b6b25;
+      --soft-blue: #dce8f2;
+      --soft-green: #dfebe5;
+      --soft-red: #efded9;
+      --soft-gold: #efe4c7;
+      --shadow: 0 18px 44px rgba(32, 36, 42, 0.1);
+      --radius: 8px;
+      --max: 1200px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 106, 114, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+    strong { color: #15191e; }
+    code, pre { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 76px;
+    }
+
+    .hero {
+      min-height: calc(76vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(300px, 0.44fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+      padding: clamp(38px, 6vw, 88px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 840;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(36px, 5.6vw, 72px);
+      font-weight: 760;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: #384047;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.64;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .step,
+    .source-list a,
+    .table-wrap,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .hero-panel b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .fact {
+      min-height: 94px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(231, 237, 240, 0.68);
+    }
+
+    .fact b {
+      display: block;
+      font-family: var(--serif);
+      font-size: 28px;
+      line-height: 1.05;
+    }
+
+    .fact span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .toc a {
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.76);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      gap: 34px;
+      padding-top: 34px;
+    }
+
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-lead {
+      max-width: 940px;
+      color: #3b434a;
+      font-size: 18px;
+      line-height: 1.68;
+    }
+
+    .grid-2,
+    .grid-3,
+    .metrics,
+    .steps {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card,
+    .metric,
+    .step {
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .card h3,
+    .step h3 {
+      margin-top: 0;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--accent);
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.05;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warning { border-left-color: var(--red); background: var(--soft-red); }
+    .callout.good { border-left-color: var(--green); background: var(--soft-green); }
+    .callout.info { border-left-color: var(--blue); background: var(--soft-blue); }
+
+    .table-wrap {
+      max-width: 100%;
+      margin-top: 18px;
+      overflow-x: auto;
+      box-shadow: none;
+    }
+
+    table {
+      width: 100%;
+      min-width: 780px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: rgba(231, 237, 240, 0.72);
+      color: #303941;
+      font-weight: 780;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .formula {
+      margin: 16px 0 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.78);
+      overflow-x: auto;
+    }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px;
+      color: inherit;
+    }
+
+    .source-list b {
+      display: block;
+      color: var(--accent);
+    }
+
+    .source-list span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #1f242a;
+      color: #f7f2e8;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    @media (max-width: 860px) {
+      .page { width: min(100% - 24px, var(--max)); }
+      .hero {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        padding-top: 38px;
+      }
+      .grid-2,
+      .grid-3,
+      .metrics,
+      .steps,
+      .source-list {
+        grid-template-columns: 1fr;
+      }
+      table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Paper Note · 2026-06-02</div>
+        <h1>LongTraceRL：用搜索轨迹和实体级 rubric 训练 128K 长上下文推理</h1>
+        <p class="lead">LongTraceRL 的关键不在于又做了一个长上下文 QA 数据集，而是把“搜索 agent 真实读过但没引用的材料”变成高混淆负例，再用推理链上的 gold entities 给正确答案内部排序。它把长上下文 RLVR 的瓶颈从终局答案稀疏奖励，推进到证据路径是否被真正走通。</p>
+        <div class="toc">
+          <a href="#takeaway">核心判断</a>
+          <a href="#problem">问题背景</a>
+          <a href="#method">方法机制</a>
+          <a href="#reward">奖励设计</a>
+          <a href="#results">实验结果</a>
+          <a href="#engineering">工程读法</a>
+          <a href="#limits">边界</a>
+          <a href="#sources">资料索引</a>
+        </div>
+      </div>
+      <aside class="hero-panel" aria-label="LongTraceRL key facts">
+        <b>One-Line Read</b>
+        <p>把搜索轨迹里“模型会被吸引过去但最终不该引用”的文档保留下来，训练模型在 128K 上区分证据链和强干扰链。</p>
+        <div class="fact-grid">
+          <div class="fact"><b>2,815</b><span>公开训练样本，每条约 128K prompt。</span></div>
+          <div class="fact"><b>8-hop</b><span>基于 Wikipedia KG random walk 构造的推理链。</span></div>
+          <div class="fact"><b>4B/8B/30B</b><span>公开模型覆盖三个推理 backbone。</span></div>
+          <div class="fact"><b>+5.7</b><span>Qwen3-4B 平均分相对 base 的提升。</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <section id="takeaway">
+        <h2>核心判断</h2>
+        <p class="section-lead">LongTraceRL 真正有价值的 insight 是：长上下文推理训练不能只问“答案对不对”，也不能只把随机文档塞进上下文凑长度；训练信号必须迫使模型区分“看起来相关、甚至搜索 agent 曾经读过”的材料和真正支撑答案的证据链。</p>
+        <div class="grid-3">
+          <div class="card">
+            <h3>数据难度来自行为轨迹</h3>
+            <p>Tier-1 distractor 是 search agent 打开并阅读、但最终没有引用的文档。它比随机负例更接近真实检索错误：模型不是被无关噪声干扰，而是被“合理但错误”的路径干扰。</p>
+          </div>
+          <div class="card">
+            <h3>奖励只区分正确答案内部质量</h3>
+            <p>rubric reward 只在最终答案正确时生效。这样实体命中奖励不会鼓励模型乱列上下文里的实体，而是用于区分哪些正确答案真的覆盖了中间证据。</p>
+          </div>
+          <div class="card">
+            <h3>训练目标是证据接地，不是长输出</h3>
+            <p>论文观察到 rubric 会拉长 reasoning；当输出撞上 32K response budget 时，positive-only 策略又会把策略拉回能给出最终答案的轨道。这说明长度本身不是目标，证据路径和可完成性才是目标。</p>
+          </div>
+        </div>
+        <div class="callout info">
+          <strong>我的判断：</strong>这类方法对 deep research、长文档 RAG、法律/金融材料审阅和多跳企业知识问答更有启发，而不是对所有长上下文任务都直接有效。它要求任务存在可验证答案、可枚举中间实体或证据节点，以及足够强的搜索 agent 来产生高质量 hard negatives。
+        </div>
+      </section>
+
+      <section id="problem">
+        <h2>问题背景：长上下文 RLVR 的两个旧短板</h2>
+        <p class="section-lead">RLVR 在数学题里容易定义二值答案奖励，但长上下文问答多了两个麻烦：上下文里有大量干扰材料，且模型可能偶然猜对答案却走错证据路径。LongTraceRL 正是在这两个位置下注。</p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>随机 distractor 太容易</h3>
+            <p>很多长上下文训练集用随机文档或浅层检索扩展上下文。这样的负例往往和问题语义距离很远，模型学到的是快速过滤无关段落，而不是在强相似证据之间做细粒度判别。</p>
+          </div>
+          <div class="card">
+            <h3>outcome-only reward 太稀疏</h3>
+            <p>如果只看最终答案，模型可以在中间引用错实体、漏掉关键桥接节点，甚至靠表面线索猜中结果。长上下文里的真正能力是跨段落定位、消歧、整合和保持证据链一致。</p>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>术语对齐：</strong>这里的 RLVR 指 reinforcement learning with verifiable rewards，即用可检查的答案或规则构造 RL 奖励；rubric reward 指把“应当出现的中间证据实体”当作评分项；distractor 指上下文中看似相关但不应支撑最终答案的干扰文档。
+        </div>
+      </section>
+
+      <section id="method">
+        <h2>方法机制：把搜索失败痕迹变成训练难度</h2>
+        <p class="section-lead">LongTraceRL 的数据管线可以拆成四步：先用知识图谱 random walk 合成深多跳问题，再让 search agent 真实尝试搜索，随后从搜索轨迹里抽取不同强度的干扰文档，最后组装成 128K 训练上下文。</p>
+        <div class="steps">
+          <div class="step">
+            <h3>1. KG random walk</h3>
+            <p>从 KILT Wikipedia snapshot 的 hyperlink graph 出发，执行 8 步受控 random walk，得到实体路径 \(P=[v_0,v_1,\ldots,v_k]\)。论文还插入 mad walks，避免路径一直困在相近图区域。</p>
+          </div>
+          <div class="step">
+            <h3>2. 问题合成</h3>
+            <p>LLM 基于实体路径和对应 Wikipedia 文本合成 multi-hop question，要求必须逐跳推理、不能靠关键词直搜、答案唯一，并输出 gold entities 作为后续 rubric。</p>
+          </div>
+          <div class="step">
+            <h3>3. 搜索轨迹采集</h3>
+            <p>search agent 针对每个问题采样 5 条搜索轨迹，动作包括 search、open、cite。只有最终答对的轨迹被保留，避免把随机探索或幻觉路径当成训练证据。</p>
+          </div>
+          <div class="step">
+            <h3>4. tiered assembly</h3>
+            <p>gold passages 先进入上下文，再优先填充 Tier-1；长度仍不够时加入 Tier-2，最后打乱文档顺序，防止模型依赖固定位置捷径。</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Tier-1：高混淆负例</h3>
+            <p>agent 打开并阅读过，但最终没有引用的文档。它们往往处在相似主题、相似实体或相似关系附近，是模型最容易误当证据的材料。</p>
+          </div>
+          <div class="card">
+            <h3>Tier-2：低混淆负例</h3>
+            <p>出现在搜索结果中但 agent 没有打开的文档。它们提供更浅层的主题干扰，主要用于填充长上下文并保持检索场景的真实噪声。</p>
+          </div>
+        </div>
+        <figure>
+          <img src="longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg" alt="HuggingPapers 原帖配图：LongTraceRL 用 search agent trajectories 和 entity-level rubric rewards 训练长上下文推理">
+          <figcaption>HuggingPapers 原帖配图。本文不把配图当作独立证据，核心分析以 arXiv/HF/GitHub 原始材料为准。</figcaption>
+        </figure>
+      </section>
+
+      <section id="reward">
+        <h2>奖励设计：实体 recall 只能奖励正确答案</h2>
+        <p class="section-lead">LongTraceRL 的奖励由 answer correctness 和 rubric recall 组成。关键约束是 positive-only：只有最终答案正确时，gold entity 命中率才进入总奖励；答案错误时直接给 0。</p>
+        <div class="formula">
+          \[
+            \hat r_{rb}=\frac{|\{e\in E \mid e \text{ appears in the response}\}|}{|E|}
+          \]
+          \[
+            r =
+            \begin{cases}
+            (1-\alpha)\cdot r_{oc}+\alpha\cdot r_{rb}, & r_{oc}>0 \\
+            0, & \text{otherwise}
+            \end{cases}
+          \]
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <h3>rubric recall</h3>
+            <p>检查回答中覆盖了多少 gold entities。它不是完整的因果证明，但能比 final answer 更细地检查模型是否走过关键证据节点。</p>
+          </div>
+          <div class="card">
+            <h3>group normalization</h3>
+            <p>GRPO 每个问题采样一组答案，不同问题的 gold entity 数量和难度不同；论文按组内最大 raw rubric score 做归一，降低题间尺度差异。</p>
+          </div>
+          <div class="card">
+            <h3>positive-only</h3>
+            <p>若错误答案也能拿实体分，模型会倾向于枚举上下文实体来抬高奖励。positive-only 把 rubric 限定为“正确答案里的质量排序器”。</p>
+          </div>
+        </div>
+        <div class="callout warning">
+          <strong>这里有一个工程警告：</strong>entity recall 是便宜、可扩展的过程信号，但它不是 proof checker。它可能漏判同义实体、别名、隐式推理，也可能奖励实体堆砌。因此论文把它放在正确答案条件之后，是必要的安全阀。
+        </div>
+      </section>
+
+      <section id="results">
+        <h2>实验结果：收益主要来自 hard distractor 与 rubric</h2>
+        <p class="section-lead">论文在 AA-LCR、MRCR、FRAMES、LongBench v2 和 LongReason 五个 benchmark 上评估 4B、8B、30B 三个推理模型。最强证据不是单个 headline 分数，而是 ablation 能把两个关键组件拆开。</p>
+        <div class="metrics">
+          <div class="metric"><strong>59.0</strong><span>Qwen3-4B LongTraceRL 平均分，base 为 53.3，LongRLVR baseline 为 56.5。</span></div>
+          <div class="metric"><strong>41.8</strong><span>Qwen3-4B 在 AA-LCR 上从 33.2 提升到 41.8，难长上下文场景收益最大。</span></div>
+          <div class="metric"><strong>53.7</strong><span>去掉 rubric、只保留同一数据集做 GRPO 后，4B 平均分几乎回到 base 附近。</span></div>
+          <div class="metric"><strong>63.7</strong><span>Qwen3-30B-A3B LongTraceRL 平均分，相对 base 60.5 提升 3.2。</span></div>
+        </div>
+        <div class="table-wrap" role="region" aria-label="LongTraceRL main results table" tabindex="0">
+          <table>
+            <thead>
+              <tr>
+                <th>Backbone</th>
+                <th>Base Avg</th>
+                <th>Best prior baseline</th>
+                <th>LongTraceRL-GRPO</th>
+                <th>LongTraceRL</th>
+                <th>主要读法</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>DeepSeek-R1-0528-Qwen3-8B</td>
+                <td>42.7</td>
+                <td>40.9</td>
+                <td>42.9</td>
+                <td>43.8</td>
+                <td>提升较小，但 DocQA/LoongRL/LongRLVR 在这个 backbone 上都下降，说明数据/奖励适配比规模更关键。</td>
+              </tr>
+              <tr>
+                <td>Qwen3-4B-Thinking-2507</td>
+                <td>53.3</td>
+                <td>56.5</td>
+                <td>53.7</td>
+                <td>59.0</td>
+                <td>主力证据。rubric ablation 从 59.0 掉到 53.7，说明收益主要不是“同一批长数据多训几步”。</td>
+              </tr>
+              <tr>
+                <td>Qwen3-30B-A3B-Thinking-2507</td>
+                <td>60.5</td>
+                <td>63.3</td>
+                <td>62.3</td>
+                <td>63.7</td>
+                <td>大模型也有提升，但相对 DocQA/LoongRL 优势变小，说明更强 base 已经具备部分证据整合能力。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap" role="region" aria-label="LongTraceRL ablation table" tabindex="0">
+          <table>
+            <thead>
+              <tr>
+                <th>Ablation</th>
+                <th>关键数字</th>
+                <th>说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>rubric weight \(\alpha\)</td>
+                <td>\(\alpha=0.3\) 平均 59.0；\(\alpha=0.1\) 为 58.3；\(\alpha=0.5\) 为 57.1。</td>
+                <td>过程奖励太弱不够，太强会稀释答案目标并诱导实体提及捷径。</td>
+              </tr>
+              <tr>
+                <td>distractor strategy</td>
+                <td>random 55.7，search 56.7，traj-random 57.4，traj-tiered 59.0。</td>
+                <td>越接近真实搜索轨迹、越优先高混淆文档，下游分数越高。</td>
+              </tr>
+              <tr>
+                <td>distractor overlap</td>
+                <td>Tier-1 macro overlap 63.23%，traj-tiered 总体 50.03%，random 仅 1.35%。</td>
+                <td>这个统计解释了为什么随机负例弱：它几乎不触碰 gold entity 附近的推理区域。</td>
+              </tr>
+              <tr>
+                <td>positive-only</td>
+                <td>positive-only 平均 59.0；positive&amp;negative 57.1。</td>
+                <td>错误答案也给 rubric 分会稀释真正解题梯度，尤其 AA-LCR 和 MRCR 掉得明显。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="engineering">
+        <h2>工程读法：这套 recipe 适合什么系统</h2>
+        <p class="section-lead">LongTraceRL 可以被读作一条长上下文后训练 recipe：不要只保存最终答案轨迹，也要保存 search / open / cite 之间的中间失败痕迹，因为这些痕迹比随机负例更接近线上模型会犯的错。</p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>适合 deep research / RAG 训练</h3>
+            <p>真实系统里，agent 经常打开相关但最终不用的网页、PDF 或内部文档。把这些文档标成高混淆负例，可以训练模型不要把“曾经检索到”误当成“应该引用”。</p>
+          </div>
+          <div class="card">
+            <h3>适合可枚举证据节点的领域</h3>
+            <p>法律条款、财报指标、论文实体链、代码符号引用、医学指南条目都可能形成 rubric item。只要中间证据节点可枚举，entity-level reward 就能变成低成本过程监督。</p>
+          </div>
+          <div class="card">
+            <h3>不适合纯主观或开放生成任务</h3>
+            <p>若任务没有唯一答案、没有稳定中间实体、或证据路径本身多解，rubric recall 容易变成过窄 proxy。此时应换成 citation verifier、semantic coverage 或人工/模型审阅。</p>
+          </div>
+          <div class="card">
+            <h3>训练成本不低</h3>
+            <p>官方 README 给出的完整 128K 训练需要 4 节点 x 8 GPU 级别资源，且 reward server 仍依赖 LLM-as-judge 判断答案正确性。它是高质量后训练 recipe，不是轻量 fine-tune 脚本。</p>
+          </div>
+        </div>
+        <div class="callout good">
+          <strong>可迁移 insight：</strong>长上下文能力的训练数据质量，不应只用“上下文长度”和“答案正确率”衡量，还要看 hard negative 是否来自真实检索行为、是否覆盖关键实体邻域、以及 reward 是否能防止模型把引用/实体提及当作捷径。
+        </div>
+      </section>
+
+      <section id="limits">
+        <h2>边界与风险</h2>
+        <p class="section-lead">LongTraceRL 的证据链比较完整，但它仍有几个边界需要明确，否则很容易把“百科多跳长上下文 QA 的收益”过度外推成“长上下文推理通用解”。</p>
+        <div class="grid-2">
+          <div class="card">
+            <h3>知识源集中在 Wikipedia</h3>
+            <p>训练数据来自 KILT Wikipedia snapshot 和 KG random walk。论文报告显示可迁移到金融、法律、代码等 benchmark，但源数据单一仍会限制推理模式和文档风格多样性。</p>
+          </div>
+          <div class="card">
+            <h3>hard negative 依赖 agent 能力</h3>
+            <p>搜索 agent 太弱会产生浅层或错误负例；太强又可能过滤掉许多有训练价值的半错误路径。不同 agent 会改变 Tier-1/Tier-2 的分布，复现时不能忽略这一点。</p>
+          </div>
+          <div class="card">
+            <h3>rubric entity 不是完整推理证明</h3>
+            <p>命中实体不等于关系方向正确、数值计算正确或时序约束正确。案例中确实展示了更深阅读，但实体 recall 本质仍是 proxy reward。</p>
+          </div>
+          <div class="card">
+            <h3>公开数据是 LFS 文件</h3>
+            <p>HF dataset card、API 和 viewer 确认有 2,815 行数据；直接 raw 读取 <code>data.jsonl</code> 会拿到 Git LFS pointer，需要通过 Hugging Face dataset download 或 datasets 库获取真实内容。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources" data-note-role="evidence-appendix">
+        <h2>证据边界与资料索引</h2>
+        <p class="section-lead">本笔记以 HuggingPapers 的 X 原帖作为入口，但技术判断主要基于 arXiv/Hugging Face 论文页、HF API、官方 GitHub README、公开模型/数据集 card、PDF 正文和本地化原帖配图。GitHub REST API 当前命中未认证 rate limit，因此仓库星标等动态元数据以 Hugging Face paper 页面和 raw README 为辅助，不作为核心结论。</p>
+        <div class="source-list">
+          <a href="https://x.com/HuggingPapers/status/2061322399518216371"><b>HuggingPapers X thread</b><span>原帖推荐 LongTraceRL，并给出 paper 与 collection 链接；原帖发布时间为 2026-06-01 05:42:12 UTC。</span></a>
+          <a href="https://huggingface.co/papers/2605.31584"><b>Hugging Face Papers · 2605.31584</b><span>核验标题、作者、摘要、HF organization、linked models、linked dataset 与 GitHub repo。</span></a>
+          <a href="https://arxiv.org/abs/2605.31584"><b>arXiv · LongTraceRL</b><span>核验 arXiv v1 发布日期、21 页 PDF、方法、实验表和限制章节。</span></a>
+          <a href="https://github.com/THU-KEG/LongTraceRL"><b>THU-KEG/LongTraceRL GitHub</b><span>读取 raw README、训练脚本、reward server 和 config，核验发布资源与训练配置。</span></a>
+          <a href="https://huggingface.co/collections/THU-KEG/longtracerl"><b>HF Collection · THU-KEG/LongTraceRL</b><span>核验 4B、8B、30B 模型和数据集被集中发布。</span></a>
+          <a href="https://huggingface.co/datasets/THU-KEG/LongTraceRL"><b>HF Dataset · THU-KEG/LongTraceRL</b><span>核验 2,815 样本、英文、question-answering、Apache-2.0、JSON 格式和 128K 数据描述。</span></a>
+        </div>
+        <h3>核验命令摘录</h3>
+        <pre><code>opencli twitter thread "https://x.com/HuggingPapers/status/2061322399518216371" --limit 80 -f json
+curl -sIL "https://t.co/8QMDb8az8P"
+curl -sIL "https://t.co/whRQdE6vhe"
+opencli web read --url "https://huggingface.co/papers/2605.31584" --stdout true --download-images false --wait 5 -f json
+curl -s "https://huggingface.co/api/papers/2605.31584" | jq '.'
+opencli arxiv paper "2605.31584" -f json
+curl -sL "https://raw.githubusercontent.com/THU-KEG/LongTraceRL/main/README.md"
+curl -s "https://huggingface.co/api/models?filter=arxiv:2605.31584&amp;limit=50"
+curl -s "https://huggingface.co/api/datasets?filter=arxiv:2605.31584&amp;limit=50"</code></pre>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,5 +1,71 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-02 LongTraceRL X thread 与论文笔记导出
+
+### 背景
+
+- 用户要求仔细阅读梳理 `https://x.com/HuggingPapers/status/2061322399518216371` 并导入笔记，随后要求任务完成后及时 `commit push`。
+- 原帖为 HuggingPapers 推荐 **LongTraceRL: Learning Long-Context Reasoning from Search Agent Trajectories with Rubric Rewards**，主题是用 search agent trajectories 与 entity-level rubric rewards 改进 128K 长上下文推理 RLVR。
+
+### 已完成
+
+- 按仓库规则读取 `AGENTS.md`、`.agent/codex-experience-profile.md`、`Progress.md`、`notes/NOTE_TEMPLATE.md`，并确认当前工作树存在大量既有未提交改动；本轮只处理 LongTraceRL 相关新增笔记、索引和进度记录。
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-06-01 05:42:12 UTC；
+  - 主帖说明 LongTraceRL 让 LLM 通过 search agent trajectories 和 fine-grained entity-level rubric rewards 学会 128K context 推理；
+  - 回复短链给出 paper 与 collection，并说明 4B、8B、30B 模型和训练数据已发布。
+- 使用 `curl -sIL` 解析短链：
+  - paper：`https://huggingface.co/papers/2605.31584`
+  - collection：`https://huggingface.co/collections/THU-KEG/longtracerl`
+  - 图片短链指向 X 图片页，已下载本地配图资源。
+- 使用 Hugging Face Paper API、`opencli arxiv paper`、PDF 下载与 `pdfinfo` 核验论文元数据：
+  - arXiv ID：`2605.31584`；
+  - 标题：`LongTraceRL: Learning Long-Context Reasoning from Search Agent Trajectories with Rubric Rewards`；
+  - 作者：Nianyi Lin、Jiajie Zhang、Lei Hou、Juanzi Li；
+  - arXiv v1 发布日期：2026-05-29；
+  - PDF 21 页，题名与作者一致。
+- 阅读 Hugging Face paper markdown、arXiv HTML/PDF、官方 GitHub raw README、HF collection、HF dataset/model cards、reward server 与训练配置，核验：
+  - 数据集 2,815 条，每条约 128K prompt，基于 KILT Wikipedia KG random walk 生成 8-hop 问题；
+  - distractor 来自 search agent 轨迹：Tier-1 为 opened/read but not cited，Tier-2 为 searched but unopened；
+  - rubric reward 是 gold entities recall，并通过 group-level normalization 与 positive-only 策略限制 reward hacking；
+  - 训练配置包括 GRPO group size 8、global batch size 128、200 iterations、learning rate `2e-6`、rubric reward weight `0.3`、32 x H800；
+  - 公开资源包括 HF dataset `THU-KEG/LongTraceRL` 和模型 `THU-KEG/LongTraceRL-4B`、`8B`、`30B`。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/longtracerl-long-context-reasoning.html`
+- 新增本地配图资源：
+  - `notes/paper-reviews/longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`LongTraceRL：用搜索轨迹和实体级 rubric 训练 128K 长上下文推理`
+  - URL：`/notes/paper-reviews/longtracerl-long-context-reasoning.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- LongTraceRL 的核心不是“把上下文长度拉到 128K”，而是把真实 search agent 读过但最终不该引用的材料变成 hard distractors，让训练分布更接近真实检索错误。
+- Tier-1 distractor 的价值在于它不是随机噪声，而是模型很可能误判为证据的相邻路径；论文统计中 Tier-1 的 rubric entity overlap macro ratio 达 63.23%，random distractor 只有 1.35%。
+- entity-level rubric reward 本质仍是 proxy reward，不能证明完整推理正确；positive-only 策略很关键，因为它把实体命中限制为“正确答案内部质量排序”，避免错误答案靠枚举实体拿分。
+- 主力实验在 Qwen3-4B 上最有说服力：base 平均 53.3，LongTraceRL 为 59.0；去掉 rubric 的 LongTraceRL-GRPO 为 53.7，说明收益主要来自 rubric + hard distractor 的组合，不只是同一批长数据多训几步。
+
+### 当前判断
+
+- LongTraceRL 对 deep research、长文档 RAG、法律/金融材料审阅和多跳企业知识问答有直接启发：训练数据应该保存 search/open/cite 的中间失败痕迹，而不只保存最终成功答案。
+- 这套 recipe 依赖可验证答案、可枚举中间证据实体和足够强的搜索 agent；对主观开放生成、无唯一答案或证据路径多解的任务不能直接照搬。
+- GitHub REST API 当前因未认证 rate limit 返回 403；已降级使用 raw GitHub README、HF API、arXiv/HF 页面作为主证据，不把 GitHub 动态星标等字段作为核心判断。
+
+### 验证结果
+
+- 当前工作区 `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/longtracerl-long-context-reasoning.html" "notes/paper-reviews/longtracerl-long-context-reasoning-assets/huggingpapers-root.jpg" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- 本地配图文件为 `1199x469` JPEG。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现 `faraday-retry` 建议和 GitHub Metadata API 未认证/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/paper-reviews/longtracerl-long-context-reasoning.html` 结构检查通过：title、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、8 个 section、`data-note-role="evidence-appendix"` 和本地图片引用均存在。
+- `_site/notes/index.html` 已出现 LongTraceRL 卡片入口。
+- staged snapshot 验证、commit 与 push 收口见本文件顶部 `2026-06-02 commit/push 收口复验`。
+
+- 使用临时 index 构造最小 staged snapshot 后复验通过：staged diff 仅包含本轮 4 个 LongTraceRL 相关路径，`ruby "scripts/validate_notes_index.rb"` 在 snapshot 中通过，`git diff --cached --check` 在临时 index 中通过，且未混入其他未提交任务条目。
+
+
 ## 2026-06-02 A-Evolve self-evolving agents X thread 与站内笔记导出
 
 ### 背景
