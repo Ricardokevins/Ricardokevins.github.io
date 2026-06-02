@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A-Evolve：把 Agent Harness 变成可演化的工程对象</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f7f3;
+      --surface: #ffffff;
+      --surface-2: #edf2ee;
+      --ink: #20252b;
+      --muted: #5e6873;
+      --line: #d7ded8;
+      --line-strong: #97a59b;
+      --accent: #1f6870;
+      --accent-soft: #dfedf0;
+      --rust: #93513d;
+      --rust-soft: #f2dfd8;
+      --indigo: #4e5d91;
+      --indigo-soft: #e5e8f4;
+      --green: #477357;
+      --green-soft: #e2efe7;
+      --gold: #876a24;
+      --gold-soft: #f0e6c8;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 44px rgba(32, 37, 43, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 37, 43, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 37, 43, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 104, 112, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #151a1f; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 74px;
+    }
+
+    .hero {
+      min-height: calc(78vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 94px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.7vw, 74px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .flow-step,
+    figure,
+    .source-list a {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 20px;
+      border-left: 4px solid var(--accent);
+    }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-panel ul,
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .hero-panel li,
+    .compact-list li { margin-top: 8px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(21px, 2.7vw, 32px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section-lead {
+      max-width: 940px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .card b {
+      display: block;
+      font-size: 16px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .callout {
+      margin-top: 22px;
+      padding: 18px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn {
+      border-left-color: var(--rust);
+      background: var(--rust-soft);
+    }
+
+    .callout.ok {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .callout.indigo {
+      border-left-color: var(--indigo);
+      background: var(--indigo-soft);
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .flow-step span {
+      color: var(--rust);
+      font-weight: 800;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .flow-step p { margin-top: 4px; color: var(--muted); }
+
+    figure {
+      margin: 24px 0 0;
+      padding: 12px;
+      box-shadow: none;
+      background: var(--surface);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #263036;
+      background: var(--surface-2);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    td { color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 18px 0 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #182025;
+      color: #edf4f2;
+      font: 13px/1.6 var(--mono);
+    }
+
+    .source-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 16px;
+      box-shadow: none;
+    }
+
+    .source-list span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag-row span {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        align-items: start;
+      }
+
+      .metric-grid,
+      .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 700px) {
+      .page { width: min(100% - 24px, var(--max)); }
+      .metric-grid,
+      .grid-2,
+      .grid-3 { grid-template-columns: 1fr; }
+      .flow-step { grid-template-columns: 1fr; }
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-06-02</div>
+        <h1>A-Evolve：把 Agent Harness 变成可演化的工程对象</h1>
+        <p class="lead">
+          A-Evolve 最值得关注的地方不是“3 行代码”或榜单名次，而是它把 agent 的提示词、技能、工具、记忆和运行支架统一成一个可读写的文件系统契约，让失败轨迹可以被观察、归因、变成持久 harness 更新，再通过 gate 与回滚机制进入下一轮运行。
+        </p>
+        <div class="metric-grid" aria-label="A-Evolve reported launch metrics">
+          <div class="metric"><strong>79.4%</strong><span>MCP-Atlas launch claim，README 也保留该结果。</span></div>
+          <div class="metric"><strong>76.8%</strong><span>SWE-bench Verified，仓库文档称 384/500。</span></div>
+          <div class="metric"><strong>76.5%</strong><span>Terminal-Bench 2.0，定位为 trajectory-only skill evolution。</span></div>
+          <div class="metric"><strong>34.9%</strong><span>SkillsBench，强调 failure-to-skill 的迁移。</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <b>核心判断</b>
+        <ul>
+          <li>它优化的是 agent 外部 harness，不是直接更新模型权重。</li>
+          <li>“通用性”来自 workspace contract，而不是单个演化算法。</li>
+          <li>真正风险在 reward/eval、holdout、技能激活和过拟合。</li>
+        </ul>
+      </aside>
+    </header>
+
+    <nav class="toc" aria-label="Page sections">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#algorithms">算法族</a>
+      <a href="#evidence">证据与边界</a>
+      <a href="#terms">术语解释</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+
+    <main>
+      <section class="section" id="takeaway">
+        <h2>核心判断</h2>
+        <p class="section-lead">
+          A-Evolve 把“agent 能不能持续变好”从一个模糊的自我改进叙事，压成了一个更工程化的问题：哪些状态可以被修改，哪些失败信号可以被观测，哪些更新可以被验证，哪些退化可以回滚。这个抽象成立时，agent 的能力提升不再只依赖模型权重更新，也可以来自外部运行系统的持续重写。
+        </p>
+        <div class="callout ok">
+          <strong>我的判断：</strong>它更像“harness evolution infrastructure”，不是 AGI 自我进化。它的价值在于把 prompt engineering、skill library、memory、tool registry、benchmark adapter、git audit trail 合并进一个可复现的优化循环；它的边界也在这里，所有提升都受 evaluator、任务分布、holdout 设计和 agent 是否会调用更新后的 harness 约束。
+        </div>
+        <figure>
+          <img src="a-evolve-self-evolving-agents-assets/framework.jpg" alt="A-Evolve framework diagram showing agent, benchmark, workspace, evolver, observations, and version control">
+          <figcaption>原帖配图中的架构示意：A-Evolve 的关键单元不是某个单体 agent，而是 agent、benchmark、workspace、evolver、observation log 与 version control 之间的闭环。</figcaption>
+        </figure>
+      </section>
+
+      <section class="section" id="problem">
+        <h2>为什么这件事重要</h2>
+        <p>
+          过去很多 agent 改进是手工的：人看失败轨迹，改系统提示，补工具说明，写一条经验，换一个检查清单，再手动跑 benchmark。A-Evolve 把这件事系统化：失败不只是一次坏结果，而是可以被整理成 observation；经验不只是人脑里的直觉，而是写进 workspace 的技能、记忆、prompt fragment 或工具配置；更新不只是一次 prompt tweak，而是带 git tag、可回滚、可比较的 harness mutation。
+        </p>
+        <p>
+          这解释了为什么作者把它包装成 “PyTorch moment”。这个比喻不应理解为它已经成为 agent 生态的事实标准，而应理解为它试图给 agent evolution 提供一个统一接口：训练框架当年把张量、梯度、模块和优化器标准化；A-Evolve 试图把 agent 的可变外部状态、评测环境和演化算法标准化。
+        </p>
+        <div class="grid-3">
+          <div class="card">
+            <b>不是模型训练</b>
+            <p>它默认更新 prompts、skills、tools、memory 和 harness 文件。模型参数不变，变化发生在模型外部的执行支架。</p>
+          </div>
+          <div class="card">
+            <b>不是单一算法</b>
+            <p>README 里把 adaptive_evolve、adaptive_skill、skillforge、guided_synth 都放在同一 contract 下。</p>
+          </div>
+          <div class="card">
+            <b>不是免评测魔法</b>
+            <p>系统能否进步，取决于 observation 的质量、任务拆分、holdout 与 evaluator 是否真的代表目标能力。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="mechanism">
+        <h2>机制拆解</h2>
+        <p class="section-lead">
+          A-Evolve 的核心 insight 是 “workspace is the interface”。Agent 只负责从文件系统读取状态并 solve task；evolver 只负责读取轨迹和反馈并修改文件；二者不需要共享内部实现。这个边界让任意 agent 框架理论上都可以接入，只要它能把可变状态映射到同一套目录契约。
+        </p>
+        <div class="flow">
+          <div class="flow-step">
+            <span>Step 1</span>
+            <div>
+              <b>Solve：黑盒运行 agent</b>
+              <p>benchmark 产生任务，agent 根据当前 workspace 中的 prompt、skills、tools、memory 执行，产出 trajectory。这里 agent 可以是 SWE agent、MCP agent、terminal agent，也可以是用户自己的框架。</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span>Step 2</span>
+            <div>
+              <b>Observe：把失败转成结构化证据</b>
+              <p>系统记录 task、trajectory、feedback。MCP-Atlas 路线会分析 claim type、task type、judge feedback、tool error；SWE 路线还会记录 patch、文件修改、solver proposed skill。</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span>Step 3</span>
+            <div>
+              <b>Evolve：改 workspace，而不是改权重</b>
+              <p>evolver LLM 读取 observations 和历史，生成或合并技能，修 prompt，剪 memory，甚至调整 tool registry 或 harness。所有可变项都落到普通文件。</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span>Step 4</span>
+            <div>
+              <b>Gate：用 holdout 和 git 控制退化</b>
+              <p>有效更新被 commit 和 tag；退化更新可以回滚。这个机制把“自我改进”拉回软件工程语义：diff、review、score、rollback。</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span>Step 5</span>
+            <div>
+              <b>Reload：下一轮 agent 读取新 harness</b>
+              <p>agent 重新加载 workspace 后再跑下一批任务。若新技能能被正确触发并遵守，收益才会进入真实执行轨迹。</p>
+            </div>
+          </div>
+        </div>
+
+        <figure>
+          <img src="a-evolve-self-evolving-agents-assets/evolved-agent.png" alt="A-Evolve before and after workspace showing new targeted skills and episodic memory">
+          <figcaption>原帖对 MCP-Atlas 演化结果的展示：seed workspace 里只有通用 prompt 与空 skills/memory；演化后新增 targeted skills 和 episodic memory。这张图正好说明更新对象是 harness 文件，而不是模型权重。</figcaption>
+        </figure>
+      </section>
+
+      <section class="section" id="algorithms">
+        <h2>四条算法路线其实在回答不同问题</h2>
+        <p class="section-lead">
+          A-Evolve 的“通用”不是因为某个 evolver prompt 万能，而是因为它允许不同演化策略共享同一个 agent workspace 契约。仓库里的四条主算法路线可以看成四种 failure-to-harness-update 的映射方式。
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>路线</th>
+                <th>主要信号</th>
+                <th>写入对象</th>
+                <th>适合场景</th>
+                <th>主要风险</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>adaptive_evolve</code></td>
+                <td>per-claim feedback、task type、judge 失败模式、工具错误</td>
+                <td>targeted skills、prompt、memory</td>
+                <td>MCP-Atlas 这类结构化工具调用任务</td>
+                <td>judge feedback 若偏，自动播种技能会把偏差固化</td>
+              </tr>
+              <tr>
+                <td><code>adaptive_skill</code></td>
+                <td>trajectory-only 行为信号、LLM judge proxy score</td>
+                <td>技能库，通常带 skill budget</td>
+                <td>Terminal/CLI 这类真实验证慢或标签难取的环境</td>
+                <td>没有真实标签时，proxy judge 可能把“看似努力”当成成功</td>
+              </tr>
+              <tr>
+                <td><code>skillforge</code></td>
+                <td>solve-fail-evolve-retry 的同题迭代结果</td>
+                <td>general skills 与 task-specific skills</td>
+                <td>SkillsBench 这类失败可复现、技能可迁移的任务集</td>
+                <td>若信息泄漏控制不好，技能会记住任务答案而非方法</td>
+              </tr>
+              <tr>
+                <td><code>guided_synth</code></td>
+                <td>solver 自己提出的技能与极简 episodic memory</td>
+                <td>curated skills，偏向 merge 而不是无限新增</td>
+                <td>SWE-bench Verified 这类长程修 bug 任务</td>
+                <td>solver 提案质量决定上限；过窄技能会污染未来任务</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout indigo">
+          <strong>关键 insight：</strong>这些算法都不是在寻找“万能 prompt”，而是在回答同一个工程问题：失败证据应该被压缩成什么持久 artifact。MCP 任务可能需要 entity-verification skill；SWE 任务可能需要 verification methodology；Terminal 任务可能需要环境探索技能；SkillBench 可能需要把一次调试过程沉淀成可复用领域步骤。
+        </div>
+      </section>
+
+      <section class="section" id="evidence">
+        <h2>榜单数字应该怎样读</h2>
+        <p>
+          原帖和 README 都给出 MCP-Atlas、SWE-bench Verified、Terminal-Bench 2.0、SkillsBench 的提升数字。它们说明 A-Evolve 在多个 agent benchmark 上至少形成了可运行的实验路线，但不能直接推出“任意 agent 接入后都会自动成为 SOTA”。这里要拆开三层证据。
+        </p>
+        <div class="grid-3">
+          <div class="card">
+            <b>系统级结果</b>
+            <p>分数是 base model、seed workspace、benchmark adapter、evolution algorithm、task split 与 evaluator 的合成结果，不是模型权重能力的单独提升。</p>
+          </div>
+          <div class="card">
+            <b>更新能力与受益能力可分离</b>
+            <p>后续论文把 harness-updating 和 harness-benefit 分开：会写好更新的模型，不一定是最能从更新中受益的 solver。</p>
+          </div>
+          <div class="card">
+            <b>可迁移性要看激活</b>
+            <p>技能写进 workspace 只是第一步；agent 是否能在长程任务里发现、调用并遵守这个技能，才决定真实收益。</p>
+          </div>
+        </div>
+        <p>
+          因此更稳的解读是：A-Evolve 提供了一个把 harness improvement 做成实验工程的框架。它把手工经验变成可比较的 artifacts，但没有消除 benchmark overfitting、reward hacking、judge bias、holdout leakage、环境漂移和技能库膨胀这些老问题。
+        </p>
+        <div class="callout warn">
+          <strong>传播风险：</strong>“zero human intervention” 很容易被误读成无需人类定义任务、奖励和安全边界。实际上，人仍然决定 benchmark、evaluator、workspace schema、可变层、holdout 和上线门槛。A-Evolve 自动化的是 harness update loop，不是目标函数本身。
+        </div>
+      </section>
+
+      <section class="section" id="terms">
+        <h2>术语解释</h2>
+        <div class="grid-2">
+          <div class="card">
+            <b>Harness</b>
+            <p>包住模型的外部执行系统，包括系统提示、工具、技能、记忆、验证器、环境、输出契约和 workflow。A-Evolve 主要演化的是这些对象。</p>
+          </div>
+          <div class="card">
+            <b>Agent Workspace</b>
+            <p>一种文件系统契约：<code>manifest.yaml</code> 定义入口，<code>prompts/</code>、<code>skills/</code>、<code>tools/</code>、<code>memory/</code> 存放可演化状态。</p>
+          </div>
+          <div class="card">
+            <b>BYOA / BYOE / BYO-Algo</b>
+            <p>分别指 Bring Your Own Agent、Environment、Algorithm。真正含义是 agent、benchmark 和 evolution engine 通过接口解耦。</p>
+          </div>
+          <div class="card">
+            <b>Trajectory</b>
+            <p>agent 解决任务时的执行轨迹，通常包括工具调用、输出、错误、补丁、对话历史和最终答案，是 evolver 诊断失败的原料。</p>
+          </div>
+          <div class="card">
+            <b>Gate / Holdout</b>
+            <p>对候选 harness 更新做保留集验证。它不是形式主义；如果没有 gate，evolver 很容易把一次任务的偶然失败写成全局规则。</p>
+          </div>
+          <div class="card">
+            <b>EGL</b>
+            <p>Evolutionary Generality Loss，用新增技能数相对已解决任务数衡量技能库是否仍在扩张。低 EGL 表示系统不再频繁发现新 failure pattern。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="engineering">
+        <h2>工程上该怎么借鉴</h2>
+        <p class="section-lead">
+          如果把 A-Evolve 当作一个可以直接复制的工程模式，我会优先复制三件事：文件系统契约、可审计更新循环、以及把失败压缩成可复用技能的机制。暂时不应复制的是过度乐观的“全自动自我进化”口径。
+        </p>
+        <div class="grid-2">
+          <div class="card">
+            <b>先定义可变层</b>
+            <p>明确哪些内容允许 agent/evolver 修改：prompt、skill、memory、tool alias、workflow checklist。越少越容易验证，越多越容易失控。</p>
+          </div>
+          <div class="card">
+            <b>把失败分类做细</b>
+            <p>不要只记录 pass/fail。至少区分 wrong entity、missing requirement、format error、tool misuse、timeout、verification miss。</p>
+          </div>
+          <div class="card">
+            <b>技能库要有预算</b>
+            <p>无限新增技能会稀释注意力。更好的策略是先 merge、再 prune、再根据触发描述做检索或选择。</p>
+          </div>
+          <div class="card">
+            <b>把验证作为一等对象</b>
+            <p>SWE 路线强调 verification-focused skills 很合理。长程 agent 常失败在“以为修好了”，而不是完全不知道怎么写代码。</p>
+          </div>
+        </div>
+        <pre><code>agent_workspace/
+  manifest.yaml
+  prompts/system.md
+  skills/*/SKILL.md
+  tools/registry.yaml
+  memory/episodic.jsonl
+  evolution/history.jsonl</code></pre>
+      </section>
+
+      <section class="section" id="sources" data-note-role="evidence-appendix">
+        <h2>证据边界与资料索引</h2>
+        <p>
+          本笔记基于目标 X thread、作者公开资料、A-Evolve GitHub README 与仓库源码、官方 quickstart/design 文档、两篇 arXiv 论文页面，以及评论区提到的 harness-improvement 对照文章交叉整理。GitHub REST 匿名接口在核验时触发 rate limit，因此仓库侧主要使用 raw README、页面抽取和只读克隆核验；榜单名次按作者与 README 声称记录，未独立复现实验。
+        </p>
+        <div class="source-list">
+          <a href="https://x.com/HenryL_AI/status/2037602570433388816">Henry Lu 的 A-Evolve launch thread<span>根帖、后续 GitHub 链接、BYOA/BYOE/BYO-Algo 描述、可变对象范围和评论区问答。</span></a>
+          <a href="https://github.com/A-EVO-Lab/a-evolve">A-EVO-Lab/a-evolve GitHub repository<span>README、workspace contract、benchmark highlights、algorithm docs、quickstart、examples 与核心接口源码。</span></a>
+          <a href="https://arxiv.org/abs/2602.00359">Position: Agentic Evolution is the Path to Evolving LLMs<span>提出 evolution as scaling axis、A-Evolve 框架和 deployment-time persistent system state 的定位。</span></a>
+          <a href="https://arxiv.org/abs/2605.30621">Harness Updating Is Not Harness Benefit<span>把 harness-updating 与 harness-benefit 分开，提供理解 A-Evolve 边界的重要后续证据。</span></a>
+          <a href="https://theharness.blog/blog/what-if-the-harness-could-improve-itself/">What If the Harness Could Improve Itself?<span>评论区链接中的对照材料，展示 prompt/harness 自改进在工程 audit 场景中的小规模实验和局限。</span></a>
+        </div>
+        <div class="tag-row" aria-label="Tags">
+          <span>A-Evolve</span>
+          <span>Self-improving Agents</span>
+          <span>Harness Evolution</span>
+          <span>Agent Workspace</span>
+          <span>Skill Library</span>
+          <span>SWE-bench</span>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

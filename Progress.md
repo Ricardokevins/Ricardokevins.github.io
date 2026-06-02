@@ -1,5 +1,86 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-02 A-Evolve self-evolving agents X thread 与站内笔记导出
+
+### 背景
+
+- 用户要求仔细阅读梳理并导入笔记：`https://x.com/HenryL_AI/status/2037602570433388816`。
+- 用户随后要求本轮工作完成后及时 `commit push`。
+- 当前 worktree 已有大量非本轮历史改动；本轮提交会只包含 A-Evolve 笔记、对应 assets、`_data/notes.yml` 与 `Progress.md` 的本轮增量。
+
+### 已完成
+
+- 按仓库规则读取并遵循：
+  - `AGENTS.md`
+  - `.agent/codex-experience-profile.md`
+  - `Progress.md`
+  - `notes/NOTE_TEMPLATE.md`
+  - notes workflow / OpenCLI X research 记忆工作流。
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖作者：Henry Lu / `HenryL_AI`；
+  - 根帖时间：2026-03-27 18:48:04 UTC；
+  - 主题：A-Evolve launch，定位为 “PyTorch Moment for Self-evolving AI”；
+  - 根帖报告：MCP-Atlas `79.4%`、SWE-bench Verified `76.8%`、Terminal-Bench 2.0 `76.5%`、SkillsBench `34.9%`；
+  - 后续帖强调 A-Evolve 是 framework 而不是单体 agent，支持 BYOA / BYOE / BYO-Algo；
+  - 评论区确认：memory、prompt、skills、tools、workflow / single-to-multi-agent orchestration 都可作为可变对象；框架设计目标是与任意 agent framework 集成；内部 benchmark 可以按已有 benchmark adapter 模式新增。
+- 使用 `opencli twitter profile` 核验作者公开资料：
+  - name：Henry Lu；
+  - bio：Research Lead @Amazon，Self-improving AI，ex-CMU / MSR；
+  - profile 中链接到 A-Evolve 相关站点。
+- 解析目标 thread 短链：
+  - GitHub：`https://github.com/A-EVO-Lab/a-evolve`
+  - 评论区对照文章：`https://theharness.blog/blog/what-if-the-harness-could-improve-itself/`
+  - 其它短链多为 X 图片页或后续投票帖。
+- 读取 A-Evolve README、QuickStart、DESIGN、算法文档和关键源码：
+  - 核验 workspace contract：`manifest.yaml`、`prompts/`、`skills/`、`tools/`、`memory/`、`evolution/`；
+  - 核验核心 loop：Solve -> Observe -> Evolve -> Gate -> Reload；
+  - 核验 `BaseAgent.solve()`、`BenchmarkAdapter.get_tasks()/evaluate()`、`EvolutionEngine.step()` 三个关键接口；
+  - 核验 git-based `VersionControl` 负责 commit、tag、rollback；
+  - 核验四类算法文档：`adaptive_evolve`、`adaptive_skill`、`skillforge`、`guided_synth`。
+- 使用 OpenCLI / arXiv 核验两篇相关论文：
+  - `Position: Agentic Evolution is the Path to Evolving LLMs`，arXiv `2602.00359`；
+  - `Harness Updating Is Not Harness Benefit`，arXiv `2605.30621`。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/a-evolve-self-evolving-agents.html`
+- 新增本地配图资源：
+  - `notes/tech-analysis/a-evolve-self-evolving-agents-assets/framework.jpg`
+  - `notes/tech-analysis/a-evolve-self-evolving-agents-assets/evolved-agent.png`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`A-Evolve：把 Agent Harness 变成可演化的工程对象`
+  - URL：`/notes/tech-analysis/a-evolve-self-evolving-agents.html`
+  - 类型：`Tech Analysis`
+
+### 关键观察
+
+- A-Evolve 的核心不是“agent 自己变聪明”，而是把 agent 外部 harness 变成可观察、可修改、可验证、可回滚的工程对象。
+- “workspace is the interface” 是整套系统最重要的抽象：agent 只读 workspace，evolver 只写 workspace，二者通过文件系统契约解耦。
+- 四条算法线实际是在回答同一个问题：失败轨迹应该被压缩成什么持久 artifact。MCP 任务偏 per-claim targeted skill，SWE 任务偏 verification skill / episodic memory，Terminal 任务偏 trajectory-only skill，SkillBench 偏 failure-to-skill transfer。
+- 榜单分数应理解为系统级结果：base model、seed workspace、benchmark adapter、evolution algorithm、task split、evaluator 共同作用；不能外推为模型权重能力提升。
+- 后续 `Harness Updating Is Not Harness Benefit` 的核心边界很重要：会写好 harness update 的 evolver，与会从 harness update 中受益的 solver，是两个可分离能力。
+- 真正的工程风险包括 reward/eval 偏差、holdout leakage、benchmark overfitting、skill library 膨胀、技能激活失败、长程任务中不遵守技能、以及把“zero human intervention”误读成无需定义目标函数。
+
+### 当前判断
+
+- 对工程团队最可复用的部分不是宣传里的 “3 lines of code”，而是：
+  - 明确定义 agent workspace contract；
+  - 记录完整 trajectory 与 failure taxonomy；
+  - 把失败压缩成可 review 的 skill / prompt / memory diff；
+  - 用 holdout 和 git rollback 管住退化；
+  - 定期 prune / merge skill library，避免知识库膨胀。
+- 如果要在真实项目里复刻，应该先小范围演化 prompt / skill / verification checklist，而不是一开始允许 evolver 修改所有 tools / memory / harness。
+- A-Evolve 与近期 agentic RL / harness 方向的关系是互补的：Polar 等路线强调把真实 harness 作为训练环境，A-Evolve 强调先把 harness 本身纳入持续改进对象。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：`title`、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、两张本地图片 `alt` 与公开生成痕迹检查均通过。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/tech-analysis/a-evolve-self-evolving-agents.html" "notes/tech-analysis/a-evolve-self-evolving-agents-assets/framework.jpg" "notes/tech-analysis/a-evolve-self-evolving-agents-assets/evolved-agent.png" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/tech-analysis/a-evolve-self-evolving-agents.html` 结构检查通过：页面存在，文件大小 `27994` bytes，`section` 数量为 8，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和两张本地资源均存在。
+- `_site/notes/tech-analysis/a-evolve-self-evolving-agents-assets/framework.jpg` 存在，文件为 `1200x670` JPEG；`_site/notes/tech-analysis/a-evolve-self-evolving-agents-assets/evolved-agent.png` 存在，文件为 `1200x989` PNG。
+- 精确 staged snapshot 检查通过后已 commit/push。
+
 ## 2026-06-02 The Thinking Pixel X thread 与论文笔记导出
 
 ### 背景
