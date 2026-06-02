@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Thinking Pixel：把 test-time compute 放进扩散模型 latent 层</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --surface: #fffdf8;
+      --surface-2: #edf4f3;
+      --ink: #202326;
+      --muted: #626b70;
+      --line: #d8d6cc;
+      --line-strong: #a6ada8;
+      --accent: #1d6c78;
+      --accent-soft: #dff0f1;
+      --rust: #a34f39;
+      --rust-soft: #f3e2dc;
+      --green: #3f7355;
+      --green-soft: #e3efe5;
+      --gold: #8d6a21;
+      --gold-soft: #f2e8c8;
+      --violet: #5b5a8f;
+      --violet-soft: #e8e7f4;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 42px rgba(32, 35, 38, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 35, 38, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 35, 38, 0.025) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(29, 108, 120, 0.28);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b1e; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 76px;
+    }
+
+    .hero {
+      min-height: calc(76vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(278px, 0.38fr);
+      gap: clamp(24px, 4vw, 58px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 94px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.8vw, 76px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .step,
+    .evidence-row {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel { padding: 20px; }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-panel ul,
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .hero-panel li,
+    .compact-list li { margin-top: 8px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(21px, 2.7vw, 32px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.8);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section > p,
+    .section > ul,
+    .section > ol {
+      max-width: 920px;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .card h3 { margin-top: 0; }
+    .card p { color: var(--muted); }
+
+    .callout {
+      max-width: 960px;
+      margin-top: 20px;
+      padding: 18px 20px;
+      border-left: 5px solid var(--accent);
+      background: var(--accent-soft);
+      box-shadow: none;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .step {
+      position: relative;
+      padding: 18px;
+      box-shadow: none;
+      background: var(--surface);
+    }
+
+    .step span {
+      display: inline-flex;
+      width: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: var(--surface);
+      font: 800 13px/1 var(--mono);
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    figure {
+      margin: 24px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      margin-top: 20px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      background: rgba(237, 244, 243, 0.74);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .tag {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      margin: 6px 6px 0 0;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .risk {
+      border-left: 5px solid var(--rust);
+      background: var(--rust-soft);
+    }
+
+    .green {
+      border-left: 5px solid var(--green);
+      background: var(--green-soft);
+    }
+
+    .gold {
+      border-left: 5px solid var(--gold);
+      background: var(--gold-soft);
+    }
+
+    .violet {
+      border-left: 5px solid var(--violet);
+      background: var(--violet-soft);
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .evidence-row {
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .evidence-row b {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .evidence-row code {
+      display: inline-block;
+      max-width: 100%;
+      margin-top: 8px;
+      padding: 2px 6px;
+      overflow-wrap: anywhere;
+      border-radius: 5px;
+      background: rgba(32, 35, 38, 0.08);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .hero {
+        min-height: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid,
+      .grid-2,
+      .grid-3,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .page {
+        width: min(100% - 24px, var(--max));
+      }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Paper Note · 2026-06-02</div>
+        <h1>The Thinking Pixel：把 test-time compute 放进扩散模型 latent 层</h1>
+        <p class="lead">这篇工作的价值不在于把图像模型拟人化成“会思考的像素”，而是给 DiT / SD3 这类扩散 Transformer 增加一个可训练、低秩、稀疏路由的内循环：视觉 token 在联合注意力层里多走几步，再回到冻结主干。它真正提出的是视觉生成里的 test-time compute 预算如何变成可控的 latent refinement，而不是继续单纯堆参数。</p>
+        <div class="metric-grid" aria-label="Key evidence">
+          <div class="metric"><strong>2604.25299</strong><span>arXiv 论文编号，2026-04-28 v1。</span></div>
+          <div class="metric"><strong>71.18</strong><span>多层 SD3 递归版本 GenEval overall，基线 SD3-medium 为 67.93。</span></div>
+          <div class="metric"><strong>2.27</strong><span>ImageNet 256 class-conditioned FID，DiT-XL/2 基线为 2.34。</span></div>
+          <div class="metric"><strong>85.88</strong><span>DPG overall 最好分数来自 5 experts / 5 latent steps。</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel" aria-label="Reading frame">
+        <b>读这篇时要先切开的三件事</b>
+        <ul>
+          <li>线程里的“pixels ponder”是传播表达；论文里的对象是连续视觉 latent token。</li>
+          <li>方法不是重复跑整条扩散主干，而是在局部注意力投影上做 LoRA adapter 内循环。</li>
+          <li>FrozenLake 只是视觉 latent planning 的小型可行性示例，不能外推成通用 agent 规划能力。</li>
+        </ul>
+      </aside>
+    </header>
+
+    <nav class="toc" aria-label="Page sections">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#evidence">实验证据</a>
+      <a href="#terms">术语对齐</a>
+      <a href="#limits">边界风险</a>
+      <a href="#engineering">工程启发</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+
+    <main>
+      <section class="section" id="takeaway">
+        <h2>核心判断</h2>
+        <p>这篇论文把 LLM 里的“多花一点推理计算”迁移到图像生成，但迁移路径很克制：它没有让扩散模型在自然语言里写 CoT，也没有在采样阶段做昂贵的全模型反复前向，而是在 MMDiT 的 joint attention 附近插入一个递归的 mixture-of-adapters。每个 latent step 只激活一个 LoRA expert，让视觉 token 在文本条件、扩散 timestep 和当前视觉状态共同控制下反复细化。</p>
+        <p>所以它最值得关注的 insight 是：视觉生成里的 test-time compute 不一定要表现为更多 denoising steps 或更大 backbone，也可以表现为<strong>同一层内部对局部表示的多步稀疏计算</strong>。如果这个方向成立，图像模型的布局、计数、属性绑定、空间关系错误，可能会从“靠更大模型记住更多组合”转向“给关键 token 一点可路由的内部修正预算”。</p>
+        <div class="callout">
+          <strong>我的判断：</strong>这更像一篇“latent compute allocation”论文，而不是一篇“图像模型已经会推理”的论文。它证明了在 SD3 / DiT 局部层内增加递归低秩专家可以改善若干对齐指标，但还没有证明递归深度能自适应分配，也没有证明复杂世界模型或长期规划能力已经出现。
+        </div>
+      </section>
+
+      <section class="section" id="problem">
+        <h2>问题背景：扩散模型的一次前向为何容易错位</h2>
+        <p>现代 text-to-image 模型可以生成高保真图像，但在组合指令上经常犯很具体的错误：红色物体和蓝色物体互换、对象数量不对、空间关系颠倒、某个小物体缺失。问题不只是“模型不够大”，还在于很多架构把 prompt conditioning 和视觉 latent 的交互做成一次性、单调的前馈变换。</p>
+        <p>语言模型的 test-time compute 可以通过多采样、搜索、verifier、CoT 或 latent recurrence 给困难样本更多计算。但图像 latent 是连续的、密集的，不像文本 token 那样天然有离散步骤。朴素地把中间视觉状态反复喂回整条冻结主干，会带来两个问题：计算成本重，且重复暴露在固定主干表示里容易产生 representation drift 和累积伪影。</p>
+        <div class="grid-3">
+          <div class="card">
+            <h3>属性绑定</h3>
+            <p>提示词要求“红狗和两只蓝猫”时，模型必须把颜色、类别、数量绑定到正确对象，而不是只生成大致相关的语义集合。</p>
+          </div>
+          <div class="card">
+            <h3>空间关系</h3>
+            <p>“钥匙在鸡的上方”“手套在熊右侧”这类关系需要跨 token 的结构约束，不是局部纹理质量可以解决的。</p>
+          </div>
+          <div class="card">
+            <h3>计算预算</h3>
+            <p>如果每个 prompt 都靠扩大 backbone 或增加大量采样修复，成本会落到所有样本上，而不是集中给难组合。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="mechanism">
+        <h2>机制拆解：递归、稀疏、低秩三件事如何扣在一起</h2>
+        <p>论文的核心模块叫 Recursive Sparse Reasoning。它把一组轻量 neural modules 放进 MMDiT 的 joint attention 区域，视觉 token 被路由到某个 LoRA adapter，经过若干 latent steps 后再和冻结主干的输出合并。这个结构有四个关键约束。</p>
+        <div class="flow">
+          <div class="step">
+            <span>1</span>
+            <h3>选层</h3>
+            <p>目标不是全模型循环，而是选择对结构布局更敏感的 joint attention 层；SD3-medium 实验里既有中间层，也有第 4 / 8 / 12 层的多层设置。</p>
+          </div>
+          <div class="step">
+            <span>2</span>
+            <h3>路由</h3>
+            <p>gate 根据当前视觉 token、扩散 timestep、文本条件计算 expert 概率，用 Gumbel-Softmax 做可训练的 hard selection。</p>
+          </div>
+          <div class="step">
+            <span>3</span>
+            <h3>递归</h3>
+            <p>中间 latent steps 只用 adapter 输出做递归更新，文本 token 保持为 joint attention 上下文，视觉 token 保持空间重组。</p>
+          </div>
+          <div class="step">
+            <span>4</span>
+            <h3>回主干</h3>
+            <p>冻结 base model 的输出只在最后一步合入，避免每一步都重复经过固定主干导致分布漂移和伪影累积。</p>
+          </div>
+        </div>
+
+        <figure>
+          <img src="thinking-pixel-recursive-sparse-reasoning-assets/paper-page-03.jpg" alt="论文第 3 页展示 Recursive Sparse Reasoning 插入 SD3 MMDiT joint attention 的架构图">
+          <figcaption>论文架构页显示：视觉 token 在 joint attention 附近经由 gate 选择 Module 1 / Module 2 / Module M，再与文本分支交互并逐步细化。图像来自论文 PDF 页面截图。</figcaption>
+        </figure>
+
+        <h3>为什么是 mixture-of-adapters，而不是普通 MoE</h3>
+        <p>这里的 expert 不是完整大 FFN 专家，而是作用在 vision branch 的 query / key / value 投影上的 LoRA 低秩更新。这样有两个好处：第一，递归时新增参数和计算相对受控；第二，adapter 空间限制了更新幅度，避免内循环把视觉表示推离原模型分布太远。论文附录给出的主要超参包括 LoRA rank 128、expert 数量 1 / 2 / 5、max latent steps 1 / 2 / 5、Gumbel softmax temperature 5.0。</p>
+        <h3>为什么 thread 里的 PCA 图重要</h3>
+        <p>论文的 PCA 可视化不是为了证明模型“想明白了”，而是为了观察路由是否真的产生差异化。早期高噪声 diffusion timestep 中，不同 token 的 trajectory 比较统一；后期低噪声阶段，trajectory 分叉，显示 patch-specific 的路径。这个结果支持一个更细的判断：递归计算的收益可能主要来自生成后段的局部结构和属性修正，而不是从一开始就对所有 token 做同样深度的计算。</p>
+      </section>
+
+      <section class="section" id="evidence">
+        <h2>实验证据：哪些数字支持，哪些数字需要降温</h2>
+        <p>论文的数字整体支持“递归稀疏 adapter 有帮助”，但不是每个 benchmark 都是单调胜利，也不是每个设置都优于 SFT。更准确的读法是：recursion 和 modulation 都有贡献，多层替换通常优于单层，但最优 expert / step 数依任务而变。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>实验</th>
+                <th>基线</th>
+                <th>递归版本</th>
+                <th>可得结论</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ImageNet 256 class-conditioned</td>
+                <td>DiT-XL/2：FID 2.34，Recall 0.57</td>
+                <td>Ours：FID 2.27，Recall 0.62</td>
+                <td>在同样 675M size 下，FID 和 recall 有小幅提升；但 DiffuSSM-XL 的 sFID / precision 更好，不能说全面碾压。</td>
+              </tr>
+              <tr>
+                <td>GenEval，SD3-medium</td>
+                <td>SD3-medium overall 67.93；SFT 单层 68.33，多层 69.55</td>
+                <td>多层 M=2 / T=2 overall 71.18</td>
+                <td>递归 + modulation 对 text-following 有明确收益，尤其 two object、counting、color attr 有改进；position 项仍弱。</td>
+              </tr>
+              <tr>
+                <td>DPG benchmark</td>
+                <td>SD3-medium overall 85.65；SFT 85.72</td>
+                <td>M=5 / T=5 overall 85.88；M=2 / T=2 为 85.31</td>
+                <td>更深递归在 DPG 上才给最好 overall，2-step 版本反而低于基线；这说明 depth allocation 不能简单固定。</td>
+              </tr>
+              <tr>
+                <td>FrozenLake 视觉导航</td>
+                <td>不是主流 agent benchmark 对照</td>
+                <td>可从初始帧生成若干 latent decoded states</td>
+                <td>只说明 visual latent 可携带动作后果相关性；失败案例包括掉进洞和出现训练数据未提供的对角动作。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout gold">
+          <strong>关键降温：</strong>线程把这篇解释成 generative models 从 static painters 变成 active planning agents，这个方向感可以理解，但论文证据还主要停留在图像对齐和一个简化视觉导航示例。它不是“图像模型已经拥有通用规划能力”的证据。
+        </div>
+      </section>
+
+      <section class="section" id="terms">
+        <h2>术语对齐</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>latent step</h3>
+            <p>不是扩散采样 timestep，而是插入模块内部的递归计算步。论文用 `Tlatent` 控制这个内循环深度。</p>
+          </div>
+          <div class="card">
+            <h3>diffusion timestep</h3>
+            <p>扩散过程中的去噪时间位置，表示当前图像 latent 还处于高噪声还是低噪声阶段；它参与 gate 输入。</p>
+          </div>
+          <div class="card">
+            <h3>Mixture-of-Adapters</h3>
+            <p>把多个 LoRA adapter 当作轻量专家，由 gate 每步选择一个。它比完整 MoE 专家更便宜，也更适合插入已有冻结主干。</p>
+          </div>
+          <div class="card">
+            <h3>Gumbel-Softmax</h3>
+            <p>训练时近似 hard expert selection 的技巧：前向像选一个专家，反向仍能把梯度传给路由网络。</p>
+          </div>
+          <div class="card">
+            <h3>representation drift</h3>
+            <p>中间表示在多次递归后偏离原模型熟悉分布，导致画质下降或伪影累积。论文通过只在最后一步合入冻结主干来缓解。</p>
+          </div>
+          <div class="card">
+            <h3>test-time compute</h3>
+            <p>推理阶段给困难样本更多计算预算。本文的版本不是多采样投票，而是局部 latent 表示在网络层内部多迭代几步。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="limits">
+        <h2>边界与风险</h2>
+        <p>这项工作当前最明显的边界是递归深度仍是静态超参。easy prompt 和 hard prompt 都跑同样的 latent steps，会浪费计算；更深递归也不保证更好，DPG 结果已经提示任务差异。论文自己也指出需要 halting mechanism 来决定何时停止 latent reasoning。</p>
+        <div class="grid-2">
+          <div class="callout risk">
+            <strong>错误会被递归放大。</strong>
+            <p>如果早期路由或视觉 latent 已经被错误条件牵引，内循环可能把错误局部结构反复强化。线程里提到 hallucination amplification，论文结论中也提到可能放大 misleading visual content。</p>
+          </div>
+          <div class="callout violet">
+            <strong>路由温度是敏感旋钮。</strong>
+            <p>Gumbel-Softmax temperature 控制选择稀疏性和探索。温度不合适会导致专家不分化、路由抖动或过早坍缩，真实系统需要监控 expert usage 与 token trajectory。</p>
+          </div>
+        </div>
+        <p>另一个需要注意的点是数据规模：text-to-image 训练部分使用 MSCOCO 1000 samples 进行 fine-tuning，说明它更像验证结构有效性的实验，而不是完整商业图像模型训练结论。后续如果要落地，需要在更大 prompt 分布、更多语言、多风格、多分辨率和安全审计上重测。</p>
+      </section>
+
+      <section class="section" id="engineering">
+        <h2>工程启发：从“更大模型”转向“可审计的内部预算”</h2>
+        <p>这篇论文对工程系统的启发在于，它把“模型哪里需要更多计算”变成了可观察的路由问题。相比继续扩大 backbone，递归 adapter 给了几个更可控的观测面：哪些 token 被哪个 expert 处理，哪些 diffusion timesteps 发生分化，增加 latent steps 后哪些 prompt 类型真正受益，哪些错误会被放大。</p>
+        <div class="grid-3">
+          <div class="card">
+            <h3>自适应 depth</h3>
+            <p>下一步不应只是固定 `Tlatent=2/5`，而应让 halting 或 confidence 机制决定哪些 patch、哪些 prompt、哪些 timestep 继续迭代。</p>
+          </div>
+          <div class="card">
+            <h3>routing audit</h3>
+            <p>上线前应记录 expert usage entropy、token trajectory divergence、失败样本路由模式，避免路由网络学到数据偏见或退化捷径。</p>
+          </div>
+          <div class="card">
+            <h3>局部 verifier</h3>
+            <p>图像生成的 test-time compute 可能需要和局部结构 verifier 结合，例如对象计数、颜色绑定、空间关系 detector，而不是只看全局 CLIP 类指标。</p>
+          </div>
+        </div>
+        <p>更大的方向是：视觉生成系统可能会出现类似 reasoning LLM 的预算分配层，但它的形态不会简单复制文本 CoT。对图像模型来说，更自然的载体是 latent token、patch、attention layer、adapter、router 和局部结构评估器。</p>
+      </section>
+
+      <section class="section" id="sources" data-note-role="evidence-appendix">
+        <h2>证据边界与资料索引</h2>
+        <p>本文以 X 线程、arXiv 元数据、论文 PDF 正文和公开 Substack 片段为证据。Substack 长文公开读取只覆盖 TL;DR 与引言，后半部分受 paywall 限制，因此方法、表格和边界判断以 arXiv PDF 为主。X 配图短链多数解析到图片页，本文不把图片文案当作独立事实来源。</p>
+        <div class="evidence-list">
+          <div class="evidence-row">
+            <b>X 线程</b>
+            <a href="https://x.com/che_shr_cat/status/2061206236243111979">che_shr_cat 关于 The Thinking Pixel 的 11 条 thread</a>
+            <p>用于确认传播口径、作者解读、末帖链接和配图位置。</p>
+            <code>opencli twitter thread "https://x.com/che_shr_cat/status/2061206236243111979" --limit 100 -f json</code>
+          </div>
+          <div class="evidence-row">
+            <b>原论文</b>
+            <a href="https://arxiv.org/abs/2604.25299">The Thinking Pixel: Recursive Sparse Reasoning in Multimodal Diffusion Latents</a>
+            <p>用于核验作者、摘要、模型机制、ImageNet / GenEval / DPG / FrozenLake 实验和 limitations。</p>
+            <code>opencli arxiv paper "2604.25299" -f json</code>
+          </div>
+          <div class="evidence-row">
+            <b>作者长文</b>
+            <a href="https://arxiviq.substack.com/p/the-thinking-pixel-recursive-sparse">The Thinking Pixel: Recursive Sparse Reasoning in Multimodal Diffusion Latents</a>
+            <p>公开读取范围有限，仅作为 TL;DR 和背景表达参考。</p>
+            <code>opencli web read --url "https://arxiviq.substack.com/p/the-thinking-pixel-recursive-sparse" --stdout true --download-images false -f json</code>
+          </div>
+          <div class="evidence-row">
+            <b>本地核验范围</b>
+            <p>下载 PDF 后使用 `pdfinfo` 确认 13 页，使用 `pdftotext -layout` 抽取正文，并从 PDF 第 3 页生成本页结构配图。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

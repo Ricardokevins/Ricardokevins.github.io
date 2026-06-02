@@ -1,5 +1,69 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-02 The Thinking Pixel X thread 与论文笔记导出
+
+### 背景
+
+- 用户要求仔细梳理 `https://x.com/che_shr_cat/status/2061206236243111979`，导入笔记，并在完成后 commit。
+- 原帖作者 `che_shr_cat` / Grigory Sapunov，主帖把 arXiv `2604.25299`《The Thinking Pixel: Recursive Sparse Reasoning in Multimodal Diffusion Latents》解读为视觉生成模型里的 test-time compute / latent pondering 路线。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取目标 X thread：
+  - 根帖时间：2026-05-31 22:00:36 UTC；
+  - 线程共 11 条，核心表达是让 text-to-image 模型不再只是 feedforward one-pass，而是在视觉 latent 中加入 recursive reasoning；
+  - 线程提到 Recursive Joint-Attention、Mixture-of-Adapters、LoRA experts、Gumbel-Softmax gate、PCA latent trajectories、GenEval / ImageNet FID / FrozenLake visual navigation 和静态 recursion / routing sensitivity / hallucination amplification 等边界。
+- 使用 `opencli twitter profile` 核验作者资料：
+  - screen name：`che_shr_cat`；
+  - name：Grigory Sapunov；
+  - bio：PhD in AI / GDE in AI/ML / CTO Intento / author of `Deep Learning with JAX`；
+  - profile url：`https://gonzoml.substack.com/`。
+- 解析 X 短链：
+  - 作者长文：`https://arxiviq.substack.com/p/the-thinking-pixel-recursive-sparse`；
+  - 原论文：`https://arxiv.org/abs/2604.25299`；
+  - 其他短链主要指向 X 图片页。
+- 读取作者 Substack：
+  - 公开读取范围只覆盖 TL;DR、引言和 paywall 前内容；
+  - 因此本轮只把 Substack 作为传播口径和背景材料，不依赖其后半段细节。
+- 使用 `opencli arxiv paper`、PDF 下载、`pdfinfo` 和 `pdftotext -layout` 读取论文：
+  - 论文作者：Yuwei Sun, Yuxuan Yao, Hui Li, Siyu Zhu；
+  - 论文发布时间：2026-04-28；
+  - PDF 共 13 页；
+  - 核心方法是在 MMDiT / SD3 joint attention 中加入 recursive sparse reasoning，视觉 token 经由 gate 在多个 LoRA adapter expert 中 hard select，并在多个 latent steps 中迭代更新；
+  - 训练路由用 Gumbel-Softmax；adapter 作用在 vision branch 的 Q/K/V 投影；冻结 base model 输出只在最后 latent step 合入，避免每一步都重复暴露在固定主干表示里导致 representation drift。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning.html`
+- 新增本地配图资源：
+  - `notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning-assets/paper-page-03.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`The Thinking Pixel：把 test-time compute 放进扩散模型 latent 层`
+  - URL：`/notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- 这条线程的传播表达是 `pixels ponder`，但论文里的精确对象是连续视觉 latent token；不要把它写成像素层面真的在自然语言式思考。
+- 这篇工作的核心不是“重复跑整条扩散模型”，而是把递归计算限制在 joint attention 附近的低秩 adapter 空间里，使额外计算更接近局部 latent refinement。
+- PCA trajectory 的价值在于观察 expert 路由是否真的分化：高噪声早期 token path 更统一，低噪声后期出现 patch-specific 分叉，提示递归计算可能更适合在生成后段修正局部结构。
+- GenEval 数字支持 text-following 改进：多层 `M=2, Tlatent=2` 得到 overall `71.18`，高于 SD3-medium `67.93`；但 position 子项仍弱，不能把整体提升解读为所有空间关系都解决。
+- DPG 结果需要降温：`M=2, Tlatent=2` 的 overall `85.31` 低于 SD3-medium `85.65`，最好结果来自 `M=5, Tlatent=5` 的 `85.88`，说明固定递归深度并不稳健。
+- FrozenLake 视觉导航只是简化示例，论文也展示了掉进洞和出现训练数据未提供动作的失败案例，不能外推成通用 planning agent 证据。
+
+### 当前判断
+
+- The Thinking Pixel 更应被理解为 `latent compute allocation` 论文，而不是“图像模型已经会推理”的证明。
+- 它给视觉生成系统的实际启发是：未来 test-time compute 可能不只表现为更多采样或更多 denoising steps，也可能表现为 layer 内部的 token / patch / expert / halting 预算分配。
+- 后续真正关键的工程问题不是继续固定 `Tlatent=2/5`，而是引入自适应 halting、routing audit、局部结构 verifier 和失败样本路由诊断。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：`title`、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、本地配图引用和公开生成痕迹检查均通过。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning.html" "notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning-assets/paper-page-03.jpg" "_data/notes.yml" "Progress.md"` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有既有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/paper-reviews/thinking-pixel-recursive-sparse-reasoning.html` 结构抽查通过：页面存在，大小 `27426` bytes，`section` 数量为 8，`body.notes-shell-page`、`main`、`data-note-role="evidence-appendix"`、本地配图和 `_site/notes/assets/notes-shell.css` 均存在。
+
+
 ## 2026-06-02 Agentic RL rollout system X 帖与站内笔记导出
 
 ### 背景
