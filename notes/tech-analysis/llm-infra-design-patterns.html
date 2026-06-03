@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Infra 设计谱系：local/global attention、GQA、MoE、dropless routing、zero-init 与 FP8</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #e8eeec;
+      --ink: #20252b;
+      --muted: #5d6871;
+      --line: #d5ddd5;
+      --line-strong: #9aa79f;
+      --accent: #1e6774;
+      --accent-2: #8b5b22;
+      --blue: #315f8f;
+      --green: #2f7358;
+      --red: #a34b3c;
+      --gold: #8a6a22;
+      --shadow: 0 18px 44px rgba(32, 37, 43, 0.09);
+      --radius: 8px;
+      --max: 1220px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32,37,43,.03) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32,37,43,.022) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    p { margin: 10px 0; }
+    strong { color: #151a1f; }
+    code, pre { font-family: var(--mono); }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+    header, main, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header {
+      min-height: calc(74vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, .42fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 92px) 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+    .kicker { margin-bottom: 14px; color: var(--gold); font-size: 13px; font-weight: 850; text-transform: uppercase; }
+    h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: 0; }
+    h1 { max-width: 980px; font-family: var(--serif); font-size: clamp(34px, 5.2vw, 66px); font-weight: 760; }
+    h2 { margin-bottom: 14px; font-family: var(--serif); font-size: clamp(28px, 3.3vw, 42px); font-weight: 760; }
+    h3 { margin: 22px 0 9px; font-size: 19px; font-weight: 820; }
+    .subtitle { max-width: 920px; margin-top: 20px; color: var(--muted); font-size: clamp(18px, 2vw, 21px); line-height: 1.62; }
+    .hero-note, .card, .metric, .callout, .table-wrap, figure, .axis { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,253,248,.94); }
+    .hero-note { padding: 18px; border-left: 5px solid var(--accent); box-shadow: var(--shadow); }
+    .hero-note b { display: block; margin-bottom: 8px; color: var(--accent); font-size: 13px; text-transform: uppercase; }
+    .hero-note span { display: block; color: var(--muted); font-size: 14px; line-height: 1.58; }
+    .tag { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 9px; margin: 4px 5px 0 0; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 760; white-space: nowrap; }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 0 4px; }
+    .toc a { min-height: 34px; display: inline-flex; align-items: center; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,253,248,.78); color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 760; }
+    main { padding-bottom: 64px; }
+    section { padding: clamp(34px, 5vw, 62px) 0; border-bottom: 1px solid var(--line); }
+    section:last-of-type { border-bottom: 0; }
+    .section-lead { max-width: 950px; color: var(--muted); font-size: clamp(17px, 1.8vw, 20px); line-height: 1.68; }
+    .grid-2, .grid-3, .metrics, .evidence-grid, .axes { display: grid; gap: 14px; margin-top: 18px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3, .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .evidence-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .axes { grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: stretch; }
+    .card, .metric, .axis { padding: 16px; box-shadow: var(--shadow); }
+    .axis { border-top: 5px solid var(--accent); }
+    .axis:nth-child(2) { border-top-color: var(--blue); }
+    .axis:nth-child(3) { border-top-color: var(--green); }
+    .axis:nth-child(4) { border-top-color: var(--gold); }
+    .axis:nth-child(5) { border-top-color: var(--red); }
+    .axis:nth-child(6) { border-top-color: #6f579f; }
+    .metric b { display: block; color: var(--accent); font-size: clamp(25px, 3.8vw, 38px); line-height: 1.1; }
+    .metric span, .small, figcaption { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .callout { margin: 18px 0; padding: 18px; border-left: 5px solid var(--accent); box-shadow: none; }
+    .callout.warning { border-left-color: var(--red); }
+    .callout.system { border-left-color: var(--green); }
+    .table-wrap { margin-top: 18px; overflow-x: auto; box-shadow: var(--shadow); }
+    table { width: 100%; min-width: 850px; border-collapse: collapse; background: var(--surface); }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 14px; line-height: 1.55; }
+    th { color: #182027; background: var(--surface-2); font-weight: 820; }
+    tr:last-child td { border-bottom: 0; }
+    figure { margin: 20px 0; padding: 12px; box-shadow: var(--shadow); }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; background: #fff; }
+    .evidence-grid figure { margin: 0; }
+    .timeline { margin-top: 18px; border-left: 3px solid var(--line-strong); padding-left: 18px; }
+    .event { position: relative; margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .event::before { content: ""; position: absolute; left: -27px; top: 20px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 3px solid var(--paper); }
+    .event b { display: inline-block; min-width: 62px; color: var(--accent-2); }
+    .source-list { display: grid; gap: 12px; margin-top: 18px; padding: 0; list-style: none; }
+    .source-list li { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    @media (max-width: 1040px) { .axes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 900px) { header { grid-template-columns: 1fr; min-height: auto; } .grid-3, .metrics, .evidence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 680px) { header, main, footer { width: min(100% - 24px, var(--max)); } .grid-2, .grid-3, .metrics, .evidence-grid, .axes { grid-template-columns: 1fr; } table { min-width: 760px; } .toc a { width: 100%; justify-content: center; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header>
+    <div>
+      <div class="kicker">Tech Analysis · 2026-06-03</div>
+      <h1>LLM Infra 设计谱系：从 attention 到 MoE 再到 FP8</h1>
+      <p class="subtitle">MAI-Base-1 那张架构表看起来像一堆 implementation details；其实它压缩了近七年大模型系统设计的主线：减少每 token 的读写、通信、路由抖动和数值风险，同时把模型容量继续推大。</p>
+      <div class="toc" aria-label="Page sections">
+        <a href="#takeaway">核心判断</a>
+        <a href="#axes">六条设计轴</a>
+        <a href="#timeline">演进轨迹</a>
+        <a href="#attention">Attention</a>
+        <a href="#moe">MoE</a>
+        <a href="#dropless">Dropless</a>
+        <a href="#zeroinit">Zero-init</a>
+        <a href="#precision">FP8</a>
+        <a href="#works">代表工作</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </div>
+    <aside class="hero-note">
+      <b>Thesis</b>
+      <span>这些 infra 术语的共同目标不是“让模型更花哨”，而是把 Transformer 的主要瓶颈从二次 attention、KV cache、all-to-all、router imbalance、低精度溢出逐个变成可控工程变量。</span>
+      <span class="tag">local/global attention</span>
+      <span class="tag">GQA / MQA</span>
+      <span class="tag">top-k MoE</span>
+      <span class="tag">dropless routing</span>
+      <span class="tag">zero-init</span>
+      <span class="tag">FP8 E4M3 / E5M2</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p class="section-lead">MAI-Base-1 的设计不是从论文 novelty 出发，而是从“8K GB200 级别训练和长上下文服务会在哪里死掉”反推出来的。local/global attention 降低长序列 attention 成本，GQA 降低 KV cache，MoE 用稀疏激活换总容量，LatentMoE 降 all-to-all 字节量，dropless routing 避免 token dropping 污染实验结论，zero-init attention output 抑制早期 router imbalance，FP8 recipe 则把低精度只放在能承受的位置。</p>
+      <div class="callout system">
+        <strong>一句话：</strong>大模型 infra 的演进不是“越来越复杂”，而是把每个 scaling bottleneck 拆成一个明确的 budget：attention FLOPs、KV bytes、expert communication、GEMM shape、router stability、activation memory、numeric range、goodput。MAI 的表格只是这些 budget 的一次具体配方。
+      </div>
+      <div class="metrics">
+        <div class="metric"><b>算新？</b><span>单个组件大多不新；真正价值是工程组合与 scale 下的取舍。</span></div>
+        <div class="metric"><b>关键矛盾</b><span>模型容量想变大，但每 token 可承受的计算、通信和内存不能同步变大。</span></div>
+        <div class="metric"><b>阅读方式</b><span>不要按术语背定义；要问它削掉了哪个瓶颈，又引入了哪个新风险。</span></div>
+      </div>
+    </section>
+
+    <section id="axes">
+      <h2>六条设计轴：每个术语解决一个不同瓶颈</h2>
+      <div class="axes">
+        <div class="axis"><h3>Attention pattern</h3><p>从 full attention 走向 sliding window、block sparse、periodic global。目标是让长上下文成本近似线性化，但仍保留跨窗口信息通路。</p></div>
+        <div class="axis"><h3>KV sharing</h3><p>MHA → MQA → GQA。目标不是训练更强，而是 decode 时少写少读 KV cache；GQA 是质量与吞吐之间的中间点。</p></div>
+        <div class="axis"><h3>Sparse capacity</h3><p>Dense FFN → MoE top-k experts。目标是增加 total parameters 而不让 active FLOPs 同步爆炸。</p></div>
+        <div class="axis"><h3>Routing semantics</h3><p>capacity factor + token drop → dropless / block sparse dispatch。目标是让训练信号不被系统近似扭曲。</p></div>
+        <div class="axis"><h3>Initialization stability</h3><p>残差缩放、zero-init、norm placement。目标是在极深、MoE、长序列模型启动阶段不让路由或激活分布先炸。</p></div>
+        <div class="axis"><h3>Numerical recipe</h3><p>FP32 → FP16/BF16 → FP8 混合精度。目标是提升 GEMM throughput，但保留 router logits、attention scores、residual 等敏感路径。</p></div>
+      </div>
+      <div class="evidence-grid">
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/architecture-page-005.png" alt="MAI-Base-1 架构图：local/global attention、dense FFN 与 MoE 交替">
+          <figcaption>MAI-Base-1 把 local/global attention、dense FFN、MoE 和 LatentMoE 放进同一架构预算。</figcaption>
+        </figure>
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-022.jpg" alt="MAI-Thinking-1 第 22 页：attention zero-init 对 MoE router imbalance 的影响">
+          <figcaption>zero-init attention output 的动机不是美学，而是防止初始 attention 表示塌缩影响后续 MoE router。</figcaption>
+        </figure>
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-050.jpg" alt="MAI-Thinking-1 第 50 页：Rocket 大规模强化学习框架与训练系统图">
+          <figcaption>这些模型层设计最终要落到训练框架：通信 overlap、recompute、activation offloading、router replay 才决定可训练性。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="timeline">
+      <h2>演进轨迹：从算法想法到生产配方</h2>
+      <div class="timeline">
+        <div class="event"><b>2017</b> Transformer 与早期 MoE。Transformer 将 attention 变成核心结构；Outrageously Large Neural Networks 提出按样本激活少量专家的稀疏容量路线。</div>
+        <div class="event"><b>2019</b> Sparse Transformer、MQA 与残差稳定化。长序列开始用稀疏 attention 降二次成本；Multi-Query Attention 把 KV head 共享用于快速 decoding；ReZero / residual scaling 方向强调深层网络启动稳定性。</div>
+        <div class="event"><b>2020</b> Longformer / BigBird / GShard。local + global attention 成为长文档模型主流模式；GShard 把 top-k MoE 和自动 sharding 推到大规模翻译模型。</div>
+        <div class="event"><b>2021</b> Switch Transformer / GLaM / RoPE。MoE 被简化为 top-1 routing 并推到 trillion parameter；GLaM 展示稀疏模型训练效率；RoPE 成为长上下文位置编码主流组件。</div>
+        <div class="event"><b>2022</b> MegaBlocks 与 FP8 格式。MoE 系统开始正面处理动态 token-to-expert 分配；FP8 E4M3/E5M2 成为 H100 时代训练/推理加速格式。</div>
+        <div class="event"><b>2023</b> GQA、FlashAttention-2、Mistral sliding window。decode KV cache、attention kernel、长上下文窗口三条线汇合到生产 LLM。</div>
+        <div class="event"><b>2024</b> Mixtral、DeepSeek-V2、DeepSeekMoE。open-weight 模型把 top-k MoE、shared experts、MLA、长上下文和经济推理做成可见配方。</div>
+        <div class="event"><b>2025-2026</b> Gemma periodic local/global、MAI-Base-1、DeepSeek-V3/R1 类系统。重点从单点 architecture novelty 转向 goodput、dropless、FP8 recipe、cluster lifecycle 与 RL 环境。</div>
+      </div>
+    </section>
+
+    <section id="attention">
+      <h2>Attention：local/global attention 与 GQA 是两个不同层面的省钱</h2>
+      <p class="section-lead">local/global attention 省的是序列维度上的 attention 计算；GQA 省的是 decode 阶段 KV cache 的内存带宽。它们经常一起出现，但作用点完全不同。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Local / sliding-window attention</h3>
+          <p>每个 token 只看附近窗口，例如 MAI 的 local window 512。训练时 attention matrix 从全局 O(n²) 变成近似 O(nw)，推理时 KV cache 的有效访问范围也下降。问题是信息跨窗口传播变慢，所以需要周期性 global layer、dilated pattern、random/global tokens 或层间混合来补。</p>
+        </div>
+        <div class="card">
+          <h3>Global attention</h3>
+          <p>Longformer / BigBird 时代的 global tokens 是少量特殊 token 能看全局；MAI / Gemma 这种 periodic design 是每隔若干层放一次 global attention layer。前者更像任务结构先验，后者更像 decoder-only LLM 的系统预算安排。</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>机制</th><th>省掉什么</th><th>牺牲什么</th><th>代表工作</th><th>MAI 中的用法</th></tr></thead>
+          <tbody>
+            <tr><td>Full attention</td><td>不省；任意 token 直接互看</td><td>长上下文下 FLOPs / memory 二次增长</td><td>Transformer, GPT 系列早期 dense attention</td><td>只在 periodic global layer 中保留</td></tr>
+            <tr><td>Sliding window / local</td><td>attention FLOPs 与 KV 访问</td><td>跨窗口依赖需要多层传播</td><td>Longformer, Mistral 7B, Gemma 3</td><td>5 个 local attention 配 1 个 global attention；window 512</td></tr>
+            <tr><td>Global token / global layer</td><td>比全层 full attention 更便宜地注入全局信息</td><td>global 频率太低会影响长程整合</td><td>Longformer, BigBird, Gemma 3</td><td>每 6 层中 1 层 global；global layer 不用位置编码以提升效率</td></tr>
+            <tr><td>MQA</td><td>KV cache 几乎降到单 KV head</td><td>质量可能下降；训练/迁移需要小心</td><td>Fast Transformer Decoding: One Write-Head Is All You Need</td><td>没有用最极端 MQA</td></tr>
+            <tr><td>GQA</td><td>KV heads 从 attention heads 降到少量 groups</td><td>比 MHA 表达少，比 MQA 质量风险低</td><td>GQA: Training Generalized Multi-Query Transformer Models</td><td>8 KV heads，每头 dim 128</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warning">
+        <strong>不要误解：</strong>local attention 不等于模型不能处理全局信息；它只是把“每层全局通信”改成“少数层全局通信 + 多层局部传播”。好坏取决于任务需要的跨距离依赖、global layer 频率、位置编码和训练数据。</div>
+    </section>
+
+    <section id="moe">
+      <h2>MoE：容量扩张不是免费午餐，真正难点是通信、负载和 GEMM shape</h2>
+      <p class="section-lead">MoE 的口号是“更多参数、更少 active compute”，但系统上它把 dense FFN 的大 GEMM 变成了 router、dispatch、all-to-all、小 GEMM、combine 和 load balancing。规模越大，越不是算法问题，而是通信与内存布局问题。</p>
+      <div class="grid-3">
+        <div class="card"><h3>Top-k routing</h3><p>每个 token 由 router 选 k 个专家。top-1 简单但表达较硬；top-2/top-8 更柔软但通信和 combine 更贵。MAI 选择 top-8 / 512 experts，是高稀疏度与 routing 平滑性的折中。</p></div>
+        <div class="card"><h3>Dense + MoE 交替</h3><p>不是每层都 MoE。Dense FFN 提供共享通用变换，MoE 层提供条件容量。MAI 认为 interleaved layout 比 every-layer MoE 更适合 wall-clock 和服务成本。</p></div>
+        <div class="card"><h3>LatentMoE</h3><p>先把 hidden 表示降维到 latent space 再 all-to-all，回来后再升维。它不是改变 routing 目标，而是直接减少跨 GPU 搬运的字节数和专家 GEMM 尺寸。</p></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>阶段</th><th>核心贡献</th><th>系统问题</th><th>后续演化</th></tr></thead>
+          <tbody>
+            <tr><td>Shazeer MoE 2017</td><td>条件计算：每个样本只激活部分专家</td><td>routing 稳定性、load balancing、分布式训练复杂</td><td>成为 GShard / Switch 的思想源头</td></tr>
+            <tr><td>GShard 2020</td><td>自动 sharding + top-k MoE 大规模化</td><td>capacity factor、token drop、all-to-all shape</td><td>形成大规模 MoE 训练标准范式</td></tr>
+            <tr><td>Switch Transformer 2021</td><td>top-1 routing 简化 trillion-scale MoE</td><td>简单但可能牺牲专家组合表达</td><td>工业系统继续探索 top-2/top-k 与 shared experts</td></tr>
+            <tr><td>GLaM 2021</td><td>展示 MoE 的质量/能耗效率</td><td>推理服务与工程复杂度仍高</td><td>稀疏模型从研究走向产品候选</td></tr>
+            <tr><td>MegaBlocks 2022</td><td>block-sparse kernels 支持 dropless MoE 训练</td><td>需要把动态 token 数映射到硬件友好的块</td><td>影响后续 dropless / grouped GEMM 设计</td></tr>
+            <tr><td>Mixtral / DeepSeek / DBRX 2024</td><td>open-weight 稀疏模型配方变透明</td><td>长上下文、推理路由、专家并行成本</td><td>shared experts、MLA、fine-grained experts 等路线</td></tr>
+            <tr><td>MAI-Base-1 2026</td><td>top-8/512 + LatentMoE + dropless + global-batch load balance</td><td>8K GPU 下 all-to-all、router imbalance、static memory</td><td>把 MoE 纳入完整 hill-climbing infra 配方</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="dropless">
+      <h2>Dropless routing：它解决的不只是“别丢 token”，而是实验语义一致性</h2>
+      <p class="section-lead">早期 MoE 常用 capacity factor：每个专家最多接收固定数量 token，溢出的 token 被 drop 或走 fallback。这样硬件 shape 稳定，但训练语义变了。MAI 强调 dropless，是因为 token dropping 会改变 ablation 结论，特别是比较 load-balancing loss、router 初始化或数据分布时。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Capacity-capped routing</h3>
+          <p>优点是每个 expert 的 tensor shape 更固定，易于静态内存和 kernel 调度。缺点是被 drop 的 token 不再真实经过它选中的专家，训练信号被系统近似污染；drop rate 虽低也可能改变哪个方法看起来更好。</p>
+        </div>
+        <div class="card">
+          <h3>Dropless routing</h3>
+          <p>每个 token 都送到选中的专家，通常需要 variable-size all-to-all、block-sparse computation、grouped GEMM、padding/packing 或多轮 capped dispatch。难点从“是否丢 token”转为“怎么不 OOM、怎么不碎片化、怎么 overlap 通信”。</p>
+        </div>
+      </div>
+      <div class="callout system">
+        <strong>MAI 的关键点：</strong>它同时支持 variable-size all-to-all 和 static-memory dropless mode。后者用多轮 capped dispatch → compute → collect 保证内存上界，同时语义上仍让 token 经过目标 experts。这是系统复杂度换实验可信度。</div>
+    </section>
+
+    <section id="zeroinit">
+      <h2>Zero-init attention output：小初始化技巧背后是 MoE 路由稳定性</h2>
+      <p class="section-lead">MAI 把 attention output RMSNorm gains 初始化为 0。直觉是：训练刚开始时，随机 attention 近似对过去 token 做 causal mean pooling，导致不同行 token 表示高度相关；这些相关表示送进 MoE router，容易让大量 token 挤向少数 experts，造成早期负载失衡。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>它和 ReZero / SkipInit 同属“残差启动控制”家族</h3>
+          <p>ReZero、SkipInit、DeepNet 等工作都在处理深层 residual network 初始阶段的梯度与激活稳定。MAI 的特殊之处是目标不是单纯稳定 loss，而是防止 attention contribution 过早破坏 token 表示多样性，进而影响下一层 MoE router。</p>
+        </div>
+        <div class="card">
+          <h3>为什么不是把所有东西都 zero-init</h3>
+          <p>zero-init 是给高风险路径装闸门。attention output 初始贡献被关小，但 FFN、embedding、router 仍能提供训练信号。随着 RMSNorm gain 学起来，attention 捕获的上下文信息再逐步接入。</p>
+        </div>
+      </div>
+      <div class="callout warning">
+        <strong>关键结论：</strong>在 MoE 模型里，初始化不只是优化器问题，也是系统负载问题。router imbalance 会变成 all-to-all skew、expert OOM、dropless memory swing，最后影响 wall-clock goodput。</div>
+    </section>
+
+    <section id="precision">
+      <h2>FP8 precision：真正的配方是“哪里能低精度，哪里绝对不能”</h2>
+      <p class="section-lead">FP8 不是把所有 tensor 都改成 8-bit。E4M3 有更多 mantissa、动态范围较小，适合 forward activations / weights；E5M2 动态范围更大、精度更低，适合 gradient 这类 range 更大的数据。MAI 的 recipe 是 BF16 默认，forward GEMM 用 E4M3，data-gradient 用 E5M2，weight-gradient 用 BF16 compute + FP32 accumulation。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>路径</th><th>MAI recipe</th><th>原因</th><th>如果乱降精度的风险</th></tr></thead>
+          <tbody>
+            <tr><td>Forward GEMM</td><td>FP8 E4M3</td><td>更高吞吐，E4M3 精度相对好</td><td>scale 不稳会造成激活误差累计</td></tr>
+            <tr><td>Data-gradient GEMM</td><td>FP8 E5M2</td><td>梯度动态范围更大，需要更多 exponent</td><td>overflow / underflow 影响反传</td></tr>
+            <tr><td>Weight-gradient</td><td>BF16 compute + FP32 accumulation</td><td>权重更新更敏感</td><td>优化器状态污染，长期训练质量下降</td></tr>
+            <tr><td>Attention scores / router logits / output logits</td><td>FP32</td><td>softmax 前 logits 对小误差敏感</td><td>routing 错误、attention 分布异常、词表 logits 偏移</td></tr>
+            <tr><td>Residual stream / embedding / RMSNorm / router weights</td><td>FP32 或保守精度</td><td>贯穿全模型的状态通路</td><td>小误差跨层放大</td></tr>
+            <tr><td>Delayed scaling</td><td>1024-step amax history</td><td>稳定 FP8 scale，避免每步剧烈波动</td><td>scale 抖动导致数值噪声</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout system">
+        <strong>工程判断：</strong>FP8 的成熟标志不是“能跑”，而是能和 MoE grouped GEMM、activation recompute、distributed all-reduce、optimizer state、kernel fusion 一起长期稳定跑。</div>
+    </section>
+
+    <section id="works">
+      <h2>代表工作与关键词对照</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主题</th><th>代表工作</th><th>技术贡献</th><th>对 MAI 这类系统的影响</th></tr></thead>
+          <tbody>
+            <tr><td>Transformer baseline</td><td>Attention Is All You Need, 2017</td><td>attention + FFN + residual + layer norm 构成通用序列架构</td><td>所有后续 infra 优化都围绕这套结构削成本</td></tr>
+            <tr><td>Sparse / local attention</td><td>Sparse Transformer, Longformer, BigBird, Mistral 7B, Gemma 3</td><td>用窗口、块稀疏、global token/layer 降低长序列成本</td><td>MAI 的 5 local + 1 global 属于 periodic local/global 路线</td></tr>
+            <tr><td>Positional encoding</td><td>RoPE / NoPE 相关工作</td><td>RoPE 成为 local layer 常用位置编码；部分 global layer 可不用显式 position encoding</td><td>MAI local layer 用 RoPE，global layer 不用 position encoding</td></tr>
+            <tr><td>KV cache reduction</td><td>MQA, GQA</td><td>减少 decode KV heads，从带宽和显存角度加速服务</td><td>MAI 用 8 KV heads 取得质量/吞吐折中</td></tr>
+            <tr><td>MoE scaling</td><td>GShard, Switch Transformer, GLaM, Mixtral, DeepSeek-V2/V3</td><td>用稀疏激活扩 total parameters，不线性增加 active compute</td><td>MAI top-8/512 + dense/MoE interleaving 是同一演进线的工业配方</td></tr>
+            <tr><td>Dropless MoE systems</td><td>MegaBlocks, Tutel, DeepSpeed-MoE, Megatron-Core MoE</td><td>处理动态 routing、block-sparse compute、expert parallelism、all-to-all overlap</td><td>MAI 的 dropless + static-memory mode 是对实验语义和生产内存上界的折中</td></tr>
+            <tr><td>Initialization stability</td><td>ReZero, SkipInit, DeepNet, µParam / norm placement 相关工作</td><td>控制深层 residual network 初始阶段的激活与梯度</td><td>MAI 把它具体化为 attention output zero-init 以保护 MoE router</td></tr>
+            <tr><td>FP8 training</td><td>FP8 Formats for Deep Learning, NVIDIA Transformer Engine, H100/Hopper FP8</td><td>E4M3/E5M2、delayed scaling、mixed precision kernel stack</td><td>MAI 的数值 recipe 说明哪些路径可 FP8，哪些必须 FP32</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="conclusion">
+      <h2>关键结论：这些设计不是 isolated tricks，而是同一套预算表</h2>
+      <ol>
+        <li><strong>Attention 省的是序列预算。</strong>local/global pattern 让长上下文训练和推理不被 full attention 的二次成本拖死。</li>
+        <li><strong>GQA 省的是服务预算。</strong>decode 阶段的瓶颈常是 KV cache 带宽和显存，不只是 FLOPs。</li>
+        <li><strong>MoE 买的是容量，但付款方式是通信。</strong>top-k、expert 数、shared/dense layer、LatentMoE 都是在容量、all-to-all 和 GEMM 效率之间折中。</li>
+        <li><strong>Dropless routing 买的是实验可信度。</strong>不 drop token 可以避免系统近似改变 ablation 结论，但要付出 variable-size 通信和 static-memory 复杂度。</li>
+        <li><strong>Zero-init 说明 optimizer 稳定性和系统负载不是两件事。</strong>attention 初始表示塌缩会传导到 router imbalance，再传导到 all-to-all 和 OOM。</li>
+        <li><strong>FP8 的核心是边界意识。</strong>真正的高质量低精度训练不是全量压缩，而是把 logits、router、residual、optimizer state 这些敏感路径保住。</li>
+      </ol>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以 MAI-Thinking-1 官方技术报告为触发材料，并结合公开论文标题、摘要、经典系统路线与 MAI 报告中的架构章节做技术谱系整理。未声称复现实验结果，也不推断未公开的微软内部 kernel、数据或集群配置。</p>
+      <ul class="source-list">
+        <li><a href="https://microsoft.ai/wp-content/uploads/2026/06/main_20260602_2.pdf">MAI-Thinking-1: Building a Hill-Climbing Machine</a> — 主要触发材料；关注 2.1、2.6、2.8、Appendix K。</li>
+        <li><a href="https://arxiv.org/abs/2004.05150">Longformer: The Long-Document Transformer</a> — local + global attention 的代表工作。</li>
+        <li><a href="https://arxiv.org/abs/2007.14062">Big Bird: Transformers for Longer Sequences</a> — sparse/global/random attention 的理论与长序列路线。</li>
+        <li><a href="https://arxiv.org/abs/1911.02150">Fast Transformer Decoding: One Write-Head is All You Need</a> — Multi-Query Attention。</li>
+        <li><a href="https://arxiv.org/abs/2305.13245">GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints</a> — Grouped-Query Attention。</li>
+        <li><a href="https://arxiv.org/abs/2006.16668">GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding</a> — 大规模 MoE / sharding。</li>
+        <li><a href="https://arxiv.org/abs/2101.03961">Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity</a> — top-1 MoE 简化路线。</li>
+        <li><a href="https://arxiv.org/abs/2112.06905">GLaM: Efficient Scaling of Language Models with Mixture-of-Experts</a> — 稀疏模型效率证据。</li>
+        <li><a href="https://arxiv.org/abs/2211.15841">MegaBlocks: Efficient Sparse Training with Mixture-of-Experts</a> — dropless / block-sparse MoE 系统代表。</li>
+        <li><a href="https://arxiv.org/abs/2401.04088">Mixtral of Experts</a> — open-weight SMoE 代表。</li>
+        <li><a href="https://arxiv.org/abs/2405.04434">DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model</a> — 经济型 MoE 与长上下文系统设计。</li>
+        <li><a href="https://arxiv.org/abs/2209.05433">FP8 Formats for Deep Learning</a> — E4M3/E5M2 格式与 FP8 训练动机。</li>
+        <li><a href="https://arxiv.org/abs/2310.06825">Mistral 7B</a> — sliding window attention 与 GQA 的高效 decoder 例子。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

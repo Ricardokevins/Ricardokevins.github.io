@@ -1,5 +1,37 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-03 LLM Infra 设计谱系调研与站内笔记导出
+
+### 背景
+
+- 用户基于 MAI-Base-1 架构表追问 local/global attention、GQA、MoE、dropless routing、zero-init attention output、FP8 precision 等 infra 名词背后的技术谱系、演进轨迹、代表工作和关键结论。
+- 本轮新建独立站内技术分析笔记，不写入 Obsidian；沿用 Notes HTML 规范并复用 MAI-Thinking-1 本地图表证据。
+
+### 已完成
+
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/llm-infra-design-patterns.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`LLM Infra 设计谱系：从 attention 到 MoE 再到 FP8`
+  - URL：`/notes/tech-analysis/llm-infra-design-patterns.html`
+  - 类型：`Tech Analysis`
+- 调研并整理的技术轴：
+  - local/global attention 与 sliding-window / periodic-global 设计；
+  - MQA / GQA 与 KV cache budget；
+  - top-k MoE、dense/MoE interleaving、LatentMoE 与 all-to-all/GEMM trade-off；
+  - capacity-capped routing 与 dropless routing 的实验语义差异；
+  - zero-init attention output 与 MoE router imbalance；
+  - FP8 E4M3/E5M2、delayed scaling、FP32 sensitive path。
+- 代表工作索引覆盖 Transformer、Sparse Transformer、Longformer、BigBird、Mistral、Gemma、MQA、GQA、GShard、Switch Transformer、GLaM、MegaBlocks、Mixtral、DeepSeek-V2、FP8 Formats for Deep Learning 等。
+
+### 验证结果
+
+- HTML scoped 结构检查通过：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"` 均存在。
+- 页面包含 11 个核心 section，3 张本地证据图全部存在且 `alt` 非空。
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 84 entries, 84 top-level note html files`。
+- `git diff --check -- "notes/tech-analysis/llm-infra-design-patterns.html" "_data/notes.yml" "Progress.md"` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有既有 GitHub Metadata API 未认证/限流 warning，不影响 `_site` 静态生成。
+
 ## 2026-06-03 Mid-training X 帖深度解读与站内笔记导入
 
 ### 背景
