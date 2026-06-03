@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CAST：给 GRPO 补上 verifier-grounded 的 token 级信用分配</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e7;
+      --surface: #fffdf8;
+      --surface-2: #eef2ef;
+      --ink: #202326;
+      --muted: #5c666d;
+      --line: #d6d9d2;
+      --line-strong: #9da8a0;
+      --accent: #1f6d78;
+      --accent-2: #8b5f22;
+      --blue: #315f8f;
+      --green: #2f7159;
+      --red: #a3483b;
+      --gold: #8b6723;
+      --soft-blue: #dce8f4;
+      --soft-green: #dfece5;
+      --soft-red: #f0ded9;
+      --soft-gold: #efe3c4;
+      --shadow: 0 18px 42px rgba(33, 38, 42, 0.1);
+      --radius: 8px;
+      --max: 1220px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 35, 38, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 35, 38, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    p { margin: 10px 0; }
+    strong { color: #15191d; }
+    code, pre { font-family: var(--mono); }
+    ul { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: calc(74vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 90px) 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(34px, 5.7vw, 70px);
+      font-weight: 760;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 42px);
+      font-weight: 760;
+    }
+
+    h3 {
+      margin: 22px 0 9px;
+      font-size: 19px;
+      font-weight: 820;
+    }
+
+    .subtitle {
+      max-width: 920px;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.62;
+    }
+
+    .hero-note,
+    .card,
+    .metric,
+    .callout,
+    .step,
+    .table-wrap,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+    }
+
+    .hero-note {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-note b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-note span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 18px 0 4px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    main { padding-bottom: 64px; }
+    section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+    .section-lead {
+      max-width: 950px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+      line-height: 1.68;
+    }
+
+    .grid-2, .grid-3, .metrics, .flow {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3, .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card, .metric, .step { padding: 16px; box-shadow: var(--shadow); }
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1.1;
+    }
+
+    .metric span,
+    .small,
+    figcaption {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn { border-left-color: var(--gold); background: #fff8e8; }
+    .callout.good { border-left-color: var(--green); background: #edf7f0; }
+    .callout.risk { border-left-color: var(--red); background: #fff0ec; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      margin: 3px 5px 3px 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      min-width: 780px;
+      border-collapse: collapse;
+      background: var(--surface);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .formula {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow-x: auto;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 14px;
+      border-radius: 6px;
+      background: #202326;
+      color: #f6f1e8;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 860px) {
+      header {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        padding-top: 42px;
+      }
+      .grid-2, .grid-3, .metrics, .flow { grid-template-columns: 1fr; }
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div>
+      <div class="kicker">Paper Note · 2026-06-03</div>
+      <h1>CAST：给 GRPO 补上 verifier-grounded 的 token 级信用分配</h1>
+      <p class="subtitle">CAST 的价值不在于替代 GRPO，而在于把 GRPO 的轨迹级 verifier 信号和 self-teacher 的 token gap 分工清楚：verifier 决定整条 rollout 的方向，teacher 只负责在这条方向内部做局部 credit shaping。</p>
+      <div class="toc">
+        <a href="#takeaway">核心判断</a>
+        <a href="#problem">GRPO 死区</a>
+        <a href="#mechanism">CAST 机制</a>
+        <a href="#evidence">实验证据</a>
+        <a href="#practice">工程启发</a>
+        <a href="#limits">边界</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </div>
+    <aside class="hero-note">
+      <b>一句话定位</b>
+      <span>这是一个 GRPO credit assignment repair layer：它不取消 verifier reward，也不盲目相信 teacher token preference，而是让二者在轨迹级和 token 级分别发挥作用。</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p class="section-lead">@sheriyuo 的 X 帖抓住了 CAST 的主线：GRPO 在 all-correct / all-wrong 组上会进入零方差死区，OPSD 虽然给 dense token signal，却可能和最终答案正确性错位。CAST 的设计不是再加一个蒸馏 loss，而是把 verifier-grounded trajectory correctness 作为方向锚点，再用 answer-free self-teacher gap 做局部 token-level advantage shaping。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>不是替代 GRPO</h3>
+          <p>CAST 仍使用 GRPO / DAPO 式 clipped policy objective。它修改的是 advantage construction：从同一条 rollout 的单一序列级 advantage，变成带 token 局部校正的 detached advantage。</p>
+        </div>
+        <div class="card">
+          <h3>不是 privileged teacher</h3>
+          <p>默认 CAST 的 teacher 不看 ground-truth answer 或 reference solution。答案只给 verifier 用来产生 binary correctness reward，teacher 只看题目和 generated prefix。</p>
+        </div>
+        <div class="card">
+          <h3>不是过程监督</h3>
+          <p>CAST 的 dense signal 是 log-prob gap + verifier correctness 组合出来的 token advantage，不是 PRM，也不是语义级 step correctness label。</p>
+        </div>
+      </div>
+      <figure>
+        <img src="cast-grpo-self-teaching-assets/overview.jpg" alt="CAST 论文中的 GRPO 与 CAST 总览图，显示 policy rollout、verifier reward、group advantage 与 self-teacher token probability gap 如何共同进入 loss">
+        <figcaption>CAST 配图的关键信息是分工：蓝色区域保留 GRPO 的 rollout、verifier、group advantage 和 loss；绿色区域用 self-teacher 计算 per-token probability gap，再把局部权重施加到 token advantage。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <h2>GRPO 的问题不是没有 reward，而是 reward 太稀疏</h2>
+      <p>GRPO 的基本做法是：对同一个 prompt 采样 \(G\) 条 rollout，用 verifier 给每条答案二元 reward \(r_i\)，再在组内归一化得到 advantage：</p>
+      <div class="formula math-display">\[
+        A_i = \frac{r_i - \bar r}{\sigma_r + \epsilon}, \qquad
+        \bar r = \frac{1}{G}\sum_{j=1}^{G} r_j
+      \]</div>
+      <p>这套机制在 mixed group 里很自然：同一道题有答对也有答错，正确 rollout 相对上升，错误 rollout 相对下降。但一旦同组全对或全错，\(\sigma_r\) 接近 0，组内相对差异消失。对训练系统来说，这两类样本很尴尬：全对组本该帮助模型巩固好模式，全错组本该帮助模型抑制坏模式，结果标准 GRPO 看不到可用的相对优势。</p>
+      <div class="metrics">
+        <div class="metric"><b>20.2%</b><span>论文 Qwen3-4B 主 CAST run 中 all-correct prompt groups 平均占比。</span></div>
+        <div class="metric"><b>31.3%</b><span>all-wrong prompt groups 平均占比。</span></div>
+        <div class="metric"><b>48.5%</b><span>mixed prompt groups 平均占比。</span></div>
+      </div>
+      <p>这组诊断很关键：zero-variance group 不是边角料，而是训练中超过一半 prompt group 的结构性现象。如果直接丢弃或静默处理，等于放弃大量 consolidation / failure signal。</p>
+    </section>
+
+    <section id="opsd">
+      <h2>OPSD 的问题是 token 偏好不等于轨迹正确</h2>
+      <p>OPSD 试图给 token 级 dense guidance：用 stop-gradient teacher 与 student 对同一 sampled token 的 log-prob 差值判断 token 值不值得鼓励。这个思路在 RLVR 场景里会遇到一个根本问题：token preference 必须通过最终 verifier correctness 解释。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>位置</th>
+              <th>直觉误读</th>
+              <th>CAST 的读法</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>正确 trajectory 里的 teacher-positive token</td>
+              <td>应该正向强化。</td>
+              <td>可以强化，但仍需裁剪；正确答案里也可能有冗余模板和偶然路径。</td>
+            </tr>
+            <tr>
+              <td>正确 trajectory 里的 teacher-negative token</td>
+              <td>既然答案对，也应该整体奖励。</td>
+              <td>不一定。teacher-negative token 可以被局部翻成负 advantage，用来抑制不被 teacher 支持的局部模式。</td>
+            </tr>
+            <tr>
+              <td>错误 trajectory 里的 teacher-negative token</td>
+              <td>继续负向惩罚。</td>
+              <td>通常是稳定 suppression signal，CAST 会让负向压力更强。</td>
+            </tr>
+            <tr>
+              <td>错误 trajectory 里的 teacher-positive token</td>
+              <td>teacher 喜欢，所以应该正向强化。</td>
+              <td>只能给 bounded local positive credit，因为整条答案错，teacher-positive signal 可能只是局部流畅或局部正确。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <strong>这里的 insight：</strong>OPSD 把 teacher gap 当成通用 token preference；CAST 把 teacher gap 放回 verifier 判定过的 trajectory 里解释。差别很小，但它决定了 dense signal 是帮 GRPO 分配信用，还是把模型带向 correctness-unaware imitation。
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>CAST 机制拆解</h2>
+      <p class="section-lead">CAST 可以拆成四个动作：给 zero-variance group 一个 bounded base sign；用 answer-free teacher 计算 token gap；用 asymmetric clipping 区分放大和抑制；最后允许 token advantage 局部翻转。</p>
+      <div class="flow">
+        <div class="step">
+          <h3>1. 轨迹级 base advantage</h3>
+          <p>mixed group 用标准 GRPO advantage。all-correct group 给 \(+b_{correct}\)，all-wrong group 给 \(-b_{wrong}\)，默认都是 1。</p>
+        </div>
+        <div class="step">
+          <h3>2. Answer-free self-teacher</h3>
+          <p>计算 \(g_{i,t}=\log \pi_\phi(y_{i,t}|x,y_{i,&lt;t})-\log \pi_{\theta old}(y_{i,t}|x,y_{i,&lt;t})\)。teacher 不看参考答案。</p>
+        </div>
+        <div class="step">
+          <h3>3. 非对称裁剪</h3>
+          <p>正 base 轨迹默认裁剪到 \([0.8, 1.05]\)，负 base 轨迹默认裁剪到 \([0.95, 1.2]\)，偏向更强的 teacher-negative suppression。</p>
+        </div>
+        <div class="step">
+          <h3>4. Advantage flipping</h3>
+          <p>正确轨迹的 teacher-negative token 可变成负 advantage；错误轨迹的 teacher-positive token 可得到有界正 advantage。</p>
+        </div>
+      </div>
+      <p>形式上，CAST 先得到符号保持的 shaped advantage：</p>
+      <div class="formula math-display">\[
+        \hat A_{i,t} = B_i(1 + \lambda(w_{i,t}-1))
+      \]</div>
+      <p>然后按 \(B_i\) 与 \(g_{i,t}\) 的符号进入局部 sign reversal。最终 token advantage 会被裁剪到稳定区间，例如默认 \([-1.2, 1.2]\)，并作为 detached coefficient 放进 DAPO / GRPO clipped objective。梯度通过 policy ratio 走，不通过 teacher gap 或裁剪操作反传。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>实验证据：主表之外更该看 ablation</h2>
+      <p>论文主实验在 DAPO-Math-17K 上训练 Qwen3-1.7B、Qwen3-4B、Qwen3-8B，300 optimizer steps，LoRA 更新，在 AIME24、AIME25、AIME26、MATH-500、HMMT25 上以 Avg@16 和 Pass@16 评估。主表里 CAST 在三个规模上整体强于 GRPO、OPSD、GRPO+OPSD、RLSD、RLRT。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Qwen3-4B 方法</th>
+              <th>AIME24 Avg / Pass</th>
+              <th>AIME26 Avg / Pass</th>
+              <th>MATH-500 Avg / Pass</th>
+              <th>HMMT25 Avg / Pass</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Base</td>
+              <td>20.83 / 46.7</td>
+              <td>17.71 / 50.0</td>
+              <td>83.91 / 96.0</td>
+              <td>10.21 / 23.3</td>
+            </tr>
+            <tr>
+              <td>GRPO</td>
+              <td>21.04 / 43.3</td>
+              <td>20.00 / 53.3</td>
+              <td>83.86 / 95.4</td>
+              <td>12.08 / 30.0</td>
+            </tr>
+            <tr>
+              <td>RLRT</td>
+              <td>21.67 / 53.3</td>
+              <td>20.00 / 63.3</td>
+              <td>84.35 / 95.6</td>
+              <td>12.92 / 26.7</td>
+            </tr>
+            <tr>
+              <td><strong>CAST</strong></td>
+              <td><strong>41.25 / 76.7</strong></td>
+              <td><strong>36.25 / 70.0</strong></td>
+              <td><strong>89.38 / 98.0</strong></td>
+              <td><strong>21.67 / 50.0</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>更有解释力的是 component ablation。Mixed-only 低于完整 CAST，说明 zero-variance branch 不是装饰；With ground-truth answer 低于 answer-free CAST，说明 privileged answer context 不一定带来更好 token shaping；No sign reversal 掉得明显，说明收益不是普通 reweighting，而是局部正负翻转真的有作用。</p>
+      <div class="callout good">
+        <strong>我的判断：</strong>CAST 的实验不是证明“self-distillation 永远有效”，而是证明在数学 RLVR 里，teacher gap 必须被 verifier correctness 约束；一旦去掉 correctness-aware group handling 或 sign reversal，收益会明显变弱。
+      </div>
+    </section>
+
+    <section id="practice">
+      <h2>工程启发：把 teacher 从裁判降级为局部 shaping 工具</h2>
+      <p>真实训练系统里，CAST 最值得借鉴的是模块边界：verifier 负责 outcome，teacher 负责 local log-prob geometry。这个分工可以避免两个常见错误：一是把 binary reward 当作所有 token 的同号标签，二是把 teacher token preference 当作最终正确性的代理。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>适合接入的位置</h3>
+          <p>CAST 应该进入 RLVR trainer 的 advantage construction 层，而不是作为额外 SFT 数据清洗或推理时 rerank。已有 GRPO pipeline 需要能保存 old policy log-prob、teacher log-prob、verifier reward 和 group type。</p>
+        </div>
+        <div class="card">
+          <h3>上线前要看的指标</h3>
+          <p>不要只看 Avg@16 / Pass@16。还要看 response length、token budget、zero-variance group 占比、sign-flipped token 比例、teacher refresh 成本、训练 wall-clock、OOM 和 verifier 稳定性。</p>
+        </div>
+        <div class="card">
+          <h3>为什么不是简单加 OPSD</h3>
+          <p>GRPO+OPSD 的 auxiliary token loss 仍然可能 correctness-unaware。CAST 把 token gap 转成 advantage 前先过 verifier correctness，这一步才是关键。</p>
+        </div>
+        <div class="card">
+          <h3>为什么不是 PRM</h3>
+          <p>CAST 不标注每一步推理是否对，也不训练过程奖励模型。它是概率空间里的局部信用重分配，解释性弱于 PRM，但工程门槛也更低。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <p class="section-lead">CAST 是一个强工程假设，不是通用对齐答案。它成立的前提是 verifier 稳定、任务可判分、多采样组内有足够覆盖，并且 self-teacher gap 在当前模型族和训练阶段仍含有可用局部信号。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>任务边界</h3>
+          <p>证据主要来自数学 RLVR。开放式写作、长程 agent、工具调用和多模态任务如果没有可靠 verifier，不能直接照搬。</p>
+        </div>
+        <div class="card">
+          <h3>规模边界</h3>
+          <p>论文覆盖 Qwen3-1.7B / 4B / 8B、LoRA、最多 600 steps。更大模型、full-parameter update 和更长训练仍未验证。</p>
+        </div>
+        <div class="card">
+          <h3>成本边界</h3>
+          <p>论文报告 300-step CAST 约为 GRPO wall-clock 的 1.25 倍，并且 CAST 往往产生更长输出。收益需要和训练/推理成本一起评估。</p>
+        </div>
+      </div>
+      <div class="callout risk">
+        <strong>最容易误读的一点：</strong>CAST 不是“模型自己知道哪里推理对了”。它只是用 verifier 判定整条 rollout，再用 self-teacher 的 token log-prob gap 估计局部该加强还是削弱。这个信号有用，但不等于可解释的数学步骤监督。
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>关键术语对齐</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>RLVR</h3>
+          <p>Reinforcement Learning with Verifiable Rewards。奖励来自可程序化或可验证的结果，例如数学最终答案是否匹配，而不是人类偏好模型。</p>
+        </div>
+        <div class="card">
+          <h3>Zero-variance group</h3>
+          <p>同一 prompt 的多条 rollout 全对或全错，导致组内 reward 方差消失，标准 GRPO 的 group-relative advantage 失去区分度。</p>
+        </div>
+        <div class="card">
+          <h3>Teacher-positive / teacher-negative</h3>
+          <p>self-teacher 对 sampled token 的 log-prob 高于 / 低于 old policy。它说明 teacher 相对更支持或更不支持这个 token，不直接说明 token 语义正确。</p>
+        </div>
+        <div class="card">
+          <h3>Advantage flipping</h3>
+          <p>局部 token advantage 可以和整条 trajectory 的 base sign 相反：正确答案里的坏 token 被压，错误答案里的局部好 token 被小幅鼓励。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于 @sheriyuo 的 X 原帖、配图和论文 <em>CAST: Non-Privileged Clipped Asymmetric Self-Teaching with Advantage Flipping for GRPO</em>。X 页面公开抓取不稳定，线程正文以 OpenCLI 登录态读取为准；论文事实以 arXiv 摘要页、PDF 正文和 PDF 元数据为准。与帖子中提到的 VeriGate 相关的上下文，本轮未检索到足够一手材料，因此没有纳入技术判断。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>一手材料</h3>
+          <ul>
+            <li><a href="https://x.com/sheriyuo/status/2061764630968717598">@sheriyuo 关于 CAST / GRPO 的 X 原帖</a></li>
+            <li><a href="https://arxiv.org/abs/2606.00172">arXiv:2606.00172 摘要页</a></li>
+            <li><a href="https://arxiv.org/pdf/2606.00172">CAST 论文 PDF</a></li>
+          </ul>
+          <p><span class="tag">X thread</span><span class="tag">arXiv PDF</span><span class="tag">tweet image</span><span class="tag">RLVR</span></p>
+        </div>
+        <div class="card">
+          <h3>核验边界</h3>
+          <p>主帖短链解析到 arXiv `2606.00172`。论文 PDF 元数据标题、作者与 2026-05-29 arXiv v1 一致。本文没有复现实验，也没有运行 CAST 训练代码，因此实验数字按论文报告解读，结论限于材料阅读和机制分析。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="commands">
+      <h2>复现本次读取的关键命令</h2>
+      <pre><code>opencli twitter thread "https://x.com/sheriyuo/status/2061764630968717598" --limit 100 -f json --trace retain-on-failure
+opencli twitter profile "sheriyuo" -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n' "https://t.co/ZlWrJiPXCa"
+curl -L "https://arxiv.org/pdf/2606.00172" -o "cast.pdf"
+pdftotext "cast.pdf" "cast.txt"</code></pre>
+    </section>
+  </main>
+</body>
+</html>

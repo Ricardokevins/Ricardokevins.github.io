@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OmniOPD：用语义 chunk 验证绕开 teacher logits</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f0e8;
+      --surface: #fffdf8;
+      --surface-2: #eef3f1;
+      --ink: #202529;
+      --muted: #5d676f;
+      --line: #d5d9d2;
+      --line-strong: #9ba79f;
+      --accent: #1f6678;
+      --accent-2: #7b5d24;
+      --blue: #315f88;
+      --green: #2f6f58;
+      --red: #9d493d;
+      --gold: #896522;
+      --soft-blue: #dce8f2;
+      --soft-green: #dfece5;
+      --soft-red: #f0ded9;
+      --soft-gold: #efe3c4;
+      --shadow: 0 18px 42px rgba(31, 37, 42, 0.1);
+      --radius: 8px;
+      --max: 1220px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 37, 41, 0.032) 1px, transparent 1px) 0 0 / 38px 38px,
+        linear-gradient(0deg, rgba(32, 37, 41, 0.024) 1px, transparent 1px) 0 0 / 38px 38px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    p { margin: 10px 0; }
+    strong { color: #15191d; }
+    code, pre { font-family: var(--mono); }
+    ul { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: calc(74vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 90px) 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(34px, 5.5vw, 68px);
+      font-weight: 760;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 42px);
+      font-weight: 760;
+    }
+
+    h3 {
+      margin: 22px 0 9px;
+      font-size: 19px;
+      font-weight: 820;
+    }
+
+    .subtitle {
+      max-width: 930px;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.62;
+    }
+
+    .hero-note,
+    .card,
+    .metric,
+    .callout,
+    .step,
+    .table-wrap,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+    }
+
+    .hero-note {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-note b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-note span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 18px 0 4px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    main { padding-bottom: 64px; }
+    section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+    .section-lead {
+      max-width: 960px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+      line-height: 1.68;
+    }
+
+    .grid-2, .grid-3, .metrics, .flow {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3, .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .flow { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+    .card, .metric, .step { padding: 16px; box-shadow: var(--shadow); }
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: clamp(25px, 4vw, 40px);
+      line-height: 1.1;
+    }
+
+    .metric span,
+    .small,
+    figcaption {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warn { border-left-color: var(--gold); background: #fff8e8; }
+    .callout.good { border-left-color: var(--green); background: #edf7f0; }
+    .callout.risk { border-left-color: var(--red); background: #fff0ec; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      margin: 3px 5px 3px 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      min-width: 780px;
+      border-collapse: collapse;
+      background: var(--surface);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .formula {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow-x: auto;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 14px;
+      border-radius: 6px;
+      background: #202529;
+      color: #f6f1e8;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 980px) {
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      header {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        padding-top: 42px;
+      }
+      .grid-2, .grid-3, .metrics, .flow { grid-template-columns: 1fr; }
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div>
+      <div class="kicker">Paper Note · 2026-06-03</div>
+      <h1>OmniOPD：用语义 chunk 验证绕开 teacher logits</h1>
+      <p class="subtitle">OmniOPD 的核心不是“黑盒 teacher 也能蒸馏”这么简单，而是把 OPD 的监督对象从 fragile token menu 改成学生关键推理分叉处的 chunk-level semantic verification。</p>
+      <div class="toc">
+        <a href="#takeaway">核心判断</a>
+        <a href="#problem">OPD 痛点</a>
+        <a href="#mechanism">方法机制</a>
+        <a href="#evidence">实验证据</a>
+        <a href="#cost">成本</a>
+        <a href="#practice">工程启发</a>
+        <a href="#limits">边界</a>
+        <a href="#deep-dive">深度解读</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </div>
+    <aside class="hero-note">
+      <b>一句话定位</b>
+      <span>OmniOPD 把 teacher 从逐 token logits 分布提供者，改造成在学生高不确定性 chunk 上做黑盒 rollout 的语义验证器。</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p class="section-lead">这篇工作的真正 insight 是：标准 OPD 的问题未必是 teacher 信号不够强，而是通信协议太脆弱。Token logits 的信息密度很高，但它同时携带 tokenizer、格式、措辞、局部重复和风格偏好。OmniOPD 降低监督带宽，用多 token chunk 的语义相似度换取更稳定的 teacher-student 通信。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>不是 SFT</h3>
+          <p>SFT 让学生模仿 teacher 已写好的完整轨迹。OmniOPD 让学生先暴露自己的 on-policy trajectory，再让 teacher 只在关键分叉处给局部验证信号。</p>
+        </div>
+        <div class="card">
+          <h3>不是白盒 OPD</h3>
+          <p>标准 OPD 依赖 teacher next-token logits。OmniOPD 只需要 teacher 从学生 prefix 继续生成若干 rollout，因此能接入只返回文本的 Claude、Gemini、GPT 类模型。</p>
+        </div>
+        <div class="card">
+          <h3>不是过程奖励模型</h3>
+          <p>它没有训练单独 PRM，也不判断每一步推理是否严格正确。teacher 信号通过 chunk 与 rollout 的语义相似度进入 loss，是一种弱过程验证。</p>
+        </div>
+      </div>
+      <figure>
+        <img src="omniopd-logit-free-opd-assets/overview.jpg" alt="OmniOPD 论文图和数学推理主结果表，展示 entropy-driven chunk selection、chunk-level teacher critic、reference KL anchor 与不同 teacher 下的 Qwen3 学生结果">
+        <figcaption>图里的三个部件是读这篇论文的主线：高熵 chunk 选择、teacher rollout 语义 critic、unaudited tokens 的 KL anchor。下面的主结果表也显示：OmniOPD 在数学推理上最强，代码任务优势更弱。</figcaption>
+      </figure>
+    </section>
+
+    <section id="problem">
+      <h2>OPD 的痛点：强 teacher 不等于好 token 监督</h2>
+      <p>On-Policy Distillation 的目标很诱人：学生在自己的分布上生成轨迹，teacher 对这些轨迹给 dense feedback。相比 SFT，它避免只学 teacher 离线轨迹导致的 exposure bias；相比 outcome-only RL，它又有更密集的局部训练信号。</p>
+      <p>问题在于，标准 OPD 往往把 teacher 的 per-token probability 当成监督对象。这个假设在推理模型后训练里很脆弱，因为有效信号常常只集中在少量 plausible next tokens 的重叠集合里。只要 teacher 和 student 的中间推理路径、措辞风格或 tokenizer 不一致，token-level reverse KL 就会把表面差异当成训练压力。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Access barrier</h3>
+          <p>很多 frontier proprietary models 只返回文本，不返回完整 logits。标准 OPD 因此很难直接用 Claude、Gemini、GPT 这类 teacher。</p>
+        </div>
+        <div class="card">
+          <h3>Brittleness barrier</h3>
+          <p>即使拿得到 logits，teacher 对学生当前 prefix 的局部 token 概率也未必可靠。学生一旦进入不同推理风格、重复 loop 或低质量 prefix，teacher 的局部概率可能从纠错信号变成误导信号。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <strong>关键转向：</strong>OmniOPD 不再问“teacher 对学生这个 next token 给多少概率”，而是问“在学生这个推理分叉之前，如果 teacher 继续写，它的若干 continuation 和学生当前 chunk 在语义上有多接近”。
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>OmniOPD 机制拆解</h2>
+      <p class="section-lead">整套方法可以理解为一个五段式 pipeline：学生生成、熵峰定位、teacher rollout、语义打分、带 KL anchor 的 chunk loss。</p>
+      <div class="flow">
+        <div class="step">
+          <h3>1. 学生先生成</h3>
+          <p>对输入 \(x\)，学生策略 \(\pi_\theta\) 先采样自己的 reasoning trajectory \(y\)。这是 on-policy 的关键。</p>
+        </div>
+        <div class="step">
+          <h3>2. 找高熵分叉</h3>
+          <p>在每个 token 位置计算预测熵，选出 \(M\) 个最高熵 anchor，再形成长度为 \(C\) 的 non-overlapping chunks。</p>
+        </div>
+        <div class="step">
+          <h3>3. teacher 续写</h3>
+          <p>对每个 chunk 的前缀 \(y_{&lt;c}\)，黑盒 teacher 生成 \(N\) 条 Monte Carlo rollouts。</p>
+        </div>
+        <div class="step">
+          <h3>4. 语义相似度</h3>
+          <p>用 \(\phi(y_c, y_{teacher}^{(i)})\) 比较学生 chunk 和 teacher rollout，得到 chunk-level evidence。</p>
+        </div>
+        <div class="step">
+          <h3>5. 稳定更新</h3>
+          <p>用 Bayesian smoothing 避免零匹配无梯度，再用 reference KL anchor 约束未审计 token 的漂移。</p>
+        </div>
+      </div>
+
+      <h3>Chunk-level teacher evidence</h3>
+      <p>对一个被审计的 chunk \(c\)，teacher 产生 \(N\) 条 rollout。OmniOPD 不要求 teacher 和 student token 对齐，只把 teacher 信息压缩为相似度和：</p>
+      <div class="formula math-display">\[
+        k_{sem}^{(c)} = \sum_{i=1}^{N} \phi(y_c, y_{teacher}^{(i)})
+      \]</div>
+      <p>这里 \(\phi\) 可以是 Edit Distance、ROUGE-1、embedding similarity 或更强的 verifier。论文默认使用 normalized Edit Distance，也系统比较了 ROUGE-1 等指标。</p>
+
+      <h3>Bayesian smoothing</h3>
+      <p>有限 rollout 会带来高方差。如果 teacher 的 \(N\) 条输出都和学生 chunk 不匹配，直接用 frequentist estimate 会让该 chunk 没有可用梯度。OmniOPD 用学生当前 chunk probability 的几何均值作为 prior：</p>
+      <div class="formula math-display">\[
+        \bar{\pi}_{\theta}^{(c)} =
+        \left(\prod_{t \in c}\pi_\theta(y_t \mid x, y_{&lt;t})\right)^{1/C}
+      \]</div>
+      <p>然后构造 Bayesian target proxy：</p>
+      <div class="formula math-display">\[
+        \hat{\pi}_{teacher}^{(c)} =
+        \frac{k_{sem}^{(c)} + \alpha \cdot \bar{\pi}_{\theta}^{(c)}}{N+\alpha}
+      \]</div>
+      <p>这个设计的工程意义很直接：teacher 完全不同意时，训练不会在最需要纠错的 chunk 上静默失效；teacher rollout 噪声很大时，prior 又能降低 target multiplier 的方差。</p>
+
+      <h3>Trust-region anchor</h3>
+      <p>因为只审计 \(M\) 个 chunk，轨迹中大部分 token 都没有 teacher supervision。论文用 frozen base/reference policy \(\pi_{ref}\) 对 unaudited tokens 加 KL 约束，防止学生在监督空白区产生不受控漂移：</p>
+      <div class="formula math-display">\[
+        \mathcal{L}_{OmniOPD}
+        =
+        -\sum_{c \in \mathcal{C}}
+          \hat{\pi}_{teacher}^{(c)}
+          \sum_{t \in c}\log \pi_\theta(y_t \mid x,y_{&lt;t})
+        +
+        \beta \sum_{t \in U}
+          D_{KL}\left(\pi_{ref}(\cdot \mid x,y_{&lt;t}) \parallel \pi_\theta(\cdot \mid x,y_{&lt;t})\right)
+      \]</div>
+      <div class="callout good">
+        <strong>方法 insight：</strong>teacher signal 在这里不是 denominator，也不是逐 token 的 exact target，而是 bounded chunk multiplier。这是它声称能避免 reverse-KL 梯度爆炸和 token mismatch 的核心原因。
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>实验结果：数学推理强，代码任务不算碾压</h2>
+      <p>论文在数学推理上训练 Qwen3-1.7B 和 Qwen3-4B student，teacher 覆盖 Qwen3-32B、Qwen3-30B-A3B-Instruct、Claude-4.5-Haiku、Gemini-2.5-Flash。评价集包括 MATH-500、AIME-2024、AIME-2025、AMC23、OlympiadBench，指标为 Pass@1。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student / Teacher</th>
+              <th>Baseline</th>
+              <th>SFT</th>
+              <th>OPD</th>
+              <th>OmniOPD</th>
+              <th>我的读法</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Qwen3-1.7B / Qwen3-32B</td>
+              <td>Base 51.87 / GRPO 62.41</td>
+              <td>53.76</td>
+              <td>61.70</td>
+              <td>60.67</td>
+              <td>小 student + open teacher 时，OmniOPD 没赢 GRPO，也略低于白盒 OPD；能力差和语义 metric 可能限制了收益。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B / Qwen3-32B</td>
+              <td>Base 54.01 / GRPO 70.24</td>
+              <td>63.80</td>
+              <td>64.16</td>
+              <td>69.08</td>
+              <td>比 SFT 和 OPD 明显强，但仍略低于同一 student 的 GRPO。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B / Qwen3-30B-A3B-Instruct</td>
+              <td>teacher base 62.12</td>
+              <td>49.77</td>
+              <td>56.22</td>
+              <td>72.32</td>
+              <td>这是最能支持论文论点的一组：teacher 风格差异越大，token-level OPD 越吃亏，chunk semantic signal 越占优。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B / Claude-4.5-Haiku</td>
+              <td>teacher base 66.03</td>
+              <td>67.52</td>
+              <td>不适用</td>
+              <td>74.92</td>
+              <td>黑盒 teacher 场景是真正卖点：不需要 logits 仍能超过 SFT 和 GRPO。</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B / Gemini-2.5-Flash</td>
+              <td>teacher base 76.36</td>
+              <td>73.51</td>
+              <td>不适用</td>
+              <td>75.67</td>
+              <td>收益小于 Claude teacher，但仍高于 SFT 和 GRPO。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>代码任务的反证价值</h3>
+      <p>竞争编程上，OmniOPD 的结论更克制：Qwen3-1.7B 上平均 47.93，高于 OPD 47.06；Qwen3-4B 上平均 63.78，低于 OPD 65.26。这个结果反而重要，因为它说明 chunk-level invariance 不是免费午餐。代码的 token 精确性、语法局部性和格式约束更强，token-level matching 本身就包含有效监督；数学自然语言推理里，多种表述可语义等价，chunk semantic verification 才更容易发挥优势。</p>
+
+      <h3>消融结果说明哪个部件最关键</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Variant</th>
+              <th>Average</th>
+              <th>结论</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Full OmniOPD</td>
+              <td>69.08</td>
+              <td>默认配置为 \(M=10, N=10, C=50, \beta=0.1\)。</td>
+            </tr>
+            <tr>
+              <td>w/o Entropy Selection</td>
+              <td>68.45</td>
+              <td>高熵选择有帮助，但不是唯一支柱；随机或均匀 chunk 也不是完全失效。</td>
+            </tr>
+            <tr>
+              <td>w/o Bayesian Smoothing</td>
+              <td>68.63</td>
+              <td>Bayesian smoothing 提升有限但稳定，主要价值是降低 sparse rollout 的估计风险。</td>
+            </tr>
+            <tr>
+              <td>w/o KL Anchoring</td>
+              <td>8.28</td>
+              <td>这是最硬的证据：稀疏 chunk supervision 如果没有 unaudited-token trust region，会直接 policy collapse。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cost">
+      <h2>成本：不是免费，但有可调 effort-accuracy frontier</h2>
+      <p>OmniOPD 的成本主要来自 teacher inference。论文把成本拆成 prefill 和 decode：teacher 需要读入学生已有 prefix，然后只在被审计 chunk 上生成短 rollout。因为 transformer prefill 通常比 decode 更可并行，论文用代表性的 decode-to-prefill 成本比来估算相对 SFT 的 teacher effort。</p>
+      <div class="metrics">
+        <div class="metric"><b>0.88x</b><span>稀疏配置 \(M=5,N=10,C=50\) 的估算相对 SFT effort，同时保留接近默认配置的 accuracy。</span></div>
+        <div class="metric"><b>1.75x</b><span>默认配置 \(M=10,N=10,C=50\) 的估算相对 SFT effort。</span></div>
+        <div class="metric"><b>3.00x</b><span>高精度 chunk size \(C=100\) 配置的估算相对 SFT effort，平均分也更高。</span></div>
+      </div>
+      <p>这个成本叙事需要按真实系统重新核算。自托管 teacher 时，prefill/decode 吞吐、batching、KV cache、并发都会影响成本；API teacher 时，N 条 rollout 的 latency、rate limit 和计费方式可能比 token-equivalent 更关键。</p>
+    </section>
+
+    <section id="practice">
+      <h2>工程启发：先把监督粒度做成可替换接口</h2>
+      <p class="section-lead">如果要复现这条路线，最不该直接照抄的是默认 Edit Distance；最该复用的是模块边界。把 chunk selector、teacher rollout collector、semantic scorer、Bayesian estimator、KL anchor 做成可替换接口，才有机会判断收益来自哪里。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>先从数学任务闭环</h3>
+          <p>用已有 RLVR 数学数据，让 student 生成 trajectories，记录 entropy，先复现 \(M=5/10\)、\(C=50/100\)、\(N=10\) 的最小 ablation。不要从代码任务开始。</p>
+        </div>
+        <div class="card">
+          <h3>重点比较 \(\phi\)</h3>
+          <p>Edit Distance 和 ROUGE-1 都偏 lexical。工程上应比较 lexical metric、embedding similarity、LLM-as-judge、domain verifier 四类 scorer，否则很难知道模型是在学语义还是学话术。</p>
+        </div>
+        <div class="card">
+          <h3>KL anchor 不能省</h3>
+          <p>消融里去掉 KL anchor 后直接坍到 8.28。只审计局部 chunk 时，未审计 token 是系统性风险源，不是实现细节。</p>
+        </div>
+        <div class="card">
+          <h3>监控不只看最终分</h3>
+          <p>训练时要同时看 response length、entropy、KL、teacher query budget、zero-match chunks、semantic score 分布、重复率和 unaudited token drift。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <p>OmniOPD 的方向很有价值，但它还不是通用后训练答案。它最适合的区域是：答案可评估、推理 chunk 有多种等价表达、teacher 能给出高质量 continuation、学生和 teacher 风格/tokenizer 有明显差异的任务。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>\(\phi\) 不是真语义</h3>
+          <p>论文默认 Edit Distance，ROUGE-1 也只是词面重叠。学生 chunk 和 teacher rollout 文本像，不等于逻辑正确；文本不像，也不等于错误。</p>
+        </div>
+        <div class="card">
+          <h3>高熵不等于高价值</h3>
+          <p>高熵常对应公式选择、case split、约束检查，但也可能只是措辞或格式摇摆。低熵也可能是模型非常自信地走错。</p>
+        </div>
+        <div class="card">
+          <h3>Bayesian prior 有两面性</h3>
+          <p>prior 防止 zero-match 无梯度，但也会把学生原本的偏好带回目标里。论文里 \(\alpha\) 过大性能会明显下降，说明它是敏感超参。</p>
+        </div>
+        <div class="card">
+          <h3>代码任务证据不支持泛化</h3>
+          <p>4B 代码实验里 OmniOPD 低于 OPD。对语法刚性强的任务，token-level signal 可能确实更有效。</p>
+        </div>
+        <div class="card">
+          <h3>黑盒 teacher 成本要重算</h3>
+          <p>API teacher 的并发、延迟、rate limit、价格、输出长度控制，都可能改变论文中的 effort frontier。</p>
+        </div>
+        <div class="card">
+          <h3>没有复现实验</h3>
+          <p>本文是材料解读，不是实验复现。实验数字按论文报告理解，尚未验证代码、数据划分和实现细节。</p>
+        </div>
+      </div>
+      <div class="callout risk">
+        <strong>最容易误读的一点：</strong>OmniOPD 不是“语义监督一定优于 logits”。更准确的说法是：在数学自然语言推理里，较低带宽但更 invariant 的 chunk signal，可能比高带宽但脆弱的 token distribution 更可用。
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>关键术语对齐</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>On-Policy Distillation</h3>
+          <p>学生在自己的当前策略分布上生成样本，然后 teacher 对这些学生样本给监督。重点是训练分布跟推理时学生会访问的分布一致。</p>
+        </div>
+        <div class="card">
+          <h3>Reverse KL</h3>
+          <p>常见 OPD 目标之一，让学生分布贴近 teacher 分布。它在 teacher 对学生采样 token 给极低概率时可能产生极端梯度。</p>
+        </div>
+        <div class="card">
+          <h3>Peak-Entropy Scheduler</h3>
+          <p>用学生自身预测分布的熵定位高不确定性位置，优先把有限 teacher query budget 花在推理分叉处。</p>
+        </div>
+        <div class="card">
+          <h3>Dirichlet-Multinomial Prior</h3>
+          <p>一种对稀疏 Monte Carlo 估计做平滑的贝叶斯先验。这里用学生自己的 chunk confidence 做 fallback，避免零匹配时监督消失。</p>
+        </div>
+        <div class="card">
+          <h3>Reference KL Anchor</h3>
+          <p>让当前策略在未审计 token 上靠近 frozen base/reference policy，限制局部监督带来的全局漂移。</p>
+        </div>
+        <div class="card">
+          <h3>Chunk-level Semantic Verification</h3>
+          <p>不比较单个 token，而比较一段学生生成和 teacher continuation 在语义或词面上的接近程度。它牺牲精度，换取 tokenizer 和风格上的鲁棒性。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于 Zhuokai Zhao 关于 OmniOPD 的 X 原帖、其前序 OPD 脆弱性长帖、论文 <em>OmniOPD: Logit-Free On-Policy Distillation via Speculative Verification</em> 的 arXiv 摘要页、HTML 正文、PDF 和配图结果表。本文没有复现训练，也没有确认官方代码仓库，因此对实验数字只做机制性解读。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>一手材料</h3>
+          <ul>
+            <li><a href="https://x.com/zhuokaiz/status/2061939957514584304">Zhuokai Zhao 关于 OmniOPD 的 X 原帖</a></li>
+            <li><a href="https://x.com/zhuokaiz/status/2055042099674796118">Zhuokai Zhao 关于 OPD 脆弱性的前序长帖</a></li>
+            <li><a href="https://arxiv.org/abs/2606.01476">arXiv:2606.01476 摘要页</a></li>
+            <li><a href="https://arxiv.org/pdf/2606.01476">OmniOPD 论文 PDF</a></li>
+            <li><a href="https://arxiv.org/html/2606.01476v1">arXiv HTML 版本</a></li>
+          </ul>
+          <p><span class="tag">X thread</span><span class="tag">arXiv PDF</span><span class="tag">OPD</span><span class="tag">Post-training</span></p>
+        </div>
+        <div class="card">
+          <h3>核验边界</h3>
+          <p>原帖短链解析到 arXiv `2606.01476`。论文摘要页显示提交日期为 2026-05-31，作者包括 Yuhang Zhou、Lizhu Zhang、Yifan Wu、Mingyi Wang、Peng Bo、Jiayi Liu、Xiangjun Fan、Zhuokai Zhao。实验数字来自论文表格与 X 配图；本文未做独立复现。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="deep-dive">
+      <h2>深度解读：把 OmniOPD 放回 2026 后训练路线图</h2>
+      <p class="section-lead">本节在笔记机制和实验之上做一次再综合：回答三个问题——这篇工作的真正分量在哪里、它与当下 post-training 趋势的位置关系、以及哪些点最值得在工程里优先复现验证。</p>
+
+      <h3>1. 真正解决的问题：协议层替换，不是工程优化</h3>
+      <p>Zhuokai Zhao 在推文和前序长帖里反复强调的不是"我们做了个不用 logits 的 OPD"，而是承认 token-level reverse KL 在 reasoning 后训练里<strong>已经出问题</strong>。OmniOPD 的叙事重心是：OPD 协议本身（teacher 给每 token 一个概率）需要被替换，不是修补。</p>
+      <p>这个观察不是孤立的。2025 下半年开始，社区对 OPD/SFT-after-RL 路线的怀疑明显变多：SFT 强 teacher 轨迹之后 student 反而掉分（Qwen3-1.7B / Qwen3-32B 这行论文自己就复现了）、GRPO 类 outcome-only RL 在数学上更稳定、专有模型只返回文本根本进不了白盒 OPD 的训练 loop。OmniOPD 在这条怀疑链上给了一个具体可落地的替代协议。</p>
+      <div class="callout warn">
+        <strong>核心叙事校准：</strong>完整说法不是"OmniOPD = 不用 logits"，而是"用<strong>低带宽但 invariance 强</strong>的 chunk 监督，替换<strong>高带宽但 fragile</strong>的 token 分布监督"。带宽降一档，稳定性和黑盒兼容性上去了。
+      </div>
+
+      <h3>2. 四个非平凡设计</h3>
+      <p>机制节已经按 pipeline 拆过五步。这里再聚焦四个真正非平凡的设计点，说明它们各自在解决什么具体困境。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Peak-entropy scheduler ≠ 普通截断</h3>
+          <p>先排成 chunk（连续 C 个 token），再在 chunk 粒度上做语义打分。token 粒度不可避免引入 tokenizer mismatch；chunk 粒度把 teacher 的多条 rollout 视为完整子序列，smoothing 掉单 token 局部偏好，留下"这条推理路线是否在语义上接近 teacher 会怎么走"。这是 <span class="tag">teacher signal enters as a bounded chunk multiplier rather than a denominator</span> 的具体来源。</p>
+        </div>
+        <div class="card">
+          <h3>Bayesian smoothing 的两难</h3>
+          <p>prior 用学生自己的 chunk probability 当 fallback，解决 zero-match 无梯度的监督真空。但 α 太小救不回死掉的 chunk，α 太大会把 teacher 的纠错信号稀释回学生偏好。任何想落地的团队，第一件该做的 ablation 是 α-sweep，而不是直接套默认 α。</p>
+        </div>
+        <div class="card">
+          <h3>KL anchor 是最强的消融证据</h3>
+          <p>消融里去掉 KL anchor 直接坍到 8.28。这给所有"半监督 + 高不确定性采样"路线定了一个硬下限：<strong>稀疏 chunk 监督必须配 trust region</strong>，不是"训得慢"而是"训崩了"。这条比 28.64% 的相对提升更值得在评审/分享里讲。</p>
+        </div>
+        <div class="card">
+          <h3>Loss 的 invariance 性质是黑盒蒸馏的根</h3>
+          <p>论文证明 chunk-level loss 对 teacher tokenizer / writing style 不变。没有这个性质，Claude-4.5-Haiku 蒸馏 Qwen3-4B 这条路在风格差异下不可能涨到 74.92%。它是 OmniOPD 敢标榜"black-box teacher 也行"的理论地基，不是营销话术。</p>
+        </div>
+      </div>
+
+      <h3>3. 实验矩阵里容易被忽略的三个信号</h3>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Qwen3-4B / 30B-A3B-Instruct 这行</h3>
+          <p>SFT 49.77 / OPD 56.22 / <strong>OmniOPD 72.32</strong>。当 teacher 风格和 student 差异巨大时，token-level OPD 几乎就是负收益。OmniOPD 在这里展示的不是"略胜一筹"，而是"<strong>在 OPD 已经失败的地方还能涨 16 个点</strong>"。这是论文最硬的单点证据。</p>
+        </div>
+        <div class="card">
+          <h3>Qwen3-4B / Qwen3-32B: 69.08 vs GRPO 70.24</h3>
+          <p>OmniOPD <strong>没打过同一 student 的 GRPO</strong>。作者没回避这个数字，反而写在推文里。说明 OmniOPD 的卖点不是"全场景碾压"，而是"在 OPD 能用的场景里它不输、在 OPD 不能用的场景里它独赢"。GRPO 和 OmniOPD 是互补关系不是替代关系。</p>
+        </div>
+        <div class="card">
+          <h3>代码任务交叉结果</h3>
+          <p>1.7B 赢 OPD 0.87 / 4B 输 OPD 1.48。作者直接承认"code is rigid enough that matching the teacher token by token already carries real information"。OmniOPD 的优势域是"<strong>语义等价路径多</strong>"的推理任务，不是所有任务。这条边界比"我们 SOTA 了"重要。</p>
+        </div>
+      </div>
+
+      <h3>4. 在 2026 post-training 趋势里的位置</h3>
+      <p>把 OmniOPD 放回更大的路线图里，有三个 contextual 解读值得记下：</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>与 Long-CoT / Agentic RL 的张力</h3>
+          <p>Long-CoT 训练（OpenR1、DeepSeek-R1 类）已经证明"长 reasoning trace + outcome reward"就能涨点。OmniOPD 的工程价值不是替代 RL，而是<strong>在 RL 信号之外，再加一层轻量 teacher critic</strong>，在 RL 已经涨不动的时候提供新的监督带宽。</p>
+        </div>
+        <div class="card">
+          <h3>让"用 Claude 蒸馏 Qwen"在协议层合法</h3>
+          <p>之前这条路主要靠 SFT（拷 teacher 离线轨迹）+ GRPO 救回来。OmniOPD 给了"on-policy + 黑盒 teacher"一条单独可行的路，<strong>省一轮 RL 训练</strong>。对算力紧的团队这是直接的经济账。</p>
+        </div>
+        <div class="card">
+          <h3>把 semantic verification 和 PRM 分开</h3>
+          <p>之前 PRM 路线需要单独训一个过程奖励模型。OmniOPD 证明 teacher 自己就能当 critic，<strong>只要 chunk 粒度对、semantic metric 对</strong>。对自研团队，这意味着不必再维护一套 PRM 训练 pipeline，teacher 本身就是 verifier。</p>
+        </div>
+      </div>
+
+      <h3>5. 三个最容易误读的点</h3>
+      <div class="grid-2">
+        <div class="card risk">
+          <h3>"28.64% 相对提升"的 baseline 锚定</h3>
+          <p>这是在 Qwen3-4B / Qwen3-30B-A3B-Instruct 这种 OPD 已经被打到 50 分的场景下，靠 OmniOPD 拉回到 72 分。这个提升里有多少来自"OPD 失败被纠正"、多少来自"OmniOPD 本身更强"，需要 control 一下 GRPO baseline 才能拆清楚。不要把这个数字当成通用提升。</p>
+        </div>
+        <div class="card risk">
+          <h3>Edit Distance 不是"语义 metric"</h3>
+          <p>论文默认用 normalized Edit Distance，ROUGE-1 也只是词面重叠。学生 chunk 和 teacher rollout 文本像 ≠ 逻辑正确；文本不像 ≠ 错误。落地第一步就该把 φ 换成 embedding similarity / LLM-judge / 领域 verifier 试一遍。</p>
+        </div>
+        <div class="card risk">
+          <h3>高熵 ≠ 高价值</h3>
+          <p>高熵常对应公式选择、case split、约束检查，但也可能只是措辞或格式摇摆。低熵也可能是模型非常自信地走错。Peak-entropy scheduler 不是 oracle，<strong>它只是把 teacher query budget 集中到不确定性高的位置</strong>，不确定性高不等于学习价值高。</p>
+        </div>
+      </div>
+
+      <h3>6. 复现优先级排序</h3>
+      <p>如果要复现这条路线，按这个顺序最小化风险：</p>
+      <div class="flow">
+        <div class="step">
+          <h3>Step 1</h3>
+          <p>先做 KL anchor 消融。最便宜，能立刻验证 trust region 的必要性。</p>
+        </div>
+        <div class="step">
+          <h3>Step 2</h3>
+          <p>扫 α（Bayesian smoothing 强度）。决定 zero-match chunk 的存活率。</p>
+        </div>
+        <div class="step">
+          <h3>Step 3</h3>
+          <p>换 φ（Edit Distance → embedding similarity → LLM-judge）。决定模型在学语义还是学话术。</p>
+        </div>
+        <div class="step">
+          <h3>Step 4</h3>
+          <p>调 (M, N, C)。M=audit budget, N=rollout count, C=chunk size。这三个超参耦合，单独改一个容易跑出虚假结论。</p>
+        </div>
+        <div class="step">
+          <h3>Step 5</h3>
+          <p>接入黑盒 API teacher（Claude / Gemini）。需要重算 API 成本里的 prefill/decode 比、rate limit 和并发。</p>
+        </div>
+      </div>
+      <div class="callout good">
+        <strong>关键提示：</strong>不要直接照搬默认 <span class="tag">M=10, N=10, C=50, β=0.1</span>。这四个超参是耦合的，单独改一个容易跑出虚假结论。应该先在最小配置上跑通一个完整闭环，再做 sensitivity sweep。
+      </div>
+    </section>
+
+    <section id="commands">
+      <h2>复现本次读取的关键命令</h2>
+      <pre><code>opencli twitter thread "https://x.com/zhuokaiz/status/2061939957514584304" --limit 100 -f json --trace retain-on-failure
+opencli twitter thread "https://x.com/zhuokaiz/status/2055042099674796118" --limit 100 -f json --trace retain-on-failure
+opencli twitter profile "zhuokaiz" -f json --trace retain-on-failure
+curl -Ls -o /dev/null -w '%{url_effective}\n' "https://t.co/ycKAojqGA1"
+curl -L "https://arxiv.org/pdf/2606.01476" -o "omniopd.pdf"
+pdftotext -layout "omniopd.pdf" "omniopd.txt"</code></pre>
+    </section>
+  </main>
+</body>
+</html>

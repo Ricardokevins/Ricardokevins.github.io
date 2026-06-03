@@ -190,6 +190,22 @@
         <section class="chapter" id="section-h-1138" data-category="answers" data-title="五、逐题详细解答（高阶补强）">
 <h2 id="h-1138"><a class="anchor-link" href="#h-1138" aria-label="跳转到本节">#</a>五、逐题详细解答（高阶补强）</h2>
 <aside class="chapter-orientation"><b>阅读定位</b><p>本章是逐题详细解答。建议结合前一章速览阅读：先知道问题分布，再逐题补机制、公式、例子和追问边界。</p></aside>
+<aside class="inline-enhancement wide">
+  <div class="inline-enhancement-title">高阶数学题的回答骨架</div>
+  <p class="inline-enhancement-note">高阶追问不是背更多名词，而是把“公式从哪里来、对象是什么形状、为什么能优化、什么时候失效”讲清楚。下面这些题统一按机制、推导、例子和边界四层阅读。</p>
+  <div class="formula-grid">
+    <div class="formula-card"><b>尺度稳定</b><div class="math-display">\[
+\operatorname{Var}(q^\top k)=d_k\sigma^4,\qquad
+\operatorname{Var}\left(\frac{q^\top k}{\sqrt{d_k}}\right)=\sigma^4
+\]</div><p>attention 缩放的核心是控制点积分数的方差，避免 softmax 过早饱和。</p></div>
+    <div class="formula-card"><b>概率损失</b><div class="math-display">\[
+\frac{\partial}{\partial z_i}\left[-\sum_j y_j\log\operatorname{softmax}(z)_j\right]=p_i-y_i
+\]</div><p>softmax 和交叉熵组合后，复杂 Jacobian 简化成概率误差。</p></div>
+    <div class="formula-card"><b>约束优化</b><div class="math-display">\[
+\nabla_x\mathcal{L}=0,\quad g_i(x)\le0,\quad \lambda_i\ge0,\quad \lambda_i g_i(x)=0
+\]</div><p>KKT 把等式/不等式约束下的最优性写成梯度平衡和互补松弛。</p></div>
+  </div>
+</aside>
 <h3 id="h-1139"><a class="anchor-link" href="#h-1139" aria-label="跳转到本节">#</a>207. attention 里为什么要除以 <code>sqrt(d_k)</code>？</h3><aside class="inline-enhancement wide">
         <div class="inline-enhancement-title">Attention 数据流</div>
         <p class="inline-enhancement-note">放在 Self-Attention / FlashAttention / KV cache 相关小节附近，帮助把 Q/K/V、softmax 和输出向量串起来。</p>
@@ -211,6 +227,16 @@
 <p>attention 里的分数通常来自 query 和 key 的点积。如果每个维度的分量都大致独立、方差相近，那么维度越高，点积的方差通常也会越大。直觉上，这是因为很多随机变量在求和，结果自然越来越“散”。如果不做缩放，高维情况下 attention logits 会变得特别大。</p>
 <p>问题在于 logits 一旦太大，<code>softmax</code> 很快就会进入饱和区：某几个位置概率接近 <code>1</code>，其他位置接近 <code>0</code>。这会导致梯度变小、训练不稳定，也让模型更难在训练初期学出平滑的注意力分布。</p>
 <p>除以 <code>sqrt(d_k)</code> 的作用，就是把点积拉回一个更稳定的量级。它不是拍脑袋的经验技巧，而是在利用“和的方差随维度增长”的统计直觉，把不同 head size 下的 attention 分数重新标准化到可训练范围。</p>
+<p>把这件事写成最小推导会更清楚。假设 \(q_i,k_i\) 独立，均值为 0，方差为 1，那么单项乘积 \(q_ik_i\) 的均值约为 0、方差约为 1。点积是 \(d_k\) 项求和：</p>
+<div class="math-display">\[
+q^\top k=\sum_{i=1}^{d_k}q_ik_i,\qquad
+\operatorname{Var}(q^\top k)=d_k
+\]</div>
+<p>维度越大，logit 的标准差就越接近 \(\sqrt{d_k}\)。因此把点积除以 \(\sqrt{d_k}\) 后，方差重新回到常数量级：</p>
+<div class="math-display">\[
+\operatorname{Var}\left(\frac{q^\top k}{\sqrt{d_k}}\right)=\frac{d_k}{d_k}=1
+\]</div>
+<p>这里的重点不是假设永远严格成立，而是说明缩放项在控制初始数值尺度。若不缩放，head 维度越大，softmax 越容易变成接近 one-hot 的硬选择，梯度会集中到少数位置，训练初期很难探索平滑注意力。缩放不会改变相似度排序，但会改变 softmax 的尖锐程度。</p>
 <h3 id="h-1142"><a class="anchor-link" href="#h-1142" aria-label="跳转到本节">#</a>208. <code>sigmoid</code>、<code>tanh</code>、<code>softmax</code> 的导数性质有什么关键差别？为什么会有梯度饱和？</h3><aside class="inline-enhancement compact">
         <div class="inline-enhancement-title">优化器与基础损失</div>
         <p class="inline-enhancement-note">放在 AdamW、softmax、交叉熵、KL 等数学/优化器小节附近。</p>
@@ -232,6 +258,16 @@
 <p><code>sigmoid</code> 和 <code>tanh</code> 都是经典平滑激活函数，但它们有一个共同问题：输入绝对值一旦很大，输出就会进入平台区，导数接近 <code>0</code>。这意味着反向传播时梯度信号会被显著压小，层一多就更容易出现 vanishing gradient。</p>
 <p><code>tanh</code> 相比 <code>sigmoid</code> 的一个优势是它是零中心的，输出在 <code>[-1, 1]</code>，因此在优化上通常稍好一些；但它同样会饱和。<code>softmax</code> 则不是逐元素独立函数，而是多维耦合映射，一个分量的变化会影响其他分量，所以它的导数更自然地写成 Jacobian 而不是单个标量导数。</p>
 <p>面试里这题的关键不是背导数公式，而是讲出：<code>sigmoid/tanh</code> 饱和导致梯度容易消失；<code>softmax</code> 是分类概率化映射，通常要配合交叉熵一起讨论，它的“梯度好算”更多来自组合后的简化，而不是单独看函数本身有多简单。</p>
+<div class="math-display">\[
+\sigma'(x)=\sigma(x)(1-\sigma(x)),\qquad
+\tanh'(x)=1-\tanh^2(x)
+\]</div>
+<p>这两条公式直接说明了饱和问题：当 \(x\) 很大或很小时，\(\sigma(x)\) 接近 0 或 1，导数接近 0；\(\tanh(x)\) 接近 -1 或 1，导数也接近 0。梯度一层层相乘时，小导数会把上游梯度持续压小。</p>
+<p>softmax 的导数不同，它是向量到向量的映射：</p>
+<div class="math-display">\[
+\frac{\partial p_i}{\partial z_j}=p_i(\mathbf{1}_{i=j}-p_j)
+\]</div>
+<p>这个 Jacobian 说明每个类别概率不仅受自己 logit 影响，也受其他 logit 影响。softmax 变尖时，最大类概率接近 1，其他类接近 0，很多导数项也会变小。这就是“logits 尺度过大 -> softmax 饱和 -> 梯度信号变弱”的数学链条。</p>
 <h3 id="h-1145"><a class="anchor-link" href="#h-1145" aria-label="跳转到本节">#</a>209. 为什么 <code>softmax + cross-entropy</code> 的梯度会化成 <code>p - y</code>？</h3>
 <h4 id="h-1146"><a class="anchor-link" href="#h-1146" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -248,6 +284,19 @@
 <p>这是深度学习里最经典也最值得真正理解的一条梯度公式。单独看 <code>softmax</code>，它的 Jacobian 不简单，因为每个类别概率都互相耦合；单独看 cross-entropy，也是在对概率分布做惩罚。但两者一旦连起来，导数会发生漂亮的抵消。</p>
 <p>直观上，交叉熵在惩罚“真实类概率不够高”，而 <code>softmax</code> 把 logits 变成一组和为 <code>1</code> 的概率。把两者链起来后，对 logits 的梯度最终会简化成：预测概率 <code>p</code> 减去目标分布 <code>y</code>。如果 <code>y</code> 是 one-hot，这就更直观了：真实类希望加上去，错误类希望减下来。</p>
 <p>这个结果非常重要，因为它让多分类训练既有概率解释，又有高效梯度。面试时如果能补一句“复杂 Jacobian 在 <code>log softmax</code> 下被消掉了”，说明你不只是记住了 <code>p-y</code>，而是知道它为什么会出现。</p>
+<p>完整推导可以从 log-softmax 写起。设 \(p_i=\frac{e^{z_i}}{\sum_k e^{z_k}}\)，交叉熵为：</p>
+<div class="math-display">\[
+L=-\sum_i y_i\log p_i
+=-\sum_i y_i z_i+\left(\sum_i y_i\right)\log\sum_k e^{z_k}
+\]</div>
+<p>如果 \(y\) 是 one-hot 或概率分布，\(\sum_i y_i=1\)。对某个 logit \(z_j\) 求导：</p>
+<div class="math-display">\[
+\frac{\partial L}{\partial z_j}
+=-y_j+\frac{e^{z_j}}{\sum_k e^{z_k}}
+=p_j-y_j
+\]</div>
+<p>这个推导比直接背 Jacobian 更适合面试，因为它揭示了简化的来源：\(\log\sum e^z\) 的导数正好是 softmax 概率。工程上这也是为什么实现里常用稳定的 <code>log_softmax + nll_loss</code>，既数值稳定，又直接得到干净梯度。</p>
+<p>解释训练行为时要把符号说清：梯度下降更新是 \(z_j\leftarrow z_j-\eta(p_j-y_j)\)。若真实类 \(y_j=1\) 且当前 \(p_j\) 太小，则 \(p_j-y_j<0\)，更新会推高真实类 logit；错误类 \(y_j=0\) 时梯度为 \(p_j>0\)，更新会压低它们。</p>
 <h3 id="h-1148"><a class="anchor-link" href="#h-1148" aria-label="跳转到本节">#</a>210. <code>MSE</code> 和 cross-entropy 各自隐含了什么概率假设？什么时候更合适？</h3>
 <h4 id="h-1149"><a class="anchor-link" href="#h-1149" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -264,6 +313,16 @@
 <p>很多损失函数不是凭经验拍出来的，而是有概率建模背景。<code>MSE</code> 往往对应这样一种假设：目标值等于模型输出加上高斯噪声。因此最大化 Gaussian likelihood，等价于最小化平方误差。这也是为什么 <code>MSE</code> 最自然地出现在回归问题里。</p>
 <p>cross-entropy 则更像是在对离散概率分布做建模。分类任务里，你预测的是一组类别概率，真实标签可以理解成 one-hot 或更一般的目标分布，这时最自然的损失就是 cross-entropy 或负对数似然。</p>
 <p>所以高分回答不是“回归用 MSE，分类用交叉熵”这么一句，而是能补上：“因为它们分别对应不同观测模型和 likelihood 假设”。一旦讲到这里，损失函数就从死记硬背变成了建模选择。</p>
+<div class="math-display">\[
+y=f_\theta(x)+\epsilon,\quad \epsilon\sim\mathcal{N}(0,\sigma^2)
+\Rightarrow -\log p(y\mid x,\theta)=\frac{(y-f_\theta(x))^2}{2\sigma^2}+C
+\]</div>
+<p>这说明 MSE 背后默认的是连续值回归和高斯噪声。如果噪声厚尾、离群点很多，MSE 会被大误差强烈支配，这时 MAE、Huber loss 或分位数损失可能更合理。</p>
+<div class="math-display">\[
+p_\theta(y=c\mid x)=\operatorname{softmax}(z)_c,\qquad
+-\log p_\theta(y=c\mid x)=-\log p_c
+\]</div>
+<p>cross-entropy 背后是 categorical likelihood：模型输出的是各类别概率，标签告诉你观察到了哪个类别。语言建模里也是同一件事，只不过类别变成词表 token。回答时要强调：loss 选择不是形式偏好，而是你假设观测数据如何从模型分布里生成。</p>
 <h3 id="h-1151"><a class="anchor-link" href="#h-1151" aria-label="跳转到本节">#</a>211. 最小二乘为什么会导向正规方程 <code>X^T X w = X^T y</code>？</h3>
 <h4 id="h-1152"><a class="anchor-link" href="#h-1152" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -280,6 +339,19 @@
 <p>最小二乘的目标是最小化残差平方和，也就是让 <code>||Xw - y||^2</code> 尽可能小。因为这是一个关于参数 <code>w</code> 的二次函数，所以你对它求导并令导数为零，就会得到正规方程 <code>X^T X w = X^T y</code>。</p>
 <p>从线性代数视角，这个方程还有一个非常漂亮的几何意义：最优解对应的是把 <code>y</code> 投影到 <code>X</code> 的列空间里。也就是说，你找到的不是随便一个 <code>w</code>，而是让预测 <code>Xw</code> 成为“离真实标签最近的可表示向量”。</p>
 <p>面试时如果你只会说“求导得到”，还不够亮眼；如果你能接着讲“这其实是在做投影，残差和列空间正交”，就会立刻显得更扎实。</p>
+<div class="math-display">\[
+J(w)=\|Xw-y\|_2^2=(Xw-y)^\top(Xw-y)
+\]</div>
+<p>展开并求导：</p>
+<div class="math-display">\[
+J(w)=w^\top X^\top Xw-2w^\top X^\top y+y^\top y,\qquad
+\nabla_wJ=2X^\top Xw-2X^\top y
+\]</div>
+<p>令梯度为 0，就得到正规方程：</p>
+<div class="math-display">\[
+X^\top Xw=X^\top y
+\]</div>
+<p>几何解释同样重要。预测 \(\hat y=Xw\) 必须落在 \(X\) 的列空间里，而最小二乘是在这个列空间中找离 \(y\) 最近的点。最优时残差 \(r=y-Xw\) 与列空间正交，所以 \(X^\top r=0\)，这等价于正规方程。边界是：如果 \(X^\top X\) 病态或不可逆，闭式解会不稳定或不唯一，需要正则化、QR/SVD 或 ridge regression。</p>
 <h3 id="h-1154"><a class="anchor-link" href="#h-1154" aria-label="跳转到本节">#</a>212. <code>L1</code> 正则和 <code>L2</code> 正则为什么一个更容易产生稀疏，一个更偏平滑收缩？</h3>
 <h4 id="h-1155"><a class="anchor-link" href="#h-1155" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -296,6 +368,13 @@
 <p><code>L1</code> 和 <code>L2</code> 的差异，最值得从几何上理解。你可以把优化问题看成“损失函数等高线”和“正则约束边界”相切的位置。<code>L1</code> 球在高维里有很多尖角，尖角往往落在坐标轴方向上，所以最优点更容易撞到某些坐标为 <code>0</code> 的地方，形成稀疏解。</p>
 <p><code>L2</code> 球则更圆滑，没有尖角，最优点通常会是“所有参数一起被缩小一些”，但不太会直接压成严格的 <code>0</code>。这就是为什么 <code>L2</code> 更像平滑收缩，而 <code>L1</code> 更像特征选择。</p>
 <p>工程上，<code>L1</code> 适合你真想要 sparse model 或可解释特征筛选；<code>L2</code> 则更常见于一般性权重控制和防止过大参数。面试时如果能把“尖角 -&gt; 更易到 0”这个几何直觉讲出来，会很有说服力。</p>
+<p>从优化形式看，两者也很不同：</p>
+<div class="math-display">\[
+L1:\ \min_w \ell(w)+\lambda\|w\|_1,\qquad
+L2:\ \min_w \ell(w)+\lambda\|w\|_2^2
+\]</div>
+<p>\(L2\) 的梯度是平滑的，惩罚项导数和 \(w\) 成正比，所以权重越大拉回越强，越接近 0 拉回越弱。\(L1\) 在 0 处不可导，使用次梯度理解时，它会对正负权重施加近似恒定的向零压力，更容易把小权重直接压到 0。</p>
+<p>所以“L1 稀疏、L2 平滑”不是经验口号，而来自几何尖角和不可导点。边界也要补：在深度网络里单纯 L1 未必就产生结构化稀疏；如果目标是加速推理，通常还需要 group lasso、剪枝策略或硬件友好的稀疏格式。</p>
 <h3 id="h-1157"><a class="anchor-link" href="#h-1157" aria-label="跳转到本节">#</a>213. bias-variance trade-off 到底在说什么？它和过拟合/欠拟合是什么关系？</h3>
 <h4 id="h-1158"><a class="anchor-link" href="#h-1158" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -413,6 +492,18 @@
 <p>如果说拉格朗日乘数法主要处理等式约束，那么 <code>KKT</code>（Karush-Kuhn-Tucker）条件就是它在更一般约束优化场景下的重要推广，尤其适用于带不等式约束的问题。</p>
 <p><code>KKT</code> 条件通常包括四部分：stationarity（梯度平衡）、primal feasibility（原问题可行）、dual feasibility（乘子满足符号要求）以及 complementary slackness（不等式约束和对应乘子的互补关系）。最后这一条特别关键，它表达的是：一个不等式约束要么没起作用、乘子为 <code>0</code>；要么正好卡在边界上、乘子可能非零。</p>
 <p>很多人背 <code>KKT</code> 像在背清单，但更好的理解方式是：它描述了带不等式约束最优点必须满足的一组平衡关系。拉格朗日乘数法是起点，<code>KKT</code> 是更完整版本。</p>
+<p>标准形式可以写成：最小化 \(f(x)\)，满足 \(g_i(x)\le0\)、\(h_j(x)=0\)。构造 Lagrangian：</p>
+<div class="math-display">\[
+\mathcal{L}(x,\lambda,\nu)=f(x)+\sum_i\lambda_i g_i(x)+\sum_j\nu_jh_j(x)
+\]</div>
+<p>KKT 四件事分别是：</p>
+<div class="table-wrap"><table><thead><tr><th>条件</th><th>数学形式</th><th>直觉</th></tr></thead><tbody>
+<tr><td>Stationarity</td><td>\(\nabla_x\mathcal{L}=0\)</td><td>目标梯度和约束梯度达到平衡。</td></tr>
+<tr><td>Primal feasibility</td><td>\(g_i(x)\le0,\ h_j(x)=0\)</td><td>候选点必须满足原问题约束。</td></tr>
+<tr><td>Dual feasibility</td><td>\(\lambda_i\ge0\)</td><td>不等式约束的乘子方向不能反。</td></tr>
+<tr><td>Complementary slackness</td><td>\(\lambda_i g_i(x)=0\)</td><td>约束没卡住就没有影子价格；卡住了乘子才可能非零。</td></tr>
+</tbody></table></div>
+<p>最值得讲清的是互补松弛：如果 \(g_i(x)<0\)，说明这个约束还有余量，没有真正限制最优点，所以 \(\lambda_i=0\)；如果 \(\lambda_i>0\)，说明约束必须在边界 \(g_i(x)=0\) 上。SVM、资源分配、组合优化、RL 里的 KL/成本约束都能用这个直觉理解。</p>
 <h3 id="h-1178"><a class="anchor-link" href="#h-1178" aria-label="跳转到本节">#</a>220. 原问题和对偶问题是什么关系？为什么 duality 在优化里重要？</h3>
 <h4 id="h-1179"><a class="anchor-link" href="#h-1179" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -445,6 +536,19 @@
 <p>Jensen 不等式说的是：对于凸函数，函数作用在期望上，小于等于期望作用在函数上；对凹函数则方向相反。它本质上是在告诉你：期望和非线性变换一般不能随便交换。</p>
 <p>这条不等式在机器学习里经常出现，是因为很多地方都在处理 <code>log</code>、<code>exp</code>、entropy、likelihood 这类非线性对象，而我们又很想把复杂期望变成可以优化的上下界。<code>VAE</code> 里的 <code>ELBO</code> 就是最经典例子之一。</p>
 <p>所以当面试官问 Jensen，不一定是在考纯数学，而是在看你能不能意识到：很多“下界/上界”技巧的背后，其实都是在处理“非线性函数和期望顺序不能乱换”这个核心问题。</p>
+<div class="math-display">\[
+\text{若 } f \text{ 是凸函数，}\quad f(\mathbb{E}[X])\le \mathbb{E}[f(X)]
+\]</div>
+<p>如果 \(f\) 是凹函数，方向反过来。因为 \(\log\) 是凹函数，所以有：</p>
+<div class="math-display">\[
+\log\mathbb{E}[X]\ge \mathbb{E}[\log X]
+\]</div>
+<p>这就是很多 likelihood 下界的来源。以潜变量模型为例，我们想优化 \(\log p(x)=\log\int p(x,z)dz\)，直接积分困难。引入任意分布 \(q(z)\)：</p>
+<div class="math-display">\[
+\log p(x)=\log\mathbb{E}_{q(z)}\left[\frac{p(x,z)}{q(z)}\right]
+\ge \mathbb{E}_{q(z)}\left[\log p(x,z)-\log q(z)\right]
+\]</div>
+<p>右边就是 ELBO 的基本形态。面试里不用把 VAE 全推完，但要能说出 Jensen 在做什么：把一个难直接优化的 log-expectation 变成可优化的 lower bound。边界是，不等式通常不是等号；bound 的紧不紧取决于引入的 \(q\) 是否接近真实后验。</p>
 <h3 id="h-1184"><a class="anchor-link" href="#h-1184" aria-label="跳转到本节">#</a>222. <code>log-sum-exp</code> 为什么是数值稳定里的高频技巧？</h3>
 <h4 id="h-1185"><a class="anchor-link" href="#h-1185" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -461,6 +565,16 @@
 <p><code>log-sum-exp</code> 常出现在 softmax、概率归一化、配分函数等地方。问题是，如果 logits 很大，直接算 <code>exp</code> 很容易上溢；如果 logits 很小，又可能下溢为 <code>0</code>。这会让理论上没问题的公式，在数值实现里直接炸掉。</p>
 <p>标准技巧是先减去最大值：<code>log(sum(exp(x_i))) = m + log(sum(exp(x_i - m)))</code>，其中 <code>m = max_i x_i</code>。这样改写后，最大的那个指数项变成 <code>exp(0)=1</code>，其他项都不会比它更大，数值范围一下就安全很多。</p>
 <p>这就是为什么你在稳定实现 <code>softmax</code>、<code>cross-entropy</code>、CRF、energy-based model 时几乎一定会看到这个技巧。面试里最好能说出：它不是近似，而是严格等价的稳定重写。</p>
+<div class="math-display">\[
+\log\sum_i e^{x_i}
+=\log\left(e^m\sum_i e^{x_i-m}\right)
+=m+\log\sum_i e^{x_i-m},\quad m=\max_i x_i
+\]</div>
+<p>这个变换严格等价，因为只是乘除同一个 \(e^m\)。它稳定的原因是：所有 \(x_i-m\le0\)，最大的指数项是 \(e^0=1\)，不会再出现巨大指数。softmax 也用同一技巧：</p>
+<div class="math-display">\[
+\operatorname{softmax}(x)_i=\frac{e^{x_i-m}}{\sum_j e^{x_j-m}}
+\]</div>
+<p>面试里可以给一个极端例子：若 logits 是 \((1000,1001)\)，直接算 \(e^{1001}\) 很容易溢出；减去最大值后变成 \((-1,0)\)，结果完全等价但数值安全。这个技巧体现了工程中的数学素养：不是改变模型，而是用等价重写保护浮点计算。</p>
 <h3 id="h-1187"><a class="anchor-link" href="#h-1187" aria-label="跳转到本节">#</a>223. reparameterization trick 在干什么？为什么它对 <code>VAE</code> 很关键？</h3>
 <h4 id="h-1188"><a class="anchor-link" href="#h-1188" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -493,6 +607,17 @@
 <p>Monte Carlo estimation 的核心思想很简单：如果某个期望没法精确算，就从对应分布里采样很多次，再用样本平均去近似这个期望。这个方法通用、直接，而且在高维问题里尤其有价值，因为有些积分根本没法解析求解。</p>
 <p>它之所以常被说成“无偏但高方差”，是因为在很多设置下，样本平均的期望确实等于真实期望，所以估计器无偏；但如果采样数不多，或者分布本身波动很大，估计结果会抖得很厉害，这就是高方差问题。</p>
 <p>因此 Monte Carlo 方法真正高频的后半句，往往是“那怎么降方差？”比如 control variates、importance sampling、baseline、更多样本、分层采样等。面试里如果你只说 Monte Carlo 是“随机采样估计期望”，还差一步；最好能补上“它常无偏，但实际工程里最痛的是方差”。</p>
+<div class="math-display">\[
+\mu=\mathbb{E}_{X\sim p}[f(X)],\qquad
+\hat\mu_N=\frac1N\sum_{i=1}^N f(X_i)
+\]</div>
+<p>若 \(X_i\) 独立同分布来自 \(p\)，则：</p>
+<div class="math-display">\[
+\mathbb{E}[\hat\mu_N]=\mu,\qquad
+\operatorname{Var}(\hat\mu_N)=\frac{\operatorname{Var}(f(X))}{N}
+\]</div>
+<p>这两条式子解释了“无偏但高方差”的核心：平均来看是对的，但单次估计可能很抖；想把标准误差减半，通常需要把样本数提高到 4 倍。LLM 多次采样评测、agent rollout 估计、RL return、拒绝采样和 VaR 模拟都会遇到这个平方根成本。</p>
+<p>降方差方法也要按机制理解：baseline 不改变期望但减少波动；importance sampling 改采样分布但要用权重修正；control variate 用一个已知期望的相关变量抵消噪声。面试里如果能把“估计对象、无偏性、方差随 \(1/N\) 降低、降方差手段”连起来，答案就完整了。</p>
 <h3 id="h-1193"><a class="anchor-link" href="#h-1193" aria-label="跳转到本节">#</a>225. 为什么训练里经常做 <code>EMA</code>（指数滑动平均）？</h3>
 <h4 id="h-1194"><a class="anchor-link" href="#h-1194" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -525,6 +650,12 @@
 <p>很多训练不稳定，本质上都和尺度失控有关：某些层激活越来越大、某些方向梯度越来越小、不同模块的数值范围差异太大。标准化和归一化操作的一个核心作用，就是把这些量重新拉回更一致的尺度区间。</p>
 <p>从优化视角看，这通常意味着更好的条件数、更少的梯度爆炸/消失风险，以及更平滑的训练动态。<code>LayerNorm</code> 在 Transformer 里尤其关键，因为它能在 token 维度上稳定每一层的表示分布，让深层网络更容易训练。</p>
 <p>所以这类方法的本质价值，不只是“数值看起来更整齐”，而是它们在帮助优化器面对一个更规整的目标地形。面试里如果你能把“控制尺度 -&gt; 改善条件数 -&gt; 稳定梯度与更新”这条链讲出来，就已经抓住核心。</p>
+<div class="math-display">\[
+\operatorname{LayerNorm}(x)=\gamma\frac{x-\mu}{\sqrt{\sigma^2+\epsilon}}+\beta
+\]</div>
+<p>这里的 \(\mu,\sigma^2\) 通常在一个 token 的 hidden 维度上计算，\(\gamma,\beta\) 是可学习缩放和平移。它不是简单把信息抹平，而是先把表示拉回稳定尺度，再允许模型学回合适的幅度和偏移。</p>
+<p>为什么 Transformer 特别依赖它？残差连接会不断叠加表示，attention 和 MLP 又会改变激活尺度；如果没有规范化，深层网络里不同层的输入分布可能持续漂移，优化器每一层面对的数值环境都在变。LayerNorm 把每层输入控制在更稳定的范围内，使学习率、初始化和残差路径更容易协同。</p>
+<p>边界是：归一化不是免费午餐。它会改变表示尺度，也可能影响某些任务里幅度信息的使用；不同架构还会区分 Pre-LN、Post-LN、RMSNorm 等变体。高分回答要说机制，而不是只说“防止梯度爆炸”。</p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="076.html">← 76. 四、高频高阶问题速览</a><a href="068.html">68. 优化器专项总入口 →</a></nav>

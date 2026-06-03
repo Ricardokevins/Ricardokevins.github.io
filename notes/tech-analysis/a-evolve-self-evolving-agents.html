@@ -462,6 +462,7 @@
     </header>
 
     <nav class="toc" aria-label="Page sections">
+      <a href="#innovation">创新审视</a>
       <a href="#takeaway">核心判断</a>
       <a href="#problem">问题背景</a>
       <a href="#mechanism">机制拆解</a>
@@ -472,13 +473,136 @@
     </nav>
 
     <main>
+      <section class="section" id="innovation">
+        <h2>创新审视：什么算新，什么不算</h2>
+        <p class="section-lead" style="color:var(--rust);font-weight:680;">
+          要诚实地回答这个问题，必须先把 A-Evolve 放进同类工作的坐标里。结论前置：第一篇 position paper 在方法上几乎没有创新——它给一个已经卷了 3 年的范式换了名字；第二篇 empirical paper 有一条反向、诚实、有用的实验发现；A-Evolve 框架本身是好的工程，不是新的科学。
+        </p>
+
+        <h3>赛道全景：在 A-Evolve 之前"自反思 + 自进化"已经卷到什么程度</h3>
+        <p>
+          A-Evolve 自己的引用列表就足以说明问题。从 2023 到 2025，至少有以下独立工作在做同一件事——让 LLM 看完执行轨迹，改 prompt / skill / memory / code，跑下一轮：
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>工作</th><th>年份</th><th>更新对象</th><th>更新机制</th><th>与 A-Evolve 的本质差异</th></tr></thead>
+            <tbody>
+              <tr><td><b>Reflexion</b> (Shinn et al.)</td><td>2023</td><td>context 中的 verbal reflection</td><td>LLM 写反思文本</td><td>更新物是散文、没有持久文件、没有 gate</td></tr>
+              <tr><td><b>Promptbreeder</b> (Fernando et al.)</td><td>2024</td><td>system prompt</td><td>LLM mutation + 遗传选择</td><td>只改 prompt，没有 skill/tool/validation 体系</td></tr>
+              <tr><td><b>SelfEvolve</b> (Jiang et al.)</td><td>2023</td><td>代码</td><td>LLM 改自己的代码</td><td>没有 harness 抽象，没有 gate/rollback</td></tr>
+              <tr><td><b>AgentEvolver</b> (Zhai et al.)</td><td>2025</td><td>tool / prompt / skill</td><td>LLM 驱动的演化 pipeline</td><td>没有统一的 workspace contract</td></tr>
+              <tr><td><b>Youtu-Agent</b> (Shi et al.)</td><td>2025</td><td>agent 配置</td><td>自动化生成 + 混合策略</td><td>聚焦生成而非持久演化</td></tr>
+              <tr><td><b>Agent0</b> (Xia et al.)</td><td>2025</td><td>tool + reasoning</td><td>从零数据自进化</td><td>没有 verification gate</td></tr>
+              <tr><td><b>ReasoningBank</b> (Ouyang et al.)</td><td>2025</td><td>reasoning memory</td><td>LLM 写记忆</td><td>只改 memory，不是全 harness</td></tr>
+              <tr><td><b>EvoAgentX</b> (Wang et al.)</td><td>2025</td><td>agentic workflow</td><td>自动化进化</td><td>聚焦 workflow 图而非 harness 状态</td></tr>
+              <tr><td><b>Evo-memory</b> (Wei et al.)</td><td>2025</td><td>memory</td><td>self-evolving memory benchmark</td><td>评测工具，不是框架</td></tr>
+              <tr><td><b>Agentic Context Engineering</b> (Zhang et al.)</td><td>2025</td><td>context / prompt</td><td>LLM 改 context</td><td>没有文件系统契约、没有 gate</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          这还没算 DSPy（自动优化 prompt program）、TextGrad（文本级"自动微分"改 prompt）、APE（Automatic Prompt Engineer）等更早的自动 prompt 优化线。核心模式——<strong>"LLM 看轨迹、LLM 写改进、下一轮用"——在 2023 年就已经有了。</strong>
+        </p>
+
+        <h3>拆开两篇论文，看各自的方法贡献</h3>
+
+        <div class="grid-2">
+          <div class="card" style="border-left:4px solid var(--rust);">
+            <b>Position Paper (2602.00359)：≈ 0 方法创新</b>
+            <p>
+              这篇的核心论点是"进化机制 F<sub>Evolve</sub> 不应该是一个固定 heuristic，而应该是一个 agent（LLM）来自己决定改什么"。问题在于：<strong>Reflexion 在 2023 年就已经是 LLM 在写 reflection 了，Promptbreeder 在 2024 年就已经是 LLM 在做 prompt mutation 了</strong>。"让 LLM 当 evolver"不是新想法。
+            </p>
+            <p>
+              它的三个"原则"——goal-oriented（诊断失败再改）、autonomous（自己决定什么时候改）、compositional（产出结构化制品）——是对已有工作的重新命名，没有提出新的实现机制。
+            </p>
+            <p>
+              实验只对比了一个自造的 strawman baseline "Fixed Heuristic Evolution"，<strong>没有跟上面任何已有工作做控制对比</strong>。Sec 5.3 "Can Agentic Evolution Scale?" 的结论是"大一点的 evolver 模型效果好一点"，等价于"大模型比小模型强"。
+            </p>
+            <p>
+              真正贡献：<strong>造了 "agentic evolution" 这个词，并把它发表在 arXiv 上。</strong>
+            </p>
+          </div>
+          <div class="card" style="border-left:4px solid var(--accent);">
+            <b>Harness Updating ≠ Harness Benefit (2605.30621)：一条真正有用的发现</b>
+            <p>
+              这篇不发明新算法，而是用受控实验回答了"到底改了什么才有用"这个问题。核心方法：7 个 evolver 模型 × 6 个 solver 模型 × 3 个 benchmark，做全交叉配对实验。
+            </p>
+            <p>
+              三条实验发现：
+              <br>1. <strong>写 harness update 这件事，模型大小不重要。</strong>9B 的 Qwen3.5 和 Opus 4.6 写出来的 skill 质量差距 ≤ 3.1 pp。
+              <br>2. <strong>用 harness update 这件事，中间档模型受益最大；弱模型受益最小。</strong>原因是两个 failure mode——activation failure（25% 轨迹里 skill 压根没 load 进去）和 adherence failure（load 进去后执行也持续漂移，4 倍衰减）。
+              <br>3. <strong>post-evolution 分数由 solver agent 的 base capability 主导，不是 evolver 的强弱。</strong>
+            </p>
+            <p>
+              贡献不是"方法新"，而是 <strong>实验设计</strong>：把 self-evolution 拆成 harness-updating 和 harness-benefit 两个独立能力分别测量，这个社区之前没人这样系统地做过。
+            </p>
+            <p>
+              <strong>反讽：</strong>这篇的发现恰恰削弱了第一篇 paper 的核心主张——如果 evolver 强弱无所谓、9B 就行，那"agentic evolution 需要把 evolver 升级成更强的 agent"这个论点就不成立。
+            </p>
+          </div>
+        </div>
+
+        <h3>A-Evolve 框架本身：工程好，不是科学新</h3>
+        <p>逐一审视每个"卖点"在已有工作中的位置：</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>卖点</th><th>在已有工作中的位置</th><th>判断</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>Solve → Observe → Evolve → Gate → Reload 循环</b></td>
+                <td>Reflexion: Act → Evaluate → Reflect。Promptbreeder: Mutate → Select → Evaluate。A-Evolve 换了一套动词，把"改的东西"从 context 中的一段 text 换成了文件系统里的 SKILL.md。</td>
+                <td style="color:var(--rust);">不算新</td>
+              </tr>
+              <tr>
+                <td><b>Evolver = Diagnose → Plan → Update → Verify</b></td>
+                <td>这就是一个标准 multi-step agent workflow。任何用了 LLM 做多步推理的系统都这样做。写成四个函数不算创新。</td>
+                <td style="color:var(--rust);">不算新</td>
+              </tr>
+              <tr>
+                <td><b>文件系统契约 (workspace contract)</b></td>
+                <td>把 prompt、skill、memory、tool 统一成目录结构是好的工程实践。但它不解决任何之前解决不了的问题。它是一个"做得更干净"的版本。</td>
+                <td style="color:var(--gold);">工程创新</td>
+              </tr>
+              <tr>
+                <td><b>Gate + git rollback</b></td>
+                <td>本质是 CI/CD 的 canary release + rollback。把 DevOps 实践搬到 agent 系统上，工程好，但谈不上方法创新。</td>
+                <td style="color:var(--gold);">工程创新</td>
+              </tr>
+              <tr>
+                <td><b>EGL (Evolutionary Generality Loss)</b></td>
+                <td>用 holdout 上新增技能数 vs 已解决任务数做停机条件。有用，但本质就是 validation loss。</td>
+                <td style="color:var(--gold);">小改进</td>
+              </tr>
+              <tr>
+                <td><b>harness-updating 和 harness-benefit 的能力拆解</b></td>
+                <td>把 self-evolution 拆成两个独立能力分别测量，这个社区之前确实没人这样做过。不是新算法，是新的评估方法论。</td>
+                <td style="color:var(--accent);">算新</td>
+              </tr>
+              <tr>
+                <td><b>7×6×3 全交叉受控实验</b></td>
+                <td>之前同类工作通常只测自己的 evolver + 自己的 agent 的端到端分数。全交叉设计使"evolver 强 ≠ 最终好"这个结论可被观测到。</td>
+                <td style="color:var(--accent);">算新</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>诚实的总结</h3>
+        <div class="callout warn">
+          <strong>没有新算法、没有新机制、没有新理论。</strong>A-Evolve 作为一个"自我进化解决方案"，本质跟 2023 年的 Reflexion 没有代际差异——只是工程上成熟了一个版本。它把一个"LLM 反思 → 改 prompt/skill"的旧范式，用更好的工程包装、更系统化的实验设计、更响亮的术语重新发布。
+        </div>
+        <div class="callout ok">
+          <strong>但它做对了一件事：</strong>第一篇 paper 提出了一个可以被自己的实验证伪的 hypothesis（evolution-scaling），第二篇 paper 用受控实验把它部分证伪了（evolver 强弱没那么重要），然后诚实给出了工程指南（把钱花在训练 solver 的 harness invocation 和 long-horizon following 上，别花在更强的 evolver 上）。<strong>这种"提出假设→用实验打自己脸→给出修正方向"的诚实性，是这个赛道里稀缺的。</strong>
+        </div>
+      </section>
+
       <section class="section" id="takeaway">
         <h2>核心判断</h2>
         <p class="section-lead">
-          A-Evolve 把“agent 能不能持续变好”从一个模糊的自我改进叙事，压成了一个更工程化的问题：哪些状态可以被修改，哪些失败信号可以被观测，哪些更新可以被验证，哪些退化可以回滚。这个抽象成立时，agent 的能力提升不再只依赖模型权重更新，也可以来自外部运行系统的持续重写。
+          A-Evolve 把"agent 能不能持续变好"从一个模糊的自我改进叙事，压成了一个更工程化的问题：哪些状态可以被修改，哪些失败信号可以被观测，哪些更新可以被验证，哪些退化可以回滚。这个抽象成立时，agent 的能力提升不再只依赖模型权重更新，也可以来自外部运行系统的持续重写。
         </p>
         <div class="callout ok">
-          <strong>我的判断：</strong>它更像“harness evolution infrastructure”，不是 AGI 自我进化。它的价值在于把 prompt engineering、skill library、memory、tool registry、benchmark adapter、git audit trail 合并进一个可复现的优化循环；它的边界也在这里，所有提升都受 evaluator、任务分布、holdout 设计和 agent 是否会调用更新后的 harness 约束。
+          <strong>我的判断：</strong>它更像"harness evolution infrastructure"，不是 AGI 自我进化。它的价值在于把 prompt engineering、skill library、memory、tool registry、benchmark adapter、git audit trail 合并进一个可复现的优化循环；它的边界也在这里，所有提升都受 evaluator、任务分布、holdout 设计和 agent 是否会调用更新后的 harness 约束。
         </div>
         <figure>
           <img src="a-evolve-self-evolving-agents-assets/framework.jpg" alt="A-Evolve framework diagram showing agent, benchmark, workspace, evolver, observations, and version control">

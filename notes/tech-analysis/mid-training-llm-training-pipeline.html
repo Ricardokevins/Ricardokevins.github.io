@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mid-training：预训练和后训练之间真正发生了什么</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f6f0;
+      --surface: #fffdf8;
+      --surface-2: #e9efe5;
+      --ink: #20242a;
+      --muted: #5f6871;
+      --line: #d5ded4;
+      --accent: #1f6678;
+      --accent-soft: #deedf0;
+      --olive: #5d6f38;
+      --olive-soft: #e6ecd7;
+      --rust: #94523a;
+      --rust-soft: #f2e2db;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 44px rgba(32, 36, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.026) 1px, transparent 1px) 0 0 / 40px 40px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.022) 1px, transparent 1px) 0 0 / 40px 40px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(31, 102, 120, 0.28);
+    }
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #171b20; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 74px;
+    }
+
+    .hero {
+      min-height: calc(74vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+      gap: clamp(24px, 4vw, 56px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 92px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 960px;
+      font-family: var(--serif);
+      font-size: clamp(38px, 5.5vw, 72px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.5vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    figure,
+    .flow-step {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel { padding: 20px; }
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-panel ul,
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .hero-panel li,
+    .compact-list li { margin-top: 8px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(21px, 2.7vw, 32px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    main {
+      display: grid;
+      gap: 34px;
+    }
+
+    section {
+      padding-top: 34px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.30fr) minmax(0, 1fr);
+      gap: clamp(20px, 4vw, 52px);
+      align-items: start;
+    }
+
+    .section-kicker {
+      position: sticky;
+      top: calc(var(--notes-shell-height, 46px) + 18px);
+      color: var(--rust);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .content {
+      max-width: 880px;
+      min-width: 0;
+    }
+    .content > p:first-child { margin-top: 0; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .card {
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      box-shadow: none;
+    }
+
+    .callout.rust {
+      border-left-color: var(--rust);
+      background: var(--rust-soft);
+    }
+
+    .callout.olive {
+      border-left-color: var(--olive);
+      background: var(--olive-soft);
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    th {
+      color: #263238;
+      background: var(--surface-2);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .flow-step {
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .flow-step span {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    figure {
+      margin: 24px 0 0;
+      padding: 12px;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .source-list {
+      margin: 16px 0 0;
+      padding-left: 20px;
+    }
+
+    .source-list li { margin-top: 9px; }
+    .small { color: var(--muted); font-size: 14px; }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .section-grid { grid-template-columns: 1fr; }
+      .hero { min-height: auto; align-items: start; }
+      .section-kicker { position: static; }
+      .metric-grid,
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .page { width: min(100% - 24px, var(--max)); }
+      .card-grid,
+      .metric-grid,
+      .flow { grid-template-columns: 1fr; }
+      h1 { font-size: clamp(34px, 12vw, 46px); }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-06-03</div>
+        <h1>Mid-training：预训练和后训练之间真正发生了什么</h1>
+        <p class="lead">Niels Rogge 的短帖不是在发明一个漂亮术语，而是在提醒：大模型训练已经不能只用 pre-training / post-training 两段式理解。Mid-training 是把通用 base model 继续推向高价值能力分布的中间层，让后续 SFT、DPO 或 RL 不必在贫弱底座上硬雕行为。</p>
+        <div class="metric-grid" aria-label="key facts">
+          <div class="metric"><strong>2026</strong><span>原帖发布于 2026-06-02，指向 Papers with Code 方法页。</span></div>
+          <div class="metric"><strong>10T</strong><span>Phi-4 预训练量级约 10T tokens，是宽分布底座。</span></div>
+          <div class="metric"><strong>250B</strong><span>Phi-4 mid-training 量级约 250B tokens，用于长上下文扩展。</span></div>
+          <div class="metric"><strong>8B</strong><span>Phi-4 SFT 量级约 8B tokens，进入更明确的行为对齐层。</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <b>一句话判断</b>
+        <ul>
+          <li>Mid-training 不是“更晚一点的预训练”这么简单，而是目标分布工程。</li>
+          <li>它通常保留语言建模式目标，但数据更小、更精、更贴近目标能力。</li>
+          <li>它和 post-training 的分界，不看时间顺序，而看训练目标、数据形态和作用位置。</li>
+        </ul>
+      </aside>
+    </header>
+
+    <nav class="toc" aria-label="Contents">
+      <a href="#takeaway">核心判断</a>
+      <a href="#stage">阶段划分</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#phi4">Phi-4 例子</a>
+      <a href="#agentic">Agentic mid-training</a>
+      <a href="#boundary">边界风险</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+
+    <main>
+      <section id="takeaway">
+        <div class="section-grid">
+          <div class="section-kicker">01 / Takeaway</div>
+          <div class="content">
+            <h2>核心判断</h2>
+            <p>这条帖子的价值不在于“mid-training”这个名字，而在于它把训练流水线里长期混在一起的两件事拆开了：<strong>能力增强</strong>和<strong>行为对齐</strong>。预训练让模型拥有宽泛的语言和世界统计，后训练让模型学会以人类偏好的方式回答；mid-training 则把通用 base model 继续压向某个高价值能力分布，例如长上下文、代码、数学、多语言、领域知识或 agent 轨迹。</p>
+            <p>Niels Rogge 给出的定义足够干净：mid-training 位于 pre-training 与 post-training 之间，通常继续使用接近预训练的目标，但数据混合更小、更高质量、更有目标性。这里最关键的是“通常保留 pre-training-like objective”。这使它和 SFT、DPO、RLHF、RLVR 这类直接塑造回答行为的后训练阶段拉开了边界。</p>
+            <figure>
+              <img src="mid-training-llm-training-pipeline-assets/niels-pwc-mid-training.jpg" alt="Papers with Code Mid-training 方法页截图，左侧是定义，右侧是预训练、mid-training、SFT、DPO 的 token 金字塔示意">
+              <figcaption>Papers with Code 的 Mid-training 方法页截图：右侧 token 金字塔强调数据规模从预训练到后训练逐层缩小，但目标性和质量要求逐层提高。</figcaption>
+            </figure>
+            <div class="callout">
+              <p><strong>我的结论：</strong>判断一个训练阶段是否有 mid-training 的实质，不应该只看它是否发生在 pre-training 之后，而要看它是否在用较大规模、高目标性数据改变模型的能力先验。若只是 prompt-response 模仿或 preference pair 对齐，那更接近 post-training；若是在大规模目标分布上继续语言建模，让参数吸收任务结构，那才是这里讨论的 mid-training。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="stage">
+        <div class="section-grid">
+          <div class="section-kicker">02 / Stages</div>
+          <div class="content">
+            <h2>阶段划分不是营销词差异</h2>
+            <p>传统三段式说法是 pre-training、SFT、RLHF/DPO。但 2024 之后，这个划分越来越不够用，因为很多能力不是靠最后少量指令数据能补出来的。长上下文需要模型真的经历长序列分布；代码 agent 需要模型见过仓库导航、文件编辑、测试反馈；领域模型需要参数吸收密集术语和事实结构。Mid-training 正是在这些场景里显性化。</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>阶段</th>
+                    <th>主要目标</th>
+                    <th>典型数据</th>
+                    <th>容易误解的地方</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Pre-training</td>
+                    <td>学习宽泛语言、知识、代码和世界统计。</td>
+                    <td>Web、书籍、代码、论文、合成数据等超大混合语料。</td>
+                    <td>不是“低质量阶段”，而是通用能力底座；只是分布很宽。</td>
+                  </tr>
+                  <tr>
+                    <td>Mid-training</td>
+                    <td>把 base model 推向目标能力分布。</td>
+                    <td>高质量长文档、领域语料、代码仓库、数学推理、agent 轨迹、长上下文数据。</td>
+                    <td>不是所有中间步骤都算；关键看是否强化能力底座，而非直接塑造偏好行为。</td>
+                  </tr>
+                  <tr>
+                    <td>SFT</td>
+                    <td>让模型学会指令、聊天格式和专家示范。</td>
+                    <td>Prompt-response、multi-turn chat、工具调用示范。</td>
+                    <td>SFT 能教格式，但很难凭少量样本补足缺失的底层能力。</td>
+                  </tr>
+                  <tr>
+                    <td>DPO / RLHF / RLVR</td>
+                    <td>对齐偏好、安全、奖励和解题策略。</td>
+                    <td>Preference pair、reward signal、verifier 标注、环境回报。</td>
+                    <td>RL 能收敛策略，但如果 base 能力不足，奖励会很稀疏且训练昂贵。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>所以，那条回复里“这听起来像 post-training”的质疑并不荒谬。现实 pipeline 确实会混入 instruction-like 数据、synthetic reasoning 数据和 agent trace 数据。真正的分界线不是文件长什么样，而是训练信号在系统里承担什么作用：是让模型吸收目标分布，还是让模型按偏好输出。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="mechanism">
+        <div class="section-grid">
+          <div class="section-kicker">03 / Mechanism</div>
+          <div class="content">
+            <h2>Mid-training 的本质是分布桥接</h2>
+            <p>把 pre-training 看成宽分布，把 post-training 看成任务和偏好分布，mid-training 的作用就是缩短二者之间的距离。它不是在最后修饰答案风格，而是在参数层面改变模型默认会生成、会理解、会探索的行为空间。</p>
+            <div class="flow">
+              <div class="flow-step">
+                <span>1</span>
+                <h3>识别缺口</h3>
+                <p>先判断 base model 哪些能力在原始预训练中覆盖不足：长上下文、低资源语言、法律/医疗/金融领域、代码修改、数学推理或 agent 工具轨迹。</p>
+              </div>
+              <div class="flow-step">
+                <span>2</span>
+                <h3>构造目标分布</h3>
+                <p>用更小但更高质量的数据混合继续训练。数据可以来自 curated corpus、过滤后的 web、合成推理、长文档、仓库轨迹或可执行环境记录。</p>
+              </div>
+              <div class="flow-step">
+                <span>3</span>
+                <h3>交给后训练收敛</h3>
+                <p>Mid-training 先把能力底座抬高，后续 SFT、DPO、RL 再把行为压到可交互、可控、可评测的策略形态。</p>
+              </div>
+            </div>
+            <p>这个机制解释了一个常见现象：同样是“让模型会写代码”，只做 SFT 可能让它学会答案格式和工具调用模板；但 code-heavy mid-training 会改变它对仓库结构、错误日志、API 约定和补丁模式的默认概率。前者像教学生考试格式，后者像让学生长期浸泡在题型、材料和工作流里。</p>
+            <div class="callout olive">
+              <p><strong>关键 insight：</strong>Mid-training 不是为了替代 post-training，而是为了降低 post-training 的难度。后训练负责把策略变得稳定、可控、偏好一致；mid-training 负责让模型进入一个“后训练有东西可塑”的能力区域。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="phi4">
+        <div class="section-grid">
+          <div class="section-kicker">04 / Phi-4</div>
+          <div class="content">
+            <h2>Phi-4 为什么是好例子</h2>
+            <p>Phi-4 的训练流程能把概念讲清楚。它的报告强调，模型提升主要来自数据质量和训练 pipeline，而不是架构大改。预训练阶段约 10T tokens，数据里包含 web、code、acquired sources、synthetic data 和 web rewrites；mid-training 阶段约 250B tokens，用高质量长样本把上下文从 4K 扩到 16K；随后才进入 8B tokens 的 SFT，以及 Pivotal Token DPO 和 Judge-Guided DPO。</p>
+            <p>这说明 mid-training 的作用不是“让模型变成聊天助手”，而是让模型真的适应长上下文分布。你可以用 SFT 教模型在回答里说“我能处理长文档”，但如果参数没有经历系统的长序列训练，它在跨 16K token 的引用、定位、干扰抑制和依赖维护上不会自然变强。</p>
+            <div class="card-grid">
+              <div class="card">
+                <h3>能力层</h3>
+                <p>Mid-training 改的是能力底座：上下文长度、领域语义、复杂推理、代码结构和工具轨迹先验。</p>
+              </div>
+              <div class="card">
+                <h3>行为层</h3>
+                <p>Post-training 改的是交互策略：怎么回答、什么时候拒答、怎样遵循偏好、怎样在 verifier 或 reward 下收敛。</p>
+              </div>
+            </div>
+            <p>因此，Phi-4 的例子也能校正一个误解：mid-training 不一定意味着训练规模很小。它比 pre-training 小很多，但 250B tokens 已经远超大多数 instruction tuning 数据；它是“中等规模能力塑形”，不是普通微调。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="agentic">
+        <div class="section-grid">
+          <div class="section-kicker">05 / Agents</div>
+          <div class="content">
+            <h2>Agentic mid-training 为什么会成为重点</h2>
+            <p>最新一波 mid-training 讨论集中在 agent 上，尤其是代码 agent 和 deep research agent。原因很直接：agent 能力不是最终答案，而是状态、动作、观察、修正的过程分布。模型需要学会怎么读仓库、怎么调用工具、怎么处理失败、怎么从测试日志回到补丁，而这些过程不是少量 SFT 样本能稳定覆盖的。</p>
+            <p><em>daVinci-Dev</em> 把这个问题定义成 agent-native mid-training：训练数据不是普通静态代码，而是保留 agent 信息流的 contextually-native trajectories，以及来自真实工具调用和测试执行的 environmentally-native trajectories。这个方向的核心不是“把更多代码丢进去”，而是让训练数据更像真实 agent 工作流。</p>
+            <p>OpenReview 上关于 Agentic Continual Pre-training 的工作也体现了同一趋势：如果直接把通用 base model 拿来做 agent post-training，模型要同时学习长程探索、工具使用、状态维护和专家示范，优化目标会变得拥挤。先用 mid-training 建一个 agentic foundation，再用 SFT/RL 收敛策略，是更自然的分层。</p>
+            <div class="callout rust">
+              <p><strong>工程启发：</strong>如果要训练 agent，不要只保存最终成功答案。更有价值的是中间状态、工具返回、失败路径、测试日志、修复尝试和环境反馈。Agent 的核心能力不是“知道答案”，而是在不完整状态里推进任务。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="boundary">
+        <div class="section-grid">
+          <div class="section-kicker">06 / Boundaries</div>
+          <div class="content">
+            <h2>术语边界与风险</h2>
+            <p>Mid-training 的危险在于它容易变成筐：凡是在 pre-training 和 post-training 之间发生的事情都往里装。严谨判断时，应追问训练目标、数据规模、数据分布、是否混入 general data、是否控制遗忘、是否和评测集去重，以及后续 post-training 后是否仍有稳定增益。</p>
+            <div class="card-grid">
+              <div class="card">
+                <h3>不是万能补药</h3>
+                <p>如果目标数据质量差，mid-training 会把噪声写进参数；如果领域数据过窄，会牺牲通用能力；如果评测污染没控住，结果会虚高。</p>
+              </div>
+              <div class="card">
+                <h3>不是应用团队默认路线</h3>
+                <p>没有足够大、足够干净、足够可评测的数据时，RAG、工具调用、eval-driven prompt、轻量 SFT 往往更务实。</p>
+              </div>
+              <div class="card">
+                <h3>不是 post-training 的替代</h3>
+                <p>Mid-training 强化能力先验，但不会自动给出安全、偏好、拒答、格式和工具协议的一致行为。</p>
+              </div>
+              <div class="card">
+                <h3>不是只看 token 规模</h3>
+                <p>规模只是条件之一。真正关键的是目标分布是否正确、数据是否去重、curriculum 是否合理、训练后是否可复现增益。</p>
+              </div>
+            </div>
+            <p>对应用和平台团队来说，比较可靠的判断是：当目标任务离通用 web 分布很远，并且你拥有可治理的大规模目标语料或轨迹时，mid-training 值得进入路线图；如果只是想让模型多知道一些私有事实，优先考虑 RAG；如果只是输出风格不稳定，优先处理 SFT、偏好数据和 eval。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources" data-note-role="evidence-appendix">
+        <div class="section-grid">
+          <div class="section-kicker">07 / Sources</div>
+          <div class="content">
+            <h2>证据边界与资料索引</h2>
+            <p>本笔记基于 Niels Rogge 原帖、Papers with Code 方法页、Phi-4 技术报告、mid-training 概念综述、distribution bridging 论文、daVinci-Dev 和 Agentic Continual Pre-training 相关材料整理。原帖是概念定义，不是完整论文；因此本文重点放在训练阶段边界、机制解释和工程含义，而不是把原帖逐句复述。</p>
+            <ul class="source-list">
+              <li><a href="https://x.com/NielsRogge/status/2061802537049591896">Niels Rogge：What is mid-training?</a></li>
+              <li><a href="https://paperswithcode.co/methods/mid-training">Papers with Code：Mid-training 方法页</a></li>
+              <li><a href="https://vintagedata.org/blog/posts/what-is-mid-training">Pierre-Carl Langlais：What's the deal with mid-training?</a></li>
+              <li><a href="https://www.shashankshekhar.com/blog/data-quality">Shashank Shekhar：Data Quality Is All You Need?</a></li>
+              <li><a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2024/12/P4TechReport.pdf">Microsoft：Phi-4 Technical Report</a></li>
+              <li><a href="https://arxiv.org/abs/2510.14865">Midtraining Bridges Pretraining and Posttraining Distributions</a></li>
+              <li><a href="https://arxiv.org/abs/2601.18418">daVinci-Dev: Agent-native Mid-training for Software Engineering</a></li>
+              <li><a href="https://openreview.net/forum?id=Dru5mm9anE">Scaling Agents via Continual Pre-training</a></li>
+            </ul>
+            <p class="small">边界说明：不同论文和机构对 mid-training、continued pretraining、supplemental training、agentic CPT 的命名不完全一致。本文按功能划分：大规模目标分布能力塑形归入 mid-training，直接行为对齐归入 post-training。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

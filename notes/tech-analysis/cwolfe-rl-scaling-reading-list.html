@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM RL at Scale：从 scaling law 到 agentic post-training 的阅读路线</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --surface: #fffdf8;
+      --surface-2: #eaf0ed;
+      --ink: #20242a;
+      --muted: #5f6870;
+      --line: #d7ddd5;
+      --line-strong: #9aa69b;
+      --accent: #196977;
+      --accent-soft: #dceef1;
+      --rust: #984d36;
+      --rust-soft: #f2ded7;
+      --green: #3f7256;
+      --green-soft: #e0eee5;
+      --violet: #59568e;
+      --violet-soft: #e8e6f4;
+      --gold: #8a6a22;
+      --gold-soft: #f2e7c7;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --radius: 8px;
+      --max: 1180px;
+      --shadow: 0 18px 42px rgba(32, 36, 42, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 36, 42, 0.032) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(0deg, rgba(32, 36, 42, 0.024) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(25, 105, 119, 0.3);
+    }
+
+    a:hover { border-bottom-color: currentColor; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #161b20; }
+    code { font-family: var(--mono); }
+
+    .page {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) 0 74px;
+    }
+
+    .hero {
+      min-height: calc(72vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.38fr);
+      gap: clamp(24px, 4vw, 56px);
+      align-items: end;
+      padding: clamp(38px, 7vw, 92px) 0 38px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 940px;
+      font-family: var(--serif);
+      font-size: clamp(37px, 5.5vw, 72px);
+      font-weight: 760;
+    }
+
+    h2 {
+      padding-top: 8px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.6vw, 44px);
+      font-weight: 740;
+    }
+
+    h3 {
+      margin-top: 20px;
+      font-size: clamp(20px, 2vw, 25px);
+      font-weight: 760;
+    }
+
+    .lead {
+      max-width: 910px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.58;
+    }
+
+    .hero-panel,
+    .card,
+    .metric,
+    .callout,
+    .stage,
+    .source-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.95);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel {
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(234, 240, 237, 0.94));
+    }
+
+    .hero-panel b {
+      display: block;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-panel ul,
+    .compact-list {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .hero-panel li,
+    .compact-list li { margin-top: 8px; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .metric {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: clamp(21px, 2.7vw, 32px);
+      line-height: 1.08;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toc {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 18px 0 6px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section > p {
+      max-width: 900px;
+      font-size: 17px;
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warning { border-left-color: var(--rust); }
+    .callout.good { border-left-color: var(--green); }
+
+    .grid-2,
+    .grid-3,
+    .source-grid {
+      display: grid;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .source-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card,
+    .source-card {
+      padding: 17px;
+    }
+
+    .card h3,
+    .source-card h3 {
+      margin-top: 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tag.rust {
+      background: var(--rust-soft);
+      color: var(--rust);
+    }
+
+    .tag.green {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .tag.violet {
+      background: var(--violet-soft);
+      color: var(--violet);
+    }
+
+    .tag.gold {
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .stage-list {
+      display: grid;
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr);
+      gap: 16px;
+      padding: 18px;
+      box-shadow: none;
+    }
+
+    .stage-num {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fffdf8;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .stage p:first-of-type {
+      margin-top: 0.38rem;
+    }
+
+    figure {
+      margin: 22px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-wrap {
+      max-width: 100%;
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th, td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: #263039;
+      font-size: 13px;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .source-card a {
+      overflow-wrap: anywhere;
+    }
+
+    .evidence-list {
+      margin-top: 18px;
+      padding-left: 20px;
+    }
+
+    .evidence-list li {
+      margin-top: 9px;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        min-height: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid,
+      .grid-2,
+      .grid-3,
+      .source-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 24px, var(--max));
+      }
+
+      h1 {
+        font-size: clamp(33px, 11vw, 46px);
+      }
+
+      .metric-grid {
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <div class="page">
+    <header class="hero" id="top">
+      <div>
+        <div class="eyebrow">Tech Analysis · 2026-06-03</div>
+        <h1>LLM RL at Scale：从 scaling law 到 agentic post-training 的阅读路线</h1>
+        <p class="lead">这份 X 书单的价值不在“收集了很多 RL 链接”，而在它把 2025-2026 年大模型强化学习的技术栈压缩成四层：RL scaling law、训练系统、agentic 环境与奖励、工业级 case study。按这条线读，能看到 LLM 后训练正在从算法 recipe 变成端到端工程学科。</p>
+        <div class="metric-grid" aria-label="阅读路线概览">
+          <div class="metric"><strong>4</strong><span>原帖分组：scaling、framework、agents、reports</span></div>
+          <div class="metric"><strong>26</strong><span>短链资料：论文、博客、仓库和技术报告</span></div>
+          <div class="metric"><strong>3</strong><span>核心张力：compute、fresh rollout、reward environment</span></div>
+          <div class="metric"><strong>1</strong><span>主线：RL 变成新的 post-training scaling axis</span></div>
+        </div>
+      </div>
+      <aside class="hero-panel" aria-label="一眼看懂">
+        <b>Reading lens</b>
+        <ul>
+          <li>不要把它当普通 bibliography；它更像 RL 后训练系统地图。</li>
+          <li>先读 scaling 变量，再读系统语义，最后看 agent 任务和工业报告。</li>
+          <li>重点不是 PPO/GRPO 名字，而是数据如何生成、何时变旧、奖励是否可靠。</li>
+        </ul>
+      </aside>
+    </header>
+
+    <nav class="toc" aria-label="本文目录">
+      <a href="#judgment">核心判断</a>
+      <a href="#map">原帖地图</a>
+      <a href="#scaling">Scaling 研究</a>
+      <a href="#systems">训练系统</a>
+      <a href="#agents">Agentic RL</a>
+      <a href="#reports">技术报告</a>
+      <a href="#route">阅读顺序</a>
+      <a href="#terms">术语解释</a>
+      <a href="#limits">边界风险</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+
+    <main>
+      <section class="section" id="judgment">
+        <h2>核心判断</h2>
+        <p>这条帖子真正指向的是一个训练范式迁移：LLM 后训练不再只是把偏好数据喂给一个固定算法，而是在把“可验证任务上的采样计算”变成新的 scaling axis。预训练 scaling 主要问 token、参数和 FLOPs 如何换 loss；RL at scale 则问 rollout、reward、update、policy freshness 和环境并发如何换可验证能力。</p>
+        <p>这个迁移的难点在于，RL 数据不是静态 corpus。模型一更新，下一批样本的分布就变化；系统一异步，旧策略生成的轨迹就会混进当前策略的目标；任务一进入 agent 环境，奖励就从单题答案变成长轨迹中的工具调用、文件修改、测试结果和状态转移。因此，这份书单的中心问题不是“哪个 RL 算法更火”，而是“如何在规模化系统里保持训练目标仍然可信”。</p>
+        <div class="callout">
+          <strong>最有用的读法：</strong>把这份清单看成一条依赖链：先回答 RL 是否能 scale，再回答系统如何支撑 scale，再回答 agent 环境如何产生足够好的 reward，最后用 Kimi、Cursor、MiniMax、OLMo、Nemotron 这类技术报告检查它是否能穿过真实产品场景。
+        </div>
+      </section>
+
+      <section class="section" id="map">
+        <h2>原帖地图</h2>
+        <p>原帖把资料分成四块：第一块是 RL scaling 的研究论文，第二块是支撑大规模训练的 RL framework，第三块是 agentic RL，第四块是团队技术报告和 case study。这个分法本身就说明作者关心的不是单点方法，而是从理论曲线到工程系统再到真实 agent 产品的完整链条。</p>
+        <figure>
+          <img src="cwolfe-rl-scaling-reading-list-assets/rl-at-scale-map.jpg" alt="cwolferesearch 原帖附图，拼接展示 RL scaling 论文图表、训练框架和技术报告截图">
+          <figcaption>原帖附图是书单的视觉索引：左侧偏 scaling 曲线和实验图，中部偏训练框架，右侧偏工业报告和 agent 环境。</figcaption>
+        </figure>
+        <div class="grid-2">
+          <div class="card">
+            <span class="tag rust">Layer 1</span>
+            <h3>Research on Scaling RL</h3>
+            <p>回答 RL 后训练是否存在可预测的 compute-performance 曲线，以及模型规模、训练预算、采样预算和 update step 如何互相制约。</p>
+          </div>
+          <div class="card">
+            <span class="tag">Layer 2</span>
+            <h3>RL Frameworks</h3>
+            <p>回答 rollout、training、reward、weight sync 和调度如何支撑吞吐，同时尽量不破坏 on-policy 训练语义。</p>
+          </div>
+          <div class="card">
+            <span class="tag green">Layer 3</span>
+            <h3>RL for Agents</h3>
+            <p>回答多轮工具调用、代码修改、搜索、环境状态和长程 credit assignment 如何被转成可训练轨迹。</p>
+          </div>
+          <div class="card">
+            <span class="tag violet">Layer 4</span>
+            <h3>Case Studies & Reports</h3>
+            <p>回答真实团队如何把模型结构、数据、RL、环境、评测和产品约束拼成可用系统。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="scaling">
+        <h2>第一层：RL Scaling 研究</h2>
+        <p>这一组资料的核心是把“RL 有用”推进到“RL 能否被规划”。如果团队准备投入几千到几万 GPU-hours 做后训练，不能只靠小样本 reward 曲线和经验参数；需要知道增加 rollout 数、增加 prompt 数、延长训练、扩大模型、改 reward 难度分别会带来什么收益和风险。</p>
+        <p><strong>The Art of Scaling RL Compute</strong>、<strong>Scaling Behaviors of LLM RL Post-Training</strong>、<strong>Optimally Scaling Sampling Compute for LLM RL</strong> 和 <strong>Scaling up RL</strong> 都在围绕同一个问题：LLM RL 的 scaling law 不是预训练 scaling law 的简单复制。预训练数据大体固定，next-token loss 也比较平滑；RL 数据由当前 policy 生成，reward 往往稀疏且离散，策略更新还会改变未来样本分布。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>问题</th>
+                <th>预训练里的直觉</th>
+                <th>RL 后训练里的变化</th>
+                <th>工程含义</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>更多数据是否更好</td>
+                <td>更多高质量 token 通常降低 loss。</td>
+                <td>更多 rollout 可能带来探索，也可能带来重复低价值轨迹。</td>
+                <td>要区分 prompt diversity、rollout per prompt 和成功轨迹复用。</td>
+              </tr>
+              <tr>
+                <td>更多 update 是否更好</td>
+                <td>训练步数增加通常可预测地降低 loss，直到过拟合或欠优化边界。</td>
+                <td>过多 update 会放大 stale data、reward hacking 和 KL drift。</td>
+                <td>训练长度要和 reward 可靠性、policy freshness、正则强度一起看。</td>
+              </tr>
+              <tr>
+                <td>模型越大是否越占优</td>
+                <td>大模型通常在同等 token 下更强，但需要匹配 compute-optimal 数据量。</td>
+                <td>大模型可能更会利用 reward，也可能更会 exploit verifier 漏洞。</td>
+                <td>扩模型必须同时升级评测、reward 和数据治理。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>ProRL / ProRL V2 更进一步：它们关心 prolonged RL 是否真的能让模型发现新策略，而不是只把 base model 已经会的答案重新加权。这个问题非常关键，因为如果 RL 只是重排 latent high-reward outputs，那么 scaling 上限主要由 base model 决定；如果 RL 能在长期训练中稳定探索新策略，后训练才可能成为真正独立的能力扩展路径。</p>
+      </section>
+
+      <section class="section" id="systems">
+        <h2>第二层：RL Frameworks</h2>
+        <p>如果 scaling 研究回答“值得不值得烧算力”，framework 研究回答“怎么烧才不把目标烧坏”。verl / HybridFlow、AReaL、PipelineRL、AsyncFlow 这组材料都在处理同一组系统矛盾：rollout 生成慢，训练 GPU 不能闲；训练更新快，rollout 数据又容易变旧；框架要高吞吐，同时还要尽量保持 on-policy 目标成立。</p>
+        <p>这里的机制核心是 <strong>rollout engine</strong> 与 <strong>training engine</strong> 的解耦。生成轨迹通常依赖推理服务、环境交互和 reward 计算；训练则依赖大 batch、梯度同步和参数更新。把两者解耦能显著提高资源利用率，但也会引入 policy lag：轨迹来自旧参数，梯度却更新当前参数。</p>
+        <div class="grid-3">
+          <div class="card">
+            <span class="tag">verl / HybridFlow</span>
+            <h3>表达复杂 RLHF/RL dataflow</h3>
+            <p>价值在于把 actor、rollout、reference、reward、critic 等角色用更灵活的数据流组织起来，使研究 recipe 更容易落到分布式训练系统。</p>
+          </div>
+          <div class="card">
+            <span class="tag gold">AReaL</span>
+            <h3>异步 RL 系统</h3>
+            <p>关注 generation 与 training 的并发，目标是在大规模 LLM RL 中提高吞吐，同时用算法修正降低 stale rollout 带来的偏差。</p>
+          </div>
+          <div class="card">
+            <span class="tag green">PipelineRL / AsyncFlow</span>
+            <h3>把吞吐与 on-policy 拉回同一张表</h3>
+            <p>这些系统的重点不是“快”本身，而是如何定义可接受的权重滞后、何时同步、何时丢弃或修正轨迹。</p>
+          </div>
+        </div>
+        <div class="callout warning">
+          <strong>关键 insight：</strong>系统优化会改变算法语义。异步化不是透明加速器；它可能把名义上的 on-policy PPO/GRPO 变成近似 off-policy 训练。importance sampling、weight sync、staleness mask、delta weight sync 这些词不是底层实现细节，而是训练目标能否仍然成立的条件。
+        </div>
+      </section>
+
+      <section class="section" id="agents">
+        <h2>第三层：RL for Agents</h2>
+        <p>Agentic RL 把问题从“给一个 prompt 输出答案”推进到“在环境里连续行动”。模型需要观察状态、选择动作、调用工具、读返回、修改文件、运行测试、处理失败，然后继续下一步。这样一来，reward 不再只是最终答案是否匹配，而是长轨迹中的状态变化是否推动任务完成。</p>
+        <p>DeepSWE、AutoForge、Agent-R1、AgentRL、Agentic RL survey 和 Training SWE Agents with RL 的共同主题是：要让 RL 训练 agent，首先要有足够真实、可复位、可并发、可评分的环境。代码 agent 可以用测试、编译、静态检查和 patch diff 作为反馈；research agent 可以用检索轨迹、引用质量和最终答案评分；但开放任务的 reward 很容易稀疏、延迟、被 hack，环境成本也远高于数学题 verifier。</p>
+        <div class="grid-2">
+          <div class="card">
+            <span class="tag green">Environment first</span>
+            <h3>环境是 agentic RL 的数据工厂</h3>
+            <p>没有环境，就没有状态转移；没有状态转移，就没有真实多轮轨迹；没有可验证轨迹，RL 只能退化成 SFT 或偏好优化的变体。</p>
+          </div>
+          <div class="card">
+            <span class="tag rust">Reward is the bottleneck</span>
+            <h3>奖励不是分数，而是训练接口</h3>
+            <p>agent reward 要同时处理最终成功、中间错误、工具协议、异常终止和可能的 reward hacking。奖励设计越粗，长程 credit assignment 越难。</p>
+          </div>
+        </div>
+        <p>这也是 AutoForge 这类“自动合成 agentic RL 环境”的工作重要的原因。数学和代码任务之所以成为 RLVR 热点，不是因为它们代表所有智能，而是因为它们更容易提供可验证反馈。真正能扩展 agentic RL 的团队，最终比拼的是环境供应链：任务生成、沙箱、状态检查、reward、日志、回放、去重、防作弊和评测闭环。</p>
+      </section>
+
+      <section class="section" id="reports">
+        <h2>第四层：Case Studies 与技术报告</h2>
+        <p>最后一组资料是工业级闭环证据。Kimi、Cursor Composer、OLMo、MiniMax、Nemotron 这些报告的共同意义是：它们不再只讲一个算法点，而是把模型结构、数据、上下文长度、训练系统、agent 环境、评测和部署约束放在同一个叙事里。</p>
+        <p>Kimi k1.5 把 RL scaling 明确放进长上下文、多模态推理和测试时策略中；Kimi K2 / Kimi-Researcher 把 open agentic intelligence 和 end-to-end agentic RL 推到多步搜索、工具使用和研究任务；Cursor Composer 2/2.5 则把持续预训练和大规模 agentic RL 绑定到真实 IDE coding workflow；MiniMax M1/M2、OLMo 3、Nemotron 3 展示了 MoE、长上下文、开放数据和 agentic post-training 的不同组合。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>报告线索</th>
+                <th>最该看的问题</th>
+                <th>不要误读成</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Kimi K1.5 / K2 / Researcher</td>
+                <td>RL scaling、agentic post-training、工具使用和长上下文如何组合。</td>
+                <td>单个 RL 算法带来全部能力跃迁。</td>
+              </tr>
+              <tr>
+                <td>Cursor Composer 2 / 2.5</td>
+                <td>coding agent 的 continued pretraining、环境生成、textual feedback 和产品成本如何联动。</td>
+                <td>只要给代码模型跑 RL 就能得到 IDE agent。</td>
+              </tr>
+              <tr>
+                <td>OLMo / MiniMax / Nemotron</td>
+                <td>开放模型生命周期、MoE、长上下文和 agentic deployment 如何支撑后训练。</td>
+                <td>技术报告指标可以直接横向比较全部模型能力。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout good">
+          <strong>判断标准：</strong>读这些 report 时，不要只摘 benchmark 数字。更重要的是看它是否交代了 base model prior、训练数据来源、RL 环境、reward/verifier、采样预算、失败过滤、评测隔离和部署成本。缺任何一块，数字都很难解释。
+        </div>
+      </section>
+
+      <section class="section" id="route">
+        <h2>推荐阅读顺序</h2>
+        <p>这 26 条链接不适合按原帖从上到下硬读。更好的方式是按依赖关系分阶段读，每阶段只回答一个核心问题。</p>
+        <div class="stage-list">
+          <div class="stage">
+            <div class="stage-num">1</div>
+            <div>
+              <h3>先建立 scaling 变量表</h3>
+              <p>读 The Art of Scaling RL Compute、IsoCompute Playbook、Scaling Behaviors。目标是搞清楚 prompt 数、rollout 数、update step、模型规模、reward 难度和训练预算分别是什么变量。</p>
+              <p><strong>读完应能回答：</strong>为什么 RL 的更多采样不等于预训练的更多 token？为什么同样的 compute 可以被分给更多问题、更多答案或更多更新？</p>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage-num">2</div>
+            <div>
+              <h3>再读 prolonged RL 与稳定性</h3>
+              <p>读 Scaling up RL、ProRL / ProRL V2、Polaris。目标是区分“base model 已有能力的重新加权”和“长期 RL 中真实新策略发现”。</p>
+              <p><strong>读完应能回答：</strong>长时间 RL 的收益来自探索、课程难度、reward shaping、正则化，还是只是更强的 verifier 选择效应？</p>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage-num">3</div>
+            <div>
+              <h3>把算法落到系统语义</h3>
+              <p>读 verl/HybridFlow、AReaL、PipelineRL、AsyncFlow。目标不是比较框架名气，而是看 rollout/training 解耦后，policy lag、staleness 和 importance sampling 如何被处理。</p>
+              <p><strong>读完应能回答：</strong>一次 RL 训练日志里，哪些指标能说明系统快但目标已经变脏？哪些补丁只是吞吐优化，哪些会改变优化目标？</p>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage-num">4</div>
+            <div>
+              <h3>进入 agent 环境与奖励</h3>
+              <p>读 Agentic RL survey、DeepSWE、Agent-R1、AgentRL、Training SWE Agents with RL。目标是理解 agentic RL 的第一问题往往不是 KL 系数，而是环境是否可复位、可评分、可并发、可回放。</p>
+              <p><strong>读完应能回答：</strong>为什么 coding agent RL 比数学 RLVR 更难？为什么 agent harness、tool schema 和环境终止原因会影响训练结果？</p>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="stage-num">5</div>
+            <div>
+              <h3>最后看工业报告</h3>
+              <p>读 Kimi、Cursor、OLMo、MiniMax、Nemotron。目标是把前面三层放回真实产品管线：base model prior、数据、系统、环境、评测和部署成本共同决定能力。</p>
+              <p><strong>读完应能回答：</strong>一个团队声称 agentic RL 有突破时，应该追问哪些训练和评测证据，而不是只看 benchmark headline？</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="terms">
+        <h2>术语解释</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>On-policy</h3>
+            <p>这里的 on-policy 指训练用的轨迹由当前策略生成。它保证梯度估计和目标分布更一致，但在大模型 RL 中很难高吞吐，因为模型一更新，旧轨迹就可能过期。</p>
+          </div>
+          <div class="card">
+            <h3>Policy lag</h3>
+            <p>Policy lag 指生成轨迹的策略版本落后于正在更新的策略版本。异步训练越激进，lag 越容易变大；lag 过大时，算法名义上是 on-policy，实际却在用旧分布优化新策略。</p>
+          </div>
+          <div class="card">
+            <h3>Importance sampling</h3>
+            <p>Importance sampling 是用概率比值修正分布不一致的一类方法。在异步 RL 中，它常用于修正旧策略采样轨迹相对当前策略的偏差，但比值方差和截断方式会影响稳定性。</p>
+          </div>
+          <div class="card">
+            <h3>RLVR</h3>
+            <p>RLVR 指 reinforcement learning with verifiable rewards。所谓 verifiable reward 是可以程序化检查的反馈，例如数学答案、代码测试、编译结果或环境状态，而不是纯人工偏好。</p>
+          </div>
+          <div class="card">
+            <h3>Agentic RL</h3>
+            <p>Agentic RL 指把模型放进多步交互环境中训练，让它通过观察、行动、工具调用和状态反馈完成任务。它关注长轨迹决策，不只是单次回答质量。</p>
+          </div>
+          <div class="card">
+            <h3>Rollout engine</h3>
+            <p>Rollout engine 是负责生成训练轨迹的部分，通常包括模型推理、环境交互、工具调用和 reward 计算。它的吞吐、并发、日志和权重同步方式会直接影响训练数据质量。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="limits">
+        <h2>边界与风险</h2>
+        <p>这份书单很强，但不能被误读成“RL scaling 已经像预训练 scaling 一样成熟”。当前公开材料仍有几个边界：第一，很多 scaling 曲线来自特定模型、特定任务和特定 verifier，跨任务外推要谨慎；第二，agentic RL 的 reward 很容易受环境、测试泄漏、工具协议和 sandbox 设计影响；第三，大厂报告常把 pretraining、mid-training、SFT、RL 和 inference-time system 组合呈现，很难把单个 RL 阶段的贡献完全剥离。</p>
+        <div class="callout warning">
+          <strong>实践风险：</strong>如果团队只复制算法名，不复制环境、日志、staleness 控制、reward audit 和评测隔离，很容易得到看似上涨的 reward 曲线，却无法转化为真实产品能力。
+        </div>
+        <p>因此，这份笔记的结论不是“现在所有团队都应该立刻做大规模 RL”，而是：如果要做，必须把它当系统工程来做。RL at scale 的最小闭环不是一个 loss function，而是任务分布、rollout 系统、reward/verifier、异步训练语义、评测隔离和部署反馈。</p>
+      </section>
+
+      <section class="section" id="sources" data-note-role="evidence-appendix">
+        <h2>证据边界与资料索引</h2>
+        <p>本文基于 cwolferesearch 的 X 原帖、OpenCLI 抓取到的 thread 内容、原帖 26 个 t.co 短链解析结果，以及公开 arXiv、GitHub、官方博客和技术报告页面做路线级梳理。没有逐页精读 26 篇材料全文；判断重点放在分组结构、技术主线和工程含义。</p>
+        <div class="source-grid">
+          <div class="source-card">
+            <span class="tag">Original post</span>
+            <h3>cwolferesearch X 书单</h3>
+            <p><a href="https://x.com/cwolferesearch/status/2061827001204240599">Interested in learning how to run RL at scale?</a></p>
+          </div>
+          <div class="source-card">
+            <span class="tag rust">Scaling RL</span>
+            <h3>Research on Scaling RL</h3>
+            <ul class="compact-list">
+              <li><a href="https://arxiv.org/abs/2510.13786">The Art of Scaling RL Compute for LLMs</a></li>
+              <li><a href="https://arxiv.org/abs/2509.25300">Scaling Behaviors of LLM RL Post-Training</a></li>
+              <li><a href="https://arxiv.org/abs/2603.12151">Optimally Scaling Sampling Compute for LLM RL</a></li>
+              <li><a href="https://arxiv.org/abs/2507.12507">Scaling up RL</a></li>
+              <li><a href="https://hijkzzz.notion.site/prorl-v2">ProRL V2</a></li>
+              <li><a href="https://hkunlp.github.io/blog/2025/Polaris/">Polaris</a></li>
+            </ul>
+          </div>
+          <div class="source-card">
+            <span class="tag gold">Frameworks</span>
+            <h3>RL Frameworks</h3>
+            <ul class="compact-list">
+              <li><a href="https://arxiv.org/abs/2409.19256">HybridFlow</a></li>
+              <li><a href="https://arxiv.org/abs/2601.18150">verl</a></li>
+              <li><a href="https://arxiv.org/abs/2505.24298">AReaL</a></li>
+              <li><a href="https://arxiv.org/abs/2509.19128">PipelineRL</a></li>
+              <li><a href="https://arxiv.org/abs/2507.01663">AsyncFlow</a></li>
+            </ul>
+          </div>
+          <div class="source-card">
+            <span class="tag green">Agents</span>
+            <h3>RL for Agents</h3>
+            <ul class="compact-list">
+              <li><a href="https://www.together.ai/blog/deepswe">DeepSWE</a></li>
+              <li><a href="https://arxiv.org/abs/2512.22857">AutoForge</a></li>
+              <li><a href="https://arxiv.org/abs/2511.14460">Agent-R1</a></li>
+              <li><a href="https://arxiv.org/abs/2510.04206">AgentRL</a></li>
+              <li><a href="https://arxiv.org/abs/2509.02547">The Landscape of Agentic RL</a></li>
+              <li><a href="https://arxiv.org/abs/2508.03501">Training SWE Agents with RL</a></li>
+            </ul>
+          </div>
+          <div class="source-card">
+            <span class="tag violet">Reports</span>
+            <h3>Case Studies & Tech Reports</h3>
+            <ul class="compact-list">
+              <li><a href="https://arxiv.org/abs/2507.20534">Kimi K2</a></li>
+              <li><a href="https://moonshotai.github.io/Kimi-Researcher/">Kimi End-to-end Agentic RL</a></li>
+              <li><a href="https://arxiv.org/abs/2501.12599">Kimi k1.5</a></li>
+              <li><a href="https://arxiv.org/abs/2603.24477">Composer 2</a></li>
+              <li><a href="https://cursor.com/blog/composer-2-5">Composer 2.5</a></li>
+              <li><a href="https://arxiv.org/abs/2512.13961">OLMo 3</a></li>
+              <li><a href="https://arxiv.org/abs/2605.26494">MiniMax-M2</a></li>
+              <li><a href="https://arxiv.org/abs/2506.13585">MiniMax-M1</a></li>
+              <li><a href="https://arxiv.org/abs/2512.20856">Nemotron 3</a></li>
+            </ul>
+          </div>
+          <div class="source-card">
+            <span class="tag">Verification</span>
+            <h3>本轮核验命令</h3>
+            <ul class="compact-list">
+              <li><code>opencli twitter thread ... --limit 100 -f json</code></li>
+              <li><code>curl -LsS -o /dev/null -w "%{url_effective}"</code> 解析短链</li>
+              <li><code>ruby scripts/validate_notes_index.rb</code> 验证站内索引</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

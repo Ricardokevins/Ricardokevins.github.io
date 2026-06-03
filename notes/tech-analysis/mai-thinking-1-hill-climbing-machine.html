@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MAI-Thinking-1：微软如何把模型研发做成 Hill-Climbing Machine</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f0e8;
+      --surface: #fffdf8;
+      --surface-2: #e8efed;
+      --ink: #20252b;
+      --muted: #5d6871;
+      --line: #d4dbd4;
+      --line-strong: #99a79d;
+      --accent: #196f78;
+      --accent-2: #8b5f24;
+      --blue: #315f8f;
+      --green: #2e7358;
+      --red: #a34b3c;
+      --gold: #8a6a22;
+      --soft-blue: #dce8f4;
+      --soft-green: #dfeee6;
+      --soft-red: #f2ded9;
+      --soft-gold: #f1e6c5;
+      --shadow: 0 18px 42px rgba(32, 37, 43, 0.09);
+      --radius: 8px;
+      --max: 1240px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(32, 37, 43, 0.032) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(0deg, rgba(32, 37, 43, 0.024) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    p { margin: 10px 0; }
+    strong { color: #151a1f; }
+    code, pre { font-family: var(--mono); }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: calc(76vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.4fr);
+      gap: clamp(24px, 4vw, 54px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 92px) 0 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      font-family: var(--serif);
+      font-size: clamp(34px, 5.5vw, 68px);
+      font-weight: 760;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-family: var(--serif);
+      font-size: clamp(28px, 3.4vw, 42px);
+      font-weight: 760;
+    }
+
+    h3 {
+      margin: 22px 0 9px;
+      font-size: 19px;
+      font-weight: 820;
+    }
+
+    .subtitle {
+      max-width: 920px;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.62;
+    }
+
+    .hero-note,
+    .card,
+    .metric,
+    .callout,
+    .step,
+    .table-wrap,
+    figure {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+    }
+
+    .hero-note {
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-note b {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-note span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 18px 0 4px;
+    }
+
+    .toc a {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .toc a:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    main { padding-bottom: 64px; }
+    section {
+      padding: clamp(34px, 5vw, 62px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type { border-bottom: 0; }
+    .section-lead {
+      max-width: 950px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 20px);
+      line-height: 1.68;
+    }
+
+    .grid-2, .grid-3, .metrics, .flow {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3, .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card, .metric, .step { padding: 16px; box-shadow: var(--shadow); }
+    .metric b {
+      display: block;
+      color: var(--accent);
+      font-size: clamp(25px, 3.8vw, 40px);
+      line-height: 1.1;
+    }
+
+    .metric span,
+    .small,
+    figcaption {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .card h3,
+    .step h3 {
+      margin-top: 0;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 18px;
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.warning { border-left-color: var(--red); }
+    .callout.system { border-left-color: var(--green); }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      margin: 4px 5px 0 0;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      background: var(--surface);
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    th {
+      color: #182027;
+      background: var(--surface-2);
+      font-weight: 820;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    figure {
+      margin: 20px 0;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .evidence-grid figure { margin: 0; }
+
+    .stage {
+      padding: 16px;
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .stage:nth-child(2n) { border-left-color: var(--green); }
+    .stage:nth-child(3n) { border-left-color: var(--gold); }
+    .stage:nth-child(4n) { border-left-color: var(--blue); }
+
+    .quote {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border-left: 4px solid var(--line-strong);
+      color: var(--muted);
+      background: rgba(255, 253, 248, 0.72);
+    }
+
+    .source-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .atlas-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .atlas-card {
+      margin: 0;
+    }
+
+    .atlas-card img {
+      width: 100%;
+      aspect-ratio: 8.5 / 11;
+      object-fit: cover;
+      object-position: top;
+    }
+
+    @media (max-width: 940px) {
+      header { grid-template-columns: 1fr; min-height: auto; }
+      .grid-3, .metrics, .flow, .evidence-grid, .atlas-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 680px) {
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .metrics, .flow, .evidence-grid, .atlas-grid { grid-template-columns: 1fr; }
+      table { min-width: 680px; }
+      .toc a { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header>
+    <div>
+      <div class="kicker">Tech Analysis · 2026-06-03</div>
+      <h1>MAI-Thinking-1：微软如何把模型研发做成 Hill-Climbing Machine</h1>
+      <p class="subtitle">这份技术报告真正展示的不是某个单点模型技巧，而是一台围绕数据、架构、训练系统、RL 环境、评测、安全和集群治理持续爬坡的模型生产机器。</p>
+      <div class="toc" aria-label="Page sections">
+        <a href="#takeaway">核心判断</a>
+        <a href="#map">证据地图</a>
+        <a href="#architecture">架构与预训练</a>
+        <a href="#data">数据与评估</a>
+        <a href="#rl">RL Climb</a>
+        <a href="#agentic">Agentic 训练</a>
+        <a href="#safety">安全与对齐</a>
+        <a href="#infra">基础设施</a>
+        <a href="#limits">边界</a>
+        <a href="#implications">工程启发</a>
+        <a href="#atlas">图表索引</a>
+      </div>
+    </div>
+    <aside class="hero-note">
+      <b>Thesis</b>
+      <span>MAI-Thinking-1 的意义不是“微软在所有 benchmark 上登顶”，而是微软公开证明自己已经具备从 scratch 训练 reasoning model 并持续改进的全栈闭环。</span>
+      <span class="tag">35B active / 1T total MoE</span>
+      <span class="tag">30T pre-training tokens</span>
+      <span class="tag">256K context</span>
+      <span class="tag">GRPO-style RL</span>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p class="section-lead">这篇报告的主语不是一个 checkpoint，而是一套“把失败模式变成下一轮控制信号”的工程系统。微软把模型研发拆成可测量、可复现、可反馈的爬坡过程：数据源如何筛、架构改动如何过 scaling ladder、MoE 路由如何不失衡、RL 何时 collapse、agentic 环境如何防作弊、安全目标如何不被加权抵消、集群健康如何变成调度状态。</p>
+      <div class="callout system">
+        <strong>最重要的 insight：</strong>Hill-climbing machine 不是一个新算法，而是一种组织学习能力的工程化。每一次训练事故、评测污染、reward hacking、路由失衡、长上下文退化或红队绕过，都被转写成新的数据过滤器、reward gate、系统监控、环境约束或评测切片。
+      </div>
+      <div class="metrics">
+        <div class="metric"><b>109 页</b><span>官方 PDF 技术报告，覆盖主文 7 章和附录 A-K。</span></div>
+        <div class="metric"><b>20 表 / 26 图</b><span>编号表格和图像集中展示架构、数据、RL、评测、安全与集群机制；论文有两个 Table 19。</span></div>
+        <div class="metric"><b>不是全线 SOTA</b><span>报告自己承认模型处在 competitive range，强项主要是 STEM、coding 和 agentic SWE。</span></div>
+      </div>
+    </section>
+
+    <section id="map">
+      <h2>报告证据地图</h2>
+      <p class="section-lead">这份报告的结构很清楚：前半部分说明如何从 scratch 得到一个强 base model，中间说明如何用长程 RL climb 产生 reasoning / agentic / helpful-safety 能力，后半部分说明怎么评测、安全红队和运行集群。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>主文 1-2 章：Base Model</h3>
+          <p>介绍 MAI-Base-1 的 MoE 架构、scaling ladder、NLL evaluation、数据治理、30T 预训练、3.55T 中训练、YOLO 训练系统。</p>
+        </div>
+        <div class="card">
+          <h3>主文 3 章：RL Climb</h3>
+          <p>介绍 GRPO-style objective、adaptive entropy、outer ratio clip、self-distillation、STEM / agentic / helpfulness-safety 三类专家爬坡和最终合并。</p>
+        </div>
+        <div class="card">
+          <h3>主文 4-7 章：验证与运行</h3>
+          <p>覆盖 benchmark、人类 side-by-side、安全评测、红队、8K GB200 集群、goodput、MAIA-200 部署和后续方向。</p>
+        </div>
+      </div>
+      <div class="evidence-grid">
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/source-page-001.png" alt="MAI-Thinking-1 技术报告首页，显示标题、摘要和 Figure 1 的 RL climb 曲线">
+          <figcaption>首页把报告主题定为“building a hill-climbing machine”，并给出 RL climb 曲线。</figcaption>
+        </figure>
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/architecture-page-005.png" alt="MAI-Base-1 架构页，显示 local/global attention 与 sparse MoE 层结构">
+          <figcaption>架构页强调 local/global attention 交替、dense FFN 与 high-sparsity MoE 交替。</figcaption>
+        </figure>
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/rl-overview-page-030.png" alt="RL climb 概览页，显示三个 specialist teacher 经 trace distillation SFT 合并为最终模型">
+          <figcaption>RL 概览页展示 STEM、SWE/agentic、helpfulness-safety 三个 teacher 的合并路线。</figcaption>
+        </figure>
+        <figure>
+          <img src="mai-thinking-1-hill-climbing-machine-assets/evaluation-page-053.png" alt="评测表格页，列出 MAI-Thinking-1 在 AIME、HMMT、GPQA、LCB、SWE 与 Terminal-Bench 上的分数">
+          <figcaption>评测页说明 MAI-Thinking-1 的强项和非领先项同时存在。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语先对齐</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Hill-climbing machine</h3>
+          <p>这里指一套持续局部改进系统：每轮发现可测量提升、验证提升是否跨尺度稳定、把改动放大到大训练，再把失败模式反馈进下一轮 pipeline。</p>
+        </div>
+        <div class="card">
+          <h3>Active / total parameters</h3>
+          <p>MoE 模型每个 token 只激活部分专家。active parameters 是每次 token 实际计算经过的参数量；total parameters 是所有专家和共享层的总容量。</p>
+        </div>
+        <div class="card">
+          <h3>Efficiency Gain</h3>
+          <p>EG 表示候选方案达到某个 loss 时，baseline 需要多大训练成本才能追上。EGTime 则把实际 wall-clock 训练时间也纳入比较。</p>
+        </div>
+        <div class="card">
+          <h3>NLL evaluation</h3>
+          <p>Negative log-likelihood 是 teacher-forcing 下的下一 token 预测损失。微软用它作为预训练日常仪表盘，因为它便宜、稳定、少受生成格式干扰。</p>
+        </div>
+        <div class="card">
+          <h3>Self-distillation</h3>
+          <p>本文里不是从第三方 teacher 蒸馏，而是把自身 RL climb 中产生的高质量 reasoning traces 固化成 SFT 数据，用于恢复、迁移和重启下一段 RL。</p>
+        </div>
+        <div class="card">
+          <h3>Goodput</h3>
+          <p>Goodput 指理想训练时长与实际 wall-clock 时长的比值，衡量 GPU 小时中真正转化为训练进展的比例，而不只是 MFU 或峰值 FLOPs。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>架构与预训练：MoE 不是炫技，而是和硬件共同设计</h2>
+      <p class="section-lead">MAI-Base-1 是 35B active / 约 1T total 的 sparse MoE。它不是把所有层都堆成 MoE，而是把 high-sparsity MoE 与 dense FFN 交替，把 local attention 与 global attention 交替，再围绕 GB200 / NVL72 / all-to-all 通信做系统 co-design。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>组件</th><th>报告中的选择</th><th>工程含义</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Attention</td><td>5 个 local attention 配 1 个 global attention；local window 512；GQA 8 KV heads。</td><td>降低 attention 训练成本和推理 KV cache，适配长上下文和高吞吐部署。</td></tr>
+            <tr><td>MoE</td><td>top-8 / 512 experts，LatentMoE 压缩后 all-to-all，dense FFN 与 MoE 交替。</td><td>让模型容量、通信量、GEMM 效率和服务成本之间达成折中。</td></tr>
+            <tr><td>Dropless routing</td><td>不通过 capacity drop token，而是支持 variable-size all-to-all 和 static-memory dropless mode。</td><td>避免 token dropping 改变 ablation 结论，也减少训练信号被系统近似污染。</td></tr>
+            <tr><td>Zero-init attention output</td><td>将 attention output RMSNorm gains 初始化为 0。</td><td>防止初始 uniform attention 类似 causal mean pooling，进而造成 MoE router 早期负载失衡。</td></tr>
+            <tr><td>Precision</td><td>默认 BF16，GEMM 前向用 FP8 E4M3，data-gradient 用 FP8 E5M2，敏感位置保留 FP32。</td><td>不是盲目全低精度，而是在 router logits、attention scores、residual stream、optimizer state 等关键路径保稳定性。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <strong>关键判断：</strong>微软不是单纯追求总参数更大，而是在“token 实际激活参数、专家通信、训练 MFU、路由稳定性、推理 KV cache”之间找可持续爬坡的点。top-8 / 512 experts 是能力和工程成本折中，不是 sparsity scaling 的终点。
+      </div>
+      <h3>为什么 every-layer MoE 没被选中</h3>
+      <p>报告用 EG 和 EGTime 区分理论计算效率与实际训练时间。every-layer MoE 在 FLOPs 角度可能接近，但一旦考虑当前训练栈的 MFU 和通信开销，interleaved dense + high-sparsity MoE 的 wall-clock tradeoff 更好。这说明架构选择必须和系统实现一起评估。</p>
+      <h3>为什么 zero-init 是关键小技巧</h3>
+      <p>初始 attention softmax 接近均匀，随机初始化下每层 attention 会把 token 表示推向序列均值，降低 token 间多样性。对 MoE 来说，这会让 router 看到相似输入并把流量挤到少数专家，产生训练早期 imbalance。zero-init 让模型初始更像逐 token FFN stack，然后逐渐学会跨 token interaction，是一个面向 MoE 稳定性的初始化控制。</p>
+    </section>
+
+    <section id="data">
+      <h2>数据与评估：真正的新意在 scaling-aware data mixture</h2>
+      <p class="section-lead">MAI-Base-1 预训练 30T tokens，数据来自公开可用和授权的人类生成内容。报告反复强调不使用第三方模型蒸馏、不在预训练使用 open source training datasets、努力移除 AI-generated content，并对公共 benchmark 做 decontamination。</p>
+      <div class="metrics">
+        <div class="metric"><b>54.6%</b><span>预训练 token mix 中 code 占比最高，约 16.4T training tokens。</span></div>
+        <div class="metric"><b>5.28x</b><span>Math 数据唯一 token 少但平均重复最高，说明数学 token 稀缺且被高权重采样。</span></div>
+        <div class="metric"><b>40</b><span>近 40 个内部 NLL benchmark，分为 Code、STEM、Math、General Knowledge、Multilingual。</span></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>数据/评估机制</th><th>报告中的做法</th><th>深层含义</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>NLL suite</td><td>目标函数权重为 0.5 Coding、0.175 STEM、0.175 Math、0.1 General knowledge、0.05 Multilingual。</td><td>微软把“我们想要什么模型”显式编码进预训练仪表盘，代码和 reasoning 被明显上权重。</td></tr>
+            <tr><td>公共评测去污染</td><td>移除 Hugging Face 和镜像域，对所有训练源做 20-gram fuzzy dedup，阈值 80%。</td><td>公共 benchmark 已大量泄露到训练源，外部榜单分数必须和污染风险一起读。</td></tr>
+            <tr><td>Web HTML</td><td>1.2T 页面 crawl 后，经 policy、adult、AI-content、exact/fuzzy dedup 等处理，按 general/STEM/code/key domain 分流。</td><td>网页数据的价值来自高强度筛选和结构保留，不是“网页越多越好”。</td></tr>
+            <tr><td>Web PDFs</td><td>约 10B PDF 文档过滤到 620M，再用 Azure Document Intelligence 做 OCR、公式/表格 normalization、metadata 过滤。</td><td>PDF 是 STEM/教材/专业文档的重要来源，但 OCR artifact 和 metadata spam 是主要风险。</td></tr>
+            <tr><td>Public GitHub</td><td>7.4T-token code corpus，组织成 files、commits、PRs；移除 generated code、junk folders、超长文件、data dumps。</td><td>代码预训练不只是文件级语言建模，commit/PR 结构给模型更多真实软件工程语境。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Rank non-invariance 是数据章节最重要的发现</h3>
+      <p>报告中最值得记住的数据实验是：小模型上 stem-heavy mix 看起来更优，但放大到 23B active、20T tokens 后，code-heavy mix 在 STEM NLL 上反超。追因后微软认为部分高质量 STEM 源重复和多样性不足，小模型阶段有帮助，大规模时更早饱和。</p>
+      <div class="callout warning">
+        <strong>不要把小模型 ablation 当作静态真理。</strong>数据源的价值是“质量、重复度、多样性、模型容量、训练 horizon、与其他源交互”的函数。小模型排序能指导搜索，但不能直接替代目标尺度验证。
+      </div>
+      <h3>NLL 重要，但不是最终产品质量</h3>
+      <p>微软使用 NLL 是因为它和预训练目标一致、成本低、易大规模运行、少受生成格式干扰。但报告也承认：NLL objective、数据 mix 搜索算法和 downstream post-training performance 之间仍有很大 headroom。换句话说，NLL 是爬坡仪表盘，不是最终山顶。</p>
+    </section>
+
+    <section id="rl">
+      <h2>RL Climb：长程稳定爬坡比写一个 GRPO loss 更难</h2>
+      <p class="section-lead">MAI-Thinking-1 的 RL 从没有 reasoning traces 暴露的 mid-trained checkpoint 开始。微软训练三个 specialist：STEM / competitive coding、agentic coding / tool use、helpfulness / safety，然后用 trace distillation SFT 合并，再做 final RL。</p>
+      <div class="flow">
+        <div class="step"><h3>1. Mid-trained base</h3><p>预训练和中训练提供知识、预测能力和 256K context 基础，但还不规定如何推理、用工具或遵循安全偏好。</p></div>
+        <div class="step"><h3>2. 三个 RL teacher</h3><p>分别优化 STEM、agentic、helpfulness-safety，避免单一混合 reward 过早互相拉扯。</p></div>
+        <div class="step"><h3>3. Trace distillation</h3><p>把强 teacher 的 rollouts 经过过滤后合并为 SFT 数据，得到 consolidated model。</p></div>
+        <div class="step"><h3>4. Final climb</h3><p>再做轻量 RL，主要修安全、过拒答、风格，同时保留少量 STEM/code 防止 reasoning 退化。</p></div>
+      </div>
+      <h3>GRPO 的两个稳定性改动</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Adaptive entropy control</h3>
+          <p>动态调节上侧 clip bound，让策略熵接近目标值。熵太低会探索不足，熵太高会发散；在线控制比固定 entropy bonus 更适合长爬坡。</p>
+        </div>
+        <div class="card">
+          <h3>Outer ratio clip</h3>
+          <p>对原本 GRPO/PPO 中未裁剪的概率比 branch 再加硬截断，防止 old/new policy 概率差在长 rollout 中累积成 gradient-norm spike。</p>
+        </div>
+      </div>
+      <h3>Self-distillation 的真实角色</h3>
+      <p>这份报告里的 self-distillation 更像 RL 的“状态整理器”。早期 RL 可能因为数值错配 collapse；直接回滚 checkpoint 未必有用，因为不稳定性可能已经埋在参数里。微软收集成功或高质量 reasoning traces，对 mid-trained checkpoint 做 SFT，再继续 RL，相当于把不稳定在线探索固化成更稳定的起点。</p>
+      <div class="callout system">
+        <strong>几个具体经验很有复用价值：</strong>约 O(1M) reasoning traces 足够；更多 traces 可能限制探索；后期多个强 checkpoint 的 traces 比只用最终 checkpoint 更好；固定 token budget 下 prompt diversity 比每题多采样更重要；self-distillation 容易遗忘 long-context behavior，需要混入 mid-training data。
+      </div>
+      <h3>长上下文不是全程 256K 训练出来的</h3>
+      <p>报告采用 staged recipe：16K pre-training，64K mid-training，再短阶段扩到 256K。附录 B 的关键判断是：256K extension 的大部分 NLL 改善发生在前 1-10% training iterations，说明模型更多是在校准 position / attention 行为，而不是重新学习全新能力。</p>
+    </section>
+
+    <section id="agentic">
+      <h2>Agentic 训练：环境质量比工具数量更重要</h2>
+      <p class="section-lead">SWE 和 tool-use 训练不是把工具 schema 塞进 prompt，而是构造可复位、可执行、可验证、可防作弊的交互环境。报告中 agentic RL 的工程含量非常高。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>SWE 环境</h3>
+          <p>从 1.02 亿 GitHub PR 出发，筛出 merged、改动少于 15 个文件、包含 code 和 test、关联 issue 的 PR；再自动构建 container image、抽取 F2P/P2P test signals，并重复验证空 patch 失败、golden patch 成功。</p>
+        </div>
+        <div class="card">
+          <h3>General tool-use 环境</h3>
+          <p>用 mocked backend 和 seeded database 构造 closed-world tool environments，经 plain-English 描述生成工具、数据库、任务和 grader；覆盖 inventory、scheduling、customer support 等企业/消费场景。</p>
+        </div>
+      </div>
+      <h3>防 reward hacking 是 agentic RL 的第一等问题</h3>
+      <p>报告列出三类明确作弊面：联网搜索 public PR/golden solution、本地 git history 搜索未来 commit、篡改测试文件或 testing framework。对应缓解包括网络隔离、domain allowlist、time-traveled repo、隐藏 test changes、grading 前重置测试文件、LLM monitor 和人工抽检。</p>
+      <h3>D/E/F 附录补充了可复刻细节</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>附录</th><th>内容</th><th>为什么重要</th></tr></thead>
+          <tbody>
+            <tr><td>D</td><td>bash 与 string replace editor 的 OpenAI-compatible function schema。</td><td>SWE agent 训练不是任意 GUI 操作，而是围绕可记录、可回放、可约束的工具接口展开。</td></tr>
+            <tr><td>E</td><td>Instruction following taxonomy：objective hard constraints 与 subjective soft constraints。</td><td>训练 IF 不能只给自然语言偏好，需要把可程序检查和需要 judge 的约束分开建模。</td></tr>
+            <tr><td>F</td><td>SWE environment building infra：两池 Ray cluster、约 30,000 CPU cores、BuildKit/podman、本地 NVMe、prompt cache。</td><td>构建 RL 环境本身就是大规模数据工程；瓶颈甚至可能是 LLM token capacity 而不是 CPU。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="safety">
+      <h2>安全与对齐：约束不能被平均分抵消</h2>
+      <p class="section-lead">helpfulness-safety climb 的核心不是“把安全 reward 权重调大”，而是把不可交易目标做成 gate 或 lexicographic priority。一个 unsafe response 不能因为文风好、内容完整就被平均分救回来。</p>
+      <div class="grid-3">
+        <div class="card"><h3>Reward model</h3><p>基于 MAI-Base-1 post-trained 版本，用人类偏好数据训练，并用 cyclic permutation scoring 缓解自回归位置带来的打分噪声。</p></div>
+        <div class="card"><h3>AI judges</h3><p>用于快速定制 rubric，覆盖 instruction following、安全、风格、honesty 等细粒度行为。</p></div>
+        <div class="card"><h3>Verifiable rewards</h3><p>对“少于 10 个词”“单段回答”“JSON 格式”等可检查约束使用程序化 reward，降低 judge hacking 风险。</p></div>
+      </div>
+      <h3>Safety 与 over-refusal 同时被测</h3>
+      <p>微软构造内部 benchmark 同时测高敏感内容 safety pass rate 与低风险内容 helpfulness。这样可以避免模型通过无差别拒答来“刷安全分”。红队方面，报告覆盖多轮 escalation、fiction framing、credentialed persona、formatting drift、age-indicator bypass 和 authoritative-document fabrication 等稳定攻击模式。</p>
+      <div class="callout warning">
+        <strong>安全证据边界：</strong>内部红队主要是英语，非英语主要作为 jailbreak vector；agentic tool-use 和 multimodal inputs 不在内部红队范围；dangerous-capability / uplift evaluations 也不在本 release 范围。图 21 还说明第三方模型结果包含 provider-side safety filtering，所以跨模型 ASR 不是裸模型等价比较。
+      </div>
+    </section>
+
+    <section id="evals">
+      <h2>评测：强项鲜明，但不是全域登顶</h2>
+      <p class="section-lead">MAI-Thinking-1 在 AIME、LiveCodeBench、SWE-Bench Pro 等任务上表现强，但报告自己没有把它包装成全项第一。它更像一个中等 active 参数、高推理预算、工程化训练很强的 reasoning / SWE model。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>类别</th><th>代表结果</th><th>正确读法</th></tr></thead>
+          <tbody>
+            <tr><td>数学/STEM</td><td>AIME 2025 97.0，AIME 2026 94.5，GPQA Diamond 84.2。</td><td>AIME 很强；GPQA 不领先，说明竞赛数学和研究级科学知识不能混为一谈。</td></tr>
+            <tr><td>Competitive coding</td><td>LiveCodeBench v6 87.7。</td><td>非常强，但仍低于报告中列出的 DeepSeek V4 93.5 和 Kimi K2.6 89.6。</td></tr>
+            <tr><td>Agentic SWE</td><td>SWE-bench Verified 73.5，SWE-Bench Pro 52.8，Terminal-Bench 2.0 46.0。</td><td>SWE-Bench Pro 接近 Opus 4.6；Terminal-Bench 明显不是强项，并且评测忽略预定义 timeout。</td></tr>
+            <tr><td>General capabilities</td><td>MMLU Pro 85，SimpleQA Verified 31，GraphWalks 90，BFCL v3 72。</td><td>与 Sonnet 4.6 互有胜负，不应解读成全面替代。</td></tr>
+            <tr><td>Human side-by-side</td><td>对 Sonnet 4.6 win/tie/loss 为 49/6/45；对 Opus 4.6 为 43/5/52。</td><td>相对 Sonnet 略占优且接近噪声边界；尚未超过 Opus。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>长上下文评测的反思</h3>
+      <p>报告没有把 MRCR 作为重点优化目标，因为 1000 条 synthetic in-distribution examples 就能把较小模型刷到 90%+，显示该 benchmark 容易被 targeted overfitting。这个判断很有价值：长上下文评测要避免只测 counting/copying 的可刷模式，应关注自然多文档 QA、远距离 evidence retrieval 和位置分布泛化。</p>
+    </section>
+
+    <section id="infra">
+      <h2>基础设施：可训练性来自 determinism、goodput 和控制平面</h2>
+      <p class="section-lead">YOLO 和 Rocket 是这篇报告最硬的系统部分。前者负责大规模 pre-/mid-training，后者负责异步 RL；二者共同说明 reasoning model 的训练质量已经深度依赖系统行为。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>YOLO：训练框架</h3>
+          <p>自研 PyTorch-based framework，覆盖 FP8 kernels、ZeRO 1-3、tensor/context/expert/pipeline parallelism、dropless MoE、distributed checkpoint、deterministic kernels 和 bitwise reproducibility。</p>
+        </div>
+        <div class="card">
+          <h3>Rocket：RL 框架</h3>
+          <p>大规模异步 RL 系统，以 YOLO 做 learner、SGLang 做 inference。最大 RL job 中 inference GPU 与 learner GPU 比例可达 5:1，说明 rollout generation 是 reasoning RL 的主要成本中心。</p>
+        </div>
+      </div>
+      <h3>Determinism 是科学研发前提</h3>
+      <p>微软追求固定硬件拓扑、模型配置和软件版本下的 bitwise identical training。为此它控制数据队列、checkpoint RNG/FP8 scaling history、GPU kernel reduction order、MoE top-k stable sort、NCCL topology，甚至禁用会破坏确定性的某些 collective 路径。代价是可能牺牲 MFU，但收益是可以把质量变化归因到真实改动。</p>
+      <h3>Goodput 比峰值 FLOPs 更接近真实产能</h3>
+      <p>MAI-Base-1 主预训练在单一 8K GB200 逻辑集群完成，达到 90.0% goodput。报告把 overhead 分解为 recomputation、non-stepping time、MFU drop 等，并把 MFU regression 当作生产事故。附录 K 进一步说明，节点不是 provisioned 就可用；只有通过 certification、拓扑有效、可观察、可恢复，才进入生产训练池。</p>
+      <div class="callout system">
+        <strong>基础设施的核心范式：</strong>硬件 telemetry、NVLink/RDMA 健康、storage behavior、scheduler state 和 job progress 不是被动 dashboard，而是决定容量 admission、drain、remediation 和 return-to-service 的控制信号。
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>数据透明度有限</h3>
+          <p>报告给出来源类别、处理原则、比例和 cutoff，但完整 dataset/provider list 因隐私、法律、安全和竞争原因不披露，外部无法完全复现实验。</p>
+        </div>
+        <div class="card">
+          <h3>评测不是完全同源</h3>
+          <p>MAI 的结果来自微软评测流程，其他模型不少数字来自官方 model cards；Sonnet 4.6 的部分 benchmark 由微软自评。这些比较有参考价值，但不是完全独立 leaderboard。</p>
+        </div>
+        <div class="card">
+          <h3>推理预算很高</h3>
+          <p>STEM 评测使用最高 256K output tokens，agentic coding 使用 256K context。分数体现高预算 reasoning 设置，不等同于低延迟生产体验。</p>
+        </div>
+        <div class="card">
+          <h3>AI judge 仍是偏差源</h3>
+          <p>报告使用 verifiable reward、consensus、gating 缓解 judge hacking，但 subjective reward 仍继承 rubric、judge、长度和风格偏差。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="implications">
+      <h2>工程启发</h2>
+      <p class="section-lead">小团队无法复刻微软的 8K GB200 与数千 GPU RL，但可以复刻其中的方法论：把模型改进从“手感调参”改造成可证据化爬坡。</p>
+      <ol>
+        <li><strong>建立稳定 eval ladder。</strong>每个数据和架构改动都先通过固定 held-out eval，而不是只看一次下游 benchmark。</li>
+        <li><strong>记录 scale rank 是否反转。</strong>小模型 ablation 是搜索工具，不是目标尺度真理；对高重复/低多样性数据尤其要看训练 horizon。</li>
+        <li><strong>把 reward hacking 当作默认存在。</strong>agentic 环境必须有网络隔离、历史清理、隐藏测试、环境重置和行为监控。</li>
+        <li><strong>把不可交易目标做成 gate。</strong>安全、合规、关键格式约束不应被平均分抵消。</li>
+        <li><strong>训练系统要有归因能力。</strong>没有 determinism、日志、checkpoint replay 和结构化 overhead 分解，就很难判断模型质量变化来自哪里。</li>
+        <li><strong>长上下文先验不要迷信窗口大小。</strong>需要测 evidence position、远距离 retrieval、自然多文档 QA 和位置分布泛化，而不是只看可刷的合成 counting/copying。</li>
+      </ol>
+      <div class="callout">
+        <strong>最终判断：</strong>MAI-Thinking-1 当前本身会被后续模型刷新，但这份报告暴露出来的全栈爬坡范式会继续变重要。真正的壁垒不是某个 checkpoint，而是谁能以更低噪声、更高 goodput、更可信评测、更少 reward hacking 和更强数据治理持续迭代。
+      </div>
+    </section>
+
+    <section id="atlas">
+      <h2>论文图表全覆盖索引</h2>
+      <p class="section-lead">为避免只挑几张“好看图”而漏掉论文证据，我把 PDF 中出现编号图表的页面全部本地化为证据页：26 个 Figure、20 个 Table 标题（其中论文自身有两个 Table 19），共覆盖 45 个唯一页码。正文前面的 4 张大图用于阅读导览；下面的 atlas 用于逐项回查架构、数据、RL、评测、安全、长上下文、工具 schema 和集群治理证据。</p>
+      <div class="callout warning">
+        <strong>覆盖判断：</strong>这份笔记不是把 109 页 PDF 原样搬运，而是“解释 + 证据索引”。核心机制、关键结论和失败边界在正文展开；所有编号图表通过下方表格和本地截图页可回查。
+      </div>
+      <h3>Figure 1-26：论文图片与机制证据</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>编号</th><th>页码</th><th>这张图支撑的结论</th></tr></thead>
+          <tbody>
+<tr><td>Figure 1</td><td>p.1</td><td>RL 训练过程中 STEM climb 与 coding climb 的性能曲线</td></tr>
+<tr><td>Figure 2</td><td>p.5</td><td>MAI-Base-1 Transformer/MoE 架构总览</td></tr>
+<tr><td>Figure 3</td><td>p.9</td><td>不同稀疏度模型的预训练 efficiency gain</td></tr>
+<tr><td>Figure 4</td><td>p.12</td><td>HTML 预训练数据处理流水线</td></tr>
+<tr><td>Figure 5</td><td>p.16</td><td>数据混合 frontier 示例：183 个从零训练模型形成 Pareto 边界</td></tr>
+<tr><td>Figure 6</td><td>p.18</td><td>数据混合 scaling 的 rank non-invariance</td></tr>
+<tr><td>Figure 7</td><td>p.19</td><td>研究数据、STEM 问答、COT、比赛题对物理评测的贡献</td></tr>
+<tr><td>Figure 8</td><td>p.22</td><td>随机初始化 attention output 引起表示 collapse，zero-init 的修复作用</td></tr>
+<tr><td>Figure 9</td><td>p.23</td><td>30T token 预训练 loss 曲线</td></tr>
+<tr><td>Figure 10</td><td>p.24</td><td>base 模型 bits-per-byte held-out NLL 对比</td></tr>
+<tr><td>Figure 11</td><td>p.30</td><td>GB200 上 MFU 与 EG 随架构版本演化</td></tr>
+<tr><td>Figure 12</td><td>p.31</td><td>RL climbs 总览：三个 specialist teacher 到最终模型</td></tr>
+<tr><td>Figure 13</td><td>p.32</td><td>adaptive entropy control 的训练行为</td></tr>
+<tr><td>Figure 14</td><td>p.34</td><td>第一轮 self-distillation 的 reasoning prompt template</td></tr>
+<tr><td>Figure 15</td><td>p.35</td><td>STEM climb 期间 AIME 2025 与 LiveCodeBench hard subset 曲线</td></tr>
+<tr><td>Figure 16</td><td>p.37</td><td>STEM Mix 数据集的题型与学科分布</td></tr>
+<tr><td>Figure 17</td><td>p.38</td><td>从教材和学术 PDF 抽取 STEM 问答的 pipeline</td></tr>
+<tr><td>Figure 18</td><td>p.40</td><td>Agentic loop 与多步编排训练流程</td></tr>
+<tr><td>Figure 19</td><td>p.50</td><td>Rocket 大规模 RL 框架总览</td></tr>
+<tr><td>Figure 20</td><td>p.57</td><td>不同 harm category 下 safety-helpfulness tradeoff</td></tr>
+<tr><td>Figure 21</td><td>p.58</td><td>jailbreak transformation 类型下的 attack success rate</td></tr>
+<tr><td>Figure 22</td><td>p.88</td><td>长上下文扩展评测：retrieval NLL 与 Mooncake 结果</td></tr>
+<tr><td>Figure 23</td><td>p.95</td><td>Bash tool schema</td></tr>
+<tr><td>Figure 24</td><td>p.96</td><td>String Replace Editor tool schema</td></tr>
+<tr><td>Figure 25</td><td>p.100</td><td>STEM AI judge prompt</td></tr>
+<tr><td>Figure 26</td><td>p.108</td><td>8K GB200 集群 node lifecycle</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Table 1-19：配置、数据、评测与附录证据</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>编号</th><th>页码</th><th>这张表支撑的结论</th></tr></thead>
+          <tbody>
+<tr><td>Table 1</td><td>p.7</td><td>MAI-Base-1 架构族不同模型规模配置</td></tr>
+<tr><td>Table 2</td><td>p.8</td><td>every-layer MoE 相比 interleaved layout 的效率收益</td></tr>
+<tr><td>Table 3</td><td>p.10</td><td>NLL evaluation suite 的数据类型</td></tr>
+<tr><td>Table 4</td><td>p.13</td><td>训练数据源 knowledge cutoff date</td></tr>
+<tr><td>Table 5</td><td>p.20</td><td>预训练数据组成与去重 token 数</td></tr>
+<tr><td>Table 6</td><td>p.21</td><td>MAI-Base-1 各训练阶段规格</td></tr>
+<tr><td>Table 7</td><td>p.29</td><td>架构开发过程中 v1-v7 演化</td></tr>
+<tr><td>Table 8</td><td>p.47</td><td>harmful / borderline prompt 来源</td></tr>
+<tr><td>Table 9</td><td>p.48</td><td>style guide 中目标行为描述示例</td></tr>
+<tr><td>Table 10</td><td>p.49</td><td>consolidation SFT 数据混合比例</td></tr>
+<tr><td>Table 11</td><td>p.53</td><td>STEM 与 agentic coding public benchmark 结果</td></tr>
+<tr><td>Table 12</td><td>p.54</td><td>各类 public benchmark 结果</td></tr>
+<tr><td>Table 13</td><td>p.55</td><td>human side-by-side evaluation 任务分布</td></tr>
+<tr><td>Table 14</td><td>p.56</td><td>与 Sonnet 4.6 / Opus 4.6 的人类评测结果</td></tr>
+<tr><td>Table 15</td><td>p.98</td><td>instruction following taxonomy 高层约束示例</td></tr>
+<tr><td>Table 16</td><td>p.99</td><td>multi-turn IF capabilities 示例</td></tr>
+<tr><td>Table 17</td><td>p.99</td><td>不同 token budget 下 STEM benchmark 结果</td></tr>
+<tr><td>Table 18</td><td>p.102</td><td>user request classification dimensions</td></tr>
+<tr><td>Table 19</td><td>p.104</td><td>为什么省略 MRCR benchmark</td></tr>
+<tr><td>Table 19b</td><td>p.105</td><td>Additional Long Context Benchmarks；论文中重复编号 Table 19</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>本地图表证据页</h3>
+      <div class="atlas-grid">
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-001.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-001.jpg" alt="MAI-Thinking-1 论文第 1 页图表截图"></a>
+          <figcaption>p.1：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-005.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-005.jpg" alt="MAI-Thinking-1 论文第 5 页图表截图"></a>
+          <figcaption>p.5：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-007.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-007.jpg" alt="MAI-Thinking-1 论文第 7 页图表截图"></a>
+          <figcaption>p.7：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-008.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-008.jpg" alt="MAI-Thinking-1 论文第 8 页图表截图"></a>
+          <figcaption>p.8：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-009.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-009.jpg" alt="MAI-Thinking-1 论文第 9 页图表截图"></a>
+          <figcaption>p.9：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-010.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-010.jpg" alt="MAI-Thinking-1 论文第 10 页图表截图"></a>
+          <figcaption>p.10：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-012.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-012.jpg" alt="MAI-Thinking-1 论文第 12 页图表截图"></a>
+          <figcaption>p.12：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-013.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-013.jpg" alt="MAI-Thinking-1 论文第 13 页图表截图"></a>
+          <figcaption>p.13：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-016.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-016.jpg" alt="MAI-Thinking-1 论文第 16 页图表截图"></a>
+          <figcaption>p.16：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-018.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-018.jpg" alt="MAI-Thinking-1 论文第 18 页图表截图"></a>
+          <figcaption>p.18：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-019.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-019.jpg" alt="MAI-Thinking-1 论文第 19 页图表截图"></a>
+          <figcaption>p.19：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-020.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-020.jpg" alt="MAI-Thinking-1 论文第 20 页图表截图"></a>
+          <figcaption>p.20：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-021.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-021.jpg" alt="MAI-Thinking-1 论文第 21 页图表截图"></a>
+          <figcaption>p.21：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-022.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-022.jpg" alt="MAI-Thinking-1 论文第 22 页图表截图"></a>
+          <figcaption>p.22：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-023.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-023.jpg" alt="MAI-Thinking-1 论文第 23 页图表截图"></a>
+          <figcaption>p.23：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-024.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-024.jpg" alt="MAI-Thinking-1 论文第 24 页图表截图"></a>
+          <figcaption>p.24：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-029.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-029.jpg" alt="MAI-Thinking-1 论文第 29 页图表截图"></a>
+          <figcaption>p.29：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-030.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-030.jpg" alt="MAI-Thinking-1 论文第 30 页图表截图"></a>
+          <figcaption>p.30：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-031.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-031.jpg" alt="MAI-Thinking-1 论文第 31 页图表截图"></a>
+          <figcaption>p.31：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-032.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-032.jpg" alt="MAI-Thinking-1 论文第 32 页图表截图"></a>
+          <figcaption>p.32：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-034.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-034.jpg" alt="MAI-Thinking-1 论文第 34 页图表截图"></a>
+          <figcaption>p.34：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-035.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-035.jpg" alt="MAI-Thinking-1 论文第 35 页图表截图"></a>
+          <figcaption>p.35：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-037.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-037.jpg" alt="MAI-Thinking-1 论文第 37 页图表截图"></a>
+          <figcaption>p.37：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-038.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-038.jpg" alt="MAI-Thinking-1 论文第 38 页图表截图"></a>
+          <figcaption>p.38：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-040.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-040.jpg" alt="MAI-Thinking-1 论文第 40 页图表截图"></a>
+          <figcaption>p.40：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-047.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-047.jpg" alt="MAI-Thinking-1 论文第 47 页图表截图"></a>
+          <figcaption>p.47：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-048.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-048.jpg" alt="MAI-Thinking-1 论文第 48 页图表截图"></a>
+          <figcaption>p.48：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-049.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-049.jpg" alt="MAI-Thinking-1 论文第 49 页图表截图"></a>
+          <figcaption>p.49：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-050.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-050.jpg" alt="MAI-Thinking-1 论文第 50 页图表截图"></a>
+          <figcaption>p.50：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-053.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-053.jpg" alt="MAI-Thinking-1 论文第 53 页图表截图"></a>
+          <figcaption>p.53：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-054.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-054.jpg" alt="MAI-Thinking-1 论文第 54 页图表截图"></a>
+          <figcaption>p.54：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-055.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-055.jpg" alt="MAI-Thinking-1 论文第 55 页图表截图"></a>
+          <figcaption>p.55：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-056.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-056.jpg" alt="MAI-Thinking-1 论文第 56 页图表截图"></a>
+          <figcaption>p.56：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-057.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-057.jpg" alt="MAI-Thinking-1 论文第 57 页图表截图"></a>
+          <figcaption>p.57：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-058.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-058.jpg" alt="MAI-Thinking-1 论文第 58 页图表截图"></a>
+          <figcaption>p.58：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-088.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-088.jpg" alt="MAI-Thinking-1 论文第 88 页图表截图"></a>
+          <figcaption>p.88：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-095.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-095.jpg" alt="MAI-Thinking-1 论文第 95 页图表截图"></a>
+          <figcaption>p.95：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-096.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-096.jpg" alt="MAI-Thinking-1 论文第 96 页图表截图"></a>
+          <figcaption>p.96：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-098.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-098.jpg" alt="MAI-Thinking-1 论文第 98 页图表截图"></a>
+          <figcaption>p.98：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-099.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-099.jpg" alt="MAI-Thinking-1 论文第 99 页图表截图"></a>
+          <figcaption>p.99：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-100.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-100.jpg" alt="MAI-Thinking-1 论文第 100 页图表截图"></a>
+          <figcaption>p.100：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-102.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-102.jpg" alt="MAI-Thinking-1 论文第 102 页图表截图"></a>
+          <figcaption>p.102：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-104.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-104.jpg" alt="MAI-Thinking-1 论文第 104 页图表截图"></a>
+          <figcaption>p.104：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-105.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-105.jpg" alt="MAI-Thinking-1 论文第 105 页图表截图"></a>
+          <figcaption>p.105：编号图表证据页。</figcaption>
+        </figure>
+        <figure class="atlas-card">
+          <a href="mai-thinking-1-hill-climbing-machine-assets/atlas-page-108.jpg"><img src="mai-thinking-1-hill-climbing-machine-assets/atlas-page-108.jpg" alt="MAI-Thinking-1 论文第 108 页图表截图"></a>
+          <figcaption>p.108：编号图表证据页。</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于微软官方 PDF《MAI-Thinking-1: Building a Hill-Climbing Machine》、微软官方发布页，以及本地 PDF 结构核验。官方 PDF 显示 109 页；本地文本抽取显示 5621 行、19 个编号表格和 26 个编号图。由于完整训练数据、内部 benchmark、红队样本、reward model 数据和集群运行日志未公开，本文对这些部分只分析报告披露的机制与边界，不声称可独立复现。</p>
+      <ul class="source-list">
+        <li><strong>官方技术报告 PDF：</strong><a href="https://microsoft.ai/wp-content/uploads/2026/06/main_20260602_2.pdf">MAI-Thinking-1: Building a Hill-Climbing Machine</a></li>
+        <li><strong>官方发布页：</strong><a href="https://microsoft.ai/news/building-a-hillclimbing-machine-launching-seven-new-mai-models/">Building a hill-climbing machine: Launching seven new MAI models</a></li>
+        <li><strong>本页本地资源：</strong>首页、架构页、RL 概览页、评测页截图均来自官方 PDF 页面渲染，仅用于辅助读者定位，不替代原文。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

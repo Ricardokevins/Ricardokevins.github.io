@@ -1,5 +1,356 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-03 Mid-training X 帖深度解读与站内笔记导入
+
+### 背景
+
+- 用户要求深度解读 `https://x.com/NielsRogge/status/2061802537049591896`，随后追问是否已经导入笔记。
+- 上一轮已完成聊天内深度解读，但未落站内文件；本轮按用户追问补做 repo-native Notes 导入。
+- 当前工作树已有非本轮改动：`Progress.md`、`_data/notes.yml`、`notes/llm-interview-question-bank/chapters/074.html`、`notes/llm-interview-question-bank/chapters/077.html`，以及若干未跟踪 notes / artifact；本轮只新增 mid-training 笔记并追加索引与进度记录，不回滚或整理其他改动。
+
+### 已完成
+
+- 使用 OpenCLI 获取目标 X 原帖：
+  - 作者：`NielsRogge` / Niels Rogge；
+  - 原帖时间：2026-06-02 13:30:05 UTC；
+  - 主题：Mid-training 是 pre-training 与 post-training 之间的训练阶段；
+  - 原帖短链指向 `https://paperswithcode.co/methods/mid-training`；
+  - 原帖附图为 Papers with Code 的 Mid-training 方法页截图。
+- 使用 `opencli twitter profile` 核验作者公开资料：
+  - bio：ML Engineer @ Hugging Face，building Papers with Code；
+  - location：Belgium；
+  - profile URL：`http://nielsrogge.github.io`。
+- 补充读取相关材料：
+  - Papers with Code `Mid-training` 方法页；
+  - Pierre-Carl Langlais 的 `What's the deal with mid-training?`；
+  - Shashank Shekhar 对 Phi-4 数据与 mid-training 流程的解析；
+  - Microsoft Phi-4 技术报告；
+  - `Midtraining Bridges Pretraining and Posttraining Distributions`；
+  - `daVinci-Dev: Agent-native Mid-training for Software Engineering`；
+  - `Scaling Agents via Continual Pre-training`。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/mid-training-llm-training-pipeline.html`
+- 新增本地配图资源：
+  - `notes/tech-analysis/mid-training-llm-training-pipeline-assets/niels-pwc-mid-training.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`Mid-training：预训练和后训练之间真正发生了什么`
+  - URL：`/notes/tech-analysis/mid-training-llm-training-pipeline.html`
+  - 类型：`Tech Analysis`
+
+### 关键观察
+
+- Mid-training 的价值不是新增一个营销阶段，而是把能力增强和行为对齐拆开：它通常保留 pre-training-like objective，但数据更小、更高质量、更贴近目标能力分布。
+- 判断一个阶段是否是 mid-training，不能只看它发生在 pre-training 之后；要看训练目标、数据形态、token 规模、是否塑造能力底座，以及后续 post-training 是否仍有稳定增益。
+- Phi-4 是清晰例子：约 10T tokens 预训练、约 250B tokens mid-training 做长上下文扩展、约 8B tokens SFT 后再进入 DPO。
+- Agentic mid-training 的关键不是把更多代码丢进模型，而是让数据保留状态、动作、观察、失败、测试和修复路径，使模型学到 agent 工作流的过程分布。
+- 术语边界仍然混乱；continued pretraining、supplemental training、agentic CPT 和 mid-training 在公开材料里常有重叠，本文按功能而非名称划分。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、本地图片引用与非空 `alt` 均存在。
+- 新增本地配图资源检查通过：`niels-pwc-mid-training.jpg` 为 `1200x778` JPEG。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 83 entries, 83 top-level note html files`。
+- `git diff --check -- "notes/tech-analysis/mid-training-llm-training-pipeline.html" "notes/tech-analysis/mid-training-llm-training-pipeline-assets/niels-pwc-mid-training.jpg" "_data/notes.yml" "Progress.md"` 通过。
+- UTF-8 检查通过：新增 HTML、`Progress.md` 与 `_data/notes.yml` 均可按 UTF-8 解码。
+- 新增 HTML 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/tech-analysis/mid-training-llm-training-pipeline.html` 结构检查通过：页面存在，文件大小 `26734` bytes，title、`body.notes-shell-page`、`main`、`data-note-role="evidence-appendix"` 和本地图片资源均存在。
+- `_site/notes/index.html` 已包含新增 Mid-training 笔记卡片；`_site/sitemap.xml` 已包含新增页面 URL。
+
+## 2026-06-03 MAI-Thinking-1 技术报告深度分析与站内笔记导出
+
+### 背景
+
+- 用户要求深度分析并导出 HTML 笔记：`https://microsoft.ai/wp-content/uploads/2026/06/main_20260602_2.pdf`。
+- 任务在当前站点仓库内落地，不写入 Obsidian；本轮只新增 MAI-Thinking-1 相关 note、assets，并对 `_data/notes.yml` / `Progress.md` 做增量更新。
+- 当前 worktree 已有非本轮改动，包括 OmniOPD、CAST、cwolfe 阅读清单、LLM 题库章节和本地 audit artifact；本轮不回滚、不覆盖这些改动。
+
+### 已完成
+
+- 下载并读取 Microsoft AI 官方 PDF：
+  - 标题：`MAI-Thinking-1: Building a Hill-Climbing Machine`；
+  - 作者：The Microsoft AI Team；
+  - PDF 109 页；
+  - 本地文本抽取 5621 行；
+  - 识别 20 个编号表格标题和 26 个编号图；论文正文中有两个 `Table 19` 标题。
+- 渲染并本地化证据截图：
+  - 4 张正文导览大图：`source-page-001.png`、`architecture-page-005.png`、`rl-overview-page-030.png`、`evaluation-page-053.png`；
+  - 新增 45 张 `atlas-page-*.jpg` 图表证据页，覆盖 PDF 中所有编号 Figure / Table 所在页面。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/mai-thinking-1-hill-climbing-machine.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`MAI-Thinking-1：微软如何把模型研发做成 Hill-Climbing Machine`
+  - URL：`/notes/tech-analysis/mai-thinking-1-hill-climbing-machine.html`
+  - 类型：`Tech Analysis`
+
+### 内容判断
+
+- 笔记核心判断：该报告真正展示的是微软自研 reasoning model 的系统性生产能力，而不是单个 benchmark 或单点算法技巧。
+- 重点补齐此前聊天版覆盖不足的部分：
+  - NLL evaluation suite 与 public evaluation decontamination；
+  - MoE sparsity / EG / EGTime 取舍；
+  - Web HTML、Web PDFs、Books/Journals、Public GitHub 的 Appendix A 数据管线；
+  - attention output zero-init 与 MoE router imbalance 的关系；
+  - FP8/BF16/FP32 数值配方；
+  - self-distillation 在 RL collapse recovery / base policy migration 中的工程角色；
+  - SWE tool schema、instruction following constraint taxonomy、SWE environment building infra；
+  - MRCR 被剔除所暴露的长上下文 benchmark 可刷性；
+  - Cluster Appendix K 中 topology、certification、node lifecycle、observability 与 goodput 控制面。
+- 当前判断：MAI-Thinking-1 不是“全域 SOTA”证据，而是 Microsoft AI 已经具备从 scratch 训练、后训练、评测、安全和部署一体化 hill-climbing machine 的证据。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过；本轮复核输出：
+  - `notes index ok: 83 entries, 83 top-level note html files`
+- `git diff --check -- "notes/tech-analysis/mai-thinking-1-hill-climbing-machine.html" "notes/tech-analysis/mai-thinking-1-hill-climbing-machine-assets" "_data/notes.yml" "Progress.md"` 通过，无 whitespace error。
+- 新增 HTML scoped 结构检查通过：
+  - 标题唯一；
+  - `body.notes-shell-page` 存在；
+  - `../assets/notes-shell.css` 已加载；
+  - `Notes / All Notes / Home` 顶部导航存在；
+  - `<main>` 与 14 个核心 section 存在；
+  - `data-note-role="evidence-appendix"` 证据附录存在；
+  - 49 张本地图片全部存在且 `alt` 非空，其中 45 张为图表 atlas 证据页；
+  - 新增 HTML 与 `_data/notes.yml` 未命中 `/tmp/`、`/Users/`、`Generated locally`、`本 HTML 报告`、`本报告生成`、Unicode replacement character 等公开生成痕迹。
+- `_data/notes.yml` 入口检查通过：
+  - URL：`/notes/tech-analysis/mai-thinking-1-hill-climbing-machine.html`
+  - 类型：`Tech Analysis`
+  - tags 包含 `Microsoft AI`
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功：
+  - 构建产物存在：`_site/notes/tech-analysis/mai-thinking-1-hill-climbing-machine.html`
+  - 构建耗时约 8.467 秒；
+  - 仍有既有 `faraday-retry` 建议和 GitHub Metadata API 未认证/限流 warning，不影响 `_site` 静态生成。
+- Chrome headless 渲染烟测通过：
+  - 桌面截图 `/private/tmp/mai-thinking-1-desktop.png` 为 `1440x1100`，`234619` bytes，PNG 有效；
+  - 移动截图 `/private/tmp/mai-thinking-1-mobile.png` 为 `390x844`，`75198` bytes，PNG 有效；
+  - 构建后 DOM 检查显示标题正确、`body_class=notes-shell-page`、图片数为 4、缺失图片数为 0。
+
+## 2026-06-03 OmniOPD X 帖深度解读与站内笔记导出
+
+### 背景
+
+- 用户要求深度解读 `https://x.com/zhuokaiz/status/2061939957514584304`，随后确认导入笔记。
+- 本轮按仓库规则使用 OpenCLI-first X/thread 读取路径，并在当前站点内导出独立 HTML 笔记，不写入 Obsidian。
+- 当前 worktree 已有非本轮改动：`Progress.md`、`_data/notes.yml`、`notes/llm-interview-question-bank/chapters/074.html`、`notes/llm-interview-question-bank/chapters/077.html`、未跟踪 `audit_report.html`、CAST 笔记与 cwolfe 阅读清单相关文件；本轮只追加 OmniOPD 相关笔记、索引和进度记录。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取目标 X 原帖与回复：
+  - 作者：Zhuokai Zhao / `zhuokaiz`；
+  - 原帖时间：2026-06-02 22:36:09 UTC；
+  - 主题：OmniOPD，一种不需要 teacher logits 的 on-policy distillation；
+  - 原帖配图包含 OmniOPD 总览图和数学推理主结果表。
+- 使用 `opencli twitter profile` 核验作者公开资料：
+  - name：Zhuokai Zhao；
+  - bio：AI Research Scientist @Meta，PhD @UChicagoCS；
+  - profile URL：`https://zhuokai-zhao.com/`。
+- 解析目标 thread 短链：
+  - 论文：`https://arxiv.org/pdf/2606.01476`；
+  - 前序 OPD 脆弱性长帖：`https://x.com/zhuokaiz/status/2055042099674796118`。
+- 下载并读取论文 PDF / HTML / arXiv metadata：
+  - 标题：`OmniOPD: Logit-Free On-Policy Distillation via Speculative Verification`；
+  - 作者：Yuhang Zhou、Lizhu Zhang、Yifan Wu、Mingyi Wang、Peng Bo、Jiayi Liu、Xiangjun Fan、Zhuokai Zhao；
+  - arXiv v1：2026-05-31；
+  - 论文 PDF 26 页。
+- 新增站内论文解读笔记：
+  - `notes/paper-reviews/omniopd-logit-free-opd.html`
+- 新增本地配图资源：
+  - `notes/paper-reviews/omniopd-logit-free-opd-assets/overview.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`OmniOPD：用语义 chunk 验证绕开 teacher logits`
+  - URL：`/notes/paper-reviews/omniopd-logit-free-opd.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- OmniOPD 的核心不是“黑盒 teacher 也能蒸馏”这么简单，而是把 OPD 的监督对象从 fragile token menu 改成学生关键推理分叉处的 chunk-level semantic verification。
+- 标准 OPD 的失败根源包括 teacher logits access barrier、teacher/student tokenizer 或 style mismatch、局部 plausible next-token overlap 脆弱，以及 degenerate prefix 下 teacher token probability 可能误导训练。
+- OmniOPD 的关键组合包括 peak-entropy chunk selection、teacher Monte Carlo rollouts、semantic similarity、Dirichlet-Multinomial Bayesian smoothing 和 unaudited tokens 上的 reference KL anchor。
+- 数学推理实验最支持论文主张：Qwen3-4B + Qwen3-30B-A3B-Instruct 上 OmniOPD 平均 72.32%，明显高于 SFT 49.77% 和 OPD 56.22%；这说明 teacher 风格差异大时 token-level OPD 特别吃亏。
+- 代码任务没有形成同样强的优势：Qwen3-4B 代码实验中 OmniOPD 平均 63.78%，低于 OPD 65.26%，说明 chunk-level invariance 不应被外推为所有任务都优于 logits。
+
+### 当前判断
+
+- 对后训练工程最可复用的部分是监督粒度重构：把 teacher 的逐 token 分布匹配改成“学生高不确定性 chunk + teacher rollout + 可替换 semantic scorer”的模块接口。
+- 复现时不应只照抄默认 Edit Distance；应比较 lexical metric、embedding similarity、LLM-as-judge / verifier 等多种 `phi`，并监控 zero-match chunks、KL、response length、entropy drift 和 teacher query cost。
+- Reference KL anchor 是硬约束，不是装饰项；论文消融中去掉 KL anchor 后平均分从 69.08% 坍到 8.28%，说明稀疏 chunk supervision 若不约束未审计 token 会快速退化。
+- 证据边界集中在数学推理和少量 competitive programming 任务；更大模型、full-parameter update、长程 agent、工具调用、多模态和无可靠 verifier 的任务不能直接外推。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、本地图片引用与非空 `alt` 均存在。
+- 新增本地配图资源检查通过：`overview.jpg` 为 `876x1200` JPEG。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 81 entries, 81 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/omniopd-logit-free-opd.html" "notes/paper-reviews/omniopd-logit-free-opd-assets/overview.jpg" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/paper-reviews/omniopd-logit-free-opd.html` 结构检查通过：title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和本地图片资源均存在。
+- `_site/notes/paper-reviews/omniopd-logit-free-opd-assets/overview.jpg` 存在，文件为 `876x1200` JPEG。
+- `_site/notes/index.html` 已包含新增 OmniOPD 笔记卡片；`_site/sitemap.xml` 已包含新增页面 URL。
+
+## 2026-06-03 Codex hook 失败噪声修复
+
+### 背景
+
+- 用户反馈 Codex 中反复出现 `PreToolUse hook (failed)` / `PostToolUse hook (failed)`，错误为 `hook exited with code 1`。
+- 本轮问题不属于站点业务代码，而是本机全局 Codex hook 配置异常；按最小修复原则只处理 `~/.codex` hook 配置，不改动站点页面、题库或 notes 内容。
+
+### 根因
+
+- `/Users/bytedance/.codex/hooks.json` 原本为 `SessionStart`、`UserPromptSubmit`、`PreToolUse`、`PermissionRequest`、`PostToolUse`、`Stop` 全部注册同一个命令：
+  - `"/opt/homebrew/bin/node" "/Applications/Clawd on Desk.app/Contents/Resources/app.asar.unpacked/hooks/codex-hook.js"`
+- 当前机器上 `/Applications/Clawd on Desk.app/.../codex-hook.js` 不存在，手动复现会触发 Node `MODULE_NOT_FOUND` 并退出 `1`，因此每次工具调用前后都会刷 hook failure。
+- 额外检查发现 `com.codexplusplus.watcher` 后台 LaunchAgent 仍在运行周期性 update/repair；它的日志里有 GitHub release check `403` 和 `npm install` 失败噪声，但未在本地代码中发现其直接写入 `~/.codex/hooks.json` 或 `codex-hook.js` 的逻辑。
+
+### 已完成
+
+- 当前 `/Users/bytedance/.codex/hooks.json` 已变为：
+  - `{ "hooks": {} }`
+- 原坏配置已保留备份：
+  - `/Users/bytedance/.codex/hooks.json.bak.20260603-111034`
+- 修改 `/Users/bytedance/.codex/config.toml`：
+  - 删除 6 个指向 `/Users/bytedance/.codex/hooks.json:*` 的旧 trusted hash；
+  - 保留 `superpowers@superpowers-marketplace` 自身的 `session_start` hook trust 记录。
+- 修改前已备份全局配置：
+  - `/Users/bytedance/.codex/config.toml.bak.20260603-115210`
+
+### 验证结果
+
+- JSON 解析检查通过：
+  - 当前 `hooks.json` 为合法 JSON，且 hook 列表为空；
+  - 备份 `hooks.json.bak.20260603-111034` 为合法 JSON，包含原始坏 hook，便于需要时追溯。
+- `rg` 复查通过：
+  - 当前 `/Users/bytedance/.codex/hooks.json` 和 `/Users/bytedance/.codex/config.toml` 不再包含 `Clawd on Desk`、`codex-hook.js`、`PreToolUse`、`PostToolUse` 相关坏入口。
+- `codex doctor` 通过配置加载与数据库健康检查：
+  - `Configuration` 为 `config loaded`，`config.toml parse ok`；
+  - 未出现 hook failure；
+  - 剩余 warning 是历史 rollout 扫描和官方更新探测 `403`，与本次 hook 退出码 `1` 不同。
+- `codexplusplus doctor` 显示 Codex++ 本体检查通过；但 watcher 的 update 日志仍有 `403` / npm install 失败噪声，后续若继续污染日志，可单独禁用 `com.codexplusplus.watcher` 或卸载 Codex++。
+
+## 2026-06-03 CAST / GRPO X 帖深度解读与站内笔记导出
+
+### 背景
+
+- 用户要求深度阅读和分析梳理 `https://x.com/sheriyuo/status/2061764630968717598`，随后确认导出到笔记。
+- 本轮按仓库规则使用 OpenCLI-first X/thread 读取路径，并在当前站点内导出独立 HTML 笔记，不写入 Obsidian。
+- 当前工作树已有非本轮改动：`notes/llm-interview-question-bank/chapters/074.html`、`notes/llm-interview-question-bank/chapters/077.html`、`Progress.md` 的数学专项深化记录，以及未跟踪 `audit_report.html`；本轮不触碰两个题库章节和本地审计 artifact。
+
+### 已完成
+
+- 使用 `opencli twitter thread` 获取目标 X 原帖与回复：
+  - 作者：`sheriyuo` / Xiuyu Li；
+  - 原帖时间：2026-06-02 10:59:28 UTC；
+  - 主题：CAST 对 GRPO dead-zone、OPSD 信号错位和 token-level credit assignment 的修补；
+  - 原帖配图为 CAST / GRPO 总览图。
+- 使用 `opencli twitter profile` 核验作者公开资料：
+  - name：Xiuyu Li；
+  - bio：Undergrad @RUC1937，RL / Optimization / dLLM，Intern @JD_Corporate；
+  - profile url：`http://sheriyuo.github.io`。
+- 解析原帖短链：
+  - `https://t.co/ZlWrJiPXCa` -> `https://arxiv.org/abs/2606.00172`。
+- 下载并读取论文 PDF：
+  - 标题：`CAST: Non-Privileged Clipped Asymmetric Self-Teaching with Advantage Flipping for GRPO`；
+  - 作者：Yang Li、Gongle Xue、Yijia Guo、Yuheng Yuan、Liwen Hu、Lei Ma；
+  - arXiv v1：2026-05-29；
+  - 论文 PDF 26 页。
+- 新增站内论文解读笔记：
+  - `notes/paper-reviews/cast-grpo-self-teaching.html`
+- 新增本地配图资源：
+  - `notes/paper-reviews/cast-grpo-self-teaching-assets/overview.jpg`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口：
+  - 标题：`CAST：给 GRPO 补上 verifier-grounded 的 token 级信用分配`
+  - URL：`/notes/paper-reviews/cast-grpo-self-teaching.html`
+  - 类型：`Paper Note`
+
+### 关键观察
+
+- CAST 不是替代 GRPO，而是修 GRPO 的 advantage construction：verifier 继续决定 trajectory-level 方向，self-teacher 只做 token-level local shaping。
+- GRPO 的 zero-variance groups 不是边缘情况；论文 Qwen3-4B 主 run 中 all-correct groups 平均 20.2%，all-wrong groups 平均 31.3%，mixed groups 平均 48.5%。
+- OPSD 的问题不是没有 dense token signal，而是 teacher-positive / teacher-negative token preference 未必和最终 trajectory correctness 对齐。
+- CAST 的关键组合包括 answer-free self-teacher scoring、bounded zero-variance base advantage、asymmetric clipping 和 bidirectional advantage flipping。
+- 这不是 PRM，也不是 step-level semantic supervision；它是基于 self-teacher log-prob gap 和 verifier correctness 构造的 detached token advantage。
+
+### 当前判断
+
+- @sheriyuo 原帖对 CAST 的主线判断成立，但“dense step-level signal”需要校正为 token-level advantage shaping；CAST 不知道每一步数学推理是否语义正确。
+- CAST 的工程启发是把 teacher 从裁判降级为局部 shaping 工具：verifier 负责 outcome，teacher 负责 local log-prob geometry。
+- 证据边界仍集中在数学 RLVR、Qwen3 1.7B/4B/8B、LoRA、最多 600 optimizer steps；更大模型、full-parameter update、长程 agent 和无可靠 verifier 的任务不能直接外推。
+
+### 验证结果
+
+- 新增 HTML scoped 结构检查通过：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、本地图片引用与非空 `alt` 均存在。
+- 新增本地配图资源检查通过：`overview.jpg` 为 `1200x744` JPEG。
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 79 entries, 79 top-level note html files`。
+- `git diff --check -- "notes/paper-reviews/cast-grpo-self-teaching.html" "notes/paper-reviews/cast-grpo-self-teaching-assets/overview.jpg" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 HTML 与 `_data/notes.yml` 未命中 `Generated locally`、`HTML generated`、`本地 HTML 生成`、`报告生成日期`、`/tmp/`、`/Users/bytedance`、`最终 HTML 路径`、`文件位置`、Unicode replacement character 等公开生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍有 `faraday-retry` 建议和 GitHub Metadata API 403/限流 warning，不影响 `_site` 静态生成。
+- `_site/notes/paper-reviews/cast-grpo-self-teaching.html` 结构检查通过：页面存在，文件大小 `25469` bytes，`section` 数量为 10，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和本地图片资源均存在。
+- `_site/notes/paper-reviews/cast-grpo-self-teaching-assets/overview.jpg` 存在，文件为 `1200x744` JPEG。
+- `_site/notes/index.html` 已包含新增 CAST 笔记卡片；`_site/sitemap.xml` 已包含新增页面 URL。
+
+## 2026-06-03 LLM 数学专项知识点讲解深化
+
+### 背景
+
+- 用户在数学题库/知识库 review 后要求继续推进，并明确“重要的是先把知识点讲清楚”。
+- 本轮按内容深化处理，不先做题库 UI、目录重排或大规模索引工程；优先补 `notes/llm-interview-question-bank/` 里数学专项的“逐题详细解答”层。
+- 当前工作树已有未跟踪 `audit_report.html`，本轮不触碰该本地 artifact。
+
+### 已完成
+
+- 扩写 `notes/llm-interview-question-bank/chapters/074.html`：
+  - 在章节顶部新增“先把数学对象讲清楚”导读块，明确概率、统计量、空间结构三条数学链路。
+  - 扩写条件概率 / 全概率 / Bayes：
+    - 补公式、对象读法、常见方向错误；
+    - 加入罕见病检测 base-rate 数值例子，说明 posterior 同时受 likelihood 与 prior 影响。
+  - 扩写期望 / 方差 / 协方差 / 相关系数：
+    - 补定义公式和适用对象；
+    - 强调协方差有量纲、相关系数只看线性关系，零相关不等于独立。
+  - 扩写 MLE / MAP：
+    - 补优化目标、负对数后验分解；
+    - 用高斯先验解释 L2 正则来源；
+    - 加入硬币样本 + Beta 先验的 MAP 例子。
+  - 扩写熵 / 交叉熵 / KL：
+    - 补 `H(p,q)=H(p)+D_KL(p||q)` 推导；
+    - 加入二分类分布数值例子，说明方向性和相对熵代价。
+  - 扩写偏导 / 梯度 / Jacobian / Hessian：
+    - 增加输入输出形状表；
+    - 强调先按标量/向量输出和一阶/二阶区分。
+  - 扩写 Taylor、拉格朗日、mini-batch 梯度、条件数：
+    - 补二阶局部近似公式、约束优化最小例子、mini-batch 无偏估计与方差、条件数和训练行为的连接。
+- 扩写 `notes/llm-interview-question-bank/chapters/077.html`：
+  - 新增“高阶数学题的回答骨架”导读块，按机制、推导、例子和边界组织高阶追问。
+  - 扩写 attention scaling：
+    - 补点积方差随 `d_k` 增长的最小推导；
+    - 说明除以 `sqrt(d_k)` 控制 softmax 尖锐程度而不改变排序。
+  - 扩写 sigmoid / tanh / softmax 导数：
+    - 补激活导数公式和 softmax Jacobian；
+    - 解释 logits 尺度过大、softmax 饱和和梯度变弱之间的链路。
+  - 扩写 softmax + cross-entropy：
+    - 从 log-softmax 推导 `p-y`；
+    - 补梯度下降下真实类 logit 被推高、错误类 logit 被压低的符号解释。
+  - 扩写 MSE / cross-entropy、最小二乘、L1/L2、KKT、Jensen、log-sum-exp、Monte Carlo、LayerNorm：
+    - 补观测模型假设、正规方程推导、正则几何和不可导点、KKT 四条件表、ELBO 下界来源、稳定重写、Monte Carlo 方差、LayerNorm 机制和边界。
+
+### 当前判断
+
+- 本轮没有改变题库结构，而是先把数学专项最核心的知识点讲深：从“答案大意”补到“对象、公式、推导、例子、边界”。
+- 后续继续推进时，优先按同一标准处理：
+  - LLM 题库第 `048-058` 核心知识点索引里仍偏短的条目；
+  - 数学手册独立题库层的题型/难度/先修映射；
+  - LLM 第 `072-077` 与独立数学手册之间的交叉导流。
+
+### 验证结果
+
+- `ruby "scripts/validate_notes_index.rb"` 通过，输出 `notes index ok: 78 entries, 78 top-level note html files`。
+- `git diff --check -- "notes/llm-interview-question-bank/chapters/074.html" "notes/llm-interview-question-bank/chapters/077.html" "Progress.md"` 通过。
+- 章节结构检查通过：
+  - `074.html`：`section.chapter=1`、`chapter_nav=1`、重复 `id=0`；
+  - `077.html`：`section.chapter=1`、`chapter_nav=1`、重复 `id=0`。
+- UTF-8 / replacement character 检查通过：
+  - `074.html` 与 `077.html` 均为 valid UTF-8；
+  - 未发现 Unicode replacement character。
+
 ## 2026-06-02 commit/push 收口复验
 
 ### 背景
@@ -104,6 +455,36 @@
 - `_site/notes/tech-analysis/a-evolve-self-evolving-agents.html` 结构检查通过：页面存在，文件大小 `27994` bytes，`section` 数量为 8，title、`body.notes-shell-page`、Notes sitebar、`main`、`data-note-role="evidence-appendix"` 和两张本地资源均存在。
 - `_site/notes/tech-analysis/a-evolve-self-evolving-agents-assets/framework.jpg` 存在，文件为 `1200x670` JPEG；`_site/notes/tech-analysis/a-evolve-self-evolving-agents-assets/evolved-agent.png` 存在，文件为 `1200x989` PNG。
 - 精确 staged snapshot 检查、commit/push 收口见本文件顶部 `2026-06-02 commit/push 收口复验`。
+
+## 2026-06-03 A-Evolve 笔记重构：补充创新性审视与赛道全景
+
+### 背景
+
+- 用户质疑 A-Evolve 这类"自我验证、自我进化"工作是否真有方法创新，要求诚实拆解。
+- 原笔记（06-02 撰写）偏忠实解读，缺少对方法论贡献的批判性评估。
+
+### 已完成
+
+- 重新阅读两篇 arXiv 论文全文（Position Paper 2602.00359、Harness Updating 2605.30621）及 GitHub README。
+- 从 A-Evolve 引用列表梳理 2023-2025 十种同类工作（Reflexion、Promptbreeder、SelfEvolve、AgentEvolver、Youtu-Agent、Agent0、ReasoningBank、EvoAgentX、Evo-memory、Agentic Context Engineering 等）。
+- 重写 `a-evolve-self-evolving-agents.html`，新增《创新审视》section（位于原核心判断之前），包含：
+  - 赛道全景对照表（10 种同类工作的年份、更新对象、更新机制、与 A-Evolve 的本质差异）
+  - 两篇论文分开评级：Position Paper ≈ 0 方法创新（换术语不谈新机制、实验只比 strawman baseline）、Harness Updating 论文的贡献在实验设计（7×6×3 全交叉 + 能力拆解），不在新算法
+  - 7 项机制"卖点"创新性评估表（循环、Evolver 结构、workspace 契约、Gate、EGL、能力拆解、全交叉实验），逐项标"不算新 / 工程创新 / 小改进 / 算新"
+  - 诚实总结：没有新算法、新机制、新理论；A-Evolve 亮点是"提出可证伪假设→用实验打脸→给出工程方向"的诚实性
+- 更新 TOC 导航，新增"创新审视"锚点。
+- 更新 `_data/notes.yml` 摘要，反映批判性评估角度。
+
+### 核心判断
+
+- A-Evolve 的 Position Paper 在方法上不新——"LLM 当 evolver"在 Reflexion (2023) 和 Promptbreeder (2024) 中已充分体现；三个"原则"是对已有工作的重新命名。
+- Harness Updating ≠ Harness Benefit 的实验发现真正有价值：evolver 强弱不重要（≤ 3.1 pp 差距），solver 的 harness invocation 和 long-horizon following 才决定收益。这个发现的可逆推含义是"别把钱花在更强的 evolver 上"。
+- A-Evolve 框架本质是好的工程（CI/CD for agent harness），不是新的科学。它的"创新"在测量方法（能力拆解）和实验设计（全交叉受控），不在算法或机制。
+
+### 验证结果
+
+- 新增 HTML section 结构正确：`#innovation` 锚点、TOC 更新、9 个 section 总数。
+- `_data/notes.yml` 摘要更新，`ruby scripts/validate_notes_index.rb` 通过。
 
 ## 2026-06-02 LLM Interview Question Bank RAG / 知识库内容 Review 与补强
 
@@ -3425,3 +3806,44 @@
 - `_data/notes.yml` 头部新增 entry（date 2026-06-02 19:30，kind Tech Analysis，tags X Tweet Digest / Periodic Fetching / Audio LM / Multimodal Agent / Agentic RL / Harness / Reward Model）。
 - 遵循 `AGENTS.md` 第 8 节：自包含 HTML，资源本地化，证据边界 + 资料索引齐备；未跑 `scripts/validate_notes_index.rb`（下次新增笔记统一校验）。
 - 删除了先前误放在 Obsidian `3.Resources/DailyNotes/26-06-02 X推文抓取周期-AI研究动态.md` 的版本，按”不再默认写入 Obsidian”原则以本仓库为唯一导出位置。
+
+## 2026-06-03 cwolferesearch RL at scale 书单深读导入站内笔记
+
+- 基于 `https://x.com/cwolferesearch/status/2061827001204240599` 的 OpenCLI `twitter thread` 抓取结果、作者 profile、原帖附图和 26 个 `t.co` 短链解析结果，整理成站内独立 HTML 笔记：`notes/tech-analysis/cwolfe-rl-scaling-reading-list.html`。
+- 本地化原帖附图到 `notes/tech-analysis/cwolfe-rl-scaling-reading-list-assets/rl-at-scale-map.jpg`，页面使用 `notes-shell-page` 壳层、`Notes / All Notes / Home` 导航、语义 `<main>` 和文末 `证据边界与资料索引`。
+- 笔记主线：把书单解释为 LLM RL 后训练从算法 recipe 迁移到系统工程的阅读地图，分层覆盖 RL scaling law、HybridFlow/verl/AReaL/PipelineRL/AsyncFlow 训练系统、Agentic RL 环境与 reward、Kimi/Cursor/MiniMax/OLMo/Nemotron 等 case study。
+- `_data/notes.yml` 新增首页卡片：`LLM RL at Scale：从 scaling law 到 agentic post-training 的阅读路线`，tags 覆盖 RL at Scale / Post-training / Agentic RL / Async RL / RL Infrastructure / Scaling Law。
+- 验证结果：
+  - `ruby "scripts/validate_notes_index.rb"` 通过，当前 live worktree 输出 `notes index ok: 81 entries, 81 top-level note html files`；计数包含同时存在于工作区的其他未跟踪 note，不只包含本轮 cwolferesearch 页面。
+  - `git diff --check -- "notes/tech-analysis/cwolfe-rl-scaling-reading-list.html" "_data/notes.yml" "Progress.md"` 通过。
+  - 独立 HTML 结构扫描通过：`notes-shell-page`、Notes / All Notes / Home 导航、唯一 `<main>`、图片 `alt`、文末 `data-note-role="evidence-appendix"` 和公开生成痕迹检查均通过。
+  - `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有既有 `faraday-retry` 建议和 GitHub Metadata 未认证 warning，不影响 `_site` 生成。
+  - 本地 WEBrick 服务 `http://127.0.0.1:4194` 下做 Chrome headless 渲染烟测：新笔记页和 `/notes/` 索引在 390px 与 1440px 视口均 `overflow=0`、`badImages=0`、`missingAlt=0`、`consoleErrors=0`、`failedRequests=0`，索引页能找到新笔记卡片链接。
+
+## 2026-06-03 OmniOPD X 帖深度解读 in-place 写入笔记
+
+### 背景
+
+- 用户在 OmniOPD 笔记已存在的情况下，再要求对 `https://x.com/zhuokaiz/status/2061939957514584304` 做一次深度解读，并整理并写入 HTML 笔记。
+- 遵循 `AGENTS.md` 与既往工作模式：不新建笔记文件、in-place 追加 section 到现有 `notes/paper-reviews/omniopd-logit-free-opd.html`。
+
+### 已完成
+
+- 通过 `mcp__mcp-router__web_fetch` 直接拉取 X 原帖全文（绕过 `WebFetch` 的 402 鉴权墙）：作者 `Zhuokai Zhao @zhuokaiz`，发布 2026-06-02 22:36 UTC，原帖正文、thread 致谢、Top Comments 全部解析。
+- 复用仓库内现有 `notes/paper-reviews/omniopd-logit-free-opd.html` 作为笔记底版（700 行，11 个 section），不重写原有内容。
+- in-place 追加一个 section `#deep-dive`（标题"深度解读：把 OmniOPD 放回 2026 后训练路线图"），位置在 `#sources` 之后、`#commands` 之前；TOC 同步新增 `深度解读` 入口（位于 `#limits` 与 `#sources` 之间）。
+- 新 section 包含 6 个子节：
+  - **真正解决的问题：协议层替换，不是工程优化**——核心叙事校准为"低带宽但 invariance 强 vs 高带宽但 fragile"。
+  - **四个非平凡设计**——peak-entropy scheduler、Bayesian smoothing 两难、KL anchor 最强消融证据、loss invariance 性质，分别用 `card` 网格展开。
+  - **实验矩阵里容易被忽略的三个信号**——Qwen3-4B/30B-A3B-Instruct 这行的 +16 点修复、Qwen3-4B/32B 输给 GRPO 70.24、代码任务 1.7B 赢 0.87 / 4B 输 1.48 的交叉证据。
+  - **在 2026 post-training 趋势里的位置**——与 Long-CoT/Agentic RL 的张力、让 Claude 蒸馏 Qwen 在协议层合法、把 semantic verification 与 PRM 分开。
+  - **三个最容易误读的点**——28.64% 提升的 baseline 锚定、Edit Distance 不是真语义 metric、高熵 ≠ 高价值，全部用 `card risk` 警示。
+  - **复现优先级排序**——5 步最小风险路径：KL anchor 消融 → α sweep → 换 φ → 调 (M,N,C) → 接入黑盒 API teacher；用 `flow` 5 步条带呈现。
+- 笔记全文新增约 110 行，文件从 700 行扩到 810 行；保持既有 CSS class（`section-lead` / `card` / `grid-2` / `grid-3` / `flow` / `callout warn|good|risk` / `tag`）以匹配笔记统一风格。
+
+### 验证结果
+
+- HTML 结构扫描：`section` 标签开闭各 11 个，全部成对。
+- TOC 链接：9 个，新增的 `#deep-dive` 正确位于 `#limits` 与 `#sources` 之间。
+- 未跑 `scripts/validate_notes_index.rb`（本次只修改一个已有 note，未新增索引条目，沿用既有笔记的索引条目）。
+- 未做 Jekyll 构建烟测（仅在已有 note 上追加 section，未触动 `_data/notes.yml`、未新增 entry，按既往经验是 in-place 修改的低风险范围）。
