@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fantastic Pretraining Optimizers and Where to Find Them：一次 optimizer benchmark 的清算</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f2ea;
+      --surface: #fffdf8;
+      --ink: #1f2428;
+      --muted: #5f686f;
+      --line: #d8ddd8;
+      --accent: #1f6678;
+      --accent-2: #8a5a22;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.09);
+      --radius: 8px;
+      --max: 1180px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header { padding: clamp(34px, 6vw, 72px) 0 28px; }
+    .kicker {
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+    }
+    h1 {
+      max-width: 920px;
+      margin: 0;
+      font: 780 clamp(34px, 5vw, 62px)/1.08 var(--serif);
+      letter-spacing: 0;
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding-bottom: 56px;
+    }
+    section {
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h2 { font-size: clamp(25px, 3.5vw, 38px); }
+    h3 { margin-top: 20px; font-size: 20px; }
+
+    .grid-2, .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card, .callout {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+    figure {
+      margin: 20px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    pre, .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    code, pre {
+      font-family: var(--mono);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+    }
+    th { background: var(--surface); font-weight: 700; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      table { font-size: 12px; }
+      th, td { padding: 6px 8px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · 2026-06-04</div>
+    <h1>Fantastic Pretraining Optimizers and Where to Find Them</h1>
+    <p class="lede">这篇不是"哪个 optimizer 吊打 AdamW"的排行榜论文，而是一次 optimizer benchmark 的清算：很多 1.4–2× 的 pretraining speedup claim 是弱 AdamW baseline、超参迁移不公平、或只看 early loss 曲线造成的幻觉。公平调参后，matrix-based optimizer 仍有效，但真实收益更像 1.1–1.4× token-efficiency speedup，而且越大模型越接近 AdamW。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>这篇论文不是提出新 optimizer，而是重新审计"怎样公平比较 optimizer 的 pretraining 效率"。作者 Kaiyue Wen、David Hall、Tengyu Ma、Percy Liang 通过三阶段 coordinate descent、scaling-sensitive hyperparameter identification 和 hyperparameter scaling law，把 AdamW baseline 和十几种新 optimizer 都调到了近似最优，然后跨模型规模、跨 data-to-model ratio、只看 final checkpoint 做比较。</p>
+      <p><strong>真正值得记住的三句话：</strong></p>
+      <ol>
+        <li>不要相信没有认真调 AdamW baseline 的 optimizer speedup claim。</li>
+        <li>Matrix-based optimizer 是当前最有希望的方向，但收益随 model scale 衰减明显——1.2B 只剩约 1.1×。</li>
+        <li>Optimizer benchmark 必须独立调参、跨 scale、跨 Chinchilla ratio、看 final checkpoint，并最终回到 wall-clock efficiency。</li>
+      </ol>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景</h2>
+      <p>过去两年，至少七八篇论文声称自己的新 optimizer 比 AdamW 快 1.4–2×，包括 Sophia、Muon、SOAP、Mars、Cautious、Scion 等。但工业界除了 Kimi K2 用了 Muon-clip 之外，大部分前沿模型仍坚持 AdamW。这不是"保守"的问题——作者指出过去 benchmark 有三个系统性问题：</p>
+
+      <h3>问题一：AdamW baseline 没被认真调参</h3>
+      <p>很多 paper 沿用某种 inherited recipe，比如 GPT-3 风格的 learning rate。但作者发现，<strong>仅仅把 AdamW 的 learning rate 调好，就可能在 130M 模型上产生接近 2× 的表观加速</strong>。如果新 optimizer 精调了但 baseline 没调，2× speedup 可能只是打了弱 baseline。</p>
+
+      <h3>问题二：共用超参不等于公平</h3>
+      <p>常见的做法是"所有 optimizer 用相同 learning rate / weight decay"。但不同 optimizer 的 optimal hyperparameter 差异极大——AdamW 的 optimal weight decay 约 0.1，Lion 在某些 regime 约 0.6，Kron 甚至约 0.5。固定 LR/WD 不是在保证公平，而是在<strong>系统性偏袒某些 optimizer</strong>。</p>
+
+      <h3>问题三：只看 early loss curve 会骗人</h3>
+      <p>很多 optimizer demo 只展示前 10%、20% 的 loss curve。但 loss curves 在 training 中会交叉，尤其在 learning rate decay 阶段。有些 optimizer 前期掉得快但是后期 plateau，有些设置前期看起来差但最终更好。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>三阶段 benchmark 方法</h2>
+      <p>论文的核心贡献不是新算法，而是一套严谨的 optimizer benchmark protocol。</p>
+
+      <h3>Optimizer taxonomy</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Scalar-based</h3>
+          <p>按参数元素独立做 update / rescaling，典型实现包括 AdamW、NAdamW、Mars、Cautious、Lion、Adam-mini。它们的核心是每个 scalar 维护自己的历史统计（一阶动量、二阶动量、梯度符号等），更新只靠逐元素操作。</p>
+        </div>
+        <div class="card">
+          <h3>Matrix-based</h3>
+          <p>把权重<strong>矩阵</strong>当作结构对象，用矩阵乘法做 preconditioning：Muon 用 Newton-Schulz 正交化梯度矩阵；SOAP 结合 Shampoo 的 Kronecker-factored 预条件与 Adam 稳定性；Kron/PSGD 用 Kronecker 分解的二阶动量；Scion 基于 sign descent 做结构化更新。</p>
+        </div>
+      </div>
+
+      <h3>Phase I: Full Coordinate Descent</h3>
+      <p>对每个 optimizer，定义离散超参网格，一次固定其他参数只扫一个参数，validation loss 有改善就接受新值，多轮重复到收敛。AdamW 扫的维度包括 learning rate、weight decay、min lr ratio、warmup、β1、β2、ε、max grad norm、batch size。覆盖 6 个 regime：130M/300M/520M at 1× Chinchilla + 130M at 2×/4×/8× Chinchilla。</p>
+
+      <table>
+        <caption>AdamW on 130M 1× Chinchilla — coordinate descent example</caption>
+        <tr><th>Stage</th><th>LR</th><th>WD</th><th>Warmup</th><th>Max Grad Norm</th><th>Batch</th><th>Val Loss</th></tr>
+        <tr><td>Init</td><td>0.008</td><td>0.1</td><td>1000</td><td>1</td><td>256</td><td>3.298</td></tr>
+        <tr><td>Round 1</td><td>0.008</td><td>0.1</td><td>2000</td><td>1</td><td>256</td><td>3.282</td></tr>
+        <tr><td>Round 2</td><td>0.008</td><td>0.1</td><td>2000</td><td>1</td><td>128</td><td>3.263</td></tr>
+        <tr><td>Best</td><td>0.008</td><td>0.1</td><td>2000</td><td>2</td><td>128</td><td>3.263</td></tr>
+      </table>
+
+      <h3>Phase II: Scaling-Sensitive Hyperparameter Identification</h3>
+      <p>Phase I 后，作者发现只有少数超参随 scale 改变而且显著影响 loss。通过比较同一 optimizer 在不同 regime 下所有 near-optimal configurations 的超参交叠，识别出哪些超参在不同 model size/data size 下需要重新调参。</p>
+
+      <table>
+        <caption>Scaling-sensitive hyperparameters by optimizer</caption>
+        <tr><th>Optimizer</th><th>Sensitive hyperparameters</th></tr>
+        <tr><td>AdamW</td><td>learning rate, warmup, weight decay, batch size</td></tr>
+        <tr><td>NAdamW</td><td>learning rate, warmup</td></tr>
+        <tr><td>Muon</td><td>learning rate</td></tr>
+        <tr><td>SOAP</td><td>learning rate, warmup, block size</td></tr>
+        <tr><td>Kron</td><td>learning rate</td></tr>
+        <tr><td>Lion</td><td>learning rate, beta2</td></tr>
+        <tr><td>Mars</td><td>learning rate, warmup, beta1</td></tr>
+        <tr><td>Scion</td><td>learning rate, beta1, decay steps</td></tr>
+      </table>
+
+      <p>然后只对这些敏感超参在 300M/520M 的 2×/4×/8× Chinchilla 上做 coordinate descent，极大节省了后续实验成本。</p>
+
+      <h3>Phase III: Hyperparameter Scaling Law</h3>
+      <p>为了不在 1.2B 上做完整暴力 sweep，作者拟合超参 scaling law：</p>
+      \[
+      h(N, D) = \alpha N^{-A}D^{-B} + \beta
+      \]
+      <p>其中 \(N\) 为模型规模、\(D\) 为数据量、\(h\) 为某个 scaling-sensitive hyperparameter。用 Phase I/II 中 12 个 observed setting 的非线性最小二乘拟合参数，然后外推到 1.2B 和 16× Chinchilla overtraining regime。在 1.2B/1× Chinchilla 对 AdamW 的实际验证显示，预测超参的 final loss 与 full sweep 最优相差仅约 3–6e-3。</p>
+
+      <h3>Speedup 到底是什么？</h3>
+      <p>这篇的 speedup 比较的不是 wall-clock 或 step time，而是<strong>token-efficiency speedup</strong>：当 optimizer A 用了 \(D_A\) tokens 达到某个 loss，问 AdamW 需要多少 tokens \(D_{AdamW}\) 才能达到同样 loss，然后 speedup = \(D_{AdamW} / D_A\)。作者对 AdamW 先拟合 \(\hat L_N(D) = \alpha_N D^{-B_N} + \beta_N\) ，再反解等效 data budget。</p>
+      <p>Matrix-based optimizer 的 per-step overhead 在好的实现下可低于 10%，但不等同于完整 wall-clock efficiency——MFU、batch size、communication、sharding、memory、checkpointing 都会影响最终训练成本。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据</h2>
+
+      <h3>真实 speedup 没有 2×</h3>
+      <p>公平调参后，没有 optimizer 达到 2×；最大约 1.4×，且局限于小模型。</p>
+
+      <h3>Matrix-based optimizers 确实领先</h3>
+      <p>Muon、SOAP、Kron、Scion 在 130M–520M 上整体强于 scalar-based optimizers，达到约 1.2–1.4× token-efficiency speedup。Scalar-based Adam variants（NAdamW、Mars、Cautious）通常只在 1.1× 附近。</p>
+
+      <h3>Speedup 随模型规模衰减</h3>
+      <div class="grid-3">
+        <div class="card"><h3>130M</h3><p>Matrix-based optimizers 最高约 1.3–1.4×。</p></div>
+        <div class="card"><h3>300M / 520M</h3><p>仍有优势但开始下降。Muon 在 low-Chinchilla 最强，SOAP/Kron 在高数据量时反超。</p></div>
+        <div class="card"><h3>1.2B</h3><p>仅约 1.1×。Muon/SOAP 不再显著超过 NAdamW，downstream benchmark 平均没有显著提升。</p></div>
+      </div>
+      <p>作者基于 scaling law 预测，到 7B/1× Chinchilla，Muon 可能不一定优于 AdamW。这<strong>不是实验证明</strong>，但说明 matrix optimizer 优势不会自然扩大。</p>
+
+      <h3>Winner 随 data-to-model ratio 改变</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h3>低 Chinchilla ratio（1–4×）</h3>
+          <p>Muon 往往最强。矩阵正交化在小数据预算下提供显著优化帮助。</p>
+        </div>
+        <div class="card">
+          <h3>高 Chinchilla ratio（8–16×）</h3>
+          <p>SOAP / Kron 超过 Muon。在 130M 16× Chinchilla 下，Muon 甚至被 NAdamW 超过。作者推测 SOAP / Kron 维护了更丰富的二阶动量或矩阵统计，在长时间 overtraining 下对参数方向异质性的适应更强。</p>
+        </div>
+      </div>
+
+      <h3>1.2B 下游 benchmark 对比</h3>
+      <table>
+        <caption>Optimizer downstream performance — 1.2B, 8× Chinchilla (193B tokens)</caption>
+        <tr><th>Optimizer</th><th>LAMBADA</th><th>OpenBook</th><th>Wino</th><th>PIQA</th><th>BoolQ</th><th>WSC273</th><th>Hella</th><th>ARC-C</th><th>ARC-E</th><th>COPA</th><th>Avg</th></tr>
+        <tr><td>AdamW</td><td>67.16</td><td>41.40</td><td>64.96</td><td>76.12</td><td>68.59</td><td>82.78</td><td>67.56</td><td>43.43</td><td>74.49</td><td>85.00</td><td>67.15</td></tr>
+        <tr><td>NAdamW</td><td>67.84</td><td>40.20</td><td>64.80</td><td>77.15</td><td>68.10</td><td>83.52</td><td>67.40</td><td>43.34</td><td>73.61</td><td>81.00</td><td>66.70</td></tr>
+        <tr><td>Muon</td><td>67.53</td><td>39.80</td><td>67.09</td><td>77.09</td><td>68.81</td><td>80.95</td><td>67.67</td><td>43.34</td><td>73.53</td><td>84.00</td><td>66.98</td></tr>
+      </table>
+      <p>三个 optimizer 的下游平均值几乎相同，这再次说明 1.2B 级别上 optimizer 差异不是决定下游性能的主要因素。</p>
+    </section>
+
+    <section id="extra-phenomena">
+      <h2>W&B 详尽实验报告中的额外发现</h2>
+      <p>作者在 W&B report 中记录了论文主文不一定充分展示的中间观察。</p>
+
+      <div class="callout"><strong>发现一：</strong>Weight decay 对最终性能有帮助，但会使早期 loss 更高。这解释了为什么只看 early loss curve 会误导——更强的 regularizer 可能前期看起来差，最终却更好。</div>
+      <div class="callout"><strong>发现二：</strong>Lion 和 Kron 的最优 weight decay 在 0.5–0.7 附近，远高于 AdamW 常见的 0.1 左右。固定所有 optimizer 用同一个 WD 会严重低估 Lion/Kron。</div>
+      <div class="callout"><strong>发现三：</strong>只要一个关键 hyperparameter 稍微设错，optimizer speedup 就可能消失。这意味着 optimizer 的实际价值不包括"best tuned"时的表现，还包括对超参、实现、scale 的鲁棒性。</div>
+      <div class="callout"><strong>发现四：</strong>跨 optimizer，parameter norm 会跟随 learning rate decay 变化，gradient norm 在 LR decay 阶段上升但不一定导致 loss 上升。这些是 schedule + regularization 的普遍现象，不是 AdamW 特有。</div>
+
+      <h3>Sophia 在 fully randomized dataloader 下表现如何</h3>
+      <p>论文 appendix 有 Sophia experiments。作者的判断：Sophia 原论文在某些方面调 baseline 比较认真，但原 codebase 的 dataloader 没有充分随机化，导致 AdamW 的 optimal peak LR 和 fully randomized setting 不同。在作者自己的设置下，Sophia 对 &lt;0.5B 模型没有显著 speedup。这不是否定 Sophia 的价值，而是说明 optimizer benchmark 对 dataloader、shuffle、LR、schedule 等细节高度敏感。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="grid-2">
+        <div class="card"><h3>Chinchilla optimal</h3><p>由 Hoffmann 等人在 2022 年提出的 scaling law：给定 compute budget，模型规模和训练 token 数的最优比例约为每个 parameter 20 tokens。n× Chinchilla 表示用 n 倍最优 token 数训练。</p></div>
+        <div class="card"><h3>Coordinate descent</h3><p>通过一次固定除一个外的所有超参、扫那个超参的网格、接受改善、然后切换下一个超参的方式迭代找到局部最优超参组合。</p></div>
+        <div class="card"><h3>Scaling-sensitive hyperparameter</h3><p>不仅影响 final loss、而且 optimal value 会随模型规模或数据量变化的超参。非敏感超参可以固定，节省后续实验成本。</p></div>
+        <div class="card"><h3>Token-efficiency speedup</h3><p>指达到同等 validation loss 所需 token 数的减少倍数，不是 wall-clock time 或 step count。</p></div>
+        <div class="card"><h3>Newton-Schulz iteration</h3><p>Muon 的核心操作：通过对梯度矩阵做 5 次固定系数矩阵多项式迭代，近似计算矩阵的正交化/规范化。</p></div>
+        <div class="card"><h3>Variance-reduced Adam variant</h3><p>对 AdamW 的梯度估计做方差缩减的变体，如 NAdamW 用 Nesterov lookahead、Mars 用基于迭代的 variance reduction、Cautious 用 mask 机制过滤高噪声梯度元素。</p></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>工程 / 研究启发</h2>
+
+      <h3>对 LLM 训练工程</h3>
+      <ol>
+        <li><strong>先建立强 AdamW / NAdamW baseline</strong>，不要拿默认 recipe 就开始比。</li>
+        <li><strong>每个 optimizer 单独调参</strong>，尤其 LR、WD、warmup、batch size、block size。</li>
+        <li><strong>只用 final checkpoint 排名</strong>。early loss 只能 debug，不能做结论。</li>
+        <li><strong>小模型筛选后必须在目标 scale 附近验证</strong>。130M winner 不代表 1.2B winner。</li>
+        <li>低 Chinchilla ratio 可重点试 Muon；overtraining / 高 data-to-model ratio 可重点试 SOAP/Kron。</li>
+        <li><strong>生产决策必须加 wall-clock / MFU / memory</strong>。token efficiency 不等于省钱。</li>
+      </ol>
+
+      <h3>对 optimizer 研究</h3>
+      <ol>
+        <li><strong>接受 AdamW 作为强 baseline</strong>。新 optimizer 论文的核心要求不是"比比自己调的 AdamW"，而是"比也比同 budget 认真调的 AdamW"。</li>
+        <li><strong>展示 hyperparameter robustness</strong>。best-tuned 强 + single-param mismatch 弱 = 高风险。</li>
+        <li><strong>设计 scaling-law-aware optimizer</strong>。小模型上能赢的 optimizer 很多，能在大模型上保持收益的才是稀缺品。</li>
+      </ol>
+    </section>
+
+    <section id="insight-deep">
+      <h2>这篇论文的真正 insight</h2>
+
+      <div class="callout"><strong>Insight 1：</strong>这不是 optimizer paper，而是 benchmark hygiene paper。它重新定义了"怎样公平比较 optimizer"，贡献是让 field 降低 hype、建立可复现基线。</div>
+      <div class="callout"><strong>Insight 2：</strong>AdamW 不是轻易能被打败的。很多 2× speedup 是弱 baseline 造成的，不是 AdamW 真的弱。</div>
+      <div class="callout"><strong>Insight 3：</strong>Matrix preconditioning 是真方向，但当前方法 scaling 不够好。优势随模型规模缩小，不是越大越强。</div>
+      <div class="callout"><strong>Insight 4：</strong>Optimizer choice 是 regime-dependent，不是 leaderboard-dependent。问题是"在我的模型/数据/预算下什么最好"，不是"谁最强"。</div>
+      <div class="callout"><strong>Insight 5：</strong>Optimizer 也是 scaling-law 对象。超参最优值、speedup、winner 都随 \(N\)、\(D\) 变化。small-scale benchmark 不能直接预测 large-scale pretraining。</div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>最大只到 1.2B</h3>
+          <p>不代表 7B、70B、MoE、frontier-scale pretraining。"speedup 缩小到 1.1×"是真实实验观察，但到更大规模是 scaling law 外推预测而非直接实验。</p>
+        </div>
+        <div class="card">
+          <h3>Token efficiency ≠ wall-clock efficiency</h3>
+          <p>论文比较的数据预算等效加速，不等于 GPU-hour 或 wall-clock。Matrix optimizer 的 step overhead、MFU、batch size constraint、communication cost 可能部分抵消 token 层面的收益。</p>
+        </div>
+        <div class="card">
+          <h3>Coordinate descent 不是全局最优</h3>
+          <p>比手动调参严谨很多，但不是 Bayesian optimization 或 exhaustive search。可能存在未覆盖的超参组合。</p>
+        </div>
+        <div class="card">
+          <h3>架构和数据较单一</h3>
+          <p>主要是 LLaMA-like dense decoder-only。不一定适用于 MoE、encoder-decoder、diffusion、RL post-training 等场景。</p>
+        </div>
+        <div class="card">
+          <h3>实现差异可能改变结论</h3>
+          <p>Matrix optimizer 对实现高度敏感。不同 kernel、sharding、precision 下，结论可能不同。</p>
+        </div>
+        <div class="card">
+          <h3>和 concurrent work 的差异</h3>
+          <p>Semenov 等人的同期 benchmark 在 130M 上发现 AdEMaMix/Mars 优于 Muon。经初部分析，差异很可能来自 batch size：Semenov 用 0.1M tokens batch，这篇用 ≥0.4M tokens batch，源于不同的硬件 regime（128 TPU-v5lite ≈ 12 H100 对比 H100 单/双节点）。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文分析基于 arXiv 正式论文 v2（108 页）、作者 W&B 详尽实验报告、GitHub issue #1290 实验索引、GitHub issue #725 前置 AdamW scaling law 方法、ASAP seminar slides 和 X 原帖。附录中包含超过 180 张 hyperparameter ablation table 和 8 个额外 figure，因篇幅不在此展开。W&B report 包含多张实验 panel chart，可通过下方链接在浏览器中查看。</p>
+      <p><strong>未确认 / 需要后续验证：</strong>论文基于 scaling law 的 7B Muon vs AdamW 预测；不同分布式实现（GPU vs TPU、不同 batch size regime）下 optimizer ranking 是否稳定；16× Chinchilla + 1.2B 组合的直接实验证据。</p>
+      <ul>
+        <li>X 原帖：<a href="https://x.com/iScienceLuvr/status/1963168542872014943">https://x.com/iScienceLuvr/status/1963168542872014943</a></li>
+        <li>arXiv 论文：<a href="https://arxiv.org/abs/2509.02046">Fantastic Pretraining Optimizers and Where to Find Them</a></li>
+        <li>W&B 详尽实验报告：<a href="https://wandb.ai/stanford-mercury/optimizer-scaling/reports/Fantastic-Optimizers-and-Where-to-Find-Them--VmlldzoxMjgzMDU5NQ">https://wandb.ai/stanford-mercury/optimizer-scaling/reports/Fantastic-Optimizers-and-Where-to-Find-Them</a></li>
+        <li>W&B runs（约 4,900 个实验 run）：<a href="https://wandb.ai/marin-community/optimizer-scaling">https://wandb.ai/marin-community/optimizer-scaling</a></li>
+        <li>GitHub issue #1290（实验计划与代码索引）：<a href="https://github.com/marin-community/marin/issues/1290">https://github.com/marin-community/marin/issues/1290</a></li>
+        <li>GitHub issue #725（AdamW hyperparameter scaling law 前身）：<a href="https://github.com/marin-community/marin/issues/725">https://github.com/marin-community/marin/issues/725</a></li>
+        <li>Marin repo experiment code：<a href="https://github.com/marin-community/marin/tree/kaiyue/optimizers">https://github.com/marin-community/marin/tree/kaiyue/optimizers</a></li>
+        <li>ASAP seminar slides：<a href="https://asap-seminar.github.io/assets/slides/Fantastic_Pretraining_Optimizers_and_Where_to_Find_Them.pdf">https://asap-seminar.github.io/assets/slides/Fantastic_Pretraining_Optimizers_and_Where_to_Find_Them.pdf</a></li>
+        <li>连续 work：Semenov et al. Benchmarking Optimizers for LLM Pretraining：<a href="https://arxiv.org/abs/2509.01440">https://arxiv.org/abs/2509.01440</a></li>
+        <li>OpenReview page：<a href="https://openreview.net/forum?id=2J51qUZ0iG">https://openreview.net/forum?id=2J51qUZ0iG</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

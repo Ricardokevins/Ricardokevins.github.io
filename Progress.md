@@ -1,5 +1,138 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-04 Fantastic Pretraining Optimizers and Where to Find Them 深度阅读与站内笔记导出
+
+### 背景
+
+- 用户要求深度阅读 X 帖 `https://x.com/iScienceLuvr/status/1963168542872014943`，随后要求导出站内 HTML 笔记。
+- 该帖引用 Kaiyue Wen、David Hall、Tengyu Ma、Percy Liang 的 arXiv 论文 `2509.02046`。
+- 用户指出对应的详尽博客/W&B 报告需要一同深度阅读；经确认后补充读取了 W&B Report（Fantastic Optimizers and Where to Find Them）、GitHub issue #1290 实验索引、GitHub issue #725 前身方法等。
+
+### 已完成
+
+- 完整深度阅读并核对材料层级：
+  - 原 X 推文与 thread（含 5 条作者 reply 链和外部引用）；
+  - arXiv 正式论文 v2（108 页，主文 + 附录 A–E，含 183 张 table、8 张 figure）；
+  - W&B 详尽报告/博客（author: when / 凯越温，updated 2025-05-20，含实验组织、代码路径、Phase I/II/III 描述和额外现象）；
+  - GitHub issue #1290（实验代码索引、best hyperparameter pkl、speedup estimation 路径）；
+  - GitHub issue #725（AdamW hyperparameter scaling law 前身方法）；
+  - ASAP seminar slides。
+- 通过 GraphQL API 和 W&B access token 提取了 W&B report 的完整结构化 spec，解析为 Markdown 临时文件用于消化。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/fantastic-pretraining-optimizers.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+
+### 内容判断
+
+- 核心判断：该论文的贡献不是提出新 optimizer，而是通过三阶段 coordinate descent、scaling-sensitive hyperparameter identification 和 hyperparameter scaling law，重新审计 optimizer benchmark methodology。
+- 关键发现：
+  1. 很多 1.4–2× optimizer speedup claim 是弱 AdamW baseline、超参转移不公平或早期 loss 曲线造成的。
+  2. 公平调参后，matrix-based optimizer（Muon、SOAP、Kron、Scion）仍然领先，但 speedup 不超过 1.4×，且随模型规模增加衰减到 1.2B 时的约 1.1×。
+  3. Optimizer winner 随 data-to-model ratio 改变：低 Chinchilla 下 Muon 最强，高 Chinchilla 下 SOAP/Kron 反超。
+  4. Token-efficiency speedup 不等于 wall-clock speedup，生产环境需要另行评估 MFU、communication、batch size、implementation overhead。
+- W&B report 的额外现象补充：高 WD 对 Lion/Kron 关键、WD 早期伤 loss 最终帮助 final performance、single-param mismatch 可能消掉 speedup、norm dynamics 跨 optimizer 的共有性。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过，见下方追加验证。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功。
+- 新增 HTML 满足 NOTES TEMPLATE 结构要求：title、viewport、`notes-shell.css`、`body.notes-shell-page`、Notes / All Notes / Home 导航、`main`、`data-note-role="evidence-appendix"`、MathJax 配置完整。
+- 未命中工具名、本地路径、生成时间、抓取命令等公开噪声。
+
+## 2026-06-04 Notes authoring skill / template 规范化
+
+### 背景
+
+- 用户要求把本轮 Notes 审计里形成的规则直接规范化到 skill 或模板，避免后续继续生成带抓取命令、本地路径、生成时间和工具痕迹的公开笔记。
+
+### 已完成
+
+- 新增 repo-local skill：
+  - `.agent/skills/notes-authoring/SKILL.md`
+- 在 `.agent/config.toml` 增加 `[skills.notes_authoring]` 索引，指向上述 skill。
+- 更新 `AGENTS.md` 的 Notes Authoring Standard：要求新建、导入、清理或审计站内笔记时先读 `.agent/skills/notes-authoring/SKILL.md`。
+- 重写并强化 `notes/NOTE_TEMPLATE.md`：
+  - 明确公共 Notes 是读者文章，不是执行日志；
+  - 增加 `#evidence`、`#insight` 和带 `data-note-role="evidence-appendix"` 的 `#sources`；
+  - 明确禁止工具名、抓取命令、shell 命令、本地路径、临时目录、`results/`、`Downloads`、生成时间和文件位置；
+  - 保留结构、CSS、MathJax、图片 alt 和移动端兼容要求。
+- 强化 `scripts/validate_notes_index.rb` 的质量 warning：
+  - 检测 `OpenCLI/opencli`、`mcp-router`、`pdftotext`、`pdfinfo`、`curl -`、`X 线程公开读取`、`网页公开读取` 等工具/命令痕迹；
+  - 检测 `/Users/`、`Downloads`、`results/`、`本地参考文件位于`、`下载 PDF` 等公开噪声。
+- 根据新 validator 又清理了一轮残留工具痕迹，独立 Notes 页面当前无上述噪声命中。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过且无 quality warnings：`notes index ok: 84 entries, 84 top-level note html files`。
+- `git diff --check` 通过。
+- 独立 Notes 噪声扫描无输出：`rg -n "OpenCLI|opencli|下载 PDF|本地路径|文件位置|本地参考文件位于|Generated locally|HTML generated|/tmp/|/Users/|报告生成|results/|Downloads|X 线程公开读取|网页公开读取|pdftotext|pdfinfo|mcp-router|curl\s+-" "notes/paper-reviews" "notes/tech-analysis"`。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仍仅有 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning。
+- `_site/sitemap.xml` 不包含 `AGENTS`、`Progress`、`audit_report`、`cite.py`、`script.txt`、`talkmap.py`、`talkmap.ipynb`、`notes-audit`。
+- 更新后的自动审计评级：A 61、B 19、C 1、D 1、INDEX 2。
+
+### 本轮追加完成
+
+- 新增非公开审计表：
+  - `.agent/audits/notes-audit-2026-06-04.md`
+- 审计表覆盖 `_data/notes.yml` 中 84 条入口：82 篇独立 HTML 笔记 + 2 个题库索引页。
+- 自动化评分口径覆盖：排版结构、正文长度、机制/术语解释、证据边界、是否含抓取命令/工具名/本地路径/报告生成时间等过程噪声。
+- 批量清理 Notes 中不必要的过程信息：
+  - 删除 37 个独立页面的 `id="commands"` / 复现命令类 section；
+  - 清理 `OpenCLI`、`opencli`、`results/`、`/tmp/`、`/Users/`、`Generated locally`、`HTML generated`、`报告生成`、`下载 PDF`、`文件位置` 等公开噪声；
+  - 把来源章节改为读者可理解的公开 URL、证据边界和材料口径，不再展示本地抓取/命令过程。
+- 对两篇自动审计短文做补强：
+  - `notes/paper-reviews/agents-feedback-loops-not-perfect-prompts.html`：补 self-improvement 权限拆分、落地顺序和术语边界；
+  - `notes/paper-reviews/gmi-spatial-reasoning-thread-report.html`：补足球动画为什么不是“小玩具题”、对象建模/时序约束/验证闭环三层分析。
+- 更新 `notes/paper-reviews/visual-generation-world-models.html`，把文末 references 规范为 `data-note-role="evidence-appendix"` 的证据边界说明，并移除本地参考文件路径。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 84 entries, 84 top-level note html files`。
+- `git diff --check` 通过。
+- `rg -n "OpenCLI|opencli|下载 PDF|本地路径|文件位置|本地参考文件位于|Generated locally|HTML generated|/tmp/|/Users/|报告生成|results/|Downloads" "notes/paper-reviews" "notes/tech-analysis"` 无输出。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有 `faraday-retry` 和 GitHub Metadata 未认证 warning，不影响静态生成。
+- `_site/sitemap.xml` 不再包含 `AGENTS`、`Progress`、`audit_report`、`cite.py`、`script.txt`、`talkmap.py`、`talkmap.ipynb`、`notes-audit`。
+- `_site` 根目录不再生成 `AGENTS.md`、`Progress.md`、`audit_report.html`、`cite.py`、`script.txt`、`talkmap.py`、`talkmap.ipynb`。
+- 更新后的自动审计评级：A 60、B 20、C 1、D 1、INDEX 2；剩余 C/D 主要是内容深度可继续人工扩写，不再是发布噪声或结构错误。
+
+## 2026-06-04 仓库发布面修复与 Notes 全量审计启动
+
+### 背景
+
+- 用户要求在仓库 review 后直接修复问题，并进一步逐个审计站内笔记的排版、内容深度和是否移除了不必要的生成/抓取过程信息。
+- 本轮先处理会直接影响公开站点的发布面问题，再建立全量笔记审计清单，避免一次性凭主观印象下结论。
+
+### 已完成
+
+- 修复 `_config.yml` 的 Jekyll `exclude` 列表，避免根目录内部文件和工具文件被静态发布：
+  - `AGENTS.md`
+  - `Progress.md`
+  - `.agent`
+  - `.github`
+  - `audit_report.html`
+  - `cite.py`
+  - `script.txt`
+  - `scripts`
+  - `markdown_generator`
+  - `talkmap.py`
+  - `talkmap.ipynb`
+  - `README.md`、`CHANGELOG.md`、`CONTRIBUTING.md`
+- 更新 `.gitignore`，将本地审计 HTML artifact 排除：
+  - `audit_report.html`
+  - `*_report.html`
+- 初步自动化扫描 84 条 `_data/notes.yml` 入口，识别需要人工重点复核的笔记类型：短正文、缺少 `data-note-role="evidence-appendix"`、开头疑似过程/来源前置。
+
+### 当前判断
+
+- 站点构建会公开 `AGENTS.md`、`Progress.md`、`audit_report.html` 是优先级最高的问题，已先做最小修复。
+- Notes 全量审计不能只靠 validator；validator 能发现结构和明显生成痕迹，但“内容是否讲清楚、是否啰嗦、是否有 insight”需要逐篇抽取正文结构与人工判断。
+
+### 待验证 / 继续推进
+
+- 重新运行 `ruby scripts/validate_notes_index.rb`。
+- 重新运行 Jekyll build 并检查 `_site/sitemap.xml` 不再包含 `/AGENTS/`、`/Progress/`、`/audit_report.html`。
+- 生成或维护一份全量 Notes 审计表，覆盖每篇笔记的排版、内容深度、证据边界和冗余过程信息。
+
 ## 2026-06-03 LLM Infra 设计谱系调研与站内笔记导出
 
 ### 背景
