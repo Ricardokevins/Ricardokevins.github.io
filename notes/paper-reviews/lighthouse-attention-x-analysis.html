@@ -626,7 +626,7 @@
     <section id="complexity">
       <h2>复杂度：它为什么能从平方成本里逃出来</h2>
       <p>直观地说，dense attention 的大头是 N 个 query 与 N 个 key 两两交互。Lighthouse 先把 N 个 token 变成 S 个被选中的多尺度条目，让 attention 只在 S 上做 dense softmax。只要 S 远小于 N，attention 部分就会大幅便宜。</p>
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>阶段</th>
@@ -667,7 +667,7 @@
             <td>把 summary 输出写回原 token 位置。</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <div class="math">若 L ≈ log<sub>p</sub>(N/k)，则 S ≈ Θ(k log N)，attention cost ≈ Θ(k<sup>2</sup> log<sup>2</sup>N · d)</div>
       <p>但这里要小心：论文说总 per-layer compute 在 bounded k 时可近似线性于 N，不等于所有实际训练场景都会线性扩展。因为如果为了质量必须让 k 随 N 增大，或者 if gather/scatter/top-K 的常数很大，实际收益会变弱。这也是我认为后续复现最重要的点。</p>
     </section>
@@ -691,7 +691,7 @@
         <img src="lighthouse-attention-x-analysis-assets/paper-results-08.png" alt="论文第 8 页，Table 1 和实验结果" />
         <div class="caption">论文 Table 1：Lighthouse + SDPA recovery 在多个配置下，最终 loss 低于 dense SDPA baseline，同时 B200-hours 更少。</div>
       </div>
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>对比对象</th>
@@ -731,7 +731,7 @@
             <td>更便宜的无参数 norm scorer 拿到更高 throughput，但 retrieval 上可能弱于 dilated scorer。</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <div class="callout good">
         <strong>最强证据：</strong>Dense recovery 后，Lighthouse 训练出的模型没有“忘记”如何使用 full attention。论文报告切换后 loss 会短暂 spike，但约 1k 到 1.5k dense SDPA steps 后恢复，并在 step 16k 时低于 dense-from-scratch baseline。
       </div>
@@ -785,7 +785,7 @@
       </div>
       <p>这带来一个很重要的研究问题：模型预训练过程中，到底有哪些计算是“形成表示时必须精确”的，哪些计算只是“帮助优化走到好区域的脚手架”？如果很多长上下文 attention 交互在早期训练中可以用多尺度 summary 近似，而后期再用 dense attention 校准，那么训练成本可能存在比推理成本更大的优化空间。</p>
       <p>但工程上我会暂时给它一个“值得跟进，不能直接下注”的评级。原因很直接：一是代码当前不可访问；二是主要实验规模还不够；三是结果集中在 loss 和简化 retrieval，而真实长上下文产品最怕的是罕见但关键的信息被 selection 漏掉。对于训练基础设施，平均 loss 好看还不够，必须看 worst-case recall、跨域 downstream、以及 failure analysis。</p>
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>我会怎么用这个工作</th>
@@ -810,7 +810,7 @@
             <td>很有启发：training-only scaffold 可能是高效训练的重要路线，尤其适合不想承担服务端 kernel 复杂度的团队。</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <h3>后续最该看的三个问题</h3>
       <p><strong>第一，看代码。</strong>chunked-bitonic top-K 和 scatter-back 是性能关键；没有代码很难判断论文里的 wall-clock 数字能否在不同框架和硬件栈复现。</p>
       <p><strong>第二，看 scale。</strong>如果 7B/70B、数千亿 token、1M context 下仍能恢复，并且 recovery tail 不需要变长，那这个方法的意义会大很多。</p>

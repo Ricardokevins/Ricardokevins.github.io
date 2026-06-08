@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MMAE：音频编辑从“能生成”到“能精修”的评测分水岭</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f2ea;
+      --surface: #fffdf8;
+      --ink: #1f2428;
+      --muted: #5f686f;
+      --line: #d8ddd8;
+      --accent: #1f6678;
+      --accent-2: #8a5a22;
+      --warn-soft: #f7e7d8;
+      --ok-soft: #e5f0e8;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.09);
+      --radius: 8px;
+      --max: 1180px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header { padding: clamp(34px, 6vw, 72px) 0 28px; }
+    .kicker {
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(34px, 5vw, 62px)/1.08 var(--serif);
+      letter-spacing: 0;
+    }
+    .lede {
+      max-width: 940px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    .meta-grid, .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .meta-grid, .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .metric, .card, .callout, .quote-card, .step {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .metric strong {
+      display: block;
+      color: var(--accent);
+      font: 800 27px/1.05 var(--serif);
+    }
+    .metric span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+      background: linear-gradient(180deg, rgba(232, 240, 242, 0.78), rgba(255, 253, 248, 0.96));
+    }
+    .quote-card {
+      background: linear-gradient(180deg, rgba(247, 231, 216, 0.72), rgba(255, 253, 248, 0.96));
+    }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding-bottom: 56px;
+    }
+    section {
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3, h4 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h2 { font-size: clamp(25px, 3.5vw, 38px); }
+    h3 { margin-top: 20px; font-size: 20px; }
+    h4 { margin-top: 16px; font-size: 16px; }
+    p { margin: 0.78rem 0 0; }
+    ul, ol { margin-top: 10px; padding-left: 1.25rem; }
+    li { margin: 0.32rem 0; }
+    code { font-family: var(--mono); }
+
+    .section-lead {
+      color: var(--muted);
+      max-width: 900px;
+      font-size: 17px;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .step {
+      box-shadow: none;
+      background: var(--surface);
+    }
+    .step b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent-2);
+    }
+    .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--accent-2);
+      background: rgba(138, 90, 34, 0.07);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ok { background: var(--ok-soft); }
+    .split-title {
+      display: inline-block;
+      margin-bottom: 5px;
+      color: var(--accent-2);
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .meta-grid, .grid-4, .grid-3, .grid-2, .flow { grid-template-columns: 1fr; }
+      main, header { width: min(100% - 24px, var(--max)); }
+      table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Audio Editing Benchmark · 2026-06-08</div>
+    <h1>MMAE：音频编辑从“能生成”到“能精修”的评测分水岭</h1>
+    <p class="lede">MMAE 不是在宣布某个音频模型已经解决编辑问题，而是在把一个更尖锐的事实量化出来：今天的模型已经能生成像样的语音、音乐和音效，却还很难像专业剪辑软件那样“只改该改的地方，并让其余内容完全不动”。它用 2,000 个真实场景样本和 17,741 条细粒度 rubric，把音频编辑从“听起来还行”的主观判断，推进到“指令执行”和“上下文保持”可分解、可诊断的评测框架。</p>
+    <div class="meta-grid" aria-label="MMAE key statistics">
+      <div class="metric"><strong>2,000</strong><span>高保真音频编辑样本，覆盖真实创作场景</span></div>
+      <div class="metric"><strong>17,741</strong><span>细粒度 rubric 评测项，平均每样本 8.87 条</span></div>
+      <div class="metric"><strong>7 × 6 × 8</strong><span>7 类模态、6 类复杂度、8 类操作类型</span></div>
+      <div class="metric"><strong>&lt; 5%</strong><span>当前代表模型在 MMAE 上的 Exact Match Rate 仍低于 5%</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <div class="callout">
+        <p><strong>MMAE 的真正意义，是把“音频生成”和“音频编辑”切开了。</strong>生成任务只要求模型给出一个合理的新音频；编辑任务要求模型理解已有音频、定位目标对象、执行局部或全局修改，并且保持所有无关元素不变。后者更接近 Photoshop、Premiere、Logic Pro 或 Audition 里的精修工作流，也更接近真实创作生产的可靠性要求。</p>
+      </div>
+      <p>这项工作最值得关注的不是“又多了一个 benchmark”，而是它把音频编辑失败拆成了可讨论的技术问题：是没有听懂原始音频？没有正确理解指令？没有定位目标事件？局部改动时破坏了背景？多轮编辑时状态漂移？还是平均分看似不低，但每个样本总会漏掉一两条约束，导致完美执行率极低？</p>
+      <p>从论文结果看，现有系统已经有基础编辑能力，但距离“可靠编辑器”还很远。最强结果也只能在部分维度取得约 50% 左右的平均指令执行或一致性得分，而 EMR 仍低于 5%。这说明当前模型更多是“会尝试编辑的生成器”，还不是“能稳定完成精确修改的编辑器”。</p>
+    </section>
+
+    <section id="problem">
+      <h2>为什么“编辑音频”不是“再生成一段音频”</h2>
+      <p class="section-lead">音频编辑的难点来自一个非常苛刻的约束：用户不是要一个大致相似的新声音，而是要在原始素材上进行可控、可定位、可验证的修改。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. 声音对象没有天然边界</h3>
+          <p>图像中的对象通常有空间边界：人脸、天空、桌子、背景。音频中的对象却经常重叠在时间和频谱里：人声压在背景音乐上，鼓点和贝斯共享低频，环境声和对白同时出现。模型必须先完成“听觉场景解析”，才能知道该改哪一层。</p>
+        </div>
+        <div class="card">
+          <h3>2. 编辑必须保持上下文</h3>
+          <p>生成任务可以从零开始；编辑任务必须保留原音频的节奏、音色、语义、空间感、噪声底、背景事件和音质。用户说“删掉女声”，并不意味着可以重做整段音频，更不能把男声、掌声、房间混响一起改坏。</p>
+        </div>
+        <div class="card">
+          <h3>3. 多步任务会累积误差</h3>
+          <p>真实指令常常不是单一操作，而是“先去掉背景音乐，再把人声调亮，最后把一句话换成中文”。每一步都可能引入伪影、偏移时间结构或改变无关内容，多轮之后误差会被放大。</p>
+        </div>
+      </div>
+      <p>因此，MMAE 关注的是“编辑智能”而不是单纯“生成质量”。一个听感自然但没有执行指令的输出是失败；一个执行了指令但破坏大量背景内容的输出也是失败。真正可用的音频编辑系统必须同时满足两个条件：改对，以及别乱改。</p>
+    </section>
+
+    <section id="benchmark-design">
+      <h2>MMAE 的 benchmark 设计：覆盖面、任务结构与数据规模</h2>
+      <p class="section-lead">MMAE 将音频编辑任务拆成三个正交维度：模态、复杂度和操作。这样的设计让评测不再局限于语音替换、音效删除或音乐分离，而是覆盖更接近真实创作流程的混合场景。</p>
+
+      <h3>模态：从单一声音到三重混合</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模态类别</th><th>含义</th><th>比例</th><th>为什么重要</th></tr></thead>
+          <tbody>
+            <tr><td>Sound</td><td>环境音、事件音、音效</td><td class="num">21.2%</td><td>考验声音事件识别、定位、添加、删除和替换。</td></tr>
+            <tr><td>Music</td><td>旋律、和声、节奏、乐器音色</td><td class="num">21.3%</td><td>考验音乐结构保持、音色变换、伴奏提取和局部改写。</td></tr>
+            <tr><td>Speech</td><td>语音内容、说话人、语速、口音、情绪</td><td class="num">21.3%</td><td>考验语义、说话人一致性、韵律和语音编辑。</td></tr>
+            <tr><td>Sound-Speech</td><td>音效或环境音与语音混合</td><td class="num">9.8%</td><td>常见于视频片段、直播、采访、生活场景。</td></tr>
+            <tr><td>Sound-Music</td><td>音效与音乐混合</td><td class="num">8.9%</td><td>考验音乐背景中事件音的增删和分离。</td></tr>
+            <tr><td>Music-Speech</td><td>音乐与人声混合</td><td class="num">8.8%</td><td>覆盖歌曲、旁白配乐、播客配乐和短视频。</td></tr>
+            <tr><td>Sound-Music-Speech</td><td>音效、音乐、人声同时存在</td><td class="num">8.8%</td><td>最接近真实视频音轨，也是现有模型最容易失稳的区域。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>复杂度：不是只有单步命令</h3>
+      <div class="grid-3">
+        <div class="card"><h4>Single</h4><p>单一元素上的单一操作，例如“移除背景音乐”或“提取狗叫声”。占比约 50.1%。这是最低门槛。</p></div>
+        <div class="card"><h4>Multi-part</h4><p>同一指令涉及多个元素，例如同时处理不同说话人、多个声音事件或多段片段。</p></div>
+        <div class="card"><h4>Multi-instruction</h4><p>一句话包含多个独立编辑要求，例如“删掉最后一个音效，并把说话内容转成中文”。</p></div>
+        <div class="card"><h4>Multi-audio</h4><p>需要使用多个音频输入，例如用第二段音频的说话人音色替换第一段音频的说话人身份。</p></div>
+        <div class="card"><h4>Multi-round</h4><p>多轮编辑，后一轮依赖前一轮结果。它测试模型能否维护编辑状态，而不是每次都重置。</p></div>
+        <div class="card"><h4>Multi-hop</h4><p>需要中间推理才能确定目标，例如“移除年轻狗的叫声”要求先区分年轻狗与其他狗声。</p></div>
+      </div>
+
+      <h3>操作：局部编辑与全局编辑并存</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>粒度</th><th>操作类型</th><th>典型指令</th><th>失败方式</th></tr></thead>
+          <tbody>
+            <tr><td>Local</td><td>Addition</td><td>在某个词后添加闪光音效</td><td>插入时间不准、音效盖住语音、引入噪声。</td></tr>
+            <tr><td>Local</td><td>Removal</td><td>删除笑声前的一句话</td><td>删错片段、留下断裂痕迹、破坏周围节奏。</td></tr>
+            <tr><td>Local</td><td>Replacement</td><td>把第一句话替换成另一句</td><td>内容替错、说话人不一致、韵律断裂。</td></tr>
+            <tr><td>Local</td><td>Extraction</td><td>提取篮球入网声或某位说话人的全部语音</td><td>保留了无关声音，或把目标声音一起削弱。</td></tr>
+            <tr><td>Local</td><td>Alteration</td><td>把 A 和弦改成 A7，或改变某个词的重音</td><td>局部属性没改到，或改动扩散到整段。</td></tr>
+            <tr><td>Global</td><td>Background Change</td><td>替换背景音乐、加入海浪环境声</td><td>前景人声被污染，背景变化不自然。</td></tr>
+            <tr><td>Global</td><td>Foreground Change</td><td>改变整段前景人声、调换事件顺序</td><td>主内容改变但上下文不一致，或时间结构错位。</td></tr>
+            <tr><td>Global</td><td>Alteration</td><td>整体加速、降调、增强人声</td><td>全局属性变化同时破坏音质或内容。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="evaluation">
+      <h2>评测机制：rubric 把“听起来不错”拆成可验证问题</h2>
+      <p class="section-lead">MMAE 最有价值的部分，是它没有把音频编辑压缩成一个模糊分数，而是把每个任务拆成多个原子问题，分别检查指令执行和上下文保持。</p>
+      <div class="flow" aria-label="MMAE evaluation flow">
+        <div class="step"><b>输入</b><p>原始音频和自然语言编辑指令，例如“提取音乐部分”。</p></div>
+        <div class="step"><b>模型输出</b><p>待评测模型生成编辑后的音频。</p></div>
+        <div class="step"><b>Rubrics</b><p>每个样本对应多条细粒度、多选式评测问题。</p></div>
+        <div class="step"><b>Judge</b><p>音频语言模型根据输入、输出和问题选择答案。</p></div>
+        <div class="step"><b>指标</b><p>聚合得到 IFR、CR 和 EMR，定位失败类型。</p></div>
+      </div>
+
+      <h3>两个核心维度：IFR 与 CR</h3>
+      <div class="grid-2">
+        <div class="card"><h3>Instruction Following Rate, IFR</h3><p>衡量模型是否执行了用户要求的编辑。比如要求“把背景音乐移除”，输出中是否真的听不到音乐结构；要求“把人声改成女声”，输出的人声音色是否更接近女性声线。</p></div>
+        <div class="card"><h3>Consistency Rate, CR</h3><p>衡量模型是否保持了无关内容。比如删掉背景音乐时，语音内容、说话人身份、音频质量、事件顺序、背景噪声是否没有被不必要地改变。</p></div>
+      </div>
+
+      <h3>Exact Match Rate 为什么很苛刻</h3>
+      <p>EMR 要求一个样本的所有 rubric 都正确，才算一次完美编辑。由于 MMAE 平均每个样本有 8.87 条 rubric，EMR 会比平均 IFR 或 CR 严格得多。即使单条检查的成功率看起来不低，只要每个样本总会漏掉一两项，EMR 就会非常低。</p>
+      <div class="quote-card"><p><strong>这正是 MMAE 想强调的产品级问题：</strong>音频编辑不是“总体还行”就够了。真实用户会发现那一句话被换错、那个背景音没删干净、说话人的音色漂了、或者原本不该变的音乐节奏变了。专业编辑场景需要的是一次操作整体满足约束，而不是平均意义上的部分成功。</p></div>
+
+      <h3>为什么不用传统音频指标就够了</h3>
+      <p>FAD、LSD、CLAP 相似度、WER、MOS 这类指标各有价值，但它们很难回答细粒度编辑问题。比如“删除年轻狗的叫声但保留其他狗叫”，不是单纯的音质、文本语义相似度或平均主观听感问题；它要求判断特定声音事件是否被正确识别、是否只删了目标对象、背景是否保持、是否引入了新声音。Rubric-based evaluation 的价值，正在于把这些约束显式化。</p>
+    </section>
+
+    <section id="examples">
+      <h2>任务样例：MMAE 在考什么能力</h2>
+      <p class="section-lead">下面这些例子可以看出，MMAE 的问题不是“生成一个好听声音”，而是“在已有音频结构里做手术”。每个例子都可以拆出多条 rubric，而每条 rubric 都对应一个具体失败点。</p>
+      <div class="grid-2">
+        <div class="card"><h3>提取音乐成分</h3><p><span class="split-title">指令：</span>Extract the music component from the audio.</p><p>评测会检查输出中是否还残留英文解说、蜂鸣器等非音乐声音，同时检查是否仍能听到音乐元素。这不是简单的声源分离，还要在保留音乐的同时压制其他声源。</p></div>
+        <div class="card"><h3>把 A 和弦改成 A7</h3><p><span class="split-title">指令：</span>Change the current A chord to A7.</p><p>模型必须理解音乐理论层面的“七和弦色彩”，并在短时间片段里改变和声属性，而不是重新生成一段不相关的吉他声音。</p></div>
+        <div class="card"><h3>移除片段并转换语言</h3><p><span class="split-title">指令：</span>Remove the last segment among the final three sound effects, then convert the speaker's speech to Chinese.</p><p>这类任务同时要求事件计数、局部删除、语音语言转换和上下文保持。失败可以发生在任何一步：删错音效、漏掉翻译、或破坏剩余声音。</p></div>
+        <div class="card"><h3>跨音频说话人替换</h3><p><span class="split-title">指令：</span>Replace the speaker identity in the first audio clip with the vocal timbre from the second audio clip while preserving the original linguistic content.</p><p>这考验的是 voice conversion 与内容保持：音色要接近第二段，但第一段的语言内容不能变。这比普通 TTS 更接近编辑器里的“换声不换词”。</p></div>
+        <div class="card"><h3>多轮吉他添加与删除</h3><p><span class="split-title">指令：</span>第一轮给语音背景加同样的吉他声；第二轮删除所有吉他声，但保留第一轮添加的吉他声。</p><p>多轮任务会测试模型是否理解历史编辑状态：哪些吉他声是原本存在的，哪些是上一轮新增的。它不是单轮音频转换，而是带状态的编辑。</p></div>
+        <div class="card"><h3>移除年轻狗的叫声</h3><p><span class="split-title">指令：</span>Remove barks from younger dogs.</p><p>这是 multi-hop：模型必须先根据音色、音高或叫声特征区分“年轻狗”和其他狗，再只移除目标声源。直接删除所有狗叫或什么都不删都不算合格。</p></div>
+      </div>
+    </section>
+
+    <section id="curation">
+      <h2>数据构建：为什么它不是随便收集一批音频</h2>
+      <p class="section-lead">MMAE 的构建流程强调两个目标：任务覆盖要广，rubric 又不能虚。论文给出的流程包括五个阶段。</p>
+      <ol>
+        <li><strong>Brainstorming：</strong>由专家标注者收集多样化音频编辑场景，覆盖直观、创意和实用任务。</li>
+        <li><strong>Taxonomy &amp; Paradigm Construction：</strong>建立模态、复杂度、操作三维分类，并确定 rubric-based 评测范式。</li>
+        <li><strong>Instruction-Centric Data Collection：</strong>围绕自然语言指令收集和裁剪真实音频，标注模态、复杂度、操作和关键词，并动态平衡分类分布。</li>
+        <li><strong>Rubrics Annotation：</strong>使用人机协作方式生成和修订 rubric，强调完整性、原子性、正交性和客观性。</li>
+        <li><strong>Quality Inspection：</strong>通过盲审、交叉验证、迭代修订和丢弃不可修复样本来保证最终质量。</li>
+      </ol>
+      <p>这里最关键的是 rubric 的四个原则：完整性避免漏测重要要求；原子性让每条问题只判断一个属性；正交性避免一条问题隐含另一条；客观性减少纯主观听感。这样的设计使 MMAE 更像一个诊断工具，而不是只给排行榜排序的单分数测试。</p>
+    </section>
+
+    <section id="results">
+      <h2>实验结果：当前模型离可靠编辑还有多远</h2>
+      <p class="section-lead">论文评测了 Step-Audio-EditX、Ming-UniAudio、MMEdit、Audio-Omni、SmartDJ 及其 planner 版本，并加入 Identity 与 Noise 作为参照。需要注意：MMEdit、Audio-Omni、SmartDJ 因输入长度限制只在不超过 10 秒的 801 个样本子集上评测。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型 / 设置</th><th>评测范围</th><th>IFR</th><th>CR</th><th>EMR</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>Identity</td><td>全量</td><td class="num">27.37</td><td class="num">94.13</td><td class="num">4.60</td><td>什么都不改，因此一致性高，但指令执行差；少数任务中“不动”会偶然满足部分 rubric。</td></tr>
+            <tr><td>Noise</td><td>全量</td><td class="num">32.08</td><td class="num">15.68</td><td class="num">0.00</td><td>输出噪声偶尔满足删除类检查，但几乎无法保持上下文。</td></tr>
+            <tr class="ok"><td>Step-Audio-EditX</td><td>全量</td><td class="num">44.86</td><td class="num">58.88</td><td class="num">3.05</td><td>全量设置下平均指标最好之一，但完美编辑率依然很低。</td></tr>
+            <tr><td>Ming-UniAudio</td><td>全量</td><td class="num">29.82</td><td class="num">52.71</td><td class="num">3.20</td><td>平均分低于 Step-Audio-EditX，但 EMR 略高，显示“少数样本更完整成功”的特征。</td></tr>
+            <tr><td>MMEdit</td><td>≤10 秒子集</td><td class="num">43.12</td><td class="num">47.64</td><td class="num">3.50</td><td>在短音频上具备一定编辑能力，但一致性仍弱。</td></tr>
+            <tr class="ok"><td>Audio-Omni</td><td>≤10 秒子集</td><td class="num">50.73</td><td class="num">56.93</td><td class="num">4.99</td><td>短音频子集上整体最强，但 EMR 仍不到 5%。</td></tr>
+            <tr><td>SmartDJ w/o planner</td><td>≤10 秒子集</td><td class="num">38.20</td><td class="num">55.41</td><td class="num">4.62</td><td>不加 planner 时一致性相对更好，但指令执行偏弱。</td></tr>
+            <tr><td>SmartDJ w/ planner</td><td>≤10 秒子集</td><td class="num">42.26</td><td class="num">48.33</td><td class="num">3.12</td><td>planner 提升 IFR，却降低 CR，说明多步执行会积累伪影和上下文破坏。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>结论 1：复杂度越高，性能越明显下降</h3>
+      <p>所有模型从 single 任务进入 multiple 任务时，IFR 和 CR 普遍下降。Audio-Omni 在 single 上 IFR 为 58.43、CR 为 64.57；到 multiple 时分别降到 41.70 和 47.94。这表明现有系统更像反应式单步编辑器，一旦任务需要组合、推理、跨模态同步或多轮状态维护，就会明显失稳。</p>
+      <h3>结论 2：混合模态是硬伤</h3>
+      <p>单独的 speech、music、sound 已经不简单，但 sound-music-speech 混合最难。真实视频音轨往往同时包含对白、背景音乐、环境声和事件音效，而现有模型在这类任务上最容易同时丢失指令执行和上下文一致性。</p>
+      <h3>结论 3：IFR 和 CR 存在根本张力</h3>
+      <p>Identity baseline 的 CR 接近满分但 IFR 很低，Noise baseline 的 CR 极低但 IFR 偶尔不为零。这两个极端说明：只看单一综合分会掩盖问题。模型可以通过“不编辑”虚高一致性，也可以通过“粗暴改变”偶然满足删除类指令。真正的音频编辑必须同时优化执行和保持。</p>
+      <h3>结论 4：平均能力与完美执行脱钩</h3>
+      <p>Step-Audio-EditX 的平均 IFR 和 CR 明显高于 Ming-UniAudio，但 EMR 反而略低。这非常重要：一个模型可能在很多样本上都做对一半，但每次都漏掉细节；另一个模型可能经常失败，但成功时更完整。对用户来说，完美执行往往比平均得分更接近真实体验。</p>
+      <h3>结论 5：Planner 不能替代底层编辑能力</h3>
+      <p>SmartDJ 加外部 planner 后，IFR 从 38.20 提升到 42.26，但 CR 从 55.41 降到 48.33，EMR 也没有提升。这说明任务分解有帮助，但如果底层编辑器每一步都不够可靠，多步链路会放大伪影、偏移和上下文损伤。</p>
+    </section>
+
+    <section id="interpretation">
+      <h2>更深一层：MMAE 暴露的是音频模型的结构性缺口</h2>
+      <p class="section-lead">如果只把 MMAE 看成一个排行榜，就会低估它的意义。它真正暴露的是：当前音频生成模型缺少“可编辑中间结构”。</p>
+      <div class="grid-2">
+        <div class="card"><h3>缺口一：音频对象表示不稳定</h3><p>用户指令通常指向对象：狗叫、女声、第二次敲击、背景音乐、某个词、某位说话人。但很多生成模型内部并没有可直接操作的对象图、事件时间轴或 stem 结构，只能在连续 latent 或波形上间接改动。这导致局部编辑容易外溢。</p></div>
+        <div class="card"><h3>缺口二：局部 mask 与全局风格耦合</h3><p>把某个片段变慢、替换一句话或增强人声时，模型必须知道哪些时间段、频段和声源可改，哪些不可改。缺少可靠编辑 mask 时，模型容易把不相关背景、混响、噪声底和其他事件一起改变。</p></div>
+        <div class="card"><h3>缺口三：多轮状态无法被严格维护</h3><p>多轮编辑要求系统知道“上一轮新增了什么”“原始音频里本来有什么”“本轮只允许影响哪些内容”。如果每轮都把音频重新理解和重生成，历史约束很容易丢失。</p></div>
+        <div class="card"><h3>缺口四：评估与训练目标不一致</h3><p>很多模型训练时优化的是生成质量、文本匹配或整体感知分数，而 MMAE 检查的是原子约束：内容是否一致、事件是否保留、音质是否劣化、目标属性是否改变。训练目标不对齐，会导致模型听起来不错但编辑不可靠。</p></div>
+      </div>
+      <p>因此，MMAE 的结果不应被解读为“这些模型都很差”，而应被解读为“音频编辑需要不同于普通音频生成的系统设计”。未来更可能成功的路线，是把音频理解、对象分解、局部编辑、生成修复和结果验证合成一个闭环，而不是让一个端到端生成器一次性猜出完整答案。</p>
+    </section>
+
+    <section id="product-implications">
+      <h2>工程启发：下一代音频编辑系统应该长什么样</h2>
+      <p class="section-lead">如果以 MMAE 暴露的问题为设计约束，一个更可靠的音频编辑系统应该从“文本到音频生成器”转向“可验证的音频编辑工作站”。</p>
+      <ol>
+        <li><strong>先解析，再编辑。</strong>系统需要先识别语音、音乐、音效、环境声和事件时间线，再根据指令确定目标对象。</li>
+        <li><strong>显式维护可编辑层。</strong>最好能生成类似 stem、事件轨道、speaker track、music track、ambient track 的中间结构，让编辑有落点。</li>
+        <li><strong>局部编辑要有保护区。</strong>每次编辑都应明确可变区域和不可变区域，并在生成后检查保护区是否被破坏。</li>
+        <li><strong>多轮任务要维护历史状态。</strong>系统需要记录每轮新增、删除、替换的对象，避免后续操作误伤前序编辑成果。</li>
+        <li><strong>结果需要 verifier。</strong>编辑后不能只看生成模型置信度，而要用多维检查确认：指令是否完成、内容是否保持、音质是否退化。</li>
+        <li><strong>Planner 只能做高层拆解。</strong>真正决定可靠性的仍然是底层 atomic editor。没有稳定的单步编辑能力，planner 只会让错误链条更长。</li>
+      </ol>
+      <div class="callout"><p><strong>产品层面的判断：</strong>短期内，AI 音频编辑更适合做“辅助建议、粗剪、局部候选生成、可回退尝试”，而不适合直接承诺专业级无损精修。要进入生产链路，必须提供对比试听、差异可视化、局部锁定、版本回滚和逐项验证。</p></div>
+    </section>
+
+    <section id="relation">
+      <h2>它在评测谱系中的位置</h2>
+      <p>MMAE 与早期音频编辑评测的差别，在于它不是为单一子域服务。语音编辑 benchmark 往往关注文本替换、删除、插入、说话人相似度或 WER；通用音频评测往往关注事件添加、删除、替换，或者用 FAD、CLAP、MOS 看整体质量。MMAE 则试图把 speech、music、sound 及其混合场景放到同一个指令式编辑框架下。</p>
+      <p>它也借鉴了更广泛的 rubric-based evaluation 思路。近年的文本 RL、音频推理、图像编辑评测都在向细粒度 rubric 靠拢，因为开放式生成任务越来越难用单个自动指标评价。MMAE 的贡献在于把这种范式迁移到音频编辑，并把 rubric 明确拆成 instruction following 与 consistency 两个维度。</p>
+      <p>这也意味着 MMAE 不是终局答案，而是一个阶段性范式：先把问题变得可测量，再用评测结果反推模型和系统该怎么改。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="grid-3">
+        <div class="card"><h3>Instruction-based Audio Editing</h3><p>基于自然语言指令修改已有音频。关键不是生成新音频，而是在原音频上按指令进行可控改变。</p></div>
+        <div class="card"><h3>Rubric</h3><p>针对某个样本的原子评测标准。在 MMAE 中通常是多选问题，例如“输出中是否还能听到原来的英文解说”。</p></div>
+        <div class="card"><h3>IFR</h3><p>Instruction Following Rate，衡量模型是否执行了用户要求的编辑操作。</p></div>
+        <div class="card"><h3>CR</h3><p>Consistency Rate，衡量模型是否保持了与编辑无关的声音、内容、结构和质量。</p></div>
+        <div class="card"><h3>EMR</h3><p>Exact Match Rate，一个样本所有 rubric 都正确才算通过，因此比平均分更接近“完整可靠编辑”。</p></div>
+        <div class="card"><h3>Multi-hop Editing</h3><p>需要中间推理的编辑任务，例如先判断哪种狗叫来自年轻狗，再只移除这类叫声。</p></div>
+        <div class="card"><h3>Multi-round Editing</h3><p>多轮连续编辑，后续指令依赖此前编辑结果。它测试模型能否维护编辑历史和状态。</p></div>
+        <div class="card"><h3>Foreground / Background Change</h3><p>前景通常是主要内容，如人声或主音效；背景是伴奏、环境声等。编辑时二者经常需要分别控制。</p></div>
+        <div class="card"><h3>Model-as-Judge</h3><p>使用另一个多模态模型来评估输出质量。它能规模化评测复杂任务，但也引入 judge 模型自身偏差。</p></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险：这项工作没有证明什么</h2>
+      <p class="section-lead">MMAE 提供了一个重要诊断框架，但它不是绝对真理。理解它的边界，和理解它的贡献同样重要。</p>
+      <div class="grid-2">
+        <div class="card"><h3>1. Judge 模型可能误判</h3><p>MMAE 使用音频语言模型作为外部评判者。即使通过多次投票和选项打乱提高稳定性，judge 仍可能在口音、音乐细节、复杂混合声或低质量音频上犯错。</p></div>
+        <div class="card"><h3>2. 多选 rubric 会离散化听感</h3><p>多选题提高了客观性，但也可能把连续听感压成有限选项。有些编辑结果介于成功与失败之间，rubric 未必能表达全部细节。</p></div>
+        <div class="card"><h3>3. EMR 受 rubric 数量影响</h3><p>样本 rubric 越多，EMR 越难高。因此 EMR 应与 IFR、CR 共同阅读，不能单独作为模型能力的唯一判据。</p></div>
+        <div class="card"><h3>4. 评测集仍然是静态切片</h3><p>2,000 个样本已经相当丰富，但真实音频编辑场景更开放，包括更长视频、版权音乐、多轨工程文件、复杂用户偏好和交互式修改。</p></div>
+        <div class="card"><h3>5. 部分模型评测范围不同</h3><p>MMEdit、Audio-Omni、SmartDJ 只在不超过 10 秒的子集上评测，不能与全量模型做完全等价的横向比较。</p></div>
+        <div class="card"><h3>6. 数据使用权需要额外审查</h3><p>公开 benchmark 可以支撑研究评测，但如果要把音频数据用于商业训练或产品功能，应进一步确认数据集页面、原始素材和许可证边界。</p></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断：音频编辑的“Photoshop 时刻”还没到</h2>
+      <p>图像领域的自然语言编辑之所以迅速变成大众产品体验，是因为模型能够在空间对象上做相对直观的局部修改：换背景、改风格、替换物体、保持人物一致。音频领域要走到类似阶段，需要解决更隐蔽的结构问题：声源可分、事件可定位、语义可保持、节奏可对齐、音质可控、历史可追踪。</p>
+      <p>MMAE 的价值在于，它把这些要求具体化了。它告诉研究者：不要只展示一个听起来不错的 demo，要证明你能在 8 到 10 条局部约束下全部通过；不要只优化平均相似度，要证明你不会误伤上下文；不要只加 planner，要证明底层编辑器每一步都稳。</p>
+      <p>如果未来某个系统能在 MMAE 或类似 benchmark 上显著提高 EMR，同时保持较高 IFR 和 CR，那才更接近真正的音频智能编辑。那时模型不只是“会生成声音”，而是能理解和操作声音结构，成为创作者可信任的精修工具。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文依据公开论文、代码仓库、数据集页面、演示页面和 Tencent Hunyuan 发布内容整理。分数、样本数量、rubric 数量、分类比例和模型结果以论文与官方仓库披露为准；公开页面的 star、download、upvote 等动态指标可能随时间变化。本文未独立复现实验，也未对全部音频样本进行人工逐条听审，因此对数据质量和 judge 稳定性的讨论限于公开材料可支持的范围。</p>
+      <ul>
+        <li>Tencent Hunyuan 发布帖：<a href="https://x.com/TencentHunyuan/status/2063862263434613237">https://x.com/TencentHunyuan/status/2063862263434613237</a></li>
+        <li>论文页面：<a href="https://arxiv.org/abs/2606.07229">MMAE: A Massive Multitask Audio Editing Benchmark</a></li>
+        <li>官方代码仓库：<a href="https://github.com/ddlBoJack/MMAE">https://github.com/ddlBoJack/MMAE</a></li>
+        <li>HuggingFace 数据集：<a href="https://huggingface.co/datasets/BoJack/MMAE">https://huggingface.co/datasets/BoJack/MMAE</a></li>
+        <li>HuggingFace Paper 页面：<a href="https://huggingface.co/papers/2606.07229">https://huggingface.co/papers/2606.07229</a></li>
+        <li>演示视频：<a href="https://www.youtube.com/watch?v=6At5nTWhlXI">MMAE: A Massive Multitask Audio Editing Benchmark</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

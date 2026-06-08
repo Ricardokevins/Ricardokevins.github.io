@@ -1,5 +1,49 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-08 全站笔记举一反三深度审查与批量修复
+
+### 背景
+
+- 用户在 math-interview-question-bank/chapters/008.html 的截图中反馈"结果都是错乱的"——具体表现为概率分布 SVG 中 Bayes 卡片文字溢出（"LLM: token distribution · Quant: return / risk distribution" 单行超宽）以及整图被 100% 拉伸显大。
+- 用户要求做"举一反三，确保每篇笔记都正常"的全站系统性审查。
+
+### 审查范围
+
+- math-interview-question-bank/chapters/ 20 个章节
+- llm-interview-question-bank/chapters/ 90 个章节 + index.html
+- paper-reviews/ 42 个 HTML 笔记
+- tech-analysis/ 47 个 HTML 笔记
+- 资产完整性（23 个 SVG、CSS/JS 引用）
+- _data/notes.yml 交叉校验
+
+### 已发现并修复的问题
+
+| 级别 | 问题 | 文件数 | 修复方式 |
+|------|------|--------|----------|
+| SEVERE | 公式中裸 `<` 后跟字母被浏览器误解析为 HTML 标签，破坏 DOM 树 | 4 文件 6 处 | `<` 替换为 `\lt`（MathJax 命令） |
+| SEVERE | SVG 概率图 Bayes 卡片文字溢出 + 整图被无脑 100% 拉伸 | 1 SVG + 1 CSS | SVG 内增加"应用直觉"小标题、tspan 换行；CSS 加 max-width:900px |
+| MEDIUM | 悬空锚点 href="#commands" 指向不存在的 id | 7 文件 | 改为页面已有 id（method/source/mechanism） |
+| MEDIUM | LLM 题库 data-category="other" 无筛选按钮 | 11 章节 | index.html 新增"综合/专项"按钮 |
+| MEDIUM | LLM 题库 5 章节 h2→h4 标题层级跳跃 | 5 文件 | h4 改 h3 |
+| MEDIUM | math bank/chapters/015.html 多余一个 `</div>` | 1 文件 | 删除多余闭合标签 |
+| MINOR | 8 个 paper-reviews 的 nav aria-label 不一致 | 8 文件 | 统一为 "站点导航" |
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb`: 91 entries, 91 HTML files ✅
+- 全站 `<` 在公式中的最终扫描: 0 remaining ✅
+- div 平衡 / section 平衡 / id 唯一性: 全部通过 ✅
+- `BUNDLE_PATH=/tmp/ricardokevins-gems bundle exec jekyll build`: 5.8s 构建成功 ✅
+- GitHub Metadata API rate limit warning（既有，不影响）
+
+### 未修改的已知事项（不影响渲染）
+
+- `_includes/comments.html` 重复 id="comments"（Jekyll 模板，非用户笔记）
+- 35 个 tech-analysis 文件的 nav 锚点链接缺少 aria-label（无障碍，非渲染问题）
+- math bank 多个章节行内公式中 `>` 作为比较运算符（MathJax v3 能正确处理）
+
+---
+
 ## 2026-06-08 MMAE 音频编辑 Benchmark 深度解读与站内笔记导入
 
 ### 背景
@@ -21,9 +65,14 @@
   - 当前代表模型 EMR 低于 5% 的含义，以及复杂任务、混合模态、平均能力与完美执行脱钩、planner 局限等实验洞察；
   - 下一代音频编辑系统需要音频对象表示、局部 mask、多轮状态维护和 verifier 闭环，而不能只依赖端到端重生成。
 
-### 待验证 / 继续推进
+### 验证结果
 
-- 运行 notes validator、公开过程噪声扫描、`git diff --check` 与 Jekyll build，确认新增页面进入站点且无公开过程痕迹。
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 92 entries, 92 top-level note html files`。
+- 新增页面公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --check -- "notes/paper-reviews/mmae-audio-editing-benchmark.html" "_data/notes.yml" "Progress.md"` 通过。
+- HTML 自检：约 14,186 个可见字符，14 个 h2、41 个 h3，且仅有一个 `data-note-role="evidence-appendix"` 与一个 `notes-shell.css` 引用。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅保留既有 `faraday-retry` 建议和 GitHub Metadata 未认证/限流 warning，不影响静态生成。
+- 构建后 `_site/notes/paper-reviews/mmae-audio-editing-benchmark.html` 存在，`_site/notes/index.html` 已包含新增 MMAE 页面入口。
 
 ## 2026-06-08 AutoLab / 长时程 Agent 闭环控制深度解读与站内笔记导入
 

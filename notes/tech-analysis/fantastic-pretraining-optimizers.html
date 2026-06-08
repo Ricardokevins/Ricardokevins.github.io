@@ -225,6 +225,7 @@
       <h3>Phase I: Full Coordinate Descent</h3>
       <p>对每个 optimizer，定义离散超参网格，一次固定其他参数只扫一个参数，validation loss 有改善就接受新值，多轮重复到收敛。AdamW 扫的维度包括 learning rate、weight decay、min lr ratio、warmup、β1、β2、ε、max grad norm、batch size。覆盖 6 个 regime：130M/300M/520M at 1× Chinchilla + 130M at 2×/4×/8× Chinchilla。</p>
 
+      <div class="table-wrap">
       <table>
         <caption>AdamW on 130M 1× Chinchilla — coordinate descent example</caption>
         <tr><th>Stage</th><th>LR</th><th>WD</th><th>Warmup</th><th>Max Grad Norm</th><th>Batch</th><th>Val Loss</th></tr>
@@ -233,10 +234,12 @@
         <tr><td>Round 2</td><td>0.008</td><td>0.1</td><td>2000</td><td>1</td><td>128</td><td>3.263</td></tr>
         <tr><td>Best</td><td>0.008</td><td>0.1</td><td>2000</td><td>2</td><td>128</td><td>3.263</td></tr>
       </table>
+      </div>
 
       <h3>Phase II: Scaling-Sensitive Hyperparameter Identification</h3>
       <p>Phase I 后，作者发现只有少数超参随 scale 改变而且显著影响 loss。通过比较同一 optimizer 在不同 regime 下所有 near-optimal configurations 的超参交叠，识别出哪些超参在不同 model size/data size 下需要重新调参。</p>
 
+      <div class="table-wrap">
       <table>
         <caption>Scaling-sensitive hyperparameters by optimizer</caption>
         <tr><th>Optimizer</th><th>Sensitive hyperparameters</th></tr>
@@ -249,14 +252,15 @@
         <tr><td>Mars</td><td>learning rate, warmup, beta1</td></tr>
         <tr><td>Scion</td><td>learning rate, beta1, decay steps</td></tr>
       </table>
+      </div>
 
       <p>然后只对这些敏感超参在 300M/520M 的 2×/4×/8× Chinchilla 上做 coordinate descent，极大节省了后续实验成本。</p>
 
       <h3>Phase III: Hyperparameter Scaling Law</h3>
       <p>为了不在 1.2B 上做完整暴力 sweep，作者拟合超参 scaling law：</p>
-      \[
+      <div class="math-display">\[
       h(N, D) = \alpha N^{-A}D^{-B} + \beta
-      \]
+      \]</div>
       <p>其中 \(N\) 为模型规模、\(D\) 为数据量、\(h\) 为某个 scaling-sensitive hyperparameter。用 Phase I/II 中 12 个 observed setting 的非线性最小二乘拟合参数，然后外推到 1.2B 和 16× Chinchilla overtraining regime。在 1.2B/1× Chinchilla 对 AdamW 的实际验证显示，预测超参的 final loss 与 full sweep 最优相差仅约 3–6e-3。</p>
 
       <h3>Speedup 到底是什么？</h3>
@@ -294,6 +298,7 @@
       </div>
 
       <h3>1.2B 下游 benchmark 对比</h3>
+      <div class="table-wrap">
       <table>
         <caption>Optimizer downstream performance — 1.2B, 8× Chinchilla (193B tokens)</caption>
         <tr><th>Optimizer</th><th>LAMBADA</th><th>OpenBook</th><th>Wino</th><th>PIQA</th><th>BoolQ</th><th>WSC273</th><th>Hella</th><th>ARC-C</th><th>ARC-E</th><th>COPA</th><th>Avg</th></tr>
@@ -301,6 +306,7 @@
         <tr><td>NAdamW</td><td>67.84</td><td>40.20</td><td>64.80</td><td>77.15</td><td>68.10</td><td>83.52</td><td>67.40</td><td>43.34</td><td>73.61</td><td>81.00</td><td>66.70</td></tr>
         <tr><td>Muon</td><td>67.53</td><td>39.80</td><td>67.09</td><td>77.09</td><td>68.81</td><td>80.95</td><td>67.67</td><td>43.34</td><td>73.53</td><td>84.00</td><td>66.98</td></tr>
       </table>
+      </div>
       <p>三个 optimizer 的下游平均值几乎相同，这再次说明 1.2B 级别上 optimizer 差异不是决定下游性能的主要因素。</p>
     </section>
 

@@ -331,7 +331,7 @@ x_L = f(x_{L-1})</code></pre>
         <div class="formula-grid"><div class="formula-card"><b>Scaled Dot-Product Attention</b><div class="math-display">\[\mathrm{Attention}(Q,K,V)=\mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V\]</div><p>缩放项控制点积方差，softmax 后得到对 V 的加权。</p></div><div class="formula-card"><b>KV Cache 显存估算</b><div class="math-display">\[\mathrm{KVCache}\approx 2 \times B \times L \times H_{kv} \times d_h \times N_{layer} \times \mathrm{bytes}\]</div><p>2 表示 K 和 V；长上下文下主要随 batch、序列长度和层数线性增长。</p></div></div>
       </aside>
 <h4 id="h-0487"><a class="anchor-link" href="#h-0487" aria-label="跳转到本节">#</a>标准答案</h4>
-<p>对长度为 <code>n</code> 的序列，标准 self-attention 最贵的部分是计算 <code>QK^T</code>，因为它要让每个 token 和其余 token 两两做一次相关性打分，所以时间复杂度通常看作 <code>O(n^2)</code>；对应的注意力矩阵本身也是 <code>n x n</code>，因此中间激活的空间复杂度也常看作 <code>O(n^2)</code>。</p>
+<p>对长度为 <code>n</code> 的序列，标准 self-attention 最贵的部分是计算 <code>QK^T</code>，因为它要让每个 token 和其余 token 两两做一次相关性打分，所以时间复杂度通常看作 \(O(n^2)\)；对应的注意力矩阵本身也是 <code>n x n</code>，因此中间激活的空间复杂度也常看作 \(O(n^2)\)。</p>
 <p>面试里最好再补一句：这里真正随序列长度爆炸的不是模型参数，而是 token 两两交互带来的计算量、显存占用和带宽压力。所以一旦上下文从 <code>4K</code> 提到 <code>32K</code>、<code>128K</code>，瓶颈往往不是“模型更大了”，而是 attention 的二次复杂度开始压垮系统。</p>
 <hr>
 <h4 id="h-0488"><a class="anchor-link" href="#h-0488" aria-label="跳转到本节">#</a>深度解析</h4>
@@ -342,9 +342,9 @@ K 的形状: (n, d_k)
 Q @ K^T 的形状: (n, n)</code></pre>
 <p>矩阵乘法中，结果矩阵的每个元素 <code>(i, j)</code> 是 Q 的第 i 行和 K 的第 j 行做内积：</p>
 <pre><code class="language-text">(Q @ K^T)[i, j] = Σ(k=0 to d_k-1) Q[i, k] * K[j, k]</code></pre>
-<p>结果矩阵有 <code>n * n</code> 个元素，每个元素需要 <code>d_k</code> 次乘加运算，所以总计算量是 <code>O(n² * d_k)</code>。</p>
-<p>因为 <code>d_k</code> 是固定常数（比如 64 或 128），通常简化为 <code>O(n²)</code>。</p>
-<p><strong>为什么不是 O(n³)？</strong> 因为 attention 不是三维张量的乘法，只是两个二维矩阵相乘。如果模型有 h 个 head，每个 head 独立计算，总计算量是 <code>h * O(n² * d_k) = O(n² * h * d_k) = O(n² * d_model)</code>，仍然是 <code>O(n²)</code>。</p>
+<p>结果矩阵有 <code>n * n</code> 个元素，每个元素需要 <code>d_k</code> 次乘加运算，所以总计算量是 \(O(n^2 \cdot d_k)\)。</p>
+<p>因为 <code>d_k</code> 是固定常数（比如 64 或 128），通常简化为 \(O(n^2)\)。</p>
+<p><strong>为什么不是 O(n³)？</strong> 因为 attention 不是三维张量的乘法，只是两个二维矩阵相乘。如果模型有 h 个 head，每个 head 独立计算，总计算量是 <code>h * O(n² * d_k) = O(n² * h * d_k) = O(n² * d_model)</code>，仍然是 \(O(n^2)\)。</p>
 <hr>
 <p><strong>2. 空间复杂度的具体构成</strong></p>
 <p>空间复杂度不只是 <code>QK^T</code> 矩阵，还包括：</p>
@@ -448,7 +448,7 @@ Q @ K^T 的形状: (n, n)</code></pre>
 <ul>
 <li>128K 序列的 attention FLOPs 约 2T，在 A100 上需要数秒
 </li>
-<li>相比之下，FFN 层的计算量是 <code>O(n * d_model²)</code>，对于 128K * 4096² ≈ 2T，和 attention 相当
+<li>相比之下，FFN 层的计算量是 \(O(n\cdot d_{model}^2)\)，对于 128K * 4096² ≈ 2T，和 attention 相当
 </li>
 <li>但 attention 的内存访问模式更差（随机访问大矩阵），实际 wall-clock time 更长
 </li>
@@ -1288,9 +1288,9 @@ Weights = [[1.000, 0.000],
 <p><strong>1. 计算量的具体数值感受</strong></p>
 <p>Self-Attention 的核心计算是 <code>Q @ K^T</code> 和 <code>weights @ V</code>。</p>
 <ul>
-<li><code>Q @ K^T</code>：<code>(n, d_k) @ (d_k, n) → (n, n)</code>，计算量是 <code>O(n² × d_k)</code>
+<li><code>Q @ K^T</code>：<code>(n, d_k) @ (d_k, n) → (n, n)</code>，计算量是 \(O(n^2 \times d_k)\)
 </li>
-<li><code>weights @ V</code>：<code>(n, n) @ (n, d_v) → (n, d_v)</code>，计算量也是 <code>O(n² × d_v)</code>
+<li><code>weights @ V</code>：<code>(n, n) @ (n, d_v) → (n, d_v)</code>，计算量也是 \(O(n^2 \times d_v)\)
 </li>
 </ul>
 <p>假设 <code>d_k = d_v = 64</code>，看不同序列长度下的计算量：</p>

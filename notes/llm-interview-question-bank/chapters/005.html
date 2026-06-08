@@ -177,6 +177,7 @@
 
 <h3 id="h-0012"><a class="anchor-link" href="#h-0012" aria-label="跳转到本节">#</a>代表面试题</h3>
 <h4>Encoder-only、Decoder-only、Encoder-Decoder 的差异</h4>
+<div class="table-wrap">
 <table>
 <thead>
 <tr><th>架构</th><th>注意力可见性</th><th>典型任务</th><th>代表性取舍</th></tr>
@@ -187,12 +188,14 @@
 <tr><td>Encoder-Decoder</td><td>Encoder 双向理解输入，Decoder 自回归生成并 cross-attention 到 Encoder</td><td>翻译、摘要、条件生成</td><td>输入输出分工清楚，但系统更复杂，推理缓存和工程路径不如纯 Decoder 统一</td></tr>
 </tbody>
 </table>
+</div>
 <p>LLM 主流选择 Decoder-only，不是因为它在所有任务上理论最优，而是因为它把预训练、指令微调、对话生成、代码补全、工具调用都统一成“给定前文预测下一个 token”。这种统一让数据构造简单、模型接口简单、推理服务简单，KV Cache 也只需要沿着生成方向追加。代价是：模型不能像 Encoder 那样天然双向编码完整输入，很多理解任务要被改写成 prompt-to-answer；长输入会挤占上下文窗口；生成每个 token 都要串行依赖上一个 token；对于固定输入到固定输出的任务，Encoder-Decoder 有时仍然更参数高效或更容易做条件控制。</p>
 <h4>为什么不是“Decoder-only 永远更强”</h4>
 <p>面试里要避免把架构选择讲成流行趋势。Encoder-only 在语义向量、召回、rerank、文本分类中仍然常用，因为这些任务需要稳定地读完整段输入，不一定需要生成。Encoder-Decoder 在机器翻译、语音识别后处理、结构化条件生成中仍有优势，因为 source 和 target 分工明确。Decoder-only 的胜出主要发生在通用生成式 LLM 场景：它牺牲了一部分专用结构偏置，换来了训练目标、产品接口、推理工程和多任务范式的高度统一。</p>
 
 <h3 id="h-0014"><a class="anchor-link" href="#h-0014" aria-label="跳转到本节">#</a>这一块真正考什么</h3>
 <h4>MHA、MQA、GQA 的工程权衡</h4>
+<div class="table-wrap">
 <table>
 <thead>
 <tr><th>形式</th><th>Q 头数</th><th>K/V 头数</th><th>主要收益</th><th>主要代价</th></tr>
@@ -203,6 +206,7 @@
 <tr><td>GQA</td><td>多个</td><td>按组共享 K/V</td><td>在效果和推理成本之间折中</td><td>比 MQA 贵，比 MHA 表达略受限</td></tr>
 </tbody>
 </table>
+</div>
 <p>MHA 的直觉是让不同注意力头在不同子空间里看不同关系，例如局部依赖、长程指代、格式边界或代码缩进。MQA/GQA 不是改变 Attention 的基本公式，而是减少 K/V 的头数，从而减少推理时每层需要缓存和读取的 K/V 张量。对于大模型 serving，很多时候瓶颈不是算不动矩阵乘，而是 KV Cache 占显存、访存带宽和并发 batch 被拉低，所以 GQA 成为常见折中。</p>
 <h4>Pre-Norm、Post-Norm 与训练稳定性</h4>
 <p>Post-Norm 是早期 Transformer 的形式：子层输出先残差相加，再做 LayerNorm，即 <code>Norm(x + Sublayer(x))</code>。它的输出分布整洁，但深层网络中梯度要穿过很多 Norm，训练容易不稳定。Pre-Norm 把 Norm 放到子层前：<code>x + Sublayer(Norm(x))</code>。这样残差路径更像一条干净的恒等高速路，梯度更容易从深层传回浅层，所以现代 LLM 更常用 Pre-Norm 或其变体。代价是层输出未必每次都被强制归一化，通常会在最后再加 final norm。</p>
