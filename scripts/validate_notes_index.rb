@@ -34,10 +34,11 @@ MATHJAX_MARKERS = [
 IGNORED_FOR_MATH_SCAN = %r{<(script|style|pre|code)\b[^>]*>.*?</\1>}im
 QUALITY_WARNING_PATTERNS = {
   "generation artifact" => /Generated locally|HTML generated|本地 HTML 生成|本地 HTML 报告生成|本 HTML 报告|本报告生成|报告生成日期|生成日期：20\d{2}-\d{2}-\d{2}|\d{4}-\d{2}-\d{2}\s*生成/i,
-  "local temporary path" => %r{/Users/xxx|/tmp/|/Users/bytedance/Downloads}i,
-  "download artifact wording" => /最终 HTML 路径|最终文件路径|文件位置：|报告文件：/i
+  "local temporary path" => %r{/Users/xxx|/tmp/|/Users/bytedance/Downloads|/Users/|Downloads|results/}i,
+  "tool or command trace" => /\bOpenCLI\b|\bopencli\b|mcp-router|pdftotext|pdfinfo|curl\s+-|browser-backed read|X 线程公开读取|网页公开读取/i,
+  "download artifact wording" => /最终 HTML 路径|最终文件路径|文件位置：|报告文件：|本地参考文件位于|本地路径|下载 PDF/i
 }.freeze
-CONTENT_SOURCE_TOP_PATTERNS = /(?:HTML 报告|材料来源|资料来源|来源[:：]|报告日期[:：]|生成日期[:：]|原始链接|下载 PDF|OpenCLI|抓取|本地路径|文件位置|single HTML note)/i
+CONTENT_SOURCE_TOP_PATTERNS = /(?:HTML 报告|材料来源|资料来源|来源[:：]|报告日期[:：]|生成日期[:：]|原始链接|下载 PDF|OpenCLI|opencli|抓取|本地路径|文件位置|single HTML note|results\/|Downloads)/i
 CONTENT_TERM_HEADING = /术语|概念|名词|关键词|词先对齐|什么叫|是什么意思|Terms|Glossary|符号|定义/i
 CONTENT_EVIDENCE_HEADING = /证据|来源|资料|Source|References|边界|核验|参考/i
 CONTENT_TERM_TEXT = /这里的.{0,30}(?:指|表示|意思是|是指)|所谓.{0,30}(?:是|指)|(?:什么叫|是什么意思|指的是|定义为|词先对齐)|\b[A-Z][A-Za-z0-9-]{1,}\b.{0,32}(?:指|表示|意思是|是指|是|代表)/

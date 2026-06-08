@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAGEN-2：Entropy 没塌，不代表 Agent 还在看输入</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f0e7;
+      --surface: #fffdf8;
+      --surface-2: #eef2ef;
+      --ink: #1e2428;
+      --muted: #5b666e;
+      --line: #d7d9d2;
+      --line-strong: #a3aaa2;
+      --accent: #1f6678;
+      --accent-2: #8a5a22;
+      --blue: #315f8f;
+      --green: #2d7259;
+      --red: #a2473c;
+      --gold: #8b6723;
+      --soft-blue: #dce8f4;
+      --soft-green: #deece4;
+      --soft-red: #f0ded9;
+      --soft-gold: #efe3c4;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.10);
+      --radius: 10px;
+      --max: 1220px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(31, 102, 120, 0.11), transparent 33vw),
+        linear-gradient(90deg, rgba(31, 36, 40, 0.032) 1px, transparent 1px) 0 0 / 42px 42px,
+        linear-gradient(0deg, rgba(31, 36, 40, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.74;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    p { margin: 10px 0; }
+    strong { color: #12171b; }
+    code, pre { font-family: var(--mono); }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      min-height: calc(72vh - var(--notes-shell-height, 46px));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.38fr);
+      gap: clamp(24px, 4vw, 52px);
+      align-items: end;
+      padding: clamp(42px, 7vw, 88px) 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      font: 780 clamp(36px, 5vw, 66px)/1.06 var(--serif);
+    }
+
+    .lede {
+      max-width: 920px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    .hero-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.88);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card h2 {
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--accent-2);
+    }
+
+    .hero-card ol {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding: 28px 0 62px;
+    }
+
+    section {
+      padding: clamp(22px, 4vw, 34px);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: 0 12px 32px rgba(31, 37, 40, 0.07);
+    }
+
+    section h2 {
+      margin-bottom: 14px;
+      font-size: clamp(25px, 3.4vw, 40px);
+      font-family: var(--serif);
+    }
+
+    section h3 {
+      margin-top: 22px;
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+
+    .section-lead {
+      max-width: 930px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card, .callout, .equation-card {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .card {
+      box-shadow: 0 10px 24px rgba(31, 37, 40, 0.06);
+    }
+
+    .card h3, .equation-card h3 {
+      margin-top: 0;
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .callout {
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+    }
+
+    .callout.good { border-left-color: var(--green); background: var(--soft-green); }
+    .callout.warn { border-left-color: var(--gold); background: var(--soft-gold); }
+    .callout.risk { border-left-color: var(--red); background: var(--soft-red); }
+    .callout.info { border-left-color: var(--blue); background: var(--soft-blue); }
+
+    .equation-card {
+      background: linear-gradient(180deg, rgba(238, 242, 239, 0.92), rgba(255, 253, 248, 0.94));
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .step {
+      position: relative;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .step b {
+      display: inline-flex;
+      width: 26px;
+      height: 26px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-size: 13px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.82);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      min-width: 820px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: #172027;
+      font-weight: 850;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .metric {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .metric-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent-2);
+      font-size: 26px;
+      line-height: 1.1;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    @media (max-width: 900px) {
+      header { grid-template-columns: 1fr; min-height: auto; }
+      .grid-2, .grid-3, .grid-4, .flow, .metric { grid-template-columns: 1fr; }
+      section { padding: 20px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div>
+      <div class="kicker">Paper Note · Agentic RL · 2026-06-08</div>
+      <h1>RAGEN-2：Entropy 没塌，不代表 Agent 还在看输入</h1>
+      <p class="lede">RAGEN-2 最有价值的地方，不是又给 Agent RL 加了一个过滤 trick，而是把“推理是否健康”的诊断对象从 token 随机性改成了输入依赖性：一个模型可以保持很高的 token-level entropy，却对不同任务说同一套模板。论文把这种静默失败定义为 template collapse，用 mutual information proxy 诊断它，并用 reward variance 解释为什么低 SNR 更新会把多轮 agent 推向输入无关的流畅废话。</p>
+      <div class="tag-row" aria-label="Tags">
+        <span class="tag">Template Collapse</span>
+        <span class="tag">Mutual Information</span>
+        <span class="tag">Reward Variance</span>
+        <span class="tag">SNR-Aware Filtering</span>
+        <span class="tag">Agentic RL</span>
+      </div>
+    </div>
+    <aside class="hero-card" aria-label="目录">
+      <h2>阅读路线</h2>
+      <ol>
+        <li>先看核心判断：为什么 entropy 会误导。</li>
+        <li>再看机制：MI proxy 如何把“是否看输入”量化。</li>
+        <li>最后看边界：reward variance 何时是信号，何时只是噪声。</li>
+      </ol>
+    </aside>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断：这篇论文改写的是“训练健康度”的问题定义</h2>
+      <p>这篇论文真正反直觉的结论是：<strong>高 entropy 并不等于高 reasoning diversity</strong>。更准确地说，高 entropy 只说明同一个输入下模型还能产生多种 token 变化；它不说明模型面对不同输入时会改变推理策略。一个 agent 可以在每个任务里都写出“Let’s analyze carefully / identify key facts / choose the best action”这类表面不同的长推理，但这些推理不再携带当前状态、当前网页、当前数学条件或当前代码错误的信息。</p>
+      <p>RAGEN-2 将这种失败命名为 <strong>template collapse</strong>：reasoning trace 看起来流畅、格式正确、甚至 token-level entropy 还很高，但它不再是输入条件化的推理，而是跨输入复用的模板。对多轮 agent 来说，这比普通低熵塌缩更危险，因为它会被 reward、format validity、response length、甚至 entropy 共同掩盖。</p>
+      <div class="callout info">
+        <strong>一句话记忆：</strong>不要只问模型“输出有没有变化”，要问“这些变化是否由输入驱动”。RAGEN-2 的 MI proxy 本质上是在问：给定一段推理，我们能不能猜出它来自哪个 prompt？如果猜不出来，说明推理已经不太看输入。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：为什么 Agent RL 会被模板推理骗过</h2>
+      <p>在 RLHF、RLVR 和 agentic RL 中，训练监控通常盯着几类指标：reward 是否上涨、KL 是否过大、entropy 是否塌缩、输出格式是否有效、平均长度是否异常。这个监控体系隐含了一个假设：如果输出仍然多样、仍然合法、reward 没有立刻掉，那么 reasoning 过程大概率还健康。RAGEN-2 说这个假设不成立。</p>
+      <p>多轮 agent 的 reward 经常稀疏、延迟、含噪，而且大多只评价最终 action 或最终答案。模型写出的中间 reasoning 很少被直接监督。于是出现一种优化捷径：模型不一定要让 reasoning 真正解释状态，只要保留一套通用的“思考样式”，再通过 action 或答案偶尔拿到 reward，就能继续被训练强化。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>传统 entropy 看什么</h3>
+          <p>它主要看给定同一输入时 token 分布是否尖锐，回答的是“模型还有没有随机性 / 多样措辞”。</p>
+        </div>
+        <div class="card">
+          <h3>Agent 真正需要什么</h3>
+          <p>它需要 reasoning 随环境状态、工具返回、页面内容、错误日志和任务目标变化，回答的是“模型有没有根据输入更新策略”。</p>
+        </div>
+        <div class="card">
+          <h3>template collapse 的盲点</h3>
+          <p>模板可以包含很多 token 随机性，因此 entropy 看起来没塌；但跨任务看，推理骨架几乎一样。</p>
+        </div>
+      </div>
+      <p>这也是为什么这篇论文对 coding agent、web agent、tool-use agent 特别重要：越是长程闭环任务，越容易出现“看似一直在思考，实际只是不断重申流程”的失败。人类读日志时会被自然语言流畅度欺骗，训练仪表盘也会被局部 entropy 欺骗。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：从 entropy 到 mutual information</h2>
+      <p class="section-lead">论文的诊断框架把 reasoning quality 拆成两个正交维度：同一输入下是否多样，以及不同输入之间是否可区分。前者是 entropy 关心的，后者才是 template collapse 破坏的。</p>
+
+      <h3>1. 基本对象：输入是完整上下文，输出是 reasoning trace</h3>
+      <p>论文研究的是 closed-loop multi-turn agent RL。每一轮 agent 看到上下文，生成 reasoning tokens 和 action tokens，再从环境得到 reward。这里的输入 \(X\) 不是单句 prompt，而是当前 turn 之前模型可见的完整 context：system prompt、历史 observations、历史 actions、历史 reasoning，以及当前环境状态。\(Z\) 是这一轮生成的 reasoning token sequence，通常不包括 action token 和边界标记。</p>
+      <div class="equation-card">
+        <h3>核心分解</h3>
+        <p>论文用信息论恒等式把 reasoning diversity 拆开：</p>
+        <div class="math-display">\[H(Z) = I(X; Z) + H(Z|X)\]</div>
+        <p>其中 \(H(Z|X)\) 是 within-input diversity，表示同一个输入下 reasoning 有多分散；\(I(X;Z)\) 是 input dependence，表示 reasoning 里包含多少关于输入的信息。</p>
+      </div>
+
+      <h3>2. 四种推理状态：template collapse 为什么最隐蔽</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>状态</th>
+              <th>\(H(Z|X)\)</th>
+              <th>\(I(X;Z)\)</th>
+              <th>直观解释</th>
+              <th>训练风险</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Diverse Reasoning</td>
+              <td>高</td>
+              <td>高</td>
+              <td>同一问题有多种合理路径，不同问题有明显不同推理。</td>
+              <td>理想状态，但要防止过度随机。</td>
+            </tr>
+            <tr>
+              <td>Template Collapse</td>
+              <td>高</td>
+              <td>低</td>
+              <td>输出表面多样，但跨输入共享同一套模板。</td>
+              <td>最容易骗过 entropy 和 format 检查。</td>
+            </tr>
+            <tr>
+              <td>Compressed Reasoning</td>
+              <td>低</td>
+              <td>高</td>
+              <td>推理简洁确定，但仍然依赖输入。</td>
+              <td>不一定坏；可能是模型学会了更短路径。</td>
+            </tr>
+            <tr>
+              <td>Low-Entropy Collapse</td>
+              <td>低</td>
+              <td>低</td>
+              <td>输出既单一，又不看输入。</td>
+              <td>传统 entropy 也能较容易发现。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这个表的关键是：<strong>低 entropy 不是唯一塌缩，高 entropy 也不是安全信号</strong>。如果训练只盯 \(H(Z|X)\)，就会把 template collapse 误判为“推理仍然有多样性”。</p>
+
+      <h3>3. MI proxy：用 in-batch cross-scoring 测“推理能否反推出输入”</h3>
+      <p>真实 mutual information 很难直接计算。RAGEN-2 的做法是把它转成一个 retrieval 问题：如果一段 reasoning 真的是针对某个输入写的，那么这段 reasoning 在原输入下的 teacher-forced likelihood 应该高于在其他输入下的 likelihood。</p>
+      <div class="flow">
+        <div class="step"><b>1</b><p>取一批 prompts \(X_1,\ldots,X_P\)。</p></div>
+        <div class="step"><b>2</b><p>每个 prompt 采样 \(G\) 条 reasoning traces \(Z_{i,k}\)。</p></div>
+        <div class="step"><b>3</b><p>把每条 trace 放到所有 prompts 下打分。</p></div>
+        <div class="step"><b>4</b><p>形成矩阵 \(L_{i,k,j}=\log p_\theta(Z_{i,k}|X_j)\)。</p></div>
+        <div class="step"><b>5</b><p>检查原 prompt 是否得分最高。</p></div>
+      </div>
+      <div class="equation-card">
+        <h3>两个基础量</h3>
+        <div class="math-display">\[\text{matched}_{i,k}=\frac{L_{i,k,i}}{|Z_{i,k}|}\]</div>
+        <div class="math-display">\[\text{marginal}_{i,k}=\frac{1}{|Z_{i,k}|}\log\frac{1}{P}\sum_j \exp(L_{i,k,j})\]</div>
+        <p>matched 是 trace 在真实来源输入下的长度归一化 log-likelihood；marginal 是这条 trace 在 batch 内 prompt mixture 下的近似边际 log-likelihood。两者差越大，说明这条 reasoning 越像是被特定输入“塑形”的。</p>
+      </div>
+      <p>最容易解释的指标是 Retrieval-Acc：</p>
+      <div class="math-display">\[\text{Acc}=\frac{1}{PG}\sum_{i,k}\mathbf{1}\left[\arg\max_j L_{i,k,j}=i\right]\]</div>
+      <p>如果发生 template collapse，一段 trace 放在哪个 prompt 下都差不多，retrieval accuracy 会接近随机猜测。若 \(P=64\)，chance level 只有约 1.56%。这使得指标不仅可连续跟踪，还有一个直观的绝对参照。</p>
+
+      <h3>4. 为什么会塌：低 reward variance 让 task gradient 失声</h3>
+      <p>论文的机制解释是 SNR。对同一个 prompt，如果多条 rollout 的 reward 有明显差异，RL 能知道哪些轨迹更好，advantage 估计就有任务信号。反过来，如果同一个 prompt 下所有 rollout reward 几乎一样，无论全对、全错，还是奖励器无法区分，advantage 都接近零，task gradient 就弱。</p>
+      <div class="equation-card">
+        <h3>reward variance 控制 task gradient 上界</h3>
+        <div class="math-display">\[\|g_{\text{task}}(x)\| \leq \sqrt{\operatorname{Var}(R|X=x)}\cdot \sqrt{\mathbb{E}[\|s(z;x)\|^2|X=x]}\]</div>
+        <p>直觉是：同一 prompt 内 reward 差异越小，advantage 越小，基于 reward 的方向性更新越弱。</p>
+      </div>
+      <p>与此同时，KL regularization 和 entropy regularization 并不会因为 reward variance 低而消失。它们是 reward-agnostic 的分布约束，会继续给每条 reasoning chain 施加相对统一的压力。当 task signal 弱而 regularizer 仍然存在时，总更新方向就更容易被输入无关成分主导，逐渐抹掉不同输入之间的 reasoning 差异。</p>
+
+      <h3>5. SNR-Aware Filtering：不是挑“高分样本”，而是挑“可区分样本”</h3>
+      <p>RAGEN-2 的干预很直接：每轮训练先按 prompt 分组采样多条 trajectories，计算组内 return variance，然后优先保留 reward variance 高的 prompt groups 做更新。注意它不是简单挑 reward 高的轨迹，而是挑同一 prompt 下 rollout 结果有分辨度的 prompts。高 reward variance 表示 reward 对轨迹选择敏感，advantage 更可能携带学习信号。</p>
+      <p>主策略是 top-p 风格的累计 variance mass，而不是固定 top-k。它按 reward variance 降序排列 prompt groups，保留最小前缀，使累计 variance 达到总 variance 的某个比例 \(\rho\)。这样当 batch 里只有少数 prompt 有信号时，更新会自动更集中；当很多 prompt 都有信号时，保留范围自然扩大。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：MI 先坏，性能后坏，entropy 没有报警</h2>
+      <p class="section-lead">论文的证据链分三层：现象层证明 template collapse 可被观察到；机制层证明 reward variance 与 gradient SNR 相关；干预层证明按 reward variance 过滤能同时改善 MI 和任务性能。</p>
+
+      <h3>1. 训练动态：MI 下降早于任务性能，而 entropy 仍然高</h3>
+      <p>在训练曲线中，no-filter baseline 会出现一个典型模式：retrieval accuracy / MI proxy 先下降，说明 reasoning 开始变得输入无关；随后 task success rate 才恶化；conditional entropy 则没有给出同样清晰的预警。这个顺序很重要，因为它说明 template collapse 不是对性能下降的事后解释，而是可能作为早期诊断信号。</p>
+      <div class="callout good">
+        <strong>为什么这是有用诊断：</strong>如果 MI proxy 在 reward 下降前已经变差，训练系统就可以提前降学习率、提高采样多样性、切换数据分布、启用 SNR-aware filtering 或停止当前阶段，而不是等任务指标掉下去再救火。
+      </div>
+
+      <h3>2. 相关性：MI-family metrics 比 entropy 更能预测最终表现</h3>
+      <p>论文对 entropy regularization、KL constraint、SNR-aware filtering 等不同干预做 sweep，比较各诊断指标与 task success 的 Spearman correlation。结果显示，MI-family metrics 与性能正相关；Trajectory MI-ZScore 约为 +0.39。相对地，Reasoning Entropy / Conditional Entropy 接近零或负相关，约在 -0.11 到 -0.14。</p>
+      <div class="metric">
+        <div class="metric-card"><strong>+0.39</strong><span>Trajectory MI-ZScore 与 task performance 的正相关量级。</span></div>
+        <div class="metric-card"><strong>-0.11~-0.14</strong><span>entropy 类指标在实验中的相关性方向反而可能误导。</span></div>
+        <div class="metric-card"><strong>chance</strong><span>template collapse 下 retrieval accuracy 会接近随机匹配。</span></div>
+      </div>
+      <p>这个结果不应被理解为“entropy 永远没用”。更准确的解读是：entropy 是 within-input dispersion 指标，适合发现低熵塌缩；但它不是 input dependence 指标，因此不能作为 template collapse 的主监控。</p>
+
+      <h3>3. 梯度桶实验：task gradient 随 reward variance 增强，regularizer 基本平坦</h3>
+      <p>论文把 prompts 按 within-input reward variance 排成若干 bucket，分别测 task gradient norm 和 regularization gradient norm。结果符合 SNR 机制的核心预测：reward variance 越高，task gradient norm 越大；而 KL + entropy regularizer 的梯度强度在不同 bucket 间相对平坦。</p>
+      <p>这意味着低-RV prompts 的问题不是“完全没有更新”，而是<strong>有更新但方向不是由任务差异主导</strong>。这种更新仍然会改参数，却更可能造成输入无关漂移。这也是为什么 simply keep training 可能越来越糟：训练步数增加并不自动等于有效信号增加。</p>
+
+      <h3>4. 干预效果：filtering 在多数任务、模型、算法上提升平均表现</h3>
+      <p>论文在 Sokoban、FrozenLake、MetaMathQA、Countdown、SearchQA、WebShop、DeepCoder 等环境上测试；训练算法包括 PPO、DAPO、GRPO、Dr. GRPO；模型覆盖 Qwen2.5 多个尺度、Qwen2.5-VL 和 Llama3.2-3B。结果不是每个 cell 都提升，但整体显示 SNR-Aware Filtering 是一个稳健的信号增强 knob。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>证据点</th>
+              <th>论文报告的现象</th>
+              <th>应该如何解读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>PPO + Qwen2.5-3B baseline</td>
+              <td>Sokoban 约 +16.0，FrozenLake 约 +10.9，平均约 +6.9。</td>
+              <td>多轮规划和导航任务尤其受益，因为模板 reasoning 会直接削弱状态依赖。</td>
+            </tr>
+            <tr>
+              <td>算法维度</td>
+              <td>PPO、DAPO、GRPO、Dr. GRPO 上平均多数为正。</td>
+              <td>filtering 不是某个 optimizer 的私有补丁，而是作用在 rollout/update 信号质量层。</td>
+            </tr>
+            <tr>
+              <td>模型尺度与类型</td>
+              <td>Qwen2.5 0.5B/1.5B/7B、Instruct、Llama3.2-3B、VL 设置都有改善案例。</td>
+              <td>template collapse 不是小模型独有；多模态 agent 也会出现输入依赖弱化。</td>
+            </tr>
+            <tr>
+              <td>top-p vs top-k</td>
+              <td>Top-p filtering 通常优于固定 top-k。</td>
+              <td>高信号 prompt 的数量随训练阶段变化，固定保留比例会在低信号 batch 中继续吸入噪声。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>5. 边界证据：高随机环境里 reward variance 可能失真</h3>
+      <p>论文也展示了一个很重要的负面条件：在 FrozenLake 这类环境随机性增强时，filtering advantage 会减弱。原因是 reward variance 不再纯粹代表“轨迹质量可区分”，也可能代表 transition noise。此时保留高 variance prompt 未必是在保留高信号，也可能是在保留高环境噪声。</p>
+      <p>另一个有用诊断是 \(\operatorname{Std}(RV)/\operatorname{Mean}(RV)\)。当这个比值高，说明 batch 内 reward variance 分布有明显异质性，filtering 可以区分 signal-rich 和 noise-only prompts；当这个比值很低，所有 prompt 的 RV 都差不多，filtering 近似随机丢数据，收益就不稳。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释：把几个容易混的概念先对齐</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Template Collapse</h3>
+          <p>指模型 reasoning 变成跨输入复用的模板：句子可能不同，结构可能完整，但与具体输入的耦合变弱。它不是“输出变短”或“格式坏掉”，而是“推理不再诊断输入”。</p>
+        </div>
+        <div class="card">
+          <h3>Conditional Entropy \(H(Z|X)\)</h3>
+          <p>给定同一输入时，模型 reasoning 分布有多分散。它能反映 within-input diversity，但不能证明不同输入之间的 reasoning 有系统差异。</p>
+        </div>
+        <div class="card">
+          <h3>Mutual Information \(I(X;Z)\)</h3>
+          <p>输入和 reasoning 之间的信息依赖。若 \(I(X;Z)\) 高，观察 reasoning 可以更好地推断它来自哪个输入；若低，reasoning 更像通用模板。</p>
+        </div>
+        <div class="card">
+          <h3>Retrieval-Acc</h3>
+          <p>MI proxy 的离散版本：把一条 reasoning trace 放到 batch 内所有 prompts 下打分，看真实 prompt 是否排第一。它把“是否看输入”转成可解释的检索问题。</p>
+        </div>
+        <div class="card">
+          <h3>Reward Variance</h3>
+          <p>同一 prompt 下多条 rollout return 的方差。高 RV 通常表示 reward 能区分不同轨迹，advantage 更有信号；但在高环境噪声下，高 RV 也可能只是随机性。</p>
+        </div>
+        <div class="card">
+          <h3>SNR-Aware Filtering</h3>
+          <p>按 prompt-level reward variance 过滤训练更新，只把更可能含有任务区分信号的 prompt groups 用于梯度更新。它是信号增强方法，不是简单正样本筛选。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="misreadings">
+      <h2>三个容易误读的点</h2>
+      <div class="grid-3">
+        <div class="callout risk">
+          <h3>误读一：entropy 没用了</h3>
+          <p>不对。entropy 仍然能发现低熵模式坍缩，也能帮助维持探索。问题是 entropy 只能覆盖 \(H(Z|X)\) 这条轴，不能替代 \(I(X;Z)\)。真正的监控应该双轴化。</p>
+        </div>
+        <div class="callout risk">
+          <h3>误读二：低 reward variance 都应该丢</h3>
+          <p>不对。低 RV 可能是全对，也可能是全错。全错 prompt 可能需要 curriculum、额外探索或更细粒度 reward，而不是永远从训练中消失。filtering 是每轮更新的信号质量控制，不是数据永久删除。</p>
+        </div>
+        <div class="callout risk">
+          <h3>误读三：MI proxy 就是真实 MI</h3>
+          <p>不对。论文的指标是 scorer-based proxy，依赖 batch prompts、teacher-forced scoring、长度归一化和采样设置。它的价值在于趋势诊断和相对比较，而不是给出绝对 Shannon MI。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="engineering">
+      <h2>工程启发：Agent RL 仪表盘应该多一条“输入依赖性”主线</h2>
+      <p>如果要把 RAGEN-2 落到实际训练系统，我会把它变成三组改动：监控、更新选择、失败分流。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>监控层</h3>
+          <ul>
+            <li>继续记录 reward、KL、entropy、format validity、response length。</li>
+            <li>新增 prompt-level reward variance、zero-RV group ratio。</li>
+            <li>周期性计算 MI proxy / retrieval accuracy，不必每步都算。</li>
+            <li>按 turn 分开看 MI，尤其关注长程任务后半段是否更模板化。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>训练层</h3>
+          <ul>
+            <li>对 prompt groups 做 RV-based filtering，而不是只按轨迹 reward 做 best-of 选择。</li>
+            <li>把 top-p keep mass 作为 per-task knob，避免固定 top-k 在低信号阶段误保留噪声。</li>
+            <li>当 RV 分布不异质时降低 filtering 强度，避免随机丢数据。</li>
+            <li>低 RV 但重要的 hard prompts 进入 curriculum 或 replay，而不是永久丢弃。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>调试层</h3>
+          <ul>
+            <li>对 MI 下降的 batch 做人工抽样，检查是否出现通用 planning 话术。</li>
+            <li>把 reasoning trace 与 prompt 做反向匹配，观察混淆矩阵中的相似任务簇。</li>
+            <li>区分格式问题、长度问题和输入依赖问题，避免用 format validity 替代语义诊断。</li>
+            <li>在环境随机性高的任务里增加 deterministic replay 或分离环境噪声估计。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout warn">
+        <strong>对 coding agent 的直接启发：</strong>不要只看 pass rate 和平均 reasoning length。一个 coding agent 可能开始反复说“inspect files → identify bug → patch → run tests”，但不再引用具体文件、错误堆栈、测试失败或 API 约束。此时 entropy 可能正常，真正要看的应是 reasoning 是否能被匹配回具体 issue 和代码上下文。
+      </div>
+    </section>
+
+    <section id="research">
+      <h2>研究意义：从“输出多样性”转向“反事实输入可分性”</h2>
+      <p>RAGEN-2 和近期很多 Agent RL 工作的共同趋势，是把训练问题从单纯的 policy optimization 推向 rollout 信号治理。以前大家常问：reward model 好不好、KL 怎么调、GRPO 怎么归一化、entropy 要不要加。RAGEN-2 额外问了一个更基础的问题：当前 batch 的更新里到底有没有足够任务信号？如果没有，继续更新可能只是在把 agent 推向更流畅的平均模板。</p>
+      <p>这会改变我们评价 reasoning 的方式。很多“多样性”指标只看样本之间是否不同，比如 self-BLEU、embedding dispersion、response length variance。RAGEN-2 关心的是另一种更强的多样性：<strong>输出差异是否与输入差异对齐</strong>。这本质上是反事实思想：换一个输入，合理的 reasoning 分布应该随之改变；如果不变，那就是输入依赖性下降。</p>
+      <p>这个视角也能连接到更广的 agent failure：长期任务中的 belief collapse、信息寻求停滞、工具调用模板化、网页导航中的页面无关动作、代码修复中的固定 patch skeleton。它们共同的问题不是模型不会说话，而是模型的内部更新不再被外部状态充分调制。</p>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险：这不是一个可以无脑打开的开关</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>reward variance 可能是噪声</h3>
+          <p>在随机环境、非确定工具、网页状态波动、reward model 不稳定的任务里，高 RV 可能代表环境噪声，而不是轨迹质量差异。此时 filtering 会保留更吵的样本。</p>
+        </div>
+        <div class="card">
+          <h3>低 RV 可能包含困难学习区</h3>
+          <p>如果所有 rollout 都失败，RV 也很低。但这些 prompt 可能正是模型需要突破的难题。只过滤会让训练绕开困难区域，需要配合 curriculum、探索增强或更细 reward。</p>
+        </div>
+        <div class="card">
+          <h3>MI proxy 有计算成本</h3>
+          <p>in-batch cross-scoring 需要把 traces 放到多个 prompts 下打分。大 batch、长 reasoning、多 turn 场景下成本不可忽略，适合周期性诊断或抽样监控。</p>
+        </div>
+        <div class="card">
+          <h3>模型可能 Goodhart variance</h3>
+          <p>如果 filtering 策略长期固定且可被模型间接利用，模型可能学会制造 reward variance，而不是制造真实信号。这需要和外部 eval、held-out prompts、人工审计结合。</p>
+        </div>
+        <div class="card">
+          <h3>隐藏 reasoning 场景不直接适用</h3>
+          <p>如果生产模型不暴露 chain-of-thought，MI proxy 需要转向可见 plan、action trace、tool calls、state summaries 或其他代理变量。</p>
+        </div>
+        <div class="card">
+          <h3>实验仍以可控任务为主</h3>
+          <p>论文覆盖任务很多，但仍主要是单 agent、可控环境。多 agent 协作、真实网页、真实用户任务中的 collapse 传播还需要单独研究。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>最终 insight：健康推理不是“会变着花样说”，而是“会被状态改变”</h2>
+      <p>RAGEN-2 对我最大的启发是：Agent RL 的核心风险之一，不是模型完全停止输出 reasoning，而是 reasoning 变成一种 reward-compatible 的表演。它保持格式、保持长度、保持流畅，也保持一些 token 级随机性；但它不再足够受输入约束。传统 entropy 监控会把这种表演误认为多样性，直到任务表现明显变差。</p>
+      <p>因此，后训练系统需要把“输入依赖性”提升为一等公民。对任何声称训练 agent reasoning 的系统，都应至少能回答三个问题：</p>
+      <ol>
+        <li>同一个输入下，哪些 rollout 真正有可学习的 reward 差异？</li>
+        <li>不同输入之间，reasoning trace 是否仍然可区分？</li>
+        <li>当任务性能稳定但 MI 下降时，系统是否会把它当作早期故障而不是正常收敛？</li>
+      </ol>
+      <p>如果这三个问题答不上来，就算 reward 曲线暂时好看，训练也可能只是在把 agent 调成更会讲模板话的执行器。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于公开 X 原帖、arXiv 论文摘要与论文正文信息做机制解读。数值与实验结论以论文当前公开版本为准；社交平台页面可能随作者编辑、回复排序或访问状态变化。本文没有独立复现实验结果，也没有验证论文代码实现。</p>
+      <ul>
+        <li><a href="https://x.com/cwolferesearch/status/2063363579987030044">Cameron Wolfe 对 RAGEN-2 的 X 讨论</a></li>
+        <li><a href="https://arxiv.org/abs/2604.06268">RAGEN-2: Reasoning Collapse in Agentic RL · arXiv</a></li>
+        <li><a href="https://ragen-ai.github.io/v2/">RAGEN-2 project page</a></li>
+        <li><a href="https://www.microsoft.com/en-us/research/publication/ragen-2-reasoning-collapse-in-agentic-rl/">Microsoft Research publication page</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

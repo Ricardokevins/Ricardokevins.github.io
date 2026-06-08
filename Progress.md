@@ -1,5 +1,288 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-08 MMAE 音频编辑 Benchmark 深度解读与站内笔记导入
+
+### 背景
+
+- 用户要求对 `https://x.com/TencentHunyuan/status/2063862263434613237` 深度分析和介绍，并整理为一个详细全面的站内笔记。
+- 目标材料是 Tencent Hunyuan 关于 `MMAE: A Massive Multitask Audio Editing Benchmark` 的 X 发布帖；核心问题是区分“音频生成”和“指令式音频编辑”，解释 MMAE 的 benchmark 设计、rubric 评测范式、模型结果和工程启发。
+
+### 已完成
+
+- 阅读并整理 X 原帖、arXiv `2606.07229`、官方 GitHub 仓库、HuggingFace 数据集与 paper 页面、YouTube demo 元信息。
+- 解析论文正文与官方 `MMAE-meta.json`，核对样本数、rubric 数、模态/复杂度/操作分布、评测代码中的 rubric 打分与 Qwen3-Omni judge 流程。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/mmae-audio-editing-benchmark.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+- 笔记重点覆盖：
+  - 为什么音频编辑不是普通音频生成，而是“只改该改的地方，并保持其他内容不变”；
+  - MMAE 的 7 类模态、6 类复杂度、8 类操作与 2,000 样本 / 17,741 rubrics 规模；
+  - IFR、CR、EMR 三个指标如何分别刻画指令执行、上下文保持和完美编辑率；
+  - 当前代表模型 EMR 低于 5% 的含义，以及复杂任务、混合模态、平均能力与完美执行脱钩、planner 局限等实验洞察；
+  - 下一代音频编辑系统需要音频对象表示、局部 mask、多轮状态维护和 verifier 闭环，而不能只依赖端到端重生成。
+
+### 待验证 / 继续推进
+
+- 运行 notes validator、公开过程噪声扫描、`git diff --check` 与 Jekyll build，确认新增页面进入站点且无公开过程痕迹。
+
+## 2026-06-08 AutoLab / 长时程 Agent 闭环控制深度解读与站内笔记导入
+
+### 背景
+
+- 用户要求对 `https://x.com/rohanpaul_ai/status/2063825845605499335` 做更深入的调研分析，并整理成站内笔记。
+- 入口材料是 Rohan Paul 对 AutoLab 的 X 帖；核心目标是从表层“persistence”叙事深入到论文、官网、代码仓库、公开轨迹和 benchmark 谱系比较，讲清它真正测到的能力与边界。
+
+### 已完成
+
+- 深读并交叉核对：
+  - Rohan Paul 的 X 帖与回复区主要观点；
+  - AutoLab 论文 `2606.05080`；
+  - AutoLab 官网 leaderboard、task detail 页面与官方博客；
+  - `autolabhq/autolab` 仓库 README、36 个 task 的 `task.toml` / representative `instruction.md`；
+  - 公开 `flux2_klein_lora` agent trajectories 子样本，用于观察 episode 数、timeout 与 reward 的关系；
+  - RE-Bench、AIRS-Bench、KernelBench 与 harness 披露 position paper，用于横向定位。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/autolab-closed-loop-agents.html`
+- 新增页面配图资源：
+  - `notes/tech-analysis/autolab-closed-loop-agents-assets/leaderboard-0510.jpg`
+  - `notes/tech-analysis/autolab-closed-loop-agents-assets/scores-0510.jpg`
+- 更新 `_data/notes.yml`，加入 Notes 卡片入口。
+- 笔记核心判断包括：
+  - AutoLab 不是把“坚持比聪明重要”讲成鸡汤，而是把长时程 agent 的外部实验闭环变成可测量对象；
+  - 其核心能力不是单次 answer quality，而是 benchmark、反馈吸收、探索/利用平衡、best-so-far 管理和截止前收尾纪律；
+  - 论文里最有价值的部分是 failure mode 与 harness ablation，而不只是 leaderboard；
+  - AutoLab 在 benchmark 谱系中更接近长时程 closed-loop optimization，而不是完整 scientific discovery benchmark；
+  - harness 是一等变量，不能把结果粗暴读成纯底模智力排名。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 91 entries, 91 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --cached --check` 通过。
+- 清理旧 `_site` 后运行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅保留既有 `faraday-retry` 建议和 GitHub Metadata 未认证 warning。
+
+## 2026-06-08 RAGEN-2 Reasoning Collapse 深度解读与站内 HTML 笔记导出
+
+### 背景
+
+- 用户要求对 `https://x.com/cwolferesearch/status/2063363579987030044` 做深度详细解读与分析，并导出 HTML 笔记、commit、push。
+- 原帖讨论论文 `RAGEN-2: Reasoning Collapse in Agentic RL`，核心主题是 token-level entropy 无法发现跨输入 template collapse，论文链接指向 arXiv `2604.06268`。
+
+### 已完成
+
+- 阅读并整理 X 原帖、作者补充论文链接、arXiv 摘要与论文正文要点。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/ragen-2-reasoning-collapse-agentic-rl.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+- 笔记重点覆盖：
+  - 为什么 token-level entropy 只衡量 within-input diversity，不能证明模型仍然依赖输入；
+  - template collapse 的定义：reasoning 表面多样但跨输入复用模板；
+  - 信息论分解 `H(Z) = I(X;Z) + H(Z|X)` 及四类推理状态；
+  - in-batch cross-scoring / Retrieval-Acc / MI-ZScore-EMA 如何诊断输入依赖；
+  - reward variance 控制 task gradient、KL/entropy regularizer 在低 SNR 下主导更新的机制；
+  - SNR-Aware Filtering 的 top-p 选择策略、实验收益、工程接入方式和失败边界。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 88 entries, 88 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --check -- "notes/paper-reviews/ragen-2-reasoning-collapse-agentic-rl.html" "_data/notes.yml" "Progress.md"` 通过。
+
+## 2026-06-08 GRPO++ / RLVR Tricks 深度解读与站内笔记导入
+
+### 背景
+
+- 用户要求对 `https://x.com/neural_avb/status/2063366700247175274` 做深度分析梳理，导出详细 HTML 笔记，并 commit / push。
+- 该 X 帖本身是推荐帖，核心材料为 Cameron R. Wolfe 的 Substack 文章 `GRPO++: Tricks for Making RL Actually Work`，主题是 GRPO / RLVR 后训练技巧。
+
+### 已完成
+
+- 核验目标 X 帖与回复链接：原帖推荐 GRPO / RLVR post-training article，回复短链指向 `https://cameronrwolfe.substack.com/p/grpo-tricks`。
+- 阅读并整理 Substack 长文，补充核验关键引用论文：
+  - DAPO：`2503.14476`；
+  - Understanding R1-Zero-Like Training / Dr. GRPO：`2503.20783`；
+  - GSPO：`2507.18071`；
+  - GMPO：`2507.20673`；
+  - MiniMax-M1 / CISPO：`2506.13585`；
+  - DeepSeekMath / DeepSeek-R1 等 GRPO 与 reasoning RL 背景材料。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/grpo-plus-plus-rlvr-tricks.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+- 笔记重点覆盖：
+  - GRPO 为什么以 group relative advantage 取代 critic；
+  - vanilla GRPO 的 reward noise、entropy collapse、response length inflation、zero-gradient prompt 和 off-policy gap；
+  - DAPO 的 clip higher、dynamic sampling、token-level loss、overlong reward shaping；
+  - Dr. GRPO 对 base model / template / Aha moment 叙事的校正，以及 length bias / difficulty bias；
+  - TIS 如何修正 sampler engine 与 learner engine 的 logprob mismatch；
+  - GSPO、GMPO、CISPO 分别如何处理 sequence-level ratio、token outlier 和关键低概率 fork token；
+  - 面向真实 RLVR 训练的数据、采样、loss、系统和监控实践清单。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 89 entries, 89 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅保留既有 `faraday-retry` 建议和 GitHub Metadata 未认证/限流 warning，不影响静态生成。
+
+## 2026-06-08 RL Interview Questions 2026 深度解读与站内 HTML 笔记导出
+
+### 背景
+
+- 用户要求对 `https://x.com/sheriyuo/status/2063295181131247674` 做更完整、详细、清晰的深度解读，并导出为站内 HTML 笔记。
+- 原帖为 X Article `RL Interview Questions 2026`，同时指向知乎中文原文 `2026 年 RL 方向面经合集`。
+
+### 已完成
+
+- 阅读并整理 X Article 与知乎中文原文的 35 道 RL 面试题。
+- 结合公开资料补充解释：AReaL 的 PPO/GRPO/Dr.GRPO/DAPO/GSPO/SAPO 配置口径、RL for reasoning LLMs 方法谱系、agentic RL infra 中 rollout/weight sync/async/staleness/slime/VeRL 等系统脉络、OPD 与 SFT/RL 的状态分布视角。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/rl-interview-questions-2026.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+- 笔记重点覆盖：
+  - 为什么这份材料不是普通面经，而是 2026 LLM RL / Agentic RL 岗位能力地图；
+  - LLM RL 训练链路：rollout、reward、advantage、ratio/clip/KL、backprop、weight sync；
+  - 算法 19 题逐题深解，覆盖 PPO、GRPO、DPO、MoE 训推一致、Dr.GRPO、DAPO、GSPO、CISPO、SAPO、DPPO、MaxRL、SimKO、OPD 与能力边界；
+  - Infra 16 题逐题深解，覆盖 model roles、KV cache、FP8/INT8、长尾 rollout、continuous batching、vLLM/SGLang、异步框架、partial rollout、EP、Megatron/FSDP、batch invariance、AReaL/slime、staleness 与框架选型；
+  - 术语解释、证据边界和面试准备自测清单。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 89 entries, 89 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --check` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有既有 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning。
+- 新增 HTML 自检：约 22,495 个可见字符，11 个 h2、57 个 h3，且仅有一个 `data-note-role="evidence-appendix"` 与一个 `notes-shell.css` 引用。
+
+
+## 2026-06-08 Self-Trained Verification 深度解读与站内笔记导入
+
+### 背景
+
+- 用户要求对 `https://x.com/askalphaxiv/status/2063410935075897614` 深度分析和介绍，并整理为站内笔记。
+- 目标材料对应论文 `Self-Trained Verification for Training- and Test-Time Self-Improvement`，arXiv ID `2605.30290`，作者 Chen Henry Wu、Aditi Raghunathan。
+
+### 已完成
+
+- 阅读并整理原 X 帖、arXiv v2、项目页和官方代码仓库 README/关键 prompt 与训练脚本。
+- 新增站内论文笔记：
+  - `notes/paper-reviews/self-trained-verification.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+- 笔记重点覆盖：
+  - verifier 为什么是 test-time refinement 与 training-time self-improvement 的共同瓶颈；
+  - STV 如何利用 reference-conditioned teacher 与 on-policy distillation 训练不看答案的 verifier；
+  - ViL 如何把 frozen STV verifier 的诊断反馈放进 generator RL 训练；
+  - hard math、SciKnowEval、weak-to-strong verifier、ViL ablation、precision-coverage 和 feedback value 的关键证据；
+  - 与 Self-Refine、RLVR、SFT verifier、Verdict-RL、PRM、Best-of-N 的区别；
+  - 依赖 reference solution、开放式任务迁移和 test-time compute 成本等边界。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 89 entries, 89 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --check` 通过。
+- 首次尝试 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 时环境缺少 jekyll bundle executable；随后执行 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle install` 补齐依赖。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有既有 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning。
+
+
+## 2026-06-08 Lilian Weng《Why We Think》与 Lil’Log 全谱系分析
+
+### 背景
+
+- 用户要求深度理解和分析 Lilian Weng 的《Why We Think》，并尽量把作者整个博客都分析一遍，强调“非常重要”。
+- 本轮按站内 Notes 规范沉淀为读者可直接阅读的独立 HTML，不写抓取命令、临时路径或生成痕迹。
+
+### 已完成
+
+- 读取目标文章《Why We Think》并梳理其核心框架：
+  - test-time compute / thinking time；
+  - CoT token thinking；
+  - parallel sampling、best-of-N、beam search、self-consistency；
+  - sequential revision 与 self-correction；
+  - RL for reasoning 与 DeepSeek-R1 风格训练；
+  - tool-augmented reasoning；
+  - CoT faithfulness、monitoring 与 obfuscated reward hacking；
+  - recurrent architecture、thinking/pause tokens、Quiet-STaR；
+  - latent-variable / EM / STaR 视角；
+  - thinking-time scaling law 与 budget forcing。
+- 横向读取 Lil’Log 公开归档/RSS 中的 50 篇技术正文标题、时间、结构与主题，形成 2017-2025 年主题谱系：
+  - 2017-2018：深度学习基础、视觉、GAN/VAE/Flow、RL、attention；
+  - 2019-2022：语言模型、泛化、sim2real、self-supervised、Transformer、数据效率、diffusion、scale training；
+  - 2023-2025：LLM inference、prompt、agent、adversarial attacks、human data quality、hallucination、reward hacking、reasoning/test-time compute。
+- 新增站内技术分析笔记：
+  - `notes/tech-analysis/lilianweng-why-we-think-blog-map.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+
+### 关键判断
+
+- 《Why We Think》不是普通 CoT 综述，而是把 Lilian Weng 过去八年关于 RL、Transformer、Prompt、Agent、人类数据质量、幻觉和奖励黑客的主题汇合到 reasoning model 上。
+- 文章最重要的 insight：思考时间是一种资源，推理轨迹是一种潜变量，CoT 是半可信遥测而不是天然真实解释，奖励/监控信号一旦被直接优化就可能失真。
+- 工程上不能简单“加长 CoT”：应按任务难度、verifier 可靠性、风险等级和成本动态分配测试时计算，并尽量把搜索收益蒸馏回模型。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 91 entries, 91 top-level note html files`。
+- `git diff --check -- "notes/tech-analysis/lilianweng-why-we-think-blog-map.html" "notes/tech-analysis/autolab-closed-loop-agents.html" "notes/tech-analysis/autolab-closed-loop-agents-assets" "_data/notes.yml" "Progress.md"` 通过。
+- 新增 Lilian Weng 页面与 AutoLab 页面公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅保留既有 `faraday-retry` 建议和 GitHub Metadata 未认证/限流 warning，不影响静态生成。
+- 构建后 `_site/notes/tech-analysis/lilianweng-why-we-think-blog-map.html` 存在，`_site/notes/index.html` 与 `_site/sitemap.xml` 均已包含新增 Lilian Weng 页面。
+
+## 2026-06-04 kaboo-cli 接入 Pi 使用记录
+
+### 背景
+
+- 用户发现 `kaboo-cli report` 输出中没有原生 Pi/Oh-My-Pi 使用量；`kaboo-cli sources` 虽能检测到 `Oh-My-Pi (OMP) /Users/bytedance/.omc/sessions`，但计数为 0。
+
+### 已完成
+
+- 确认 kaboo 1.2.6 当前 OMP parser 仍只读取 `~/.omc/sessions` 顶层 `*.json`，不解析 Pi 原生 `~/.pi/agent/sessions/**/*.jsonl`；现有 `.omc` 软链结构对 kaboo 计数无效。
+- 新增本地桥接脚本：`~/.local/bin/kaboo-pi-bridge`，把 Pi JSONL 转成 kaboo 已支持的 Codex JSONL 兼容目录：`~/.local/share/kaboo/pi-codex-bridge`。
+- 新增 wrapper：`~/.local/bin/kaboo-cli-with-pi`，在 `report/export/sources/status/config/profile` 前自动刷新桥接目录，并设置 `KABOO_CODEX_DIRS=$HOME/.codex:$HOME/.local/share/kaboo/pi-codex-bridge`。
+- 更新 `~/.zshrc`，将交互 shell 中的 `kaboo-cli` alias 指向 wrapper。
+- 更新并重载 LaunchAgent：`~/Library/LaunchAgents/net.bytedance.kaboo-cli.plist`，将定时上报命令改为 `~/.local/bin/kaboo-cli-with-pi report`；原 plist 已备份为 `.bak-before-pi-bridge`。
+
+### 验证结果
+
+- `kaboo-cli-with-pi sources` 显示 Codex CLI 扫描源已包含 `~/.local/share/kaboo/pi-codex-bridge/sessions`，总 session file 从 1915 增至 1947+。
+- `kaboo-cli-with-pi export` 中出现 `model: pi/...` bucket，Pi token 合计约 1.65e8；相对原 Codex 扫描有明确 bucket/session 增量。
+- 随后按用户建议改为上传时归类到 `Oh-My-Pi (OMP)`：新增 `~/.local/bin/kaboo-pi-proxy`，wrapper 在 `report` 时启动本地代理，转发到真实 `KABOO_API_URL` 前把桥接产生的 `project: __pi__...` records 改写为 `source: omp`，并去掉 `pi/` model 前缀和 `__pi__` project 前缀。
+- 本地拦截验证显示 payload 中 Pi 增量已变为：`buckets source=omp 63`、`sessions source=omp 33`、`autonomySessions source=omp 29`。
+- 真正执行 `kaboo-cli-with-pi report --full` 成功：`✓ synced 4080 buckets · 2652 sessions · 149 autonomy`。本地 CLI 汇总行仍显示扫描阶段 `codex 2996 buckets · 1948 sessions`，但上传 payload 已在代理层改写为 OMP source。
+- 当前限制：这是本地代理改写方案，不是 kaboo 官方原生 Pi parser；若 kaboo 后续支持 Pi/OMP 原生 JSONL，可删除 proxy/bridge 简化配置。
+
+## 2026-06-04 Notes 全量内容清晰度复查与补强
+
+### 背景
+
+- 用户要求检查每一个站内笔记，确保内容详细、解释清晰。
+- 本轮范围覆盖 `_data/notes.yml` 中 85 条入口，以及 `notes/` 下 195 个 HTML 页面（83 篇独立 Notes、2 个题库索引、110 个题库章节）。
+
+### 已完成
+
+- 对全部 Notes HTML 做结构化质量审计：可见正文长度、h2/h3/h4 章节数、机制/方法解释、术语解释、证据/实验解释、边界/风险、工程/研究启发、证据 appendix 属性、公开过程噪声。
+- 修复独立 Notes 的规范残留：
+  - 为缺失页面补齐 `data-note-role="evidence-appendix"`；
+  - 删除 LongTraceRL 和 RL scaling 书单中的命令摘录；
+  - 删除 Nitrobrew 页脚里的静态 HTML 生成痕迹；
+  - 规范若干章节标题，使机制、评估、边界、启发更容易被读者定位。
+- 对 26 篇术语解释偏弱或标题信号不足的独立 Notes 补充“术语解释与概念边界”或强化机制标题，覆盖 ProgramBench、NanoGPT-Bench、ACuRL、MMProlong、RL Memory、ReLex、BES、Memento、SkillEvolBench、OnlineRubrics、ECHO、EqR、VPO、Attention、SEIF、X digest 等页面。
+- 修正 `notes/tech-analysis/hwcoder-algorithm-notes-reading.html` 中重复 source/sources 章节定位，使最终证据 appendix 统一为 `id="sources"`。
+
+### 审计结果
+
+- 全量脚本复查结果：`files=195 issueFiles=0`。
+- `_data/notes.yml` 统计：85 entries，其中 83 篇独立 Notes、2 个题库索引。
+- 独立 Notes 可见正文长度：最短 4511 字符，中位数 7047，平均 7618，最长 27168。
+- 83 篇独立 Notes 均且仅有一个 `data-note-role="evidence-appendix"`。
+- 公开过程噪声扫描无输出。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 85 entries, 85 top-level note html files`。
+- `git diff --check` 通过。
+- 公开噪声扫描通过：未命中 `OpenCLI/opencli`、本地路径、临时目录、命令摘录、生成痕迹等。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有既有 `faraday-retry` 和 GitHub Metadata 未认证/限流 warning。
+- `_site/sitemap.xml` 与 `_site` 根目录检查未发现 `AGENTS`、`Progress`、`.agent`、`audit_report`、`scripts`、`markdown_generator` 等内部文件泄露。
+
 ## 2026-06-04 Fantastic Pretraining Optimizers and Where to Find Them 深度阅读与站内笔记导出
 
 ### 背景

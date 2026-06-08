@@ -349,7 +349,7 @@
 
 
     <section id="question">
-      <h2>这条推文在问什么</h2>
+      <h2>核心问题：这条推文在问什么</h2>
       <div class="thesis">
         作者不是在问“重复数据会不会让 loss 变低”这么简单的问题，而是在问：如果 mid-training 的语料已经像 RL rollouts，也就是包含长推理轨迹、工具使用轨迹、尝试与纠错路径，那么后续 RL 是否还会学到真正的新策略，还是只是在强化一个已经被文本预训练塑形过的行为分布。
       </div>
@@ -390,8 +390,30 @@
       <p>这个问题有价值，因为 2026 年的很多 agent / reasoning 训练路线都在做类似事情：先收集大量 trajectory corpus 做 mid-training，再用 RLVR、tool-use RL 或环境 reward 做强化。两者之间的边界越来越模糊。</p>
     </section>
 
+    <section id="terms">
+      <h2>术语解释：先把 overlap 拆清楚</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Mid-training</h3>
+          <p>这里指预训练之后、SFT/RL 之前的继续训练阶段。它通常仍用 next-token prediction，但数据更接近目标能力，例如长推理、代码编辑、工具轨迹或 agent 操作日志。</p>
+        </div>
+        <div class="card">
+          <h3>RL rollout</h3>
+          <p>rollout 是模型在当前策略下真实采样出来的一条解题或操作轨迹。它包含中间思路、工具调用、环境反馈和最终答案，是 RL 用 reward 更新策略的基本样本。</p>
+        </div>
+        <div class="card">
+          <h3>Data overlap</h3>
+          <p>overlap 不只等于文本完全重复。更危险的是语义重叠：同一题目、同一答案、同一解法骨架、同一工具状态，或高度相似的轨迹模式提前出现在 RL 前数据里。</p>
+        </div>
+        <div class="card">
+          <h3>探索空间</h3>
+          <p>探索空间指模型在 RL 采样时愿意尝试的路线集合。如果 mid-training 已把模型强推向少数模板，RL 看到的样本会更集中，reward 就更难发现新策略。</p>
+        </div>
+      </div>
+    </section>
+
     <section id="mechanism">
-      <h2>为什么 overlap 可能伤害 RL</h2>
+      <h2>机制拆解：为什么 overlap 可能伤害 RL</h2>
       <p class="lead">我的理解是，风险不在“文本出现过”本身，而在它改变了 RL 的探索分布、难度分布和 reward 信号含义。</p>
       <div class="steps">
         <div class="step">
@@ -537,16 +559,12 @@
       <p>作者问的“T-token scale 会不会改变这个结论”，我的答案是：规模会稀释单条样本的记忆效应，但不会自动消除结构性泄漏。真正决定风险的是有效重复率、语义相似度、题目难度是否仍在模型能力边界上，以及后续 RL 是否有足够 OOD holdout 来检验泛化。</p>
       <p>对训练 pipeline 来说，比较稳妥的做法是：mid-training 可以使用轨迹类语料，但 RL 任务池必须按 prompt、答案、轨迹、环境状态和 benchmark 来源做多层去重；RL 训练还要动态移除过易样本，保留能产生探索差异的边界题。MiniMax-M1 的数据清洗策略本质上就是这个方向。</p>
 
-      <h3>本次使用的命令证据</h3>
-      <pre><code>"/opt/homebrew/bin/opencli" twitter thread "https://x.com/eliebakouch/status/2056511622529634703" --limit 80 -f json --trace retain-on-failure
-mcp-router web_fetch "https://arxiv.org/html/2506.13585v1"
-mcp-router web_fetch "https://www.minimax.io/news/minimax-m1-technical-seminar-2"</code></pre>
       <p class="small">边界说明：原帖是一个技术问题和假设，不是论文结果。MiniMax-M1 原文支持“严格隔离 SFT 与 RL 数据以避免泄漏伤害探索”的训练卫生原则，但没有直接回答所有 mid-training overlap 变体。</p>
     </section>
     <section id="source" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
       <ul class="source-list">
-        <li><strong>X 原帖和回复：</strong><a href="https://x.com/eliebakouch/status/2056511622529634703">eliebakouch/status/2056511622529634703</a>。通过 OpenCLI `twitter thread` 读取到主帖和 5 条上下文回复，原帖附带一张 MiniMax-M1 论文截图。</li>
+        <li><strong>X 原帖和回复：</strong><a href="https://x.com/eliebakouch/status/2056511622529634703">eliebakouch/status/2056511622529634703</a>。原帖提出 mid-training 与 RL 数据重叠是否伤害探索的问题，并附带一张 MiniMax-M1 论文截图。</li>
         <li><strong>论文原文：</strong><a href="https://arxiv.org/html/2506.13585v1">MiniMax-M1: Scaling Test-Time Compute Efficiently with Lightning Attention</a>。核对了 continual pretraining、SFT、RL 数据构造、去重和长输出 RL 训练段落。</li>
         <li><strong>官方技术页：</strong><a href="https://www.minimax.io/news/minimax-m1-technical-seminar-2">MiniMax-M1 Technical Seminar</a>。页面以图片为主，作为背景来源，具体 overlap 结论仍以 arXiv 原文为准。</li>
       </ul>

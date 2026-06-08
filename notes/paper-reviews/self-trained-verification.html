@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-Trained Verification：把“带答案时会挑错”蒸馏成可用 verifier</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f2ea;
+      --surface: #fffdf8;
+      --ink: #1f2428;
+      --muted: #5f686f;
+      --line: #d8ddd8;
+      --accent: #1f6678;
+      --accent-2: #8a5a22;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.09);
+      --radius: 8px;
+      --max: 1180px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header { padding: clamp(34px, 6vw, 72px) 0 28px; }
+    .kicker {
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(34px, 5vw, 62px)/1.08 var(--serif);
+      letter-spacing: 0;
+    }
+    .lede {
+      max-width: 900px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding-bottom: 56px;
+    }
+    section {
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3, h4 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h2 { font-size: clamp(25px, 3.5vw, 38px); }
+    h3 { margin-top: 20px; font-size: 20px; }
+    h4 { margin-top: 16px; font-size: 16px; }
+
+    .grid-2, .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card, .callout, .metric {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      box-shadow: none;
+    }
+    .metric .num {
+      display: block;
+      color: var(--accent);
+      font: 800 26px/1.1 var(--serif);
+    }
+    .metric .label {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .flow div {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .arrow {
+      color: var(--accent-2);
+      font-weight: 800;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+    figure {
+      margin: 20px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .math-display,
+    mjx-container {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    pre, .table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    code, pre {
+      font-family: var(--mono);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--surface); font-weight: 700; }
+    .muted { color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .flow { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      table { font-size: 12px; }
+      th, td { padding: 6px 8px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · 2026-06-08</div>
+    <h1>Self-Trained Verification：把“带答案时会挑错”蒸馏成可用 verifier</h1>
+    <p class="lede">这篇论文的关键不是让模型“多反思几轮”，而是把一个被忽视的非对称性变成训练信号：模型在没有参考答案时常常看不出自己哪里错，但一旦看到正确解法，就能比较出错误位置。STV 将这个“带答案的自己”蒸馏成测试时不看答案的 verifier，再用 verifier-in-the-loop training 把诊断反馈反哺 generator，最终同时提升 test-time refinement 和训练后的 standalone pass@1。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>Self-Trained Verification, STV</strong> 是一篇关于 verifier 训练的论文，而不是普通 self-correction 论文。它的中心判断是：hard reasoning 的下一段收益可能不主要来自更大的 generator，而来自更会挑错、且能给出可行动 feedback 的 verifier。</p>
+      <p>我认为它最值得记住的 insight 是：<strong>“带参考答案时能诊断错误”本身就是一种可蒸馏能力</strong>。过去 final-answer label 只能告诉 verifier “这题错了”，却很难告诉它“错在错误使用定理、漏掉边界条件、还是奇偶性分类不完整”。STV 用 reference solution 构造 privileged teacher，再用 on-policy distillation 训练 unconditioned student，让测试时的 verifier 在没有 reference 的情况下近似拥有这种诊断能力。</p>
+      <div class="grid-3">
+        <div class="metric"><span class="num">2×</span><span class="label">hard math 中，STV verifier 相比未训练 verifier 让 final-round pass@1 约翻倍。</span></div>
+        <div class="metric"><span class="num">1.5%→21.0%</span><span class="label">SciKnowEval Hardest split 上，Qwen3-8B + STV verifier 的 pass@1 提升约 14×。</span></div>
+        <div class="metric"><span class="num">+30%</span><span class="label">ViL 训练后，generator 在没有 verifier 的 round 0 也获得 standalone pass@1 相对提升。</span></div>
+      </div>
+      <p>这篇工作的边界也要看清：它不是无监督自我进化。STV 训练 verifier 需要 ground-truth answer 和 reference solution；ViL 训练 generator 仍依赖最终答案可验证 reward。更准确的说法是：<strong>在可验证任务上，把 reference solution 从“直接教 generator”改造成“训练 critic / verifier 的 privileged signal”</strong>。</p>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：为什么 verifier 成了 self-improvement 的瓶颈</h2>
+      <p>推理模型的 self-improvement 通常有两条路：第一条是测试时多花计算，让 generator 生成、verifier 审查、generator 再修正；第二条是训练时把模型自己的尝试转成新的训练信号，也就是 self-training 或 RLVR 后续训练。两条路都卡在同一件事上：verifier 是否足够可靠。</p>
+
+      <h3>测试时的失败：分数上涨，准确率不涨</h3>
+      <p>Verification-refinement loop 看起来很自然：先给出解答，再让 reviewer 判断是否正确，如果 reviewer reject，就根据 feedback 改。问题在于，未训练 verifier 往往会被“更像正确答案”的错误推理骗过。随着轮数增加，verifier score 可能越来越高，但真实 pass@1 停滞，这就是论文讨论的 in-context reward hacking。</p>
+      <p>这类失败在数学和 agent 任务里都很常见：模型不是完全不会写答案，而是会写出非常合理、非常自洽、但关键一步错了的答案。弱 verifier 只看表面连贯性，越迭代越容易把 plausible-but-wrong solution 当成正确。</p>
+
+      <h3>训练时的失败：最终答案 reward 太稀疏</h3>
+      <p>RLVR 能用最终答案是否正确训练 generator，但它给的是 outcome-level signal。模型只知道整条 rollout 最后对不对，不知道哪一步造成错误。训练到 plateau 后，继续标准 RLVR 往往难以产生新能力。要突破 plateau，generator 需要更细的诊断上下文：错在哪里、为什么错、应该往哪个方向修。</p>
+
+      <h3>为什么“训练 verifier 找错”本身很难</h3>
+      <p>最终答案标签可以训练 accept/reject，但不能直接训练高质量 feedback。比如一道组合题答案错了，final answer label 只能说 incorrect；真正有价值的 feedback 可能是“只考虑了三个和全为奇数，漏掉了乘积含两个偶因子但不被 4 整除的情况”。这种错误定位通常没有人工标签，也很难用一个简单 scalar reward 验证。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：STV 怎样把 reference asymmetry 变成训练目标</h2>
+      <p>STV 的结构可以概括为：<strong>同一个模型，在两个信息条件下扮演 teacher 和 student</strong>。teacher 看得到 reference solution，因此更容易诊断错误；student 看不到 reference solution，但通过蒸馏学习 teacher 的输出分布。</p>
+
+      <div class="flow" aria-label="STV training flow">
+        <div><strong>输入</strong><br>题目、generator 产生的候选解、ground-truth answer、reference solution。</div>
+        <div><strong>Teacher</strong><br>看到题目、候选解、已确认 verdict 和 reference solution，生成诊断 feedback。</div>
+        <div><strong>Student</strong><br>只看到题目和候选解，输出 verdict 与 feedback。</div>
+        <div><strong>目标</strong><br>用 on-policy distillation 对齐 student 与 teacher，并用 verdict RL 校准 accept/reject。</div>
+      </div>
+
+      <h3>1. Verification-refinement loop 的基本形式</h3>
+      <p>论文把推理问题写成：题目为 \(x\)，正确答案为 \(y^\star(x)\)。Round 0 时，generator 先生成初始解：</p>
+      <p class="math-display">\[ y_0 \sim G(\cdot \mid x) \]</p>
+      <p>随后 verifier 检查上一个解，并输出 verdict 与 feedback：</p>
+      <p class="math-display">\[ (v_r, f_r) \sim V(\cdot \mid x, y_{r-1}), \quad v_r \in \{\text{accept}, \text{reject}\} \]</p>
+      <p>如果 verifier reject，generator 根据 feedback 改写：</p>
+      <p class="math-display">\[ y_r \sim G(\cdot \mid x, y_{r-1}, f_r) \]</p>
+      <p>循环直到 accept 或达到轮数上限。这个 loop 是否有效，取决于 verifier 的两个能力：verdict 是否校准，feedback 是否足够具体。</p>
+
+      <h3>2. Reference-conditioned teacher：同一个模型，但给它“答案在手”</h3>
+      <p>STV 不依赖更强的外部 teacher model，也不依赖人工写的 feedback。它构造一个 privileged teacher：</p>
+      <p class="math-display">\[ V^\star(\cdot \mid x, y_{r-1}, y^\star(x)) \]</p>
+      <p>这个 teacher 看到 reference solution。任务从“凭空判断学生解法哪里错”变成“把学生解法和已知正确解法比较”。这降低了诊断难度。重要的是，teacher 被要求不要泄露正确答案，也不要直接引用 reference solution，而是以 reviewer 的口吻指出学生推理问题。</p>
+
+      <h3>3. On-policy distillation：为什么不是普通 SFT</h3>
+      <p>一个直接做法是让 teacher 生成很多 feedback，然后对 student 做 SFT。论文发现这个路线效果不好，并把原因归结为 off-policy：SFT 训练的是 teacher 自己生成的 token 序列，但部署时 student 会生成自己的前缀；一旦前缀偏离 teacher，后续分布就进入训练没覆盖的区域。</p>
+      <p>STV 使用 on-policy distillation，让 student 在自己会访问的分布上对齐 teacher。论文写成：</p>
+      <p class="math-display">\[
+        \mathcal{L}_{\text{OPD}}(\theta)=
+        \mathbb{E}_{(x,y_{r-1})}
+        D_{\alpha}\left(
+        V_{\theta}(\cdot \mid x,y_{r-1})
+        \| V^\star(\cdot \mid x,y_{r-1},y^\star(x))
+        \right)
+      \]</p>
+      <p>其中 \(D_\alpha\) 是分布距离，论文主文描述为 \(\alpha=0.5\) 的 Jensen-Shannon 风格目标。官方训练脚本中保留了可配置的 OPD/RL 混合系数和 teacher reference prompt，这说明作者把 STV 实现成一个混合 policy-gradient + distillation 训练过程，而不是离线 imitation。</p>
+
+      <h3>4. Verdict RL：feedback 要像 teacher，verdict 还要对</h3>
+      <p>只对齐 feedback 可能导致 verifier 说得像 reviewer，但 accept/reject 不够准。因此 STV 还加了一个 verdict-RL 项：如果模型输出的 verdict 与 ground-truth correctness 一致，并且包含 feedback 字段，就给 reward。整体目标是：</p>
+      <p class="math-display">\[
+        \mathcal{L}_{\text{STV}}(\theta)=
+        \mathcal{L}_{\text{OPD}}(\theta)+\lambda \mathcal{L}_{\text{RL}}(\theta)
+      \]</p>
+      <p>这里的分工很清楚：OPD 负责学“带参考答案时更会诊断”的 feedback distribution，RL 负责把 verdict 贴回可验证 correctness。</p>
+    </section>
+
+    <section id="vil">
+      <h2>Verifier-in-the-Loop：把 verifier 的诊断反哺 generator</h2>
+      <p>STV 训练好 verifier 后，作者没有停在 test-time refinement，而是把 verifier 放进 generator 的训练回路，称为 <strong>Verifier-in-the-Loop training, ViL</strong>。</p>
+      <p>ViL 的训练 episode 是一个多轮 V-R rollout：generator 先答，冻结的 STV verifier 给 feedback，generator 根据 feedback 再答，最终答案与 ground truth 比较得到 reward。训练时只更新 generator，verifier 冻结。</p>
+      <div class="callout">
+        <strong>关键区别：</strong>ViL 没有把 verifier feedback 当作不可验证 reward 本身；feedback 只是上下文，最终训练信号仍然是答案是否正确。这使它比“奖励看起来更像好 feedback 的回答”更稳健。
+      </div>
+      <p>最反直觉的结果是：ViL 不只提升有 verifier 参与的 final round，还提升 generator 的 round 0 pass@1。也就是说，generator 在训练中内化了“被诊断后如何修正”的模式，第一版无辅助答案也变好了。论文把这称为 training-time self-improvement。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据与结果解读</h2>
+      <p>实验主线使用 Qwen3-8B 作为 base generator 和 verifier。数学数据来自 DAPO hard math，按 Qwen3-8B 的 32 次 rollout pass@1 分成 Hardest 和 Hard：Hardest 是 pass@1 = 0，Hard 是 0 &lt; pass@1 &lt; 0.2。测试集通过 embedding similarity 去重，每个 bin 约 150 道题；每题运行 32 条独立 V-R chain，最多 20 轮。</p>
+
+      <h3>结果一：base 8B + STV verifier 超过无 verifier 的 32B</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>设置</th><th>Hardest</th><th>Hard</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen3-32B，无 verification</td><td>2.7%</td><td>17.8%</td><td>单纯放大 generator 的对照。</td></tr>
+            <tr><td>Qwen3-8B + STV verifier，final round</td><td>5.5%</td><td>27.4%</td><td>更小 generator 在多轮 verifier-guided refinement 下超过 4× 大模型。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这不是说 8B 全面强于 32B，而是说明 hard reasoning 中，<strong>好的 verifier + test-time compute 可以替代一部分 generator scale</strong>。Hardest 的绝对值仍只有 5.5%，所以结论应理解为“方向有效”，不是“hard math 被解决”。</p>
+
+      <h3>结果二：科学推理上的 14× 提升</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>设置</th><th>SciKnowEval Hardest</th><th>SciKnowEval Hard</th></tr></thead>
+          <tbody>
+            <tr><td>No verification</td><td>1.5</td><td>11.5</td></tr>
+            <tr><td>No verifier training</td><td>2.1</td><td>11.4</td></tr>
+            <tr><td>STV verifier</td><td><strong>21.0</strong></td><td><strong>42.4</strong></td></tr>
+            <tr><td>4× model size</td><td>8.9</td><td>25.1</td></tr>
+            <tr><td>30× model size</td><td>8.0</td><td>23.6</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这里最有价值的不是“科学 benchmark 数字很高”，而是跨域信号：STV 不是只学会数学题格式，它可能学到更一般的“比较 candidate reasoning 与正确解法结构，定位错误假设”的能力。不过 SciKnowEval 仍是可评价任务，不等于开放式科学研究也能直接迁移。</p>
+
+      <h3>结果三：小 verifier 可以接近大 verifier</h3>
+      <p>论文比较 8B、4B、1.7B verifier。未训练时，小 verifier 不比 8B self-verification 更好；经过 STV 后，4B verifier 的 final pass@1 达到 26.4%，接近 8B STV 的 27.4%；1.7B STV 达到 21.7%，接近未训练 8B 的 20.6%。这对系统工程很重要，因为 verifier 在多轮 loop 里会被频繁调用，计算成本可能比一次 generator 更敏感。</p>
+
+      <h3>结果四：ViL 让 generator 突破标准 RLVR plateau</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>指标</th><th>RLVR converged</th><th>ViL 后</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>Hardest round 0 pass@1</td><td>10.7%</td><td>14.7%</td><td>没有 verifier 参与时也变强。</td></tr>
+            <tr><td>Hard round 0 pass@1</td><td>36.7%</td><td>47.7%</td><td>standalone 能力相对提升约 30%。</td></tr>
+            <tr><td>Hardest final round</td><td>RLVR-only longer 为 16.1%</td><td>27.3%</td><td>相同继续训练预算下，ViL 明显超过普通 RLVR。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>论文还做了 oracle ablation：ViL + self-verify 不使用 oracle，也能把 round 0 提到 29.8、round 20 提到 39.4；使用 oracle 的 prefix-conditioning 是 29.1 / 38.5；ViL + STV verifier 是 31.2 / 43.3。这个结果说明两点：V-R loop 训练结构本身就有收益；STV verifier 的优势主要在多轮测试时通过更好 feedback 继续放大。</p>
+    </section>
+
+    <section id="why">
+      <h2>为什么它有效：校准 verdict、提升 feedback、重塑分布</h2>
+      <h3>1. STV 缓解 in-context reward hacking</h3>
+      <p>未训练 verifier 的坏现象是 verifier score 随轮数上升，但 pass@1 不升。STV 后，score 与 correctness 更一致；precision-coverage 曲线显示，在相同 coverage 下，STV 的 precision 约高 3–5×。更重要的是，STV 的 precision 会随着 verification round 增加而提高，这意味着多花测试时计算真的在筛出更可靠答案。</p>
+
+      <h3>2. STV feedback 不是 verdict 的附属品</h3>
+      <p>作者把 verifier verdict 替换成 ground-truth correctness，只比较不同 feedback 的价值。结果显示：ground-truth verdict + untrained feedback 比只给泛泛“你的解法不正确”在 Hard final round 上多带来 5.2% gain；换成 STV feedback 又额外多 3.2%。这说明 STV 改进的不只是 accept/reject，还包括自然语言错误定位本身。</p>
+
+      <h3>3. V-R 不是简单 Best-of-N</h3>
+      <p>如果收益只是来自多采样后挑一个答案，Best-of-N 就足够了。论文在相同 compute 下比较 refinement 与 resampling，发现 base generator 和 STV generator 上，V-R refinement 优于 BoN。这支持一个更强的解释：自然语言 feedback 让 generator 修正具体错误，进入原始采样分布中不容易直接命中的解法区域。它是在 reshape distribution，而不只是 sharpen distribution。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释与概念边界</h2>
+      <div class="grid-2">
+        <div class="card"><h3>Verifier</h3><p>这里指审查 candidate solution 的模型或模块，输出 accept/reject 和自然语言 feedback。它不是只打一个 scalar reward，而要指出可修正错误。</p></div>
+        <div class="card"><h3>Reference-conditioned teacher</h3><p>训练时看到 reference solution 的 teacher verifier。它拥有 privileged information，因此更容易诊断 candidate solution 的错误。</p></div>
+        <div class="card"><h3>On-policy distillation</h3><p>让 student 在自己会生成、会访问的分布上对齐 teacher，而不是只模仿 teacher 离线生成的完整样本。目的是减少部署时 prefix drift。</p></div>
+        <div class="card"><h3>RLVR</h3><p>Reinforcement Learning from Verifiable Reward，用最终答案、测试、规则程序等可验证信号训练模型。优点是客观，缺点是 reward 稀疏。</p></div>
+        <div class="card"><h3>ViL</h3><p>Verifier-in-the-Loop training，把冻结 verifier 放进 generator 训练 rollout，让 generator 在反馈上下文中学习修正，最终仍用可验证 correctness 给 reward。</p></div>
+        <div class="card"><h3>In-context reward hacking</h3><p>多轮反馈中模型逐渐生成更符合 verifier 表面偏好的错误答案，导致 verifier score 上升但真实准确率停滞。</p></div>
+      </div>
+    </section>
+
+    <section id="comparison">
+      <h2>和相邻路线的区别</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>路线</th><th>核心信号</th><th>主要问题</th><th>STV 的区别</th></tr></thead>
+          <tbody>
+            <tr><td>Self-Refine / Reflexion</td><td>模型自己 critique 自己</td><td>reasoning 上常常自信地错</td><td>训练一个更校准、更会诊断的 verifier</td></tr>
+            <tr><td>标准 RLVR</td><td>最终答案是否正确</td><td>稀疏、难定位错误、训练会 plateau</td><td>ViL 把 verifier feedback 作为上下文，最终仍用可验证 reward</td></tr>
+            <tr><td>SFT verifier</td><td>teacher 生成的离线 feedback</td><td>off-policy，student 前缀漂移后泛化差</td><td>使用 on-policy distillation 对齐部署分布</td></tr>
+            <tr><td>Verdict-RL</td><td>accept/reject 是否正确</td><td>只教判断，不教哪里错</td><td>OPD 学诊断 feedback，RL 校准 verdict</td></tr>
+            <tr><td>PRM</td><td>过程级 reward label</td><td>需要步骤标注或额外 reward model</td><td>用 reference solution 构造非人工 feedback target</td></tr>
+            <tr><td>Best-of-N</td><td>多采样后选择</td><td>只能在已有分布里挑</td><td>V-R feedback 可以把生成轨迹推向新区域</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <h3>1. 它依赖 reference solution，不是完全自举</h3>
+      <p>STV 训练 verifier 时需要 oracle/reference solution，ViL 训练 generator 时需要最终答案可验证 reward。因此它最适合数学、科学题、代码测试、可执行 agent task 等有较稳定验证信号的领域。</p>
+
+      <h3>2. 开放式任务不能直接照搬</h3>
+      <p>在代码、写作、设计和开放式研究中，可能存在多个有效答案。如果 teacher 只看到一个 reference solution，student verifier 可能把不同但正确的方案误判为错误。要迁移到开放式任务，至少需要多 reference、semantic equivalence、rubric-free judge、environment feedback 或 executable tests 的组合。</p>
+
+      <h3>3. 多轮 refinement 有计算成本</h3>
+      <p>论文的主要评估使用多轮 V-R 和多条 chain。收益不是免费的；它是在 verifier compute、generator compute、训练 compute 和模型规模之间重新分配预算。工程落地需要回答 compute-optimal split：多大 generator、多大 verifier、多少轮、多少并行样本最划算。</p>
+
+      <h3>4. 绝对准确率仍要冷静看</h3>
+      <p>Hardest math 上 5.5% 是显著相对提升，但不是“解决 hard math”。这篇论文证明了 verifier 训练方向的重要性，而不是证明当前方法已经足以处理所有前沿推理题。</p>
+    </section>
+
+    <section id="insight">
+      <h2>工程 / 研究启发</h2>
+      <p>这篇论文对 agent 和 coding 系统的启发非常直接：很多系统失败不是 generator 完全不会做，而是 reviewer 太弱，导致多轮修正沿错误方向继续自洽。STV 的范式是：<strong>不要只训练 solver，也要训练 reviewer；不要只记录 pass/fail，也要把成功解、失败解和诊断反馈变成训练资产</strong>。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>对 coding agent</h3>
+          <p>可以让 teacher reviewer 看到 passing reference implementation、测试日志或修复 diff，而 student reviewer 只看到问题和错误代码，训练它输出 bug localization feedback。之后再用 verifier-in-the-loop 训练 coder 根据 feedback 修复。</p>
+        </div>
+        <div class="card">
+          <h3>对长程 agent</h3>
+          <p>成功执行轨迹、失败轨迹、环境状态差异和最终 verifier 结果都可以构造 privileged teacher。关键不是让 agent 背成功轨迹，而是训练 critic 能指出计划偏差、工具误用和状态不一致。</p>
+        </div>
+        <div class="card">
+          <h3>对训练流水线</h3>
+          <p>应把 verifier 作为一等模型管理：有自己的训练集、校准曲线、precision-coverage、反馈质量评估和成本预算，而不是 prompt 里随手写一句“请检查答案”。</p>
+        </div>
+        <div class="card">
+          <h3>对研究判断</h3>
+          <p>未来 reasoning 提升可能来自 generator、verifier、search、training loop 四者协同。只看单次 pass@1 或单个 reward curve，会漏掉 verifier feedback 这种中间能力。</p>
+        </div>
+      </div>
+      <p><strong>最终判断：</strong>STV 的价值不在于“模型终于能自己发现错误”，而在于给出了一种可规模化的训练接口：当某种能力从 scratch 不可验证、但在 privileged information 下可生成高质量行为时，可以把 privileged behavior 蒸馏给无 privileged 的部署模型。这比泛泛谈 self-improvement 更具体，也更接近可工程化的下一代 reasoning pipeline。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文依据公开论文、项目页、官方代码仓库 README 与相关社媒原帖整理。数值主要来自 arXiv v2 与项目页展示；代码仓库用于核对训练流程、prompt 结构和实现边界。本文没有独立复现实验，也没有核验训练数据完整性、checkpoint 权重或隐藏评测集，因此所有实验结论应视为论文报告结果，而非本站复现结果。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2605.30290">arXiv: Self-Trained Verification for Training- and Test-Time Self-Improvement</a></li>
+        <li><a href="https://arxiv.org/html/2605.30290v2">arXiv HTML v2</a></li>
+        <li><a href="https://ar-forum.github.io/stv-webpage/">项目页：Self-Trained Verification</a></li>
+        <li><a href="https://github.com/ar-forum/stv">官方代码仓库：ar-forum/stv</a></li>
+        <li><a href="https://x.com/askalphaxiv/status/2063410935075897614">alphaXiv 相关原帖</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

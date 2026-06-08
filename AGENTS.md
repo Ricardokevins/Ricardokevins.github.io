@@ -27,6 +27,12 @@
 - 需要开放式联网检索且没有明确目标站点时，若 Grok-Search 工具在当前会话可用，应优先使用；不可用时使用可用的联网搜索工具并说明边界。
 - 批量读取互不依赖的文件时优先并行工具调用。
 
+## Web Retrieval Defaults
+
+- `web_search` 默认带 `workflow: "none"`，**不要**在弹窗里 Review summary draft；直接用工具返回的合成答案 + 引用来源。
+- `fetch_content` 默认不弹 curator，直接拿到正文即可。
+- 用户用浏览器时禁止打开 curator / preview / approve 这类阻塞对话框；研究任务默认后台拉取 + 一次性回报。
+
 ## OpenCLI Usage
 
 - `opencli` 是默认优先的网站 CLI 和浏览器自动化入口，适用于把公开网站、论文站点、社媒平台、搜索结果页和 Web App 操作转换为可复现的命令行流程。
@@ -45,10 +51,11 @@
 
 ## Notes Authoring Standard
 
+- 新建、导入、清理或审计站内笔记时，先读取并遵循 repo-local skill：`.agent/skills/notes-authoring/SKILL.md`。
 - 新建站内笔记前先读取并复用 `notes/NOTE_TEMPLATE.md`，不要从旧报告随意复制过时头尾。
 - 独立 HTML 笔记必须加载 `notes/assets/notes-shell.css`，`body` 必须包含 `notes-shell-page`，页面顶部必须有 `Notes / All Notes / Home` 返回条。
 - 笔记正文开头应直接进入主题判断、问题背景、核心机制和结论，不把抓取命令、生成时间、本地路径、材料从哪里来等信息放在头部。
-- 来源、核验命令、材料边界统一放在文末“证据边界与资料索引”一类章节；不要出现 `/tmp/`、`/Users/xxx`、`Generated locally` 等生成痕迹。
+- 来源和材料边界统一放在文末“证据边界与资料索引”一类章节，并使用 `data-note-role="evidence-appendix"`；不要出现 `/tmp/`、`/Users/xxx`、`Downloads`、`results/`、`Generated locally`、`HTML generated`、`OpenCLI/opencli` 等生成痕迹或工具痕迹。
 - 公式页必须加载 MathJax；长公式容器需要横向滚动以兼容手机；所有图片必须使用本地资源并写清晰 `alt`。
 - 新增或修改笔记后运行 `ruby scripts/validate_notes_index.rb`，必要时再运行 Jekyll build 或浏览器截图检查。
 

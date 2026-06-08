@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GRPO++：让 RLVR 真正跑起来的后训练工程手册</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f1e8;
+      --surface: #fffdf8;
+      --surface-2: #eef3ee;
+      --ink: #1f2428;
+      --muted: #5e6870;
+      --line: #d8ded5;
+      --line-strong: #9da89d;
+      --accent: #1d6876;
+      --accent-2: #925c27;
+      --danger: #9a3b30;
+      --green: #42745a;
+      --violet: #5c5a91;
+      --gold: #8b6b24;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.09);
+      --radius: 10px;
+      --max: 1180px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(29, 104, 118, 0.08), transparent 26%),
+        radial-gradient(circle at 88% 0%, rgba(146, 92, 39, 0.08), transparent 25%),
+        linear-gradient(90deg, rgba(31, 36, 40, 0.028) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    p { margin: 0.78rem 0 0; }
+    strong { color: #161b20; }
+    code { font-family: var(--mono); }
+    main, header, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+
+    header { padding: clamp(36px, 7vw, 82px) 0 32px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(36px, 5.4vw, 68px)/1.08 var(--serif);
+      letter-spacing: 0;
+    }
+    .lede {
+      max-width: 900px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.62;
+    }
+
+    .meta-grid, .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .metric, .card, .callout, .method-card, .source-card {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.95);
+      box-shadow: var(--shadow);
+    }
+    .metric { box-shadow: none; background: rgba(255, 253, 248, 0.76); }
+    .metric strong { display: block; font-size: 25px; line-height: 1.1; }
+    .metric span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.2; letter-spacing: 0; }
+    h2 { font: 750 clamp(26px, 3.6vw, 42px)/1.12 var(--serif); }
+    h3 { margin-top: 22px; font-size: 20px; }
+
+    .callout {
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+      background: linear-gradient(90deg, rgba(29, 104, 118, 0.08), rgba(255, 253, 248, 0.94));
+    }
+    .warning { border-left-color: var(--danger); background: linear-gradient(90deg, rgba(154, 59, 48, 0.08), rgba(255, 253, 248, 0.94)); }
+    .good { border-left-color: var(--green); background: linear-gradient(90deg, rgba(66, 116, 90, 0.09), rgba(255, 253, 248, 0.94)); }
+    .violet { border-left-color: var(--violet); background: linear-gradient(90deg, rgba(92, 90, 145, 0.08), rgba(255, 253, 248, 0.94)); }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 5px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .toc a:hover { color: var(--ink); border-color: var(--line-strong); }
+
+    .table-wrap { max-width: 100%; overflow-x: auto; margin: 16px 0; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 14px; }
+    th, td { padding: 9px 11px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--surface-2); font-weight: 800; }
+    caption { caption-side: top; padding: 0 0 8px; color: var(--muted); text-align: left; font-size: 13px; }
+
+    .equation {
+      margin: 16px 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow-x: auto;
+    }
+    .math-display, mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    pre, .table-wrap { max-width: 100%; overflow-x: auto; }
+
+    ol, ul { padding-left: 1.35rem; }
+    li { margin-top: 0.4rem; }
+    .tagline { color: var(--accent-2); font-weight: 800; }
+
+    @media (max-width: 900px) {
+      .meta-grid, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .meta-grid, .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      table { font-size: 12px; }
+      th, td { padding: 7px 8px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · 2026-06-08</div>
+    <h1>GRPO++：让 RLVR 真正跑起来的后训练工程手册</h1>
+    <p class="lede">@neural_avb 推荐的不是一条技术长帖，而是一篇把 GRPO、DAPO、Dr. GRPO、TIS、GSPO、GMPO、CISPO 等近期工作串起来的 post-training 综述。它真正提醒的是：reasoning RL 的难点不在于把 GRPO 公式抄进训练代码，而在于持续维持有效 reward contrast、避免长度偏置和 entropy collapse、校正 rollout 与 learner 的系统分布差，并用 held-out evaluation 证明模型真的学会了推理。</p>
+
+    <div class="meta-grid" aria-label="note summary metrics">
+      <div class="metric"><strong>1</strong><span>条 X 推荐帖，核心材料是 Substack 长文</span></div>
+      <div class="metric"><strong>4</strong><span>DAPO 关键修正：clip、采样、loss、overlong</span></div>
+      <div class="metric"><strong>3</strong><span>训练健康轴：reward、entropy、length</span></div>
+      <div class="metric"><strong>6+</strong><span>GRPO 后续变体与系统修补方向</span></div>
+    </div>
+
+    <nav class="toc" aria-label="Table of contents">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">为什么重要</a>
+      <a href="#mechanism">GRPO 机制</a>
+      <a href="#dapo">DAPO 四件套</a>
+      <a href="#drgrpo">Dr. GRPO 去偏</a>
+      <a href="#tis">TIS 系统校正</a>
+      <a href="#variants">算法谱系</a>
+      <a href="#playbook">实践清单</a>
+      <a href="#limits">边界</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>这条 X 的信息密度在链接背后：Cameron R. Wolfe 的《GRPO++: Tricks for Making RL Actually Work》把 2025 年以来围绕 GRPO 的一批实践论文整理成了一条清晰主线。<strong>主线不是“GRPO 是 PPO 的廉价替代”，而是“critic-free 之后，variance、length bias、exploration、verifier fidelity 和系统一致性全部变成一线问题”。</strong></p>
+      <div class="callout">
+        <p><span class="tagline">一句话结论：</span>Vanilla GRPO 是入门公式；真正能训练 reasoning model 的，是 DAPO 式有效采样和 clip 调整、Dr. GRPO 式去偏、TIS 式系统分布校正，以及 GSPO / GMPO / CISPO 等针对 token ratio、sequence reward、MoE routing 和多轮 update 的目标函数修补。</p>
+      </div>
+      <p>如果只把 GRPO 看成如下 advantage 估计：</p>
+      <div class="equation">
+        \[
+        A_i = \frac{r_i - \mathrm{mean}(r_1,\dots,r_G)}{\mathrm{std}(r_1,\dots,r_G) + \epsilon}
+        \]
+      </div>
+      <p>就会低估它在工程上的脆弱性。这个式子隐含了几个条件：同一 prompt 下的多个 rollout 必须足够多样，verifier 必须可靠，group 内 reward 必须有差异，loss 聚合不能暗中偏向某种长度，policy update 不能把探索 token 过早 clip 掉，rollout engine 和 learner engine 也不能产生太大的 log-prob gap。现实训练中，任何一环坏掉，GRPO 都会表现成 reward 抖动、entropy collapse、错误答案变长或 held-out 不涨。</p>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：为什么“朴素 GRPO”不够</h2>
+      <p>GRPO 流行，是因为它把 PPO 中最重的 critic / value model 拿掉了：对同一个问题采样多个答案，用组内 reward 的相对高低代替 learned value baseline。对 math、code 这类 RLVR 任务，这很自然：答案对错可以由 verifier 判定，组内正确答案应被强化，错误答案应被压低。</p>
+      <p>但 reasoning RL 的训练过程不是一个单纯的优化器问题，而是一个多系统耦合问题：数据难度、采样温度、rollout group size、verifier 解析、最长生成长度、loss normalization、clip ratio、inference backend、训练 backend、MoE routing 都会互相影响。Cameron 的文章之所以值得读，是因为它把 GRPO 从“公式”还原成“系统”。</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>RLHF 与 RLVR 的差异</h3>
+          <p>RLHF 主要依赖 reward model 拟合人类偏好，适合聊天风格、helpfulness、harmlessness 等软目标；RLVR 依赖 rule-based 或 deterministic verifier，适合数学、代码、形式化推理等可验证任务。GRPO 在 reasoning model 中常和 RLVR 绑定，是因为它能用多个 rollout 的 outcome reward 直接构造学习信号。</p>
+        </div>
+        <div class="card">
+          <h3>Reasoning RL 的特殊性</h3>
+          <p>模型不只是学最终答案，还在学习如何分配 test-time compute：什么时候展开推导、什么时候反思、什么时候切换解法。平均 response length 上升可能是能力增长，也可能是目标函数鼓励的无效 overthinking，因此必须和正确率、错误答案长度、truncation rate 一起看。</p>
+        </div>
+      </div>
+
+      <h3>Vanilla GRPO 的典型症状</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>训练症状与可能根因</caption>
+          <tr><th>症状</th><th>表面现象</th><th>常见根因</th><th>应该额外检查</th></tr>
+          <tr><td>Reward noise</td><td>训练 reward 曲线上下跳，不稳定上升</td><td>有效 batch 太小、zero-gradient prompt 太多、verifier 抖动</td><td>全对/全错 group 占比、group reward variance、held-out reward</td></tr>
+          <tr><td>Entropy collapse</td><td>token distribution 过早变尖，rollout 越来越像</td><td>clip 上界压制低概率探索 token、采样多样性不足</td><td>entropy、clip fraction、group 内答案相似度</td></tr>
+          <tr><td>Length inflation</td><td>输出越来越长，尤其错误答案更长</td><td>sample-level loss normalization 产生长度偏置，overlong reward 处理粗糙</td><td>correct / incorrect length 分布、truncation rate、重复片段</td></tr>
+          <tr><td>Off-policy gap</td><td>同样权重下 rollout 与 learner logprob 不一致</td><td>sampler 与 learner engine、precision、parallelism、quantization 差异</td><td>sampler-logprob vs learner-logprob mismatch、长序列最大差异</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>GRPO 机制拆解：它到底在学习什么</h2>
+      <p>GRPO 的输入不是单条样本，而是一组同 prompt 的 rollout。对 prompt \(x\)，当前 policy 生成 \(G\) 条 completion：\(y_1,\dots,y_G\)。verifier 给出每条 completion 的 outcome reward：\(r_1,\dots,r_G\)。随后，GRPO 用组内均值和方差构造 advantage，并把这个 sequence-level advantage 分配到 completion 的每个 token 上。</p>
+      <div class="equation">
+        \[
+        \rho_{i,t}(\theta)=\frac{\pi_\theta(y_{i,t}\mid x,y_{i,<t})}{\pi_{old}(y_{i,t}\mid x,y_{i,<t})}
+        \]
+        \[
+        L_{GRPO}\approx -\frac{1}{G}\sum_i \frac{1}{|y_i|}\sum_t \min\left(\rho_{i,t}A_i,\; \mathrm{clip}(\rho_{i,t},1-\epsilon,1+\epsilon)A_i\right)
+        \]
+      </div>
+      <p>这个结构有一个核心优点：不需要 critic。但也带来四个脆弱点。</p>
+      <div class="grid-2">
+        <div class="method-card">
+          <h3>输入条件</h3>
+          <p>需要足够多样的 group rollout。如果所有答案都一样、全对或全错，advantage 就没有信息量。group size 太小会让 reward baseline 噪声变大。</p>
+        </div>
+        <div class="method-card">
+          <h3>处理过程</h3>
+          <p>同一个 outcome advantage 被广播到所有 token。若 token-level ratio 与 sequence-level reward 不匹配，局部 token outlier 会放大梯度方差。</p>
+        </div>
+        <div class="method-card">
+          <h3>输出目标</h3>
+          <p>模型被鼓励复现组内更高 reward 的轨迹。但若 verifier 可被投机，或格式解析不稳，模型会学习 reward hacking 而不是真正推理。</p>
+        </div>
+        <div class="method-card">
+          <h3>失败条件</h3>
+          <p>entropy 过低、zero-gradient prompt 过多、长度归一化偏置、sampler/learner 不一致、overlong 惩罚污染 correctness reward，都会让目标函数偏离预期。</p>
+        </div>
+      </div>
+      <p>因此，GRPO 的本质不是“省掉 value model 的 PPO”，而是一个围绕 <strong>reward contrast</strong> 的方差工程：每个 batch 要持续提供足够多、足够可靠、足够分散的对比信号。</p>
+    </section>
+
+    <section id="dapo">
+      <h2>DAPO：最重要的 GRPO 工程修正四件套</h2>
+      <p>DAPO 的价值在于把 DeepSeek-R1 之后社区复现中的一组“缺失细节”显式化。它不把失败归因于单个超参，而是同时修 clip、采样、loss 聚合和 overlong reward shaping。</p>
+
+      <h3>1. Clip Higher：上界放宽，给探索 token 留空间</h3>
+      <p>PPO / GRPO 的 ratio clip 通常是 \([1-\epsilon,1+\epsilon]\)。这会不成比例地限制低概率 token 的概率提升：一个原本概率 0.01 的 token，在 \(\epsilon=0.2\) 时最多被推到 0.012；而高概率 token 原本就接近 1，clip 对它的实际约束较弱。结果是模型更容易强化 exploitation token，难以放大低概率但有价值的“wait / reconsider / alternative path”探索 token。</p>
+      <p>DAPO 改为解耦上下界，例如 \([1-\epsilon_{low},1+\epsilon_{high}]\)，保持下界保守、适度抬高上界。直觉是：<strong>不要让 clip 机制把探索空间提前压扁。</strong></p>
+
+      <h3>2. Dynamic Sampling：把零梯度样本从 batch 里拿掉</h3>
+      <p>GRPO 依赖组内 reward 差异。如果某个 prompt 的所有 rollout 都正确，advantage 为 0；如果所有 rollout 都错误，许多实现同样无法获得可用差异。训练越往后，全对 prompt 越多，名义 batch size 不变，但 effective batch size 变小，reward 曲线会更 noisy。</p>
+      <p>Dynamic sampling 的做法是先 oversample，再过滤全对、全错或无 reward variance 的 prompt，然后补齐有效 batch。它的重点不是“多采样”，而是保证每一步 policy update 都真的吃到可学习的 contrast。</p>
+
+      <h3>3. Token-level Loss：不要让长度归一化制造 overthinking</h3>
+      <p>许多 GRPO 实现先对每条 response 的 token loss 求平均，再对样本求平均。这会让每条 response 权重相同，但长 response 中每个 token 的权重更小。对于负 advantage 的错误答案，长答案受到的 per-token 惩罚更弱，可能导致错误答案越来越长。</p>
+      <p>DAPO 倾向于按 batch 内所有 token 做统一归一化，或至少避免每条 response 动态按自身长度缩放。核心目标是：<strong>让长推理因为正确而被奖励，而不是因为 loss 归一化漏洞而免罚。</strong></p>
+
+      <h3>4. Overlong Reward Shaping：长度控制不能污染正确性信号</h3>
+      <p>训练时必须设置最大生成长度。朴素策略是超过长度就给负 reward，但这会把“答案错”和“答案可能对但没写完”混在一起。对 reasoning model 来说，这种混合惩罚尤其危险：模型可能收到“有效长推理也不该尝试”的信号。</p>
+      <p>DAPO 的思路是对 overlong 样本使用 masking、filtering 或 soft penalty。比如设置最大长度 \(L_{max}\) 和缓冲区 \(L_{cache}\)，只在接近最大长度时逐步加惩罚，而不是一刀切。这把长度预算当作独立的 policy shaping，而不是 correctness reward 本身。</p>
+    </section>
+
+    <section id="drgrpo">
+      <h2>Dr. GRPO：重新审视长度增长和“Aha moment”叙事</h2>
+      <p>Dr. GRPO 所在工作最有价值的地方，是把 R1-Zero 式训练从“RL 让模型突然觉醒”的故事里拉出来，提醒读者同时看 base model、prompt template 和 objective bias。</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Base model 不是白纸</h3>
+          <p>Qwen2.5、DeepSeek-V3-Base 等模型在预训练阶段可能已经含有大量问答、数学、反思性文本或类似 SFT 的数据结构。改变 prompt template 会显著改变 base performance，因此 RL gain 可能被 baseline template 低估放大。</p>
+        </div>
+        <div class="card">
+          <h3>“Aha moment”可能是放大而非创造</h3>
+          <p>模型在 RL 前可能已经会输出 “wait”“aha”“let me check” 等反思模式。RLVR 的作用可能是选择并强化这些已有 trajectory，而不是从零创造 self-reflection。更严谨的说法是：RL 放大 base model 中已有但不稳定的 reasoning path。</p>
+        </div>
+      </div>
+
+      <h3>两个目标函数偏差</h3>
+      <p>Dr. GRPO 指出 vanilla GRPO 的长度增长不一定全是能力提升，还可能来自 objective bias。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Dr. GRPO 关注的两个偏差</caption>
+          <tr><th>偏差</th><th>机制</th><th>后果</th><th>修正</th></tr>
+          <tr><td>Response-level length bias</td><td>每条 response 按自身长度归一化，长 response 的 per-token 影响变小</td><td>负 advantage 的长错误答案被惩罚不足，错误答案可能越来越长</td><td>用固定常数或 batch token 级别归一化，避免动态按 response length 缩放</td></tr>
+          <tr><td>Question-level difficulty bias</td><td>advantage 除以组内 reward 标准差，方差很小时 advantage 被放大</td><td>太容易或太难的题可能被过度加权</td><td>去掉 std denominator，只使用 \(A_i=r_i-\bar r\)</td></tr>
+        </table>
+      </div>
+      <p>这个分析改变了 response length 的解释方式。平均长度上升只能作为弱指标；更可靠的是同时看 correct length、incorrect length、held-out accuracy、truncation rate 和重复片段。如果错误答案也系统性变长，那不是“学会深思熟虑”，而可能是“学会更长地错”。</p>
+    </section>
+
+    <section id="tis">
+      <h2>TIS：训练系统会悄悄把 on-policy 变成 off-policy</h2>
+      <p>现代 LLM RL 通常把 rollout generation 和 policy update 分给不同引擎：前者使用高吞吐推理系统，后者使用训练框架。理论上，GRPO 是 on-policy；现实中，sampler engine 和 learner engine 即使加载同一组权重，也可能因为 precision、kernel、parallelism、quantization、MoE routing 或长序列误差累积而产生不同 token probability。</p>
+      <div class="warning callout">
+        <p><strong>关键提醒：</strong>on-policy 不是论文公式自动保证的，而是系统实现属性。只要 rollout 来自 \(\pi_{sampler}\)，训练梯度却按 \(\pi_{learner}\) 计算，分布差就会进入目标函数。</p>
+      </div>
+      <p>TIS，即 Truncated Importance Sampling，用如下权重校正这种 mismatch：</p>
+      <div class="equation">
+        \[
+        w = \min\left(\rho,\;\frac{\pi_{learner}(y_t\mid s_t)}{\pi_{sampler}(y_t\mid s_t)}\right)
+        \]
+      </div>
+      <p>它不是替代 GRPO，而是在 GRPO / PPO 的梯度上额外乘一个截断 importance weight。这样可以缓解低精度 rollout、不同并行策略、长上下文生成导致的隐式 off-policy 问题。实践上，若使用 quantized rollout、不同推理后端或 MoE 模型，记录 sampler logprob 并比较 learner logprob 应该成为默认监控项。</p>
+    </section>
+
+    <section id="variants">
+      <h2>后续变体：它们分别在修哪一层问题</h2>
+      <p>GRPO++ 这条线不是单个算法胜出，而是多个修补方向并行。不同方法的共同点是：承认 vanilla GRPO 的 token-level ratio、sequence-level reward、group advantage 和多系统实现之间存在错位。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>GRPO 相关变体与修补对象</caption>
+          <tr><th>方法</th><th>核心改动</th><th>主要修补对象</th><th>适用直觉</th></tr>
+          <tr><td>DAPO</td><td>decoupled clip、dynamic sampling、token-level loss、overlong shaping</td><td>探索塌缩、零梯度样本、长度偏置、截断污染</td><td>大规模 math RLVR 的稳定 recipe</td></tr>
+          <tr><td>Dr. GRPO</td><td>固定长度归一化，去掉 advantage std denominator</td><td>错误答案过长、easy/hard question 被过度放大</td><td>当长度增长可疑或错误答案变长时优先检查</td></tr>
+          <tr><td>TIS</td><td>用截断 importance sampling 修正 sampler/learner gap</td><td>系统实现造成的隐式 off-policy</td><td>不同推理/训练 backend、量化 rollout、长上下文、MoE</td></tr>
+          <tr><td>GSPO</td><td>用 sequence likelihood 定义 sequence-level importance ratio</td><td>token-level ratio 与 sequence-level reward 不匹配</td><td>outcome reward 主导、MoE expert routing 波动明显</td></tr>
+          <tr><td>GMPO</td><td>用 geometric mean 聚合 token-level loss</td><td>极端 token importance ratio outlier</td><td>想保留 token-level ratio 但降低 outlier 影响</td></tr>
+          <tr><td>CISPO</td><td>clip importance weight，而不是让 token 完全无梯度</td><td>低概率关键 fork token 被 clipping 抹掉</td><td>多次 policy update、长 thinking budget、反思 token 很关键</td></tr>
+        </table>
+      </div>
+
+      <h3>GSPO：把 ratio 粒度对齐到 sequence</h3>
+      <p>多数 RLVR reward 是整条答案的 outcome reward，但 vanilla GRPO 在 token 级别计算 importance ratio。这会让少数 token 的 ratio outlier 支配整条 trajectory 的更新。GSPO 改为基于 sequence likelihood 定义 ratio，并做 sequence-level clipping。它尤其适合 MoE，因为 token-level 更新可能让 expert activation 大幅波动，sequence-level 权重更稳定。</p>
+
+      <h3>GMPO：保留 token ratio，但降低 outlier 敏感性</h3>
+      <p>GMPO 仍使用 token-level ratio，但把 token loss 的算术平均换成几何平均。算术平均容易被极端值拖动，几何平均对 outlier 更保守。它是一种更 plug-and-play 的稳定化方式，但仍需要注意 clipping range 和 log-space 数值实现。</p>
+
+      <h3>CISPO：关键低概率 token 不该被彻底静音</h3>
+      <p>在 reasoning trace 中，真正改变路径的 fork token 往往低频、低概率，例如“wait”“let us reconsider”。这些 token 一旦带来高 reward，importance ratio 很容易超过 clip 范围。PPO/GRPO 的硬 clipping 可能让它们在后续 update 中几乎没有梯度。CISPO 把 ratio 当作 capped weight，而不是直接让 token update 失效，使关键探索 token 仍能贡献受控梯度。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据如何解读</h2>
+      <p>这些工作的实验共同支持一个判断：GRPO 的 final benchmark 分数只是结果，训练健康指标才是诊断入口。仅看 AIME 或 MATH500 的最终分数，无法知道模型是在稳定学推理，还是通过长度、格式或 verifier 漏洞投机。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>最终分数</h3>
+          <p>DAPO 报告中，Qwen2.5-32B base 通过改造后的 RL setup 在 AIME 2024 上达到约 50 分，超过 vanilla GRPO 约 30 分的复现结果。这说明算法细节足以改变训练成败。</p>
+        </div>
+        <div class="card">
+          <h3>健康曲线</h3>
+          <p>DAPO 强调 reward、entropy、response length 应该共同观察。健康的 reasoning RL 往往 reward 稳定上升、entropy 不过早塌缩、长度增长与 held-out accuracy 同步。</p>
+        </div>
+        <div class="card">
+          <h3>消融价值</h3>
+          <p>Dr. GRPO 和 DAPO 的消融都说明，loss aggregation、std denominator、overlong handling 这类“实现细节”不是边角料，而会直接改变模型是否学会有效推理。</p>
+        </div>
+      </div>
+      <p>更重要的是，很多结论在形式上看似互相矛盾：DAPO 推 token-level loss，GSPO 又推 sequence-level ratio；Dr. GRPO 去掉 std，传统 GRPO 保留 std；CISPO 反而希望 clipped token 仍有梯度。这不是混乱，而是说明不同方法在处理不同错位：loss 聚合粒度、reward 粒度、ratio 粒度、梯度截断方式、系统分布一致性并不是同一件事。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释与概念边界</h2>
+      <div class="grid-2">
+        <div class="card"><h3>GRPO</h3><p>Group Relative Policy Optimization。对同一 prompt 采样多个 completion，用组内 reward 均值和方差构造相对 advantage，从而避免训练单独 critic。</p></div>
+        <div class="card"><h3>RLVR</h3><p>Reinforcement Learning with Verifiable Rewards。reward 来自可验证规则、答案匹配、代码测试或形式化检查，而不是人类偏好 reward model。</p></div>
+        <div class="card"><h3>Advantage</h3><p>某个动作或轨迹相对 baseline 的好坏程度。GRPO 中 baseline 来自同 prompt 其他 rollout 的组内 reward。</p></div>
+        <div class="card"><h3>Entropy collapse</h3><p>模型下一个 token 分布过早变得尖锐，采样多样性下降。对 GRPO 来说，这会让组内 rollout 越来越像，削弱相对学习信号。</p></div>
+        <div class="card"><h3>Clip ratio</h3><p>当前 policy 与 old policy 对同一 token 的概率比值被限制在某个范围，目的是防止 policy update 过大。但过紧的上界会压制低概率探索 token。</p></div>
+        <div class="card"><h3>Off-policy gap</h3><p>rollout 实际来自一个分布，训练梯度按另一个分布计算。LLM RL 中常由 sampler backend 与 learner backend 差异引入。</p></div>
+      </div>
+    </section>
+
+    <section id="playbook">
+      <h2>实践清单：如果要训练自己的 GRPO / RLVR</h2>
+      <p>下面这份清单是这篇材料最值得带走的工程化总结。它不保证某个具体 benchmark 最优，但能显著降低“跑了很久才发现训练信号坏掉”的概率。</p>
+
+      <h3>数据与 verifier</h3>
+      <ul>
+        <li>先测 verifier 的 false positive / false negative，而不是直接上 RL。</li>
+        <li>过滤容易猜的选择题、格式投机题和解析歧义题。</li>
+        <li>保留多难度混合：太简单导致全对，太难导致全错，二者都降低 GRPO 有效梯度。</li>
+        <li>记录每个 prompt 的 group reward variance，长期观察 zero-gradient prompt 占比。</li>
+      </ul>
+
+      <h3>采样与 batch</h3>
+      <ul>
+        <li>group size 通常不宜太小；若 reward 曲线 noisy，优先怀疑 effective batch size。</li>
+        <li>使用 dynamic / active sampling 补齐有 reward contrast 的 batch。</li>
+        <li>监控组内答案相似度，entropy 太低时 group 相对优势估计会退化。</li>
+      </ul>
+
+      <h3>目标函数</h3>
+      <ul>
+        <li>不要盲用对称 clip；可测试 higher upper clip。</li>
+        <li>避免 sample-level length normalization 导致错误长答案免罚。</li>
+        <li>测试去掉 advantage std denominator，尤其当 easy/hard prompt 被异常放大时。</li>
+        <li>overlong 样本使用 soft penalty 或 masking，避免把 correctness 和长度预算混成一个 reward。</li>
+      </ul>
+
+      <h3>系统监控</h3>
+      <ul>
+        <li>保存 sampler logprob，并用 learner 重新计算 logprob，监控 mismatch。</li>
+        <li>使用低精度或不同推理 backend 时，优先评估 TIS。</li>
+        <li>对 MoE 模型额外看 expert routing 波动，必要时测试 GSPO 或 routing replay 类稳定化手段。</li>
+      </ul>
+
+      <h3>指标面板</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>最低限度训练面板</caption>
+          <tr><th>类别</th><th>指标</th><th>为什么看</th></tr>
+          <tr><td>Reward</td><td>training reward、held-out accuracy、format pass rate</td><td>区分训练集过拟合、格式投机和真实能力提升</td></tr>
+          <tr><td>Exploration</td><td>entropy、sampling probability、group diversity</td><td>发现探索塌缩和 group 内样本同质化</td></tr>
+          <tr><td>Length</td><td>average length、correct length、incorrect length、truncation rate</td><td>区分有效思考和无效 overthinking</td></tr>
+          <tr><td>Optimization</td><td>clip fraction、KL / reference drift、advantage distribution</td><td>发现 update 过大、clip 过紧或 advantage 异常放大</td></tr>
+          <tr><td>System</td><td>sampler-learner logprob mismatch、rollout throughput、staleness</td><td>确认训练是否仍接近 on-policy，并评估吞吐优化是否伤害学习</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <p>这篇材料很有价值，但不能被误读成“有了这些 trick 就能复刻 R1”。它的证据边界主要在 math reasoning、部分 coding、特定开源 base model 和一批可验证任务上。迁移到工具调用、开放式 agent、长程网页任务、多模态或没有稳定 verifier 的场景时，核心挑战会发生变化。</p>
+      <div class="grid-2">
+        <div class="warning callout">
+          <h3>不要把 math RLVR 结论过度外推</h3>
+          <p>数学题 verifier 相对干净，reward 延迟短，答案格式可控。真实 agent 任务的 reward 往往稀疏、环境非确定、工具状态复杂，dynamic sampling 和 group advantage 的行为未必相同。</p>
+        </div>
+        <div class="warning callout">
+          <h3>不要只追最终 benchmark</h3>
+          <p>如果没有 held-out set、错误答案长度、verifier failure、sampler/learner mismatch 等诊断指标，benchmark 提升可能来自数据泄漏、格式投机或系统偏差。</p>
+        </div>
+      </div>
+      <p>更稳妥的态度是把 GRPO++ 看成一套实验框架：每个 trick 都要在自己的 base model、数据、verifier 和训练系统上做小规模 ablation。尤其是 KL 是否移除、std denominator 是否保留、sequence-level 还是 token-level ratio、overlong 样本如何处理，都没有跨所有任务的绝对答案。</p>
+    </section>
+
+    <section id="insight">
+      <h2>工程 / 研究启发</h2>
+      <p>这条材料对后训练团队最大的启发，是把“训练 recipe”拆成四个可审计接口。</p>
+      <div class="grid-4">
+        <div class="card"><h3>信号接口</h3><p>verifier 是否稳定，reward 是否有 contrast，prompt 难度是否覆盖有效学习区间。</p></div>
+        <div class="card"><h3>优化接口</h3><p>advantage、clip、loss aggregation、overlong shaping 是否引入隐藏偏差。</p></div>
+        <div class="card"><h3>系统接口</h3><p>rollout、logprob、policy update 是否由一致分布支持，吞吐优化是否把训练推向 off-policy。</p></div>
+        <div class="card"><h3>评估接口</h3><p>held-out accuracy、length、entropy、format、reward hacking 指标是否能解释最终分数。</p></div>
+      </div>
+      <p>因此，一个成熟的 RLVR 项目不应该从“选 GRPO 还是 PPO”开始，而应该从“如何证明每一步 update 都有干净、有效、可解释的学习信号”开始。GRPO 的公式可以很短，但让它真正工作，需要完整的训练健康仪表盘和严格的系统一致性审计。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文依据公开 X 推荐帖、Cameron R. Wolfe 的 Substack 长文，以及文中引用的公开论文和技术报告整理。材料主要覆盖 GRPO / RLVR 在 reasoning model 后训练中的算法和工程实践；对 closed model 训练细节、未公开内部 recipe、非可验证任务迁移效果不作确定性断言。</p>
+      <ul>
+        <li><a href="https://x.com/neural_avb/status/2063366700247175274">@neural_avb 推荐帖：GRPO / RLVR post-training article</a></li>
+        <li><a href="https://cameronrwolfe.substack.com/p/grpo-tricks">Cameron R. Wolfe：《GRPO++: Tricks for Making RL Actually Work》</a></li>
+        <li><a href="https://arxiv.org/abs/2503.14476">DAPO: An Open-Source LLM Reinforcement Learning System at Scale</a></li>
+        <li><a href="https://arxiv.org/abs/2503.20783">Understanding R1-Zero-Like Training: A Critical Perspective</a></li>
+        <li><a href="https://arxiv.org/abs/2507.18071">Group Sequence Policy Optimization</a></li>
+        <li><a href="https://arxiv.org/abs/2507.20673">Geometric-Mean Policy Optimization</a></li>
+        <li><a href="https://arxiv.org/abs/2506.13585">MiniMax-M1: Scaling Test-Time Compute Efficiently with Lightning Attention</a></li>
+        <li><a href="https://arxiv.org/abs/2402.03300">DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2501.12948">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

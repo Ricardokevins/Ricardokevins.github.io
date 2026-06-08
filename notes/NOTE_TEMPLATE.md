@@ -2,6 +2,8 @@
 
 这个模板用于新建 `notes/paper-reviews/*.html` 或 `notes/tech-analysis/*.html` 这类独立站内笔记。目标是保持页面兼容、可读、可维护：桌面端信息密度足够，手机端不横向挤压正文；公式、图片、表格和代码都能正常展示。
 
+> 写作前先读 `.agent/skills/notes-authoring/SKILL.md`。公共 Notes 是读者文章，不是执行日志。不要把抓取命令、工具名、本地路径、生成时间、临时文件路径写进正文或页脚。
+
 ## Required Structure
 
 ```html
@@ -187,7 +189,12 @@
 
     <section id="mechanism">
       <h2>机制拆解</h2>
-      <p>{{EXPLAIN_THE_CORE_MECHANISM}}</p>
+      <p>{{EXPLAIN_THE_CORE_MECHANISM_AS_INPUT_PROCESS_OUTPUT_AND_FAILURE_CONDITIONS}}</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据</h2>
+      <p>{{EXPLAIN_EXPERIMENTS_TABLES_FIGURES_OR_CASES_AND_INTERPRET_THEM}}</p>
     </section>
 
     <section id="terms">
@@ -202,9 +209,14 @@
       <p>{{WHAT_THIS_DOES_NOT_PROVE}}</p>
     </section>
 
-    <section id="sources">
+    <section id="insight">
+      <h2>工程 / 研究启发</h2>
+      <p>{{WHAT_SHOULD_A_READER_DO_DIFFERENTLY_AFTER_READING_THIS}}</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>{{SOURCE_SCOPE_AND_VERIFICATION_BOUNDARY}}</p>
+      <p>{{SOURCE_SCOPE_AND_VERIFICATION_BOUNDARY_WITHOUT_LOCAL_COMMANDS_OR_PATHS}}</p>
       <ul>
         <li><a href="{{SOURCE_URL}}">{{SOURCE_TITLE}}</a></li>
       </ul>
@@ -218,7 +230,8 @@
 
 - 标题和开头只服务读者理解主题，不写“我抓取了什么”“报告生成于哪里”。
 - 每个专有名词第一次出现时给一句解释；复杂方法用“输入、处理、输出、失败条件”讲清楚。
+- 不写工具名、抓取命令、shell 命令、本地路径、临时目录、`results/`、`Downloads`、生成时间或文件位置。
 - 公式使用 `\(...\)` 或 `\[...\]`，不要混用裸 `$...$`，避免普通文本误触发。
 - 图片放在同名 `*-assets/` 目录或 `notes/assets/` 下；`alt` 要说明图里是什么，不写空值。
-- 文末保留“证据边界与资料索引”，用于放来源链接、核验边界和未确认事项。
-- 写完运行 `ruby scripts/validate_notes_index.rb`。
+- 文末必须保留 `data-note-role="evidence-appendix"` 的“证据边界与资料索引”，只放公开 URL、证据边界和未确认事项。
+- 写完运行 `ruby scripts/validate_notes_index.rb`、`git diff --check`；批量改动再运行 Jekyll build。
