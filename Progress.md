@@ -1,5 +1,75 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-09 Vivek RL 后训练长帖 HTML 笔记深化
+
+### 背景
+
+- 用户在已完成原帖解读后，要求“深度总结梳理和思考，导出 html 笔记”。
+- 目标是在现有站内笔记基础上增强可读性、批判性校正和资料索引，形成可直接阅读的独立 HTML 笔记，而不是只保留对话摘要。
+
+### 已完成
+
+- 原地深化 `notes/tech-analysis/vivek-2332-prime-rl-32-answers.html`。
+- 新增“一页总览：它不是答案集，而是一张故障地图”，把原帖重读为 RL 后训练故障排查优先级：reward/env、policy update、rollout faithfulness、数值一致性、异步 staleness。
+- 新增“批判性校正：五处最容易被误读的地方”，明确校正：GRPO 不是没有 reward、CE/KL/MLE 等价前提、DPO 的隐式 reward、KV cache 绑定 policy version、框架推荐不能泛化。
+- 修正页面顶部与边界章节中对作者组织身份的过强表述，改为“带有 Prime Intellect / Prime-RL 实践偏好”的公开答卷。
+- 扩展文末“证据边界与资料索引”，补充 DAPO、GSPO、MiniMax-M1/CISPO、DeepSeek-R1、DPO、OPD、Thinking Machines deterministic inference、AReaL async RL、Prime-RL 等公开来源。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 93 entries, 93 top-level note html files`。
+- `git diff --check -- notes/tech-analysis/vivek-2332-prime-rl-32-answers.html Progress.md _data/notes.yml` 通过。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+
+## 2026-06-08 安装并配置 pi-model-router
+
+## 2026-06-08 安装并配置 pi-model-router
+
+### 背景
+
+- 用户明确要求安装并配置 `pi-model-router`。
+- 目标是在当前仓库启用 project-local 路由配置，优先使用当前环境中已验证可用的模型组合，而不是依赖未验证 provider。
+- 用户随后明确补充两条偏好：
+  - router 应该只是“可选模型的一种”，**不要直接成为默认模型**；
+  - **不要擅自改变 think level**，router 不应把 low/medium/high 档位自动映射成不同 thinking 强度。
+
+### 已完成
+
+- 安装扩展包：`npm:@yeliu84/pi-model-router@0.3.0`
+- 确认当前环境可用模型中，已实际 smoke test 成功：
+  - `bytedance-proxy/gpt-5.4-2026-03-05`
+  - `deepseek-anthropic/deepseek-v4-flash`
+  - `deepseek-anthropic/deepseek-v4-pro`
+  - `mimo/mimo-v2.5`
+  - `mimo/mimo-v2.5-pro`
+- 确认以下候选当前不适合纳入默认 profile：
+  - `kimi-coding/kimi-for-coding`：membership verify error
+  - `google/gemini-flash-lite-latest`：API key invalid
+  - `minimax-anthropic/MiniMax-M3[1m]`：one-shot smoke test 超时
+- 新增 project-local router 配置：`.pi/model-router.json`
+  - `balanced`：高质量默认档
+  - `cheap`：成本优先档
+  - `deep`：深度推理档
+- **删除** project-local `.pi/settings.json`，避免把 router 强行设成当前仓库默认模型。
+- 根据用户偏好重写 router thinking 配置：
+  - 所有 tier 的 `thinking` 统一设为 `xhigh`
+  - 让 router 只负责“选哪个模型”，**不负责偷偷改 think level 档位**
+
+### 当前配置思路
+
+- `high` tier：优先 `bytedance-proxy/gpt-5.4-2026-03-05`
+- `medium` tier：优先 `deepseek-anthropic/deepseek-v4-pro`
+- `low` tier：优先 `mimo/mimo-v2.5` / `mimo/mimo-v2.5-pro`，避免低档位被自动降成很弱的 thinking
+- 高风险关键词（deploy / production / auth / security / payment / billing / migration）强制走 `high`
+- 总结/格式化类关键词（summary / summarize / changelog / rename / format / tl;dr）强制走 `low`
+- 由于所有 tier 统一为 `xhigh`，当前 router 更接近“**只做模型选择，不做推理强度选择**”
+
+### 待验证
+
+- 在真实 `pi` TUI 会话里用 `/model` 选择 `router/balanced`，再用 `/router status` 验证 router provider 已正确注册。
+- 验证当前仓库新会话仍保持用户自己的默认模型，不会被 router 接管。
+- 如用户需要，再继续细调 `rules`、fallback 顺序和 profile 设计。
+
 ## 2026-06-08 22:50 vivek_2332 32 答长帖深度解读（Prime Intellect 视角下的 RL 后训练）
 
 ### 背景

@@ -123,7 +123,7 @@
     <div class="kicker">Tech Analysis · 2026-06-08</div>
     <h1>Prime Intellect 视角下的 RL 后训练 32 答</h1>
     <p class="lede">@vivek_2332 在 6 月 7 日放出的"dump my answers"长帖，是对 @sheriyuo 整理的 <em>RL Interview Questions 2026</em> 35 道面经的一份高密度答卷：算法 16 题、基础设施 16 题，每题只用两到四句话，却把"<strong>算法目标如何被系统约束改写</strong>"讲到了工业界共识层。这份笔记的解读角度与既有的题面笔记不同——它不是逐题追问"正确答案是什么"，而是把 32 答按主题重排为一份"实战者视角下的 RL 后训练技术栈地图"，并附上从答案中能反推出的工程判断。</p>
-    <p class="attribution">原帖 276 赞 / 17 转 / 9.1k 浏览，作者为 Prime Intellect 团队成员（在 Infra 16 题回答中直接推荐 Prime Intellect 工具栈）。</p>
+    <p class="attribution">原帖当前可见互动量约为 295 赞 / 17 转；平台统计口径会变化，本文不依赖具体浏览数字。作者在 Infra 16 题直接推荐 Prime Intellect 工具栈，因此本文把它作为一份带有 Prime-RL 实践偏好的公开答卷来读。</p>
   </header>
 
   <main>
@@ -146,18 +146,50 @@
       </div>
     </section>
 
+    <section id="one-page-map">
+      <h2>一页总览：它不是答案集，而是一张故障地图</h2>
+      <p>如果只把这条长帖当成 32 道题的参考答案，会错过它最有价值的部分。它真正给出的不是"标准答案"，而是一个工业 RL 训练者遇到故障时的排查优先级：先看 reward / environment 是否诱导错目标，再看 policy update 是否被 clip、KL、advantage normalization 扭曲，再看 rollout policy 与 trainer policy 是否在数值上真的是同一个模型，最后才谈哪个 GRPO 变体更优。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>算法层的问题，最后常常是系统层的问题</h3>
+          <p>reward 突然上涨、length 爆炸、clip fraction 异常、importance weight 尾部变厚，看起来像算法失败，实际可能是 verifier 漏洞、logprob 重算不一致、MoE router replay 缺失或 batch-invariant 不满足。</p>
+        </div>
+        <div class="card">
+          <h3>系统层的优化，最后会改变算法语义</h3>
+          <p>continuous batching、KV cache reuse、FP8/INT8 量化、异步 rollout、stale sample rejection 都不是纯吞吐优化；它们会改变样本来自哪个 policy、logprob 是否可信、advantage 是否仍代表同一个目标。</p>
+        </div>
+      </div>
+      <p>因此这份帖子的最好读法是把每个回答都归到一个故障类别中：<strong>reward 是否可靠、policy update 是否受控、rollout 是否 faithful、并行/量化是否破坏一致性、异步是否把 on-policy 训练拖成难以修正的 off-policy 训练</strong>。这也是 2026 年 LLM RL 面试和真实项目之间的共同交集。</p>
+    </section>
+
     <section id="problem">
       <h2>问题背景：为什么这份答卷值得单独解读</h2>
       <p>sheriyuo 整理的 35 题主帖是 2026 年 LLM RL 方向最被引用的一份"能力地图"，目前已知有至少两位 RL 从业者完整作答（@vivek_2332 与 @pradheepraop），多位读者用中英文分享了笔记。题面笔记的解读重点在"问题在测什么能力"，而本篇解读的重心是<strong>这份答案本身透露的工业判断</strong>。</p>
       <p>三条理由让这份答案有独立价值：</p>
       <ul>
-        <li><strong>作者有清晰的产品立场</strong>：Infra 16 题中他直接给出"none of them, use @PrimeIntellect"，结合全文对 Prime-RL、verl、TRL、AReaL 的具体评价，可以判断作者是 Prime Intellect 团队成员，这份答卷是工业界公开技术判断的少见样本。</li>
+        <li><strong>作者有清晰的产品立场</strong>：Infra 16 题中他直接给出"none of them, use @PrimeIntellect"，结合全文对 Prime-RL、verl、TRL、AReaL 的具体评价，可以判断这份答卷至少带有明确的 Prime Intellect / Prime-RL 实践偏好，是工业界公开技术判断的少见样本。</li>
         <li><strong>答案形式是"工程默认值"</strong>：每题 2-4 句话，几乎不给公式推导，但给出 group size 8/16、LR 1e-6、PPO epochs=1、fp8 训/int8 推这一类可立刻套用的工程默认值——这正是教科书和论文中读不到的"作坊知识"。</li>
         <li><strong>对算法变体的态度是"半否定"</strong>：明说"all the algo are variants on grpo, mostly for better stability. at lab scale the choice barely matters"。这种态度和论文作者在论文中宣称的方法价值形成显著反差，对评估 RLHF/RLVR 项目里的"算法迭代投入产出比"很有参考意义。</li>
       </ul>
       <div class="callout info">
         <b>本篇与既有笔记的边界</b>
         <p>题面笔记（rl-interview-questions-2026.html）按 35 题逐题给出"考点 + 完整机制 + 边界"。本篇则反其道：把同一份题的同一份答案按"主题"重排，附上"作者用这个答案表达什么判断"的解读，重复内容（题面、机制、术语）刻意压缩。</p>
+      </div>
+    </section>
+
+    <section id="critical-reading">
+      <h2>批判性校正：五处最容易被误读的地方</h2>
+      <p>这份答卷价值很高，但它是 compressed notes，不是完整教材。读者如果照字面背诵，容易在五个地方产生偏差：</p>
+      <div class="def-list">
+        <div><b>GRPO 没有丢掉 reward</b><span>更准确地说，GRPO 通常丢掉 learned value critic；在 RLVR 中，learned reward model 被 verifier / rule-based reward 替代。把它说成"不需要 reward"会遮蔽最核心的 environment design 问题。</span></div>
+        <div><b>CE/KL/MLE 等价有前提</b><span>CE(p,q)=KL(p,q)+H(p) 只在数据分布 p 固定时给出同一最优点。SFT 里 p 固定；on-policy RL 里 p 随 policy 诱导分布变化，这也是为什么 RL 不能被简单还原成加权 SFT。</span></div>
+        <div><b>DPO 不是没有 reward</b><span>DPO 的 reward 是隐式的 policy-reference log ratio。它不需要单独 reward model，但 preference data 的长度、风格、refusal、模板痕迹仍会成为可被 hacking 的 backdoor。</span></div>
+        <div><b>KV cache 不是普通缓存</b><span>KV cache 绑定了生成它的 policy version。跨权重更新复用旧 KV 严格说会改变 rollout 的身份；可以作为异步近似，但必须和 staleness、importance sampling、sample rejection 一起讨论。</span></div>
+        <div><b>框架选择不能只看一句推荐</b><span>Prime-RL、verl、TRL、AReaL、slime 的差异取决于训练 backend、rollout engine、MoE 支持、agent environment、是否 fully async、团队是否能维护 Megatron/FSDP 栈。"use Prime" 是作者立场，不是通用结论。</span></div>
+      </div>
+      <div class="callout warn">
+        <b>阅读原则</b>
+        <p>这类高密度长帖应按"判断力样本"读，而不是按"标准答案"背。每个短答都应该追问三个问题：它假设了什么任务分布？它隐含了什么系统条件？换到不可验证任务、多模态任务或长时程 agent 环境后还成立吗？</p>
       </div>
     </section>
 
@@ -498,7 +530,7 @@
         <p>vivek 自己说"correct me if anything's off, happy to hear feedback"——32 答里至少有 4 处直接声明"not sure"（Algo 9、19、Infra 9、13、15）。这些边界标记得很诚实，但也意味着：把每条表态都当成普适工程真理会过拟合到 Prime Intellect 自己的工作流。</p>
       </div>
       <ul>
-        <li><strong>作者立场偏置</strong>：作为 Prime Intellect 团队成员，他推荐自家产品（Infra 16 直接给 PrimeIntellect 链接）并对 verl/TRL/AReaL 有明确评价。这与"中立综述"性质不同——读者应意识到 RL 工具市场仍在快速演化，2026 H2 的格局可能显著不同。</li>
+        <li><strong>作者立场偏置</strong>：原帖明确推荐 Prime Intellect，并对 verl/TRL/AReaL 有具体评价。这与"中立综述"性质不同——读者应意识到 RL 工具市场仍在快速演化，2026 H2 的格局可能显著不同。</li>
         <li><strong>工业规模 ≠ 论文规模</strong>：多次出现"at lab scale the choice barely matters"。这句话在千万-亿级 token 训练上是有道理的，但对百亿-千亿级参数、特殊任务（长 CoT、多模态、Agentic）的 RL，算法差异可能仍显著。</li>
         <li><strong>未涉及的边界</strong>：vivek 没有回答：(a) RLHF 与 RLVR 的可组合训练 pipeline（先 RLHF 偏好对齐、再 RLVR 推理强化）；(b) 多模态 RL 的 rollout 工程；(c) RL with tools 的 long-context KV cache 策略。这些方向在他的 32 题里只是边缘提及。</li>
         <li><strong>未读论文</strong>：vivek 明说没读过 ProRL/v4/Slime 的论文，因此对"RL scale 边界"的态度是带保留的；Pradheepraop（另一位答题者）也独立做了完整答案，可作为交叉参考。</li>
@@ -522,18 +554,23 @@
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>本篇解读基于一份公开 X (Twitter) 帖文，是 @vivek_2332 对 @sheriyuo 整理的 <em>RL Interview Questions 2026</em> 35 道面经的 32 答答卷（算法 16 + Infra 16，作者自报"haven't read" 3 题）。本笔记对原帖的解读为基于公开文本的转写与重排；不是原帖作者观点的直接转述。</p>
-      <p>涉及的具体技术名词（GRPO/DAPO/GSPO/CISPO/MaxRL/Dr.GRPO/OPD/AReaL/Prime-RL/verl/TRL/vLLM/SGLang/Thinking Machines Blog/nvfp4）均来自原帖自述，未做外部 paper 阅读核对——这些名词的具体技术定义以各自原始论文/官方文档为准。</p>
+      <p>本篇解读基于一份公开 X (Twitter) 帖文，是 @vivek_2332 对 @sheriyuo 整理的 <em>RL Interview Questions 2026</em> 35 道面经的 32 答答卷（算法 16 + Infra 16）。本文对原帖做主题重排、概念补全和批判性校正；不是原帖作者观点的逐字转述。</p>
+      <p>为避免把短帖误读成完整教材，本文补充参考了若干公开论文、项目文档与技术博客，用于核对 GRPO 家族、异步 RL、DPO、OPD、train-inference mismatch、vLLM/SGLang、Prime-RL 等概念的通用含义。具体工程实现仍以各项目当前版本为准。</p>
       <ul>
-        <li><a href="https://x.com/vivek_2332/status/2063566811749331353">@vivek_2332: "went through most of these. dumping my answers..." 原帖</a>（2026-06-07；276 likes, 17 RT, ~9.1k views）</li>
-        <li><a href="https://x.com/sheriyuo/status/2063295181131247674">@sheriyuo: 35 道 RL Interview Questions 2026 整理原帖</a>（2026-06-06；1.6k likes, 153 RT, ~229k views）</li>
-        <li><a href="https://x.com/pradheepraop/status/2063736553357394028">@pradheepraop: 同一份题的另一份完整答卷（Notion 长文）</a>（2026-06-07；145 likes）——可作为交叉参考</li>
-        <li><a href="https://x.com/Phoenixyin13/status/2063615362470412502">@Phoenixyin13: sheriyuo 题面中文导读</a>（2026-06-07）——题面在中文社区的传播路径</li>
-        <li><a href="https://x.com/willccbb">@willccbb (will brown)</a>：被引用作为 verifiers 库推荐来源；具体仓库位置以 willcb 个人主页为准</li>
-        <li><a href="https://x.com/PrimeIntellect">@PrimeIntellect</a>：被推荐作为 RL 平台；具体技术细节以官方仓库/产品页为准</li>
+        <li><a href="https://x.com/vivek_2332/status/2063566811749331353">@vivek_2332: "went through most of these. dumping my answers..." 原帖</a>（2026-06-07；互动数据会随平台变化）</li>
+        <li><a href="https://x.com/sheriyuo/status/2063295181131247674">@sheriyuo: RL Interview Questions 2026 题面原帖与 X Article</a>（2026-06-06）</li>
+        <li><a href="https://arxiv.org/html/2503.14476">DAPO: An Open-Source LLM Reinforcement Learning System at Scale</a>：用于核对 clip-higher、dynamic sampling、token-level loss、overlong shaping 等 DAPO 机制。</li>
+        <li><a href="https://arxiv.org/html/2507.18071v2">Group Sequence Policy Optimization</a>：用于核对 GSPO 的 sequence-level importance ratio 与 MoE 稳定性动机。</li>
+        <li><a href="https://arxiv.org/html/2506.13585">MiniMax-M1: Scaling Test-Time Compute Efficiently with Lightning Attention</a>：包含 CISPO 作为 MiniMax-M1 训练 recipe 的公开说明。</li>
+        <li><a href="https://arxiv.org/html/2501.12948v1">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</a>：用于理解 RLVR、GRPO 与 reasoning emergence 的背景。</li>
+        <li><a href="https://arxiv.org/pdf/2305.18290">Direct Preference Optimization: Your Language Model is Secretly a Reward Model</a>：用于核对 DPO 的隐式 reward 与 reference policy log-ratio 解释。</li>
+        <li><a href="https://thinkingmachines.ai/blog/on-policy-distillation/">Thinking Machines: On-Policy Distillation</a>：用于核对 OPD 的 on-policy rollout 与 teacher supervision 关系。</li>
+        <li><a href="https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/">Thinking Machines: Defeating Nondeterminism in LLM Inference</a>：用于核对 batch invariance、reduction order 与推理确定性的系统问题。</li>
+        <li><a href="https://areal-project.github.io/AReaL/en/algorithms/async.html">AReaL Asynchronous RL 文档</a>：用于核对 fully async RL、max off-policyness 与 staleness 控制。</li>
+        <li><a href="https://github.com/PrimeIntellect-ai/prime-rl/blob/main/README.md">PrimeIntellect-ai/prime-rl README</a>：用于核对 Prime-RL 的 fully async、FSDP2、vLLM、FP8 inference、PD disaggregation、EP/CP 等定位。</li>
         <li>既有题面解读笔记：<a href="/notes/tech-analysis/rl-interview-questions-2026.html">RL Interview Questions 2026：从面经到 LLM/Agentic RL 全栈能力地图</a></li>
       </ul>
-      <p>证据边界：(1) 32 答内容均来自公开 X 帖文，平台页面可能随时被作者删除或修改，存档日期为 2026-06-07/08；(2) vivek 对 Infra 16 中部分工具（Slime、AReaL 细节）的"not sure"声明保留在解读中；(3) "Prime Intellect 团队成员" 这一判断来自他在 Infra 1、16 中对自家产品的具体推荐 + Prime-RL 项目与 @PrimeIntellect 账号的关联，属于公开线索推断，不构成雇佣关系的事实陈述。</p>
+      <p>证据边界：(1) X 平台内容可能被删除、修改或因登录状态呈现不同；本文只依赖公开可见文本，不依赖精确互动量；(2) vivek 对 ProRL、DeepSeek V4、AReaL KV cache、Slime 等话题保留了"not sure / haven't read"声明，本文没有把这些部分扩展为确定事实；(3) 文中关于 Prime Intellect 的判断来自原帖中对 @PrimeIntellect 的推荐与 Prime-RL 公开资料，只说明技术立场和工具偏好，不推断未公开的组织关系。</p>
     </section>
   </main>
 </body>
