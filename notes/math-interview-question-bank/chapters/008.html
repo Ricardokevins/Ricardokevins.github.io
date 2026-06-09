@@ -224,30 +224,166 @@
 </div>
 
 <h3 id="s-008-7"><a class="anchor-link" href="#s-008-7" aria-label="跳转到本节">#</a>常见分布按生成机制记</h3>
-<p>分布是随机变量取值规律的描述。不要把常见分布只当公式表背诵，更好的记法是问：它模拟什么随机机制？一次试验还是多次试验？取值是离散还是连续？参数控制什么含义？</p>
-<div class="table-wrap"><table><thead><tr><th>分布</th><th>生成机制</th><th>参数怎么读</th><th>典型用途</th></tr></thead><tbody>
-<tr><td>Bernoulli</td><td>一次二元事件，只能成功或失败</td><td>\(p\)：成功概率</td><td>点击/不点击，涨/不涨，答案对/错</td></tr>
-<tr><td>Binomial</td><td>\(n\) 次独立 Bernoulli 的成功次数</td><td>\(n\)：次数，\(p\)：单次成功概率</td><td>多次实验成功次数、A/B test 统计</td></tr>
-<tr><td>Categorical</td><td>一次多类别选择</td><td>\(p_1,\ldots,p_K\)：各类别概率，总和为 \(1\)</td><td>next-token sampling，多分类标签</td></tr>
-<tr><td>Multinomial</td><td>\(n\) 次 categorical 后各类别计数</td><td>\(n\)：抽样次数，\(p_k\)：第 \(k\) 类概率</td><td>词频计数、投票结果、桶计数</td></tr>
-<tr><td>Uniform</td><td>可选结果被同等对待</td><td>离散集合或连续区间边界</td><td>随机初始化、无偏抽样、基准模型</td></tr>
-<tr><td>Gaussian</td><td>大量小扰动叠加后的近似形状</td><td>\(\mu\)：中心，\(\sigma^2\)：扩散程度</td><td>噪声、误差、估计量近似、收益近似</td></tr>
-<tr><td>Poisson</td><td>单位时间或空间内稀疏独立事件计数</td><td>\(\lambda\)：平均发生次数</td><td>订单到达、请求数、事故次数</td></tr>
-<tr><td>Exponential</td><td>Poisson 事件之间的等待时间</td><td>\(\lambda\)：到达率，越大等待越短</td><td>排队等待、故障间隔、成交到达间隔</td></tr>
+<p>分布是随机变量取值规律的描述。不要把常见分布只当公式表背诵，更好的记法是先问四个问题：随机变量数的是什么？它是一次抽样还是很多次抽样的汇总？取值是离散标签、计数、等待时间，还是连续实数？参数是在描述概率、频率、位置、尺度，还是先验强度？这四个问题回答清楚，公式通常会自己浮出来。</p>
+<div class="intuition-box">
+  <p><b>先从题目语言识别分布。</b>题目说“是否发生”，优先想到 Bernoulli；说“\(n\) 次里发生几次”，想到 Binomial；说“第一次成功前等多久”，想到 Geometric；说“多类别选一个”，想到 Categorical；说“多类别计数向量”，想到 Multinomial；说“固定窗口内来了几单”，想到 Poisson；说“两次到达之间等多久”，想到 Exponential；说“大量小误差相加”，想到 Gaussian；说“未知概率本身的先验”，想到 Beta。</p>
+</div>
+<div class="table-wrap"><table><thead><tr><th>分布</th><th>随机变量在数什么</th><th>生成机制</th><th>参数怎么读</th><th>常见应用</th></tr></thead><tbody>
+<tr><td>Bernoulli</td><td>一次二元结果</td><td>做一次只有成功/失败的试验</td><td>\(p\)：成功概率</td><td>点击/不点击，答案对/错，交易信号是否触发</td></tr>
+<tr><td>Binomial</td><td>\(n\) 次中的成功次数</td><td>\(n\) 次独立同分布 Bernoulli 求和</td><td>\(n\)：次数，\(p\)：单次成功概率</td><td>A/B test 成功数，benchmark 答对题数，风控命中次数</td></tr>
+<tr><td>Geometric</td><td>第一次成功需要等几次</td><td>反复做独立 Bernoulli，直到第一次成功</td><td>\(p\)：每次成功概率</td><td>重试次数、首次成交等待轮数、首次采样命中</td></tr>
+<tr><td>Categorical</td><td>一次多类别选择的标签</td><td>在 \(K\) 个类别中抽一次</td><td>\(p_1,\ldots,p_K\)：各类别概率，总和为 \(1\)</td><td>next-token sampling，多分类标签，路由到某个 expert</td></tr>
+<tr><td>Multinomial</td><td>\(K\) 类分别出现多少次</td><td>\(n\) 次 independent categorical 后统计计数向量</td><td>\(n\)：抽样次数，\(p_k\)：第 \(k\) 类概率</td><td>词频计数、投票结果、用户行为桶计数</td></tr>
+<tr><td>Uniform</td><td>无偏地从集合或区间取一个值</td><td>所有候选结果被同等对待</td><td>离散集合大小，或连续区间 \([a,b]\)</td><td>随机初始化、随机采样、缺少先验时的基准模型</td></tr>
+<tr><td>Gaussian</td><td>连续实值变量</td><td>大量小而近似独立的扰动叠加</td><td>\(\mu\)：中心，\(\sigma^2\)：方差</td><td>测量噪声、估计误差、线性回归残差、收益近似</td></tr>
+<tr><td>Poisson</td><td>固定窗口内事件发生次数</td><td>稀疏、近似独立、平均速率稳定的到达过程</td><td>\(\lambda\)：单位窗口平均次数</td><td>订单到达、请求数、事故次数、极低概率错误计数</td></tr>
+<tr><td>Exponential</td><td>下一次事件到来前的等待时间</td><td>Poisson 到达过程的相邻事件间隔</td><td>\(\lambda\)：到达率，均值为 \(1/\lambda\)</td><td>排队等待、故障间隔、成交到达间隔</td></tr>
+<tr><td>Beta</td><td>未知二元成功率本身</td><td>把 \(p\in[0,1]\) 当随机变量，用先验表达不确定性</td><td>\(\alpha,\beta\)：成功/失败方向的先验强度</td><td>CTR 平滑，Bernoulli/Binomial 的共轭先验，小样本概率估计</td></tr>
 </tbody></table></div>
 <div class="formula-list">
-  <p><b>Bernoulli：</b>\(X\in\{0,1\}\)，\(P(X=1)=p\)，\(P(X=0)=1-p\)。读作“一次成功概率为 \(p\) 的二元试验”。</p>
-  <p><b>Binomial：</b>\(X\sim \operatorname{Binomial}(n,p)\)，表示 \(n\) 次独立二元试验里的成功次数。概率质量函数是 \(\binom{n}{k}p^k(1-p)^{n-k}\)，其中 \(\binom{n}{k}\) 表示 \(n\) 次里选择 \(k\) 次成功的位置数。</p>
-  <p><b>Categorical：</b>\(T\sim \operatorname{Categorical}(p_1,\ldots,p_K)\)，表示在 \(K\) 个类别中选一个。LLM 的 token 采样就是典型 categorical 分布。</p>
-  <p><b>Gaussian：</b>\(X\sim \mathcal{N}(\mu,\sigma^2)\)。\(\mu\) 控制中心位置，\(\sigma\) 控制分散程度。它常作为误差和估计量的近似，但不适合直接描述严重厚尾风险。</p>
-  <p><b>Poisson：</b>\(X\sim \operatorname{Poisson}(\lambda)\)，表示固定窗口内事件发生次数。若 \(\lambda=3\)，意思是平均每个窗口发生 \(3\) 次，不代表每个窗口都恰好发生 \(3\) 次。</p>
+  <p><b>Bernoulli：</b>\(X\in\{0,1\}\)，\(P(X=1)=p\)，\(P(X=0)=1-p\)，\(E[X]=p\)，\(\operatorname{Var}(X)=p(1-p)\)。它描述的是一次事件，而不是一批事件的总数。</p>
+  <p><b>Binomial：</b>\(X\sim \operatorname{Binomial}(n,p)\)，等价于 \(X=X_1+\cdots+X_n\)，其中 \(X_i\) 是 independent Bernoulli。概率质量函数为 \(P(X=k)=\binom{n}{k}p^k(1-p)^{n-k}\)，期望 \(np\)，方差 \(np(1-p)\)。</p>
+  <p><b>Geometric：</b>若 \(X\) 表示“直到第一次成功所需试验次数”，则 \(P(X=k)=(1-p)^{k-1}p\)，\(E[X]=1/p\)。它的关键词是“第一次”。</p>
+  <p><b>Categorical：</b>\(T\sim \operatorname{Categorical}(p_1,\ldots,p_K)\)，一次只输出一个类别。二分类的 Categorical 可以退化成 Bernoulli，多分类 softmax 输出通常对应 Categorical。</p>
+  <p><b>Multinomial：</b>\((C_1,\ldots,C_K)\sim\operatorname{Multinomial}(n;p_1,\ldots,p_K)\)，统计 \(n\) 次多类别抽样后每一类出现了几次，且 \(C_1+\cdots+C_K=n\)。</p>
+  <p><b>Gaussian：</b>\(X\sim\mathcal N(\mu,\sigma^2)\)。\(\mu\) 是中心位置，\(\sigma\) 是典型偏离尺度。它适合误差近似，不自动适合厚尾收益、截断变量或只能为正的变量。</p>
+  <p><b>Poisson：</b>\(X\sim\operatorname{Poisson}(\lambda)\)，\(P(X=k)=e^{-\lambda}\lambda^k/k!\)，且 \(E[X]=\operatorname{Var}(X)=\lambda\)。这条“均值等于方差”是快速检查 Poisson 假设是否太粗的入口。</p>
+  <p><b>Exponential：</b>\(T\sim\operatorname{Exponential}(\lambda)\)，\(P(T>t)=e^{-\lambda t}\)，\(E[T]=1/\lambda\)。它有无记忆性：已经等了 \(s\) 时间后，还要再等超过 \(t\) 的概率仍是 \(e^{-\lambda t}\)。</p>
+  <p><b>Beta：</b>\(p\sim\operatorname{Beta}(\alpha,\beta)\)，密度与 \(p^{\alpha-1}(1-p)^{\beta-1}\) 成正比。它不是观测结果的分布，而是“成功率 \(p\) 的不确定性”的分布。</p>
 </div>
+<h4>应用例题 1：Bernoulli 不是 Binomial</h4>
 <div class="worked-example">
-  <b>小例子：next-token 分布如何读</b>
-  <p>某模型在上下文“北京是中国的”后，对三个候选 token 给出概率：\(P(\text{首都})=0.70\)，\(P(\text{城市})=0.20\)，\(P(\text{大学})=0.10\)。这是什么分布？如果采样一次，是否一定输出“首都”？</p>
+  <div class="example-title">题目</div>
+  <p>一个模型回答一道判断题，答对概率估计为 \(p=0.8\)。令 \(X=1\) 表示答对，\(X=0\) 表示答错。这个随机变量是什么分布？它的期望和方差是多少？如果改成“20 道题里答对几道”，又是什么分布？</p>
 </div>
 <div class="solution">
-  <p>这是一个 categorical 分布，因为随机变量 \(T\) 在多个离散类别中选一个。\(0.70\) 表示“首都”在这次抽样中概率最大，但不表示一定输出。若使用采样策略，仍可能抽到“城市”或“大学”；若使用 greedy decoding，才会直接选概率最大的 token。概率分布描述模型的不确定性，解码策略决定如何把分布变成具体输出。</p>
+  <p>单道题只有答对/答错两个结果，所以 \(X\sim\operatorname{Bernoulli}(0.8)\)。它的期望是 \(E[X]=0.8\)，表示长期平均正确率；方差是 \(0.8\times0.2=0.16\)，表示单题结果仍然很不稳定。</p>
+  <p>若令 \(S\) 表示 20 道独立同难度题里答对的数量，则 \(S\sim\operatorname{Binomial}(20,0.8)\)。这时随机变量不再是 0/1，而是 \(0,1,\ldots,20\) 之间的计数。它的期望是 \(20\times0.8=16\)，方差是 \(20\times0.8\times0.2=3.2\)。</p>
+</div>
+<h4>应用例题 2：Binomial 如何算 benchmark 波动</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>某模型每道题独立答对概率为 \(0.8\)。一次 benchmark 有 20 道题。求它至少答对 18 道的概率，并解释为什么小 benchmark 的名次可能不稳定。</p>
+</div>
+<div class="solution">
+  <p>令 \(S\sim\operatorname{Binomial}(20,0.8)\)。至少答对 18 道是 \(S\ge 18\)：</p>
+  <div class="math-display">\[
+P(S\ge 18)=\binom{20}{18}0.8^{18}0.2^2+\binom{20}{19}0.8^{19}0.2+0.8^{20}\approx 0.206
+\]</div>
+  <p>也就是说，即使真实单题正确率有 \(80\%\)，20 题小样本里拿到 18 分及以上也只有约 \(20.6\%\)。反过来，一个模型偶然多对两题也不一定代表真实能力大幅领先。benchmark 题数越小，Binomial 方差带来的名次噪声越明显。</p>
+</div>
+<h4>应用例题 3：Geometric 适合“等到第一次成功”</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>一个采样策略每次生成有效答案的概率是 \(p=0.25\)，每次尝试近似独立。令 \(T\) 表示第一次生成有效答案所需尝试次数。求 \(P(T=3)\)、\(P(T\le 3)\) 和 \(E[T]\)。</p>
+</div>
+<div class="solution">
+  <p>关键词是“第一次成功”，所以 \(T\sim\operatorname{Geometric}(0.25)\)。第三次才成功，意味着前两次失败、第三次成功：</p>
+  <div class="math-display">\[
+P(T=3)=(1-0.25)^2\times0.25=0.75^2\times0.25=0.140625
+\]</div>
+  <p>三次内成功等价于不是前三次都失败：</p>
+  <div class="math-display">\[
+P(T\le 3)=1-P(T>3)=1-0.75^3\approx0.578
+\]</div>
+  <p>平均等待次数是 \(E[T]=1/p=4\)。这类题在 retry、采样、排队和首次成交问题里很常见。</p>
+</div>
+<h4>应用例题 4：Categorical 是一次多类别抽样，不是概率最大就必然输出</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>某模型在上下文“北京是中国的”后，对三个候选 token 给出概率：\(P(\text{首都})=0.70\)，\(P(\text{城市})=0.20\)，\(P(\text{大学})=0.10\)。这是什么分布？如果采样一次，是否一定输出“首都”？如果连续独立采样 10 次，“首都”出现次数服从什么分布？</p>
+</div>
+<div class="solution">
+  <p>单次 token 抽样是在多个离散类别里选一个，所以 \(T\sim\operatorname{Categorical}(0.70,0.20,0.10)\)。\(0.70\) 表示“首都”概率最大，但采样一次仍可能抽到“城市”或“大学”；只有 greedy decoding 才会直接选择最大概率 token。</p>
+  <p>如果独立采样 10 次，并只关心“首都”出现了几次，那么这个计数 \(C_{\text{首都}}\sim\operatorname{Binomial}(10,0.70)\)。如果同时关心三个 token 各出现几次，则计数向量 \((C_{\text{首都}},C_{\text{城市}},C_{\text{大学}})\sim\operatorname{Multinomial}(10;0.70,0.20,0.10)\)。</p>
+</div>
+<h4>应用例题 5：Multinomial 用来描述计数向量</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>一个路由器把请求分到三个 expert 的概率分别是 \(0.5,0.3,0.2\)。独立处理 10 个请求后，恰好分到三个 expert 的数量为 \((5,3,2)\) 的概率是多少？</p>
+</div>
+<div class="solution">
+  <p>这不是三个互相独立的 Binomial，因为三个计数加起来必须等于 10；一个 expert 多拿一个请求，其他 expert 的总计数就少一个。正确模型是 Multinomial：</p>
+  <div class="math-display">\[
+P(C_1=5,C_2=3,C_3=2)=\frac{10!}{5!3!2!}0.5^5 0.3^3 0.2^2\approx0.085
+\]</div>
+  <p>这个例子对应 LLM 里的 MoE routing、流量分桶、投票统计和词频计数。关键是随机变量是一整个计数向量，而不是单个标签。</p>
+</div>
+<h4>应用例题 6：Uniform 是“没有偏好”的机制，不是“现实一定均匀”</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>从区间 \([2,6]\) 上均匀随机初始化一个超参数 \(X\)。求 \(P(X>5)\)、\(E[X]\) 和 \(\operatorname{Var}(X)\)。</p>
+</div>
+<div class="solution">
+  <p>连续均匀分布 \(X\sim\operatorname{Uniform}(2,6)\)。区间长度是 \(4\)，满足 \(X>5\) 的长度是 \(1\)，所以：</p>
+  <div class="math-display">\[
+P(X>5)=\frac{6-5}{6-2}=\frac14
+\]</div>
+  <p>连续均匀分布的均值和方差为：</p>
+  <div class="math-display">\[
+E[X]=\frac{a+b}{2}=4,\qquad \operatorname{Var}(X)=\frac{(b-a)^2}{12}=\frac{16}{12}=\frac43
+\]</div>
+  <p>Uniform 通常是采样或初始化机制的假设。它适合“确实无偏地抽取”的场景，不适合仅仅因为“不知道真实分布”就强行说现实是均匀的。</p>
+</div>
+<h4>应用例题 7：Gaussian 适合误差近似，但要警惕厚尾</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>假设某预测误差近似服从 \(E\sim\mathcal N(0,2^2)\)。求误差超过 \(4\) 的概率约是多少。这个建模假设在哪些情况下会危险？</p>
+</div>
+<div class="solution">
+  <p>标准化得到 \(Z=E/2\sim\mathcal N(0,1)\)。误差超过 \(4\) 等价于 \(Z>2\)：</p>
+  <div class="math-display">\[
+P(E>4)=P(Z>2)\approx0.0228
+\]</div>
+  <p>如果问的是绝对误差超过 \(4\)，则 \(P(|E|>4)=2P(Z>2)\approx0.0456\)。Gaussian 的优势是计算简单、中心极限定理给了误差近似的理由；风险是它会低估厚尾、跳跃、极端亏损和明显偏态的数据。量化里把收益直接当正态时，必须额外检查尾部。</p>
+</div>
+<h4>应用例题 8：Poisson 数固定窗口内的到达次数</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>一个服务平均每分钟收到 3 个请求，假设请求到达近似 Poisson。求一分钟内没有请求、恰好 5 个请求、以及 10 分钟内平均请求数。</p>
+</div>
+<div class="solution">
+  <p>一分钟窗口内 \(N\sim\operatorname{Poisson}(3)\)。因此：</p>
+  <div class="math-display">\[
+P(N=0)=e^{-3}\approx0.0498,\qquad
+P(N=5)=e^{-3}\frac{3^5}{5!}\approx0.1008
+\]</div>
+  <p>10 分钟窗口的参数会按窗口长度线性放大，平均请求数是 \(3\times10=30\)。如果真实流量有明显高峰、低谷、批量到达或自激效应，固定 \(\lambda\) 的 Poisson 就会太理想化。</p>
+</div>
+<h4>应用例题 9：Exponential 数下一次到达前要等多久</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>仍假设请求以每分钟 3 个的速率按 Poisson 到达。令 \(T\) 表示下一次请求到来前的等待时间。求平均等待时间和 \(P(T>1)\)。</p>
+</div>
+<div class="solution">
+  <p>Poisson 到达次数和 Exponential 等待时间是一对：若到达率为 \(\lambda=3\)，则 \(T\sim\operatorname{Exponential}(3)\)。平均等待时间为：</p>
+  <div class="math-display">\[
+E[T]=\frac1\lambda=\frac13\text{ 分钟}=20\text{ 秒}
+\]</div>
+  <p>超过 1 分钟没有请求的概率为：</p>
+  <div class="math-display">\[
+P(T>1)=e^{-3}\approx0.0498
+\]</div>
+  <p>注意它和上一题的一分钟内没有请求概率相同，这是同一个到达过程的两种说法：下一次到达等待超过 1 分钟，等价于未来 1 分钟内请求数为 0。</p>
+</div>
+<h4>应用例题 10：Beta 描述“概率的概率”，适合小样本平滑</h4>
+<div class="worked-example">
+  <div class="example-title">题目</div>
+  <p>一个新广告展示 10 次，点击 1 次。直接 MLE 的 CTR 是 \(0.1\)。如果使用先验 \(p\sim\operatorname{Beta}(2,8)\)，后验均值是多少？它和直接 MLE 有什么区别？</p>
+</div>
+<div class="solution">
+  <p>Beta 是 Bernoulli/Binomial 成功率 \(p\) 的共轭先验。观察到 \(k=1\) 次点击、\(n-k=9\) 次未点击后，后验为：</p>
+  <div class="math-display">\[
+p\mid\text{data}\sim\operatorname{Beta}(2+1,8+9)=\operatorname{Beta}(3,17)
+\]</div>
+  <p>后验均值是：</p>
+  <div class="math-display">\[
+E[p\mid\text{data}]=\frac{3}{3+17}=0.15
+\]</div>
+  <p>它比 MLE 的 \(0.1\) 更靠近先验均值 \(2/(2+8)=0.2\)。在小样本 CTR、转化率、模型通过率估计里，Beta 先验的作用是把极端观测往合理基线拉，避免“展示一次点击一次就估计为 100%”这种过度自信。</p>
+</div>
+<div class="intuition-box">
+  <p><b>一条面试判断线。</b>先问随机变量的单位：是一个 0/1 标签、一个类别、一个计数、一个等待时间，还是一个连续误差？再问它来自一次抽样、重复抽样、固定窗口、首次成功，还是大量扰动叠加。分布选择本质上是在为这个生成过程做可计算的简化。</p>
 </div>
 
 <h3 id="s-008-8"><a class="anchor-link" href="#s-008-8" aria-label="跳转到本节">#</a>LLM 与量化面试连接</h3>

@@ -1,5 +1,63 @@
 # Ricardokevins.github.io Progress
 
+## 2026-06-08 22:50 vivek_2332 32 答长帖深度解读（Prime Intellect 视角下的 RL 后训练）
+
+### 背景
+
+- 用户要求深度解读 https://x.com/vivek_2332/status/2063566811749331353
+- 经抓取确认为 @vivek_2332 对 @sheriyuo 整理的 RL Interview Questions 2026（35 题）的 32 答长帖：算法 16 + Infra 16，作者风格精炼，2-4 句话/题。
+- 仓库里已有 sheriyuo 题面笔记（rl-interview-questions-2026.html）。本篇定位为"答案视角/工业实践视角"的互补笔记，避免逐题深解的重复。
+
+### 关键判断
+
+- 答案透露作者是 Prime Intellect 团队成员（Infra 16 直接推荐自家、Prime-RL/verifiers 描述）。
+- 三大贯穿判断：(1) 算法差异在 lab scale 被系统层抹平，token-faithful rollout 与 logprob 一致性是真正的工程决定因素；(2) KL 是 reference anchor，去 KL 是为了"在 RLVR 走得更远"，不能硬编码"GRPO 不带 KL"；(3) 异步 RL 三大瓶颈 = staleness + trainer-inference mismatch + token-in/token-out，Prime-RL/verl/TRL/AReaL 的差异就在分别处理这三件事。
+
+### 产出
+
+| 文件 | 类型 | 大小 | 内容 |
+|------|------|------|------|
+| `notes/tech-analysis/vivek-2332-prime-rl-32-answers.html` | 独立 HTML 笔记 | 34.8 KB | 15 section, 5294 中文字 / 2649 英文词, 15 h2 / 30 h3; 按 6 层技术栈地图重排 32 答; 含 GRPO 变体横向对比表、fp8/int8 选择表、并行维度对照表、监控指标三件套、术语 9 条、证据边界 |
+| `_data/notes.yml` | 索引新增 | - | 新增一条 title 为 Prime Intellect 视角下的 RL 后训练 32 答 |
+| `scripts/validate_notes_index.rb` | 校验 | - | 93 entries, 93 top-level files, OK |
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` -> notes index ok
+- `python3 HTMLParser` 平衡检查 -> 0 错误, 0 未闭合
+- 5294 中文字符 >= 4500 下限 OK
+- 15 h2 + 30 h3 >= 5 下限 OK
+- 含 takeaway / problem / mechanism / evidence / terms / limits / insight / evidence-appendix 全 8 段 OK
+- 无 bare `<`, 无工具名, 无本地路径, 无生成痕迹 OK
+
+## 2026-06-08 数学题库 008 常见分布生成机制与应用例题深化
+
+### 背景
+
+- 用户反馈 `notes/math-interview-question-bank/chapters/008.html` 中“常见分布按生成机制记”部分还不够深入，希望补充各个分布对应的应用例题。
+- 原章节已有分布总览表和 next-token 小例子，但对“题目语言如何映射到分布”“每个分布适合解决什么应用问题”“常见误用边界”讲得偏薄。
+
+### 已完成
+
+- 原地扩写 `notes/math-interview-question-bank/chapters/008.html` 的 `常见分布按生成机制记` 小节。
+- 增强分布选择框架：从“随机变量在数什么、一次还是多次抽样、离散还是连续、参数代表什么”出发识别分布。
+- 扩展总览表，新增/强化 Bernoulli、Binomial、Geometric、Categorical、Multinomial、Uniform、Gaussian、Poisson、Exponential、Beta 的生成机制、参数语义和应用入口。
+- 补充 10 个应用例题，覆盖：
+  - Bernoulli vs Binomial 的单题/多题区别；
+  - Binomial benchmark 波动与小样本名次不稳定；
+  - Geometric 首次成功等待；
+  - Categorical next-token 抽样与 greedy decoding 区别；
+  - Multinomial 计数向量与 MoE routing / 分桶；
+  - Uniform 初始化/采样；
+  - Gaussian 误差近似与厚尾风险；
+  - Poisson 固定窗口到达次数；
+  - Exponential 下一次到达等待时间；
+  - Beta 作为成功率先验与小样本 CTR 平滑。
+
+### 待验证
+
+- 运行目标页结构检查、裸 `<` 扫描、notes index validator、`git diff --check` 和 Jekyll build。
+
 ## 2026-06-08 全站笔记举一反三深度审查与批量修复
 
 ### 背景
