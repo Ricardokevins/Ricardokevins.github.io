@@ -1,5 +1,29 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-09 七月 AI research materials 四篇中文 Notes 转换
+
+### 已完成
+
+- 新增 `notes/tech-analysis/x-ai-research-frontier-threads-2026-07.html`：综合六条 X/Twitter 研究讨论，主线是 AI research 从单点模型叙事转向可验证闭环、信号治理、评测治理和 self-evolving harness。
+- 新增 `notes/paper-reviews/agent-environment-scaling-open-models-2026-07.html`：合读 EdgeBench 与 Gemma 4，主线是环境学习评测与可部署开放模型栈需要共同设计。
+- 新增 `notes/paper-reviews/verifier-compaction-opd-agent-rl-2026-07.html`：合读 LLM-as-a-Verifier、CompactionRL 与 Direct-OPD，主线是 agent RL 正在复用 verifier signal、compacted state 与 policy-shift reward 三类中间信号。
+- 新增 `notes/paper-reviews/beneficial-rl-harness-self-improvement-2026-07.html`：合读 OpenAI Beneficial RL 与 Lilian Weng Harness Engineering，主线是自我改进系统的内部 trait persistence 与外部 harness persistence。
+- 更新 `_data/notes.yml`，为四篇新增 Notes 添加列表入口、summary、tags 与 meta。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 105 entries, 105 top-level note html files`。
+- 新增四篇笔记的公开过程噪声扫描通过：未命中本地路径、工具痕迹、生成痕迹、session/worker/task 等过程信息。
+- 新增四篇笔记的公式裸 `<` targeted scan 通过：未命中 `\\(...<[A-Za-z]`。
+- `git diff --check -- _data/notes.yml` 通过。
+- 新增四篇笔记通过 `git diff --check --no-index /dev/null <file>` targeted whitespace 检查。
+- Jekyll build 尝试失败：`bundle exec jekyll build` 与 `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 均报 `bundler: command not found: jekyll`，提示需安装缺失 gem executable。
+
+### 注意
+
+- 写作依据为上游已验证摘要与可公开 canonical sources；部分上游会话完整历史不可直接读取时，按 coordinator 指示以 canonical/public sources 复核关键事实后成文。
+- 工作树在本轮开始前已有大量 unstaged 修改，包括 `_data/notes.yml`、`Progress.md`、模板、CSS 与多篇既有 notes；后续若提交，需要只纳入本轮四篇新增 HTML 与共享文件中的本轮增量，避免混入既有修改。
+
 ## 2026-06-09 Vivek RL 后训练长帖 HTML 笔记深化
 
 ### 背景

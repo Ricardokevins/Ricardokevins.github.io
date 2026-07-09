@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EdgeBench 与 Gemma 4：环境学习评测和可部署开放模型栈</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #8a5528;
+      --accent-2-soft: #fdf3e7;
+      --info: #4f628f;
+      --info-soft: #eef1f8;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body { margin: 0; background: linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px), linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px), var(--paper); background-size: 44px 44px; color: var(--ink); font-family: var(--sans); line-height: 1.75; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 78px) 0 28px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    @media (max-width: 760px) { header, main { width: min(100% - 24px, var(--max)); } .grid-2, .grid-3 { grid-template-columns: 1fr; } .def-list > div { grid-template-columns: 1fr; gap: 6px; } table { min-width: 680px; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Review · Agent Evaluation / Open Models</div>
+    <h1>EdgeBench 与 Gemma 4：环境学习评测和可部署开放模型栈</h1>
+    <p class="lede">EdgeBench 与 Gemma 4 看似一篇是 benchmark/scaling-law 论文、一篇是开放模型技术报告，但合读后指向同一个 agent 时代问题：我们既需要能衡量模型在真实环境中持续学习的尺子，也需要能负担长反馈循环、长上下文、多模态输入和工具调用的开放模型系统。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>EdgeBench 的最大贡献是把“环境交互时间”变成 agent 能力的 scaling axis；Gemma 4 的最大贡献不是某个单一算法，而是提供一套面向部署的开放模型栈。前者回答“未来 agent 应该如何被评价”，后者回答“怎样的模型系统才有机会承受这种评价”。如果只看排行榜，EdgeBench 会被误读成又一个长程 benchmark，Gemma 4 会被误读成又一个模型家族；如果按系统层读，它们共同说明：agent-era AI 的核心不再是静态题库上一次性命中，而是长时间保留状态、消化反馈、控制成本并持续改进。</p>
+      <div class="grid-3">
+        <div class="card"><h3>评测轴变化</h3><p>EdgeBench 用 12 小时以上交互轨迹和 best-so-far 曲线衡量环境学习，而不是只看单次答案。</p></div>
+        <div class="card"><h3>部署栈变化</h3><p>Gemma 4 把长上下文、thinking、function calling、QAT、MTP 和多模态接口打包为开放模型系统。</p></div>
+        <div class="card"><h3>共同瓶颈</h3><p>真正瓶颈是状态保持、反馈质量和推理成本；模型、harness、评测必须一起设计。</p></div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：从预训练 scaling 到环境学习 scaling</h2>
+      <p>预训练 scaling law 关心 loss 如何随数据、参数和计算变化；传统 benchmark 关心模型在固定题集上的平均准确率。但 agent 系统在部署后会进入另一个 regime：它会运行测试、调用工具、读写文件、提交中间结果、从 hidden judge 或环境反馈中修正策略。此时，一次性 Pass@1 只能看到起点，无法看到系统是否会在数小时内从失败中学习。</p>
+      <p>EdgeBench 正是为这个缺口而设计。它的题目不是短问答，而是需要 12 小时以上连续操作的真实任务：科学与机器学习、软件工程、组合优化、专业知识工作、形式化数学、交互游戏与模拟器。论文报告完整套件有 134 个任务，公开释放 51 个任务和 SForge 框架；每个任务可以记录长程 agent 轨迹、定期评估 best-so-far score，并把 performance 随交互时间的曲线拟合为 log-sigmoid。</p>
+      <p>Gemma 4 则从另一个方向靠近同一个问题。未来 agent 若要在 EdgeBench 这类环境里跑得起，就需要长上下文承载历史、function calling 连接工具、thinking mode 支持显式推理、量化和 speculative decoding 降低循环成本、多模态路径处理真实输入。Gemma 4 报告的重点正是模型系统工程：dense 与 MoE 组合、128K/256K context、QAT、MTP drafter、12B encoder-free multimodality、官方 HF/Kaggle 权重与部署文档。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：一个是评测循环，一个是模型循环</h2>
+      <h3>EdgeBench：把长程任务改造成可测的环境学习曲线</h3>
+      <p>EdgeBench 的基本单元不是“题目—答案”，而是“agent—环境—反馈—提交”的循环。agent 在 work environment 中运行本地测试、编译器、模拟器、proof checker 或任务验证器；外层 hidden judge 只在提交时返回分数或失败摘要。SForge 把 work environment 与 judge environment 隔离，避免 agent 直接看到 hidden tests；长程运行通过 stop hooks、auto-resume、Docker/Kubernetes 后端支持。</p>
+      <p>论文用 best-so-far score 随时间的平均曲线拟合 `S(t)=S_max/(1+(t_mid/t)^beta)`。这里不必迷信公式本身，关键是它把 agent 能力从静态点估计变成时间函数：模型早期是否探索，后期是否停滞，额外一小时交互能否带来边际收益，都可被量化。论文报告 134-task 平均上五个 frontier models 的拟合精度均在 R² 0.997 以上，平均约 0.998；在 28 小时与 72 小时延长设置中仍保持高拟合。更有工程意义的是，前 6.5 小时轨迹可较好预测 12 小时后续表现，这可能帮助昂贵评测做提前停止或资源重分配。</p>
+      <h3>Gemma 4：把开放模型从 checkpoint 变成部署系统</h3>
+      <p>Gemma 4 的报告不是一个干净的“新算法”故事，而是模型系统拼装。模型家族包括 E2B、E4B、12B、31B dense，以及 26B-A4B MoE；E2B/E4B 有效参数约 2.3B/4.5B，26B-A4B 约 3.8B active。上下文方面，E2B/E4B 支持 128K，12B/26B-A4B/31B 支持 256K；局部滑窗与全局 attention 比例、p-RoPE、K=V 复用和 KV-cache sharing 共同降低长上下文成本，论文称全局 KV footprint 最高减少 37.5%。</p>
+      <p>更值得注意的是 12B encoder-free multimodality。它不用大型 vision/audio encoder，而是把 48×48×3 图像 patch 通过 35M 大矩阵投影，把 16kHz 原始音频按 40ms chunk 投影到 LLM embedding space。这个设计证明了“少编码器、多共享 token space”的可行性，但不能被写成 encoder-free 已经全面优于 encoder-based，因为报告没有给严格同预算对照。</p>
+      <p>部署方面，Gemma 4 提供 raw 与 quantized checkpoints。表 3 报告 32K text-only context 下，12B 从 24.0GB bf16 降到 7.65GB quantized，31B 从 64.0GB 降到 19.2GB；音频 encoder on-disk footprint 从 390MB 到 87MB。MTP drafter 用主模型上一时刻最后层激活和 token embeddings 生成 speculative draft，官方部署文档称部分设置可达最高 3× speedup，但这需要按硬件、batch、serving stack 归因，不能当作 arXiv benchmark 表格结论。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：数字说明了什么，也没有说明什么</h2>
+      <h3>EdgeBench 的关键结果</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>证据</th><th>报告数字</th><th>读法</th></tr></thead>
+          <tbody>
+            <tr><td>完整 benchmark</td><td>134 任务、6 大类、每任务 12h+，专家记录 effort 平均 57.2h、最高 320h。</td><td>任务足够长，能观察探索与策略修正；但 expert effort 不是人类 leaderboard。</td></tr>
+            <tr><td>12h 总分</td><td>Claude Opus 4.8 51.3，GPT-5.5 48.4，GPT-5.4 39.3，GLM-5.1 37.4，DeepSeek-V4-Pro 31.0。</td><td>显示 frontier agents 差距；但 scaffold/context 不完全匹配，不能纯归因于 base model。</td></tr>
+            <tr><td>经验保留</td><td>Opus 4.8 连续 12h 为 43.0，六次独立 2h restart 为 36.1，差 +6.9。</td><td>持续 workspace/history 比重复抽样更有价值，说明 memory/state 是能力组成部分。</td></tr>
+            <tr><td>上下文长度</td><td>Opus 4.8 1M vs 200k：2h +5.8、6h +5.5、12h +4.4。</td><td>即便有工作区状态，长上下文仍有增益；但也构成 leaderboard confound。</td></tr>
+            <tr><td>学习速度趋势</td><td>18-task slice 上，从 GPT-5-Codex 到 GPT-5.5 的学习速度约 221 天提升 8×，趋势约三个月翻倍。</td><td>应写成作者在该切片上的 frontier trend，不是所有 agent 的普适定律。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Gemma 4 的关键结果</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>报告数字</th><th>边界</th></tr></thead>
+          <tbody>
+            <tr><td>Text Arena</td><td>Gemma 4 31B Elo 1451±8，26B-A4B 1438±8；Gemma 3 27B 为 1366±4。</td><td>Arena 是日期快照，prompt、系统提示和版本透明度有限。</td></tr>
+            <tr><td>推理/代码</td><td>31B 在 AIME 2026 no tools 89.2、LiveCodeBench v6 80.0、GPQA Diamond 84.3、Terminal Bench Hard 36.0。</td><td>表 5 多数 Gemma 4 为 thinking mode，而 Gemma 3 27B 是 non-thinking，对比混合了多种因素。</td></tr>
+            <tr><td>长上下文</td><td>31B RULER 128k 96.4，LOFT 128k 79.5，GraphWalks F1 82.3；12B RULER 128k 91.2。</td><td>256K 支持不等于所有任务都在 256K 可靠；许多 benchmark 是 128K 或更短。</td></tr>
+            <tr><td>音频</td><td>E2B/E4B CoVoST 平均 CorpusBLEU 35.4/38.2；FLEURS ASR 平均 WER/CER 0.090/0.075。</td><td>12B encoder-free 展示可行性，但缺少严格同规模 encoder-based ablation。</td></tr>
+            <tr><td>部署压缩</td><td>31B bf16 64.0GB 到 quantized 19.2GB；12B 24.0GB 到 7.65GB。</td><td>QAT 与 MTP 是 agent 成本的关键，但质量/延迟在不同硬件上仍需实测。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="def-list">
+        <div><b>环境学习</b><span>EdgeBench 中的 learning 指同一次运行内通过上下文、工作区文件、反馈、测试和提交分数不断改进，不是更新模型权重。</span></div>
+        <div><b>Best-so-far 曲线</b><span>长程任务中记录到当前时间为止最高分，而不是只看最后一次提交；适合描述 agent 是否持续找到更好解。</span></div>
+        <div><b>SForge</b><span>EdgeBench 的评测框架，负责环境隔离、隐藏评测、长程恢复、提交与轨迹记录。</span></div>
+        <div><b>QAT</b><span>Quantization-aware training，在训练或后训练中让模型适应量化误差，目标是比事后量化保留更多质量。</span></div>
+        <div><b>MTP drafter</b><span>Multi-token prediction 草稿模型，用于 speculative decoding：先草拟多个 token，再由主模型验证，以降低延迟。</span></div>
+        <div><b>Encoder-free multimodality</b><span>Gemma 4 12B 的设计方向：不使用大型单独视觉/音频编码器，而将图像 patch 和音频 chunk 轻量投影到 LLM token 空间。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <div class="callout warn"><b>两篇材料都容易被过度外推</b><p>EdgeBench 的 log-sigmoid 是跨任务平均规律，不代表每个单任务轨迹都平滑；Gemma 4 的模型表格是官方报告，不等于开放了完整训练数据、训练代码或所有消融。</p></div>
+      <p>EdgeBench 的关键边界是评测公平性和可复验性。公开的是 51 个任务和框架，不是完整 134-task suite；不同模型使用的 harness、context window 与工具接口并不完全一致，例如 Opus 4.8 主要用 1M Claude Code context，而 GPT 使用 Codex 256k compact window。模型得分因此是“模型 + scaffold + context + evaluation protocol”的系统分数。</p>
+      <p>Gemma 4 的关键边界是 attribution。报告没有披露 token count、完整数据混合、训练步数、loss curve、优化器细节或完整 RL/post-training recipe；许多对比同时混合 thinking mode、数据、后训练、架构、token budget 和 benchmark 设置。尤其不要把 Gemma 4 的 MTP 最高 3× 速度宣传写成论文表格结果，也不要把开源权重写成开源训练。</p>
+    </section>
+
+    <section id="insight">
+      <h2>工程与研究启发</h2>
+      <p>EdgeBench 给评测者的启发是：未来 agent benchmark 应该记录轨迹，而不是只存最终答案；应该区分 initial ability、learning speed、retention、submission efficiency 与 evaluation hacking 风险；应该把早期曲线预测纳入预算调度，而不是每次都盲跑完整长程评测。它还提醒我们，context、workspace、memory、hidden judge 与 scaffold 都是能力的一部分，不能从模型名中剥离。</p>
+      <p>Gemma 4 给模型团队的启发是：开放模型的竞争正在从“发布一个 checkpoint”变成“发布一个可部署系统”。多模态输入、长上下文、function calling、thinking、量化、speculative decoding、model card、HF/Kaggle 权重、Cookbook/Skills 生态共同决定模型能否进入 agent loop。对企业和研究团队而言，选择模型时不仅要看静态 benchmark，还要看它在长反馈循环中的 memory footprint、latency、tool-call reliability 与 serving economics。</p>
+      <p>两者合起来，形成一个判断标准：如果一个开放模型栈不能负担长程评测的成本，就无法证明它的环境学习；如果一个长程评测不控制 harness 与上下文差异，就无法公平衡量模型栈。Agent 时代的研究需要把“评测系统”和“模型系统”共同作为研究对象。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以 arXiv、官方项目页、官方模型文档和官方博客为主要依据。AlphaXiv 页面只作为材料入口和页面上下文；未引用不可见评论。所有 benchmark 数字均按来源归属为论文或官方报告。</p>
+      <ul>
+        <li>EdgeBench arXiv：<a href="https://arxiv.org/abs/2607.05155">https://arxiv.org/abs/2607.05155</a>；PDF：<a href="https://arxiv.org/pdf/2607.05155">https://arxiv.org/pdf/2607.05155</a>；HTML：<a href="https://arxiv.org/html/2607.05155v1">https://arxiv.org/html/2607.05155v1</a></li>
+        <li>EdgeBench 项目页：<a href="https://edge-bench.org">https://edge-bench.org</a>；GitHub：<a href="https://github.com/ByteDance-Seed/EdgeBench">https://github.com/ByteDance-Seed/EdgeBench</a>；HF dataset：<a href="https://huggingface.co/datasets/ByteDance-Seed/EdgeBench">https://huggingface.co/datasets/ByteDance-Seed/EdgeBench</a></li>
+        <li>ByteDance Seed EdgeBench 博客：<a href="https://seed.bytedance.com/en/blog/edgebench-measuring-real-world-environment-learning-and-discovering-a-new-scaling-law">https://seed.bytedance.com/en/blog/edgebench-measuring-real-world-environment-learning-and-discovering-a-new-scaling-law</a></li>
+        <li>Gemma 4 arXiv：<a href="https://arxiv.org/abs/2607.02770">https://arxiv.org/abs/2607.02770</a>；PDF：<a href="https://arxiv.org/pdf/2607.02770">https://arxiv.org/pdf/2607.02770</a>；HTML：<a href="https://arxiv.org/html/2607.02770v1">https://arxiv.org/html/2607.02770v1</a></li>
+        <li>Gemma 4 model card/docs：<a href="https://ai.google.dev/gemma/docs/core/model_card_4">https://ai.google.dev/gemma/docs/core/model_card_4</a>；overview：<a href="https://ai.google.dev/gemma/docs/core">https://ai.google.dev/gemma/docs/core</a></li>
+        <li>Google Gemma 4 project/blog：<a href="https://deepmind.google/models/gemma/gemma-4/">https://deepmind.google/models/gemma/gemma-4/</a>；<a href="https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/">https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/</a></li>
+        <li>Gemma 4 MTP 与 QAT 文档：<a href="https://ai.google.dev/gemma/docs/mtp/overview">https://ai.google.dev/gemma/docs/mtp/overview</a>；<a href="https://blog.google/innovation-and-ai/technology/developers-tools/quantization-aware-training-gemma-4/">https://blog.google/innovation-and-ai/technology/developers-tools/quantization-aware-training-gemma-4/</a></li>
+        <li>Gemma 4 HF collection：<a href="https://huggingface.co/collections/google/gemma-4">https://huggingface.co/collections/google/gemma-4</a>；Kaggle：<a href="https://www.kaggle.com/models/google/gemma-4">https://www.kaggle.com/models/google/gemma-4</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

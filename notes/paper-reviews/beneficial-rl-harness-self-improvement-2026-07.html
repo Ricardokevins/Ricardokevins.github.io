@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beneficial RL 与 Harness Engineering：自我改进系统的内外两层持久性</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme: light; --paper: #f4f0e8; --surface: #fffdf8; --ink: #20242a; --muted: #5f686f; --line: #dcd6c8; --accent: #c15f3c; --accent-soft: #f7ece4; --accent-2: #8a5528; --accent-2-soft: #fdf3e7; --info: #4f628f; --info-soft: #eef1f8; --shadow: 0 16px 44px rgba(31, 37, 40, 0.08); --radius: 10px; --max: 1120px; --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif; --mono: "SFMono-Regular", "Menlo", "Consolas", monospace; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body { margin: 0; background: linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px), linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px), var(--paper); background-size: 44px 44px; color: var(--ink); font-family: var(--sans); line-height: 1.75; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 78px) 0 28px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 1000px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 920px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    @media (max-width: 760px) { header, main { width: min(100% - 24px, var(--max)); } .grid-2, .grid-3 { grid-template-columns: 1fr; } .def-list > div { grid-template-columns: 1fr; gap: 6px; } table { min-width: 680px; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Review · Alignment / Harness</div>
+    <h1>Beneficial RL 与 Harness Engineering：自我改进系统的内外两层持久性</h1>
+    <p class="lede">OpenAI 的 Beneficial RL 研究和 Lilian Weng 的 Harness Engineering 文章分别处理同一个问题的内外两面：模型内部能否学到跨域、抗压力的有益 traits；模型外部能否通过 context、workflow、tools、memory、evaluation 与权限边界形成可审计的自改进 harness。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>如果把“自我改进”理解成模型突然改写自身权重，就会错过近中期最真实的两条路线。第一条是 OpenAI Beneficial RL 所展示的<strong>内部持久性</strong>：用少量 beneficial trait data 混入标准 RL，尝试让 truthfulness、corrigibility、risk awareness、fairness 等行为倾向跨任务泛化，并在 adversarial prompting 或 harmful finetuning 后更不容易被抹掉。第二条是 Lilian Weng 所梳理的<strong>外部持久性</strong>：把 base model 放进可读写文件、调用工具、派生子代理、运行评估、维护记忆和修改 harness code 的系统，让改进发生在模型外部的软件层。</p>
+      <div class="grid-3">
+        <div class="card"><h3>内部层</h3><p>RL 不只优化任务分数，也会塑造 model-level traits；关键是 reward 和训练分布是否让 traits 持久。</p></div>
+        <div class="card"><h3>外部层</h3><p>Harness 是 non-parametric intelligence surface：context、workflow、tools、memory 与 eval 共同决定 agent 行为。</p></div>
+        <div class="card"><h3>治理层</h3><p>两条路线都离不开 evaluator、held-out tests、trace audits、权限边界和人类监督。</p></div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：从“对齐分数”到“压力下仍保持的结构”</h2>
+      <p>alignment 评估最常见的误区，是把默认 prompt 下的安全分数当成模型品质。真实部署更像长期关系：用户会施压、组织会二次微调、agent 会调用工具、harness 会积累记忆，模型可能在新上下文中被诱导出不同 persona。OpenAI 的 Beneficial RL 研究正是把问题改写为：能否用 RL 把有益 traits 写进更稳定的行为先验，而不仅是在某个 benchmark 上拒答更多或遵守某条规则。</p>
+      <p>Lilian Weng 的文章则提醒：即使模型内部 traits 有所改善，部署系统仍然决定它们如何被调用、放大或绕过。一个 coding/research agent 的行为不只是模型回答，而是文件系统、工具协议、后台任务、子代理、工作流、评估器、权限控制和长期 artifacts 的结果。近中期 recursive self-improvement 可能首先发生在 harness：模型不一定改写自己的权重，但可以改写 prompt、context、workflow、harness code，甚至优化优化器。</p>
+      <p>两篇材料合起来，给出更现实的安全 agent 路线图：内部用 RL 塑造有益 traits，外部用 harness 保留可审计状态和不可自改的安全边界。只做内部层，会低估工具与记忆带来的新风险；只做外部层，则可能让一个易被诱导的模型在更强 harness 中更快放大错误。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：trait learning 与 harness learning</h2>
+      <h3>Beneficial RL：把有益行为当作可泛化 trait 训练</h3>
+      <p>OpenAI 论文先检查 alignment evaluations 是否共享结构：在一组 OpenAI 模型上跑 33 个 alignment evaluations，并计算 evaluation-pair Spearman correlation。平均 Spearman ρ 为 0.107，高于 permutation null 95% interval；第一主成分解释 28.2% variance，也高于 null。这个结果不证明“alignment 是一个单一维度”，但支持一个关键假设：不同 alignment eval 之间可能共享某些 model-level tendencies。</p>
+      <p>随后，作者定义 15 个 beneficial training traits，并在 12 个现实 domains 上合成对话数据。训练主设置是 5% beneficial trait data + 95% standard RL data，与同等 compute、同一 prior、100% standard RL 的 baseline 对比。held-out 直接 trait evaluation 关注 truthfulness、metacognitive transparency、corrigibility、downside-aware planning、power-asymmetry awareness、anti-hierarchy governance、universalizable fairness 七类。</p>
+      <p>这不是简单的 helpfulness reward。论文加入 generic helpfulness control，使用同样 5% conversations 但换成 generic helpfulness / instruction-following reward，代表性 OOD alignment / health / mental-health eval 上没有显著提升；而 beneficial trait RL 在同一组中多项显著提升。论文还做 domain-overlap controls：排除 health/science beneficial data 后仍提升 health eval；只用 health-related beneficial examples 也在多个非健康 alignment eval 上迁移。</p>
+      <h3>Harness Engineering：把模型外部系统做成可演化对象</h3>
+      <p>Weng 将 harness 定义为 base model 周围的系统：它决定模型如何规划、调用工具、管理上下文、保存 artifacts、评估结果、派生子代理、控制权限并迭代。常见 workflow loop 是 plan → execute → observe/test → improve → repeat until goal achieved。文件系统成为 persistent memory substrate；sub-agents 和 backend jobs 让并行实验、假设搜索与失败日志可见；coding agent 的工具面稳定为文件发现/编辑、执行、状态、外部上下文、浏览、artifact 读写、后台进程和 delegation。</p>
+      <p>文章进一步梳理了优化对象的递进：prompt → structured context → workflow → harness code → optimizer code。ACE 把 context 视为 evolving playbook，通过 generator、reflector、curator 从轨迹中提炼结构化 bullet；MCE 把 context function 拆成 static components 和 dynamic operators，做 bi-level optimization；Meta-Harness 把候选 harness 保存为文件系统对象，由 coding agent 提出新 harness 并按评分保留 Pareto frontier；Self-Harness 则从 weakness mining、bounded proposal、held-in/held-out regression validation 三步改进 harness。</p>
+      <p>Weng 的关键洞察是：近中期 RSI 不一定表现为模型直接编辑权重，而是模型越来越会改进“让自己更有效工作的外部机器”。但这也带来新的安全边界：如果 self-improving harness 能编辑权限层、评估器或操作系统边界，自改进 loop 就会突破人类设计的护栏。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：内部 traits 与外部 harness 各自证明了什么</h2>
+      <h3>Beneficial RL 的实证信号</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>证据</th><th>报告结果</th><th>读法</th></tr></thead>
+          <tbody>
+            <tr><td>Held-out traits</td><td>7-trait aggregate 0.406 → 0.607，论文称相对提升 49%；七个 trait 全部提升。</td><td>说明 reward signal 能塑造目标 traits；仍依赖 OpenAI 内部训练与 eval 细节。</td></tr>
+            <tr><td>OOD alignment evals</td><td>53 个 OOD eval 中 44/53 优于 baseline，mean +9.1pp；BH FDR 后 30/53 显著提升，3/53 显著回退。</td><td>支持跨域迁移，但 OOD 仍可能在 latent trait 层重叠。</td></tr>
+            <tr><td>Health / mental health</td><td>10 个 retained internal health/mental-health eval 中 9/10 提升，7/10 显著，无显著回退。</td><td>是重要应用证据；但 health eval 多为内部或 OpenAI ecosystem 评估。</td></tr>
+            <tr><td>Adversarial prompting</td><td>harmful medical persona 下 baseline alignment drop 0.251，beneficial trait model drop 0.119；mental-health harmful persona 下 drop 0.211 vs 0.032。</td><td>支持 selective robustness：不只是不可 steer，而是更难被 harmful persona 拉走。</td></tr>
+            <tr><td>Harmful finetuning</td><td>beneficial trait model 在 broader alignment eval 上平均相对减少 degradation 0.26。</td><td>baseline 是 pre-RL，而非主实验 compute-matched baseline；归因需谨慎。</td></tr>
+            <tr><td>Refusal analysis</td><td>alignment eval refusal rate 13.2% → 23.9%；但只看两模型都不拒答样本，19/20 eval 仍优于 baseline。</td><td>提升不是单靠拒答，但 over-refusal 是真实产品 caveat。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Harness Engineering 的文献证据</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>方向</th><th>代表材料</th><th>可支持的结论</th></tr></thead>
+          <tbody>
+            <tr><td>Context engineering</td><td>ACE、MCE</td><td>context/playbook 可以被轨迹反馈更新，且 structured merge 比重写 prompt blob 更抗 context collapse。</td></tr>
+            <tr><td>Workflow search</td><td>ADAS、AFlow、AI Scientist</td><td>agent workflow 可被表示成代码或图并搜索；自动评分任务最适合。</td></tr>
+            <tr><td>Self-improving harness</td><td>STOP、Self-Harness</td><td>优化 improver 或 harness instructions 有收益，但弱 base model 下递归结构会退化。</td></tr>
+            <tr><td>Evolutionary coding systems</td><td>AlphaEvolve、Darwin Gödel Machine、GEPA</td><td>可自动评估的代码/算法空间中，LLM 可以生成候选、评估、保留并迭代。</td></tr>
+            <tr><td>Auto-research benchmarks</td><td>PaperBench、RE-Bench、MLE-bench、KernelBench</td><td>研究自动化需要更细粒度、可追踪、可验证的评估；长程科学价值仍难测。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="def-list">
+        <div><b>Beneficial traits</b><span>论文中用于训练和评估的一组有益行为倾向，如诚实、不确定性表达、可纠正性、风险意识、公平性、反权力寻求等。</span></div>
+        <div><b>Persistence</b><span>有益行为在压力条件下是否保持：例如 harmful persona prompt、后续 harmful finetuning、分布迁移或长期 agent 运行。</span></div>
+        <div><b>Harness</b><span>模型外部的运行系统，包括上下文、工具、文件、工作流、评估器、记忆、权限、子代理和可执行代码。</span></div>
+        <div><b>Context engineering</b><span>不是把 prompt 写长，而是管理上下文生命周期：抽取、组织、检索、合并、删除和验证经验。</span></div>
+        <div><b>Held-out regression tests</b><span>自改进 harness 接受修改前必须通过的回归测试，目的是避免局部修复破坏已有能力。</span></div>
+        <div><b>Permission boundary</b><span>harness 不能自行修改的安全边界，如评估器、权限层、沙箱和外部审批规则；否则自改进会失去约束。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与失败模式</h2>
+      <div class="callout warn"><b>两条路线都不是“alignment 已解决”</b><p>Beneficial RL 是强实证但仍大量依赖内部数据、模型与评估；Harness Engineering 是系统路线图和文献地图，不是统一实验论文。它们提供的是方向，而不是封闭证明。</p></div>
+      <p>Beneficial RL 的主要边界有五个。第一，未发现公开训练数据、reward model、完整训练 recipe 或复现实验仓库。第二，trait set 不是社会价值的完整定义；论文也强调最终 values 需要更广泛的社会 deliberation。第三，refusal rate 上升是真实 caveat，尤其 alignment eval 上从 13.2% 到 23.9%。第四，harmful finetuning persistence 的对照不是主实验 compute-matched standard RL baseline，不能严格归因。第五，monitorability 只覆盖有限三类 eval，不能证明模型不会学会更隐蔽 deception。</p>
+      <p>Harness Engineering 的主要风险集中在 evaluator 与权限。自改进 loop 会优化给定信号；如果 unit tests、judge model 或 benchmark 有漏洞，它会 Goodhart 这些漏洞。长期 agent 还会遇到 memory lifecycle、negative results、diversity collapse、scope creep 和 maintainability 问题。最危险的是让 self-improving harness 修改自己的安全层：一旦评估器、权限、沙箱和审计规则都可被 loop 内部改写，所谓自我改进就可能变成自我越权。</p>
+    </section>
+
+    <section id="insight">
+      <h2>研究与工程启发</h2>
+      <p>对 alignment 研究而言，Beneficial RL 的启发不是“用 RL 奖励好行为即可”，而是把评估对象从默认表现转向 latent trait 与 persistence。未来评测应系统覆盖：默认行为、OOD domain、生产类输入、prompt-level pressure、后续 finetuning/adaptation、拒答率、非拒答样本质量、monitorability 与能力 side effects。一个安全模型不是只在静态题集上分数高，而是在多种压力下不轻易改变其有益行为先验。</p>
+      <p>对 agent 工程而言，Harness Engineering 的启发是把 harness 当作可版本化的软件系统。prompt、memory、tools、workflow、eval、permission、subagent protocols 都应有作用域、来源、置信度、回滚机制和测试；失败经验不应直接写成全局规则，必须经过 scope 与 regression tests。最可取的自改进不是“模型想改什么就改什么”，而是 bounded editable surface + held-out validation + trace audit + human approval。</p>
+      <p>合并来看，一个安全的自改进 agent 需要双层治理：内部层用 beneficial RL 等方法让模型更倾向于诚实、可纠正、风险敏感；外部层用 harness 让这些倾向在复杂工具链里可观察、可约束、可回滚。前者减少坏 persona 被激活的概率，后者减少系统把一次坏决策固化成长期状态的概率。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以 OpenAI 原文、canonical arXiv、Lilian Weng canonical blog 和被综述论文/项目页面为依据。AlphaXiv 页面只作为材料入口；未引用不可见评论。所有数字均为对应论文或官方博客报告，未进行独立复现实验。</p>
+      <ul>
+        <li>OpenAI Beneficial RL 博客：<a href="https://alignment.openai.com/beneficial-rl/">https://alignment.openai.com/beneficial-rl/</a>；arXiv：<a href="https://arxiv.org/abs/2606.24014">https://arxiv.org/abs/2606.24014</a>；PDF：<a href="https://arxiv.org/pdf/2606.24014">https://arxiv.org/pdf/2606.24014</a>；HTML：<a href="https://arxiv.org/html/2606.24014v1">https://arxiv.org/html/2606.24014v1</a></li>
+        <li>OpenAI 相关背景：HealthBench <a href="https://openai.com/index/healthbench/">https://openai.com/index/healthbench/</a>；Emergent Misalignment <a href="https://openai.com/index/emergent-misalignment/">https://openai.com/index/emergent-misalignment/</a>；paper <a href="https://arxiv.org/pdf/2502.17424">https://arxiv.org/pdf/2502.17424</a></li>
+        <li>Lilian Weng Harness Engineering：<a href="https://lilianweng.github.io/posts/2026-07-04-harness/">https://lilianweng.github.io/posts/2026-07-04-harness/</a>；older agent post：<a href="https://lilianweng.github.io/posts/2023-06-23-agent/">https://lilianweng.github.io/posts/2023-06-23-agent/</a></li>
+        <li>Context / harness works：ACE <a href="https://arxiv.org/abs/2510.04618">https://arxiv.org/abs/2510.04618</a>；MCE <a href="https://arxiv.org/abs/2601.21557">https://arxiv.org/abs/2601.21557</a>；Meta-Harness <a href="https://arxiv.org/abs/2603.28052">https://arxiv.org/abs/2603.28052</a>；Self-Harness <a href="https://arxiv.org/abs/2606.09498">https://arxiv.org/abs/2606.09498</a></li>
+        <li>Workflow / evolution works：ADAS <a href="https://arxiv.org/abs/2408.08435">https://arxiv.org/abs/2408.08435</a>；AFlow <a href="https://arxiv.org/abs/2410.10762">https://arxiv.org/abs/2410.10762</a>；STOP <a href="https://arxiv.org/abs/2310.02304">https://arxiv.org/abs/2310.02304</a>；GEPA <a href="https://arxiv.org/abs/2507.19457">https://arxiv.org/abs/2507.19457</a>；AlphaEvolve <a href="https://arxiv.org/abs/2506.13131">https://arxiv.org/abs/2506.13131</a></li>
+        <li>Auto-research benchmarks：PaperBench <a href="https://arxiv.org/abs/2504.01848">https://arxiv.org/abs/2504.01848</a>；RE-Bench <a href="https://arxiv.org/abs/2411.15114">https://arxiv.org/abs/2411.15114</a>；MLE-bench <a href="https://arxiv.org/abs/2410.07095">https://arxiv.org/abs/2410.07095</a>；KernelBench <a href="https://arxiv.org/abs/2502.10517">https://arxiv.org/abs/2502.10517</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
