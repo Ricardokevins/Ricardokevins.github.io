@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Richard Sutton 创办 Oak Lab：运行时经验、Big World 与深度学习底座之争</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #626a70;
+      --line: #dcd5c7;
+      --accent: #c15f3c;
+      --accent-dark: #934128;
+      --accent-soft: #f7ece4;
+      --ochre: #a65f16;
+      --ochre-soft: #fbf0df;
+      --blue: #345f85;
+      --blue-soft: #edf3f8;
+      --green: #39704d;
+      --green-soft: #edf5ee;
+      --red: #9d3e36;
+      --red-soft: #faece9;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193, 95, 60, .04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(118, 101, 80, .03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent-dark); text-underline-offset: 3px; }
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+    header { padding: clamp(38px, 6vw, 78px) 0 28px; }
+    .kicker {
+      margin-bottom: 13px;
+      color: var(--ochre);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 1020px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 920px;
+      margin: 19px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+    .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, .72);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 64px;
+    }
+    section {
+      padding-top: 31px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3, h4 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font-size: clamp(25px, 3.2vw, 35px); }
+    h3 { margin-top: 24px; color: var(--accent-dark); font-size: 21px; }
+    h4 { color: var(--ink); font-size: 16px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    strong { font-weight: 740; }
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #ece5d7;
+      color: #7c2d12;
+      font-family: var(--mono);
+      font-size: .92em;
+    }
+    .thesis {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(22px, 4vw, 34px);
+      border: 1px solid #d7c2b5;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #fffaf4 0%, #f5e7dc 100%);
+      box-shadow: var(--shadow);
+    }
+    .thesis::after {
+      content: "EXPERIENCE";
+      position: absolute;
+      right: -12px;
+      bottom: -26px;
+      color: rgba(147, 65, 40, .065);
+      font: 900 clamp(42px, 8vw, 92px)/1 var(--sans);
+      letter-spacing: -.04em;
+      pointer-events: none;
+    }
+    .thesis h2 { position: relative; z-index: 1; max-width: 860px; }
+    .thesis p { position: relative; z-index: 1; max-width: 900px; font-size: 17px; }
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 17px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card .eyebrow {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ochre);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .card h3, .card h4 { margin: 0 0 8px; color: var(--accent-dark); }
+    .card h3 { font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout {
+      margin: 19px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent-dark); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--ochre); background: var(--ochre-soft); }
+    .callout.warn > b { color: var(--ochre); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.risk > b { color: var(--red); }
+    .table-wrap {
+      margin: 17px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+    .notes-shell-page .table-wrap table { min-width: 760px; }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    tr:nth-child(even) td { background: rgba(0, 0, 0, .014); }
+    .grade {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .grade.strong { color: var(--green); background: var(--green-soft); }
+    .grade.medium { color: var(--ochre); background: var(--ochre-soft); }
+    .grade.weak { color: var(--red); background: var(--red-soft); }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 22px;
+      margin: 22px 0;
+    }
+    .flow-step {
+      position: relative;
+      min-width: 0;
+      padding: 16px 14px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .flow-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -20px;
+      transform: translateY(-50%);
+      color: var(--ochre);
+      font-weight: 900;
+    }
+    .flow-step b { display: block; color: var(--accent-dark); font-size: 15px; }
+    .flow-step span { display: block; margin-top: 5px; color: var(--muted); font-size: 12.5px; }
+    .fork {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .fork article {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .fork article:nth-child(1) { border-top: 4px solid var(--accent); }
+    .fork article:nth-child(2) { border-top: 4px solid var(--blue); }
+    .fork article:nth-child(3) { border-top: 4px solid var(--ochre); }
+    .fork h3 { margin: 0 0 8px; font-size: 20px; }
+    .fork p { color: var(--muted); font-size: 14.5px; }
+    .fork ul { margin-bottom: 0; font-size: 14px; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr);
+      gap: 15px;
+      align-items: start;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent-dark); }
+    .def-list span { min-width: 0; }
+    .question {
+      display: grid;
+      grid-template-columns: minmax(210px, .36fr) minmax(0, 1fr);
+      gap: 16px;
+      padding: 15px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+    .question:last-child { border-bottom: 0; }
+    .question b { color: var(--accent-dark); }
+    .question p { margin: 0; }
+    .metric-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .metric b { display: block; color: var(--accent-dark); }
+    .metric span { color: var(--muted); font-size: 13.5px; }
+    .small { color: var(--muted); font-size: 13.5px; }
+    footer {
+      padding: 0 0 46px;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: 1fr; gap: 12px; }
+      .flow-step { text-align: left; }
+      .flow-step:not(:last-child)::after { content: "↓"; top: auto; right: 16px; bottom: -18px; transform: none; }
+      .fork { grid-template-columns: 1fr; }
+      .metric-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .grid-4, .metric-list { grid-template-columns: 1fr; }
+      .def-list > div, .question { grid-template-columns: 1fr; gap: 6px; }
+      .notes-shell-page .table-wrap table { min-width: 720px; }
+      .thesis::after { display: none; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Continual Reinforcement Learning</div>
+    <h1>Richard Sutton 创办 Oak Lab：运行时经验、Big World 与深度学习底座之争</h1>
+    <p class="lede">一条创业公告背后，是 Sutton、John Carmack、David Silver 三条“经验时代”路线开始分叉：争论的核心不是要不要强化学习，而是智能能否继续依赖离线批训练、数据回放和部署后冻结，以及一个终身运行的智能体究竟该怎样分配有限的算力、记忆与信用。</p>
+    <div class="header-meta">
+      <span class="pill">原帖：2026-07-13</span>
+      <span class="pill">主题：运行时学习</span>
+      <span class="pill">证据：官方材料 + 论文交叉核验</span>
+      <span class="pill">结论：研究纲领已成形，完整系统尚未证实</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway" class="thesis">
+      <h2>核心判断：Oak 不是“放弃深度学习”，而是在重写学习发生的条件</h2>
+      <p>最容易产生的误读，是把 Sutton 的表态压缩成“RL 派反对深度学习”。公开材料并不支持这个结论：Oak 的实验仍使用 ReLU 网络、梯度与元梯度，OaK 架构也仍然要学习价值、模型、选项和规划知识。它真正否定的是一种默认制度——从人工整理的数据中做大批量优化，让所有能降低当前样本误差的参数都吸收信用，再把训练好的网络冻结后部署。</p>
+      <p><strong>Oak 的科学赌注是：智能不是一个训练完成的模型，而是一套在运行时持续管理“写入什么、保留什么、忘掉什么、怎样验证”的更新过程。</strong> Big World 假设给出为什么必须持续更新；IDBD / NetworkIDBD 处理信用应分给谁；batch-size-one 与事件驱动网络处理实时性和能耗；OaK / FC-STOMP 则试图把经验写回可复用的特征、技能与模型。它们组成的是一条连贯的研究路线，但尚未组成一个被完整验证的通用智能体。</p>
+    </section>
+
+    <section id="post">
+      <h2>原帖究竟宣布了什么</h2>
+      <p>Richard Sutton 在 2026 年 7 月 13 日发布的是一条单独的文字帖，没有图片、论文附件或连续自回复。帖子本身包含四层信息：</p>
+      <div class="grid-4">
+        <article class="card">
+          <span class="eyebrow">组织变化</span>
+          <h3>成立 Oak Lab</h3>
+          <p>Sutton 与 Khurram Javed 离开原先由 John Carmack 带领的小团队，创办 Oak Lab，公开追求一条“略有不同”的路线。</p>
+        </article>
+        <article class="card">
+          <span class="eyebrow">共同前提</span>
+          <h3>智能来自经验</h3>
+          <p>Oak、Keen 与 David Silver 的 Ineffable 都把运行时交互经验视为智能产生并维持的来源，而不是只依赖人类整理的数据。</p>
+        </article>
+        <article class="card">
+          <span class="eyebrow">分歧判断</span>
+          <h3>现有方法不够</h3>
+          <p>Sutton 认为当前深度学习方法对持续、实时地从经验中学习仍然脆弱而低效，不足以承载雄心更大的 AI。</p>
+        </article>
+        <article class="card">
+          <span class="eyebrow">研究姿态</span>
+          <h3>不是局部修补</h3>
+          <p>帖子明确押注“根本性的新想法”和彻底重做，而不是在既有训练配方上做轻微调整。</p>
+        </article>
+      </div>
+      <p>回复区的大多数内容是祝贺与期待，真正有信息量的回复集中在几个追问：具体算法是什么、问题是否真的在反向传播、运行时学习能否写入结构而非只改权重、样本效率和真实时间效率哪个更重要、为什么创业公司适合基础研究，以及商业可行性在哪里。公开回复中没有看到 Sutton 进一步解释技术路线，因此答案必须来自 Oak 的官方研究页面、Sutton/Javed 既有论文和相邻团队材料，而不能从这条帖本身过度外推。</p>
+      <div class="callout info">
+        <b>事实与推断的分界</b>
+        “Oak 与 Keen 为什么分开”没有公开的详细内部说明。能确定的只有：双方共享从经验中学习的目标，Sutton 明说 Oak 选择略有不同的路径。本文对三条路线的比较，是根据各自公开研究重点做出的外部归纳，不是当事人披露的组织内幕。
+      </div>
+    </section>
+
+    <section id="shared-premise">
+      <h2>共同母题：从“人类数据时代”走向“经验时代”</h2>
+      <p>这条帖不是突然转向。David Silver 与 Sutton 在《Welcome to the Era of Experience》中已经提出一套共同母题：AI 的下一阶段不会主要靠继续吸收更多人类生成数据，而会让智能体长期处在行动—观察—反馈的流中，从自身经验产生训练信号。论文把这条路线概括为四个变化：</p>
+      <div class="grid-2">
+        <article class="card"><h3>从短回合到长时间流</h3><p>智能体不是完成一次对话就清空，而是在持续环境中继承状态、后果与未完成目标；当前决策会改变未来能看到什么。</p></article>
+        <article class="card"><h3>从人类文本到环境接地</h3><p>行动和观察来自数字或物理环境，正确性不只由“像不像人类回答”决定，而由行动后果检验。</p></article>
+        <article class="card"><h3>从预设评价到接地奖励</h3><p>奖励最终要连接用户目标或环境信号，而不是把人的所有偏好预先编码成静态标签；论文也允许用户引导的双层目标。</p></article>
+        <article class="card"><h3>从复述人类推理到经验规划</h3><p>智能体用自己累积的模型和预测来规划，不必把每一种内部知识都压成人类语言中的现成概念。</p></article>
+      </div>
+      <p>但“相信经验”只是共同起点，不是完整方法。经验可以被存入回放库，可以拿去做大规模离线训练，也可以在每一步用局部更新即时吸收；它可以推动一个庞大通用模型，也可以推动大量稀疏、专门、只在事件发生时激活的模块。<strong>Oak、Keen 与 Ineffable 的分歧，正发生在经验怎样被计算这一层。</strong></p>
+      <div class="callout warn">
+        <b>一个值得保留的张力</b>
+        《经验时代》认为现有技术配合合适算法，已经提供了足够强的起点；一年后的 Oak 公告却强调当前深度学习方法需要根本重做。两者未必矛盾：前者说的是技术基础与方向，后者针对的是持续学习算法和计算制度。但公开材料尚未说明，Oak 认为多少既有组件可以保留、多少必须替换。这恰好是最重要的科学分歧。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>为什么 Big World 会逼迫智能体在运行时学习</h2>
+      <p>Khurram Javed 的 Big World 假设不是一句“世界很复杂”的修辞，而是一个资源约束：如果环境中与任务相关的细节始终多于智能体能感知、表示和计算的细节，那么再大的预训练也只能形成先验，无法提前枚举未来每个用户、设备、地点、磨损状态和偏好组合。</p>
+      <p>Javed 用家务机器人举过很朴素的例子：一台机器即使学会“洗碗”，也不可能在出厂前知道某个家庭如何摆放特殊杯子、哪扇阳台门轻微错位、洗衣偏好何时改变。更大的模型能覆盖更多常识，却不能消除新传感器、新故障、新用户习惯和其他智能体不断产生的长尾。</p>
+      <div class="flow" role="img" aria-label="Big World 导向持续学习的因果链">
+        <div class="flow-step"><b>世界大于智能体</b><span>相关细节无法一次装下</span></div>
+        <div class="flow-step"><b>只能近似</b><span>注意力与表示必须有选择</span></div>
+        <div class="flow-step"><b>相关性会变化</b><span>昨天有用的特征今天可能失效</span></div>
+        <div class="flow-step"><b>必须持续更新</b><span>边行动边修正预测与策略</span></div>
+        <div class="flow-step"><b>计算成为瓶颈</b><span>不能每一步重训整个模型</span></div>
+      </div>
+      <p>这带来一个比“模型够不够大”更尖锐的问题：<strong>在每一秒有限的计算预算里，智能体该把学习资源分给哪一小部分变化？</strong> 如果每个新样本都让整个网络做近似等价的密集更新，规模越大，运行时学习越不现实。Oak 因此把算法效率、信用选择和稀疏事件驱动视为同一个问题，而不是三个独立优化项。</p>
+      <div class="callout">
+        <b>我的归纳：Oak 实际提出了一个“资源假设”</b>
+        Big World 不只说知识永远不完备；它还暗示智能的核心能力是管理有限资源：何时更新、更新哪里、保留多久、何时构造更高层技能。模型参数量只是容量，持续分配资源的规则才决定容量能否在真实时间里变成适应性。
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>Oak 的技术栈：从选择性信用到可复用时间结构</h2>
+      <p>把 Oak 官网、2026 年 7 月的技术文章和 Sutton/Javed 过去十余年的工作连起来，可以看到四个相互依赖的层次。它们不是已经封装好的产品架构，而是一条逐步逼近的研究程序。</p>
+
+      <h3>第一层：不是每个误差都值得被记住</h3>
+      <p>Oak 最新文章区分了两类关联：可预测的关联可以在未来复用，不可预测的关联只是当前样本的噪声。普通 SGD 的目标是降低样本误差；只要某个参数对当前误差有非零梯度，它就可能得到信用。大批量 IID 数据通过平均化削弱噪声，但在单步、非平稳数据流中，智能体没有足够样本先做平均，也不能等数据集整理好再行动。</p>
+      <p>文章先构造一个线性数据流：4096 个稀疏二值特征中只有一个特征稳定预测目标，同时混入稀疏随机事件与方差为 5 的高斯噪声。SGD 会逐渐把不可预测波动写入大量权重；Sutton 1992 年提出的 IDBD 则给每个特征维持独立步长，用跨时间的梯度一致性调整“这个特征是否值得继续学”。直觉上，持续同向、能在后续样本中验证的更新获得更大步长，反复互相抵消的更新被降权。</p>
+      <p>非线性实验 NoisyMNIST 更接近视觉网络：28×28 的数字被放在 64×64 图像中央，数字只在 10% 的时间出现，中央以外有 1% 概率激活的随机像素，目标是奇数 +1、偶数 −1、无数字 0，再叠加方差为 5 的高斯噪声。一个含 10,000 个 ReLU 隐藏单元的网络用 SGD 训练时，输出权重会广泛增长；NetworkIDBD 则把高信用连接更集中地放在中央真实数字区域。这个实验支持“网络可以学习分配信用”这一局部命题，但没有证明它已解决复杂控制。</p>
+
+      <h3>第二层：batch-size-one、无回放与事件驱动</h3>
+      <p>Oak 的目标是每次只处理刚到达的一条经验，不保存并反复重放原始数据。这样做不是为了追求一种形式上的“纯在线”，而是为了让学习延迟、存储和能耗随当前事件而不是历史数据集增长。官网进一步把它与事件驱动神经网络绑定：只有相关事件触发局部计算，未被触发的大多数网络保持静默。</p>
+      <p>这解释了 Oak 那句最激进的目标——让一个一万亿参数的智能体以 20W 实时学习和规划。即使每个参数只占 1 字节，一万亿参数也对应约 1TB 状态；若每一步都密集读取和改写全部参数，20W 目标在概念上就无法成立。因此，<strong>事件驱动不是后续工程优化，而是这个目标成立所必需的架构约束</strong>。不过 Oak 尚未发布这部分的完整技术报告，官网只标注“即将发布”，所谓多数量级节能目前属于待验证主张。</p>
+
+      <h3>第三层：递归状态必须真正在线</h3>
+      <p>持续环境通常不可完全观测，智能体需要递归状态。传统 BPTT 要保存一段轨迹再反传，不是严格的实时一步更新；精确 RTRL 可以在线，却随网络规模快速变贵。Javed 等人的 columnar-constructive 网络通过模块化与阶段式构造约束连接，使精确实时递归学习的成本近似随参数线性增长。在 trace patterning 和 Atari 预测实验中，它优于截断 BPTT，但代价是限制函数类与网络结构。这说明“不依赖跨时间反传的实时递归”可以做成，不说明这种结构已能覆盖通用序列建模。</p>
+
+      <h3>第四层：OaK 把经验写成特征、选项与模型</h3>
+      <p>如果运行时学习只是在同一组权重上不停微调，它很容易陷入回复区提出的“没有结构写回”问题。Sutton 在 OaK 架构公开演讲中给出的答案更丰富：系统所有组件都持续学习；每个权重都有通过在线交叉验证元学习的独立步长；系统还循环创建新的时间抽象。公开摘要把这个循环写成 FC-STOMP：</p>
+      <div class="flow" role="img" aria-label="OaK 的 FC-STOMP 时间抽象构造循环">
+        <div class="flow-step"><b>Feature Construction</b><span>从经验构造候选特征</span></div>
+        <div class="flow-step"><b>SubTask</b><span>围绕可验证结果定义子任务</span></div>
+        <div class="flow-step"><b>Option</b><span>学习跨多步执行的策略</span></div>
+        <div class="flow-step"><b>Model</b><span>预测选项的结果与持续时间</span></div>
+        <div class="flow-step"><b>Planning</b><span>用模型组合并选择行动</span></div>
+      </div>
+      <p>Option 是带终止条件的时间延展策略，可以理解为可复用技能；option model 则预测执行该技能会到达什么状态、获得什么回报、花费多久。所谓“自我可验证”，重点不是让模型用语言宣布自己正确，而是让特征、子任务和技能落到未来可观察的信号上，由实际经验检验。Reward-Respecting Subtasks、STOMP、Horde 和 Alberta Plan 都是这条谱系的前置部件。</p>
+      <div class="callout info">
+        <b>这回答了“结构能否在运行时写回”</b>
+        OaK 的目标不只是在原权重里积累微小变化，而是持续产生新的预测特征、时间抽象、技能及其模型，再把它们交给规划。这里的关键对象从“一个静态网络”变成“一个会扩展和淘汰内部计算结构的过程”。但公开材料仍主要是架构愿景与组件论文，缺少完整端到端结果。
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据阶梯：哪些已经站住，哪些仍是研究赌注</h2>
+      <p>这组材料最需要避免的错误，是把不同强度的证据揉成一个结论。持续学习失败已有跨任务、跨设置的独立论文；单项算法有受控实验；完整 Oak 系统则还没有公开的综合基准。下面按“主张—证据—边界”拆开。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>主张</th><th>公开证据</th><th>强度</th><th>不能推出什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>标准深网在长期连续训练中会丧失学习新任务的能力</td>
+              <td>Nature 2024 的“loss of plasticity”研究覆盖 Continual ImageNet、CIFAR-100 与连续变化的 RL 设置；长期训练后标准网络可塑性明显下降，持续替换少量低效单元可缓解。</td>
+              <td><span class="grade strong">较强</span></td>
+              <td>不等于所有神经网络必然失败，也不等于灾难性遗忘与可塑性衰减是同一问题。</td>
+            </tr>
+            <tr>
+              <td>真实部署的小分布漂移足以破坏固定策略</td>
+              <td>Physical Atari 用相机和机器人操纵真实手柄，设备成本低于 1000 美元并连续运行数周；作者报告训练与部署中的轻微物理差异会显著降低策略表现。</td>
+              <td><span class="grade strong">较强</span></td>
+              <td>只证明运行时适应值得研究，不证明 Oak 的具体算法已解决适应。</td>
+            </tr>
+            <tr>
+              <td>逐特征步长能减少对不可预测噪声的信用分配</td>
+              <td>IDBD 的长期研究谱系，加上 Oak 的合成数据流和 NoisyMNIST 演示；NetworkIDBD 的权重更集中在真正含数字的区域。</td>
+              <td><span class="grade medium">中等</span></td>
+              <td>博客演示没有公开完整代码、置信区间、广泛基线和超参数敏感性，不能外推到通用控制。</td>
+            </tr>
+            <tr>
+              <td>逐特征步长可改善在线时序预测</td>
+              <td>SwiftTD 结合 true-online TD、逐特征步长优化、过冲约束和步长衰减，在 Atari 输入流的未来回报预测上总体不劣于基线，部分游戏的终身误差低一个数量级。</td>
+              <td><span class="grade medium">中等</span></td>
+              <td>主要是预测与策略评估，不是长期、多任务、开放世界控制。</td>
+            </tr>
+            <tr>
+              <td>精确实时递归学习可以扩展得更好</td>
+              <td>JMLR 2023 的 columnar-constructive 网络在受控结构下使 RTRL 成本近似随参数线性增长，并在 trace patterning 与 Atari 预测实验胜过截断 BPTT。</td>
+              <td><span class="grade medium">中等</span></td>
+              <td>可扩展来自连接约束，表达能力与广泛适用性仍是代价。</td>
+            </tr>
+            <tr>
+              <td>持续构造 reward-respecting 的 option 有助于规划</td>
+              <td>Reward-Respecting Subtasks / STOMP 在网格世界等实验中学到比最短路、eigenoptions 或 option-critic 更有规划价值的时间抽象。</td>
+              <td><span class="grade medium">中等偏弱</span></td>
+              <td>证据环境仍小，尚未展示大规模真实世界中自动构造的稳定性。</td>
+            </tr>
+            <tr>
+              <td>完整 OaK 可以在 big worlds 中持续学习和规划</td>
+              <td>目前主要是 RLC 2025、MIT 2026 演讲摘要、研究计划及组件论文；未见统一端到端基准。</td>
+              <td><span class="grade weak">尚待验证</span></td>
+              <td>不能把架构图等同于已经工作的综合系统。</td>
+            </tr>
+            <tr>
+              <td>一万亿参数智能体可以在 20W 下实时学习</td>
+              <td>这是 Oak 官网明确写出的“holy grail”目标；事件驱动与局部信用让方向在逻辑上自洽，但详细实现仍未公开。</td>
+              <td><span class="grade weak">愿景</span></td>
+              <td>不能当作能耗测量、硬件方案或已达到的性能指标。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这张表给出的总体结论是：<strong>问题存在的证据最强，局部机制有效的证据次之，机制能否组合成 Oak 所承诺的完整系统最弱。</strong> 因此对 Oak 最合理的态度不是相信或嘲讽，而是要求它把组件整合后的终身性能、能耗和恢复能力做成可反驳的实验。</p>
+    </section>
+
+    <section id="fork">
+      <h2>三条经验路线的分叉：Oak、Keen、Ineffable</h2>
+      <p>三家公司都接受“智能要从自己的经验中生长”这个母题，但公开材料显示它们把主要瓶颈放在不同位置。下表是外部归纳，不是三家发布的正式分类。</p>
+      <div class="fork">
+        <article>
+          <h3>Oak：算法与资源</h3>
+          <p>核心问题是：怎样在单条经验到达时，只给真正可泛化的局部结构分配信用，并以极低能耗持续学习与规划。</p>
+          <ul>
+            <li>batch-size-one，强调不存储和回放原始数据</li>
+            <li>逐权重步长、在线交叉验证、选择性信用</li>
+            <li>事件驱动网络与 FC-STOMP 时间抽象</li>
+            <li>极端目标：一万亿参数 / 20W</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Keen：现实系统与实验真相</h3>
+          <p>John Carmack 更强调把智能体放进有延迟、磨损、异步和连续运行的真实系统，让基准暴露算法在墙钟时间里的失败。</p>
+          <ul>
+            <li>Physical Atari 把模拟器问题变成物理闭环</li>
+            <li>关注延迟、探索、多任务、灾难性遗忘与工程速度</li>
+            <li>对完全无回放路线保持怀疑</li>
+            <li>更愿意保留回放、长期情景记忆和标准深度学习组件</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Ineffable：规模化经验基础设施</h3>
+          <p>David Silver 的“superlearner”愿景同样拒绝依赖人类数据，但公开合作重点是让大规模 RL 的行动—观察—评分—更新循环获得更丰富经验和更强算力。</p>
+          <ul>
+            <li>单一智能体可接入任意数字或物理经验流</li>
+            <li>强调一般性、持续性和自主发现知识与技能</li>
+            <li>与 NVIDIA 合作构建大规模 RL 基础设施</li>
+            <li>从 Grace Blackwell 起步并探索后续平台</li>
+          </ul>
+        </article>
+      </div>
+      <p>Carmack 2025 年的公开研究笔记尤其能说明分歧。他赞同在线经验的重要性，也认为标准方法在长期、多任务和真实时间里存在根本缺陷；但他明确怀疑完全不回放的流式 RL 能否在数天内学会多样任务。大脑也许不会重放原始像素，却存在独立的长期情景记忆；对机器而言，保存海量经验在工程上并非不可行。他甚至保留一个“苦涩教训”式可能：足够强的 Transformer 基础模型最终也许会吞并 RL 问题。</p>
+      <div class="callout warn">
+        <b>真正的分叉不是“经验 vs 数据”</b>
+        更准确的轴是：经验应该被即时压成局部参数与结构，还是应保留为可重访的情景记忆；瓶颈主要是学习规则、物理闭环，还是大规模算力与环境供给。Oak 选择了最强的算法约束，因此也承担了最高的证明责任。
+      </div>
+    </section>
+
+    <section id="replies">
+      <h2>回复区的六个追问，公开材料能回答到哪里</h2>
+      <div class="question">
+        <b>“具体想法是什么，而不只是愿景？”</b>
+        <p>已经公开的具体部件包括 IDBD / NetworkIDBD 选择性信用、batch-size-one、事件驱动网络方向、columnar-constructive 实时递归，以及 FC-STOMP 的特征—子任务—选项—模型—规划循环。缺失的是把它们合成同一系统后的代码、规模曲线和长期控制结果。</p>
+      </div>
+      <div class="question">
+        <b>“问题是不是反向传播本身？”</b>
+        <p>不能这样概括。IDBD、NetworkIDBD、OML 等工作仍使用梯度或元梯度；Oak 批评的是标准损失与优化器把短期样本误差广泛写进参数、又依赖大批量平均和回放消噪。递归部分确实尝试避免 BPTT，但这不等于拒绝所有反向传播。</p>
+      </div>
+      <div class="question">
+        <b>“运行时学习能否写入结构？”</b>
+        <p>OaK 的目标正是结构写回：创建特征、定义可验证子任务、学习 option、学习 option model，再让规划组合这些对象。它比纯微调权重更接近可复用程序性知识；但自动创建和淘汰结构在大规模环境中的稳定性仍未证实。</p>
+      </div>
+      <div class="question">
+        <b>“样本效率和墙钟效率哪个更重要？”</b>
+        <p>这是一个错误二选一。真实智能体既不能浪费昂贵交互，也不能花几小时消化一秒经验。Oak 的主张只有在样本、墙钟、能耗、内存和响应延迟同时报告时才有意义；单独赢一个指标可以通过转移成本制造假象。</p>
+      </div>
+      <div class="question">
+        <b>“为什么基础研究要放在创业公司？”</b>
+        <p>组织形式可以提供长期聚焦、紧密系统集成和更快实验循环，但这不是科学证据。Oak 是否比大学或大实验室更适合，只能由持续公开的方法、基准、代码和可复现实验来回答。</p>
+      </div>
+      <div class="question">
+        <b>“商业模式在哪里？”</b>
+        <p>公开材料首先是一项研究计划，没有给出明确产品、客户或收入路径。若其技术成立，低功耗机器人、长期个人智能体和设备端适应都是自然方向；但“可能有用”不能替代当前商业验证。</p>
+      </div>
+    </section>
+
+    <section id="benchmark">
+      <h2>怎样把 Oak 的主张变成可反驳的实验</h2>
+      <p>如果基准仍然把固定数据集随机打乱、允许无限回放、训练完成后只测静态准确率，它会系统性偏向 Oak 正在反对的范式。一个真正区分路线的基准应当具备下面的协议：</p>
+      <div class="grid-3">
+        <article class="card"><h3>一条连续非 IID 流</h3><p>不重置模型，不提供任务边界；相关特征、奖励函数、传感器噪声和用户偏好随时间缓慢或突然变化。</p></article>
+        <article class="card"><h3>严格资源预算</h3><p>限制每步延迟、平均功耗、峰值内存与可保存历史；把 replay 的存储和读取也计入成本。</p></article>
+        <article class="card"><h3>有延迟的接地结果</h3><p>部分行动要经过多步才能验证，迫使系统学习时间抽象、长期信用与可检验的 option model。</p></article>
+        <article class="card"><h3>学—留—再学</h3><p>同一技能离开后重新出现，既测遗忘，也测恢复速度；可塑性衰减与灾难性遗忘分别计量。</p></article>
+        <article class="card"><h3>结构迁移</h3><p>新任务共享部分动力学却改变表面观察，检验学到的是可复用结构，还是只记住最近输入。</p></article>
+        <article class="card"><h3>物理或系统漂移</h3><p>引入手柄磨损、网络延迟、相机位置或 API 行为变化，让“运行时适应”不只存在于模拟器参数中。</p></article>
+      </div>
+      <h3>必须同时报告的指标</h3>
+      <div class="metric-list">
+        <div class="metric"><b>Lifetime regret / error</b><span>整个生命周期累积损失，而非只看最后 checkpoint。</span></div>
+        <div class="metric"><b>Time to recover</b><span>变化发生后恢复到可用水平需要多少真实时间与交互。</span></div>
+        <div class="metric"><b>Retention &amp; relearning</b><span>旧技能保留多少，再次遇到时是否比首次更快。</span></div>
+        <div class="metric"><b>Energy per useful update</b><span>单位有效性能增益消耗多少能量，而非只报 FLOPs。</span></div>
+        <div class="metric"><b>Memory traffic &amp; storage</b><span>参数、状态、回放和模型访问的总成本。</span></div>
+        <div class="metric"><b>Tail latency</b><span>持续学习时高分位响应是否仍满足实时闭环。</span></div>
+      </div>
+      <p>对照组至少应包括：冻结的预训练模型、标准 SGD/Adam 在线更新、带回放的持续学习、continual backprop、稀疏/事件驱动网络，以及 Oak 的逐权重步长和结构构造版本。只有这样才能回答真正的问题：优势来自不回放、逐参数元学习、稀疏激活、结构构造，还是它们的组合。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语速查：不要把相邻概念混成一件事</h2>
+      <div class="def-list">
+        <div><b>运行时学习</b><span>智能体部署并与环境交互期间继续改变预测、策略或内部结构。它可以发生在权重、上下文、外部记忆或显式技能层，不天然等于某一种算法。</span></div>
+        <div><b>在线学习</b><span>数据按顺序到达，算法在流中及时更新。严格在线通常不反复遍历完整历史，但不同论文对是否允许小型 buffer 的定义并不完全一致。</span></div>
+        <div><b>持续学习</b><span>面对非平稳、长期任务序列时继续获得能力，同时管理遗忘和可塑性。在线学习强调数据到达方式，持续学习强调长期能力变化。</span></div>
+        <div><b>可塑性衰减</b><span>网络训练久了以后变得难以学习新模式；它与灾难性遗忘不同，后者是新学习破坏旧能力。</span></div>
+        <div><b>IDBD</b><span>Incremental Delta-Bar-Delta。为每个输入特征自适应学习步长，利用跨时间更新的一致性判断该特征是否值得持续分配信用。</span></div>
+        <div><b>NetworkIDBD</b><span>把逐参数步长与元梯度思想扩展到多层神经网络，使网络不只学习预测，也学习每个参数应该以多快速度改变。</span></div>
+        <div><b>Option</b><span>强化学习中的时间延展行动：包含启动条件、内部策略与终止条件，可把多步行为封装为可规划的技能。</span></div>
+        <div><b>Event-driven network</b><span>只有相关事件发生时才激活和更新局部计算，而不是每个时间步密集扫描全部参数。它是 Oak 低能耗目标的关键假设。</span></div>
+        <div><b>Self-verifiable</b><span>知识或技能的结果能被后续环境信号检验。它不是语言模型自评，而是预测与行动后果之间可反复校验的闭环。</span></div>
+        <div><b>Big World</b><span>环境中潜在相关细节持续多于智能体的感知、表示和计算容量。它限定了一类问题，不声称所有封闭任务都必须持续学习。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与反例：这套叙事还没有证明什么</h2>
+      <div class="grid-2">
+        <article class="card"><h3>没有证明 batch 学习应被淘汰</h3><p>在可重复、可并行、分布相对稳定的任务上，大批量训练和回放非常有效。Oak 的论点针对长期、非平稳、资源受限的 big-world 智能体，不应被扩大成对所有机器学习的否定。</p></article>
+        <article class="card"><h3>没有证明 replay 必然错误</h3><p>回放可以提高数据复用和稳定性，生物系统也可能保留抽象或情景记忆。真正需要比较的是原始回放、压缩记忆、生成式回放与无回放在同一资源预算下的终身表现。</p></article>
+        <article class="card"><h3>没有证明 backprop 是根因</h3><p>Oak 的多个组件仍依赖梯度；问题可能来自密集参数耦合、目标函数、优化器、表示陈旧、缺少结构构造，或这些因素的组合。把一切归咎于 backprop 会失去可检验性。</p></article>
+        <article class="card"><h3>没有证明大模型无法适应</h3><p>上下文学习、外部记忆、参数高效更新、稀疏 MoE 和持续预训练都可能吸收部分运行时适应需求。Oak 必须证明其更彻底方案在成本—能力曲线上确实占优。</p></article>
+        <article class="card"><h3>Blog demo 不是综合证据</h3><p>NoisyMNIST 很好地展示选择性信用的直觉，却没有现实控制的多源非平稳性、长延迟回报和结构迁移。它是机制显微镜，不是产品压力测试。</p></article>
+        <article class="card"><h3>“20W”尚无硬件闭环</h3><p>参数规模、精度、激活比例、内存层级、更新频率和传感器/规划成本都未公开。没有这些条件，目标无法与其他系统做公平比较。</p></article>
+      </div>
+      <div class="callout risk">
+        <b>最可能的反证路径</b>
+        如果带少量回放的稀疏 Transformer、continual backprop 或参数高效适应，在同样的流式协议和能耗预算下长期稳定胜过 Oak 的逐权重元学习与结构构造，那么“必须根本重做”的强版本就会被削弱。反过来，如果标准方法在放大到更长生命周期后持续失去可塑性，而 Oak 的局部机制能组合后保持学习速度，Oak 的主张才真正获得独立支撑。
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>最终 Insight：智能的基本单位，可能不是模型，而是更新过程</h2>
+      <h3>1. 从 capability snapshot 转向 learning trajectory</h3>
+      <p>今天大多数模型比较都在某个冻结时刻截一张能力快照：参数多少、基准多少、推理成本多少。Oak 要求评价另一种对象——系统在几年经验流里怎样变化。对这种对象，初始能力不是唯一变量；学习速度是否衰减、错误知识能否撤销、旧技能怎样恢复、能耗是否随寿命爆炸，都属于能力本身。<strong>一个不会继续变好的高分模型，和一个起点较低但长期能稳定吸收经验的智能体，是两类不同产品。</strong></p>
+
+      <h3>2. 信用分配其实是一种“写权限”治理</h3>
+      <p>把 Oak 的语言翻译成系统设计，梯度不是单纯的数值优化信号，而是在申请修改长期记忆。标准 SGD 倾向让所有相关参数共享写权限；IDBD 试图根据跨时间可验证性动态收回某些参数的权限；OaK 又把部分信息升级为特征、技能和模型。于是持续学习的关键不再只是“如何下降损失”，而是<strong>谁能写、写到哪一层、凭什么保留、何时被后续经验否决</strong>。这与数据库的写入治理、缓存替换和分层记忆有惊人的结构同构。</p>
+
+      <h3>3. 20W 目标迫使算法、架构与硬件共同设计</h3>
+      <p>如果一万亿参数只是容量上限，而每个事件只激活极小子图，那么参数量不再直接等于每步计算量。这个目标逼迫系统具有极高的条件稀疏性、局部更新和分层存储；同时也要求学习规则能够在缺少大批量统计时保持稳定。换言之，Oak 不能先做一个密集算法再等待硬件优化，它必须从一开始让“哪些参数无需被访问”成为学习理论的一部分。</p>
+
+      <h3>4. 三条路线可能最终不是互斥，而是记忆层级的分工</h3>
+      <p>Oak 的即时局部更新、Keen 更开放的长期情景记忆、Ineffable 的大规模经验生成，可能分别对应不同时间尺度：毫秒到秒的快速适应、天到月的经验回访、跨环境的大规模技能发现。真正强的系统未必只选一个，而可能把原始经验、压缩情景、慢速参数、显式 option 和世界模型分层，用不同写入规则连接起来。Oak 的价值在于把最底层实时写入问题推到极致；它的风险则是把“无回放”过早变成教条。</p>
+
+      <h3>5. 这场争论最有价值的产物，会是新的评测坐标</h3>
+      <p>即使 OaK 最终不是正确架构，它仍迫使研究者停止用静态准确率掩盖长期系统问题。把生命周期误差、恢复时间、能耗、内存流量和尾延迟放进同一张表，会改变哪些算法看起来“先进”。这比争论“深度学习是否走到尽头”更有生产力，也更容易被实验推翻。</p>
+
+      <div class="callout">
+        <b>一句话收束</b>
+        Sutton 的新公司不是在宣布一个已经完成的答案，而是在提出一个更苛刻的问题：如果智能必须在世界继续变化时保持可塑、可验证且能耗受限，那么今天以数据集、batch 和冻结模型为中心的深度学习制度，究竟还能保留多少？Oak 已经给出一组连贯组件，下一步必须给出的是端到端、长期、同预算的证据。
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文优先采用当事人和机构的公开页面、论文原文与会议摘要。原帖只明确披露组织变化、共享信念和对当前方法的判断；关于 Oak、Keen、Ineffable 的路线差异是根据各自公开研究重点做出的分析。Oak 的事件驱动神经网络详细文章尚未发布，OaK 也没有公开完整端到端评测，因此节能幅度、一万亿参数 / 20W 和通用 big-world 能力均按目标而非结果处理。论文中的受控实验只支持其各自任务范围，不被外推为通用智能证明。</p>
+      <h3>原帖与 Oak 官方材料</h3>
+      <ul>
+        <li>Richard Sutton，Oak Lab 创办公告：<a href="https://x.com/RichardSSutton/status/2076663628301058329">https://x.com/RichardSSutton/status/2076663628301058329</a></li>
+        <li>Oak Lab 官方主页与研究谱系：<a href="https://www.oaklab.ai/">https://www.oaklab.ai/</a></li>
+        <li>Oak Lab Mission：<a href="https://www.oaklab.ai/mission">https://www.oaklab.ai/mission</a></li>
+        <li>Learning from experience instead of curated datasets：<a href="https://www.oaklab.ai/posts/learning-from-experience-instead-of-curated-datasets">https://www.oaklab.ai/posts/learning-from-experience-instead-of-curated-datasets</a></li>
+      </ul>
+      <h3>Big World、OaK 与经验时代</h3>
+      <ul>
+        <li>Khurram Javed 个人研究主页：<a href="https://khurramjaved.com/">https://khurramjaved.com/</a></li>
+        <li>The Big World Hypothesis：<a href="https://khurramjaved.com/the_big_world_hypothesis.html">https://khurramjaved.com/the_big_world_hypothesis.html</a></li>
+        <li>Why current robots are not ready for big worlds：<a href="https://khurramjaved.com/not_ready_for_big_worlds.html">https://khurramjaved.com/not_ready_for_big_worlds.html</a></li>
+        <li>RLC 2025 / Amii，OaK Architecture：<a href="https://www.amii.ca/videos/oak-architecture-rich-sutton-rlc2025">https://www.amii.ca/videos/oak-architecture-rich-sutton-rlc2025</a></li>
+        <li>MIT CSAIL，OaK Architecture 讲座摘要：<a href="https://www.csail.mit.edu/event/dertouzos-distinguished-lecture-oak-architecture-vision-superintelligence-experience">https://www.csail.mit.edu/event/dertouzos-distinguished-lecture-oak-architecture-vision-superintelligence-experience</a></li>
+        <li>David Silver &amp; Richard Sutton，Welcome to the Era of Experience：<a href="http://www.incompleteideas.net/papers/TheEraOfExperience.pdf">http://www.incompleteideas.net/papers/TheEraOfExperience.pdf</a></li>
+      </ul>
+      <h3>相邻路线</h3>
+      <ul>
+        <li>Keen Technologies 官方主页：<a href="https://keenagi.com/">https://keenagi.com/</a></li>
+        <li>Keen Research：<a href="https://keenagi.com/research/">https://keenagi.com/research/</a></li>
+        <li>John Carmack，Upper Bound 2025 research notes：<a href="https://keenagi.com/research/upperbound25/notes.pdf">https://keenagi.com/research/upperbound25/notes.pdf</a></li>
+        <li>Physical Atari 项目页：<a href="https://keenagi.com/research/physical-atari/">https://keenagi.com/research/physical-atari/</a></li>
+        <li>Physical Atari 论文：<a href="https://arxiv.org/abs/2606.19357">https://arxiv.org/abs/2606.19357</a></li>
+        <li>Ineffable Intelligence 官方主页：<a href="https://www.ineffable.ai/">https://www.ineffable.ai/</a></li>
+        <li>Ineffable 与 NVIDIA 的 RL 基础设施合作：<a href="https://www.ineffable.ai/blog/nvidia-ineffable-intelligence-team-up-to-build-the-future-of-reinforcement-learning-infrastructure">https://www.ineffable.ai/blog/nvidia-ineffable-intelligence-team-up-to-build-the-future-of-reinforcement-learning-infrastructure</a></li>
+      </ul>
+      <h3>机制与独立证据</h3>
+      <ul>
+        <li>Loss of plasticity in deep continual learning，Nature 2024：<a href="https://www.nature.com/articles/s41586-024-07711-7">https://www.nature.com/articles/s41586-024-07711-7</a></li>
+        <li>SwiftTD: A Fast and Robust Algorithm for Temporal Difference Learning：<a href="https://rlj.cs.umass.edu/2024/papers/RLJ_RLC_2024_111.pdf">https://rlj.cs.umass.edu/2024/papers/RLJ_RLC_2024_111.pdf</a></li>
+        <li>Online Step-size Optimization：<a href="https://arxiv.org/abs/2401.17401">https://arxiv.org/abs/2401.17401</a></li>
+        <li>Scalable Real-Time Recurrent Learning Using Columnar-Constructive Networks，JMLR 2023：<a href="https://www.jmlr.org/papers/volume24/23-0367/23-0367.pdf">https://www.jmlr.org/papers/volume24/23-0367/23-0367.pdf</a></li>
+        <li>Online Meta-Learning，NeurIPS 2019：<a href="https://papers.nips.cc/paper_files/paper/2019/file/f4dd765c12f2ef67f98f3558c282a9cd-Paper.pdf">https://papers.nips.cc/paper_files/paper/2019/file/f4dd765c12f2ef67f98f3558c282a9cd-Paper.pdf</a></li>
+        <li>Reward-Respecting Subtasks for Model-Based Reinforcement Learning：<a href="https://arxiv.org/abs/2202.03466">https://arxiv.org/abs/2202.03466</a></li>
+        <li>The Alberta Plan for AI Research：<a href="https://arxiv.org/abs/2208.11173">https://arxiv.org/abs/2208.11173</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>这篇笔记把创业公告视为研究纲领入口：重点不是预测哪家公司会赢，而是把各条路线的可检验主张、证据强度与反证条件摆在同一张图上。</p>
+  </footer>
+</body>
+</html>

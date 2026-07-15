@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attention Amnesia：CoT 后训练如何改坏 Hybrid LLM 的长程检索路由</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #f7f2e8;
+      --ink: #20242a;
+      --muted: #5e6871;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf0dc;
+      --blue: #c15f3c;
+      --blue-soft: #edf3fb;
+      --red: #9f3f36;
+      --red-soft: #f8e8e4;
+      --green: #256b52;
+      --green-soft: #e6f2ec;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 6%, rgba(193, 95, 60, 0.10), transparent 30%),
+        radial-gradient(circle at 86% 0%, rgba(180, 83, 9, 0.11), transparent 32%),
+        linear-gradient(90deg, rgba(193,95,60,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 44px 44px, 44px 44px, auto;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { color: #161a1f; font-weight: 760; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+    header { padding: clamp(42px, 7vw, 88px) 0 30px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 850 13px/1.3 var(--sans);
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(32px, 5.5vw, 62px)/1.1 var(--serif);
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      max-width: 920px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 16px;
+      margin-top: 26px;
+    }
+    .hero-card {
+      min-width: 0;
+      padding: 17px 19px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.88);
+      box-shadow: var(--shadow);
+    }
+    .hero-card b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    .hero-card span { display: block; color: var(--muted); font-size: 14.5px; }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding: 24px 0 64px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 760 clamp(24px, 3.2vw, 36px)/1.2 var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.28rem; }
+    li { margin: 7px 0; }
+
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card, .metric, .callout, .table-wrap, .math-display {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card { padding: 16px 18px; }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric { padding: 16px; }
+    .metric b { display: block; margin-bottom: 4px; color: var(--accent-2); font-size: 12px; text-transform: uppercase; }
+    .metric span { display: block; font: 780 26px/1.1 var(--serif); }
+    .metric small { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      box-shadow: none;
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.risk > b { color: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .flow div {
+      padding: 13px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .flow b { display: block; color: var(--accent); font-size: 13px; }
+    .flow span { display: block; margin-top: 5px; color: var(--muted); font-size: 13.5px; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(136px, .26fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 760; }
+    .def-list span { min-width: 0; color: var(--ink); }
+
+    .math-display {
+      margin: 16px 0;
+      padding: 14px 16px;
+      background: rgba(255, 253, 248, 0.92);
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 760; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    .good { color: var(--green); font-weight: 760; }
+    .bad { color: var(--red); font-weight: 760; }
+    .muted { color: var(--muted); }
+
+    .mini-index {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 18px;
+    }
+    .mini-index a {
+      display: inline-flex;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.78);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 720;
+    }
+    .mini-index a:hover { color: var(--accent); border-color: rgba(193, 95, 60, .45); }
+
+    @media (max-width: 880px) {
+      .hero-grid, .grid-2, .grid-3, .grid-4, .flow { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      table { min-width: 660px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Long Context · Hybrid Attention</div>
+    <h1>Attention Amnesia：CoT 后训练如何改坏 Hybrid LLM 的长程检索路由</h1>
+    <p class="lede">这篇论文最值得记住的不是“推理和长上下文天然二选一”，而是更精确的机制判断：在 hybrid linear-attention 模型里，长程召回高度依赖少数保留下来的 full-attention 层；CoT-SFT 会把这些层的 <code>W_Q</code>/<code>W_K</code> 路由几何推向局部推理轨迹，导致远距离 token selection 失灵。QK-Restore 之所以重要，是因为它用一个几乎手术式的参数替换证明：被破坏的主要是“去哪找”的 routing，而不是模型整体忘掉了怎么 reasoning。</p>
+    <div class="hero-grid">
+      <div class="hero-card"><b>阅读对象</b><span>论文《Attention Amnesia in Hybrid LLMs: When CoT Fine-Tuning Breaks Long-Range Recall, and How to Fix It》与 sheriyuo 对论文的 X 摘要。本文把推文的直觉、论文机制、实验表格、消融和工程含义合并为一篇可复读的深度笔记。</span></div>
+      <div class="hero-card"><b>核心修正</b><span>“你教它推理，它忘了检索”是好的传播语，但容易过度泛化。准确版本是：CoT 风格监督会局部化 hybrid 模型中少数 full-attention 层的 Q/K routing；这个问题在普通 instruction SFT 和部分 pure softmax 模型上并不等价。</span></div>
+    </div>
+    <nav class="mini-index" aria-label="页内导航">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#method">QK-Restore</a>
+      <a href="#evidence">关键证据</a>
+      <a href="#critical-reading">批判性阅读</a>
+      <a href="#terms">术语解释</a>
+      <a href="#insight">工程启发</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断：这不是泛泛的“记忆预算不够”，而是 Q/K routing 被后训练改偏</h2>
+      <p>如果只读推文，容易得到一个模糊结论：模型学会 CoT 后，长上下文能力就会被挤掉。论文真正有信息量的地方在于把这个现象拆到了参数功能层面：attention 里的 Q/K 更像“索引和寻址系统”，V/O 更像“被索引后拿回什么内容”。CoT-SFT 主要破坏前者，而后者仍可承载后训练带来的 reasoning adaptation。</p>
+      <div class="grid-3">
+        <div class="card"><h3>现象</h3><p>CoT-SFT 后，HypeNet、Jet-Nemotron 等 hybrid 模型在困难 NIAH 长上下文召回上明显下降，且 context 越长、检索越难越明显。</p></div>
+        <div class="card"><h3>机制</h3><p>CoT trace 的训练梯度集中在短距离 token pair，导致少数 full-attention 层的 <code>W_Q</code>/<code>W_K</code> 发生 locality-biased drift。</p></div>
+        <div class="card"><h3>修法</h3><p>QK-Restore 从 pre-SFT checkpoint 恢复 Q/K，保留 post-SFT 的其他参数，从而在零训练成本下恢复一大部分长程召回。</p></div>
+      </div>
+      <div class="callout">
+        <b>一句话重述</b>
+        <p>这篇论文不是说 CoT prompt 会立刻伤害检索，也不是说所有模型一做 reasoning SFT 都会崩；它说的是：在依赖少数 full-attention 层做全局召回的 hybrid 架构中，CoT-SFT 会把负责 long-range selection 的 Q/K 几何调成更局部的 reasoning transition 几何。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：便宜长上下文与强推理后训练为什么会冲突</h2>
+      <p>长上下文服务的成本瓶颈来自 attention 和 KV cache。为了把 128K、256K 甚至更长上下文做得便宜，许多模型路线会从纯 softmax attention 走向 linear attention、state-space model 或 hybrid attention。Hybrid 模型的典型折中是：大部分层换成线性或递归机制，少数层保留 full softmax attention，用它们承担全局检索和远距离 token routing。</p>
+      <p>这个设计把成本降下来，但也把长程召回能力集中到了少数“全局路由层”上。纯 Transformer 中的远距离索引有很多冗余层和头；hybrid 模型里，如果少数保留的 full-attention 层被后训练改坏，模型不一定还有足够冗余来补救。</p>
+      <div class="flow" aria-label="hybrid 模型后训练失败链路">
+        <div><b>架构压缩</b><span>大多数层不再做完整 softmax attention</span></div>
+        <div><b>稀缺路由</b><span>少数 full-attention 层负责全局召回</span></div>
+        <div><b>CoT-SFT</b><span>训练信号来自局部推理步骤</span></div>
+        <div><b>Q/K 漂移</b><span>路由几何偏向近邻 token</span></div>
+        <div><b>召回失灵</b><span>远处 needle 难以被稳定选中</span></div>
+      </div>
+      <p>这就是推文中“teach it to reason / forgets how to retrieve”的工程背景：cheap long-context serving 和 CoT reasoning 恰好都很重要，但它们会在 hybrid 模型的稀缺 routing capacity 上相遇。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：Q/K 决定“去哪找”，CoT 梯度却主要强化“附近找”</h2>
+      <h3>1. Attention routing 与 extraction 的功能分工</h3>
+      <p>在一个 softmax-attention head 中，查询位置 \(t\) 对历史位置 \(s\) 的注意力强度由 pre-softmax logit 决定：</p>
+      <div class="math-display">\[
+      e_{ts}^{(\ell,h)}=\frac{\left(q_t^{(\ell,h)}\right)^\top k_s^{(\ell,h)}}{\sqrt{d_h}},\qquad
+      q_t=W_Q h_t,\quad k_s=W_K h_s,\quad v_s=W_V h_s.
+      \]</div>
+      <p>这里 <code>W_Q</code> 和 <code>W_K</code> 决定 query 与 key 的匹配，也就是模型要把注意力路由到哪里；<code>W_V</code> 与输出投影更多决定从被选中的位置抽取什么内容。论文把这称为 routing-extraction decomposition。它不是一个严格的模块隔离定理，但在解释长程检索时很有用：如果 Q/K 几何坏了，模型可能根本看不到远处信息；如果 V/O 继续适应，模型仍可能在短程 reasoning benchmark 上表现变好。</p>
+
+      <h3>2. CoT trace 为什么天然偏局部</h3>
+      <p>论文把 CoT 推理轨迹抽象成 latent Markov process：当前推理状态主要由上一个或近几个状态转移而来。这个假设是理想化的，但抓住了数学和代码推理 trace 的一个共同结构：模型在写“因此”“下一步”“代入上式”时，最直接的监督信号通常来自邻近步骤，而不是十万 token 之前的事实。</p>
+      <p>在这个视角下，distance-conditioned attention-logit gradient 会随距离衰减：</p>
+      <div class="math-display">\[
+      g(\tau)=\mathbb{E}_{t,\ell,h}\left[\left|\frac{\partial \mathcal{L}}{\partial e_{t,t-\tau}^{(\ell,h)}}\right|\right]
+      \le C'\exp(-\tau/W).
+      \]</div>
+      <p>直观解释是：当 \(\tau\) 很小，当前 token 与前面推理步骤的关联强，训练会反复强化这种邻近模式；当 \(\tau\) 很大，梯度很弱，长距离 routing 得不到足够维护。于是即使模型的上下文窗口标称支持 256K，post-training 也可能把“应该能跳远”的 Q/K 投影调成“更爱看附近”的投影。</p>
+
+      <h3>3. 为什么问题集中在 hybrid 模型</h3>
+      <p>纯 softmax Transformer 有多层、多头的全局 attention 冗余；局部化一部分头不一定立刻摧毁长程检索。Hybrid 模型不同：它把多数层替换为 linear / recurrent state，长程召回更依赖少数保留 full-attention 层。论文的注意力可视化也支持这一点：CoT-SFT 后，受影响层的平均注意力距离缩短，QK-Restore 后远距离 off-diagonal attention 被部分恢复。</p>
+      <div class="callout info">
+        <b>关键 insight</b>
+        <p>论文的机制不是“模型 memory budget 被 reasoning 占满”这么粗，而是“负责远距离寻址的低冗余 Q/K 路由系统，被 CoT 局部梯度重写”。这使得修复可以非常局部：不必重新训练整个模型，只要恢复一小组参数的 routing geometry。</p>
+      </div>
+    </section>
+
+    <section id="method">
+      <h2>QK-Restore：用 pre-SFT 的路由，保留 post-SFT 的推理</h2>
+      <p>QK-Restore 的方法简单到像一个 diagnostic intervention：从 post-SFT 模型出发，只把 full-attention 层的 <code>W_Q</code> 和 <code>W_K</code> 换回 pre-SFT checkpoint，其余参数保持 post-SFT。形式化地说：</p>
+      <div class="math-display">\[
+      \theta_{\mathrm{rep}}\leftarrow \theta_{\mathrm{post}},\qquad
+      W_{Q,\mathrm{rep}}^{\ell}\leftarrow W_{Q,\mathrm{pre}}^{\ell},\quad
+      W_{K,\mathrm{rep}}^{\ell}\leftarrow W_{K,\mathrm{pre}}^{\ell},\quad \ell\in L_{\mathrm{attn}}.
+      \]</div>
+      <p>这个方法的意义有两层。第一，它是实用修复：只要保存了 pre-SFT 和 post-SFT 权重，就可以零训练成本生成 repaired checkpoint。第二，它是因果诊断：如果只替换 Q/K 就能恢复召回，同时保留 reasoning，那么说明“召回损坏”主要不是全模型灾难性遗忘，而是可定位的 routing drift。</p>
+      <div class="grid-4">
+        <div class="metric"><b>输入</b><span>pre + post</span><small>需要 CoT-SFT 前后的 checkpoint</small></div>
+        <div class="metric"><b>替换对象</b><span>Q/K</span><small>只作用于保留的 full-attention 层</small></div>
+        <div class="metric"><b>训练成本</b><span>0</span><small>不需要重新 SFT 或 RL</small></div>
+        <div class="metric"><b>目标</b><span>routing</span><small>恢复“去哪找”，不回滚全部 reasoning adaptation</small></div>
+      </div>
+      <h3>Procrustes 变体：在恢复路由和保留 reasoning adaptation 之间折中</h3>
+      <p>直接恢复 Q/K 会把 post-SFT 中可能有用的 Q/K 变化也一起抹掉。论文进一步提出 QK-Pro / Procrustes 变体，把目标写成“尽量接近 post-SFT 权重，同时让 QK routing product 回到 pre-SFT 几何”。核心约束可以理解为：</p>
+      <div class="math-display">\[
+      \min_{W_Q^{\mathrm{new}}, W_K^{\mathrm{new}}}
+      \left\|W_Q^{\mathrm{new}}-W_Q^{\mathrm{post}}\right\|_F^2+
+      \left\|W_K^{\mathrm{new}}-W_K^{\mathrm{post}}\right\|_F^2
+      \quad \mathrm{s.t.}\quad
+      W_Q^{\mathrm{new}}\left(W_K^{\mathrm{new}}\right)^\top = R_{\mathrm{pre}}.
+      \]</div>
+      <p>实验上，QK-Pro 往往在 math 保留上略好，但长程召回恢复不如完整 QK-Restore。这说明 beneficial math adaptation 和 harmful locality drift 在 Q/K 中确实有纠缠；越强行保持 post-SFT Q/K，越可能保留一部分局部化路由。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：退化、恢复、对照与消融</h2>
+      <h3>1. CoT-SFT 后，困难长上下文 NIAH 明显退化</h3>
+      <p>论文最有说服力的不是单个数字，而是模式：简单 needle 场景常常接近饱和，困难场景和更长上下文才暴露问题。下面列的是正文中最能说明趋势的样本。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型与任务</th><th>Pre-SFT</th><th>CoT-SFT 后</th><th>QK-Restore 后</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>HypeNet-9B · NIAH-S2 @ 256K</td><td>67.2</td><td class="bad">9.4</td><td>19.6</td><td>最醒目的“attention amnesia”：CoT-SFT 几乎摧毁困难长程检索，QK-Restore 有恢复但不完全。</td></tr>
+            <tr><td>HypeNet-9B · NIAH-S3 @ 256K</td><td>52.0</td><td class="bad">22.8</td><td class="good">42.6</td><td>恢复幅度接近 20 点，说明 Q/K 确实承载了大量长程 routing。</td></tr>
+            <tr><td>HypeNet-2B · NIAH-S3 @ 128K</td><td>30.4</td><td class="bad">7.6</td><td class="good">30.8</td><td>几乎回到 pre-SFT 水平，是 QK-Restore 作为 causal probe 的强证据。</td></tr>
+            <tr><td>HypeNet-5B · NIAH-S3 @ 256K</td><td>75.2</td><td>65.4</td><td class="good">76.4</td><td>恢复后超过 pre-SFT，说明不是简单回滚模型，而是组合了 pre-SFT routing 与 post-SFT 表征。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>2. 普通 instruction SFT 没有同样破坏长上下文</h3>
+      <p>论文用 Tulu-3 做 non-CoT instruction-following SFT 对照。结果并不支持“任何 post-training 都会伤长上下文”：HypeNet-5B 和 HypeNet-9B 在一些长程 NIAH 指标上反而提升。这一点很重要，因为它把问题从“后训练泛化风险”缩窄到“CoT-style traces 的局部监督结构”。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>设置</th><th>代表结果</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>HypeNet-5B · Tulu-3 SFT</td><td>NIAH-S3 @ 256K：75.2 → 83.8</td><td>普通 instruction SFT 可以提升指令能力，同时不伤长程召回。</td></tr>
+            <tr><td>HypeNet-9B · Tulu-3 SFT</td><td>NIAH-S3 @ 256K：52.0 → 86.8</td><td>退化不是 hybrid 模型 post-training 的必然后果。</td></tr>
+            <tr><td>OpenThoughts-3 / coding CoT</td><td>HypeNet-9B NIAH-S3 @ 256K：40.6 → 61.2，经 QK-Restore 恢复，同时 LCB 基本保留</td><td>CoT 引发的 routing 问题不只出现在数学，也可出现在代码 reasoning 数据。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3. 消融支持“Q 和 K 必须一起恢复”</h3>
+      <p>Q-Restore 和 K-Restore 都有帮助，但不如 QK-Restore；V-Restore 不仅不能恢复召回，还可能伤 math。这个结果符合功能分工：Q/K 是 pairwise routing geometry，单独恢复一个会造成 Q-K mismatch；V/O 更多是 extraction，不是远距离寻址核心。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>变体</th><th>NIAH-S2 @ 128K</th><th>NIAH-S3 @ 128K</th><th>MATH500 Avg@16</th><th>机制解读</th></tr></thead>
+          <tbody>
+            <tr><td>QK-Restore</td><td class="good">83.2</td><td class="good">30.8</td><td>33.7</td><td>联合恢复 Q/K，路由几何最一致。</td></tr>
+            <tr><td>QK-Pro</td><td>79.0</td><td>26.0</td><td class="good">34.2</td><td>更保留 post-SFT adaptation，但召回恢复略弱。</td></tr>
+            <tr><td>Q-Restore</td><td>79.0</td><td>24.4</td><td class="good">34.2</td><td>只恢复 query，不足以重建匹配几何。</td></tr>
+            <tr><td>K-Restore</td><td>71.6</td><td>13.2</td><td class="good">34.2</td><td>只恢复 key 更容易出现 Q/K mismatch。</td></tr>
+            <tr><td>V-Restore</td><td class="bad">36.6</td><td class="bad">15.2</td><td class="bad">32.1</td><td>value 侧不是长程 routing 的关键恢复点。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>4. Pure softmax 模型不是同一种脆弱性</h3>
+      <p>附录中，Qwen2.5-3B/7B 在 32K/64K NIAH 上相对稳定，Mistral-7B 在 S3 @ 64K 上从 81.0 掉到 4.8，但 QK-Restore 仅小幅恢复到 5.4。这个结果提醒我们：QK-Restore 不是万能补丁；当模型本身长上下文表征或 softmax 层冗余结构不同，Q/K 替换的效果可能很有限。</p>
+    </section>
+
+    <section id="critical-reading">
+      <h2>批判性阅读：这篇论文强在哪里，弱在哪里</h2>
+      <div class="grid-2">
+        <div class="card"><h3>强点 1：干预非常局部</h3><p>只替换 Q/K 就能恢复召回，是比相关性可视化更强的证据。它把 failure mode 从“泛化退化”定位到“routing 参数漂移”。</p></div>
+        <div class="card"><h3>强点 2：有 non-CoT 对照</h3><p>Tulu-3 instruction SFT 对照排除了“后训练必然伤长上下文”的粗糙解释，使结论更聚焦于 CoT 数据结构。</p></div>
+        <div class="card"><h3>强点 3：消融闭环完整</h3><p>Q-only、K-only、V-only、QK-Pro、QK-Frozen 等消融形成了较清晰的功能分工证据。</p></div>
+        <div class="card"><h3>弱点：理论更像解释框架</h3><p>latent Markov、stationarity、score-function identity 等假设较强，梯度衰减推导更适合作为机制解释，而不是完全决定性的数学证明。</p></div>
+      </div>
+      <div class="callout warn">
+        <b>最容易误读的地方</b>
+        <p>不要把本文结论扩展成“CoT 一定破坏所有长上下文模型”。论文的主战场是 distilled hybrid linear-attention models；对于原生 hybrid、大规模商业模型、纯 softmax 模型、真实 RAG 工作负载，还需要更广泛验证。</p>
+      </div>
+      <h3>NIAH 是诊断，不是真实长文理解的全部</h3>
+      <p>Needle-In-A-Haystack 很适合测 exact recall 和远距离寻址，但真实任务可能包含多跳聚合、冲突证据、上下文压缩、工具检索、生成约束等复杂因素。NIAH 退化是重要红灯，不等于所有真实长上下文任务同幅度下降；反过来，NIAH 不退化也不能证明真实长文推理可靠。</p>
+      <h3>QK-Restore 的适用条件很苛刻</h3>
+      <p>它依赖成对的 pre-SFT 与 post-SFT checkpoint，也依赖明确知道哪些层是 full-attention / recall-critical。如果只有 post-SFT 模型，或者训练过程中架构、tokenizer、normalization、attention 实现发生变化，直接恢复 Q/K 就不一定可行。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释：先把关键词对齐</h2>
+      <div class="def-list">
+        <div><b>CoT-SFT</b><span>Chain-of-Thought supervised fine-tuning，用带显式推理步骤的数据做监督微调。这里讨论的是训练权重变化，不是推理时简单要求模型“step by step”。</span></div>
+        <div><b>Hybrid attention</b><span>混合注意力架构：部分层保留 softmax full attention，其他层使用 linear attention、recurrent state 或类似高效机制，以降低长上下文成本。</span></div>
+        <div><b>NIAH</b><span>Needle-In-A-Haystack，长上下文诊断任务：把目标事实放在很长文本中，测试模型能否准确找回。</span></div>
+        <div><b>Routing</b><span>注意力中“选位置”的功能，主要由 Q/K 投影和它们的相似度决定；对长程召回来说，routing 比 value extraction 更像索引系统。</span></div>
+        <div><b>Extraction</b><span>从被 attention 选中的 token 中拿回什么内容、如何转换输出，通常与 V/O 投影和后续 FFN 更相关。</span></div>
+        <div><b>QK drift</b><span>后训练导致 <code>W_Q</code>/<code>W_K</code> 参数相对 pre-SFT 发生漂移；本文关注的是这种漂移是否让 attention 更偏近邻、削弱远距离寻址。</span></div>
+        <div><b>QK-Pro</b><span>QK-Restore 的 Procrustes 变体：不是直接完整回滚 Q/K，而是尽量接近 post-SFT 权重，同时约束 QK product 回到 pre-SFT 路由几何。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>工程 / 研究启发：训练强 reasoning 模型时，必须把 routing stability 纳入验收</h2>
+      <p>这篇论文对工程流程的启发很直接：如果你在训练 cheap long-context model，不能只看 MATH、AIME、GSM8K、LiveCodeBench 这些 reasoning 指标。CoT-SFT 后必须重新测长程召回，尤其是 128K/256K、困难 NIAH/RULER、多 needle、多字段、多跳检索。</p>
+      <div class="grid-3">
+        <div class="card"><h3>评测面板</h3><p>把 reasoning benchmark 与 long-context retrieval benchmark 放在同一张表里；用 context length、needle depth、检索难度分层，而不是只报平均分。</p></div>
+        <div class="card"><h3>训练策略</h3><p>保存 pre-SFT checkpoint；对 full-attention 层 Q/K 使用小学习率、正则、冻结或后训练恢复；加入 retrieval replay 防止 routing 被局部 trace 独占。</p></div>
+        <div class="card"><h3>诊断指标</h3><p>监控 Q/K drift、attention mean distance、long-range head attention、NIAH failure distribution，而不是只看 loss 和 reasoning pass@k。</p></div>
+      </div>
+      <p>更深一层的启发是：模型能力不是一个统一标量。Reasoning 变强可能来自局部推理轨迹和 value-side / FFN adaptation；retrieval 变弱可能来自少数 routing 参数的几何漂移。把这两类能力拆到参数功能层面，才有机会做“既要又要”的后训练，而不是在 benchmark 上做跷跷板。</p>
+      <div class="callout">
+        <b>可操作清单</b>
+        <ul>
+          <li>CoT-SFT 前后固定跑一组 long-context recall regression tests。</li>
+          <li>对 hybrid 模型记录 full-attention layer index 和 recall-critical layer 排序。</li>
+          <li>保存 pre-SFT 权重，便于 QK-Restore 或更细粒度的 routing repair。</li>
+          <li>把 Q/K 学习率、LoRA target、冻结策略作为独立超参数，而不是默认跟全模型一起训练。</li>
+          <li>上线前用真实长文任务补充 NIAH，避免把 exact needle recall 等同于全部 long-context understanding。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险：这篇论文还没有证明什么</h2>
+      <div class="callout risk">
+        <b>不要过度外推</b>
+        <p>论文主要验证 HypeNet 与 Jet-Nemotron 等 hybrid/distilled 模型；对更大规模原生 hybrid 模型、生产级 RAG、工具增强 agent、商业闭源模型，结论仍是强警示而不是已完备定律。</p>
+      </div>
+      <ul>
+        <li><strong>理论证明依赖理想化假设。</strong> CoT-Markov 视角解释力很强，但真实 CoT trace 有跳步、回看、变量复用和长程约束，不能简单等同一阶 Markov 链。</li>
+        <li><strong>QK-Restore 可能牺牲部分 task adaptation。</strong> 消融表明 QK-Pro 在 math 上略有优势，说明完整回滚 Q/K 可能丢掉一些有用更新。</li>
+        <li><strong>真实任务需要额外验证。</strong> NIAH 能抓住远程寻址失败，但不能覆盖多文档综合、信息冲突、工具调用、引用准确性等问题。</li>
+        <li><strong>没有 pre-SFT 权重时难以直接修。</strong> 这对只拿到 post-trained checkpoint 的使用者尤其重要。</li>
+      </ul>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文依据公开 X 帖、arXiv v1 论文正文、Hugging Face paper page 与官方代码仓库进行阅读整理。文中数值来自论文表格与摘要；本文没有独立复现实验训练，也没有验证所有 checkpoint 可用性。X 平台内容、论文版本和代码仓库后续可能更新，结论应以公开版本变更为准。</p>
+      <ul>
+        <li><a href="https://x.com/sheriyuo/status/2064743050711282169">sheriyuo 关于 Attention Amnesia 的 X 帖</a></li>
+        <li><a href="https://arxiv.org/abs/2606.11052">arXiv: Attention Amnesia in Hybrid LLMs: When CoT Fine-Tuning Breaks Long-Range Recall, and How to Fix It</a></li>
+        <li><a href="https://huggingface.co/papers/2606.11052">Hugging Face Papers: Attention Amnesia in Hybrid LLMs</a></li>
+        <li><a href="https://github.com/LARK-AI-Lab/QK-Restore">官方 GitHub 仓库：LARK-AI-Lab/QK-Restore</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

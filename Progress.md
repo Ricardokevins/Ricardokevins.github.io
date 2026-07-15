@@ -1,5 +1,189 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-15 全量 Notes 发布收口
+
+### 发布范围
+
+- 统一收口当前工作树中多个 agent 已完成的站内产出：13 篇新独立 HTML 笔记、16 张正文引用的本地证据图、110 条 Notes 索引、Notes 列表页改版、全站独立笔记陶土橙配色、题库图表配色和历史页面结构修复。
+- 新笔记覆盖 Direct-OPD、DeepSeek-V4、SAR 谱重连、ICML 2026 趋势、Richard Sutton / Oak Lab、Attention Amnesia、CL-Bench、Kyutai Full-Duplex、NF-CoT、OPD 参数几何、大规模 Test-Time Compute、Codex 上下文治理与 OPSD 正向 pressure。
+- 排除本地 Bundler 配置 `.bundle/config`；在 `.gitignore` 增加 `/.bundle/`，并移除会错误忽略正式 `.agent` 经验档案与审计记录的未完成规则。
+- 修复 `notes/NOTE_TEMPLATE.md` 占位符被 Jekyll 当成 Liquid 表达式的问题，模板示例改由 raw block 保护；同时清理 `_includes/author-profile.html` 的混合缩进。
+
+### 全量验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 110 entries, 110 top-level note html files`，无结构或内容质量 warning。
+- 13 篇新笔记的可见正文均超过 5,600 字符；每篇都有唯一 `main`、完整站内导航、至少一个证据附录、唯一锚点和有效页内链接。
+- 全目录公式裸 `<` 与公开过程噪声扫描无命中；16 张提交图片全部是正文引用的本地资源、文件存在且 alt 非空；3 张无页面引用的 Prime-RL Echo 遗留图片已排除，修改过的 SVG 均通过 XML 解析。
+- `git diff --check` 通过，无 whitespace error；凭证模式和大文件扫描无命中。
+- Jekyll 全量构建通过；模板 Liquid warning 已消除。日志仅保留 GitHub Metadata 未认证及公共 API rate limit 提示，不影响静态产物。
+- 浏览器逐页检查 13 篇新笔记：图片断链、MathJax 错误、未包裹表格和全局横向溢出均为 0；控制台 error 与失败网络请求均为 0。
+- Notes 列表页桌面与 390px 窄屏视觉检查通过；搜索 `Direct-OPD` 正确返回 2 / 110 条，Paper Note 筛选正确返回 54 / 110 条并按每页 10 条分页。
+
+## 2026-07-15 Richard Sutton / Oak Lab 运行时经验路线深读
+
+### 目标
+
+- 完整读取 Richard Sutton 的 Oak Lab 创办公告与公开回复，不把一条创业帖简化成“RL 对抗深度学习”的口号。
+- 交叉核验 Oak、OaK、Big World、Keen、Ineffable 与相关论文，严格分开原帖事实、机构自述、组件级实验证据和本文推断。
+- 形成一篇可直接发布的中文 Notes，解释技术机制、路线分叉、证据强度、可反驳实验与独立 insight。
+
+### 材料还原与核验
+
+- 还原原帖的四层信息：Sutton 与 Khurram Javed 创办 Oak Lab；Oak、Keen、Ineffable 共享“智能由运行时经验产生并维持”的前提；Oak 判断当前深度学习方法在持续实时学习上脆弱低效；研究目标是根本重做而非局部修补。原帖为单条文字帖，无媒体和连续自回复。
+- 阅读公开 thread 的高信息量回复，将争议归纳为六类：具体算法、backprop 边界、结构写回、样本效率与墙钟效率、创业公司承载基础研究、商业可行性；没有把祝贺类回复当作技术证据。
+- 深读 Oak Mission、`Learning from experience instead of curated datasets`、Khurram Javed 的 Big World 材料、OaK 的 RLC / MIT 公开摘要，以及 IDBD / NetworkIDBD、SwiftTD、columnar-constructive RTRL、Reward-Respecting Subtasks、Alberta Plan 等论文。
+- 用 Nature 的持续学习可塑性研究和 Physical Atari 核验“问题是否真实存在”，再用 Keen / John Carmack 公开研究笔记与 Ineffable / NVIDIA 合作材料比较三条经验路线。Grok 页面受认证挑战无法提交，OaK 官方视频字幕端点未返回正文，因此相关部分只采用官方活动摘要和论文，不根据不可核验转录补写细节。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/richard-sutton-oak-lab-runtime-experience.html`，按“原帖全信息 → 经验时代共同母题 → Big World → Oak 四层技术栈 → 证据阶梯 → 三路线分叉 → 回复区问题 → 可反驳基准 → 术语 → 边界 → 五条 insight”组织。
+- 更新 `_data/notes.yml`，增加 Notes 列表入口、摘要、标签和材料边界；保持现有并发条目与用户工作树修改不变。
+- 笔记正文约 1.38 万可见字符，包含 13 个主章节、50 个二/三级标题；不加载 MathJax 或外部图片，不暴露研究过程、本地路径和生成痕迹。
+
+### 关键判断
+
+- Oak 不是“放弃神经网络 / backprop”。其公开实验仍使用 ReLU、梯度与元梯度；真正反对的是依赖离线 IID batch、广泛吸收样本误差、回放消噪和部署后冻结的默认学习制度。
+- Big World 隐含一个资源假设：世界持续大于智能体时，核心能力从静态容量转为在有限算力、记忆和能耗下决定何时写、写到哪里、保留多久和怎样验证。
+- OaK / FC-STOMP 的关键是结构写回：持续构造特征、子任务、option、option model 并用于规划，因此运行时学习不只等于在同一组权重上微调。
+- 证据强度分三层：持续学习可塑性衰减与真实部署漂移已有较强独立证据；逐特征步长、实时递归和 reward-respecting options 有组件级证据；完整 OaK、事件驱动的数量级节能和“一万亿参数 / 20W”仍是未验证研究目标。
+- Oak、Keen、Ineffable 的公开分叉可归纳为算法 / 资源、现实系统 / 基准、规模化经验基础设施；这是基于公开重点的外部分析，不是组织内部原因声明。
+- 一个有效基准必须同时限制流式非 IID 经验、墙钟延迟、能耗、内存与 replay，并报告 lifetime regret、恢复时间、保留 / 再学习、能耗、内存流量和尾延迟，才能检验“根本重做”是否必要。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 110 entries, 110 top-level note html files`。
+- Jekyll 全量构建通过；仅保留仓库既有的 GitHub Metadata 未认证提示与 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning，新笔记未产生构建错误。
+- 目标 HTML whitespace、公开过程噪声、图片 / MathJax 误加载扫描通过；`_data/notes.yml` targeted whitespace 检查通过。
+- 1440×1000 桌面端与 390×844 窄屏浏览器检查通过：主文档无全局横向溢出，Notes / All Notes / Home 导航正常，共享样式加载成功。
+- 首轮窄屏检查发现共享样式把四列证据表压到 364px；已提高页面局部选择器优先级，使表格在 390px 视口内保持 720px 内容宽度并在容器内横向滚动，二次截图复检通过。
+- 浏览器控制台 warning / error、页面异常、失败请求和 4xx / 5xx 资源响应均为 0。
+
+## 2026-07-15 SAR 谱重连材料深读
+
+### 目标
+
+- 从用户给出的 X 线程第 7 条反向定位主帖，完整读取主帖与 1–10 条回复，而不是只分析 Mix-RL 单条结论。
+- 深读论文 “Spectral Rewiring for Exploration, Purification, and Model Merging”（arXiv:2607.03065 v1）正文、附录、图表与源文件，并用公开模型资料核对配置和可复现边界。
+- 形成一篇可直接发布的中文站内 Notes，分清论文直接证据、合理推断与尚未证明的机制叙事，给出独立研究和工程 insight。
+
+### 材料还原与核验
+
+- 完整还原作者主线程的四类主张：紧凑 RL 更新提取、高采样预算下的探索恢复、32B Mix-RL “净化”、数学/代码专家合并；用户链接实际是第 7 / 10 条。
+- 阅读 arXiv v1 全部 21 页及公开 TeX 源文件，核对 Algorithm 1、Table 1–7、Figure 2–3、对照实验与作者承认的失败边界；整理五张本地证据图。
+- 核对 OLMo 3.1 32B Think 与 DeepScaleR 1.5B 的公开资料；按 DeepScaleR 配置复算低秩因子规模。以论文标题和编号检索公开代码、模型与评测资产，当前未发现 SAR 官方发布。
+
+### 已完成
+
+- 新增 “notes/paper-reviews/sar-spectral-rewiring-rl-updates.html”，按“线程全图 → 问题与指标 → 双重截断机制 → 方法坐标 → 五组证据 → 对照实验 → 边界 → 五条 insight → 实践清单”组织。
+- 新增 “notes/paper-reviews/sar-spectral-rewiring-rl-updates-assets/”，包含方法概览、Pass@k、agentic coding、Mix-RL 与模型合并五张证据图；图片均使用本地资源和非空 alt。
+- 更新 “_data/notes.yml”，为新笔记增加 Notes 列表入口、摘要、标签与材料边界。
+
+### 关键判断
+
+- SAR 的可靠贡献是“对完成后的 RL delta 做基座对齐低秩过滤”，而不是已经证明奇异向量等同于原子技能，或非对角耦合等同于具体推理电路。
+- 真正产生过滤作用的是基座 top-k 子空间与 delta top-k 成分的双重截断；若使用方阵完整 SVD basis，双侧投影退化为恒等映射。
+- AIME 2024 的高采样核心信号是 Coverage@256 从 25 / 30 到 26 / 30，即多覆盖一道题；方向值得追踪，但没有多 seed、置信区间和第二套大样本数学集支撑普遍结论。
+- 32B Mix-RL 更准确的描述是 Pareto trade-off 改善：代码与数学高-k 上升，平均数学正确率和 IFEval 小幅下降；“被删方向就是噪声”仍缺因果证据。
+- Table 2 中 DeepScaleR 的 16.1M 低秩更新因子可由公开结构近似复算，但算法定义的 k×k rewiring matrix 无法对应表中 9.0M，0.58% 参数口径缺少可复算桥梁。
+- 紧凑更新表示不等于模型整体压缩或推理加速；32B SVD 的 wall-clock、峰值内存和 I/O 成本未报告。
+
+### 验证
+
+- Notes 索引一致性校验通过：110 个索引条目对应 110 个顶层笔记 HTML。
+- HTML5 结构检查通过：12 个语义章节、5 张表、5 张本地图片；共享样式、Notes / All Notes / Home 导航、证据附录标记和图片 alt 均满足站内规范。
+- 公开过程噪声扫描通过：正文未出现本地路径、下载位置、生成命令或工具痕迹；五张图片均存在且可从页面相对路径访问。
+- 公式已在真实浏览器中由 MathJax 渲染；页面、共享 CSS、五张图片、MathJax 主脚本与字体共 17 个网络请求全部返回 200。
+- Jekyll 完整构建通过并生成站点。构建仍报告仓库既有的三类非阻塞提示：Faraday 未安装可选 retry middleware、无 GitHub API 认证、notes/NOTE_TEMPLATE.md 第 13 行的 Liquid 占位符警告；目标笔记本身没有构建错误。
+- 完成 1440px 桌面端与 390px 窄屏全页截图检查。首轮发现共享样式的选择器优先级覆盖表格最小宽度，导致手机端数字拆行；已将规则提升为 table-wrap 容器级选择器，复测后长表改为容器内横向滚动，正文、图片、公式和页面导航未出现横向溢出。
+- 本轮追踪文件与新增 HTML 的 whitespace 检查通过；浏览器网络审计无 4xx / 5xx。
+
+## 2026-07-15 ICML 2026 研究趋势材料深读
+
+### 目标
+
+- 完整读取 Soham Ray 的 X 长文《Research Trends at ICML 2026》，覆盖正文全部主题与可识别的代表工作。
+- 将作者的会议观察、论文直接证据和进一步推论分层，避免把会后叙事中的趋势判断误写成已经证实的普遍定律。
+- 形成一篇可直接发布到站内 Notes 的中文深度笔记，并给出独立研究 / 工程 insight。
+
+### 材料还原与核验
+
+- 还原原帖元数据、X Article 全文与公开回复边界；正文包含研究流程自动化、评测、合成数据、Agent Memory 与作者的三篇 τ benchmark 工作。
+- 围绕原文提到的工作，优先核验 ICML、OpenReview、arXiv、Google Research、作者页面和 workshop 日程等一手材料。
+- 重点校准：60 个 benchmark 中 29 个高或极高饱和；`Benchmarking at the Edge of Comprehension` 当前为 spotlight 而非原文所称 oral；`Less is Enough` 的 2K / 300K 等价只对应特定评测；Simula 没有统一跨领域配方；InnoEval 更接近专家评审一致性，不足以证明已经量化 research taste。
+- 会议 accepted paper 总数存在多个公开快照 / 统计口径，笔记不把原文约 6,800 当作精确值；23,918 个有效投稿与 168 个 oral 的公开口径相对稳定。
+
+### 已完成
+
+- 新增 `notes/tech-analysis/icml-2026-research-trends-evaluation-memory.html`，将材料组织为“原文全景 → 四条主线机制 → τ 系列案例 → 统一反馈栈 → 论断审计 → 证据边界 → 七条 insight”。
+- 提出统一解释：AI 系统正在从模型栈升级为生成、验证、环境、记忆四层反馈栈；当某一执行环节边际成本下降，瓶颈会迁移到相邻的决定、验证与责任环节。
+- 更新 `_data/notes.yml`，为新笔记增加 Notes 列表入口、摘要、标签与材料类型。
+
+### 验证
+
+- Notes index 校验通过：`notes index ok: 110 entries, 110 top-level note html files`。
+- 目标 HTML 公开过程噪声扫描通过；未命中本地路径、生成痕迹、工具 / 命令痕迹或模板占位符。
+- 结构与篇幅检查通过：13,558 个可见字符、13 个 `h2`、32 个 `h3`、13 个 section、35 个链接、3 个表格；section / div 标签闭合计数一致，证据附录属性存在。
+- 目标 HTML、`_data/notes.yml` 与 `Progress.md` 的 whitespace 检查通过；新增 HTML 的 no-index whitespace 检查通过。
+- Jekyll 全量构建成功。日志仅有仓库既有的 GitHub Metadata 未认证、可选 `faraday-retry` 未安装和 `NOTE_TEMPLATE.md` 示例占位符 Liquid warning，没有目标笔记构建错误。
+- 浏览器回归通过：桌面端 1440 × 1000 与移动端 390 × 844 均返回 HTTP 200，无控制台错误、页面异常或 body 横向溢出；桌面四层反馈栈为四列，移动端退化为单列。
+- 视觉复检发现移动端四列表格首列被共享壳层的 `min-width: 0` 高优先级规则压窄；已提高目标页移动端选择器优先级，使表格保持 780px 语义宽度、由 364px 容器横向滚动，首列不再逐字换行。修复后重新构建与浏览器断言均通过。
+
+### 环境边界
+
+- 浏览器自动化的首选命令封装因当前依赖包不再暴露预期入口而不可用；最终复检使用 Codex bundled Playwright 1.61.1 与本机 Chrome 完成，未修改仓库依赖。
+
+## 2026-07-15 Direct-OPD weak-to-strong 论文深读
+
+### 目标
+
+- 完整阅读 “Weak-to-Strong Generalization via Direct On-Policy Distillation”（arXiv:2607.05394 v2），核验正文、附录、作者项目页、官方实现与公开模型，并形成可直接发布的站内中文长篇笔记。
+- 不停留在摘要复述：重点解释 teacher/reference policy shift、隐式奖励推导、student on-policy top-k 更新、自适应 KL、实验统计口径、总成本与边际成本，以及理论和实现之间的近似边界。
+
+### 已完成
+
+- 新增 “notes/paper-reviews/direct-opd-weak-to-strong-generalization.html”，正文约 1.23 万非空白可见字符，覆盖：
+  - RLVR 重复探索成本与普通 OPD 在弱教师场景下的退化原因；
+  - sequence-level policy-as-reward 推导、token-level zero-discount surrogate、top-16 Rao-Blackwellized 更新与 adaptive KL；
+  - AIME24/25 评测协议、两组 teacher pair、五个迁移设置、严格 weak-to-strong 判定、顺序组合与训练动力学；
+  - 小模型 RL + transfer 与大模型直接 RL 的端到端 A100 GPU-hours 核算；
+  - 数学单域、多 seed/置信区间缺失、词表兼容、reward hacking 传播、理论—实现差距和代码复现边界；
+  - “小模型 RL 是 reward compiler”“policy-space 乘法 task vector”“policy-shift registry”三条独立研究 insight。
+- 新增同名 assets 目录，复用作者项目页公开的四张论文证据图；所有图片都有非空 alt。
+- 更新 “_data/notes.yml”，新增 Paper Note 入口、摘要、标签与资料类型。
+- 核对官方代码实现：reward 使用 detached student top-k probability 乘 teacher RL/reference log-prob gap；adaptive KL controller 与论文符号更新一致。
+- 官方仓库中不依赖 PyTorch 的 AIME 指标、validation balancing 与 KL controller 测试共 8 项通过；Direct-OPD 张量核心测试因当前 Python 环境未安装 PyTorch 而无法收集，未把该环境限制误记为代码失败。
+
+### 关键判断
+
+- 严格 weak-to-strong 证据集中在 JustRL shift → Qwen3-4B / R1-Distill-7B；QuestA 组是跨 pipeline 鲁棒性，不是弱教师强学生。
+- 论文所称“约 4 小时”是已有 teacher pair 后的边际 transfer 成本；若计入小模型 RL，论文 matched route 约为 5,152 A100 GPU-hours，对比 7B 直接 RL 的 10,240，约节省 49.7%。
+- policy-as-reward 的精确解释依赖 KL-regularized RL 理想最优条件，而实际实现使用有限 checkpoint、部分零 KL 的 GRPO、即时 token reward、top-k 截断与 stop-gradient；应把它理解为经验有效的 improvement direction，而非无条件等价的已校准 reward。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 110 entries, 110 top-level note html files`。
+- 目标 HTML 结构审计通过：单一 title / main、11 个唯一锚点、4 张本地图片、5 个表格、证据附录标记与站内导航均完整；图片文件存在且 alt 非空。
+- 公式与公开过程噪声扫描通过：页面加载 MathJax，共渲染 48 个公式容器且错误为 0；未暴露本地路径、临时目录、localhost、生成器或抓取工具痕迹。
+- Jekyll 全量构建通过；仅保留仓库既有的 GitHub Metadata 未认证提示与 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning，新笔记未产生构建错误。
+- 桌面端与 390px 窄屏浏览器检查通过：4 张图片全部加载，文档无全局横向溢出，公式可独立横向滚动。首轮移动端检查发现共享样式覆盖表格最小宽度，已提高页面局部选择器优先级；复检确认五张表均保持 680px 内容宽度并在容器内横向滚动。
+- 浏览器控制台 error 与失败网络请求均为 0；本轮目标文件 `git diff --check` 通过。仓库级全量检查仍只报告既有的 `_includes/author-profile.html:13` 空格后接 tab，本轮未修改该无关文件。
+
+## 2026-07-09 X AI research frontier threads 深度改写
+
+### 已完成
+
+- 原地深度改写 `notes/tech-analysis/x-ai-research-frontier-threads-2026-07.html`，按六条 X/Twitter 材料分别展开：原帖与材料地图、真正问题、thread/回复争议、外部证据、边界与不要误读、研究 insight。
+- 更新 `_data/notes.yml` 对应 title/summary，使 Notes 列表反映新版文章不再是浅层主题 digest，而是逐条材料深读。
+
+### 验证
+
+- Notes index 校验通过：`notes index ok: 105 entries, 105 top-level note html files`。
+- 目标 HTML 公开过程噪声扫描通过：未命中本地路径、生成痕迹或执行过程信息。
+- 目标 HTML 公式裸 `<` targeted scan 通过：未命中行内公式裸小于号风险；本文未启用 MathJax。
+- 目标 HTML 结构抽检通过：六个目标材料章节均包含 6 个指定子标题；6 个表格均包裹在 `table-wrap` 中。
+- 相关文件 diff whitespace 检查通过。
+- Jekyll build 尝试失败：`bundler: command not found: jekyll`，提示 `Install missing gem executables with bundle install`。
+
 ## 2026-07-09 七月 AI research materials 四篇中文 Notes 转换
 
 ### 已完成
@@ -23,6 +207,477 @@
 
 - 写作依据为上游已验证摘要与可公开 canonical sources；部分上游会话完整历史不可直接读取时，按 coordinator 指示以 canonical/public sources 复核关键事实后成文。
 - 工作树在本轮开始前已有大量 unstaged 修改，包括 `_data/notes.yml`、`Progress.md`、模板、CSS 与多篇既有 notes；后续若提交，需要只纳入本轮四篇新增 HTML 与共享文件中的本轮增量，避免混入既有修改。
+
+## 2026-07-01 笔记配色本地调试复检：清理残留青绿 + 修复学习路径图
+
+### 背景
+
+- 上一步用集中覆盖 + 列表页改色完成主体后，用户要求本地实际起服务、结合渲染效果调试检查。
+
+### 本地复检发现并修复
+
+- 浏览器巡检 + 代码扫描发现集中覆盖（只管 `var(--accent)` 和 body 背景）够不着的**硬编码青绿**残留：装饰渐变（`visual-generation` 的斜角块/大色块）、进度条（`large-scale` 的 `.bar`）、深色代码块青白文字（`#edf7f3`，3 篇 + 模板 + `question-bank.css`）、`mini-index` hover 描边等。
+- 写脚本对**确定的青绿值**做全局精准替换（`rgba(15,118,110)` / `rgba(31,102,120)` / `#0f766e` / `#1f6678` / `#165f73` / `#edf7f3` → 陶土橙 / 暖白），改动 26 文件 63 处，零误伤中性深灰、语义绿、信息蓝。
+- 行内 `code` 经核实全站是 `#7c2d12` 棕红（暖色，非青绿），未动（巡检子代理一度误判成青绿）。
+- 学习路径图 `learning-map.svg`：修复布局——原「基础主干」列右边缘与第二列间距仅 17px（其它列 60–75px），导致分叉箭头被挤成陡峭扭曲的近垂直线；重排为画布 1280、五列统一 80px 间距、分叉/汇聚箭头对称平滑。其余 8 张题库 svg 经扫描已无青绿。
+
+### 验证
+
+- 干净全量重建成功（此前 `_site` 因多次 build 与 serve 被杀交互处于不一致状态，已 `rm -rf _site` 重建）。
+- 浏览器实测：列表页、`attention`/`x-tweet` 详情页、`visual-generation` 装饰块、`learning-map`（页面内完整缩放）均为陶土橙、无青绿；学习图分叉/汇聚箭头对称整齐。
+
+### 二次彻底清理（回应“所有问题都修好了吗”）
+
+- 用户追问是否全部修好，遂做全站 teal 色相深扫，发现各篇还各自留了一个青绿变体（多用于链接下划线，如 `rgba(31,107,115,.28)`），是上一轮固定值替换没覆盖到的手调色。
+- 写按色相自动判定的脚本（`b >= g-2` 判为青绿 → 陶土橙；`g > b` 的语义绿 `--green` 保留），清理 84 文件 173 处（含 svg 与 math 题库子站）。
+- 重跑脚本报 0 改动，确认青绿清零；剩余 45 个 `g > b` 的值经核验全是各篇 `--green` 正面/成功标记语义色，刻意保留（用户反感的是青绿，非绿色）。
+- 浏览器抽验改动最多的 `iterative-finetuning`（7 处）：全暖橙、无青绿、结构完好。
+
+### 关键判断 / 教训
+
+- 集中覆盖解决 `var(--accent)` + 背景的主体青绿；硬编码装饰 / 代码块必须再做一次确定值的精准字符串替换补齐。
+- `pkill -f jekyll` 会误杀“命令行里含 jekyll 字样”的当前命令自身，不要用于自己的命令链。
+- Glob 默认忽略 `.gitignore` 中的 `_site`，诊断构建产物是否存在要用 `ls` 而非 Glob。
+
+## 2026-06-30 笔记模块配色改为 Anthropic 风（青绿 → 陶土橙）
+
+### 背景
+
+- 用户反馈不喜欢青绿（teal），要求把笔记模块改用 Anthropic 配色。
+
+### 调研
+
+- 青绿来自三层：列表页 `_pages/notes.md`、共享壳层 `notes/assets/notes-shell.css`（顶部返回条 `#165f73`/`#1f6678`），以及 100+ 篇详情页各自内嵌 `<style>`（`--accent` 多为 `#0f766e`/`#1f6678`，还有几十种近似 teal 变体）+ 模板 `NOTE_TEMPLATE.md`。
+- 扫描确认：详情页正文颜色绝大多数走 `var(--accent)`，硬编码青绿主要集中在 body 背景纹理；中性深灰与蓝/绿语义色需避免误伤。逐值替换或 HSL 自动判定都不安全（易漏改/误伤）。
+
+### 方案与改动
+
+- 列表页 `_pages/notes.md`：直接把 9 处青绿（`--accent`/soft/ink + 硬编码 `rgba(15,118,110)` + 网格冷蓝）换成陶土橙色板。
+- 详情页（零改成品文件）：在 `notes-shell.css` 末尾加集中覆盖 `.notes-shell-page { --accent:#c15f3c !important; --accent-soft:#f7ece4 !important; background:<暖纸+陶土光晕+暖灰网格> !important }`。因每篇 `<body class="notes-shell-page">` 且正文走 `var(--accent)`，一处即统一全部 100+ 篇，无论其原 teal 值是什么。
+- 返回条 `notes-shell.css` sitebar 青绿（mark/hover/link）→ 陶土橙。
+- 模板 `NOTE_TEMPLATE.md`：`--accent`/soft + body 网格青绿 → 陶土橙，未来新笔记默认 Anthropic。
+- 色板：ivory `#f0ede4` / surface `#fdfbf6` / clay `#c15f3c`（深 `#a8492a`）/ kraft 暖灰 `#7c7468`；赭石 `--accent-2` 与蓝/绿/红语义色刻意保留（非青绿）。
+
+### 验证
+
+- `jekyll build` 成功（仅既有 GitHub Metadata、NOTE_TEMPLATE Liquid 占位符 warning）。
+- 浏览器实测：列表页 + 两篇不同青绿值详情页（`#0f766e` attention-amnesia、`#1f6678` x-tweet-cycle）的链接/标题/卡片/callout/表头/返回条/背景全部陶土橙，青绿消失，结构与可读性完好。
+
+### 二次彻底清理（应用户“结合实际效果调试”要求）
+
+本地起静态服务器逐页核查后，发现集中覆盖只解决了 `var(--accent)` 与 body 背景，仍有几类硬编码青绿会显示：详情页装饰渐变 / 进度条、深色代码块青白文字 `#edf7f3`、hover 描边、各篇自定义 `--teal`/`--accent-dark` 变量，以及面试题库的 SVG 示意图青绿描边。逐一清理：
+
+- 精准全局字符串替换确定青绿值（`rgba(15,118,110)`、`rgba(31,102,120)`、`#0f766e`、`#1f6678`、`#165f73`、`#edf7f3`）：26 个 HTML/CSS。
+- HSL 自动转换：检测真正青绿色相（`min(g,b)-r≥18 且 |g-b|≤14`，排除中性灰、语义绿、信息蓝），保持明度地整体移到陶土橙色相，覆盖几十种青绿变体 + 13 个题库 SVG：58 个文件。
+- 合计约 85 个文件；grep 复核：`notes/` 全目录已无任何青绿 hex / rgba。
+
+### 验证（静态服务器 + grep）
+
+- grep 全 `notes/`：青绿 hex 与 `rgba(15,118,110)`/`rgba(31,102,120)` 归零。
+- 浏览器静态实测：列表页、详情页（visual-generation hero 装饰渐变→暖陶土）、题库「学习路径」SVG（盒子/箭头→陶土描边）、卡片、callout、代码块、交互态均无青绿。
+
+### 已知环境问题（与本次改动无关）
+
+- 本地 `jekyll build` 多次挂起在自动加载的 GitHub-metadata/gist 插件对 `api.github.com` 的网络调用上（之前能拿到快速 403，现在变成连接超时）。本次改动均为等长 hex 字符串替换、不改 HTML/SVG 结构，不可能导致构建挂起；验证改用纯静态服务器直读源文件完成，GitHub Pages 部署端会自行构建。
+
+## 2026-06-30 Review 与美化个人主页笔记列表页（/notes/）
+
+### 背景
+
+- 用户要求 review 并美化个人主页的“笔记模块”，即 `/notes/` 列表页（`_pages/notes.md`，archive 布局 + 作者侧栏 + 自定义 `notes-index` 组件）。
+- Review 发现：列表页沿用 minimal-mistakes 默认归档观感（冷灰白、系统字体、默认小标题 `.page__title`），与站内独立笔记详情页的设计系统（暖纸张底纹 + 青绿主色 + 赭石次色 + 衬线大标题 + 卡片）风格割裂；功能（搜索/分类筛选/分页）本身可用。
+
+### 已完成（仅改 `_pages/notes.md`；搜索/筛选/分页 JS 与卡片数据循环逐字保留）
+
+- 配色与排版统一到笔记设计系统：暖纸张底纹面板（青绿 + info 双向网格纹理）、`--surface` 卡片、青绿主强调、赭石次强调、衬线大标题。
+- 新增页头 hero：赭石 kicker「NOTES · 站内长文」+ 衬线大标题「技术笔记与论文精读」+ lead；用 `.archive > .page__title { display:none }` 隐藏 MM 默认小标题，避免与 hero 重复。
+- 卡片：赭石日期 + 青绿圆点的分类 + 柔和阴影 + hover 上浮变色 + 摘要 3 行截断（卡片高度更整齐）+ 青绿药丸标签。
+- 工具栏/筛选/分页：搜索框暖底 + 青绿聚焦环；分类改为药丸 chip（激活态青绿填充带阴影）；空状态改为赭石虚线提示框；分页按钮统一描边与激活样式。
+- 窄屏（≤600px）：工具栏纵向堆叠、搜索全宽、面板 padding 收窄；卡片本身单列网格、标签自动换行。
+
+### 验证
+
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有既有 GitHub Metadata API rate limit、Faraday retry 建议、`notes/NOTE_TEMPLATE.md` Liquid 占位符 warning，非本轮页面错误。
+- 浏览器实测 `_site/notes/index.html`：桌面端观感统一；分类筛选（Tech Analysis → 49/101、激活态正确）、搜索（聚焦环、计数归零、空状态「没有匹配的笔记。」）、分页（1–11 + 上/下一页，当前页青绿）全部正常。
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 101 entries, 101 top-level note html files`。
+- `git diff --check`：本次 `_pages/notes.md` 无空白错误；仅命中既有的 `_includes/author-profile.html` 历史缩进问题（非本轮改动）。
+
+### 关键判断
+
+- 纯前端展示层改动，零接触数据（`_data/notes.yml`）与交互 JS，风险低、可回滚。
+- 窄屏 live-resize 下出现的“作者侧栏与内容重叠”是 minimal-mistakes susy 浮动栅格在该浏览器工具下未随 resize 重排的伪象；真实手机 fresh-load 在 `<925px` 会按主题既有规则把侧栏堆叠到内容上方，非本次引入，故未改动全局 SCSS。
+
+## 2026-06-29 修复 Vivek RL 后训练 32 答笔记缺少逐题问答
+
+### 背景
+
+- 用户反馈 `notes/tech-analysis/vivek-2332-prime-rl-32-answers.html` 标题写“32 答”，但页面正文没有集中展示 32 问与答内容，导致读者无法直接查阅原帖逐题答复。
+- 目标是原地修复公开笔记，不另建版本文件：先补齐逐题问答入口，再保留既有主题分析和技术栈地图。
+
+### 已完成
+
+- 原地更新 `notes/tech-analysis/vivek-2332-prime-rl-32-answers.html`：
+  - 修改开头 lede，明确“算法 19 个题位中 16 个有实质回答 + Infra 16 个题位保留”。
+  - 新增 `#qa-index` 章节“32 问与答速查：先把原帖内容摆出来”。
+  - 补齐 35 个原帖题位卡片：`qa-algo-1` 到 `qa-algo-19`、`qa-infra-1` 到 `qa-infra-16`。
+  - 对 Algo 9 / 16 / 19、Infra 9 / 11 / 13 / 15 等作者不确定或未展开的题位明确标记边界，避免把推测写成作者观点。
+  - 每题包含：题意、`vivek 答`中文转述、`读法`提示，方便读者先查逐题内容，再读后文主题分析。
+- 更新 `_data/notes.yml` 对应 summary，说明该页已经补齐“32 问与答速查”。
+- 修正文中“not sure”边界描述，改为覆盖原帖实际保留项：Algo 9、Algo 13 中 SAPO/DPPO、Algo 16、Algo 19、Infra 9、Infra 11 中 Megatron、Infra 13/15 中 Slime。
+
+### 验证
+
+- `opencli twitter thread 2063566811749331353 -f yaml --window background --site-session persistent` 成功读取原帖，用于核对逐题答复。
+- HTML 静态结构检查通过：`qa-item=35`、`qa-algo=19`、`qa-infra=16`，无 HTMLParser 错误、无重复 id。
+- 公开过程噪声扫描通过：新改页面未命中 `OpenCLI` / `opencli` / `/tmp/` / `/Users/` / `Downloads` / `Generated locally` 等生成痕迹。
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 101 entries, 101 top-level note html files`。
+- `git diff --check -- notes/tech-analysis/vivek-2332-prime-rl-32-answers.html _data/notes.yml Progress.md` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅有既有 GitHub Metadata API rate limit、Faraday retry 建议和 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning，非本轮页面错误。
+
+## 2026-06-15 ar0cket1《Solving OPSD (basically)》深度 review 与站内笔记导出
+
+### 背景
+
+- 用户要求对 `https://x.com/ar0cket1/status/2065772402622263701` 做深度 review，并导出一篇站内笔记。
+- 主楼只有短链，实际正文在 X Article《Solving OPSD (basically)》中；关联上下文包含作者前序 OPSD 长文、Thinking Machines 的 OPD 解释，以及 RLRT / Rebellious Student 论文。
+- 目标不是复述作者结论，而是明确拆分：哪些 claim 有公开证据支撑，哪些仍属于强推断或待验证假说。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/tech-analysis/ar0cket-opsd-positive-pressure-review.html`。
+- 更新 `_data/notes.yml`，新增 Notes 首页入口，标题为“Solving OPSD？正向 pressure、regretful teacher 与 RLRT 边界”。
+- 笔记重点覆盖：
+  - 为什么这篇长文真正重要的不是“basically solved”，而是把 hinted self-distillation 的 token gap 拆成 positive pressure 与 negative pressure；
+  - `regretful teacher` 的机制含义：带 hint 的 privileged teacher 如何把“偏离我已知路线”与“真正错误”混为一谈；
+  - positive-only 为什么更像 exploitation / consolidation primitive，而不是单独就能支撑“RL-like infinite upper bound”的完整 recipe；
+  - RLRT / Rebellious Student 应该如何被读成 outcome-gated exploration，而不是对“负向信号天然有价值”的简单背书；
+  - 文章中 hint rewrite、KL shock、trace labeling、局部结构 token 奖励的证据强弱；
+  - 哪些结论值得保留，哪些属于跨模型、跨阶段、跨任务尚未闭环的大胆猜测。
+
+### 关键判断
+
+- **这篇文章最强的部分是 diagnosis，不是 final recipe**：它很有力地指出了 hinted self-teacher 里的 dense signal 语义污染问题，但还没有完成跨训练曲线、跨模型和 late-stage scaling 的完整验证。
+- **positive pressure 的价值更像“巩固正确局部结构”**：从公开 trace 例子看，它经常落在 constraint extraction、representation shift、near-repair 这类局部 reasoning event 上，这比简单的 aggregate metric 更有洞察力。
+- **不要把“negative pressure 很脏”误读成“所有负向 teacher-student gap 都没用”**：更稳妥的结论是，在带 hint 的 privileged self-teacher 设置里，未经筛选的负向 gap 高风险；这和一般 OPD / RLVR 里的 token disagreement 不是一回事。
+- **更可信的下一步是组合式 recipe**：positive-only consolidation + reward-gated exploration（例如 RLRT / GRPO mixing）+ hint amplitude control，比“单靠 positive-only 就解决 OPSD”更接近当前证据支持的方向。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过。
+- `git diff --check -- notes/tech-analysis/ar0cket-opsd-positive-pressure-review.html _data/notes.yml Progress.md` 通过。
+- 公开过程噪声扫描通过：新笔记未命中 `OpenCLI` / `opencli` / `/tmp/` / `/Users/` / `Downloads` / `Generated locally` 等生成痕迹。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现仓库既有的 GitHub Metadata API rate limit 与 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning，非本轮新问题。
+
+## 2026-06-12 Pi 工具调用 repair 扩展
+
+### 背景
+
+- 用户要求基于 X 线程中提到的 tool-call repair 思路，检查本机是否存在同类问题，并尝试修复。
+- 前序复盘已扫描 `~/.pi/agent/sessions/**/*.jsonl`，确认本机存在：DeepSeek v4 Pro 调 `read` 时把 `path` 写成 `file`；pi `edit` 本身已有 `edits` JSON string shim；当前 TypeBox `Value.Convert` 会把 `null` 静默转成 `"null"`/`0`/`["null"]`，有语义风险。
+
+### 已完成
+
+- 新增全局 pi 本地扩展包：`~/.pi/agent/packages/pi-tool-input-repair/index.ts` 与 `package.json`。
+- 更新全局 pi 设置：`~/.pi/agent/settings.json`，把该本地扩展包放到 extensions 列表首位；自动备份为 `~/.pi/agent/settings.json.bak.*`。
+- 由于 pi 会自动发现 `~/.pi/agent/extensions/*.ts`，为避免双加载冲突，已将早期单文件草稿移动到 `~/.pi/agent/extensions-disabled/tool-input-repair.ts.bak.*`。
+- 扩展能力：
+  - 对 built-in `read/write/edit` 重新注册带 `prepareArguments` 的兼容版本，保留原执行逻辑；
+  - `read/write/edit` 支持 `file` / `filePath` / `filepath` / `absolutePath` → `path`；
+  - optional `null` 字段删除，避免 `Value.Convert` 将其静默转为错误语义；
+  - `edit.edits` 支持 JSON string array，支持 legacy `{ oldText, newText }` 折叠；
+  - path 字段保守解包退化 Markdown auto-link，如 `[notes.md](http://notes.md)` → `notes.md`；
+  - 通过 `tool_call` hook 对 extension/custom 工具做后置修正：`web_search.queries/domainFilter`、`fetch_content.urls`、`lsp_diagnostics_many.files`、`subagent.tasks/chain` 的 stringified array / bare string / null 处理；
+  - 所有 repair 记录到 `~/.pi/agent/tool-input-repair.log`，可用 `/tool-repair-log` 查看最近记录。
+
+### 验证
+
+- `bun /tmp/tool-repair-test.mjs` 通过，验证本地扩展包入口：
+  - `read.prepareArguments({ file: "sample.txt", limit: null })` → `{ path: "sample.txt" }`；
+  - `edit.prepareArguments({ path: "[notes.md](http://notes.md)", oldText: "a", newText: "b" })` → `{ path: "notes.md", edits: [...] }`；
+  - `web_search` hook 将 `{ queries: "[\"a\",\"b\"]", domainFilter: null, includeContent: null }` 原地修为 `{ queries: ["a", "b"] }`。
+- `ruby -e 'require "json"; JSON.parse(File.read(File.expand_path("~/.pi/agent/settings.json"))); puts "settings json ok"'` 通过。
+- `ruby -e 'require "json"; JSON.parse(File.read(File.expand_path("~/.pi/agent/packages/pi-tool-input-repair/package.json"))); puts "package json ok"'` 通过。
+- `cd /tmp/pi-tool-repair-smoke && pi --no-approve --tools read -p '请读取 sample.txt。'` 通过，证明扩展包加载后 pi 基础 `read` 正常。
+
+### 注意事项
+
+- 该扩展对 built-in 工具的覆盖依赖 pi 当前“extension tool 覆盖同名 built-in tool”的机制；若未来 pi 升级改变覆盖优先级，需要重新验证。
+- 新扩展对 custom tools 的 hook 发生在 schema validation 之后，只能修复已通过验证但语义不佳的情况；不能挽救 validation 前就失败的 custom tool。built-in `read/write/edit` 通过 `prepareArguments` 可在 validation 前修。
+- 本次未修改 pi npm 包源码，升级 pi 后 extension 通常仍在；但若工具 schema 变化，需要复查 repair 规则。
+
+## 2026-06-12 站内 210 个笔记 HTML 深度 review 与批量修复
+
+### 背景
+
+- 用户要求对整个笔记仓库做深度 review，找出所有 bug、显示不合理、内容不详细、冗余内容等问题。
+- 范围：`notes/paper-reviews/` 49 篇、`notes/tech-analysis/` 49 篇、`notes/llm-interview-question-bank/chapters/` 90 篇、`notes/math-interview-question-bank/chapters/` 22 篇，共 210 个 HTML 文件。
+- 工作分两阶段：先全量静态扫描定位问题，再分类按优先级修复并视觉验证。
+
+### Bug 发现与分类
+
+按 NOTES_GUIDE.md 第 4 节静态自检命令 + 自定义 Python 扫描结合，覆盖以下维度：公式 DOM 安全、布局炸裂、结构完整、内容质量、生成痕迹、索引一致性、外链与图片完整性。
+
+最终命中 5 类问题：
+
+| 优先级 | 类型 | 位置 | 数量 |
+|--------|------|------|------|
+| **P0 严重** | MathJax 公式写成 `\\(...\\)` 双反斜杠（不会渲染） | `paper-reviews/opd-geometry-subspace-locking.html` | 8 处 |
+| **P1 布局** | `<table>` 缺少 `<div class="table-wrap">` 包裹 | 20 个文件中 56 个 table | 56 处 |
+| **P2 内容** | yml `title` 与 HTML `<title>` 不一致 | 2 个文件 | 2 处 |
+| **P2 内容** | inline `<code>` 写数学比较（应转 LaTeX） + 文件未加载 MathJax | `tech-analysis/26-05-12-nitrobrew-tweet-analysis.html` | 2 处 |
+| **P2 内容** | 笔记正文/证据附录残留仓库工作痕迹（`Progress.md`/`INDEX.md`/`fetch.sh`/`seen_ids` 等） | `tech-analysis/x-tweet-cycle-ai-digest.html` | 5 处 |
+
+✅ 已确认全部为零的项：DOM 破坏（公式裸 `<` 字母）、悬空锚点 `href="#xxx"`、重复 `id`、`<div>` 不平衡、缺失图片、空 `alt`、缺失 `<main>` / `notes-sitebar` / `evidence-appendix`、笔记缺 H2、SVG 文字溢出、孤立 yml/HTML、外链 host 异常、有 MathJax 公式但未加载脚本、有脚本但无公式、未关闭 `<title>`、`opencli` / `/tmp/` / `Generated locally` 等显式工具痕迹。
+
+### 已完成的修复
+
+1. **opd-geometry-subspace-locking.html**：将所有正文中的 `\\(...\\)` 与 `\\)...\\)` 替换为 `\(...\)` 和 `\)...\)`，保留 `<script>` 内的 MathJax 配置不变。视觉验证：MathJax 容器从 0 个增至 10 个，第一条公式 `ϕt=∇θlog pθ(yt|x, y<t)` 渲染正确。
+2. **20 个文件 56 个 table 包裹**：自动用 Python 脚本将每个无包裹的 `<table>...</table>` 包裹为 `<div class="table-wrap">...</div>`，保留原本就用 `scroll-table` / `chap-table` / `info-table` 等其他合法包裹的部分不动。视觉验证：3 个抽样文件（mmprolong / fast-slow / zai-zcube）在 390px 窄屏下 doc.scrollWidth=390，无横向溢出，表格内可正常横向滚动。
+3. **x-tweet-cycle-ai-digest.html**：把 yml 的 "X 推文周期抓取" 改为 "X 推文周期观察"，summary 内同步替换；笔记正文 `<section id="mechanism">` 整段重写，删除 `x-tweet-digest/fetch.sh` / `seen_ids` / `state.json` / `/loop 15m` / `INDEX.md` / `ANALYSIS.md` / `--product top` / `--limit 10` 等仓库工作路径与命令痕迹，统一改为 "持续轮询管线 / 跨轮 ID 表 / 按热度排序 / 每轮抓取数量上限" 这类面向读者的中性表述；证据附录的 `Progress.md` / `INDEX.md` / `ANALYSIS.md` 项替换为 "边界 / 未确认事项"，并删除一个空 `<p>`。
+4. **eliebakouch-grok-v9-midtraining.html**：HTML `<title>` 由 "Grok V9、Cursor 数据与 Mid-training | Elie Bakouch X 帖深度梳理" 统一为 yml 中的 "Grok V9、Cursor 数据与 Mid-training 深度解读"。
+5. **26-05-12-nitrobrew-tweet-analysis.html**：把表格与 grid 卡片中的 `\`d_model << V\``、`\`W_U^T h_T\``、`\`d_model\`` 等 inline code 数学符号统一改写为 LaTeX 公式 `\(d_{\text{model}} \ll V\)`、`\(W_U^\top h_T\)`、`\(d_{\text{model}}\)` 等；在 head 中补加 MathJax 3 加载脚本和 `inlineMath` 配置。视觉验证：MathJax 容器 12 个，`d_model ≪ V`、`W_U^⊤`、`z_T = W_U^⊤ h_T` 均以衬线数学体清晰渲染。
+
+### 验证
+
+```
+ruby scripts/validate_notes_index.rb   # notes index ok: 100 entries, 100 top-level note html files
+git diff --check                       # no whitespace issues
+bundle exec jekyll build               # done in 7.6s, 仅 NOTE_TEMPLATE.md 模板 Liquid 警告（占位符 `{{...}}`，非生产页面）
+```
+
+最终静态扫描结果（综合 8 项）全部为零：
+
+```
+1. 双反斜杠数学(\\():     0 files
+2. 公式裸 < 字母:         0
+3. 未包裹 <table>:        0
+4. 空 <p>:                0
+5. 悬空锚点:              0 files
+6. 重复 id:               0 files
+7. notes.yml mismatch:    0
+8. 仓库内/生成痕迹:       0 files
+```
+
+### 视觉验证截图
+
+存于 `output/playwright/`：
+
+- `opd-desktop.png`、`opd-mechanism.png` — OPD 笔记桌面整页 + mechanism 区块公式渲染
+- `mmprolong-desktop.png`、`mmprolong-mobile-tables.png` — 7 个 table 在桌面 + 390px 窄屏下渲染
+- `zai-zcube-mobile.png` — 5 个 table 全长窄屏整页
+- `nitrobrew-grid.png` — Nitrobrew grid-2 卡片中 LaTeX 数学渲染
+- `xtweet-mechanism.png` — x-tweet-cycle 清理仓库痕迹后的 mechanism 段
+
+### 关键判断
+
+- **仓库整体卫生度高**：210 个 HTML 中 5 类问题命中数极小（对应 24 个文件 / 73 处），且无致命的 DOM 破坏、no 悬空锚点、no 重复 id；过去几次审查（如 [[full-site-notes-review-patterns]]）的修复成效保持得很好。
+- **本轮新发现的两大类问题**与历史模式不同：(1) 双反斜杠 MathJax 失渲是手写笔记时复制 JS 字面值导致；(2) 大批量 table 缺包裹是由旧版本笔记直接迁入未经 NOTES_GUIDE 检查。修复后的扫描器和 wrap 工具应纳入未来 CI。
+- **xtweet-cycle 内联工具路径**是 NOTES_GUIDE 第 2.4 节的典型反例：写作者无意识把"我在仓库里怎么生成这份"写进读者面向文档。已彻底清理。
+
+### 后续可选项（非本次范围）
+
+- 把 `wrap_tables` 与 `double-backslash math detector` 集成到 `scripts/validate_notes_index.rb`，使 `git diff --check` 链路可拦截这类问题。
+- 题库章节的 `chapter-nav` 链接是按主题相关跳转而非 prev/next，与 NOTES_GUIDE 一致；若未来希望支持双向 prev/next，需要新增 `<nav class="chapter-pager">` 组件，不在本轮范围。
+
+---
+
+## 2026-06-12 Kyutai Full-Duplex 语音交互对齐 HTML 笔记
+
+### 背景
+
+- 用户要求对 Kyutai Labs X 发布帖 `https://x.com/kyutai_labs/status/2064698824879202526` 做深度梳理和阅读理解，包含其中论文内容，并导出为站内 HTML 笔记。
+- 目标论文为 arXiv `2606.11167`：`Multi-Faceted Interactivity Alignment in Full-Duplex Speech Models`。
+- 关联公开材料包括 Kyutai 官方博客、Hugging Face Interactivity Alignment collection、`moshika-rl-seamless` / `personaplex-rl-seamless` 模型卡和音频样例数据集说明。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/paper-reviews/kyutai-interactivity-alignment-full-duplex-speech.html`。
+- 更新 `_data/notes.yml`，新增 Notes 首页入口。
+- 笔记重点覆盖：
+  - 为什么 full-duplex 语音模型的自然性不是“更快说话”，而是停顿处理、接话、backchannel 附和和用户插话四类交互节奏的联合判断；
+  - token-level supervised learning 为什么难以优化 backchannel timing、pause vs turn-yield 区分等 sequence-level 行为；
+  - 论文如何从 Fisher / Seamless Interaction 双人对话中用 VAD 抽取四类训练片段；
+  - 轴特定 reward、LLM Judge 语义奖励、reward-decoupled normalization 和 GRPO 后训练流程；
+  - Moshi / PersonaPlex 在 Full-Duplex-Bench v1 静态四轴评测和 v2 GPT-Realtime 多轮评测中的结果；
+  - 消融实验中 pause / turn / backchannel / interruption / LLM Judge / context 各自对应的失败模式；
+  - 安全退化风险：更会附和和更快回应可能与拒绝、边界表达冲突；
+  - 工程启发：语音 Agent 需要 interactivity reward、semantic reward、speech-quality reward 与 safety reward 的分层 reward stack。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 100 entries, 100 top-level note html files`。
+- 公开过程噪声扫描无输出：新笔记与索引未命中工具名、本地路径、临时目录或生成痕迹。
+- `git diff --check -- notes/paper-reviews/kyutai-interactivity-alignment-full-duplex-speech.html _data/notes.yml Progress.md` 通过。
+- HTML 结构自检通过：1 个 title、1 个 `notes-shell.css`、`body.notes-shell-page`、`main`、`data-note-role="evidence-appendix"`、无未闭合标签、无重复 id。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现既有 GitHub Metadata 未认证 warning 与 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning。
+- 构建产物存在：`_site/notes/paper-reviews/kyutai-interactivity-alignment-full-duplex-speech.html`；页面标题、H1、5 个表格 `.table-wrap` 包裹、MathJax 脚本和证据 appendix 均检查通过。
+- Chrome headless 桌面与窄屏截图验证通过：页面可渲染，生成的 1280px 与 390px 截图均为非空 PNG；Chrome stderr 仅有系统级 web app / mojo 噪声，不是页面资源错误。
+
+## 2026-06-12 Attention Amnesia / QK-Restore HTML 笔记
+
+### 背景
+
+- 用户要求对 `https://x.com/sheriyuo/status/2064743050711282169` 以及其中论文做深度阅读理解和梳理，并导出站内 HTML 笔记。
+- 目标材料为 arXiv `2606.11052`：`Attention Amnesia in Hybrid LLMs: When CoT Fine-Tuning Breaks Long-Range Recall, and How to Fix It`，附官方仓库 `LARK-AI-Lab/QK-Restore`。
+- 笔记定位为站内论文评述页，重点解释 CoT-SFT 如何在 hybrid linear-attention 模型中局部化 Q/K routing，并如何通过 QK-Restore 做零训练修复。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/paper-reviews/attention-amnesia-qk-restore-hybrid-llms.html`。
+- 更新 `_data/notes.yml`，新增 Notes 首页入口。
+- 笔记重点覆盖：
+  - sheriyuo 原帖“teach it to reason / forgets how to retrieve”的准确化解读：不是泛化到所有 CoT，而是 hybrid 模型中 CoT-SFT 改坏少数 full-attention 层的 Q/K 长程路由；
+  - hybrid linear-attention 模型为什么把长上下文召回集中到少数 full-attention 层，导致 routing capacity 低冗余；
+  - attention routing / extraction 分解：`W_Q`/`W_K` 负责“去哪找”，`W_V`/`W_O` 更负责“拿回什么”；
+  - CoT-Markov / gradient locality 的直觉、公式与理论边界；
+  - QK-Restore、QK-Pro / Procrustes 变体、Q/K/V 消融、QK-Frozen 对照；
+  - HypeNet / Jet-Nemotron 的 NIAH 退化和恢复结果、Tulu-3 non-CoT SFT 对照、pure softmax 模型边界；
+  - 工程启发：post-training 中同时验收 reasoning benchmark 与 long-context recall regression，监控 Q/K drift 和 attention mean distance。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 99 entries, 99 top-level note html files`。
+- 公开过程噪声扫描无输出：新笔记与索引未命中工具名、本地路径、临时目录或生成痕迹。
+- 公式裸 `<` 静态扫描无输出。
+- `git diff --check -- notes/paper-reviews/attention-amnesia-qk-restore-hybrid-llms.html _data/notes.yml` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现既有 GitHub Metadata API rate limit 与 `notes/NOTE_TEMPLATE.md` Liquid warning。
+- 浏览器检查编译页 `/_site/notes/paper-reviews/attention-amnesia-qk-restore-hybrid-llms.html`：标题正确，控制台 error 为 0，3 个表格均包在 `.table-wrap` 中，MathJax 渲染节点存在；已生成桌面与窄屏截图用于视觉检查。
+
+## 2026-06-09 CL-Bench / Agent Memory 持续学习评测 HTML 笔记
+
+### 背景
+
+- 用户先要求深度解读 Omar Saravia 关于 CL-Bench 的 X 帖，随后要求“深度 review 阅读理解材料，导出 html 笔记”。
+- 目标材料为 arXiv `2606.05661`：`Continual Learning Bench: Evaluating Frontier AI Systems in Real-World Stateful Environments`。
+- 笔记定位为站内论文评述页，重点不是复述推文，而是解释 CL-Bench 如何把 Agent memory 从 recall 评测推进到 stateful 行为改善评测。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/paper-reviews/cl-bench-agent-memory-continual-learning.html`。
+- 更新 `_data/notes.yml`，新增 Notes 首页入口。
+- 笔记重点覆盖：
+  - 为什么 Agent memory 不能只证明“记得住”，必须证明历史经验带来相对 stateless 的 `gain`；
+  - CL-Bench 的三项任务准入标准：headroom、shared latent structure、learning mechanism，以及 concept drift 的作用；
+  - 六个任务：Blind Spectrum Monitoring、Codebase Adaptation、Cohort Studies、Database Exploration、Exploitable Poker、Sales Prediction；
+  - `gain = stateful reward - stateless reward` 与 normalized gain 的解释；
+  - ICL、ICL Notepad、Mem0、ACE、Claude Code、Codex 的主结果与成本口径；
+  - stability / plasticity 拆解，以及 Sales Prediction、Cohort Studies 中“最近反馈过拟合”和“相关记忆未进入决策”的失败机制；
+  - 工程启发：把 memory 设计成带证据、置信度、适用范围、失效条件和 action hook 的假设治理系统。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 98 entries, 98 top-level note html files`。
+- 公开过程噪声扫描无输出：新笔记与索引未命中工具名、本地路径、临时目录或生成痕迹。
+- `git diff --check -- notes/paper-reviews/cl-bench-agent-memory-continual-learning.html _data/notes.yml Progress.md` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现既有 GitHub Metadata API rate limit 与 `notes/NOTE_TEMPLATE.md` Liquid warning。
+- 浏览器检查编译页 `/_site/notes/paper-reviews/cl-bench-agent-memory-continual-learning.html`：页面 200 OK，标题正确，控制台 error 为 0，4 个表格均包在 `.table-wrap` 中；已生成桌面与 390px 窄屏截图，移动端 CSS 包含单列网格、表格横向滚动和公式横向滚动规则。
+
+
+## 2026-06-09 OPD 参数几何 / subspace locking HTML 笔记
+
+### 背景
+
+- 用户要求对 `https://x.com/rosinality/status/2063887402385523149` 深度解读后，进一步“深度梳理以后导出html笔记”。
+- 原帖讨论 arXiv `2606.07082`《On the Geometry of On-Policy Distillation》：OPD 的最终参数更新程度介于 RLVR 与 SFT 之间，但训练轨迹很早进入低维 update channel，并引出低秩锁定是否影响泛化的问题。
+- 本轮按站内 Notes 规范沉淀为独立 HTML 论文笔记，不在公开正文中写抓取过程、本地路径或工具痕迹。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/paper-reviews/opd-geometry-subspace-locking.html`。
+- 更新 `_data/notes.yml`，新增 Notes 首页入口，标题为“OPD 参数几何：低秩锁定是正则化，还是泛化瓶颈？”。
+- 笔记重点覆盖：
+  - SFT、RLVR、OPD 在状态分布、监督信号、优势与风险上的差异；
+  - OPD 如何用学生 rollout + teacher token-level correction 形成 distinct update geometry；
+  - bf16-aware sparsity、principal-angle rotation、spectral drift、update-mask overlap、stable rank、rank-16 投影实验的含义；
+  - rosinality 提出的泛化疑问：低维通道既可能是保护预训练结构的隐式正则化，也可能是 teacher / rollout / objective 早期共同决定的路径依赖瓶颈；
+  - OPD 训练监控面板：stable rank、subspace similarity、principal-mask overlap、OOD capability bucket eval。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 98 entries, 98 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- HTML 结构检查通过：1 个 title、1 个 `notes-shell.css`、`body.notes-shell-page`、`main`、`data-note-role="evidence-appendix"`、无未闭合标签、无重复 id。
+- `git diff --check -- notes/paper-reviews/opd-geometry-subspace-locking.html _data/notes.yml Progress.md` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现既有 GitHub Metadata API rate limit 与 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning。
+- 浏览器检查编译页 `/_site/notes/paper-reviews/opd-geometry-subspace-locking.html`：1280px 桌面与 390px 窄屏均无横向溢出；4 个表格均包在 `.table-wrap` 中；MathJax 渲染节点存在。
+
+## 2026-06-09 大规模 Test-Time Compute HTML 笔记整理
+
+### 背景
+
+- 用户要求把 Noam Brown / @polynoamial 关于大规模 test-time compute 的 X 长文深度整理梳理，并导出详细 HTML 笔记。
+- 目标是形成站内可阅读的独立技术分析页，而不是只保留对话摘要；重点解释 benchmark 分数、推理预算、安全评估和产品选型之间的关系。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/tech-analysis/large-scale-test-time-compute-evaluation.html`。
+- 更新 `_data/notes.yml`，新增 Notes 首页入口，标题为“大规模 Test-Time Compute：从模型分数到能力曲线”。
+- 笔记重点覆盖：
+  - 为什么现代 LLM 能力应被理解为随 tokens / cost / wall-clock time / scaffold 变化的预算函数；
+  - GPT-5.5、autoresearch、cyber eval、ARC-AGI 成本口径等原文证据的统一解读；
+  - benchmark 从单点 leaderboard 转向 performance-vs-compute curve / Pareto frontier 的设计要求；
+  - Preparedness Framework / Responsible Scaling Policy 为什么必须纳入 inference budget；
+  - Gemini Deep Think 争议中“基础模型 compute curve”与“产品化 scaffold 可访问性风险”的区别；
+  - 产品工程里的 cost per solved task、动态推理预算分配和行动清单。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 96 entries, 96 top-level note html files`。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- `git diff --check -- notes/tech-analysis/large-scale-test-time-compute-evaluation.html _data/notes.yml Progress.md` 通过。
+- `BUNDLE_PATH="/tmp/ricardokevins-gems" bundle exec jekyll build` 构建成功；仅出现既有 GitHub Metadata API 与 `notes/NOTE_TEMPLATE.md` Liquid warning。
+- 浏览器检查编译页 `/_site/notes/tech-analysis/large-scale-test-time-compute-evaluation.html`：桌面标题正确；390px 窄屏 `scrollWidth == innerWidth`，无横向溢出；2 个表格均包在 `.table-wrap` 中。
+
+## 2026-06-09 NF-CoT / Latent Reasoning with Normalizing Flows 深度解读与站内笔记导出
+
+### 背景
+
+- 用户要求对 `https://x.com/thoma_gu/status/2064078081036525878` 深度解读后，进一步“深度整理梳理后详细的导出html笔记”。
+- 目标材料是 Jiatao Gu 发布的 NF-CoT: Latent Reasoning with Normalizing Flows X 线程，核心论文为 arXiv `2606.06447`。
+- 本轮按站内 Notes 规范沉淀为独立 HTML 笔记，不在公开正文中写抓取过程、本地路径或工具痕迹。
+
+### 已完成
+
+- 新增站内论文笔记：
+  - `notes/paper-reviews/nf-cot-latent-reasoning-normalizing-flows.html`
+- 更新 `_data/notes.yml`，新增 Notes 卡片入口。
+- 笔记重点覆盖：
+  - 为什么 latent CoT 的难点不是“隐藏思考”，而是保留显式 CoT 的自回归生成、概率采样、精确似然、KV-cache 和 RL 接口；
+  - NF-CoT 如何用 frozen VAE encoder 得到 continuous CoT target，再用 normalizing flow 重参数化成 LLM-facing thought space；
+  - shallow flow、deep autoregressive flow、NF head / LM head、Unified causal stream 的机制；
+  - exact likelihood 的真实含义，以及为什么它支持 supervised NLL 与 GRPO-style latent-space RL；
+  - Qwen3-8B-Base 上 pass@1、pass@k、RL preserving diversity、LaDiR 效率对比、latent perturbation robustness 和定性案例；
+  - decoded latent CoT 只是 qualitative probe，不是 faithful explanation；代码生成证据、CoT/VAE 依赖、open-source 未复现等边界。
+
+### 待验证
+
+- 运行 `ruby scripts/validate_notes_index.rb`。
+- 运行公开过程噪声扫描、HTML 结构检查、`git diff --check`。
+- 如结构验证通过，再运行 Jekyll build。
+
+
+## 2026-06-09 Tim Jayas Codex token 上下文治理 HTML 笔记
+
+### 背景
+
+- 用户要求把对 Tim Jayas X Article《How I Cut Codex Tokens from 245M to 28M Per Day For Free》的深度梳理解读整理为 HTML 笔记。
+- 笔记定位不是复述省 token 命令，而是把原文重读为 coding agent 的上下文治理 / agent context engineering 方法论。
+
+### 已完成
+
+- 新增独立 HTML 笔记：`notes/tech-analysis/tim-jayas-codex-token-context-discipline.html`。
+- 新增 `_data/notes.yml` 索引条目，title 为 `Codex Token 从 245M 到 28M：上下文治理，而不是省钱小技巧`。
+- 内容结构覆盖：核心判断、问题背景、七步机制拆解、证据表格、批判性校正、落地工作流、术语解释、证据边界与资料索引。
+- 明确边界：245M→28M 是经验信号而非可复现 benchmark；summary-first 不能替代 raw-slice 取证；helper scripts 和 output caps 都需要校验。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：最新收尾校验为 `notes index ok: 96 entries, 96 top-level note html files`。
+- `git diff --check -- notes/tech-analysis/tim-jayas-codex-token-context-discipline.html _data/notes.yml Progress.md` 通过。
+- 公开过程噪声扫描无输出：未命中工具名、本地路径、临时目录、生成痕迹等。
+- HTML 结构检查通过：1 个 title、1 个 `notes-shell.css`、`body.notes-shell-page`、`main`、`data-note-role="evidence-appendix"`、无未闭合标签、无重复 id。
+- Jekyll build 通过；构建过程中仅出现既有 GitHub Metadata API rate limit 与 `notes/NOTE_TEMPLATE.md` Liquid 占位符 warning。
+- 浏览器检查通过：构建产物页面 200 OK，标题正确，控制台 error 为 0，3 个表格均有 `.table-wrap` 包裹，桌面无横向溢出。
 
 ## 2026-06-09 Vivek RL 后训练长帖 HTML 笔记深化
 
@@ -4496,3 +5151,46 @@
 - TOC 链接：9 个，新增的 `#deep-dive` 正确位于 `#limits` 与 `#sources` 之间。
 - 未跑 `scripts/validate_notes_index.rb`（本次只修改一个已有 note，未新增索引条目，沿用既有笔记的索引条目）。
 - 未做 Jekyll 构建烟测（仅在已有 note 上追加 section，未触动 `_data/notes.yml`、未新增 entry，按既往经验是 in-place 修改的低风险范围）。
+
+## 2026-07-15 DeepSeek-V4 百万 Token 技术报告深读
+
+### 任务与材料边界
+
+- 用户要求深读 arXiv:2606.19348，尽可能完整地梳理论文信息、展示独立 insight，并形成一篇站内笔记。
+- 核心材料已完整核验：58 页 arXiv v1 论文、TeX 正文、全部附表与原始图、arXiv 元数据、官方 DeepSeek-V4-Pro / Flash / Base 模型卡与配置、消息编码说明、参考推理实现，以及 mHC、DeepSeek-V3.2、Muon、On-Policy Distillation、MRCR、CorpusQA、DeepGEMM、3FS 等关键前置资料。
+- 本轮未实际加载或复跑 284B / 1.6T 权重；公开 benchmark 与内部任务数字按论文报告陈述，模型规格和部署协议使用公开配置交叉核对，算术比例与严格胜项计数单独复算。
+
+### 完成的变更
+
+- 新增站内长篇笔记：`notes/paper-reviews/deepseek-v4-million-token-context-intelligence.html`。
+  - 可见正文约 23,968 字符，共 17 个主题 section、5 张信息表、7 张论文图、42 个浏览器端 MathJax 公式节点。
+  - 内容覆盖模型规格、CSA/HCA、mHC、Muon、MoE 稳定性、低精度与确定性内核、异构 KV cache、32T/33T 预训练、全词表多教师 OPD、GRM、reasoning effort、DSML / interleaved thinking / Quick Instruction、WAL / DSec 沙箱、全部公开评测族、内部真实任务、证据边界、8 条独立 insight 和研究/部署建议。
+  - 文末使用 `data-note-role="evidence-appendix"` 统一收束材料边界与资料索引；正文没有本地路径、抓取命令、生成工具或临时目录痕迹。
+- 新增 7 张本地化论文图到 `notes/paper-reviews/deepseek-v4-million-token-context-intelligence-assets/`：总体架构、CSA、HCA、性能/效率、KV cache layout、reasoning effort、MRCR 8-needle。
+- 在 `_data/notes.yml` 登记新笔记卡片，补齐摘要、类型、日期、标签和材料元信息。
+- 视觉验收时发现公共 `notes-shell.css` 对 table 的 `min-width: 0` 具有更高优先级，手机端英文 benchmark 名称会被逐字折断；已在新笔记中用 `.table-wrap table` 和单元格选择器做局部覆盖，使 860px 表格在窄屏容器内横向滚动，不改公共样式和其他笔记。
+
+### 关键判断与 Insight
+
+- **1M 是系统契约，不是 attention 单点功能。** CSA/HCA 只有与 mHC、Muon、FP4/FP8、确定性 kernel、分层 KV/cache、磁盘前缀、可恢复 rollout、百万 token 数据装载和沙箱生命周期共同设计，才能把上下文上限变成可训练、可推理、可后训练的能力。
+- **效率来自受控遗忘。** 最近 128 token 保留原始细节，远程历史以 4× 或 128× 分辨率保存；CSA 主 attention 虽固定 top-k，indexer 仍扫描约 `n/4` 个压缩 key，HCA 仍 dense 读取约 `n/128` 个压缩条目，因此成本增长斜率显著降低，但没有变成常数。
+- **“能装下 1M”不等于“无损利用 1M”。** MRCR 8-needle 中 Pro-Max 从 128K 的 0.92 降到 1,024K 的 0.59，Flash 从 0.87 降到 0.49；大表的 MRCR 1M 汇总分采用另一聚合口径，不能覆盖长度曲线揭示的信息瓶颈。
+- **Headline 效率不是端到端延迟。** Pro 在 1M 相对 V3.2 的约 27% FLOPs / 10% KV，Flash 的约 10% / 7%，属于 equivalent FP8 single-token FLOPs 与 accumulated KV size 估算；论文没有给完整 TTFT、decode tok/s、并发、磁盘命中率、能耗和价格。
+- **Flash 与 Pro 暗示两类 scaling 分工。** Flash 能用更多 test-time token 在可验证数学/代码上逼近 Pro，但在知识、搜索和复杂 agent 状态上差距明显；产品路由应按任务瓶颈区分 parametric memory 与可验证推理深度，而不是只按题面“难/易”。
+- **多教师 OPD 更像能力编译器。** 各领域 specialist 可独立用自己的 verifier 与数据迭代，再在统一 student 的 on-policy 状态上通过全词表 reverse-KL 合并；但 teacher routing、权重和冲突治理未公开，是效果归因的关键黑盒。
+- **确定性已经成为 RL 正确性条件。** Batch invariance、bitwise kernel、真实 FP4 rollout 与 token 级 WAL 共同控制 rollout–training–recovery 的分布漂移；论文指出中断后从头重采样会系统性偏向短回答，这是可迁移到异步 agent 系统的重要结论。
+- **最大证据缺口是组件消融。** 最终模型同时改变架构、优化器、数据、长度课程、低精度和后训练，却没有等预算的 CSA/HCA、mHC、Muon、QAT、OPD 组件对照；开放权重是实质贡献，但不等于开放完整生产系统，也不能从总榜成绩倒推单组件贡献。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：`notes index ok: 110 entries, 110 top-level note html files`。计数包含当前共享工作区中的其他既有/未提交笔记，不只属于本轮变更。
+- 独立 HTML 审计通过：唯一 `<main>`，17 个 section 与 7 个 figure 标签成对；目录无断链，ID 无重复；7 张本地图全部存在且 alt 非空；文末证据附录位置正确；可见正文超过站内深度笔记阈值。
+- `git diff --check` 对新笔记、`_data/notes.yml` 和 `Progress.md` 通过；公开生成痕迹与 Unicode replacement character 定向扫描无结果。
+- Jekyll 在隔离构建目录中成功完成，输出 `done in 6.947 seconds`。默认 `_site` 首次构建曾遇到共享目标目录中的既有笔记复制竞争，改用隔离 destination 后通过，未修改或删除其他任务文件。
+- 构建仍显示仓库既有提示：缺少 `faraday-retry`、GitHub Metadata 未认证、`notes/NOTE_TEMPLATE.md` 第 13 行 Liquid 表达式 warning；均不是新笔记引入，也不影响本轮页面生成。
+- 本机真实 Chrome 渲染审计通过：
+  - 新笔记在 1440×1200 与 390×844 视口均为 `horizontalOverflow=0`。
+  - 7 张图无坏图，42 个公式节点完成渲染，5 张表均在容器内滚动；手机端表格内部宽度 860px、容器宽度 366px，英文项目名不再任意断词。
+  - Notes / All Notes / Home、17 个目录锚点、`#insight` 平滑跳转、文末 evidence appendix 全部正常。
+  - 新笔记页面 console errors、page errors、functional failed requests 均为 0；索引页能找到唯一的新笔记卡片。
+  - 本地索引预览会尝试访问 Google Analytics / Tag Manager；最终验收通过路由隔离统计请求，功能请求无失败，输出 `browser render audit ok`。

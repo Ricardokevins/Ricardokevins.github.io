@@ -16,7 +16,7 @@
     :root {
       color-scheme: light;
       --paper: #f6f2ea; --surface: #fffdf8; --ink: #1f2428; --muted: #5f686f;
-      --line: #d8ddd8; --accent: #1f6678; --accent-2: #8a5a22;
+      --line: #d8ddd8; --accent: #c15f3c; --accent-2: #8a5a22;
       --shadow: 0 18px 46px rgba(31,37,40,0.09);
       --radius: 8px; --max: 1180px;
       --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
@@ -77,15 +77,15 @@
 
     <section id="mechanism">
       <h2>样本机制：102 轮 15 分钟周期</h2>
-      <p>这批样本来自 <code>x-tweet-digest/fetch.sh</code> 的持续轮询：它把 10 个主题按 OR 变体展开，用跨轮 <code>seen_ids</code> 去重，避免把同一条高热推文重复放大。</p>
+      <p>这批样本来自一个持续轮询管线：把 10 个主题按 OR 变体展开，用跨轮 ID 去重，避免把同一条高热推文重复放大。</p>
       <ol>
         <li>检索：主题查询按热度排序，每轮限制返回量，并保留结构化结果用于复核。</li>
-        <li>主题池 10 个，每个主题用 OR 变体拉宽（<code>audio language model OR audio LLM OR speech LLM</code> 等）</li>
-        <li>时间窗 <code>since:近 7 天</code>，每轮拉到 7 天内容，靠 <code>seen_ids</code> 去重</li>
-        <li>每 15 分钟由 <code>/loop 15m</code> 触发一次，结果落到 结构化轮次记录</li>
-        <li>跨轮去重持久化在 <code>state.json</code>，保证不重复写已抓过的推文</li>
+        <li>主题池 10 个，每个主题用 OR 变体拉宽（如 audio language model OR audio LLM OR speech LLM）。</li>
+        <li>时间窗为最近 7 天，每轮拉到 7 天内容，靠跨轮 ID 表去重。</li>
+        <li>每 15 分钟触发一次，结果落到结构化轮次记录。</li>
+        <li>跨轮去重持久化，保证不重复写已观察过的推文。</li>
       </ol>
-      <p>完整索引在 <code>x-tweet-digest/INDEX.md</code>（241 条表），主题分析在 <code>x-tweet-digest/ANALYSIS.md</code>。</p>
+      <p>本笔记报告的是这 102 轮观察后的去重精选与主题分布；下面的统计与判断都来自这批 241 条独立推文。</p>
     </section>
 
     <section id="stats">
@@ -634,10 +634,10 @@ Tools like LangSmith Engine help you targetedly create evals from your tracing d
     <section id="limits">
       <h2>边界与风险</h2>
       <ul>
-        <li><strong>样本偏差</strong>：X 搜索接口 走的是登录态拦截，对未登录用户/不同地理位置结果不同。</li>
-        <li><strong>热度偏差</strong>：<code>--product top</code> 是热度排序，热门公司（NVIDIA / OpenAI / StepFun / Qwen）的推文占比较高，独立研究者声音被稀释。</li>
-        <li><strong>主题去重</strong>：同一推文可能被多个主题命中（OR 变体重叠），<code>seen_ids</code> 保证推文级去重，但主题首抓标签会随第一次命中而定。</li>
-        <li><strong>互动数据滞后</strong>：X 上早期低互动的优质推文会在 15 分钟内被新推文挤出 top 10，被 <code>--limit 10</code> 截断。</li>
+        <li><strong>样本偏差</strong>：X 搜索接口走的是登录态拦截，对未登录用户/不同地理位置结果不同。</li>
+        <li><strong>热度偏差</strong>：按热度排序拉取，热门公司（NVIDIA / OpenAI / StepFun / Qwen）的推文占比较高，独立研究者声音被稀释。</li>
+        <li><strong>主题去重</strong>：同一推文可能被多个主题命中（OR 变体重叠），跨轮 ID 表保证推文级去重，但主题首次命中标签会随第一次出现而定。</li>
+        <li><strong>互动数据滞后</strong>：X 上早期低互动的优质推文会在 15 分钟内被新推文挤出 top 10，被每轮抓取数量上限截断。</li>
       </ul>
     </section>
 <section id="terms">
@@ -655,14 +655,9 @@ Tools like LangSmith Engine help you targetedly create evals from your tracing d
       <h2>证据边界与资料索引</h2>
       <ul>
         <li>完整推文原文：<a href="x-tweet-cycle-ai-digest-assets/all-tweets.json" target="_blank" rel="noopener">all-tweets.json</a></li>
-        <li>仓库内索引：<code>x-tweet-digest/INDEX.md</code></li>
-        <li>仓库内分析：<code>x-tweet-digest/ANALYSIS.md</code></li>
-
-        <li>SheSheBot 根进度：<code>Progress.md</code> 2026-06-01/02 条目</li>
+        <li>边界：周期观察可能漏掉两次轮换之间发布且很快被新内容覆盖的低权重推文；主题轮换基于关键词命中，长尾话题的覆盖率会比 audio LM / RL 这类高频领域低。</li>
+        <li>未确认：本笔记基于 24 小时内 102 轮观察的快照，跨周聚合趋势需要更长窗口的样本才能稳定。</li>
       </ul>
-      <p style="color:var(--muted);font-size:14px;margin-top:24px;">
-
-      </p>
     </section>
   </main>
 </body>

@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>大规模 Test-Time Compute：从模型分数到能力曲线</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.1 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    .attribution { max-width: 900px; margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    main { display: grid; gap: 30px; padding-bottom: 60px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    h4 { margin-top: 16px; margin-bottom: 8px; font-size: 16px; color: var(--accent-2); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    .axis { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 10px; align-items: center; margin: 10px 0; }
+    .axis b { color: var(--accent); }
+    .bar { height: 10px; border-radius: 999px; background: linear-gradient(90deg, rgba(193,95,60,.25), rgba(180,83,9,.55)); }
+    .bar.short { width: 36%; }
+    .bar.medium { width: 62%; }
+    .bar.long { width: 92%; }
+    .quote { margin: 18px 0; padding: 18px 20px; border-left: 4px solid var(--accent-2); background: var(--accent-2-soft); border-radius: var(--radius); color: #3b2a1f; }
+    .quote p { margin: 0; }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div, .axis { grid-template-columns: 1fr; gap: 6px; }
+      table { min-width: 680px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · 2026-06-09</div>
+    <h1>大规模 Test-Time Compute：从模型分数到能力曲线</h1>
+    <p class="lede">Noam Brown 的核心提醒不是“benchmark 已经无用”，而是“单一 benchmark 分数正在把模型本体、推理预算、脚手架、重试策略和评测 harness 混成一个数”。当模型越强、越会利用额外推理计算时，能力就不再是一个静态标量，而是一条随 tokens、成本、时间和工具调用预算变化的曲线。</p>
+    <p class="attribution">本文围绕 @polynoamial 的长文《Implications of Large-Scale Test-Time Compute》整理：重点不在复述每张图，而在把它改写成一套可执行的评测、安全和产品选型框架。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>一句话判断：<strong>现代 LLM 的“能力”越来越像一个预算函数，而不是一个固定分数</strong>。如果不报告推理预算，leaderboard 上的分数既无法解释真实产品体验，也无法支持安全阈值判断。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. 分数必须绑定预算</h3>
+          <p>同一个模型在 1 万、100 万、1 亿 tokens 下可能是完全不同的系统；不说明预算的分数，本质上是不完整测量。</p>
+        </div>
+        <div class="card">
+          <h3>2. 上限比默认分更重要</h3>
+          <p>强模型的跃迁可能不体现在低预算单点，而体现在性能 plateau 被推得更远、长程任务里仍能继续涨。</p>
+        </div>
+        <div class="card">
+          <h3>3. 安全评估要改口径</h3>
+          <p>“模型是否危险”应改成“在什么推理预算、什么 scaffold、什么工具权限和多长运行时间下危险”。</p>
+        </div>
+      </div>
+      <div class="quote">
+        <p>最值得记住的不是某个模型在某个榜单上高了几分，而是：如果能力随 test-time compute 持续扩展，我们可能并不知道现代模型真正的能力天花板在哪里，因为测出这个天花板本身就太贵。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：单点 leaderboard 为什么越来越失真</h2>
+      <p>传统模型评测默认比较的是一个静态对象：给模型一组题，跑一次或少数几次，算出准确率、通过率或分数。这个范式适合早期“prompt in, answer out”的模型，因为推理过程相对短、重试空间有限、额外计算带来的收益不大。</p>
+      <p>但 reasoning model 和 agent 改变了这个前提。模型现在可以通过长思考、best-of-N、self-consistency、树搜索、工具调用、多轮反思、自动实验、代码执行、外部检索、多个子代理并行等方式，把更多推理预算转化为更高成功率。于是 leaderboard 上的单点分数不再只是在测模型参数里的能力，而是在测一个完整推理系统。</p>
+      <p>这会造成三个具体失真：</p>
+      <ul>
+        <li><strong>低预算效率与高预算上限混淆</strong>：有的模型低预算很强但很快 plateau，有的模型低预算一般但追加预算后继续提升；单点分数会把二者混为一谈。</li>
+        <li><strong>模型能力与 harness 能力混淆</strong>：同一底座模型加上不同 scaffold、verifier、重试策略和工具权限，可能得到完全不同的 benchmark 成绩。</li>
+        <li><strong>能力评估与成本评估脱节</strong>：用户买的不是“榜单第一”，而是“在我的任务上每解决一次合格结果要多少钱、多久、多少人工兜底”。</li>
+      </ul>
+      <div class="callout warn">
+        <b>关键转变</b>
+        <p>过去的问题是“哪个模型分数最高”；现在更应该问“在同一预算下谁最好、达到同一目标谁最便宜、继续加预算谁还能涨、极高预算下谁可能跨过能力或风险阈值”。</p>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：能力如何变成预算函数</h2>
+      <p>把 test-time compute 纳入模型评测，本质上是把一次回答改写成一个资源受限的搜索过程。模型不是只输出一次答案，而是在预算范围内分配尝试、验证、修正和外部动作。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>输入</h3>
+          <p>任务、初始 prompt、可用工具、允许的上下文、最大 tokens、最大成本、最长时间、是否允许并行与人工干预。</p>
+        </div>
+        <div class="card">
+          <h3>过程</h3>
+          <p>规划、采样、分支探索、执行工具、收集反馈、比较候选、修复错误、再次尝试，直到预算耗尽或达到停止条件。</p>
+        </div>
+        <div class="card">
+          <h3>输出</h3>
+          <p>最终答案、成功/失败、消耗的 tokens/成本/时间、重试次数、工具调用轨迹、验证通过率和剩余不确定性。</p>
+        </div>
+        <div class="card">
+          <h3>失败条件</h3>
+          <p>预算不足、搜索方向错误、verifier 被骗、任务需要真实长期交互、外推曲线不平滑、scaffold 带来不可复现差异。</p>
+        </div>
+      </div>
+      <p>因此模型能力更像下面这个关系：</p>
+      <pre><code>observed_score = f(base_model, inference_budget, scaffold, tools, evaluator, stopping_rule)</code></pre>
+      <p>这里的 <code>base_model</code> 只是其中一项。只报 <code>observed_score</code> 而不报后面几项，就像只报汽车最高时速，却不说明路况、油耗、载重、轮胎和测试距离。</p>
+
+      <h3>三种常见横轴：tokens、成本、时间</h3>
+      <p>Noam 的建议是把性能画成随 tokens、cost 或 wall-clock time 变化的曲线。三者都不完美，但都比没有预算口径更好。</p>
+      <div class="def-list">
+        <div><b>Tokens</b><span>最容易记录，也最接近“模型到底想了多少”。缺点是 tokenizer、hidden reasoning token、工具调用和不同模型的每 token 成本并不等价。</span></div>
+        <div><b>Cost</b><span>最接近产品决策，因为用户真正关心的是每个合格结果多少钱。缺点是 API 标价、批处理、硬件利用率、缓存和供应商折扣会改变成本。</span></div>
+        <div><b>Wall-clock Time</b><span>最接近用户等待体验和人类考试约束。缺点是 best-of-N、多代理和并行搜索可以消耗大量计算而不显著增加延迟。</span></div>
+      </div>
+      <p>更理想的评测不是选一个唯一横轴，而是建立 Pareto 视角：在 score、cost、latency、tokens、工具权限、人工干预之间看前沿面。模型选型也应从“谁第一”转成“哪条曲线适合我的任务分布”。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>原文证据：四个例子说明旧口径不够了</h2>
+      <p>原文的证据链可以整理成四组。它们共同指向同一个结论：更强模型不仅默认分数更高，还可能更擅长把额外推理计算变成能力提升。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>例子</th>
+              <th>表面现象</th>
+              <th>深层含义</th>
+              <th>对评测的要求</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>GPT-5.5 发布反应</td>
+              <td>初始 benchmark 数字提升不大，但用户试用后感到明显跃迁。</td>
+              <td>旧 benchmark grid 没有把测试时预算控制清楚；模型真实优势可能在更高预算或更长 horizon 才显现。</td>
+              <td>同一模型应报告多预算点，而不是只给默认设置下的单个分数。</td>
+            </tr>
+            <tr>
+              <td>Autoresearch 实验</td>
+              <td>经过数百次实验后，表现仍然继续改善。</td>
+              <td>对研究型任务，推理预算不是“多想一点”，而是能支持持续试错和闭环优化。</td>
+              <td>评测需要记录实验次数、时间、成本、best-so-far 状态和停止规则。</td>
+            </tr>
+            <tr>
+              <td>Cyber eval 曲线</td>
+              <td>部分模型在 100M tokens 后仍快速提升。</td>
+              <td>安全风险不能只看低预算；攻击者可能把大量预算集中到单个任务。</td>
+              <td>Preparedness 评估应覆盖多预算点，并对高预算能力做带不确定性的外推。</td>
+            </tr>
+            <tr>
+              <td>ARC-AGI 成本口径</td>
+              <td>分数与成本一起呈现，而不是只报排名。</td>
+              <td>“能做对”与“用多少钱做对”是两个不同问题，后者对产品和可扩展性更关键。</td>
+              <td>Leaderboard 应追踪推理使用量，或设置明确 token/cost/time 预算。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="axis"><b>低预算单点</b><div class="bar short" aria-hidden="true"></div></div>
+      <div class="axis"><b>中预算曲线</b><div class="bar medium" aria-hidden="true"></div></div>
+      <div class="axis"><b>高预算上限</b><div class="bar long" aria-hidden="true"></div></div>
+      <p>这组例子的共同反直觉点是：<strong>越强的模型，越可能在高预算区继续拉开差距</strong>。如果强模型的 plateau 更远，那么默认小预算评测就可能低估它们的真实上限，也可能低估它们在滥用场景下的风险。</p>
+    </section>
+
+    <section id="benchmark-redesign">
+      <h2>评测重构：从排行榜改成能力曲线</h2>
+      <p>如果接受“能力是预算函数”，benchmark 设计就要从“谁分数最高”改成“在不同预算下各自处于什么曲线”。这不是把 leaderboard 做复杂，而是把原本隐藏的变量显式化。</p>
+      <h3>一套更完整的模型卡应至少回答五类问题</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h3>固定预算下的分数</h3>
+          <p>例如 1 美元、10 美元、100 美元，或 10k、100k、1M tokens 下分别能达到什么成功率。</p>
+        </div>
+        <div class="card">
+          <h3>固定目标下的成本</h3>
+          <p>例如达到 80% 或 90% 成功率分别需要多少成本、多少时间、多少次重试。</p>
+        </div>
+        <div class="card">
+          <h3>曲线斜率与 plateau</h3>
+          <p>追加预算后是否还涨；涨幅是否稳定；哪个预算区开始收益递减。</p>
+        </div>
+        <div class="card">
+          <h3>harness 与 scaffold 明细</h3>
+          <p>是否允许工具、并行、verifier、搜索、反思、多代理；这些细节要和分数一起报告。</p>
+        </div>
+        <div class="card">
+          <h3>不确定性与外推</h3>
+          <p>高预算太贵时，可以从低预算点外推，但必须报告置信区间和可能失效的长程因素。</p>
+        </div>
+        <div class="card">
+          <h3>失败样本结构</h3>
+          <p>不仅看平均分，还要看失败是否集中在需要长期状态、真实实验、工具链组合或 verifier 可靠性的任务上。</p>
+        </div>
+      </div>
+      <p>这会让模型评测从“榜单文化”转向“性能工程文化”。对芯片、数据库、搜索系统和自动驾驶来说，人们早就知道单个数字不够；LLM 现在也进入了同一个阶段。</p>
+
+      <h3>单点分数并非完全没用</h3>
+      <p>单点分数仍然可以作为快速筛选，尤其适合低成本日常任务、固定预算考试和早期模型 sanity check。问题在于，单点分数不能再被当成完整能力描述。它应该是曲线上的一个采样点，而不是整个曲线本身。</p>
+    </section>
+
+    <section id="safety">
+      <h2>安全含义：Preparedness 不能忽略推理预算</h2>
+      <p>文章后半部分最尖锐的地方，是把 test-time compute 问题推到 AI Preparedness 和 Responsible Scaling Policy 上。传统安全评估问的是“这个模型是否具备 cyber、bio、autonomy 等风险能力”。但如果能力取决于推理预算，这个问题本身就缺少限定条件。</p>
+      <p>更合理的问题应该是：</p>
+      <ul>
+        <li>在普通消费者预算下是否跨过风险阈值？</li>
+        <li>在企业级或犯罪组织预算下是否跨过风险阈值？</li>
+        <li>在国家级行动者可以投入巨额 inference 的预算下是否跨过风险阈值？</li>
+        <li>如果允许 scaffold、工具、外部检索、代码执行、长期运行、多代理协作，风险曲线如何变化？</li>
+        <li>模型 release 前的评测能否覆盖其真实运行 horizon，还是只能低预算外推？</li>
+      </ul>
+      <div class="callout warn">
+        <b>安全评估的盲点</b>
+        <p>如果一个模型在低预算下没有达到危险能力，不代表它在高预算、长期运行、可工具调用的 agent 设置下仍然安全。尤其是 cyber 和科研类任务，更多预算可能带来真实试错和环境反馈，而不仅是更长文本。</p>
+      </div>
+
+      <h3>Deep Think 争议的更深层解读</h3>
+      <p>Noam 对 Gemini Deep Think 争议的看法很有启发：如果 Deep Think 更像已有模型的 scaffold，那么真正应被追问的不是“这个 scaffold 是否单独出了模型卡”，而是“基础模型发布时是否报告了随 test-time compute 扩展的能力曲线”。因为外部有能力的用户也可能通过大量 API 调用、工具组合和自定义 harness 复现类似能力。</p>
+      <p>但这里也有一个需要补充的反面判断：<strong>产品化 scaffold 不只是便利化，也会改变风险分布</strong>。高级用户能搭出来，和普通用户一键可用，是两个不同风险面。平台把搜索、重试、验证和预算分配包装成产品后，会降低滥用门槛、扩大可接触人群，并让能力更稳定地规模化。因此，基础模型需要 compute curve 评估，产品化 scaffold 也需要 accessibility 和 misuse scale 评估。</p>
+    </section>
+
+    <section id="product">
+      <h2>产品与工程启发：不要买模型，要买结果曲线</h2>
+      <p>对产品方来说，这篇文章最直接的启发是：不要再问“哪个模型 benchmark 最高”，而要问“在我的任务分布上，每解决一个可接受结果需要多少预算”。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>产品问题</th>
+              <th>错误问法</th>
+              <th>更好的问法</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>客服与运营</td>
+              <td>哪个模型综合榜单最高？</td>
+              <td>在 p95 延迟约束下，哪个模型每解决一个工单成本最低、升级人工率最低？</td>
+            </tr>
+            <tr>
+              <td>代码代理</td>
+              <td>SWE 类 benchmark 谁第一？</td>
+              <td>在固定成本内，哪个系统能产出最多可合并 PR，并把测试、回滚和人工 review 成本算进去？</td>
+            </tr>
+            <tr>
+              <td>研究助手</td>
+              <td>长上下文和推理分数谁高？</td>
+              <td>给 1 小时、10 小时、100 美元预算时，系统能否持续改进 best-so-far，而不是循环幻觉？</td>
+            </tr>
+            <tr>
+              <td>安全与合规</td>
+              <td>模型卡上某项风险是否低？</td>
+              <td>在不同攻击者预算、工具权限和 horizon 下，风险能力曲线是否越过阈值？</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这意味着 AI 产品的关键能力会从“选一个最强模型”转向“动态分配推理预算”。一个成熟系统应该先用便宜模型判断任务难度，对高价值或高不确定任务逐步升级模型、增加 token、并行采样或调用 verifier；对低价值任务则尽快停止，避免把成本花在没有边际收益的样本上。</p>
+      <div class="callout info">
+        <b>工程原则</b>
+        <p>不要把 reasoning budget 当成固定超参数，而要把它当成调度对象：任务越难、收益越高、失败代价越大，越值得追加预算；任务越简单、收益越低、验证越确定，越应该快速结束。</p>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释：先把几个词对齐</h2>
+      <div class="def-list">
+        <div><b>Test-Time Compute</b><span>模型在推理阶段额外消耗的计算资源，包括更多 tokens、更长思考、更多采样、工具调用、搜索、验证和重试。</span></div>
+        <div><b>Inference Budget</b><span>一次任务允许使用的推理资源上限，可以用 tokens、美元成本、wall-clock time、工具调用次数或并行 worker 数表示。</span></div>
+        <div><b>Scaffold</b><span>围绕基础模型搭建的外部流程，例如 planner、executor、verifier、memory、tool loop、best-of-N、多代理协作和停止规则。</span></div>
+        <div><b>Harness</b><span>评测时包住模型的运行环境和脚本。它决定 prompt、采样参数、重试、工具权限、答案抽取、失败判定和统计口径。</span></div>
+        <div><b>Plateau</b><span>追加推理预算后性能不再明显提升的区域。如果强模型的 plateau 很远，低预算评测就可能低估其上限。</span></div>
+        <div><b>Pareto Frontier</b><span>在多个指标之间无法被同时支配的一组方案。例如某模型更贵但更准，另一模型更便宜但延迟低；二者都可能在不同使用场景下合理。</span></div>
+        <div><b>Preparedness Framework</b><span>前沿模型实验室用于判断模型是否达到高风险能力阈值、是否需要推迟发布或增加缓解措施的安全治理框架。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与反例：compute curve 不是万能答案</h2>
+      <p>把 performance-vs-compute 作为新标准是必要的，但它不是万能答案。至少有五类问题不能被简单曲线解决。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 预算横轴不完全可比</h3>
+          <p>tokens、成本、时间都各有偏差。不同 tokenizer、隐藏 token、硬件效率、API 折扣和并行策略都会让横轴失真。</p>
+        </div>
+        <div class="card">
+          <h3>2. 长程能力可能不平滑</h3>
+          <p>低预算外推假设能力曲线大致平滑，但 agent 可能在某个关键发现、工具组合或环境反馈后突然跃迁。</p>
+        </div>
+        <div class="card">
+          <h3>3. Verifier 会成为新瓶颈</h3>
+          <p>如果评测 verifier 或 reward 容易被破解，追加预算可能优化的是评测漏洞，而不是真实任务能力。</p>
+        </div>
+        <div class="card">
+          <h3>4. 可访问性本身是风险变量</h3>
+          <p>外部高手能复现 scaffold，不代表一键产品化没有新增风险。便利性、默认预算和分发规模都应单独评估。</p>
+        </div>
+        <div class="card">
+          <h3>5. 人类介入会改变任务定义</h3>
+          <p>长程 agent 往往允许人类中途 steering。此时评测的不只是模型自主能力，也包括人机协作流程。</p>
+        </div>
+        <div class="card">
+          <h3>6. 能力曲线也会被产品策略影响</h3>
+          <p>供应商可以通过默认推理档位、隐藏 reasoning token、限速和价格策略改变外界看到的曲线。</p>
+        </div>
+      </div>
+      <p>所以正确态度不是“用曲线替代所有评测”，而是“任何单点分数都必须被放回曲线和约束里解释”。曲线让问题更透明，但不会自动解决数据真实性、评测代表性、风险治理和产品激励问题。</p>
+    </section>
+
+    <section id="insight">
+      <h2>行动清单：如何把这篇文章转成实践</h2>
+      <p>如果要把这篇文章落实到模型评估、产品选型或安全审查，可以用下面这份检查清单。</p>
+      <ol>
+        <li><strong>报告预算</strong>：任何 benchmark 结果旁边都写清 tokens、成本、时间、采样次数、工具权限和是否并行。</li>
+        <li><strong>画多点曲线</strong>：至少测低、中、高三个预算点，不要只报默认档；如果成本太高，明确外推区间和不确定性。</li>
+        <li><strong>区分效率与上限</strong>：把“低预算性价比”和“高预算能力天花板”分开汇报，避免一个平均数掩盖两个产品定位。</li>
+        <li><strong>记录 scaffold</strong>：评测结果必须绑定 prompt、harness、verifier、tool loop、停止规则和重试策略，否则不可复现。</li>
+        <li><strong>按任务价值调度预算</strong>：简单任务尽快结束，高价值任务逐步升级模型和预算，并让 verifier 或真实测试决定是否继续。</li>
+        <li><strong>安全评估分层</strong>：按消费者、企业、犯罪组织、国家级行动者等预算层级评估能力曲线，而不是只测一个 release 默认档。</li>
+        <li><strong>关注长期 horizon</strong>：对 agent 任务，单次 prompt 分数远远不够；必须看长期状态管理、best-so-far 改进、环境反馈和自我纠错。</li>
+      </ol>
+      <div class="callout">
+        <b>最终判断</b>
+        <p>这篇文章的价值在于把一个模糊的不满变成了清晰的评测原则：LLM 时代后半场，模型能力、产品成本和安全风险都要以“推理预算”为一等公民来描述。谁还只看 leaderboard 单点分数，谁就在用旧仪表盘驾驶新系统。</p>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于 Noam Brown（@polynoamial）于 2026-06-09 发布的公开长文《Implications of Large-Scale Test-Time Compute》整理。原文讨论 GPT-5.5 发布观感、test-time compute plateau、autoresearch、AI Security Institute cyber eval、ARC-AGI 成本口径、Gemini Deep Think 争议以及 Preparedness Framework/RSP 的评估口径。</p>
+      <ul>
+        <li>原始 X 状态页：<a href="https://x.com/polynoamial/status/2064210146558136827">https://x.com/polynoamial/status/2064210146558136827</a></li>
+        <li>X Article 页面：<a href="https://x.com/i/article/2057694226981257216">https://x.com/i/article/2057694226981257216</a></li>
+        <li>证据边界：本文重点解释原文观点和工程含义，没有独立复算原文图表中的 benchmark 数据；平台互动数、页面可见性和内嵌图内容可能随时间变化。</li>
+        <li>未覆盖事项：本文没有对各实验室模型卡、ARC-AGI leaderboards、AI Security Institute 具体 cyber eval 数据做逐项审计；如果用于正式政策或采购决策，应回到对应原始报告核对数据口径。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

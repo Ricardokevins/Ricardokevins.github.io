@@ -17,7 +17,7 @@
       --line-strong: #a89e8c;
       --accent: #b5572d;
       --accent-soft: #f2ded2;
-      --blue: #315e8c;
+      --blue: #c15f3c;
       --blue-soft: #dce7f2;
       --green: #26705c;
       --green-soft: #dcebe5;
@@ -380,14 +380,14 @@
         <strong>关键细节：</strong>问题必须带有局部锚点，例如“在 Introduction section”或“on pages 20-25”。否则一个在短片段中唯一的答案，放回整份财报或手册后可能不唯一，训练信号会被污染。
       </div>
       <h3>4. 三类 VQA 任务对应三种能力</h3>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>任务</th><th>训练目标</th><th>模型实际要学什么</th></tr></thead>
         <tbody>
           <tr><td><code>extract-single</code></td><td>单页事实抽取</td><td>在长文档中定位一页，并读出明确事实、实体、日期、数值或列表。</td></tr>
           <tr><td><code>extract-multi</code></td><td>多页事实聚合</td><td>跨多个页面找到证据，合并多个事实点。</td></tr>
           <tr><td><code>reasoning</code></td><td>轻量计算/比较/计数</td><td>先检索至少两个证据，再做求和、差值、比较、计数等操作。</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <h3>5. OCR transcription 被作为对照</h3>
       <p>
         OCR transcription 分两类：<code>OCR-full</code> 要转录所有页面，<code>OCR-needle</code> 只转录少数目标页、其余页面作为干扰。这个对照很重要，因为它测试一个常见假设：让 LVLM 大量做 OCR，会不会自然获得长上下文能力？论文的答案是否定的，至少在他们的下游长文档 VQA 评估上不是好路线。
@@ -396,7 +396,7 @@
 
     <section id="recipe">
       <h2>最终训练配方</h2>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>模块</th><th>配置</th><th>为什么这么选</th></tr></thead>
         <tbody>
           <tr><td>初始化模型</td><td>Qwen2.5-VL-7B-Instruct，原始 32K context</td><td>作为 7B 级开源基座，便于做受控 LongPT 实验。</td></tr>
@@ -408,7 +408,7 @@
           <tr><td>优化</td><td>AdamW，peak LR 1e-5，cosine 到 1e-6，10% warmup</td><td>固定 5B token budget、4M token global batch，保证 ablation 对比公平。</td></tr>
           <tr><td>工程</td><td>VeOmni + FlashAttention，Ulysses SP=2，FSDP=4</td><td>在长序列训练下节省显存并提高吞吐；主训练使用 8 个 H20 节点。</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <span class="math">Dynamic-NTK 直觉：base scaling 约随 expansion factor <em>t</em><sup><span class="frac"><span>d</span><span>d-2</span></span></sup> 增大；但 LVLM 的 mRoPE 有 temporal / height / width 结构，不能机械套用 1-D RoPE 经验。</span>
     </section>
 
@@ -417,7 +417,7 @@
       <p>
         这篇论文的评估重点不是“模型是否真的会使用 512K 任意上下文完成所有任务”，而是更具体地测几个能力面：长文档 VQA、网页 haystack 中的多模态 needle、视觉-文本压缩、长视频理解，以及短上下文能力是否退化。
       </p>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>评测</th><th>输入/输出</th><th>指标怎么理解</th><th>注意事项</th></tr></thead>
         <tbody>
           <tr><td>MMLongBench document category</td><td>长 PDF/网页/slide 视觉上下文 + 问题；输出文本答案</td><td>按子任务使用 exact match、soft accuracy、multiple-choice accuracy；简单答案用 LLM 二分类 judge，列表答案算覆盖 F1；AVG 是三个数据集宏平均。</td><td>核心主评测，包含 64K/128K，另扩到 256K/512K。</td></tr>
@@ -426,13 +426,13 @@
           <tr><td>Video-MME / MLVU / LongVideoBench</td><td>1fps 视频帧，最多 768 帧，总 video tokens 不超过 24,576</td><td>多选准确率或对应 benchmark 平均准确率。</td><td>不是训练目标，属于零样本迁移。</td></tr>
           <tr><td>短上下文 benchmark</td><td>MMBench、RWQA、MMMU、MMMU-Pro、MathVista、OCRBench</td><td>六项平均。</td><td>用于检查 LongPT 是否破坏原模型一般 VLM 能力。</td></tr>
         </tbody>
-      </table>
+      </table></div>
     </section>
 
     <section id="results">
       <h2>关键结果和数字</h2>
       <h3>1. VQA 数据明显优于 OCR transcription</h3>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>训练数据</th><th>Overall AVG</th><th>相对 Qwen2.5-VL-7B</th><th>解读</th></tr></thead>
         <tbody>
           <tr><td>Qwen2.5-VL-7B</td><td>50.59</td><td>-</td><td>32K 原模型在 128K 上有明显退化。</td></tr>
@@ -442,7 +442,7 @@
           <tr><td>OCR-full</td><td>33.17</td><td>-17.4</td><td>密集转录与下游指令 QA 不对齐。</td></tr>
           <tr><td>OCR-full + 额外 5B SFT</td><td>53.84</td><td>+3.2</td><td>加 SFT 后恢复一些，但成本更高且仍弱于 VQA。</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3>2. 最好的任务混合是偏检索，不是全推理</h3>
       <p>
@@ -455,7 +455,7 @@
       </p>
 
       <h3>4. MMProLong 在主评测上提升明显，但没有超过最强闭源/大模型</h3>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>模型</th><th>64K AVG</th><th>128K AVG</th><th>Overall AVG</th></tr></thead>
         <tbody>
           <tr><td>Qwen2.5-VL-7B</td><td>52.24</td><td>48.94</td><td>50.59</td></tr>
@@ -464,26 +464,26 @@
           <tr><td>Qwen2.5-VL-72B</td><td>62.81</td><td>58.85</td><td>60.83</td></tr>
           <tr><td>Gemini-3.1-Pro</td><td>83.55</td><td>83.77</td><td>83.66</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         所以“显著”的正确读法是：对 7B 基座和同级开源模型显著，对大参数开源模型具有竞争力，但不是 SOTA 闭源级别能力。
       </p>
 
       <h3>5. 128K 训练后能外推到 256K/512K，但评估方式有边界</h3>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>模型</th><th>256K AVG</th><th>512K AVG</th><th>Overall AVG</th></tr></thead>
         <tbody>
           <tr><td>MMProLong</td><td>55.09</td><td>52.52</td><td>53.80</td></tr>
           <tr><td>Qwen2.5-VL-7B</td><td>38.12</td><td>19.49</td><td>28.80</td></tr>
           <tr><td>Gemma3-12B</td><td>47.37</td><td>23.51</td><td>35.44</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         这是强结果，但要注意：256K/512K 样本是按 MMLongBench 方法通过左右填充随机负文档扩展长度，核心问题未必天然需要利用 512K 全部信息。它更像在测抗干扰和位置外推，不等价于证明模型可以稳定完成任意 512K 多证据任务。
       </p>
 
       <h3>6. 泛化任务显示学到的不只是文档 VQA 模板</h3>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th>任务</th><th>Qwen2.5-VL-7B</th><th>MMProLong</th><th>变化</th></tr></thead>
         <tbody>
           <tr><td>MM-NIAH 64K AVG</td><td>27.83</td><td>56.61</td><td>+28.78</td></tr>
@@ -493,7 +493,7 @@
           <tr><td>MLVU</td><td>70.20</td><td>73.55</td><td>+3.35</td></tr>
           <tr><td>LongVideoBench</td><td>60.43</td><td>62.08</td><td>+1.65</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         MM-NIAH 的提升最大，符合“检索是核心瓶颈”的解释；视频任务提升较小但一致，说明 LongPT 学到了一些跨模态长上下文稳定性，但不应夸大成专门的视频模型突破。
       </p>
@@ -547,9 +547,9 @@
       <h2>证据边界与资料索引</h2>
       <ul class="source-list">
         <li>X 主帖：Zhaowei Wang 发布 MMProLong，称从 Qwen2.5-VL-7B 出发，将 context window 从 32K 扩到 128K，并在 256K/512K 上无需额外训练保持表现；回复中说明 code、model、data will be released soon。</li>
-        <li>短链解析：推文中的论文链接指向 Hugging Face Papers 页面 <code>https://huggingface.co/papers/2605.13831</code>。</li>
-        <li>论文原文：arXiv HTML 与 PDF 已核验；PDF 元数据为 29 页，标题和作者与 HF 页面一致。</li>
-        <li>Artifact 状态：本次核查 GitHub Search API、Hugging Face models/datasets/spaces API，未发现公开的 <code>MMProLong</code> 模型、数据集或代码仓库条目；因此这里将复现性判断标为“尚待发布”，不是永久性结论。</li>
+        <li>论文链接：Hugging Face Papers 页面 <code>https://huggingface.co/papers/2605.13831</code>。</li>
+        <li>论文原文：arXiv HTML 与 PDF 已核验；论文为 29 页，标题和作者与 HF 页面一致。</li>
+        <li>Artifact 状态：截至核查时，未发现公开的 <code>MMProLong</code> 模型、数据集或代码仓库；因此将复现性判断标为“尚待发布”，不是永久性结论。</li>
       </ul>
     </section>
 </main>

@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CL-Bench：Agent Memory 不是记住，而是从经验中变好</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #f7f3ea;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;
+      --info-soft: #eef3fb;
+      --danger: #9f4238;
+      --danger-soft: #fff0ed;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 80px) 0 28px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(33px, 5vw, 60px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 750; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .metric strong { display: block; font: 760 30px/1.1 var(--serif); color: var(--accent); }
+    .metric span { display: block; margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+    .callout.danger > b { color: var(--danger); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 750; }
+    .def-list span { min-width: 0; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 750; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    .math-display { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .source-list { display: grid; gap: 10px; margin-top: 18px; }
+    .source-list a { display: block; padding: 13px 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-decoration: none; }
+    .source-list span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+    footer { padding: 10px 0 44px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      table { min-width: 640px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Review · Agent Memory · Continual Learning</div>
+    <h1>CL-Bench：Agent Memory 不是记住，而是从经验中变好</h1>
+    <p class="lede">Omar Saravia 转发的 CL-Bench 论文把一个长期被营销话术模糊的问题拉回评测桌面：长期记忆系统到底有没有让 LLM Agent 从连续经验中学到可复用结构？论文的反直觉结果是，许多专门设计的 memory 系统没有超过朴素全上下文 ICL；它们更像昂贵的检索与压缩管线，而不是真正的在线学习机制。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>这篇论文最值得重视的地方，不是“某个 memory framework 排名低”这个单点结果，而是它重新定义了 Agent memory 的验收标准：<strong>记忆系统不能只证明自己能召回旧事实，必须证明旧经验会改变下一次行为，并且这个改变在相似实例、环境漂移和干扰信号下仍然提升结果。</strong></p>
+      <div class="grid-3">
+        <div class="metric"><strong>6 类任务</strong><span>软件工程、数据库、流行病学、频谱监测、销售预测和策略博弈，覆盖不同交互形式与奖励。</span></div>
+        <div class="metric"><strong>Gain 指标</strong><span>同一系统带历史与不带历史的差值，用来剥离模型先验能力和题目难度。</span></div>
+        <div class="metric"><strong>ICL 领先</strong><span>最强全上下文 ICL 在总体 reward 与 gain 上领先，暴露了许多外部记忆系统的真实短板。</span></div>
+      </div>
+      <div class="callout warn">
+        <b>一句话结论</b>
+        如果一个 Agent memory 系统在 CL-Bench 这类序列任务上打不过“把完整历史保留在上下文里”，那么它当前提供的主要价值可能只是上下文搬运、压缩或检索便利，而不是学习能力本身。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：memory 评测长期把“回忆”误当成“学习”</h2>
+      <p>过去很多 Agent memory 演示会展示：系统记得用户偏好、能检索旧聊天、能回答“我上次说过什么”、能把历史任务压缩成摘要。这些能力有用，但它们主要对应 <strong>recall</strong>。CL-Bench 关注的是更强的问题：系统是否能在一个持续环境中发现隐藏规律、更新假设、处理反馈，并把这些规律迁移到后续实例。</p>
+      <p>这一区分非常关键。一个 RAG 式 memory 可以把早期观察原样取回来，但“取回来”之后模型仍可能不会使用，或者会用错。一个 notepad 式 memory 可以让模型写下推断，但推断可能过早、过窄、过期，后续反而污染决策。一个自动摘要系统可以节省 tokens，但摘要会丢掉后来归纳所需的反例、异常值和证据来源。</p>
+      <div class="grid-2">
+        <div class="card"><h3>旧问题：能不能找回？</h3><p>给定历史片段或用户问题，系统能否召回相关聊天、文档、事实或偏好。这更像信息检索与上下文构造。</p></div>
+        <div class="card"><h3>新问题：会不会变好？</h3><p>同一个系统经历前面实例后，在后面实例上是否比重置状态时更快、更准、更稳。这才接近持续学习。</p></div>
+      </div>
+      <p>所以，CL-Bench 实际上是在问：今天的 Agent memory 产业是不是把“我能保存历史”包装成了“我能从经验中学习”？论文给出的初步答案偏负面：当前系统确实有学习信号，但最稳的机制往往仍是完整上下文，而不是专门的记忆管理。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>CL-Bench 怎么构造：让经验真的有用，也让误用经验付出代价</h2>
+      <p>一个有效的 continual learning benchmark 必须避免把普通 benchmark 题目串起来。若每道题本来相互独立，那么再强的“持续学习”也学不到什么；若题目答案可以靠预训练知识直接解决，那么高分可能只是模型强，而不是在线学习强。CL-Bench 的核心设计是：每个任务都存在共享隐藏结构，并且这些结构只有通过当前 run 的连续经验才能逐步发现。</p>
+      <h3>任务准入标准</h3>
+      <div class="def-list">
+        <div><b>Headroom</b><span>初始表现必须明显低于可达到上限，否则无法观察学习带来的改进。隐藏结构不能是模型预训练中已经知道的通用常识。</span></div>
+        <div><b>Shared latent structure</b><span>不同实例之间共享可发现的结构，例如代码库布局、数据库 schema、疾病生存曲线、对手策略或商品增长模式。</span></div>
+        <div><b>Learning mechanism</b><span>早期实例要产生对后续实例有信息量的反馈，例如测试失败、查询结果、预测分数或环境观察。</span></div>
+        <div><b>Concept drift</b><span>部分任务会改变环境或可观测分布，要求系统知道什么时候复用旧经验，什么时候废弃旧经验。</span></div>
+      </div>
+
+      <h3>六个任务的真实含义</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>任务</th><th>连续学习机会</th><th>奖励在鼓励什么</th><th>典型失败</th></tr></thead>
+          <tbody>
+            <tr><td>Blind Spectrum Monitoring</td><td>从多次部分扫描中恢复 13 个发射源的频率、带宽和间歇性活动。</td><td>报告频谱占用与真实占用的 IoU。</td><td>把暂时沉默的发射源当成不存在，或不能积累全局 channel map。</td></tr>
+            <tr><td>Codebase Adaptation</td><td>连续修同一批 Python 仓库 issue，逐步熟悉文件布局、测试命令和模块约定。</td><td>在隐藏测试通过前提下，用更少 bash 交互提交 patch。</td><td>每个 issue 都像第一次进入仓库一样重新摸索，不能复用定位经验。</td></tr>
+            <tr><td>Cohort Studies</td><td>整合五个偏置不同的观察性研究，估计 36 个患者 cohort 的生存概率。</td><td>相对 naive baseline 的 KL 信息增益。</td><td>被当前研究的采样偏差误导，或不把前面研究的变量映射带到后面。</td></tr>
+            <tr><td>Database Exploration</td><td>在未知 SQLite 数据库中逐渐学会表名、列名、单位、缺失表和迁移后的 schema 变化。</td><td>回答自然语言问题时节省探索查询预算。</td><td>缓存旧 schema 后在迁移后盲目复用，或每题从零开始探索。</td></tr>
+            <tr><td>Exploitable Poker</td><td>观察确定性对手的投注模式，推断三类 opponent archetypes 与阶段策略。</td><td>120 手 heads-up poker 的 big blinds profit。</td><td>只对最近一手过拟合，不能形成稳定对手模型。</td></tr>
+            <tr><td>Sales Prediction</td><td>每轮只看到一个 store 的历史，逐步推断跨地点、跨产品 cluster 的五年需求增长率。</td><td>相对 naive 预测的 WAPE skill。</td><td>根据上一轮反馈剧烈修正长期趋势，在过拟合和迟钝之间摆动。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这些任务共同制造了一个比“聊天记忆”更困难的场景：经验不是一条显式事实，而是一组需要抽象、验证和更新的结构。系统要决定什么该写入记忆、什么只是一次噪声、什么在环境变化后失效。</p>
+    </section>
+
+    <section id="metric">
+      <h2>关键指标：为什么 reward 不够，必须看 gain</h2>
+      <p>如果只看 reward，会混淆三件事：模型本来就强、当前实例本来容易、系统真的从历史中学到了东西。CL-Bench 的关键贡献是用 gain 把第三件事单独拆出来。</p>
+      <div class="math-display">\[
+        g_t = r^{sf}_t - r^{sl}_t
+      \]</div>
+      <p>其中，\(r^{sf}_t\) 是系统在保留历史状态时的奖励，\(r^{sl}_t\) 是同一系统在同一实例上以 stateless 方式运行的奖励。两者面对同一实例，题目难度和模型先验能力被共同抵消，差值更接近“历史经验贡献了多少”。</p>
+      <div class="math-display">\[
+        \widehat{g} = \frac{\bar{r}^{sf} - \bar{r}^{sl}}{r_{\max} - \bar{r}^{sl}}
+      \]</div>
+      <p>归一化 gain 进一步除以系统自己的学习 headroom。这样做避免了一个强 stateless baseline 因为已接近上限而看起来没有学习空间，也避免不同任务 reward 尺度无法比较。</p>
+      <div class="callout info">
+        <b>这个指标的实际意义</b>
+        它逼迫 memory 系统回答一个很朴素的问题：同样的模型、同样的题目、同样的工具，只是多了过去经验，你到底提升了多少？如果答案接近零，说明记忆层没有把历史转化成有效行为。
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>实验结果：最朴素的全上下文 ICL 反而最强</h2>
+      <p>论文评估了多种 frontier model 与 Agent 架构组合，包括全上下文 ICL、ICL Notepad、Mem0、ACE、Claude Code、Codex 等。总体排名显示，最强配置并不是最复杂的专用 memory 系统，而是 <code>ICL + Claude Sonnet 4.6</code>。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>系统</th><th>模型</th><th>归一化 reward</th><th>归一化 gain</th><th>论文报告成本</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>ICL</td><td>Claude Sonnet 4.6</td><td>22.3 ± 4.1</td><td>25.4 ± 3.6</td><td>30.4</td><td>总体第一，说明完整上下文仍是强基线。</td></tr>
+            <tr><td>ICL</td><td>GPT-5.4</td><td>20.1 ± 9.1</td><td>20.1 ± 9.1</td><td>18.4</td><td>同一简单机制在强模型上仍有明显 learning gain。</td></tr>
+            <tr><td>Claude Code</td><td>Sonnet 4.6</td><td>19.0 ± 7.1</td><td>23.9 ± 5.7</td><td>38.6</td><td>在数据库探索和销售预测上有强项，但成本更高。</td></tr>
+            <tr><td>Mem0</td><td>GPT-5.4</td><td>15.1 ± 6.4</td><td>20.2 ± 5.9</td><td>18.3</td><td>不是完全无效，但没有超过最强 ICL。</td></tr>
+            <tr><td>ICL Notepad</td><td>Claude Sonnet 4.6</td><td>3.5 ± 5.7</td><td>18.2 ± 3.4</td><td>31.5</td><td>有学习增益但绝对表现低，说明记忆媒介会改变行为质量。</td></tr>
+            <tr><td>ACE</td><td>GPT-5.4</td><td>4.6 ± 2.7</td><td>8.6 ± 2.5</td><td>62.8</td><td>高成本没有换来高 gain，暴露 playbook 式记忆的脆弱性。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>任务层面的结果不是一刀切</h3>
+      <p>论文的学习曲线显示，不同任务的学习信号差异很大。Sales Prediction 与 Blind Spectrum Monitoring 出现最清晰的 stateful/stateless 分离；Database Exploration 的增益更多表现为 stateless reward 经常塌到零，而 stateful 版本能维持下限；Cohort Studies、Codebase、Poker 的曲线则更接近重叠，说明当前系统很难从这些任务里抽取稳定可迁移结构。</p>
+      <div class="grid-3">
+        <div class="card"><h3>BSM：最像地图构建</h3><p>连续扫描能逐步补齐 channel map，因此 stateful 系统有明显优势。这里的经验是“全局结构”。</p></div>
+        <div class="card"><h3>Database：最像 schema 学习</h3><p>迁移前后需要既复用又废弃旧知识，Claude Code 与 Mem0 在这个任务上较强。</p></div>
+        <div class="card"><h3>Cohort：最难</h3><p>跨研究变量映射、偏置校正和反事实 cohort 估计对当前 Agent 仍然太难，许多系统接近 naive baseline。</p></div>
+      </div>
+      <p>这说明 CL-Bench 并不是简单地给 memory 系统判死刑。它更像一面显微镜：有些任务中上下文累积确实能带来收益，但当前 memory 架构经常无法把收益稳定提取出来，尤其在跨 variant 迁移和概念漂移时容易失败。</p>
+    </section>
+
+    <section id="failure">
+      <h2>失败机制：不是没记住，而是记忆没有变成正确假设</h2>
+      <p>论文将 gain 进一步拆成 stability 与 plasticity 两部分。这个拆解比总体分数更有诊断价值，因为两个系统可能有相近 gain，但一个靠快速适应当前 variant，另一个靠跨 variant 保留旧知识；它们的产品风险完全不同。</p>
+      <div class="def-list">
+        <div><b>Stability</b><span>系统在进入新 variant 的第一批实例时，能否复用此前学到的稳定结构。如果为负，说明旧记忆被误用或遗忘。</span></div>
+        <div><b>Plasticity</b><span>系统在同一个 variant 内得到反馈后，能否快速调整策略。如果为负，说明系统对新信息不敏感或被错误先验锁死。</span></div>
+      </div>
+      <h3>稳定性失败：最近反馈压倒长期趋势</h3>
+      <p>Sales Prediction 的失败案例很典型。Agent 在一轮反馈后认为自己高估了纽约某些家具品类，于是把后续五年预测压平；下一轮得分下降后，又判断自己低估了同一序列，立刻改成每年大幅增长。它不是没有记录反馈，而是把最近一次反馈当成了足以推翻长期趋势的证据。</p>
+      <div class="callout danger">
+        <b>这类失败的本质</b>
+        memory 里有反馈，但没有贝叶斯式的置信度更新、没有误差归因、没有区分短期噪声与长期结构。结果是 Agent 看起来“会反思”，实际是在根据最近一拍做高方差追涨杀跌。
+      </div>
+      <h3>可塑性失败：有相关记忆，但不会在正确时刻调用</h3>
+      <p>Cohort Studies 的失败更接近 retrieval-action gap。Agent 的 notepad 中已经包含早期研究的变量信息，例如家族史、认知量表、蛋白比例等；但在后续 FORGE Urban 研究中，面对当前数据集缺失的 28 个 cohort 变量，它把这些 cohort 判断为“不适用于当前 schema”，直接对它们提交同一组总体生存概率。这说明相关信息存在，但没有被带入正确的推理位置。</p>
+      <p>这也是许多外部 memory 系统的真实风险：检索命中了不等于行为会用上；写进 notepad 不等于下一次会被当作约束；摘要里出现术语不等于模型能把术语映射回任务变量。</p>
+    </section>
+
+    <section id="insight">
+      <h2>工程启发：下一代 Agent memory 应该像“假设治理系统”</h2>
+      <p>如果把这篇论文用于工程设计，我会把结论翻译成一句话：<strong>Agent memory 的核心对象不应是历史文本，而应是带证据、置信度、适用范围和失效条件的可执行假设。</strong>只有这样，记忆才可能从“上下文仓库”升级为“在线学习状态”。</p>
+      <div class="grid-2">
+        <div class="card"><h3>写入要有门槛</h3><p>不要每轮都自动写长期记忆。更可靠的写入对象是经过反馈验证的 schema 映射、测试入口、稳定偏好、失败模式和环境约束。</p></div>
+        <div class="card"><h3>检索要服务决策</h3><p>向量相似度只能回答“语义相关”，不能保证“决策相关”。memory retrieval 应绑定当前任务类型、变量、目标和失败风险。</p></div>
+        <div class="card"><h3>记忆要能过期</h3><p>数据库迁移、用户偏好变化、工具 API 变更、代码库重构都会让旧记忆变成毒药。memory 必须有 invalidation 机制。</p></div>
+        <div class="card"><h3>评测要看差分</h3><p>任何 memory claim 都应同时报告 stateless、full-context ICL、压缩上下文、外部 memory 的差异，而不是只展示单次 demo。</p></div>
+      </div>
+      <h3>一个更合理的 memory schema</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>字段</th><th>应该保存什么</th><th>为什么 CL-Bench 需要它</th></tr></thead>
+          <tbody>
+            <tr><td>claim</td><td>可执行假设，例如“Electronics 价格使用 integer cents”或“tablib 核心逻辑集中在 core 模块”。</td><td>把经验从 transcript 压缩成可复用规律。</td></tr>
+            <tr><td>evidence</td><td>支持该假设的实例、工具反馈、测试结果或错误消息。</td><td>避免把模型猜测当成事实写入长期记忆。</td></tr>
+            <tr><td>scope</td><td>适用仓库、表组、variant、用户、时间段或任务类型。</td><td>防止把局部规律误迁移到新 variant。</td></tr>
+            <tr><td>confidence</td><td>根据多轮证据更新的置信度，而不是一次观察后的硬规则。</td><td>降低最近反馈带来的高方差过拟合。</td></tr>
+            <tr><td>invalidators</td><td>哪些信号会让该记忆失效，例如 schema migration、测试路径变化、评分突然下降。</td><td>概念漂移下不能盲目复用旧知识。</td></tr>
+            <tr><td>action hook</td><td>在什么任务步骤必须检查这条记忆，例如写 SQL 前、选择测试命令前、提交 forecast 前。</td><td>解决“记忆存在但没有进入决策”的问题。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这类设计比“把历史对话嵌入向量库”复杂，但它正是 CL-Bench 暴露出的缺口。Agent 要从经验中学习，不能只拥有更多上下文；它需要把经验组织成可验证、可撤销、可迁移的状态。</p>
+    </section>
+
+    <section id="comparison">
+      <h2>和长期记忆评测的关系：CL-Bench 补上了行为改善这一刀</h2>
+      <p>如果和 RHELM、LongMemEval、MemoryBench 等长期记忆评测放在一起看，CL-Bench 的独特位置会更清楚。长期记忆评测通常强调跨时间、跨文档、跨对话的事实一致性与冲突检测；CL-Bench 则把问题推向“经验是否改变行为”。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>评测类型</th><th>核心问题</th><th>典型能力</th><th>CL-Bench 的补充</th></tr></thead>
+          <tbody>
+            <tr><td>长对话 / 用户记忆</td><td>系统是否记得用户历史、偏好、冲突状态。</td><td>episodic memory、profile memory、temporal validity。</td><td>仅记得事实还不够，要看事实是否让后续行动更好。</td></tr>
+            <tr><td>RAG / 文档记忆</td><td>系统是否能从外部材料中检索并综合证据。</td><td>检索、重排、引用、跨源聚合。</td><td>检索相关片段不等于能学出环境规律。</td></tr>
+            <tr><td>Agent continual learning</td><td>系统是否在连续任务中获得正向差分改进。</td><td>假设形成、反馈吸收、迁移、过期管理。</td><td>CL-Bench 直接测 stateful 与 stateless 的差值。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>因此，CL-Bench 不是替代其他 memory benchmark，而是补上了最容易被忽略的一层：<strong>memory 是否转化为 performance delta</strong>。对于生产 Agent，这是更贴近业务价值的问题。用户不关心系统是否把历史保存得很漂亮，用户关心的是它下次是否少犯同样错误、少探索无效路径、能否在环境变动时及时纠正。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语对齐</h2>
+      <div class="def-list">
+        <div><b>Continual Learning</b><span>系统在一串连续经验中逐步改善，而不是只在离线训练后静态推理。这里强调 test-time / deployment-time 的经验利用。</span></div>
+        <div><b>Stateful System</b><span>带历史状态运行的系统，状态可以是完整上下文、notepad、检索记忆、playbook、压缩摘要或 Agent harness 内部状态。</span></div>
+        <div><b>Stateless Baseline</b><span>每个实例独立运行、没有前序历史。CL-Bench 用它作为同系统对照，避免把题目难度误当学习效果。</span></div>
+        <div><b>Full-context ICL</b><span>把完整历史尽量保留在上下文窗口中，让模型直接从原始轨迹中 in-context learning。它简单但信息损失最少。</span></div>
+        <div><b>Dedicated Memory</b><span>专门管理记忆的系统，例如自动抽取、向量检索、结构化 notepad、playbook 更新或上下文压缩。</span></div>
+        <div><b>Concept Drift</b><span>环境统计或 schema 发生变化，使过去经验部分失效。好的学习系统要能发现旧规律不再适用。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与反向解读：不要把论文读成“memory 没用”</h2>
+      <p>这篇论文的结果应该被读成“当前常见 memory 架构在这些任务上没有证明自己优于强 ICL”，而不是“外部记忆没有价值”。完整上下文 ICL 能赢，很大程度上是因为任务长度仍然允许保留大量历史；在跨周、跨月、跨用户、多模态、多工具、超长部署的真实系统里，完整上下文会遭遇成本、窗口、隐私、权限和审计边界。</p>
+      <div class="callout warn">
+        <b>最重要的限制</b>
+        CL-Bench 首轮评估主要覆盖 context-based memory paradigms，没有系统评估参数更新、test-time training、专门训练过的 state updater、强化学习式长期策略更新。因此它更像当前 Agent memory 工程路线的压力测试，不是所有持续学习路线的终局判断。
+      </div>
+      <ul>
+        <li><strong>任务数量有限。</strong>六个任务已经比单域 benchmark 多样，但仍不能覆盖所有真实长期 Agent 场景。</li>
+        <li><strong>任务 horizon 有限。</strong>几十到一百多实例能看到一部分学习动态，但不等同于真实产品里的数周或数月记忆。</li>
+        <li><strong>模型覆盖有限。</strong>论文选择 frontier systems 与若干 memory paradigms，并没有穷尽所有开源模型、专用训练系统或私有产品实现。</li>
+        <li><strong>ICL 基线本身很强。</strong>当历史能塞进上下文时，压缩记忆天然要面对信息损失；外部 memory 的优势更可能在超长 horizon 后出现。</li>
+        <li><strong>评测任务需要强基础能力。</strong>较小模型可能连基本任务都做不动，因此 benchmark 更偏 frontier agent 评估。</li>
+      </ul>
+      <p>所以，正确的产品结论不是“删掉 memory”，而是：在引入 memory 层前，必须先证明它相对 full-context、summary-context 和 stateless baseline 有正向差分；否则它可能只是增加成本、复杂度和错误传播路径。</p>
+    </section>
+
+    <section id="action">
+      <h2>可落地检查清单</h2>
+      <p>如果要基于这篇论文审视自己的 Agent memory 系统，我会按下面顺序验收，而不是先看演示视频或架构图。</p>
+      <div class="grid-2">
+        <div class="card"><h3>1. 建立差分基线</h3><p>同一任务同时跑 stateless、full-context ICL、摘要上下文、外部 memory，报告每个版本的 reward、gain、成本和失败模式。</p></div>
+        <div class="card"><h3>2. 做 memory ablation</h3><p>分别关闭写入、检索、压缩、过期策略、notepad 更新，定位收益来自哪一层，而不是把整个系统打包宣传。</p></div>
+        <div class="card"><h3>3. 记录 memory provenance</h3><p>每条记忆必须能追溯到证据和反馈；不能解释来源的长期记忆，应该被视为不可信状态。</p></div>
+        <div class="card"><h3>4. 测 concept drift</h3><p>故意改变 schema、工具返回、用户偏好或环境分布，观察系统是否能撤销旧假设，而不是继续复用过期记忆。</p></div>
+        <div class="card"><h3>5. 测 retrieval-action gap</h3><p>不只检查检索是否命中，还要检查命中的记忆是否真正进入计划、工具调用和最终答案。</p></div>
+        <div class="card"><h3>6. 评估稳定性与可塑性</h3><p>区分“跨场景保留旧知识”和“在当前场景快速适应”。两者缺一都会导致长期 Agent 不可靠。</p></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于公开 X 帖、arXiv 摘要、论文 HTML/PDF 中的任务设计、实验结果、附录任务说明与失败案例整理。X 平台页面和短链展示可能随时间变化；论文版本为 arXiv v1，后续若作者更新 benchmark、排行榜或实现细节，本文结论应重新核验。</p>
+      <div class="source-list">
+        <a href="https://x.com/omarsar0/status/2063279754787397807">Omar Saravia 关于 CL-Bench 的 X 帖<span>入口材料：概括 continual learning benchmark、memory systems 与 ICL 对比结论。</span></a>
+        <a href="https://arxiv.org/abs/2606.05661">arXiv: Continual Learning Bench: Evaluating Frontier AI Systems in Real-World Stateful Environments<span>论文摘要、作者、分类、版本与官方 PDF/HTML 入口。</span></a>
+        <a href="https://arxiv.org/html/2606.05661v1">论文 HTML 版本<span>本文关于任务设计、gain 指标、总体表格、学习曲线、稳定性/可塑性拆解和失败案例的主要依据。</span></a>
+        <a href="https://mem0.ai/">Mem0 项目站点<span>论文评估的 dedicated memory paradigms 之一；本文只引用其在 CL-Bench 表格中的表现，不单独评测项目实现。</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>这篇笔记关注 Agent memory 的评测口径：从“是否保存历史”转向“历史是否带来可测的行为改善”。</p>
+  </footer>
+</body>
+</html>

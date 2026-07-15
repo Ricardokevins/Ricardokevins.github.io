@@ -10,15 +10,36 @@ author_profile: true
 {% assign grouped_notes = notes | group_by: "kind" | sort: "name" %}
 
 <style>
+  /* Notes index — Anthropic-inspired palette
+     (warm ivory · clay/terracotta accent · neutral kraft secondary · serif display). */
   .notes-index {
-    --notes-ink: #262b31;
-    --notes-muted: #66717d;
-    --notes-line: #e1e5ea;
-    --notes-accent: #1f5f74;
-    --notes-accent-2: #8a5a22;
-    --notes-accent-soft: #e8f2f4;
-    --notes-warm: #fbf7ef;
+    --n-paper: #f0ede4;
+    --n-surface: #fdfbf6;
+    --n-ink: #1f1d1a;
+    --n-muted: #6f6a61;
+    --n-soft-ink: #4c473f;
+    --n-line: #e4ddcd;
+    --n-accent: #c15f3c;
+    --n-accent-soft: #f7ece4;
+    --n-accent-ink: #974326;
+    --n-accent-2: #7c7468;
+    --n-accent-2-soft: #f3ede2;
+    --n-shadow: 0 16px 40px rgba(31, 37, 40, 0.1);
+    --n-radius: 12px;
+    --n-serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+    --n-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
     min-width: 0;
+    margin: 0;
+    padding: clamp(20px, 3.2vw, 34px);
+    border: 1px solid var(--n-line);
+    border-radius: 18px;
+    background:
+      linear-gradient(90deg, rgba(193, 95, 60, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(120, 105, 85, 0.04) 1px, transparent 1px),
+      var(--n-paper);
+    background-size: 44px 44px;
+    color: var(--n-ink);
+    font-family: var(--n-sans);
   }
 
   .notes-index,
@@ -26,19 +47,48 @@ author_profile: true
     box-sizing: border-box;
   }
 
-  .notes-lead {
-    max-width: 48rem;
-    margin: 0 0 1.35rem;
-    color: var(--notes-muted);
-    font-size: 0.98rem;
-    line-height: 1.65;
+  /* hide the default minimal-mistakes page title; replaced by the hero below */
+  .archive > .page__title {
+    display: none;
   }
 
+  /* ---------- hero ---------- */
+  .notes-hero {
+    margin: 0 0 1.4rem;
+  }
+
+  .notes-hero__kicker {
+    margin: 0 0 0.6rem;
+    color: var(--n-accent);
+    font-family: var(--n-sans);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .notes-hero__title {
+    margin: 0;
+    color: var(--n-ink);
+    font-family: var(--n-serif);
+    font-size: clamp(1.9rem, 4.6vw, 2.9rem);
+    font-weight: 700;
+    line-height: 1.14;
+  }
+
+  .notes-lead {
+    max-width: 46rem;
+    margin: 0.9rem 0 0;
+    color: var(--n-muted);
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  /* ---------- controls panel ---------- */
   .notes-panel {
-    margin-bottom: 1.1rem;
-    padding: 0.9rem 0;
-    border-top: 1px solid var(--notes-line);
-    border-bottom: 1px solid var(--notes-line);
+    margin: 0 0 1.2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--n-line);
   }
 
   .notes-toolbar {
@@ -47,81 +97,96 @@ author_profile: true
     justify-content: space-between;
     gap: 0.75rem;
     align-items: center;
-    margin-bottom: 0.8rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin-bottom: 0.85rem;
     min-width: 0;
   }
 
   .notes-count {
     min-width: 0;
-    color: var(--notes-muted);
-    font-size: 0.85rem;
+    color: var(--n-muted);
+    font-size: 0.82rem;
     overflow-wrap: anywhere;
+  }
+
+  .notes-count [data-notes-visible-count] {
+    color: var(--n-accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   .notes-search {
     box-sizing: border-box;
-    width: min(100%, 19rem);
+    width: min(100%, 20rem);
     max-width: 100%;
     min-width: 0;
-    min-height: 2.15rem;
-    padding: 0.42rem 0.65rem;
-    border: 1px solid var(--notes-line);
-    border-radius: 6px;
-    background: #fff;
-    color: var(--notes-ink);
+    min-height: 2.3rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--n-line);
+    border-radius: 9px;
+    background: var(--n-surface);
+    color: var(--n-ink);
     font: inherit;
+    font-size: 0.9rem;
   }
 
-  .notes-index input.notes-search {
-    box-sizing: border-box;
+  .notes-search::placeholder {
+    color: #a79f92;
   }
 
   .notes-search:focus {
-    outline: 2px solid rgba(31, 95, 116, 0.18);
-    border-color: rgba(31, 95, 116, 0.56);
+    outline: none;
+    border-color: var(--n-accent);
+    box-shadow: 0 0 0 3px rgba(193, 95, 60, 0.18);
   }
 
   .notes-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    gap: 0.5rem;
   }
 
   .notes-filter-button {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
     min-height: 2rem;
-    padding: 0.25rem 0.58rem;
-    border: 1px solid var(--notes-line);
-    border-radius: 6px;
-    background: #fff;
-    color: #56616d;
+    padding: 0.32rem 0.74rem;
+    border: 1px solid var(--n-line);
+    border-radius: 999px;
+    background: var(--n-surface);
+    color: var(--n-muted);
     cursor: pointer;
     font: inherit;
-    font-size: 0.78rem;
-    line-height: 1.35;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .notes-filter-button:hover,
+  .notes-filter-button:hover {
+    border-color: rgba(193, 95, 60, 0.5);
+    color: var(--n-accent);
+  }
+
   .notes-filter-button.is-active {
-    border-color: rgba(31, 95, 116, 0.62);
-    background: var(--notes-accent);
+    border-color: var(--n-accent);
+    background: var(--n-accent);
     color: #fff;
+    box-shadow: 0 8px 18px rgba(193, 95, 60, 0.24);
   }
 
   .notes-filter-button__count {
-    opacity: 0.78;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    opacity: 0.75;
   }
 
   .notes-sort-note {
-    margin: 0.72rem 0 0;
-    color: var(--notes-muted);
-    font-size: 0.8rem;
+    margin: 0.8rem 0 0;
+    color: var(--n-muted);
+    font-size: 0.78rem;
   }
 
+  /* ---------- list + cards ---------- */
   .notes-list {
     display: grid;
     gap: 0.85rem;
@@ -129,10 +194,11 @@ author_profile: true
 
   .note-card {
     display: block;
-    padding: 1rem 1.05rem;
-    border: 1px solid var(--notes-line);
-    border-radius: 8px;
-    background: #fff;
+    padding: 1.05rem 1.2rem;
+    border: 1px solid var(--n-line);
+    border-radius: var(--n-radius);
+    background: var(--n-surface);
+    box-shadow: 0 1px 2px rgba(31, 37, 40, 0.04);
     text-decoration: none !important;
     transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
   }
@@ -142,46 +208,67 @@ author_profile: true
   }
 
   .note-card:hover {
-    border-color: rgba(31, 95, 116, 0.42);
-    box-shadow: 0 10px 26px rgba(27, 38, 55, 0.08);
-    transform: translateY(-1px);
+    border-color: rgba(193, 95, 60, 0.45);
+    box-shadow: var(--n-shadow);
+    transform: translateY(-2px);
     text-decoration: none !important;
   }
 
   .note-card__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    gap: 0.35rem 0.5rem;
     align-items: center;
-    margin-bottom: 0.45rem;
-    color: var(--notes-muted);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 0.76rem;
-  }
-
-  .note-card__kind {
-    color: var(--notes-accent);
-    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--n-muted);
+    font-size: 0.74rem;
   }
 
   .note-card__date {
-    color: var(--notes-accent-2);
+    color: var(--n-accent-2);
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .note-card__kind {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    color: var(--n-accent);
+    font-weight: 700;
+  }
+
+  .note-card__kind::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--n-accent);
   }
 
   .note-card__title {
     margin: 0 0 0.45rem;
-    color: var(--notes-ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 1.08rem;
-    line-height: 1.35;
+    color: var(--n-ink);
+    font-family: var(--n-sans);
+    font-size: 1.12rem;
+    font-weight: 700;
+    line-height: 1.4;
+    transition: color 0.16s ease;
+  }
+
+  .note-card:hover .note-card__title {
+    color: var(--n-accent);
   }
 
   .note-card__summary {
-    margin: 0 0 0.75rem;
-    color: #4f5963;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0 0 0.8rem;
+    color: var(--n-soft-ink);
     font-size: 0.9rem;
-    line-height: 1.65;
+    line-height: 1.7;
   }
 
   .note-card__tags {
@@ -191,50 +278,54 @@ author_profile: true
   }
 
   .note-card__tag {
-    padding: 0.12rem 0.45rem;
-    border: 1px solid rgba(31, 95, 116, 0.18);
-    border-radius: 6px;
-    background: var(--notes-accent-soft);
-    color: #315f6b;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 0.72rem;
-    line-height: 1.45;
+    padding: 0.13rem 0.5rem;
+    border: 1px solid rgba(193, 95, 60, 0.22);
+    border-radius: 7px;
+    background: var(--n-accent-soft);
+    color: var(--n-accent-ink);
+    font-size: 0.7rem;
+    line-height: 1.5;
   }
 
   .notes-empty {
-    padding: 1rem;
-    border: 1px solid var(--notes-line);
-    border-radius: 8px;
-    background: var(--notes-warm);
-    color: var(--notes-muted);
+    padding: 1rem 1.1rem;
+    border: 1px dashed var(--n-line);
+    border-radius: var(--n-radius);
+    background: var(--n-accent-2-soft);
+    color: var(--n-muted);
     font-size: 0.9rem;
   }
 
+  /* ---------- pagination ---------- */
   .notes-pagination {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.4rem;
-    margin-top: 1rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin-top: 1.2rem;
   }
 
   .notes-page-button {
-    min-width: 2rem;
-    min-height: 2rem;
-    padding: 0.25rem 0.55rem;
-    border: 1px solid var(--notes-line);
-    border-radius: 6px;
-    background: #fff;
-    color: var(--notes-muted);
+    min-width: 2.1rem;
+    min-height: 2.1rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--n-line);
+    border-radius: 8px;
+    background: var(--n-surface);
+    color: var(--n-muted);
     cursor: pointer;
     font-size: 0.82rem;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   }
 
-  .notes-page-button:hover,
+  .notes-page-button:hover:not(:disabled) {
+    border-color: var(--n-accent);
+    color: var(--n-accent);
+  }
+
   .notes-page-button.is-active {
-    border-color: var(--notes-accent);
-    background: var(--notes-accent);
+    border-color: var(--n-accent);
+    background: var(--n-accent);
     color: #fff;
   }
 
@@ -243,7 +334,12 @@ author_profile: true
     opacity: 0.45;
   }
 
-  @media (max-width: 520px) {
+  @media (max-width: 600px) {
+    .notes-index {
+      padding: 18px;
+      border-radius: 14px;
+    }
+
     .notes-toolbar {
       align-items: stretch;
       flex-direction: column;
@@ -256,7 +352,11 @@ author_profile: true
 </style>
 
 <div class="notes-index" data-page-size="10">
-  <p class="notes-lead">这里整理较长的技术笔记、论文精读和可独立访问的学习资源。列表统一在站内 Notes 页面管理，按最近更新时间倒序排列。</p>
+  <header class="notes-hero">
+    <p class="notes-hero__kicker">Notes · 站内长文</p>
+    <h1 class="notes-hero__title">技术笔记与论文精读</h1>
+    <p class="notes-lead">这里整理较长的技术笔记、论文精读和可独立访问的学习资源，按最近更新时间倒序排列。可以用下面的搜索和分类，快速定位想看的主题。</p>
+  </header>
 
   <div class="notes-panel">
     <div class="notes-toolbar">

@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nitrobrew 推文与技术解读</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
   <style>
     :root {
       --paper: #f7f3ea;
@@ -13,7 +24,7 @@
       --panel: #fffaf0;
       --panel-2: #eef5ef;
       --accent: #be4b28;
-      --accent-2: #247f77;
+      --accent-2: #7f3c24;
       --accent-3: #7357a6;
       --code: #283735;
       --code-bg: #e8dfcf;
@@ -690,7 +701,7 @@
                 <tbody>
                   <tr><td>1/8</td><td>Nitrobrew 让 logit distillation loss 计算快 100x、内存省 50%、OPD 快 3x。</td><td>这是 headline，具体成立条件要看 sequence length、vocab size、teacher/student 分布式拓扑。</td></tr>
                   <tr><td>2/8</td><td>OPD 有前景，但现有实现慢；top-k truncation 会导致 pathological bias。</td><td>问题不是 KL 本身，而是完整 logits 的通信、显存和框架集成成本。</td></tr>
-                  <tr><td>3/8</td><td>unembedding matrix low-rank；Nitrobrew 发送 hidden states 作为 logits 的无损压缩。</td><td>logits 是 `W_U h`，当 `d_model << V` 时，传 `h` 比传 `z` 小很多。</td></tr>
+                  <tr><td>3/8</td><td>unembedding matrix low-rank；Nitrobrew 发送 hidden states 作为 logits 的无损压缩。</td><td>logits 是 \(W_U h\)，当 \(d_{\text{model}} \ll V\) 时，传 \(h\) 比传 \(z\) 小很多。</td></tr>
                   <tr><td>4/8</td><td>只传 residual stream 最后 hidden state，按需重算 logits；chunked online KL 让它 memory-efficient。</td><td>通信省在 `V -> d_model`，显存省在不物化 `[B,T,V]`。</td></tr>
                   <tr><td>5/8</td><td>在 Nemo-RL 和 VeRL 的 Qwen OPD 上实现约 3x throughput。</td><td>这是系统吞吐评估，不是单独证明模型质量全面超过 top-k。</td></tr>
                   <tr><td>6/8</td><td>探索 spectral compression。</td><td>进一步把 hidden state 从 `d_model` 压到更低 rank，但这一步不再严格 lossless。</td></tr>
@@ -726,7 +737,7 @@
             <div class="grid-2">
               <div class="claim">
                 <b>动作一：传 h，不传 z</b>
-                <span>老师最后 hidden state `h_T` 的维度是 `d_model`；完整 logits `z_T` 的维度是 `V`。通常 `d_model << V`，所以传 `h_T` 可以显著少传数据。只要 loss 端有老师 unembedding `W_U^T`，就能重建 `z_T = W_U^T h_T`。</span>
+                <span>老师最后 hidden state \(h_T\) 的维度是 \(d_{\text{model}}\)；完整 logits \(z_T\) 的维度是 \(V\)。通常 \(d_{\text{model}} \ll V\)，所以传 \(h_T\) 可以显著少传数据。只要 loss 端有老师 unembedding \(W_U^\top\)，就能重建 \(z_T = W_U^\top h_T\)。</span>
               </div>
               <div class="claim">
                 <b>动作二：chunked online KL</b>

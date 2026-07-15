@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Token 从 245M 到 28M：上下文治理，而不是省钱小技巧</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f1e8;
+      --surface: #fffdf8;
+      --surface-2: #f0ebe1;
+      --ink: #20242a;
+      --muted: #626b73;
+      --subtle: #87909a;
+      --line: #ddd4c6;
+      --line-strong: #aa9d8a;
+      --accent: #c15f3c;
+      --accent-dark: #492011;
+      --accent-soft: #e7f4f1;
+      --amber: #a15c16;
+      --amber-soft: #f7e7d5;
+      --blue: #c15f3c;
+      --blue-soft: #e8eef7;
+      --red: #9a3f36;
+      --red-soft: #f4e2de;
+      --shadow: 0 16px 42px rgba(33, 38, 45, 0.09);
+      --radius: 12px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(193, 95, 60, 0.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 42px 42px;
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    code { padding: 2px 6px; border-radius: 6px; background: #ece5d8; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header { padding: clamp(38px, 6vw, 82px) 0 28px; }
+    .kicker {
+      margin-bottom: 14px;
+      color: var(--amber);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(32px, 5.6vw, 64px);
+      line-height: 1.1;
+      font-weight: 780;
+    }
+    .lede {
+      max-width: 890px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.68;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      margin-top: 26px;
+      align-items: stretch;
+    }
+    .hero-card {
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, .86);
+      box-shadow: var(--shadow);
+    }
+    .metric-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .metric {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .metric b { display: block; color: var(--accent); font-size: clamp(24px, 3vw, 34px); line-height: 1; }
+    .metric span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+    main { display: grid; gap: 30px; padding-bottom: 62px; }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 36px); font-family: var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; color: var(--accent); font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .card.warn { border-left: 4px solid var(--amber); }
+    .card.info { border-left: 4px solid var(--blue); }
+    .card.good { border-left: 4px solid var(--accent); }
+    .card.risk { border-left: 4px solid var(--red); }
+
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent-dark); }
+    .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+    .callout.warn > b { color: var(--amber); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.risk > b { color: var(--red); }
+
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 750; }
+    tr:nth-child(even) td { background: rgba(0, 0, 0, .016); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .flow-step {
+      position: relative;
+      padding: 16px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .flow-step::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -12px;
+      transform: translateY(-50%);
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .flow-step:last-child::after { content: ""; }
+    .flow-step b { display: block; color: var(--accent); font-size: 14px; }
+    .flow-step span { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(140px, .25fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); }
+    .source-list li { word-break: break-word; }
+    footer { padding: 30px 0 42px; color: var(--subtle); font-size: 13px; border-top: 1px solid var(--line); }
+
+    @media (max-width: 860px) {
+      .hero-grid, .grid-2, .grid-3, .grid-4, .flow { grid-template-columns: 1fr; }
+      .metric-row { grid-template-columns: 1fr; }
+      .flow-step::after { content: "↓"; top: auto; right: 18px; bottom: -18px; transform: none; }
+      .flow-step:last-child::after { content: ""; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Agent Context Engineering</div>
+    <h1>Codex Token 从 245M 到 28M：上下文治理，而不是省钱小技巧</h1>
+    <p class="lede">Tim Jayas 的 X Article 表面上是在分享“如何免费省 Codex token”，但真正值得吸收的是一套 coding agent 信息架构：原始数据先压缩，命令输出先限流，项目状态外部化，提示词从泛读变定位。它的核心不是让模型少工作，而是让模型只处理最小充分、可审计、能推进任务的上下文。</p>
+    <div class="hero-grid">
+      <div class="hero-card">
+        <div class="metric-row">
+          <div class="metric"><b>245M</b><span>作者声称优化前的单日 Codex token 消耗</span></div>
+          <div class="metric"><b>28M</b><span>锁定流程后的单日消耗，约为原来的 11.4%</span></div>
+          <div class="metric"><b>7 层</b><span>预压缩、限流、handoff、Do Not、snippet、compact、低 verbosity</span></div>
+        </div>
+      </div>
+      <div class="hero-card">
+        <p><strong>一句话判断：</strong>这篇文章最有价值的不是某几个 <code>head</code> / <code>tail</code> 命令，而是把 agent 工作流从“上下文暴饮暴食”改造成“检索、摘要、切片、记忆、回收”的系统工程。</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断：token efficiency 是上下文治理问题</h2>
+      <p>这篇文章的主张可以压缩成一句话：<strong>不要把 LLM 当成无限上下文的垃圾桶，要把它放在一个有输入过滤、摘要索引、输出断路器和外部记忆的系统里。</strong></p>
+      <div class="grid-3">
+        <div class="card good"><h3>不是省略证据</h3><p>目标不是让 agent 少看材料，而是先把材料变成可定位的摘要，再按需回看原文切片。</p></div>
+        <div class="card info"><h3>不是单轮优化</h3><p>一次大输出会进入后续上下文，被多轮重复携带；真正的浪费是复利式的。</p></div>
+        <div class="card warn"><h3>不是模型问题</h3><p>同一个模型，在不同上下文纪律下，成本、速度和稳定性可能差一个数量级。</p></div>
+      </div>
+      <div class="callout info">
+        <b>最重要的重读方式</b>
+        <p>作者的 245M 到 28M 数字不应被理解成严格 benchmark，而应被理解成一个高信号案例：当项目包含大日志、大 JSON、长会话、多次工具输出时，上下文治理能带来乘法级收益。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：agent 为什么会“烧 token”</h2>
+      <p>coding agent 的 token 消耗不是简单等于“这轮 prompt 有多长”。更接近真实的结构是：每一轮输入上下文、工具输出和模型回复都会变成后续轮次的历史负担。一次无节制地读取大日志、全量 diff、完整测试输出，可能在接下来十几轮里反复作为输入被模型重新处理。</p>
+      <div class="flow" aria-label="token 消耗复利链路">
+        <div class="flow-step"><b>原始输入</b><span>日志、JSON、CSV、全仓库、长 diff 直接进入上下文</span></div>
+        <div class="flow-step"><b>工具输出</b><span>命令没有限制，warning、fixture、generated 文件一起涌入</span></div>
+        <div class="flow-step"><b>历史携带</b><span>无关内容在后续轮次继续变成输入 token</span></div>
+        <div class="flow-step"><b>模型漂移</b><span>低信噪比内容稀释关键事实，甚至保留过期假设</span></div>
+        <div class="flow-step"><b>返工放大</b><span>误判、重复搜索和重复解释让总 token 进一步上升</span></div>
+      </div>
+      <p>因此，文章里“把 10k tokens 的噪声换成 200–500 tokens 的 distilled insight”不是只省 9500 tokens；如果这段噪声会被后续 20 轮携带，节省的是一串复利成本。更关键的是，模型看到的上下文更干净，判断也更稳定。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：七个动作背后的系统层含义</h2>
+      <p>原文提出的七步可以重排成一个 agent context pipeline：先把数据压缩成索引，再让模型定位读取；先把命令输出限流，再保留完整结果供回查；先把项目状态写入外部记忆，再让长会话周期性回收上下文。</p>
+
+      <h3>1. 原始数据先预压缩：程序负责筛选，模型负责判断</h3>
+      <p>作者不让 Codex 每轮读取 40MB trade log、巨大 market dump 或整个仓库，而是生成一次性 helper scripts：日志按时间、symbol、keyword 筛出 Top N 异常；数据摘要只保留列、行数、样本和关键统计；仓库地图只列入口、配置和核心流程。</p>
+      <div class="callout">
+        <b>关键机制</b>
+        <p>确定性脚本擅长过滤、计数、排序和定位；LLM 擅长解释这些摘要背后的系统原因。把两者反过来用，让 LLM 在巨大原文里做检索，就会同时浪费 token 和降低可靠性。</p>
+      </div>
+
+      <h3>2. 命令输出限流：给 agent 加“上下文断路器”</h3>
+      <p>原文指出 <code>git status</code>、<code>ls -la</code>、<code>cat file</code>、直接跑脚本都可能输出爆炸。更稳妥的做法是：未知大小输出先 byte-cap；完整结果可以落到文件或日志里，但进入模型上下文的只能是摘要、片段或命中行。</p>
+      <pre><code>未知大小输出：只读取前几 KB 或前几十行
+完整结果：保留在外部，再按关键词、行号、时间段回看
+错误定位：先建立 error index，再读取相关范围</code></pre>
+      <p>这不是为了“看得少”，而是为了避免 generated 文件、fixture、warning、重复日志把真正的 error 淹没。</p>
+
+      <h3>3. Living handoff：把会话历史变成外部工作记忆</h3>
+      <p>作者建议维护小于 1k tokens 的 <code>HANDOFF.md</code>，记录当前目标、成功指标、关键文件、最近决策、已运行命令、已知问题和下一步。它的价值在于减少“重新发现”：不用每次重新扫目录、重新找入口、重新理解为什么这么改。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Handoff 字段</th><th>真正用途</th><th>不应该写什么</th></tr></thead>
+          <tbody>
+            <tr><td>Goal / Success Criteria</td><td>让下一轮 agent 知道什么算完成</td><td>泛泛的“继续优化项目”</td></tr>
+            <tr><td>Key Files</td><td>把注意力锚定到少数关键入口和验证点</td><td>全仓库文件列表</td></tr>
+            <tr><td>Decisions</td><td>保留已经做过的架构选择及原因</td><td>没有结论的讨论过程</td></tr>
+            <tr><td>Commands Run</td><td>避免重复跑昂贵命令，并保留验证状态</td><td>完整 stdout / stderr 粘贴</td></tr>
+            <tr><td>Do Not Re-read</td><td>明确已排除的路径、旧日志、无关分支</td><td>临时情绪或模糊偏好</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>4. Do Not 规则：用边界降低探索噪声</h3>
+      <p>把“跳过 vendor、虚拟环境、构建产物、缓存、归档日志、generated 文件”等规则写入项目级 agent 指令，可以防止每个新会话重复犯同样的探索错误。但规则要短、稳定、高价值；如果把临时偏好全部写进去，规则本身也会变成上下文负担。</p>
+
+      <h3>5. Targeted asks：从“读一下”改成“定位这一段”</h3>
+      <p>原文对比了坏 prompt 和好 prompt。坏 prompt 是“读这个文件并解释”；好 prompt 是“定位 risk engine 的 position sizing 逻辑，只展示该函数和上下三行，解释一个 edge case”。这会强迫 agent 先搜索、再切片、最后解释，而不是把整份文件吞进去。</p>
+      <div class="grid-2">
+        <div class="card risk"><h3>泛读型请求</h3><p>容易触发全文件读取、长摘要、重复背景解释，看似全面，实际上信噪比低。</p></div>
+        <div class="card good"><h3>定位型请求</h3><p>先限定对象、范围、输出形态和解释深度，把上下文窗口用于真正的问题。</p></div>
+      </div>
+
+      <h3>6. 周期性 compact：清理过期假设和失败路径</h3>
+      <p>长会话中，失败路径、旧假设、已废弃方案会继续留在历史里。每 4–5 轮把当前进展压缩成 handoff，本质上是在做会话垃圾回收：保留已验证事实、关键决策、未解决问题和下一步，删除重复解释和错误路径。</p>
+
+      <h3>7. 默认低 verbosity：输出本身也会污染后续输入</h3>
+      <p>少输出不只是少花 completion tokens。模型本轮的长篇解释会成为下一轮输入的一部分。重复计划、重述需求、贴全量源码、每轮长篇铺垫，都会在后续上下文里持续占位。低 verbosity 的目标是让回答变成“可执行差异 + 必要理由”，而不是把工作日志写成散文。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>原文证据：七步法如何形成一套闭环</h2>
+      <p>Tim Jayas 的文章给出的证据主要是个人使用前后对比和工作流清单。它不是受控实验，但它把高 token 消耗的来源描述得很具体：大日志、巨大 JSON、全仓库读取、未限制命令输出、agent 反复重新发现项目、泛化 prompt、长会话未压缩、默认冗长输出。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>原文步骤</th><th>表层做法</th><th>深层价值</th><th>主要风险</th></tr></thead>
+          <tbody>
+            <tr><td>预压缩 raw data</td><td>先生成日志、数据、仓库摘要脚本</td><td>把检索和统计交给程序，把解释交给模型</td><td>摘要脚本可能漏掉低频但关键异常</td></tr>
+            <tr><td>限制命令输出</td><td>使用行数、字节数和 limit 约束</td><td>防止工具输出成为上下文污染源</td><td>只看头尾可能漏掉中部错误</td></tr>
+            <tr><td>维护 handoff</td><td>用短文档保存目标、文件、决策和下一步</td><td>减少跨会话重复发现</td><td>写成流水账会失去压缩价值</td></tr>
+            <tr><td>写 Do Not 规则</td><td>跳过 vendor、cache、generated、归档日志</td><td>让探索边界稳定化</td><td>规则过硬可能阻止必要取证</td></tr>
+            <tr><td>要求 snippets</td><td>只展示目标函数、diff 或一页 repo map</td><td>把 prompt 从泛读变成定位</td><td>范围限定错会导致上下文不足</td></tr>
+            <tr><td>周期 compact</td><td>删掉重复、失败路径、过期上下文</td><td>降低历史污染和输入成本</td><td>过度压缩可能丢失关键决策依据</td></tr>
+            <tr><td>降低 verbosity</td><td>少铺垫、少重复计划、少全文粘贴</td><td>减少本轮输出对后续轮次的负担</td><td>过短可能缺少可验收证据</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <b>如何看待 245M 到 28M</b>
+        <p>这个数字应当作为经验信号，而不是可泛化比例。它高度依赖项目形态：交易日志、数据分析、长会话和重复工具输出越多，收益越大；一次性小修小改则未必需要完整的 helper-script 流程。</p>
+      </div>
+    </section>
+
+    <section id="critique">
+      <h2>批判性校正：不要把“省 token”误读成“少看证据”</h2>
+      <p>这篇文章方向正确，但如果照字面执行，容易走向另一个极端：为了压缩而过早摘要，为了限流而错过关键错误，为了 Do Not 而跳过真正的故障源。更稳的原则是“最小充分上下文”，不是“最小上下文”。</p>
+      <div class="grid-2">
+        <div class="card risk"><h3>误读一：永远不读 raw data</h3><p>正确做法是 summary first, raw slice second。先摘要，再按 timestamp、line range、id 或 keyword 回看原文切片。</p></div>
+        <div class="card risk"><h3>误读二：head / tail 足够</h3><p>很多构建失败的真正原因在中部。更好方式是先找 error index，再读命中点附近范围。</p></div>
+        <div class="card risk"><h3>误读三：helper script 必然可靠</h3><p>脚本可能解析错 timestamp、过滤掉异常、把 missing 和 null 混为一类；摘要也要带总量、样本和丢弃比例。</p></div>
+        <div class="card risk"><h3>误读四：AGENTS.md 越长越好</h3><p>规则本身也进入上下文。高价值规则应该短、稳定、少例外，不应承载临时流水账。</p></div>
+      </div>
+      <div class="callout risk">
+        <b>最危险的反模式</b>
+        <p>为了省 token 而跳过关键源码、真实错误、测试输出和 diff 审计。这样短期消耗下降，长期会因为误修、返工和隐藏失败烧掉更多 token。</p>
+      </div>
+    </section>
+
+    <section id="implementation">
+      <h2>更好的落地版：把它升级成 agent context engineering</h2>
+      <p>如果把原文方法沉淀成长期规范，我会改写成五条可执行原则。</p>
+      <div class="grid-2">
+        <div class="card good"><h3>先索引，再读取</h3><p>先列候选文件、入口、调用链和错误位置；再读取必要片段。避免从“读完整 repo”开始。</p></div>
+        <div class="card good"><h3>先摘要，再切片</h3><p>日志、JSON、CSV、trace 先生成可审计摘要；摘要必须能指回原始位置。</p></div>
+        <div class="card good"><h3>未知输出默认限流</h3><p>测试、构建、diff、日志命令先限制输出；完整结果保留在外部，必要时按范围回看。</p></div>
+        <div class="card good"><h3>handoff 只保存事实</h3><p>保留目标、成功标准、关键文件、决策、验证结果、风险和下一步；删除情绪和废弃路径。</p></div>
+        <div class="card good"><h3>压缩后仍要验证</h3><p>省 token 不能替代读关键代码、跑测试、核对 diff、确认边界条件。</p></div>
+        <div class="card good"><h3>输出为下一轮负责</h3><p>回答越长，后续输入越重。最终输出应紧贴验收：改了什么、证据是什么、还剩什么风险。</p></div>
+      </div>
+      <h3>一个更可靠的工作流模板</h3>
+      <pre><code>1. 先明确目标和验收标准
+2. 用搜索建立候选文件 / 日志 / 数据索引
+3. 对大材料生成摘要和定位键
+4. 只读取最相关的原文切片
+5. 小步修改并运行最小验证
+6. 将结果压缩到 handoff / progress
+7. 完成前对照验收标准审计</code></pre>
+      <p>这套模板的关键是“证据链不断裂”：摘要不是结论，摘要只是索引；压缩不是删除事实，压缩是保留能继续工作的事实。</p>
+    </section>
+
+    <section id="local-workflow">
+      <h2>对 Codex / pi 类工作流的直接启发</h2>
+      <p>对使用终端型 coding agent 的长期项目来说，这篇文章尤其有现实意义。因为这类 agent 的高价值工作往往不是一次性问答，而是持续读仓库、改代码、跑命令、看日志、修问题。上下文治理会直接影响完成质量。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>场景</th><th>推荐策略</th><th>为什么</th></tr></thead>
+          <tbody>
+            <tr><td>大仓库定位问题</td><td>先用 repo map / 符号搜索 / 文件候选列表</td><td>把探索成本从全量读取降到少数高相关文件</td></tr>
+            <tr><td>长日志排障</td><td>先聚合 error index、时间范围、Top N 异常</td><td>避免把重复日志和无关 warning 带入上下文</td></tr>
+            <tr><td>跨会话项目</td><td>维护短小 progress / handoff</td><td>减少重新发现，保留验证状态和未决风险</td></tr>
+            <tr><td>测试输出很长</td><td>先看失败摘要，再追第一处真实 error</td><td>防止完整测试噪声淹没根因</td></tr>
+            <tr><td>用户要求深度分析</td><td>输出结构化 insight，而非抓取过程</td><td>用户需要的是判断、机制、边界和可迁移方法</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info">
+        <b>和一般“省 token 教程”的区别</b>
+        <p>这不是把模型换成便宜版本，也不是压低 reasoning budget；它是在不牺牲任务质量的前提下，减少无关上下文、重复发现和历史污染。</p>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释：读懂这篇文章需要的几个概念</h2>
+      <div class="def-list">
+        <div><b>上下文治理</b><span>决定哪些信息进入模型上下文、以多大粒度进入、保留多久、何时压缩、如何回查的一整套规则。</span></div>
+        <div><b>最小充分上下文</b><span>不是最少信息，而是完成当前判断所需的最小可审计证据集。</span></div>
+        <div><b>Needle map</b><span>从大日志、大数据或大仓库中提取的“针的位置图”：摘要、索引、计数、样本和回查定位。</span></div>
+        <div><b>Handoff</b><span>跨会话延续工作的短文档，保留目标、决策、验证状态和下一步，避免 agent 重复发现。</span></div>
+        <div><b>Output cap</b><span>对未知大小命令输出设置行数、字节数或结果数量上限，防止低信噪比内容污染上下文。</span></div>
+        <div><b>Context compact</b><span>把长对话压缩成继续工作所需事实，删除重复解释、失败路径和过期假设。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>证据边界：这篇文章没有证明什么</h2>
+      <p>这篇文章是经验型工作流总结，不是严格实验。它没有提供可复现实验设置、项目规模、任务类型、模型版本、输入输出 token 明细，也没有展示同一任务在优化前后的质量对照。因此不能把 8–10 倍收益机械套用到所有项目。</p>
+      <div class="grid-3">
+        <div class="card warn"><h3>缺少受控变量</h3><p>token 降低可能来自任务差异、会话长度差异、项目阶段差异，而不只来自流程变化。</p></div>
+        <div class="card warn"><h3>缺少质量指标</h3><p>“same speed”不等于“same correctness”。仍需看 bug 修复率、测试通过率、返工率和隐藏风险。</p></div>
+        <div class="card warn"><h3>场景依赖强</h3><p>大日志和长会话收益巨大；小型单文件修改则可能不值得先搭完整压缩层。</p></div>
+      </div>
+      <p>但这些边界不削弱它的核心洞察：当 agent 的主要工作是反复处理仓库、日志、数据和长对话时，管理上下文就是管理生产力。</p>
+    </section>
+
+    <section id="insight">
+      <h2>最终启发：把 agent 当系统，而不是聊天框</h2>
+      <p>这篇文章真正的启发是：高效使用 Codex 不是写一个神奇 prompt，而是建立一个围绕模型的工作系统。这个系统有输入过滤层、检索层、摘要层、外部记忆层、输出限流层、会话回收层和验收层。</p>
+      <div class="callout">
+        <b>最终判断</b>
+        <p>最优状态不是“最少 tokens”，而是“用最少的、可审计的、足够完成任务的上下文，稳定产出正确结果”。一旦这样理解，省 token 就不再是节流技巧，而是工程质量的一部分。</p>
+      </div>
+      <p>换句话说，agent context engineering 的目标不是让模型“知道一切”，而是让模型在每一轮都只知道最该知道的东西，并且能在需要时可靠地回到证据源。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文主要依据 Tim Jayas 发布的 X Article 及其公开帖文内容进行解读，并结合 coding agent 长会话、日志分析、仓库检索和上下文压缩的一般工程经验展开。平台页面内容、互动数和展示形态可能随时间变化。</p>
+      <ul class="source-list">
+        <li>Tim Jayas X status：<a href="https://x.com/TimJayas/status/2064049787629129749">https://x.com/TimJayas/status/2064049787629129749</a></li>
+        <li>Tim Jayas X Article：<a href="https://x.com/i/article/2064029727225221122">https://x.com/i/article/2064029727225221122</a></li>
+        <li>文章主题：How I Cut Codex Tokens from 245M to 28M Per Day For Free (Same Speed)</li>
+        <li>资料边界：本文没有独立验证作者的 token 统计后台，也没有复现实验；文中数字用于理解工作流收益的量级信号，而非普适 benchmark。</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>这篇笔记把原文的省 token 技巧重读为 agent context engineering：先治理上下文，再追求速度和成本优化。</p>
+  </footer>
+</body>
+</html>

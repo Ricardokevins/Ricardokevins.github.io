@@ -10,8 +10,9 @@
 
 ## 1. 整页骨架（直接复制）
 
-把下面整段复制为新文件，替换 `{{...}}` 占位符。没有公式时删除两个 MathJax `<script>`；保留的话也只在出现 `\(...\)` / `\[...\]` 时才加载。
+把下面整段复制为新文件，替换代码中的占位符。没有公式时删除两个 MathJax `<script>`；保留的话也只在出现 `\(...\)` / `\[...\]` 时才加载。
 
+{% raw %}
 ```html
 <!doctype html>
 <html lang="zh-CN">
@@ -49,11 +50,11 @@
       --ink: #20242a;          /* 正文 */
       --muted: #5f686f;        /* 次要文字 */
       --line: #dcd6c8;         /* 边框 */
-      --accent: #0f766e;       /* 主强调（青绿） */
-      --accent-soft: #eef7f4;  /* 强调浅底 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
       --accent-2: #b45309;     /* 次强调（赭石） */
       --accent-2-soft: #fdf3e7;
-      --info: #284b7a;         /* 信息蓝 */
+      --info: #c15f3c;         /* 信息蓝 */
       --info-soft: #eef3fb;
       --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
       --radius: 10px;
@@ -68,8 +69,8 @@
     body {
       margin: 0;
       background:
-        linear-gradient(90deg, rgba(15,118,110,.04) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(40,75,122,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
         var(--paper);
       background-size: 44px 44px;
       color: var(--ink);
@@ -207,7 +208,7 @@
 
     /* ---------- 代码 ---------- */
     code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
-    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #edf7f3; overflow-x: auto; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
     pre code { padding: 0; background: transparent; color: inherit; }
 
     @media (max-width: 760px) {
@@ -295,6 +296,7 @@
 </body>
 </html>
 ```
+{% endraw %}
 
 ---
 

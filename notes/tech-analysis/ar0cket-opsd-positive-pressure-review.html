@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solving OPSD？正向 pressure、regretful teacher 与 RLRT 边界</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4efe6;
+      --surface: #fffdf8;
+      --surface-2: #f7f3ec;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #ddd6c9;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf0dc;
+      --blue: #c15f3c;
+      --blue-soft: #edf3fb;
+      --red: #9f3f36;
+      --red-soft: #f8e8e4;
+      --green: #256b52;
+      --green-soft: #e6f2ec;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(193, 95, 60, 0.10), transparent 30%),
+        radial-gradient(circle at 88% 0%, rgba(180, 83, 9, 0.10), transparent 34%),
+        linear-gradient(90deg, rgba(193,95,60,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 44px 44px, 44px 44px, auto;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { color: #161a1f; font-weight: 760; }
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #ece5d7;
+      color: #7c2d12;
+      font-family: var(--mono);
+      font-size: .92em;
+    }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: clamp(42px, 7vw, 88px) 0 30px;
+    }
+
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 850 13px/1.3 var(--sans);
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(33px, 5.5vw, 62px)/1.1 var(--serif);
+      letter-spacing: -0.02em;
+    }
+
+    .lede {
+      max-width: 920px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 26px;
+    }
+
+    .hero-card {
+      min-width: 0;
+      padding: 17px 19px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.86);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding: 24px 0 64px;
+    }
+
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 760 clamp(24px, 3.2vw, 36px)/1.2 var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.28rem; }
+    li { margin: 7px 0; }
+
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card, .metric, .callout, .table-wrap, .math-display {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .card { padding: 16px 18px; }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    .metric { padding: 16px; }
+    .metric b {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent-2);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .metric span { display: block; font: 780 24px/1.1 var(--serif); }
+    .metric small { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      box-shadow: none;
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.risk > b { color: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .flow div {
+      padding: 13px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .flow b { display: block; color: var(--accent); margin-bottom: 5px; }
+    .flow span { color: var(--muted); font-size: 13.5px; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(160px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 760; }
+    .def-list span { min-width: 0; }
+
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      box-shadow: none;
+    }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    th, td {
+      padding: 10px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 760; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.018); }
+
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      box-shadow: none;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    .split-note {
+      display: grid;
+      grid-template-columns: .45fr .55fr;
+      gap: 16px;
+      align-items: stretch;
+      margin: 18px 0;
+    }
+
+    .split-note > div {
+      padding: 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .split-note .good { background: var(--green-soft); border-left: 4px solid var(--green); }
+    .split-note .bad { background: var(--red-soft); border-left: 4px solid var(--red); }
+
+    footer {
+      padding: 0 0 44px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      .hero-grid, .grid-2, .grid-3, .grid-4, .flow, .split-note { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · OPSD · Self-Teacher Distillation</div>
+    <h1>Solving OPSD？正向 pressure、regretful teacher 与 RLRT 边界</h1>
+    <p class="lede">这篇笔记深度 review ar0cket1 在 2026 年 6 月 13 日发布的 X 长文《Solving OPSD (basically)》。我认为它最有价值的部分，不是“OPSD 基本解决了”这个口号，而是它把 hinted self-distillation 里的 teacher-student gap 做了一次语义拆分：哪些 token 真的是在强化接近正确解法的局部结构，哪些 token 只是 privileged teacher 对偏离 hint 路线的“后悔式纠偏”。一旦这样拆，positive pressure、negative pressure、RLRT 和 GRPO 的关系就不再是几个 recipe 的堆叠，而是 exploitation 与 exploration 如何分工的问题。</p>
+    <div class="hero-grid">
+      <div class="hero-card"><b>我最认可的 insight</b><span>作者把带 hint 的 self-teacher 诊断为 <em>regretful teacher</em>。这不是修辞，而是在说 negative signal 里混有大量“你为什么不按我知道的路走”的 privileged 纠偏。</span></div>
+      <div class="hero-card"><b>我最不买账的结论</b><span>“basically solved” 还站不住。现有证据更像高质量 research note、trace 级观察与小规模几何证据，而不是已经封板的训练 recipe。</span></div>
+      <div class="hero-card"><b>真正可复用的 recipe</b><span>更可信的读法是：positive pressure 负责 consolidation，RLRT 或 GRPO 类 outcome-gated signal 负责 exploration；二者混合，才更像可扩展的后训练框架。</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>如果把这条长文压缩成一句话，我会这样概括：它真正提出的不是“OPSD 已经被证明有效”，而是<strong>在 hinted self-distillation 里，teacher 对 student 的逐 token 分歧不是单一信号，而是至少包含两种语义完全不同的成分</strong>。其中一部分是 productive guidance，会在 student 快要走对、正在做结构切换、补约束、做局部修复时加压；另一部分则是 regretful teacher 对偏离 privileged hint 的不耐烦，会把探索性偏离和无用偏离混在一起，一起视为“需要纠正”的错误。</p>
+      <div class="grid-3">
+        <div class="card"><h3>最强结论</h3><p>negative pressure 不是“teacher 不同意”这么简单；在带 hint 的 self-teacher 设置里，它很可能携带了大量 privileged path bias。</p></div>
+        <div class="card"><h3>最强边界</h3><p>positive-only 现在更像 exploitation / consolidation 技巧，而不是单独就能支持“RL-like infinite upper bound”的完整训练范式。</p></div>
+        <div class="card"><h3>最强启发</h3><p>dense signal 的关键不是更密，而是更干净。真正的下一个问题是：怎样把 useful local supervision 从 privileged regret 里分离出来。</p></div>
+      </div>
+      <div class="callout warn">
+        <b>先把结论卡死</b>
+        这篇长文值得认真读，因为它把 OPSD 从“teacher 更强所以 student 学得更快”推进到“teacher 信号在什么条件下语义上被污染”。但它现在还不值得被读成“一个已经跨模型、跨规模、跨训练阶段稳定成立的新定律”。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>为什么这个问题重要</h2>
+      <p>OPD、OPSD、RLRT 这条线要解决的都是同一个核心痛点：纯 RLVR 有 outcome-level reward，但 credit assignment 太稀疏；纯 SFT 或离线蒸馏有 dense token-level 信号，但学生真正犯错时访问到的状态，经常不是 teacher 数据里出现过的状态。于是 OPD 的关键直觉是：让 student 自己 rollout，再让 teacher 在 student 真正访问到的 prefix 上提供 token-level guidance。这样既保留了 on-policy relevance，又获得了 dense supervision。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>路线</th><th>训练状态分布</th><th>监督来自哪里</th><th>优势</th><th>核心风险</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>SFT</td><td>外部数据或 teacher 现成轨迹</td><td>固定答案或固定推理</td><td>信号密，容易注入新格式与新知识</td><td>student 真正 rollout 的错误状态不在训练分布里，容易 compounding error</td></tr>
+            <tr><td>OPD</td><td>student 自己的 rollout</td><td>外部 teacher 在同一 prefix 上的 token guidance</td><td>on-policy 且 dense</td><td>teacher 选择、token 重要性、teacher-student 对齐方式都很关键</td></tr>
+            <tr><td>OPSD</td><td>student 自己的 rollout</td><td>同一模型在 privileged context 下扮演 teacher</td><td>不必依赖更大的外部 teacher，可能更便宜</td><td>teacher 看到 hint / answer 后，dense signal 可能被 privileged path 污染</td></tr>
+            <tr><td>RLRT</td><td>student 自己的 rollout</td><td>reward 验证后的 reversed teacher signal</td><td>把“成功但偏离 teacher”的 token 当探索信号</td><td>何时 reversal 是有益探索、何时只是放大噪声，仍要靠 outcome gating 和训练细节</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这就是为什么 ar0cket1 这篇文章值得读。它不是再发明一个和 GRPO 平行的新缩写，而是在 OPSD 的内部把 teacher-student gap 拆开。只要这个拆分是对的，很多最近看起来像独立工作的东西，其实都在围绕一个共同问题打转：dense self-teacher signal 什么时候是在帮 student 纠错，什么时候是在压扁 student 自己的 reasoning search。</p>
+      <div class="callout info">
+        <b>和 TIP、RLRT 的关系</b>
+        TIP 讨论的是“哪些 token 更有信息量”，强调高 entropy token 与 student 过度自信但 teacher 强烈分歧的 token 都可能重要。RLRT 讨论的是“successful deviation from teacher”应不应该被强化。ar0cket1 这篇文章往前再推进一步：它暗示在 hinted self-teacher 场景里，哪怕 teacher-student divergence 很大，也不代表这就是你应该用的监督。
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：positive pressure 到底在说什么</h2>
+      <p>作者的概念拆分并不复杂。对 student 在某个 prefix 下已经采样出来的 token \(y_t\)，比较 teacher 和 student 对这个 token 的支持度。如果 teacher 比 student 更支持这个 token，就把它读成一种 reinforcement；如果 teacher 明显不支持这个 token，就把它读成 negative reinforcement。用概念化写法，可以把这个差值记成：</p>
+      <div class="math-display">\[
+        \Delta_t = \log p_{\text{teacher}}(y_t \mid h_t, \text{hint}) - \log p_{\text{student}}(y_t \mid h_t)
+      \]</div>
+      <p>于是正向与负向成分可以写成：</p>
+      <div class="math-display">\[
+        \Delta_t^{+} = \max(\Delta_t, 0), \qquad \Delta_t^{-} = \max(-\Delta_t, 0)
+      \]</div>
+      <p>这里真正重要的不是符号，而是语义。作者的观点是：在带 hint 的 OPSD 中，\(\Delta_t^{+}\) 和 \(\Delta_t^{-}\) 不是同一种学习信号的两边，而是两类不同来源的 teacher judgment。前者更常出现在“这个方向对了，再推一把”的局部结构上；后者则经常出现在“你为什么没按我已经知道的 hint 路线走”的分歧上。作者把后者叫作 <em>regretful teacher</em>。</p>
+      <div class="flow" aria-label="regretful teacher mechanism">
+        <div><b>1. Student rollout</b><span>student 在无 hint 条件下生成自己的推理轨迹。</span></div>
+        <div><b>2. Privileged teacher</b><span>teacher 带 hint、答案式提示或更完整的结构信息再看同一 prefix。</span></div>
+        <div><b>3. Token gap</b><span>teacher 对 student 已选 token 的支持度高低产生逐 token gap。</span></div>
+        <div><b>4. Positive slice</b><span>gap 为正时，更像“这个局部结构值得巩固”。</span></div>
+        <div><b>5. Negative slice</b><span>gap 为负时，容易混入“偏离 privileged 路线”的 regret。</span></div>
+      </div>
+      <p>如果用更工程化的话说，这篇长文的核心不是“只保留正号”，而是<strong>先承认带 hint 的 teacher 本身已经不再是 neutral evaluator</strong>。它不是在看“如果不知道 hint，会不会仍然觉得这一步合理”；它是在看“既然我知道 hint，为什么你还不沿 hint 收敛”。一旦 teacher 站在这个视角上，它对错误和探索的判断就会混杂。</p>
+      <div class="callout info">
+        <b>注意：这是概念分解，不是公开代码里的精确定义</b>
+        这里用 \(\Delta_t\)、\(\Delta_t^{+}\)、\(\Delta_t^{-}\) 只是为了把作者的语言压成一个容易讨论的数学对象。公开长文给的是实验图、trace 阅读和机制直觉，不是一个已经标准化、被多组工作复现的统一 loss。
+      </div>
+      <p>如果进一步把这条线索和 RLRT 放在一起看，就会得到一个更清楚的图像：positive pressure 偏向 exploitation / consolidation，RLRT 式 reversed teacher signal 偏向 reward-gated exploration，而纯 negative pressure 则更容易成为 regret leakage。也就是说，作者其实不是在说“探索没用”，而是在说“不要把未经清洗的负信号错当作有价值探索监督”。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据与逐条 review</h2>
+      <p>这篇长文最好的部分，是它没有只停在一句“positive works better”。作者实际给了四类证据：hint rewrite 对 KL amplitude 的影响、正负信号拆分后的几何差异、手工 trace labeling，以及与 RLRT 风格 reversal 的关系。但这些证据的证明力并不相同，所以要分条读。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>作者主张</th><th>文中支持它的证据</th><th>我的判断</th><th>为什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>hint rewrite 可以在保留结构的同时大幅降低 KL shock</td>
+              <td>作者展示了从更“揭示答案”的 hint 走向更软、更结构化 hint 后，amplitude 可控下降，同时仍保留问题结构信号。</td>
+              <td><strong>成立，而且很重要</strong></td>
+              <td>这说明 OPSD 的一部分不稳定性并不是 self-distillation 天生无法学，而是 teacher prompt / hint construction 会直接决定信号幅度与可学性。</td>
+            </tr>
+            <tr>
+              <td>negative pressure 是主要问题源，会导致 shock、长度塌缩和反探索</td>
+              <td>作者给出正负拆分后的图，并强调 vanilla OPSD shock 更重、negative slice 更偏向低 entropy 危险区；同时结合大量 trace 阅读说 negative 里没什么干净 insight。</td>
+              <td><strong>这是强假设，不是普遍定律</strong></td>
+              <td>在带 hint 的 privileged teacher 设置里，这个结论很有说服力；但它还不能直接推广成“所有负向 teacher-student disagreement 都没有价值”。</td>
+            </tr>
+            <tr>
+              <td>positive pressure 往往落在 near-repair、constraint check、representation shift 等 productive 局部结构上</td>
+              <td>作者列出了多道数学题里的 token upweight 片段，例如 geometric series、modular lower bound、functional equation normalization、Lagrange structure 等。</td>
+              <td><strong>这是全文最有 insight 的部分</strong></td>
+              <td>它不是 aggregate metric，而是告诉你 dense signal 在“什么时候像真正的 tutor”。缺点是这部分仍然强依赖人工阅读与作者主观判断。</td>
+            </tr>
+            <tr>
+              <td>RLRT / reversed negative 的收益，更多来自绕开 regretful teacher，而不是“负信号本身就纯”</td>
+              <td>作者把 RLRT 读成：成功 rollout 上，反转 teacher 负向信号可以保护 student 自己走出来的正确路径，并称其有效更像“避免 regret contamination”。</td>
+              <td><strong>很聪明，但还只是解释</strong></td>
+              <td>这是对 RLRT 的再诠释，不是 RLRT 论文已经证明的结论。它提供了一个统一框架，但还需要更直接的对照实验来验证。</td>
+            </tr>
+            <tr>
+              <td>positive pressure + 少量 GRPO mixing 可能带来 order-of-magnitude 级的 RL compute efficiency 提升</td>
+              <td>主要是作者对几何接近性、shock 降低、trace qualitative evidence 的综合推断，以及“将要做小规模训练确认”的表述。</td>
+              <td><strong>目前站不住</strong></td>
+              <td>这是一个值得赌的小假说，但不是已经被验证过的 engineering claim。没有完整训练曲线、跨模型 ablation 和 late-stage scaling 证据，不能直接读成“已经 solved”。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>对我来说，真正应该被带走的不是“positive-only 必胜”，而是<strong>signal semantics matters</strong>。同样是 teacher-student divergence，如果 teacher 拿到的是 privileged hint，它的负向判断就不再是“这一步客观上不好”，而可能是“这一步不符合我已知答案驱动的 preferred route”。这就是这篇长文优于简单 benchmark brag 的地方。</p>
+      <div class="split-note">
+        <div class="good">
+          <h3>我最认可的证据标准</h3>
+          <p>作者没有只拿最终 pass rate 做论证，而是去看 trace 中被 upweight 的具体局部结构。这种“读 token 语义”虽然主观，但至少是在检查 dense signal 是否真的对准了 reasoning 的因果部位。</p>
+        </div>
+        <div class="bad">
+          <h3>我最不认可的跳跃</h3>
+          <p>从“这些局部结构看起来很合理”直接跳到“basically solved”太快了。一个局部看起来像 tutor，不代表整个训练过程就不会在长链探索、晚期 hill-climbing、跨题型迁移时出问题。</p>
+        </div>
+      </div>
+      <h3>为什么我认为这篇文章和 RLRT 是互补，不是对立</h3>
+      <p>如果顺着作者的解释往前推，RLRT 真正补的不是“negative pressure 也很有用”，而是“当 student 成功地走出了一条 teacher 没预料到的路时，不能让 privileged teacher 的 regret 把这条路覆盖掉”。这和 positive pressure 负责巩固局部高价值结构其实是相容的：一个更像 exploitation，一个更像 outcome-gated exploration。冲突点只在于，作者倾向认为 reversed negative 的可用部分很窄，而 RLRT 论文认为它可以成为 principled exploration axis。这个分歧现在还需要更多实证来裁决。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语速查</h2>
+      <div class="def-list">
+        <div><b>OPD</b><span>On-Policy Distillation。student 自己 rollout，teacher 在 student 实际访问到的 prefix 上给 token-level 指导。</span></div>
+        <div><b>OPSD</b><span>On-Policy Self-Distillation。teacher 和 student 来自同一模型，但 teacher 拿到更多 privileged context，例如 hint、verified reasoning 或答案式线索。</span></div>
+        <div><b>Positive pressure</b><span>teacher 比 student 更支持 student 已选 token 时的正向差值。作者把它读成对 productive local structure 的 reinforcement。</span></div>
+        <div><b>Negative pressure</b><span>teacher 明显不支持 student 已选 token 时的负向差值。作者认为在 hinted self-teacher 里，这部分常被 regret contamination 污染。</span></div>
+        <div><b>Regretful teacher</b><span>这篇长文提出的诊断：teacher 因为看到了 hint 或解答，容易把“偏离我已知路线”与“真正错误”混在一起，从而过度惩罚探索性偏离。</span></div>
+        <div><b>RLRT</b><span>RLVR with Reversed Teacher。把 successful rollout 上偏离 teacher 的 token 读成学生自己的探索成果，并在 outcome 验证通过时强化它们。</span></div>
+        <div><b>TIP</b><span>Token Importance in On-Policy Distillation。讨论 OPD 中哪些 token 更有信息量，强调高 entropy token 和 student 过度自信但 teacher 强分歧的 token 都值得关注。</span></div>
+        <div><b>OOM</b><span>Order of Magnitude。作者用它来表达“样本效率可能提高一个数量级”的愿景，但这部分目前还属于大胆猜测。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界：为什么我不认为它已经“解决”了 OPSD</h2>
+      <p>这篇文章最大的问题，不是 insight 不够，而是证据链还不够长。它很擅长解释为什么某些 token 看起来像好信号，也很擅长解释为什么某类负向分歧可能被污染；但它还没有完成从“局部信号语义正确”到“整体训练 recipe 稳定优越”的闭环。</p>
+      <div class="grid-2">
+        <div class="card"><h3>缺完整训练证明</h3><p>文中多次以“稍后会跑小规模训练确认”收尾，这说明当前证据主体还是几何观察、trace 分析和机制直觉，而不是最终 learning curve。</p></div>
+        <div class="card"><h3>缺跨模型普适性</h3><p>作者的主实验语境集中在 OLMo 3 7B dense 和数学数据。更强模型、更后期 RL、不同题域、不同 hint 生成方式是否保持同一规律，目前未知。</p></div>
+        <div class="card"><h3>trace labeling 仍然主观</h3><p>“这些 token 看起来是结构切换、约束检查、near repair”很有洞察，但依然依赖人工解读。要想变成更硬的研究结论，需要自动化标注或更清楚的行为分类标准。</p></div>
+        <div class="card"><h3>exploration 仍未被单独解决</h3><p>positive-only 的最大优点，也正是它的最大限制：它更像干净的 exploitation。若没有 outcome-gated exploration，student 如何继续发现 teacher 没教过的新路径，仍然是核心问题。</p></div>
+      </div>
+      <div class="callout risk">
+        <b>真正需要警惕的误读</b>
+        “negative pressure 很脏”不等于“所有负向 teacher-student gap 都没用”。更稳妥的结论是：<strong>在带 hint 的 privileged self-teacher 设置里，未经筛选的负向 gap 高风险</strong>。这句话和“负向 gap 本质上无用”差很多。
+      </div>
+      <p>换句话说，这篇文章已经提供了一个很强的 diagnosis，但还没有完成一个能跨设置复用的 therapy。诊断正确，不代表处方已经封板。</p>
+    </section>
+
+    <section id="insight">
+      <h2>最终启发：把 dense signal 拆成 exploitation 和 exploration</h2>
+      <p>我认为这篇长文的真正工程价值，不在于教你马上把 negative loss 删掉，而在于提醒你：<strong>后训练里 dense signal 的设计不能只看梯度大小和最终 reward，还要看它是在奖励哪一类 reasoning event</strong>。如果一个 dense signal 主要在 student 做对局部 repair、抽约束、做表示切换时出现，它更像 consolidation primitive；如果它主要在 student 成功偏离 teacher 路线时出现，它更像 exploration primitive；如果它主要在“偏离 hint 轨道”时放大，那它可能只是 privileged regret。</p>
+      <div class="grid-3">
+        <div class="card"><h3>对研究者</h3><p>别再只问“dense signal 是否有效”，而要问“dense signal 在语义上奖励了什么事件”。未来更重要的是 token-level event taxonomy，而不是再多一个 loss 名字。</p></div>
+        <div class="card"><h3>对训练系统</h3><p>应该把 signal audit 变成常规监控项：抽样读被高权重 token、比较成功与失败 rollout 上的局部结构、检查 signal 是否总在压缩长度或覆盖 student 新路径。</p></div>
+        <div class="card"><h3>对 recipe 设计</h3><p>更可信的下一步不是 pure positive-only，而是“positive-only consolidation + reward-gated exploration + hint amplitude control”的组合。</p></div>
+      </div>
+      <h3>一个更可落地的实验清单</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>问题</th><th>建议实验</th><th>如果结果成立意味着什么</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>negative pressure 真的主要是 regret contamination 吗？</td><td>在同一模型、同一数据上比较无 hint teacher、软 hint teacher、强 hint teacher 的 negative slice 语义与训练效果。</td><td>如果 hint 越强 negative 越坏，说明问题更像 privileged contamination，而不是 token sign 本身。</td></tr>
+            <tr><td>positive-only 是否只是 exploitation？</td><td>固定正向 slice，单独测 long-horizon search、多解题型和 late-stage RL scaling。</td><td>如果早期涨、后期停，说明它更像 consolidation module 而非完整 RL 替代。</td></tr>
+            <tr><td>RLRT 和 positive-only 是替代还是互补？</td><td>做三组对照：positive-only、RLRT-only、positive + RLRT/GRPO mix，并看成功 rollout 上的 reasoning diversity。</td><td>若混合最稳，说明 exploitation / exploration 分工比单一路线更接近真实机制。</td></tr>
+            <tr><td>trace insight 是否可自动化？</td><td>给高权重 token 建立事件标签器，统计 repair、constraint check、format noise、hint-following、teacher regret 等类别占比。</td><td>若 positive slice 的高权重 token 明显更集中在因果结构事件上，作者的主叙事才更硬。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>所以，这篇文章最值得沉淀下来的结论其实很朴素：<strong>不是所有 dense self-teacher signal 都应该被一视同仁地蒸馏。</strong> 下一代更强的后训练框架，很可能不是单个新算法，而是把巩固正确局部结构、保留 student 成功探索、以及控制 privileged regret 这三件事拆开建模。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于公开 X 长文、公开帖子、公开论文与公开博客整理。核心判断主要建立在 ar0cket1 的 2026 年 6 月 13 日长文、《Rebellious Student》论文摘要，以及 Thinking Machines 对 OPD 的公开解释之上。本文没有复现实验，也没有检查未公开代码、未公开 checkpoint 或作者私下补充说明；因此关于“训练已经 solved”“可达一个数量级加速”等结论，本文明确按<strong>强假设</strong>处理，而不是既成事实。</p>
+      <ul>
+        <li>ar0cket1 原始长文《Solving OPSD (basically)》：<a href="https://x.com/ar0cket1/article/2065772402622263701">https://x.com/ar0cket1/article/2065772402622263701</a></li>
+        <li>对应 X 帖入口：<a href="https://x.com/ar0cket1/status/2065772402622263701">https://x.com/ar0cket1/status/2065772402622263701</a></li>
+        <li>作者前一篇背景长文《On Policy Self Distillation》相关入口：<a href="https://x.com/ar0cket1/status/2054108160450064571">https://x.com/ar0cket1/status/2054108160450064571</a></li>
+        <li>Thinking Machines Lab，《On-Policy Distillation》：<a href="https://thinkingmachines.ai/blog/on-policy-distillation/">https://thinkingmachines.ai/blog/on-policy-distillation/</a></li>
+        <li>TIP: Token Importance in On-Policy Distillation：<a href="https://arxiv.org/abs/2604.14084">https://arxiv.org/abs/2604.14084</a></li>
+        <li>Rebellious Student: Reversing Teacher Signals for Reasoning Exploration with Self-Distilled RLVR：<a href="https://arxiv.org/abs/2605.10781">https://arxiv.org/abs/2605.10781</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>本文聚焦公开材料中的机制解释、证据边界与研究启发，不把作者的自信表述直接当成已完成结论。</p>
+  </footer>
+</body>
+</html>

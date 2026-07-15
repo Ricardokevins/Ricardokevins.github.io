@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NF-CoT：把 Chain-of-Thought 迁移到可采样的连续潜变量空间</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3efe5;
+      --surface: #fffdf8;
+      --surface-2: #edf5f2;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #d9d1c1;
+      --line-strong: #a79c88;
+      --accent: #c15f3c;
+      --accent-2: #9a5b16;
+      --danger: #9a3412;
+      --blue: #c15f3c;
+      --green: #3f6f54;
+      --violet: #645a9a;
+      --shadow: 0 18px 46px rgba(34, 38, 42, 0.08);
+      --radius: 11px;
+      --max: 1180px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(193, 95, 60, 0.1), transparent 28%),
+        radial-gradient(circle at 88% 0%, rgba(154, 91, 22, 0.09), transparent 27%),
+        linear-gradient(90deg, rgba(32, 36, 42, 0.026) 1px, transparent 1px) 0 0 / 36px 36px,
+        linear-gradient(180deg, rgba(32, 36, 42, 0.02) 1px, transparent 1px) 0 0 / 36px 36px,
+        var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { color: #151a1f; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece3d4; color: #7c2d12; font-family: var(--mono); font-size: 0.92em; }
+    main, header, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+
+    header { padding: clamp(38px, 7vw, 84px) 0 32px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(34px, 5.3vw, 66px)/1.08 var(--serif);
+      letter-spacing: 0;
+    }
+    .lede {
+      max-width: 940px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+      line-height: 1.64;
+    }
+
+    main { display: grid; gap: 31px; padding-bottom: 64px; }
+    section { padding-top: 31px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.22; }
+    h2 { font: 760 clamp(26px, 3.5vw, 42px)/1.12 var(--serif); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 0.78rem 0 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 0.38rem 0; }
+
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 5px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.76);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+      text-decoration: none;
+    }
+    .toc a:hover { color: var(--ink); border-color: var(--line-strong); }
+
+    .meta-grid, .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .metric, .card, .callout, .source-card {
+      min-width: 0;
+      padding: 16px 17px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.95);
+      box-shadow: var(--shadow);
+    }
+    .metric { box-shadow: none; background: rgba(255, 253, 248, 0.78); }
+    .metric strong { display: block; font-size: 25px; line-height: 1.1; }
+    .metric span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .card h3, .source-card h3 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p, .source-card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    .callout {
+      border-left: 5px solid var(--accent);
+      box-shadow: none;
+      background: linear-gradient(90deg, rgba(193, 95, 60, 0.09), rgba(255, 253, 248, 0.94));
+    }
+    .callout b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.warn { border-left-color: var(--danger); background: linear-gradient(90deg, rgba(154, 52, 18, 0.09), rgba(255, 253, 248, 0.94)); }
+    .callout.warn b { color: var(--danger); }
+    .callout.info { border-left-color: var(--blue); background: linear-gradient(90deg, rgba(193, 95, 60, 0.09), rgba(255, 253, 248, 0.94)); }
+    .callout.info b { color: var(--blue); }
+    .callout.good { border-left-color: var(--green); background: linear-gradient(90deg, rgba(63, 111, 84, 0.1), rgba(255, 253, 248, 0.94)); }
+    .callout.good b { color: var(--green); }
+
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.2px; }
+    th, td { padding: 9px 11px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--surface-2); font-weight: 800; }
+    tr:nth-child(even) td { background: rgba(0, 0, 0, 0.016); }
+    caption { caption-side: top; padding: 10px 12px 0; color: var(--muted); text-align: left; font-size: 13px; }
+
+    .math-display {
+      margin: 16px 0;
+      padding: 14px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 760; }
+    .def-list span { min-width: 0; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+      align-items: stretch;
+    }
+    .step {
+      position: relative;
+      min-width: 0;
+      padding: 14px 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: var(--shadow);
+    }
+    .step h3 { margin: 0 0 7px; font-size: 15px; color: var(--accent); }
+    .step p { margin: 0; color: var(--muted); font-size: 13.5px; }
+    .step::after {
+      content: "→";
+      position: absolute;
+      right: -13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent-2);
+      font-weight: 900;
+    }
+    .step:last-child::after { content: ""; }
+
+    @media (max-width: 980px) {
+      .meta-grid, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3, .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .step::after { display: none; }
+    }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .meta-grid, .grid-2, .grid-3, .grid-4, .flow { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      table { font-size: 12px; }
+      th, td { padding: 7px 8px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Latent Reasoning</div>
+    <h1>NF-CoT：把 Chain-of-Thought 迁移到可采样的连续潜变量空间</h1>
+    <p class="lede">NF-CoT 的关键不是简单把思考藏进 hidden state，而是用 normalizing flow 给连续思考补回显式 CoT 原本拥有的接口：左到右生成、概率采样、精确似然、KV-cache 友好和可接入 GRPO 式强化学习。它更像一次“reasoning trajectory 的概率建模改造”，而不是单纯节省 CoT token 的压缩技巧。</p>
+
+    <div class="meta-grid" aria-label="note summary metrics">
+      <div class="metric"><strong>64</strong><span>论文主设置中的 continuous thought slots</span></div>
+      <div class="metric"><strong>+13.0</strong><span>Qwen3-8B-Base 平均 pass@1 提升</span></div>
+      <div class="metric"><strong>1.92×</strong><span>相对 LaDiR 的端到端推理加速</span></div>
+      <div class="metric"><strong>70.1</strong><span>Unified + RL 后五项代码评测平均 pass@1</span></div>
+    </div>
+
+    <nav class="toc" aria-label="目录">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#likelihood">精确似然</a>
+      <a href="#training">训练推理</a>
+      <a href="#rl">强化学习</a>
+      <a href="#evidence">实验证据</a>
+      <a href="#terms">术语解释</a>
+      <a href="#limits">边界风险</a>
+      <a href="#insight">启发</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>显式 CoT 的缺点很明显：它冗长、低带宽、昂贵，还强迫模型把内部语义更新逐字转成自然语言。但它有一个经常被低估的优点：<strong>文本 CoT 天然适配自回归语言模型的训练、采样、打分和 RL 接口</strong>。每个中间 token 都有 logprob，可以 KV-cache 解码，可以 sample 多条路径，也可以纳入 policy-gradient 目标。</p>
+      <p>许多 latent reasoning 方法试图摆脱文本，却同时丢掉了这些接口。Coconut 类 hidden-state feedback 高效但偏确定性；diffusion latent 方法有随机性但采样慢，likelihood 也不自然；soft token / embedding mixture 仍然强绑定词表空间。NF-CoT 的真正贡献，是把 continuous thoughts 重新做成一个概率模型：既不是不可控 hidden state，也不是迭代 denoising latent，而是一串可以像 token 一样左到右生成和评分的连续变量。</p>
+
+      <div class="grid-3">
+        <div class="card"><h3>不是隐藏 CoT</h3><p>它并不只是把文字思考藏起来，而是定义连续 thought trajectory 的条件分布。</p></div>
+        <div class="card"><h3>不是普通压缩</h3><p>VAE 压缩只是前置目标空间；normalizing flow 负责把该空间重参数化为 LLM 可建模的 causal thought space。</p></div>
+        <div class="card"><h3>不是纯效率技巧</h3><p>节省 token 成本重要，但更关键的是 exact likelihood 让 latent thoughts 可以参与监督训练与 RL 后训练。</p></div>
+      </div>
+
+      <div class="callout">
+        <b>最重要的 insight</b>
+        <p>NF-CoT 把“思考”从自然语言 token 迁移到 continuous action space，但没有放弃语言模型最有价值的接口。它试图回答的问题不是“LLM 能不能不用文字思考”，而是“如果不用文字思考，还能不能采样、打分、训练、RL 和高效解码”。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：latent CoT 为什么难</h2>
+      <p>从概率视角看，CoT 可以被理解成 prompt 和 answer 之间的中间变量。给定问题 \(q\)、答案 \(x_{1:N}\)、文本推理链 \(d_{1:L}\)，显式 CoT 相当于把直接预测 \(p(x\mid q)\) 改成经过中间路径的条件预测：</p>
+      <div class="math-display">\[
+        p_{\theta}(x_{1:N}\mid q)=\sum_{d_{1:L}}p_{\theta}(d_{1:L}\mid q)\,p_{\theta}(x_{1:N}\mid q,d_{1:L})
+      \]</div>
+      <p>文本 CoT 的问题是它把内部计算塞进离散、串行、面向沟通的 token channel。模型可能只需要一个粗略语义方向、一个不完整假设或一个算法选择，却必须先把它写成一串语言 token，然后才能继续。这会带来推理成本、延迟和表面形式绑定。</p>
+      <p>连续 CoT 的直觉是把 \(d_{1:L}\) 换成更短、更高带宽的连续变量 \(e_{1:K}\in\mathbb{R}^{K\times D}\)。但问题随即出现：连续变量如果没有可计算概率分布，就无法像 token 一样训练和 RL；如果靠 diffusion 生成，又会失去一次左到右解码和 KV-cache 友好的优势；如果只是循环 hidden state，则很难得到多条可评分的 reasoning trajectory。</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>四类 CoT 范式的取舍</caption>
+          <thead><tr><th>范式</th><th>中间推理表示</th><th>优势</th><th>核心代价</th></tr></thead>
+          <tbody>
+            <tr><td>Explicit CoT</td><td>自然语言 token</td><td>自回归、可采样、可评分、可 RL</td><td>冗长、低带宽、强绑定表面语言</td></tr>
+            <tr><td>Coconut / hidden feedback</td><td>hidden state 或 embedding feedback</td><td>高效、接近原模型内部表示</td><td>多为确定性路径，缺少显式 trajectory distribution</td></tr>
+            <tr><td>LaDiR / diffusion latent</td><td>VAE latent + diffusion 生成</td><td>连续且随机，可表示 latent trajectory</td><td>迭代 denoising 慢，精确 likelihood 不自然</td></tr>
+            <tr><td>NF-CoT</td><td>normalizing-flow continuous thoughts</td><td>随机采样、精确似然、左到右、KV-cache 友好</td><td>依赖 CoT 压缩目标，解释性和跨任务泛化仍需验证</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：从文本 CoT 到 LLM-facing continuous thoughts</h2>
+      <p>NF-CoT 的 pipeline 可以拆成五步。训练时，它从显式 CoT 文本中提取连续 target；推理时，它不再运行 VAE 编码分支，而是直接在 LLM-facing thought space 中采样连续变量，再继续生成答案。</p>
+
+      <div class="flow" aria-label="NF-CoT method flow">
+        <div class="step"><h3>显式 CoT</h3><p>训练样本包含 prompt、文本 rationale 和最终答案。</p></div>
+        <div class="step"><h3>VAE 压缩</h3><p>frozen encoder 把文本 CoT 压成固定长度连续 latent \(e\)。</p></div>
+        <div class="step"><h3>Flow 重参数化</h3><p>可逆浅层 flow 把 \(e\) 变成更适合 LLM 自回归建模的 \(u\)。</p></div>
+        <div class="step"><h3>共享 causal stream</h3><p>LLM 同时处理 prompt、continuous thoughts 和 answer tokens。</p></div>
+        <div class="step"><h3>答案生成 / RL</h3><p>NF head 评分 latent，LM head 评分文本，联合构成 policy。</p></div>
+      </div>
+
+      <h3>1. VAE target：把文本 rationale 压成连续变量</h3>
+      <p>论文先使用一个 frozen CoT encoder，把显式文本推理链 \(d_{1:L}\) 压缩成 \(K\) 个连续 slots。实验主设置是 \(K=64\)，维度与 Qwen3-8B hidden size 对齐。这里要注意：NF-CoT 的 latent thoughts 并不是完全自发涌现的“非语言思考”，而是从显式 CoT supervision 蒸馏出来的连续表示。</p>
+
+      <h3>2. Shallow flow：把 VAE latent 变成可建模的 thought space</h3>
+      <p>VAE latent \(e\) 主要为文本压缩服务，不一定适合 prompt-conditioned autoregressive generation。NF-CoT 引入可逆变换：</p>
+      <div class="math-display">\[
+        u_{1:K}=F_{\theta}(e_{1:K};q)
+      \]</div>
+      <p>这里 \(u\) 是 LLM-facing continuous thought space。因为 \(F_{\theta}\) 是 normalizing flow，理论上 \(e\) 与 \(u\) 信息等价；浅层 flow 不是压缩器，而是重参数化器。这个选择让模型既能继承 VAE 对文本 CoT 的压缩能力，又能把生成任务放到更适合 causal LLM 的空间里。</p>
+
+      <h3>3. Deep flow：把 LLM backbone 变成连续 thought 的自回归密度模型</h3>
+      <p>在 \(u\)-space 中，NF-CoT 定义一个左到右的条件高斯密度：</p>
+      <div class="math-display">\[
+        p_{\theta}(u_{1:K}\mid q)=\prod_{i=1}^{K}\mathcal{N}\left(u_i;\mu_{\theta}(q,u_{\lt i}),\operatorname{diag}(\sigma^2_{\theta}(q,u_{\lt i}))\right)
+      \]</div>
+      <p>LLM 在 continuous-thought 位置输出 \(\mu_i\) 和 \(\sigma_i\)，在 answer-token 位置输出普通 token logits。也就是说，同一个 causal backbone 上挂了两种 head：NF head 负责连续变量，LM head 负责离散文本。</p>
+
+      <div class="callout info">
+        <b>Unified 版本为什么更强</b>
+        <p>Dual-Path 版本把 latent-flow 路径和答案生成路径分开，容易出现训练目标、latent interface 与推理 trajectory 不一致。Unified 版本把 continuous thoughts 和 answer tokens 放进同一条 causal sequence：同一个 latent prefix 既被 NF head 评分，也被 LM head 用来预测答案，因此训练目标更贴近推理时实际路径。</p>
+      </div>
+    </section>
+
+    <section id="likelihood">
+      <h2>“精确似然”到底精确在哪里</h2>
+      <p>normalizing flow 的核心价值是可逆变换带来的 change-of-variables 公式。对条件 flow 而言，如果 \(z=f^{-1}_{\theta}(y;c)\)，那么：</p>
+      <div class="math-display">\[
+        p_{\theta}(y\mid c)=p(z)\left|\det J_{f^{-1}_{\theta}}(y;c)\right|
+      \]</div>
+      <p>NF-CoT 用这个性质计算原始 VAE continuous CoT target 的 likelihood：</p>
+      <div class="math-display">\[
+        \log p_{\theta}(e_{1:K}\mid q)=\log p_{\theta}(u_{1:K}\mid q)+\log\left|\det J_{F_{\theta}}(e_{1:K};q)\right|
+      \]</div>
+      <p>这就是论文中“exact likelihood”的具体含义：不是说模型推理一定正确，也不是说 latent 就是人类可读思维，而是说在该连续变量模型下，latent trajectory 的 log-density 是 tractable 的，可以直接放进监督训练和 policy-gradient 目标里。</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>对 latent thought</h3>
+          <p>NF head 给出连续高斯条件密度，加上 flow 的 log-determinant，可以精确计算 latent target 的负对数似然。</p>
+        </div>
+        <div class="card">
+          <h3>对 answer token</h3>
+          <p>LM head 仍然使用标准自回归 cross entropy，条件上下文包含 prompt 与已采样的 continuous thought prefix。</p>
+        </div>
+      </div>
+
+      <p>最终监督目标可以写成：</p>
+      <div class="math-display">\[
+        \mathcal{L}_{\mathrm{sup}}=\lambda_{\mathrm{flow}}\mathcal{L}_{\mathrm{flow}}+\lambda_{\mathrm{text}}\mathcal{L}_{\mathrm{text}}
+      \]</div>
+      <p>这也解释了为什么 NF-CoT 比许多 latent reasoning 方法更容易接入现有训练框架：它不是一个不可微、不可评分的“内部思考模块”，而是一个显式概率模型。</p>
+    </section>
+
+    <section id="training">
+      <h2>训练与推理：关键是训练期复杂、推理期直接</h2>
+      <h3>训练期：两阶段 curriculum</h3>
+      <p>论文使用两阶段训练。第一阶段冻结 LLM backbone，只训练 shallow flow blocks 和 continuous-thought projection 层，让随机初始化的 flow interface 先对齐 pretrained LLM 空间；第二阶段再解冻全部参数做端到端联合训练。消融显示，如果跳过第一阶段，HumanEval、HumanEval+ 与 LiveCodeBench v6 都会下降。作者的解释是：未校准的 NF 分支过早把大梯度打到 pretrained backbone，尤其影响最终 transformer layer。</p>
+      <p>这个 curriculum 的工程含义很清楚：当你往成熟 LLM 里插一个新的连续 action interface 时，不能让 backbone 一开始就替随机接口背锅。先把接口校准好，再共同优化。</p>
+
+      <h3>推理期：跳过 VAE 和 shallow blocks，直接采样 \(u\)</h3>
+      <p>推理时，NF-CoT 不再需要文本 CoT，也不运行 VAE encoder。模型给定 prompt 后，在 \(u\)-space 中左到右采样 continuous thoughts，然后切换到 LM head 继续生成答案。由于 thoughts 和 answer tokens 在同一个 causal stream 中，采样 latent 时建立的 KV cache 可以继续用于 answer decoding。</p>
+      <p>这正是它相对 diffusion latent 方法的效率来源：LaDiR 需要 30 步 denoising 来生成 latent trajectory，而 NF-CoT 像生成 token 一样生成 64 个 continuous thought slots，没有迭代去噪链。</p>
+
+      <div class="callout good">
+        <b>推理语义</b>
+        <p>NF-CoT 的连续 thought 不是“先生成一段隐藏草稿，再重新读一遍草稿”。它更像在标准 autoregressive decoding 中插入一段 soft-token reasoning prefix，后续答案生成直接继承这段 prefix 的 KV cache。</p>
+      </div>
+    </section>
+
+    <section id="rl">
+      <h2>为什么它能接 GRPO：latent thoughts 也是 policy actions</h2>
+      <p>NF-CoT 最有价值的部分之一，是它把 continuous thought trajectory 纳入 policy likelihood。对采样到的 latent-answer trajectory \((\tilde{u}_{1:K},\hat{x}_{1:\hat{N}})\)，policy logprob 可以分解成：</p>
+      <div class="math-display">\[
+        \log\pi_{\theta}(\tilde{u},\hat{x}\mid q)=\log p_{\theta}(\tilde{u}_{1:K}\mid q)+\log p_{\theta}(\hat{x}_{1:\hat{N}}\mid q,\tilde{u}_{1:K})
+      \]</div>
+      <p>第一项来自 NF head 的连续高斯 likelihood，第二项来自 LM head 的 token likelihood。于是 unit-test reward 这类 verifiable feedback 不只更新最终答案 token 的分布，也可以更新“哪些 latent reasoning path 更可能通向正确答案”。</p>
+      <p>论文使用 GRPO-style objective：同一 prompt 下采样一组 trajectories，根据执行 reward 做组内标准化 advantage，再对整条 latent-answer trajectory 做 policy gradient。这个设计把 RL 的动作空间从“只选择下一个 token”扩展为“先选择一条连续思考轨迹，再选择答案 token”。</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>Token-space RL 与 NF-CoT latent-space RL 的差异</caption>
+          <thead><tr><th>维度</th><th>Token-space GRPO</th><th>NF-CoT latent-space RL</th><th>潜在影响</th></tr></thead>
+          <tbody>
+            <tr><td>动作</td><td>答案 token 或显式 reasoning token</td><td>连续 thought slots + 答案 token</td><td>reward 可以影响内部解法选择</td></tr>
+            <tr><td>多样性来源</td><td>token sampling temperature / top-p</td><td>latent Gaussian noise + answer sampling</td><td>更可能改变算法策略，而非只改表面措辞</td></tr>
+            <tr><td>训练信号</td><td>token logprob ratio</td><td>latent trajectory likelihood + token likelihood</td><td>允许对 reasoning path 做 policy optimization</td></tr>
+            <tr><td>风险</td><td>mode collapse、长度偏置、模板化</td><td>latent distribution 也可能塌缩或继承 CoT/VAE 偏差</td><td>仍需 pass@k、结构多样性和 held-out verifier 监控</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：性能、效率、多样性与鲁棒性</h2>
+      <h3>主结果：Qwen3-8B-Base 上平均 pass@1 明显提升</h3>
+      <p>论文在 MBPP、MBPP+、HumanEval、HumanEval+、LiveCodeBench v6 上评估代码生成。Qwen3-8B-Base 平均 pass@1 为 55.8；LaDiR 为 61.6；NF-CoT Dual-Path 为 65.2；NF-CoT Unified 为 68.8；Unified 加轻量 RL 后达到 70.1。这个结果说明：在作者设定下，收益不只是来自“更多 CoT 数据的 SFT”，因为同 backbone 的 Standard SFT 在四个共享非 LCB benchmark 上提升明显小于 NF-CoT。</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>论文主表中的同 backbone 方法对比</caption>
+          <thead><tr><th>方法</th><th>Base</th><th>MBPP</th><th>MBPP+</th><th>HumanEval</th><th>HumanEval+</th><th>LCB v6</th><th>Avg.</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen3-8B-Base</td><td>Qwen3-8B-Base</td><td>60.5</td><td>53.8</td><td>78.2</td><td>68.6</td><td>17.7</td><td>55.8</td></tr>
+            <tr><td>LaDiR</td><td>Qwen3-8B-Base</td><td>66.8</td><td>59.5</td><td>87.4</td><td>73.2</td><td>21.3</td><td>61.6</td></tr>
+            <tr><td>NF-CoT Dual-Path</td><td>Qwen3-8B-Base</td><td>77.5</td><td>66.2</td><td>82.9</td><td>77.7</td><td>21.6</td><td>65.2</td></tr>
+            <tr><td>NF-CoT Unified</td><td>Qwen3-8B-Base</td><td>83.9</td><td>72.1</td><td>85.8</td><td>78.3</td><td>23.7</td><td>68.8</td></tr>
+            <tr><td>NF-CoT Unified + RL</td><td>Qwen3-8B-Base</td><td>85.4</td><td>73.3</td><td>86.7</td><td>80.2</td><td>25.1</td><td>70.1</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Pass@k：latent sampling 似乎真的在探索不同解法</h3>
+      <p>论文报告 MBPP+ 上 NF-CoT 的 pass@1 为 72.1，已经接近 base model 的 pass@128 约 72.0；NF-CoT 自身到 pass@128 可达 87.5。HumanEval+ 上，NF-CoT 从 78.3 提升到 97.5。这说明它不是简单把单个最优模板概率抬高，而是保留了多样采样空间。</p>
+      <p>更有意思的是，作者比较 token-space GRPO 和 NF-CoT latent-space RL：token-space GRPO 低 k 区域提升，但高 k 更容易饱和；NF-CoT + RL 则同时提升 pass@1 并保持 pass@k 上升趋势。这个结果支撑了一个重要假设：在 latent space 做 policy refinement，可能比直接在 token space 做 RL 更不容易压扁解法分布。</p>
+
+      <h3>效率：与 diffusion latent 相比，主要省在 latent generation</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>HumanEval 推理效率对比</caption>
+          <thead><tr><th>方法</th><th>Latent 生成</th><th>答案解码</th><th>总时间</th><th>Samples/s</th><th>FLOPs/sample</th></tr></thead>
+          <tbody>
+            <tr><td>NF-CoT Unified</td><td>173.5s</td><td>152.1s</td><td>325.6s</td><td>8.06</td><td>19.9T</td></tr>
+            <tr><td>NF-CoT Dual-Path</td><td>232.3s</td><td>147.7s</td><td>380.0s</td><td>6.90</td><td>21.6T</td></tr>
+            <tr><td>LaDiR</td><td>468.2s</td><td>157.1s</td><td>625.3s</td><td>4.20</td><td>49.3T</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>作者报告 NF-CoT Unified 相比 LaDiR 端到端快 1.92×，per-sample FLOPs 约少 2.48×；训练阶段 sample throughput 约高 2.85×，总 FLOPs 约少 6.66×。这些数字与方法机制一致：LaDiR 的成本来自多步 denoising，NF-CoT 的成本来自一次自回归 latent pass。</p>
+
+      <h3>定性案例：latent 不只是改变量名，而是改变算法路线</h3>
+      <p>论文 Appendix 中给出 HumanEval 例子：同一个 fibfib 问题，NF-CoT 不同 latent samples 可以导向 rolling three-state DP、显式 tabulation list、recursive memoization 三类通过测试的实现；encrypt 问题中，也能导向 alphabet-index lookup 或 ASCII modulo arithmetic。作者还用 AST 结构相似度比较 passing programs，NF-CoT 的平均 intra-prompt similarity 低于 base model，说明多样性不只是自然语言 reasoning 的表面变体。</p>
+
+      <h3>鲁棒性：扰动 latent 改变形式多于改变功能</h3>
+      <p>论文还做了 latent perturbation：对 sampled continuous-CoT trajectory 加高斯噪声。随着噪声强度增大，cosine similarity 明显下降，exact-text match 大幅下降，但 pass@1 基本保持在相近区间。这支持一个判断：learned continuous-CoT 更像分布式控制变量，局部扰动会改变实现形式或策略细节，不一定破坏功能正确性。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释与概念边界</h2>
+      <div class="def-list">
+        <div><b>Chain-of-Thought</b><span>模型在最终答案前生成的中间推理轨迹。它可以提升复杂任务表现，但文本形式成本高、解释忠实性也不天然成立。</span></div>
+        <div><b>Latent CoT</b><span>把中间推理从自然语言 token 换成连续向量、hidden state 或 soft embedding。核心难点是如何保留可采样、可评分和可训练的概率接口。</span></div>
+        <div><b>Normalizing Flow</b><span>一类可逆生成模型，通过把复杂数据分布映射到简单 base distribution 来获得精确 likelihood 和直接 sampling。</span></div>
+        <div><b>TARFlow / STARFlow</b><span>面向高维结构数据的 Transformer autoregressive flow 家族。NF-CoT 借鉴其 deep-shallow 设计，把 flow 放进 LLM causal stream。</span></div>
+        <div><b>Exact Likelihood</b><span>这里指在定义好的 continuous latent model 下，trajectory density 可以精确计算；不等于 high likelihood 就代表推理正确。</span></div>
+        <div><b>KV Cache</b><span>自回归解码中缓存历史 key/value，避免每步重算前缀。NF-CoT 的 latent thoughts 与答案处在同一 causal stream，因此可以继承这个效率优势。</span></div>
+        <div><b>GRPO</b><span>Group Relative Policy Optimization。同一 prompt 下采样一组输出，用组内 reward 相对值构造 advantage，常用于 verifier-based reasoning RL。</span></div>
+        <div><b>Pass@k</b><span>采样 k 个候选时至少一个通过测试的概率。它不仅测单样本质量，也反映采样分布是否覆盖多种正确解法。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <div class="callout warn">
+        <b>不要把 NF-CoT 误读成“可解释性已解决”</b>
+        <p>作者在回复中提到 continuous thoughts 可 invert / decode 成文本用于 inspection，但论文 Appendix 明确说 decoded latent CoTs 是 qualitative probes，不是 faithful natural-language explanations。Flow 的可逆性保证的是 \(e\) 与 \(u\) 的信息等价，不保证 VAE decoder 输出的文字就是模型真实思维。</p>
+      </div>
+
+      <h3>1. 代码生成不等于通用 reasoning</h3>
+      <p>NF-CoT 当前证据主要来自代码任务。代码生成有天然 unit tests、pass@k 诊断和多种等价实现，因此特别适合 latent trajectory sampling 与 execution-guided RL。数学证明、多跳知识问答、开放式规划、科学推理是否同样收益，需要额外验证。</p>
+
+      <h3>2. 它仍然依赖显式 CoT 与 VAE target</h3>
+      <p>NF-CoT 不是从零发现纯粹内部推理空间。它先把显式 CoT 文本压缩为 VAE latent，再学习其 prompt-conditioned distribution。因此，原始 CoT 数据质量、VAE bottleneck、固定 latent slots 和文本 rationale 的偏差都会影响最终模型。</p>
+
+      <h3>3. Exact likelihood 不是 correctness oracle</h3>
+      <p>normalizing flow 提供的是 density，不是正确性判别器。高 likelihood latent 可能只是训练分布常见，不一定导向正确答案；低 likelihood latent 也可能对应创新解法。最终 correctness 仍然依赖 answer generation、verifier 和泛化评测。</p>
+
+      <h3>4. 开源前结果需要复现</h3>
+      <p>发布帖中写明代码和模型尚待开放。代码 benchmark 对 prompt wrapping、数据污染、采样协议、baseline 调参和执行环境都很敏感。主结果在开源复现前应视为强信号而不是最终定论。</p>
+
+      <h3>5. Latent RL 也可能塌缩</h3>
+      <p>论文展示 NF-CoT + RL 在 pass@k 上未明显 collapse，但这不是理论保证。若 reward 过窄、verifier 可被 hack、latent temperature 过低或 PPO/GRPO clipping 不当，continuous thought distribution 仍可能集中到少数模板。</p>
+    </section>
+
+    <section id="insight">
+      <h2>工程 / 研究启发</h2>
+      <h3>把 reasoning budget 从 token 数改成 latent slots</h3>
+      <p>如果 NF-CoT 方向成立，未来 reasoning model 的预算不一定只表现为输出更长 CoT。系统可以分配固定数量或动态数量的 continuous thought slots，让模型在内部做高带宽计算，对外只输出简洁答案。这会改变成本、延迟、可见 CoT、隐私与安全策略。</p>
+
+      <h3>Test-time search 可以先搜索 latent，再生成 token</h3>
+      <p>传统 best-of-k 多在 token 空间采样答案。NF-CoT 暗示另一种路线：先采样不同 latent reasoning trajectories，再由同一个 answer decoder 生成候选，并用 verifier 选择。这种 upstream stochasticity 更可能改变算法路线，而不是只改措辞、变量名或解释风格。</p>
+
+      <h3>RL 后训练可以优化“想法分布”</h3>
+      <p>在普通 token RL 中，reward 主要改变答案 token 分布；在 NF-CoT 中，reward 可以同时改变 \(p(u\mid q)\) 和 \(p(x\mid q,u)\)。这使 RL 更接近训练一个隐式 problem-solving policy：哪些内部连续轨迹更可能带来可验证成功，哪些应该降低概率。</p>
+
+      <h3>Latent reasoning 系统需要新的可观测性</h3>
+      <p>如果模型越来越多地在不可读 continuous space 中推理，监控不能只看最终答案。工程系统需要记录 latent likelihood、latent temperature、trajectory diversity、pass@k 曲线、结构化输出多样性、decoded-probe consistency 和 verifier disagreement。否则“隐藏思考”会把错误从可见文本挪到不可见空间。</p>
+
+      <div class="callout good">
+        <b>面向实践的判断</b>
+        <p>NF-CoT 最适合优先尝试在有 verifier 的任务上：代码、形式化数学、工具调用规划、可执行数据分析、可单元测试的 agent 环境。没有 verifier 的开放式任务可以借鉴其接口设计，但不要期待 latent likelihood 自动替代正确性评估。</p>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于公开 X 发布线程、项目页、arXiv 论文正文与 STARFlow 公开介绍整理。性能、效率、消融和案例分析来自作者论文与项目页报告；代码和模型在材料发布时尚未开放，因此本文没有把实验结果视为已独立复现结论。社交平台内容可能随时间变化，最终技术细节应以论文版本、项目页和后续开源仓库为准。</p>
+      <div class="grid-2">
+        <div class="source-card">
+          <h3>发布线程</h3>
+          <p><a href="https://x.com/thoma_gu/status/2064078081036525878">Jiatao Gu 关于 NF-CoT 的 X 发布线程</a></p>
+        </div>
+        <div class="source-card">
+          <h3>项目页</h3>
+          <p><a href="https://nf-cot.vercel.app/">NF-CoT: Latent Reasoning with Normalizing Flows</a></p>
+        </div>
+        <div class="source-card">
+          <h3>论文</h3>
+          <p><a href="https://arxiv.org/abs/2606.06447">Latent Reasoning with Normalizing Flows</a></p>
+        </div>
+        <div class="source-card">
+          <h3>方法背景</h3>
+          <p><a href="https://machinelearning.apple.com/research/starflow">STARFlow: Scaling Latent Normalizing Flows for High-resolution Image Synthesis</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

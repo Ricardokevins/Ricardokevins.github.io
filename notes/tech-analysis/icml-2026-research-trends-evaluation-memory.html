@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="深读 Soham Ray 的 ICML 2026 研究趋势长文：自动化研究、评测迁移、合成数据、Agent Memory 与 tau benchmark 背后的统一反馈架构。">
+  <title>ICML 2026 研究趋势深读：当生成变便宜，评测、环境与记忆成为真正的瓶颈</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #f7f1e7;
+      --ink: #20242a;
+      --muted: #60686e;
+      --line: #d9d1c2;
+      --line-strong: #b9aa96;
+      --accent: #c15f3c;
+      --accent-dark: #8f3e24;
+      --accent-soft: #f7e8df;
+      --ochre: #a65f13;
+      --ochre-soft: #fbefd9;
+      --blue: #456b8b;
+      --blue-soft: #e8f0f6;
+      --green: #477157;
+      --green-soft: #e6efe7;
+      --red: #97463d;
+      --red-soft: #f6e7e3;
+      --shadow: 0 14px 34px rgba(45, 39, 31, 0.08);
+      --radius: 12px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 88% 4%, rgba(193, 95, 60, 0.10), transparent 28rem),
+        linear-gradient(90deg, rgba(120, 105, 85, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120, 105, 85, 0.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, 44px 44px, 44px 44px, auto;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+
+    a { color: var(--accent-dark); text-underline-offset: 3px; }
+    a:hover { color: var(--accent); }
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header { padding: clamp(42px, 7vw, 88px) 0 32px; }
+    .kicker {
+      margin-bottom: 13px;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 1020px;
+      margin: 0;
+      font: 760 clamp(34px, 5.3vw, 62px)/1.12 var(--serif);
+      letter-spacing: -.02em;
+    }
+    .lede {
+      max-width: 940px;
+      margin: 20px 0 0;
+      color: #4d555a;
+      font-size: clamp(18px, 2.1vw, 22px);
+      line-height: 1.68;
+    }
+    .source-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .source-meta span {
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, .72);
+    }
+
+    main {
+      display: grid;
+      gap: 34px;
+      padding-bottom: 72px;
+    }
+    section {
+      min-width: 0;
+      padding-top: 32px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3, h4 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font: 740 clamp(26px, 3.4vw, 38px)/1.22 var(--serif); }
+    h3 { margin-top: 25px; color: var(--accent-dark); font-size: 21px; }
+    h4 { margin-top: 18px; font-size: 16px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    strong { font-weight: 730; }
+
+    .thesis {
+      padding: clamp(20px, 3vw, 30px);
+      border: 1px solid var(--line-strong);
+      border-left: 6px solid var(--accent);
+      border-radius: var(--radius);
+      background: linear-gradient(120deg, var(--surface), var(--accent-soft));
+      box-shadow: var(--shadow);
+      font: 650 clamp(18px, 2vw, 22px)/1.72 var(--serif);
+    }
+    .thesis p { margin: 0; }
+
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 17px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 {
+      margin: 0 0 8px;
+      color: var(--accent-dark);
+      font-size: 16px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+
+    .callout {
+      margin: 19px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent-dark); }
+    .callout p { margin: 4px 0; }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--ochre); background: var(--ochre-soft); }
+    .callout.warn > b { color: var(--ochre); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.risk > b { color: var(--red); }
+
+    .label {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 6px;
+      padding: 2px 8px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+    .label.source { color: var(--blue); background: var(--blue-soft); }
+    .label.checked { color: var(--green); background: var(--green-soft); }
+    .label.inference { color: var(--ochre); background: var(--ochre-soft); }
+    .label.corrected { color: var(--red); background: var(--red-soft); }
+
+    .table-wrap {
+      margin: 18px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table {
+      width: 100%;
+      min-width: 680px;
+      border-collapse: collapse;
+      font-size: 14.5px;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: var(--accent-soft);
+      color: var(--ink);
+      font-weight: 760;
+    }
+    tr:last-child td { border-bottom: 0; }
+    tr:nth-child(even) td { background: rgba(32, 36, 42, .015); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 22px;
+      margin: 22px 0;
+      counter-reset: stage;
+    }
+    .flow > div {
+      position: relative;
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      counter-increment: stage;
+    }
+    .flow > div::before {
+      content: counter(stage);
+      display: grid;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 10px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-weight: 800;
+    }
+    .flow > div:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 44%;
+      right: -19px;
+      color: var(--accent);
+      font-size: 23px;
+      font-weight: 800;
+    }
+    .flow h3 { margin: 0 0 6px; font-size: 16px; }
+    .flow p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent-dark); }
+    .def-list span { min-width: 0; }
+
+    .insight-list {
+      display: grid;
+      gap: 14px;
+      margin: 20px 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: insight;
+    }
+    .insight-list li {
+      position: relative;
+      margin: 0;
+      padding: 17px 18px 17px 62px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      counter-increment: insight;
+    }
+    .insight-list li::before {
+      content: counter(insight);
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+    }
+    .insight-list strong { display: block; margin-bottom: 4px; color: var(--accent-dark); }
+
+    .source-groups {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 15px;
+      margin-top: 18px;
+    }
+    .source-group {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .source-group h3 { margin: 0 0 8px; font-size: 17px; }
+    .source-group ul { margin: 0; padding-left: 1.15rem; }
+    .source-group li { overflow-wrap: anywhere; font-size: 14px; }
+
+    .fine-print { color: var(--muted); font-size: 13.5px; }
+
+    @media (max-width: 900px) {
+      .grid-4, .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow > div::after { display: none; }
+    }
+    @media (max-width: 720px) {
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .grid-4, .flow, .source-groups { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+      .source-meta { display: grid; }
+      .insight-list li { padding-left: 56px; }
+      .notes-shell-page table { min-width: 780px; }
+      .notes-shell-page th, .notes-shell-page td { min-width: 150px; }
+      .notes-shell-page th:first-child, .notes-shell-page td:first-child { min-width: 128px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · ICML 2026 / X Article</div>
+    <h1>ICML 2026 研究趋势深读：当生成变便宜，评测、环境与记忆成为真正的瓶颈</h1>
+    <p class="lede">Soham Ray 的会后长文表面上在谈 AI Scientist、评测、合成数据与 Agent Memory，深层却是在描述同一场瓶颈迁移：模型越来越擅长批量生成代码、样本、候选方案与行动轨迹，真正稀缺的因而不再是“能不能产出”，而是“什么值得产出、怎样证明有效、如何在真实环境中持续修正，以及哪些经验可以安全地留下来”。</p>
+    <div class="source-meta">
+      <span>原材料：Soham Ray《Research Trends at ICML 2026》</span>
+      <span>发布：2026-07-14</span>
+      <span>会议：ICML 2026 · Seoul</span>
+      <span>范围：原文全部主题 + 关键论文反向核验</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断：这不是四个趋势，而是一套反馈架构正在成形</h2>
+      <div class="thesis">
+        <p>原文最值得保留的 insight 是：AI 研究与 Agent 产品正在从“模型输出中心”转向“反馈闭环中心”。自动研究系统负责扩大候选空间；评测负责决定什么算进步；合成数据与环境负责提供可重复的试错世界；记忆负责把跨任务经验写回下一轮行为。四者缺一，系统都只能表现为一次性的漂亮 demo，而不是可靠的持续改进。</p>
+      </div>
+      <div class="grid-4">
+        <div class="card">
+          <h3>生成已不是唯一稀缺项</h3>
+          <p>代码、实验变体和合成样本更便宜后，候选数量暴涨，选择与验证的成本反而上升。</p>
+        </div>
+        <div class="card">
+          <h3>评测正在接管方向盘</h3>
+          <p>评测不只是末端打分，而是在定义系统会优化什么、忽略什么，以及什么能进入部署。</p>
+        </div>
+        <div class="card">
+          <h3>环境是可执行的任务定义</h3>
+          <p>从静态数据集走向交互环境，意味着监督从答案标签升级为状态、动作、规则与后果。</p>
+        </div>
+        <div class="card">
+          <h3>记忆是长期控制面</h3>
+          <p>记忆决定经验如何写入、检索、更新、遗忘与审计；个性化和攻击面由同一写入通道产生。</p>
+        </div>
+      </div>
+      <div class="callout warn">
+        <b>先给结论降温</b>
+        <p>这些趋势并不等于“AI 已能自主做科学”“公开 benchmark 已经无用”“合成数据将完全取代人类数据”或“给 Agent 加一个向量库就获得长期记忆”。现有证据更准确地支持：可验证环节的自动化在加速，评测设计成为新瓶颈，定向合成数据的效率显著提高，而长期记忆仍是一整套尚未解决的系统问题。</p>
+      </div>
+    </section>
+
+    <section id="material-map">
+      <h2>材料全景：作者到底观察到了什么</h2>
+      <p><a href="https://x.com/sohmray/status/2077157003387109542">原帖</a>本身只发布了长文入口，正文题为《Research Trends at ICML 2026》。作者以参会者和 τ benchmark 共同作者的双重视角组织材料：一方面观察整个会议的研究风向，另一方面用自己在 Agent 评测上的工作说明“评测正在变成产品与研究的共同基础设施”。公开回复没有形成实质争论，因此值得分析的主体是长文本及其引用的工作，而不是评论区舆论。</p>
+      <p>全文可以压缩为四组观察，但每一组都对应同一个问题：当模型能够更快地产生候选行为之后，什么机制负责筛选、约束并积累这些行为？</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>原文主题</th>
+              <th>作者列举的代表工作</th>
+              <th>真正讨论的稀缺资源</th>
+              <th>本文的严格重述</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>研究方式改变</td>
+              <td>End-to-End AI Scientist、MARS、AI Scientists workshop、InnoEval、自动同行评审批判</td>
+              <td>方向选择、研究 taste、可信验证</td>
+              <td>实验与实现可被大幅流水线化，但“问题是否值得做”和“结果是否真的成立”尚未被自动化。</td>
+            </tr>
+            <tr>
+              <td>权重转向评测</td>
+              <td>benchmark 饱和研究、Edge of Comprehension、抗污染设计、跨任务迁移、临床部署立场、REAL、Rubric Curriculum RL</td>
+              <td>构念有效性、外部分布、可靠性</td>
+              <td>高分越来越容易获得，定义“高分代表什么”以及它能否外推到部署，反而更难。</td>
+            </tr>
+            <tr>
+              <td>数据生成升级</td>
+              <td>Less is Enough、Simula</td>
+              <td>覆盖关键能力、控制难度、可验证反馈</td>
+              <td>合成数据的重点从“堆更多样本”转向“针对缺失能力设计分布”，并继续向可交互环境演进。</td>
+            </tr>
+            <tr>
+              <td>记忆成为 Agent 核心</td>
+              <td>Learning to Share、MemEvolve、Modular Memory、Persona2Web、MCP-Persona、MemoryArena、memory poisoning</td>
+              <td>跨会话状态、个性化、治理与安全</td>
+              <td>真正的记忆不是持久化文本，而是选择性写入、结构化检索、更新遗忘和可信度管理的联合策略。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <b>阅读标记</b>
+        <p><span class="label source">原文观察</span>表示 Soham Ray 的会议判断；<span class="label checked">证据支持</span>表示论文或公开材料能直接支持；<span class="label inference">本文推论</span>表示在多项工作之间建立的综合解释；<span class="label corrected">需要修正</span>表示原文的展示级别、数字或因果强度需要校准。</p>
+      </div>
+    </section>
+
+    <section id="research-workflow">
+      <h2>一、研究方式的变化：自动化的是搜索与执行，不是“科学判断”本身</h2>
+
+      <h3>1. AI Scientist 当前更像“研究工程搜索器”</h3>
+      <p><span class="label source">原文观察</span>Google 在 ICML 2026 安排了“The End-to-End AI Scientist”展示，并介绍自动研究 Agent MARS；会场里围绕自动后训练、自动实验与 AI Scientist 的讨论明显升温。这个观察有事实基础：Google 的会议页面列出了相关活动，MARS 也确实把机器学习工程任务组织成可搜索、可反思、可复用经验的系统。</p>
+      <p><span class="label checked">证据支持</span>MARS 的关键不是“模型突然有了科学直觉”，而是把问题拆成设计、分解、实现三个模块，再用受成本约束的树搜索探索方案，并把跨分支经验写入反思记忆。论文在 MLE-Bench 上报告了领先结果，并指出 63% 的最终方案使用了从其他搜索分支迁移来的经验。它证明了自动实验搜索与经验复用可以有效，却没有证明系统能够提出超出既有评价函数的研究问题。</p>
+      <div class="callout warn">
+        <b>严格边界</b>
+        <p>只要成功条件仍由预先选定的数据集、分数和计算预算给出，系统做得再好，也主要是在优化“已被人类形式化的问题”。它可以逼近自动化机器学习工程，不等于掌握科学研究中最难形式化的价值判断、机制解释与反常证据处理。</p>
+      </div>
+
+      <h3>2. “Everything is a factory”描述的是候选空间爆炸</h3>
+      <p>原文用“所有东西都变成工厂”概括会议里的管线化倾向：代码成本下降后，研究者更容易搭建多阶段生成器、数据过滤器、LLM judge、自动消融和循环改写。过去因为工程昂贵而只能尝试十个方案，现在可以尝试一千个；过去只能做一次数据生成，现在可以让生成、批判、重写和验证连续循环。</p>
+      <p><span class="label inference">本文推论</span>工厂化带来的不是纯粹的效率红利，而是一个新的选择压力：候选越多，错误发现、统计校准、依赖追踪与停止条件越重要。如果评价器存在系统偏差，流水线只会以更高吞吐量复制偏差。生产函数从“研究者能实现多少实验”变成“研究系统能从多少实验中可靠识别有效变化”。</p>
+
+      <h3>3. Taste 是尚未被形式化的资源分配策略</h3>
+      <p>作者认为研究 taste——从多年经验中形成的、对方向价值和异常线索的直觉——仍是开放问题。InnoEval 是一个早期尝试：它把 idea evaluation 定义为知识检索、多视角审议与多指标决策，使用异构的动态知识来源，并让具有不同背景的“评审委员会”分别评价新颖性、可行性、影响等维度。</p>
+      <p><span class="label checked">证据支持</span>InnoEval 在点对点、两两比较和组内排序任务上提高了与专家判断的一致性，说明“研究想法评估”可以被拆成比单一 LLM judge 更扎实的流程。</p>
+      <p><span class="label inference">本文推论</span>但专家一致性并不等于 taste。它更接近“复现现有学术共同体的判断规则”，而 taste 常常要求在证据稀薄、同行并不认同、回报极度延迟时做反共识资源配置。若训练目标来自历史接收决定，系统可能学会的是制度化偏好，而不是发现未来高价值方向的能力。</p>
+
+      <h3>4. 自动评审暴露了“验证器塑造被验证对象”的危险</h3>
+      <p>ICML 2026 的 AI Scientist 相关议程确实把“如何定义和验证突破”列为核心问题；《Stop Automating Peer Review Without Rigorous Evaluation》进一步展示了两个失败模式：AI reviewer 之间过度一致，降低观点多样性；对论文进行表面风格改写能够显著提高评分，说明评价器可能奖励可操纵的表达特征。论文不是在说 AI 永远不能参与评审，而是在要求先证明多样性、抗博弈性与可靠性。</p>
+      <p>这与自动研究形成闭环风险：如果候选论文由模型生成、论文由模型改写、评审也由相似模型给出，那么系统可能在内部越来越自洽，却与真实科学价值越来越脱钩。所谓 recursive improvement 的第一道难题不是生成器够不够强，而是验证器是否独立、可校准且难以被生成器利用。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>二、评测权重上升：benchmark 不再只是尺子，而是优化目标与市场接口</h2>
+
+      <h3>1. “约一半 benchmark 饱和”成立，但不能被读成“benchmark 已死”</h3>
+      <p><span class="label checked">证据支持</span>《When AI Benchmarks Plateau》系统分析了 60 个 benchmark，其中 29 个达到高或极高饱和度，14 个进入极高饱和区间。因此原文“约一半已经饱和”的方向性概括是合理的。更值得注意的是，隐藏测试集并没有显示出稳定的保护效果；专家策划的题目相对更抗饱和，而 benchmark 年龄与饱和度的关系虽有方向性，却未达到常规统计显著性。</p>
+      <p>饱和意味着头部模型分数挤在上限附近，新增能力难以被区分；它不意味着 benchmark 从一开始就没有价值。更准确的生命周期是：一个公开评测先为能力提供共同语言，随后被训练、提示工程和数据选择逐渐“内生化”，最后需要被升级、分层或退役。</p>
+
+      <h3>2. 人类到达理解边缘后，ground truth 本身开始失稳</h3>
+      <p>《Benchmarking at the Edge of Comprehension》追问一个更深的问题：如果任务难到人类无法稳定求解、解释甚至确认题目有效性，benchmark 的难度标签和标准答案从何而来？论文把重点从全局证明答案正确，转向使用短小、局部、可检查的失败证书来做有界验证。</p>
+      <p><span class="label corrected">需要修正</span>原文将该工作称为 oral，而 OpenReview 当前标注为 ICML 2026 spotlight。这个展示级别差异不影响论文思想，但提醒我们：会后随笔中的会议数字与 paper status 应当回到正式页面核对。</p>
+
+      <h3>3. 防污染不只是把测试集藏起来</h3>
+      <p>公开 benchmark 一旦成为训练目标，就会发生直接数据泄漏、题型模仿、提示模板特化和团队级过拟合。《LLM Benchmark Datasets Should Be Contamination-Resistant》提出更强的设计目标：数据应当支持推理时求解，却尽量不能通过训练被直接内化。这利用了训练与推理之间的不对称，而不是把“安全”简化为一个没有公开链接的测试集。</p>
+      <p>这里的核心不是追求绝对不可污染——在开放生态里几乎不现实——而是让 benchmark 自带污染压力测试、时间切分、生成规则轮换、私有变体与异常检测，使分数对“是否见过类似题”不那么敏感。</p>
+
+      <h3>4. 跨任务迁移和部署准备度暴露了构念鸿沟</h3>
+      <p>数学推理训练的跨任务研究显示：在一个推理分布上取得增益，并不会自动转化为通用能力增益；on-policy 强化学习通常比 off-policy SFT 更能保留或迁移能力，但迁移仍依赖任务关系与训练方式。原文把它概括为“模型擅长训练过的任务，除非共享前置结构，否则跨任务迁移有限”，方向合理，但“前置结构”不是单一论文已经完全识别的因果定律。</p>
+      <p>临床 AI 的 position paper 把同一问题说得更直接：benchmark 可以筛选候选模型，却不能建立 deployment readiness。部署需要本地回顾性研究、前瞻性工作流验证、患者和临床人员结果、失败可恢复性以及上线后的持续监控。它引用的系统综述中，只有约 2% 的研究进行了前瞻性评估。这说明“分布外泛化”不只是换一个测试集，而是换到包含组织流程、责任、延迟、法规和真实后果的系统。</p>
+
+      <h3>5. LLM judge 在变精细，但仍不是价值真值</h3>
+      <p>REAL 针对数值评分 judge 的问题是：传统二元奖励只看最终标签对不对，无法区分真实分数为 5 时预测 4 与预测 1 的距离。它采用回归感知的强化学习信号，同时鼓励轨迹探索与数值预测细化；论文在 Qwen3-32B 上报告相对 SFT 的 Pearson 和 Spearman 相关性提升。它改进的是评分相关性与序关系，并未证明 judge 不会被风格操纵或 reward hacking。</p>
+      <p>Rubric Curriculum RL 则利用“生成难、验证相对容易”的差距，在训练过程中按课程逐步加入新的 rubric criteria，并保留旧标准的权重。原文说“rubric 会随时间演化”大体正确，但这里的演化是预定课程与加权保留，不是评价标准自行发现终极价值函数。</p>
+
+      <div class="callout info">
+        <b>关键 insight：评测是转向系统，不是记分牌</b>
+        <p>Arvind Narayanan 的 ICML keynote 强调，当执行层被压缩，工作量会向“决定做什么”和“交付并承担责任”迁移；评测正是决定层的核心。他同时认为创造力和 judgment 是难以验证、因而更抗自动化的部分。由此看，原文“自动化评测是 recursive self-improvement 的关键”只说对了一半：没有自动评测就无法规模化闭环，但完全把“评什么”交给系统，又可能失去真正的方向盘。</p>
+      </div>
+
+      <div class="flow" aria-label="评测从公开基准走向真实部署的四层路径">
+        <div>
+          <h3>公开 benchmark</h3>
+          <p>提供共同语言、可重复比较与研究进入点，但最容易被训练和传播内生化。</p>
+        </div>
+        <div>
+          <h3>私有环境套件</h3>
+          <p>覆盖组织特有任务、策略、长尾和失败成本，降低针对公开榜单的过拟合。</p>
+        </div>
+        <div>
+          <h3>影子与前瞻验证</h3>
+          <p>在真实工作流中观察人机协作、延迟、恢复、责任与用户行为。</p>
+        </div>
+        <div>
+          <h3>上线监控</h3>
+          <p>持续追踪分布漂移、校准、事故严重度和可回滚性，让评测成为运行时系统。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="synthetic-data">
+      <h2>三、合成数据：真正的变化不是“更多”，而是从样本工厂走向环境工厂</h2>
+
+      <h3>1. 2K 对 300K 证明的是定向覆盖效率</h3>
+      <p>《Less is Enough》在模型特征空间中选择并合成多样化指令数据，报告约 2,000 个针对性样本在 AlpacaEval 2.0 的 win rate 上可达到与 MAGPIE 约 300,000 样本相近的水平，即约 150 倍的数据量差距。这个结果支持“覆盖缺失特征比盲目扩大规模更重要”，却不能外推为 2K 样本在所有能力、模型、分布和安全指标上都等价于 300K。</p>
+      <p>更深的机制是：当 teacher 可以无限生成相似样本，数据量本身不再是有效 proxy。需要优化的是特征覆盖、难度梯度、错误类型和对目标模型的边际训练价值。</p>
+
+      <h3>2. Simula 说明合成机制必须服从领域误差结构</h3>
+      <p>Google 的 Simula 从 dataset-level mechanism design 出发，依次处理全局 taxonomy、局部多样化、复杂度控制和双重 critic 质量筛选。其结果并非“统一配方全面胜出”：在数学等领域，增加复杂度能带来明显收益；在 teacher 本身不稳的法律领域，同类机制反而可能恶化数据。Google 的总结同样强调没有 universal recipe。</p>
+      <p><span class="label corrected">需要修正</span>因此，把 Simula 直接解读为“昂贵的人类标注已经可以被替代”过强。更稳妥的结论是：人类工作的重心正在从逐条写标签，迁移到定义任务 taxonomy、失败标准、生成约束、审计采样和处理 teacher 不知道自己不知道什么的区域。</p>
+
+      <h3>3. 从 dataset 到 environment，监督单位发生了变化</h3>
+      <p>静态数据集给出输入与期望输出；环境则给出状态、可用动作、权限、动态规则、其他参与者和可观测后果。前者主要训练“在给定样本上回答”，后者可以训练“通过行动改变世界并承担后果”。所以环境生成不是把更多 JSON 拼在一起，而是把任务定义变成可执行程序。</p>
+      <p><span class="label inference">本文推论</span>环境工厂会成为 Agent 时代更强的数据飞轮，因为一次环境定义可以产生大量不同轨迹、难度组合和失败案例。但环境也会把设计者的偏见固化得更深：遗漏一个业务规则，不再只是少一条标签，而可能让数百万条合成轨迹共同学习错误策略。环境必须拥有版本、覆盖率、可验证 invariant、对抗任务和回放能力。</p>
+    </section>
+
+    <section id="memory">
+      <h2>四、Agent Memory：不是把上下文存下来，而是管理经验对未来行动的因果影响</h2>
+
+      <p>原文说“memory makes the agent yours”，指出持久记忆让 Agent 从通用工具变成对个人或组织连续负责的系统。这是全文最接近产品本质的判断：没有跨会话状态，Agent 每次都从零开始；一旦拥有状态，它又立刻获得了隐私、错误累积、权限和攻击面。</p>
+
+      <div class="def-list">
+        <div><b>选择性写入</b><span>哪些观察、步骤、偏好和失败值得进入长期记忆？Learning to Share 通过轻量控制器学习保存对后续协作有用的中间步骤，而不是保存全部轨迹。</span></div>
+        <div><b>结构与架构</b><span>记忆是摘要、情节、规则、技能还是图结构？MemEvolve 在预定义的模块空间中联合演化内容与 encode / store / retrieve / manage 架构。</span></div>
+        <div><b>检索与使用</b><span>召回一段相关文本并不等于正确使用。Persona2Web 与 MCP-Persona 要求 Agent 从历史和个人工具中发现隐含偏好，再把它落实为合规行动。</span></div>
+        <div><b>更新与遗忘</b><span>旧偏好何时失效？错误经验如何纠正？“Modular Memory”立场工作主张把快速上下文适应与更稳定的权重学习分离，而遗忘仍需显式策略。</span></div>
+        <div><b>可信度与来源</b><span>每条记忆需要来源、时间、权限和置信度。否则一次错误工具输出或恶意输入就可能在未来会话中反复放大。</span></div>
+      </div>
+
+      <h3>1. 多会话评测把“记住”升级为“因记忆而正确行动”</h3>
+      <p>Persona2Web 用 50 段用户历史和 150 个不同歧义级别的开放网页任务，测试 Agent 能否从过去行为推断隐含偏好。MCP-Persona 则提供 173 个经人工验证的个性化任务，覆盖多个个人应用与模拟工具；即使是强模型，部分应用上的任务准确率仍只有约四成。它们共同说明：个性化不是从 profile 里复制一句偏好，而是要解决上下文发现、偏好冲突、工具权限和任务执行。</p>
+      <p>MemoryArena 更进一步，包含 701 个任务、平均 6.9 个子任务和 57 个行动步骤，总计超过 40,000 条轨迹。传统长上下文记忆题上表现好的模型，在这里并不必然优秀，因为评测对象从“能否回答过去发生了什么”变为“过去信息是否改变了后续行动，而且改变得正确”。</p>
+
+      <h3>2. 个性化与 memory poisoning 是同一个机制的正反两面</h3>
+      <p>记忆投毒研究展示了只通过用户查询向长期记忆植入错误内容的攻击，并在电子健康记录场景测试多种模型。真实的既有记忆会降低部分攻击成功率，输入输出审查和基于可信度的清洗也能防御，但阈值会带来安全与可用性的权衡。</p>
+      <div class="callout risk">
+        <b>双重用途定律</b>
+        <p>系统越愿意把用户交互写入长期记忆，它越能个性化，也越容易把恶意或偶然错误持久化。二者不是两个独立功能，而是同一个写入策略带来的收益与风险。因此 memory 的产品指标不能只有 recall 与任务成功率，还必须包括错误半衰期、来源可追溯性、撤回能力、跨租户隔离和高风险记忆的审批路径。</p>
+      </div>
+    </section>
+
+    <section id="tau">
+      <h2>五、τ benchmark 系列：材料本身给出了“评测如何向部署分布移动”的案例</h2>
+      <p>作者在会议上展示的 τ²-Bench、τ-Knowledge 和 τ-Voice，并非三个互不相关的榜单。它们沿着真实 Agent 系统最容易失真的三个轴扩展环境：谁能改变世界、知识从哪里来、交互通道如何影响任务完成。这恰好是原文“评测权重上升”的自证案例。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>评测</th>
+              <th>相对静态 tool benchmark 增加了什么</th>
+              <th>关键证据</th>
+              <th>仍未覆盖的边界</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>τ²-Bench</strong></td>
+              <td>从 agent 单方调用工具，升级为 agent 与模拟用户都能在共享动态环境中采取行动；用组合式任务生成和受工具约束的 user simulator 分离推理、沟通与协调失败。</td>
+              <td>从无用户到 dual-control 时性能明显下降，说明“指导用户完成操作”是独立难点；论文为 ICML 2026 oral，约占 23,918 个有效投稿的 0.7%。</td>
+              <td>用户仍是模拟器，领域规则仍可枚举；真实用户会改变目标、误解建议、拒绝配合并产生组织外后果。</td>
+            </tr>
+            <tr>
+              <td><strong>τ-Knowledge</strong></td>
+              <td>要求 Agent 在约 700 份相互连接的银行政策与支持文档中检索知识，再结合工具结果完成可验证、合规的状态变更。</td>
+              <td>强 frontier model 的首次成功率约 25.5%，重复试验可靠性继续下降，暴露检索、政策推理和稳定执行的联合难度。</td>
+              <td>自动 validator 能验证系统状态，却未必覆盖解释质量、合规理由和真实金融风险。</td>
+            </tr>
+            <tr>
+              <td><strong>τ-Voice</strong></td>
+              <td>把同类 grounded task 扩展到 full-duplex 语音，联合测量任务完成与交互质量，并加入噪声、口音、打断和同时说话。</td>
+              <td>278 个任务中，文本推理模型约 85%，语音 Agent 在干净条件约 31%–51%，真实噪声条件约 26%–38%，只保留约 30%–45% 的文本能力。</td>
+              <td>音频合成、用户模拟和质量量表仍是代理变量；真实电话链路、情绪和责任升级会带来额外分布偏移。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><span class="label inference">本文推论</span>τ 系列最重要的贡献不是把某个模型排在第一，而是不断把隐藏在“任务成功”数字里的假设显式化：用户是否被动、知识是否已放进 prompt、通道是否完美、一次成功是否可重复。优秀的下一代 benchmark 应该像协议栈一样可扩展，让研究者知道分数变化究竟来自推理、知识、工具、沟通、感知还是可靠性。</p>
+    </section>
+
+    <section id="unified-model">
+      <h2>统一解释：AI 系统正在从模型栈升级为反馈栈</h2>
+      <p>把全文所有工作放在一起，可以得到比“ICML 有四个热点”更有解释力的结构。系统进步不再只受基础模型能力限制，而受四层中最弱的一层限制：</p>
+      <div class="flow" aria-label="持续改进 AI 系统的四层反馈栈">
+        <div>
+          <h3>候选生成层</h3>
+          <p>模型、AI Scientist 和数据工厂扩大代码、实验、样本与行动轨迹的搜索空间。</p>
+        </div>
+        <div>
+          <h3>选择验证层</h3>
+          <p>benchmark、judge、rubric、专家和部署指标决定哪些变化被视为真正进步。</p>
+        </div>
+        <div>
+          <h3>交互环境层</h3>
+          <p>可执行状态、工具、用户、政策和后果把静态答案变成可重复的真实任务近似。</p>
+        </div>
+        <div>
+          <h3>记忆治理层</h3>
+          <p>写入、检索、更新、遗忘、来源与权限让经验跨轮次积累，同时限制错误自我强化。</p>
+        </div>
+      </div>
+      <p>这四层构成闭环：生成层提出候选；验证层给出选择信号；环境层提供带后果的试验；记忆层把有价值的经验写回下一轮。任何一层失真都会放大：弱 judge 会让生成器学会讨好；弱环境会把错误规则变成海量训练轨迹；弱记忆治理会把偶然失败持久化；弱生成器则无法利用再好的反馈。</p>
+      <div class="callout">
+        <b>瓶颈迁移定律</b>
+        <p>当某一环节的边际成本被模型压低，工作不会自动消失，而会向相邻的决定、验证和责任环节迁移。代码变便宜，规格与测试变贵；样本变便宜，覆盖与审计变贵；行动变便宜，权限与恢复变贵；记忆变便宜，来源治理与遗忘变贵。</p>
+      </div>
+    </section>
+
+    <section id="claim-audit">
+      <h2>原文论断审计：哪些成立，哪些需要收紧</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>原文论断</th>
+              <th>核验结果</th>
+              <th>更严谨的表达</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ICML 约有 6,800 篇 accepted papers</td>
+              <td><span class="label corrected">口径不稳</span>公开页面存在 6,352、6,552、6,634 等不同快照或统计口径；23,918 个有效投稿与 168 个 oral 较为一致。</td>
+              <td>应写“约 6,000 多篇收录”；若讨论接受率，必须注明所用 accepted 口径和时间点。</td>
+            </tr>
+            <tr>
+              <td>AI research scientists 正在快速升温</td>
+              <td><span class="label checked">成立</span>会议议程、MARS、相关 workshop 和自动评审论文共同支持。</td>
+              <td>升温的是自动实验、搜索、实现和验证基础设施，不等于端到端替代研究者已经实现。</td>
+            </tr>
+            <tr>
+              <td>领域甚至无法判断 AI Scientist 的主张是否成立</td>
+              <td><span class="label inference">修辞性概括</span>workshop 明确讨论突破定义与可信性，相关论文也揭示验证缺口。</td>
+              <td>目前缺少统一、抗污染、抗博弈且能覆盖开放研究判断的评测协议。</td>
+            </tr>
+            <tr>
+              <td>InnoEval 开始量化 taste</td>
+              <td><span class="label inference">部分成立</span>它量化的是有知识支撑、多视角、多指标的 idea assessment。</td>
+              <td>更接近专家评审一致性；是否能识别反共识、长期高影响想法仍未证明。</td>
+            </tr>
+            <tr>
+              <td>60 个 benchmark 约一半饱和</td>
+              <td><span class="label checked">成立</span>29/60 为高或极高饱和，14/60 为极高饱和。</td>
+              <td>benchmark 需要生命周期管理，不是所有 benchmark 同时失效。</td>
+            </tr>
+            <tr>
+              <td>隐藏测试集可避免污染</td>
+              <td><span class="label corrected">证据不支持</span>系统研究未发现 hidden test data 带来稳定保护。</td>
+              <td>需要时间切分、生成规则轮换、抗训练设计和污染审计的组合。</td>
+            </tr>
+            <tr>
+              <td>Less is Enough 用 2K 匹配 300K</td>
+              <td><span class="label checked">在特定指标成立</span>比较针对 AlpacaEval 2.0 win rate 与特定训练设置。</td>
+              <td>证明 feature-targeted synthesis 的数据效率，不证明全能力等价。</td>
+            </tr>
+            <tr>
+              <td>Simula 可替代昂贵人类标注</td>
+              <td><span class="label inference">方向性成立</span>不同领域表现依赖 teacher 与机制；官方结论明确没有统一配方。</td>
+              <td>人类从逐条标注转向机制设计、边界定义、质量审计与困难样本裁决。</td>
+            </tr>
+            <tr>
+              <td>MemEvolve 让 memory architecture 自我演化</td>
+              <td><span class="label checked">有边界地成立</span>内容与模块架构联合演化，并在多个 benchmark 提升。</td>
+              <td>演化发生在预先设计的模块与评测空间，不是无限制的系统自我改写。</td>
+            </tr>
+            <tr>
+              <td>τ²-Bench 是 168 个 oral 之一，约 top 0.7%</td>
+              <td><span class="label checked">成立</span>作者与共同作者页面、有效投稿和 oral 数量相互印证。</td>
+              <td>展示级别说明选择性，不等同于对 benchmark 构念有效性的最终证明。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>关键术语：避免把相邻概念混为一谈</h2>
+      <div class="def-list">
+        <div><b>Research taste</b><span>在结果未知、反馈延迟且证据不完备时，判断什么问题值得投入、什么异常值得追踪的资源配置能力；它不等于论文接收概率预测。</span></div>
+        <div><b>Benchmark saturation</b><span>模型分数接近上限、头部差异收缩，测试难以继续区分能力；不自动代表任务无价值或模型已解决真实问题。</span></div>
+        <div><b>Construct validity</b><span>一个分数是否真的测到了它声称测量的能力。例如客服任务成功率可能没有测到稳定性、合规解释和用户信任。</span></div>
+        <div><b>Contamination resistance</b><span>评测对训练数据泄漏、题型模仿和公开榜单过拟合的抵抗能力；隐藏链接只是其中最弱的一层。</span></div>
+        <div><b>Deployment readiness</b><span>模型能否在特定组织、用户、流程、法规和风险条件下安全产生净收益，而不只是离线 benchmark 上得高分。</span></div>
+        <div><b>Dual-control environment</b><span>Agent 与用户都能通过动作改变共享环境状态，要求 Agent 不仅自己调用工具，还要指导和协调另一个行动者。</span></div>
+        <div><b>Persistent memory</b><span>跨会话保留并影响未来行为的信息系统，包含写入、表示、检索、更新、遗忘、来源、权限和安全策略。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>证据边界：这篇会后观察还不能推出什么</h2>
+      <ol>
+        <li><strong>会议选择偏差：</strong>作者在 Agent evaluation 与 τ benchmark 上工作，因此更容易注意到评测、memory 和 customer-service Agent；这是一种有价值但并非全景无偏的 ICML 抽样。</li>
+        <li><strong>accepted paper 不等于已复现：</strong>多数结果来自论文自身实验，本文核对了论文主张和适用范围，没有把单篇结果升级为普遍定律。</li>
+        <li><strong>指标提升不等于系统收益：</strong>相关性、win rate、pass@1 和 benchmark 排名都可能与真实用户价值、失败成本及长期漂移不同。</li>
+        <li><strong>自动验证有覆盖边界：</strong>状态变更可被程序检查，不代表原因正确、沟通合适、政策解释充分或现实损害已被衡量。</li>
+        <li><strong>长期记忆证据仍早期：</strong>现有 benchmark 多为模拟应用和有限会话，尚不足以证明数月尺度的身份一致性、遗忘、权限变更与跨组织隔离。</li>
+        <li><strong>“全部信息”的合理边界：</strong>本文覆盖原文出现的全部主题和可识别代表工作，并对核心数字与论文结论做了反向核验；会场口头交流、未公开内部评测与尚未发布工作无法从公开材料独立确认。</li>
+      </ol>
+    </section>
+
+    <section id="insight">
+      <h2>我的 insight：下一阶段真正值得押注的七件事</h2>
+      <ol class="insight-list">
+        <li>
+          <strong>先设计 evaluation contract，再扩大 Agent autonomy。</strong>
+          在给系统更多工具、预算和运行时之前，先写清楚成功、失败、不可逆动作、恢复、重复可靠性和人工升级条件。否则 autonomy 只是在扩大未定义行为的作用半径。
+        </li>
+        <li>
+          <strong>把 benchmark 当作有保质期的产品，而不是永久真理。</strong>
+          每个 benchmark 都应有版本、污染假设、难度分布、已知捷径、退役条件和与真实使用数据的相关性报告。榜单维护本身会成为研究基础设施。
+        </li>
+        <li>
+          <strong>真正的评测 moat 来自 deployment-shaped distribution。</strong>
+          公开题库人人可优化，长期优势更可能来自内部环境套件、真实失败 taxonomy、用户行为数据和事故回放。这解释了为什么 frontier lab 与成熟 Agent 产品会把评测基础设施视为核心资产。
+        </li>
+        <li>
+          <strong>合成环境应被视为 executable specification。</strong>
+          环境不是训练数据的包装，而是把业务规则、权限、状态转移和后果变成可执行规范。它需要像代码一样做版本控制、单元测试、覆盖分析和 adversarial review。
+        </li>
+        <li>
+          <strong>Memory 的首要指标应是“有益因果影响”，不是召回率。</strong>
+          问题不应是“系统找回了多少历史”，而是“这些历史是否让下一步行动更正确、更个性化且更安全”。同时测量误写入、错误半衰期、撤销延迟与污染传播范围。
+        </li>
+        <li>
+          <strong>Taste 可以被研究，但不应过早压成单一 reward。</strong>
+          更好的研究路径是把 taste 拆为问题新颖性、机制可检验性、信息增益、资源回报、反常证据敏感性和反共识校准，再用长期、前瞻和反事实决策数据验证。过早用历史接收结果训练一个总分，会把保守共识伪装成 taste。
+        </li>
+        <li>
+          <strong>AI Scientist 的安全边界取决于 verifier independence。</strong>
+          生成器、judge、rubric 和训练数据越同源，闭环越容易形成自我确认。关键评测应保留异构模型、程序验证、人类专家、延迟结果和真实环境信号，避免单一模型家族同时出题、答题和判卷。
+        </li>
+      </ol>
+
+      <div class="callout">
+        <b>一句话收束</b>
+        <p>ICML 2026 这组材料真正显示的，不是模型能力竞赛结束了，而是能力竞赛的重心正在从“谁能生成更多”转向“谁能构建更可信的反馈系统”。未来高杠杆的团队，不只训练更强的模型，还会拥有更好的问题选择机制、评测协议、交互环境和记忆治理。</p>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>以下索引优先列出原文、会议页面、作者公开材料、OpenReview、arXiv 与研究机构页面。文中数字均按对应论文或页面的公开版本理解；不同会议统计快照、论文版本和榜单时间点可能继续变化。对原文中未给出明确链接的概括，本文依据标题、术语和内容匹配最可能对应的公开工作，并在正文中避免把无法唯一归属的表述写成确定归因。</p>
+
+      <div class="source-groups">
+        <div class="source-group">
+          <h3>原文与会议背景</h3>
+          <ul>
+            <li><a href="https://x.com/sohmray/status/2077157003387109542">Soham Ray：Research Trends at ICML 2026</a></li>
+            <li><a href="https://icml.cc/Conferences/2026">ICML 2026 conference page</a></li>
+            <li><a href="https://research.google/conferences-and-events/google-at-icml-2026/">Google Research at ICML 2026</a></li>
+            <li><a href="https://www.normaltech.ai/p/what-will-be-left-for-us-to-work">Arvind Narayanan：What will be left for us to work on?</a></li>
+            <li><a href="https://sohamray19.github.io/">Soham Ray：publications and ICML 2026 notes</a></li>
+          </ul>
+        </div>
+
+        <div class="source-group">
+          <h3>自动研究与 taste</h3>
+          <ul>
+            <li><a href="https://arxiv.org/abs/2602.02660">MARS: Modular Agent with Reflective Search for Automated AI Research</a></li>
+            <li><a href="https://ai4sciencecommunity.github.io/icml26/schedule">ICML 2026 AI for Science workshop schedule</a></li>
+            <li><a href="https://arxiv.org/abs/2605.03202">Stop Automating Peer Review Without Rigorous Evaluation</a></li>
+            <li><a href="https://openreview.net/forum?id=8AhAziAWvZ">InnoEval: On Research Idea Evaluation as a Knowledge-Grounded, Multi-Perspective Reasoning Problem</a></li>
+          </ul>
+        </div>
+
+        <div class="source-group">
+          <h3>Benchmark、judge 与部署</h3>
+          <ul>
+            <li><a href="https://arxiv.org/abs/2602.16763">When AI Benchmarks Plateau: A Systematic Study of Benchmark Saturation</a></li>
+            <li><a href="https://openreview.net/forum?id=BhahZSDowo">Benchmarking at the Edge of Comprehension</a></li>
+            <li><a href="https://arxiv.org/abs/2605.19999">LLM Benchmark Datasets Should Be Contamination-Resistant</a></li>
+            <li><a href="https://openreview.net/forum?id=sB6WgjbiJa">Does Math Reasoning Improve General LLM Capabilities?</a></li>
+            <li><a href="https://openreview.net/forum?id=gen7rBkGOu">Position: Benchmarks Cannot Establish Deployment Readiness of Clinical AI</a></li>
+            <li><a href="https://arxiv.org/abs/2603.17145">REAL: Regression-Aware Reinforcement Learning for LLM-as-a-Judge</a></li>
+            <li><a href="https://openreview.net/pdf/78c911e2324b1cd2d4156633374c9035d424846c.pdf">Rubric Curriculum RL: Exploiting the Generation-Verification Gap in Non-Verifiable Domains</a></li>
+          </ul>
+        </div>
+
+        <div class="source-group">
+          <h3>合成数据与环境</h3>
+          <ul>
+            <li><a href="https://openreview.net/forum?id=GVupwQ0578">Less is Enough: Synthesizing Diverse Data in Feature Space of LLMs</a></li>
+            <li><a href="https://arxiv.org/abs/2603.29791">Simula: mechanism design for synthetic datasets</a></li>
+            <li><a href="https://research.google/blog/designing-synthetic-datasets-for-the-real-world-mechanism-design-and-reasoning-from-first-principles/">Google Research：Designing synthetic datasets for the real world</a></li>
+          </ul>
+        </div>
+
+        <div class="source-group">
+          <h3>Agent Memory 与个性化</h3>
+          <ul>
+            <li><a href="https://arxiv.org/abs/2602.05965">Learning to Share: Selective Memory for Parallel Agentic Systems</a></li>
+            <li><a href="https://arxiv.org/abs/2512.18746">MemEvolve: Meta-Evolution of Agent Memory Systems</a></li>
+            <li><a href="https://arxiv.org/abs/2603.01761">Position: Modular Memory is the Key to Continual Learning Agents</a></li>
+            <li><a href="https://openreview.net/group?id=ICML.cc%2F2026%2FWorkshop%2FMemFM">ICML 2026 Workshop on Memorization in Foundation Models</a></li>
+            <li><a href="https://arxiv.org/abs/2602.17003">Persona2Web: Benchmarking Personalized Web Agents</a></li>
+            <li><a href="https://arxiv.org/abs/2606.02470">MCP-Persona: A Benchmark for Personalized Agentic Intelligence</a></li>
+            <li><a href="https://arxiv.org/abs/2602.16313">MemoryArena: Benchmarking Agents in Multi-Session Interdependent Tasks</a></li>
+            <li><a href="https://arxiv.org/abs/2601.05504">Memory Poisoning Attack and Defense on Memory-Based LLM Agents</a></li>
+          </ul>
+        </div>
+
+        <div class="source-group">
+          <h3>τ benchmark 系列</h3>
+          <ul>
+            <li><a href="https://openreview.net/forum?id=OC2z7iSQKa">τ²-Bench: Evaluating Conversational Agents in a Dual-Control Environment</a></li>
+            <li><a href="https://openreview.net/forum?id=XHZK5abtw2">τ-Knowledge: Evaluating Conversational Agents over Unstructured Knowledge</a></li>
+            <li><a href="https://openreview.net/forum?id=2Oj6fg0m1j">τ-Voice: Benchmarking Full-Duplex Voice Agents on Real-World Domains</a></li>
+            <li><a href="https://github.com/sierra-research/tau2-bench">τ benchmark code and environments</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="fine-print">阅读建议：把这篇材料当作一张“研究基础设施迁移图”，而不是论文推荐清单。单篇工作的数字会更新，但生成、验证、环境与记忆四层之间的依赖关系更值得长期追踪。</p>
+    </section>
+  </main>
+</body>
+</html>

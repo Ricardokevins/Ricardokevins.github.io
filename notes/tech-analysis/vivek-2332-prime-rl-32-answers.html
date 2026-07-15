@@ -31,11 +31,11 @@
       --ink: #1f2428;
       --muted: #5f686f;
       --line: #dcd6c8;
-      --accent: #0f766e;
-      --accent-soft: #eef7f4;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
       --accent-2: #b45309;
       --accent-2-soft: #fdf3e7;
-      --info: #284b7a;
+      --info: #c15f3c;
       --info-soft: #eef3fb;
       --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
       --radius: 10px;
@@ -49,8 +49,8 @@
     body {
       margin: 0;
       background:
-        linear-gradient(90deg, rgba(15,118,110,.04) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(40,75,122,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(193,95,60,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60,.035) 1px, transparent 1px),
         var(--paper);
       background-size: 44px 44px;
       color: var(--ink);
@@ -99,9 +99,16 @@
     th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
     tr:nth-child(even) td { background: rgba(0,0,0,.015); }
     code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
-    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #edf7f3; overflow-x: auto; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
     pre code { padding: 0; background: transparent; color: inherit; }
     .qref { font: 700 12px/1.4 var(--mono); color: var(--accent-2); letter-spacing: .04em; text-transform: uppercase; }
+    .qa-bank { display: grid; gap: 12px; margin: 18px 0; }
+    .qa-item { min-width: 0; padding: 15px 17px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .qa-item h3 { margin: 0 0 8px; font-size: 18px; color: var(--accent); }
+    .qa-meta { margin: 0 0 8px; color: var(--accent-2); font: 800 12px/1.4 var(--mono); letter-spacing: .03em; text-transform: uppercase; }
+    .qa-answer { margin: 8px 0 0; }
+    .qa-note { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .qa-item.skipped { background: #fbf7ee; box-shadow: none; }
     .attribution { color: var(--muted); font-size: 14px; }
     @media (max-width: 760px) {
       main, header, footer { width: min(100% - 24px, var(--max)); }
@@ -122,7 +129,7 @@
   <header id="top">
     <div class="kicker">Tech Analysis · 2026-06-08</div>
     <h1>Prime Intellect 视角下的 RL 后训练 32 答</h1>
-    <p class="lede">@vivek_2332 在 6 月 7 日放出的"dump my answers"长帖，是对 @sheriyuo 整理的 <em>RL Interview Questions 2026</em> 35 道面经的一份高密度答卷：算法 16 题、基础设施 16 题，每题只用两到四句话，却把"<strong>算法目标如何被系统约束改写</strong>"讲到了工业界共识层。这份笔记的解读角度与既有的题面笔记不同——它不是逐题追问"正确答案是什么"，而是把 32 答按主题重排为一份"实战者视角下的 RL 后训练技术栈地图"，并附上从答案中能反推出的工程判断。</p>
+    <p class="lede">@vivek_2332 在 6 月 7 日放出的"dump my answers"长帖，是对 @sheriyuo 整理的 <em>RL Interview Questions 2026</em> 35 道面经的一份高密度答卷：算法 19 个题位里 16 个有实质回答，基础设施 16 个题位全部保留。本文先把这些问答逐条摆出来，让读者能直接查阅；再把它们按主题重排为一份"实战者视角下的 RL 后训练技术栈地图"，解释"<strong>算法目标如何被系统约束改写</strong>"。</p>
     <p class="attribution">原帖当前可见互动量约为 295 赞 / 17 转；平台统计口径会变化，本文不依赖具体浏览数字。作者在 Infra 16 题直接推荐 Prime Intellect 工具栈，因此本文把它作为一份带有 Prime-RL 实践偏好的公开答卷来读。</p>
   </header>
 
@@ -143,6 +150,233 @@
           <h3>3. 异步 RL 的瓶颈被锁死在三个具体细节</h3>
           <p>staleness、trainer-inference mismatch、token-in token-out 是异步 RL 三大损耗点。Prime-RL/verl/TRL 框架的差异主要体现在如何分别处理这三件事，而不是算法本身。</p>
         </div>
+      </div>
+    </section>
+
+    <section id="qa-index">
+      <h2>32 问与答速查：逐题入口</h2>
+      <p>下面按原帖编号给出逐题入口：<strong>算法部分有 19 个题位，其中 Algo 9 / 16 / 19 是作者明确未展开的保留项，所以实质算法答复为 16 条；Infra 部分保留 16 个题位，其中个别题也标注了作者的不确定边界。</strong>为便于站内阅读，下面是对原答的中文转述与关键短语保留，不是逐字翻译。</p>
+      <div class="callout warn">
+        <b>阅读方式</b>
+        <p>先看这一节拿到"题目问什么、vivek 答什么"；再看后面的故障地图和主题分析。这样读，既能快速查原帖答复，也能理解这些短答背后的工程判断。</p>
+      </div>
+
+      <h3>Algo：19 个题位，16 条实质答复</h3>
+      <div class="qa-bank">
+        <article class="qa-item" id="qa-algo-1">
+          <p class="qa-meta">Algo 1</p>
+          <h3>为什么用 Actor-Critic，而不是纯 value-based 或纯 policy gradient？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>纯 value-based 方法不适合大动作空间或连续动作空间，而且通常只给 greedy policy；纯 policy gradient 能处理这类动作空间，但更新方差高。Actor-Critic 保留直接 policy，用 critic 降方差，是两者折中。</p>
+          <p class="qa-note">读法：在 LLM RL 里，这句话也解释了为什么后来 GRPO 要想办法去掉昂贵 critic，同时仍保留 baseline 的降方差作用。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-2">
+          <p class="qa-meta">Algo 2</p>
+          <h3>KL、cross entropy、MLE 的关系是什么？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>CE(p,q)=KL(p,q)+H(p)。当数据分布固定时，最小化 CE、KL 或做 MLE 会落到同一个最优点；MLE 可以看成数据分布和模型分布之间的 KL 最小化。</p>
+          <p class="qa-note">读法：这里的前提是数据分布固定；on-policy RL 中样本分布会随 policy 改变，所以不能把 RL 简化成普通 SFT loss。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-3">
+          <p class="qa-meta">Algo 3</p>
+          <h3>不同环境下 reward 应该如何设计？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>主要取决于 environment。数学、代码这类 verifiable 任务比写作等 non-verifiable 任务容易给 reward。关键是环境不能容易被 reward hacking，不能给模型一条"优化错误目标"的捷径；数据和 reward 都要写得很谨慎。</p>
+          <p class="qa-note">读法：reward 不是一个打分函数那么简单，而是训练环境接口；环境设计优先级高于算法名字。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-4">
+          <p class="qa-meta">Algo 4</p>
+          <h3>importance sampling、rejection sampling 与 Monte Carlo 在 RL 中怎么用？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>importance sampling 在 async RL 中用来复用旧 policy 生成的 off-policy 样本；rejection sampling 更多用于数据过滤，比如过滤 SFT 数据、丢掉太容易或太难的样本。广义上这些都是 Monte Carlo：用采样估计期望，而不是精确计算期望。</p>
+          <p class="qa-note">读法：这题把异步训练、off-policy 修正和数据过滤放在同一条"采样估计"主线上。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-5">
+          <p class="qa-meta">Algo 5</p>
+          <h3>PPO 与 GRPO 的 critic / reward model / advantage 有什么差异？std normalization 是否必要？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>PPO 有 critic 和 reward model；GRPO 两者都去掉。GRPO 的"critic"来自同一 prompt 多次 rollout 后取组内均值作为 baseline。baseline 降低方差，使得不是每条 rollout 都得到正向推动，组内有点 zero-sum。std normalization 不一定必要，可参考 Dr.GRPO。</p>
+          <p class="qa-note">读法：严格说 GRPO 去掉的是 learned value critic；RLVR 中 reward model 往往被 verifier / rule reward 替代，不是说训练没有 reward。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-6">
+          <p class="qa-meta">Algo 6</p>
+          <h3>RL training 与 test-time scaling 的区别是什么？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>RL 是把 domain intelligence 嵌进权重；test-time scaling 是在已有智能基础上，用更多 thinking tokens 探索不同路径、寻找更优解。前者改变模型权重，后者花更多推理预算。</p>
+          <p class="qa-note">读法：这句话是整帖最好的压缩表达之一：RL 改 policy，TTS 改推理预算。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-7">
+          <p class="qa-meta">Algo 7</p>
+          <h3>PPO 为什么 clip？为什么取 min？CISPO 有什么不同？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>clip 是因为不希望 policy 突然大转向，ratio 在样本间方差会变高；min 来自 TRPO 的 trust-region 思路，让更新保持 pessimistic，只在有利时移动。CISPO 不同：它 clip importance weight，而不是 clip 整个 objective，所以所有 token 仍有梯度流，能保留更多信号。</p>
+          <p class="qa-note">读法：PPO clip 是安全阀；CISPO 试图避免安全阀把高价值 token 信号也一起关掉。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-8">
+          <p class="qa-meta">Algo 8</p>
+          <h3>为什么 GRPO/RLVR 里有时加 KL，有时又去 KL？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>KL 存在是因为 base model 已经很好，有不想丢掉的 intelligence，不希望 RL 让模型离它太远；但同一个约束也会阻止模型走得足够远去学新 domain。因此在 RLVR 中移除 KL 有时能提升稳定性和训练效果。</p>
+          <p class="qa-note">读法：KL 同时是 reference anchor 和探索阻尼器；不能机械背"GRPO 不带 KL"。</p>
+        </article>
+        <article class="qa-item skipped" id="qa-algo-9">
+          <p class="qa-meta">Algo 9 · 原帖保留项</p>
+          <h3>分布式训练里某个 all-reduce / loss reduction 问题</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者说不确定自己是否理解这个问题，没有展开回答。</p>
+          <p class="qa-note">读法：这题不计入"32 条实质答复"。题面笔记中对应的是分布式 loss / all-reduce 语义。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-10">
+          <p class="qa-meta">Algo 10</p>
+          <h3>DPO 的 reward 是什么？还会 reward hacking 吗？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>DPO 的 implicit reward 已经 baked into dataset：样本被标成 good vs bad，因此不像 PPO 那样需要单独 reward model。但 reward hacking 仍会发生，因为通向目标的 backdoor 仍可能存在。这是没有单一解法的 active problem，需要强力 stress-test environment；可以通过 sudden reward jumps 或 rollout length blowups 等信号发现。</p>
+          <p class="qa-note">读法：DPO 不训练显式 reward model，不等于没有 reward，也不等于没有 hacking。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-11">
+          <p class="qa-meta">Algo 11</p>
+          <h3>trainer-inference mismatch / MoE 训推不一致来自哪里？怎么修？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>mismatch 来自不同 engine、不同 expert selection、不同 kernels、quantization、rounding。一个修复方向是 replay expert selection，让 inference 和 trainer 选同样的 experts。总体目标是让 rollout policy 和 trained policy 数值上相同，否则 importance weights 就错了。</p>
+          <p class="qa-note">读法：这题是全帖核心之一；PPO/GRPO 的 ratio 一旦被数值不一致污染，算法再漂亮也没用。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-12">
+          <p class="qa-meta">Algo 12</p>
+          <h3>group size、LR、PPO epochs、generation length 怎么设？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>group size 本质是更多 rollouts、更多可学习路径，通常 8 或 16；learning rate 在 1e-6 量级较可控；PPO epochs 通常是 1，更多 epochs 会让数据更 off-policy 并导致不稳定；generation length 完全 task-dependent，不知道任务很难量化。</p>
+          <p class="qa-note">读法：这些不是神秘超参，而是方差、off-policy 程度、rollout 成本和任务长度之间的平衡。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-13">
+          <p class="qa-meta">Algo 13</p>
+          <h3>Dr.GRPO / DAPO / GSPO / CISPO / MaxRL 等如何改 GRPO？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>这些算法基本都是 GRPO 变体，多数为更好稳定性；lab scale 下选择差异不大，但细节有区别：Dr.GRPO 去 std；DAPO 有 clip-higher、dynamic sampling、token-level loss、overlong filtering；GSPO 用 sequence-level importance sampling 而非 token-level，对 MoE 更好；CISPO clip weight 而不是 objective；MaxRL 解决 diversity collapse。SAPO/DPPO 作者没读，未展开。</p>
+          <p class="qa-note">读法：作者的关键态度是"算法名差异小于系统和稳定性细节"。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-14">
+          <p class="qa-meta">Algo 14</p>
+          <h3>TRPO、PPO、AReaL 如何处理 trust region / off-policyness？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>TRPO 是 constrained optimization，保持在 KL boundary 内；PPO 用 clip 近似做同一件事；AReaL 在 async setting 下通过 bounding staleness / off-policyness，而不是 hard KL，来执行类似约束。</p>
+          <p class="qa-note">读法：trust region 的形式会随系统形态改变；异步 RL 中 policy lag 本身就是约束对象。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-15">
+          <p class="qa-meta">Algo 15</p>
+          <h3>RL 能否 fundamentally expand LLM capability frontier？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>论文倾向表明，RL 更多是在 sharpen base model 已经有的能力，而不是形成全新能力。但这个方向值得继续推；如果有足够 exploration 和 diversity，作者也不完全确定它不能创造更大扩展。</p>
+          <p class="qa-note">读法：这是谨慎工业判断：RL 更像 sharpener，但探索多样性可能改变边界。</p>
+        </article>
+        <article class="qa-item skipped" id="qa-algo-16">
+          <p class="qa-meta">Algo 16 · 原帖保留项</p>
+          <h3>ProRL / scale RL 相关论文问题</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者说自己没有读这篇论文，因此没有展开。</p>
+          <p class="qa-note">读法：不计入实质算法答复；后文只把它作为能力边界讨论的保留项。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-17">
+          <p class="qa-meta">Algo 17</p>
+          <h3>OPD 相比 RL / SFT 的关键改进是什么？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>OPD 结合 RL 的 on-policy exploration 与 SFT 的 dense signal。RL 的主要弱点是 reward 稀疏，OPD 用 teacher 给 student 自己的 on-policy rollouts 打分来修复这一点；关键是 student 自己的 on-policy rollouts。它可用于低成本能力迁移，最近很流行。</p>
+          <p class="qa-note">读法：OPD 的核心不是"teacher"，而是 teacher 评 student 的状态分布，从而减轻 SFT 的 exposure bias。</p>
+        </article>
+        <article class="qa-item" id="qa-algo-18">
+          <p class="qa-meta">Algo 18</p>
+          <h3>LLM reasoning 能力从哪里 emerge？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者不完全确定 reasoning 从哪里 emerge，但 CoT 作用很大；pre-training 提供 baseline intelligence，post-training 则通过 reasoning 和 test-time compute 放大这种 intelligence。</p>
+          <p class="qa-note">读法：推理不是单阶段产物，而是 pretraining、CoT 格式、post-training 和推理预算共同作用。</p>
+        </article>
+        <article class="qa-item skipped" id="qa-algo-19">
+          <p class="qa-meta">Algo 19 · 原帖保留项</p>
+          <h3>DeepSeek V4 / 后续系统 RL 细节</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者说自己不记得 V4 相关内容，因此没有回答。</p>
+          <p class="qa-note">读法：不计入实质算法答复；不能把后续推测写成作者观点。</p>
+        </article>
+      </div>
+
+      <h3>Infra：16 个题位</h3>
+      <div class="qa-bank">
+        <article class="qa-item" id="qa-infra-1">
+          <p class="qa-meta">Infra 1</p>
+          <h3>GRPO 训练显存里有哪些模型副本？如何省显存？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>取决于算法和是否用 KL。带 KL 的 GRPO 需要 training policy、用于 KL 的 reference policy、inference model。省显存可以先去掉 KL，从而去掉额外 reference model；也可用 nvfp4 quantization、FSDP/EP/TP 等分布式切分，把模型和 optimizer states 分到多卡；inference copy 可量化，optimizer states 可 shard。</p>
+          <p class="qa-note">读法：算法选择直接改变模型副本数量；显存预算不是后置工程问题。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-2">
+          <p class="qa-meta">Infra 2</p>
+          <h3>KV cache transfer 在分布式 prefill/decode 中怎么优化？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>KV cache transfer 对 disaggregated prefill/decode 很重要，可通过 NVLink 或 layer-wise overlapped transfer of KV/weights 优化。多 GPU 情况取决于同节点还是跨节点；一般 TP 帮助很大，并且应把重 KV 移动尽量留在节点内。</p>
+          <p class="qa-note">读法：长上下文 rollout 的吞吐不是只看算力，还看 KV cache locality 和通信拓扑。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-3">
+          <p class="qa-meta">Infra 3</p>
+          <h3>FP8 与 INT8：训练和推理分别怎么用？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>FP8 有更多 exponent bits，更适合训练；INT8 在固定范围内 precision 更好，更适合 inference weights。因此训练用 FP8，推理 serving 用 INT8。</p>
+          <p class="qa-note">读法：量化选择还会影响 trainer-inference logprob 一致性，尤其是 RL 的 importance ratio。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-4">
+          <p class="qa-meta">Infra 4</p>
+          <h3>长尾 rollout 如何处理？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>batch 内 long-tail rollouts 可以用 PipelineRL、continuous batching、early truncation 等方法处理；这类问题大多出现在 async setups。</p>
+          <p class="qa-note">读法：长尾不是小优化，它决定同步 RL 里 trainer 等最慢 rollout 的时间。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-5">
+          <p class="qa-meta">Infra 5</p>
+          <h3>continuous batching 是什么？vLLM 和 SGLang 的区别是什么？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>continuous batching 会混合处在不同 next-token prediction 阶段的 rollouts。vLLM 使用 paged-attention；SGLang 使用 radixattention / prefix sharing。RL 中的额外问题，是当 sequences 在不同时间结束时，要对齐完整 trajectories 和 logprobs。</p>
+          <p class="qa-note">读法：serving 优化会改变轨迹对齐和 logprob 管理，不只是吞吐。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-6">
+          <p class="qa-meta">Infra 6</p>
+          <h3>vLLM / SGLang 这类 rollout engine 该看哪些指标？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>用 throughput（tok/s）、KV cache utilization、GPU utilization 衡量。KV cache 看 occupancy，也要观察是否 memory-bound、rollouts 是否被 kicked out。低 GPU util 通常说明在等 rollout sync 或 CPU，而不是 compute-bound。两个 engine 都暴露 scheduler/cache metrics。</p>
+          <p class="qa-note">读法：GPU util 高不等于训练有效；还要看样本是否有学习信号。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-7">
+          <p class="qa-meta">Infra 7</p>
+          <h3>RL 训练反向传播与并行策略怎么做？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>基本和普通 backprop 类似，但有一些调整：FSDP、EP、TP 是核心；long context 用 CP（context parallel）。理想情况下没人用 PP，因为它复杂，而且在多数 scale 下不是很必要。</p>
+          <p class="qa-note">读法：这是很强的工程立场：后训练栈更偏 FSDP/EP/TP/CP，尽量少用 pipeline parallel。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-8">
+          <p class="qa-meta">Infra 8</p>
+          <h3>async RL 框架的瓶颈是什么？Prime-RL / verl / TRL 怎么看？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>async RL 框架包括 Prime-RL、verl、TRL。瓶颈归为三件事：rollout staleness 及其管理（importance sampling + staleness bounds）、trainer-inference mismatch、token-in token-out。mismatch 通过让 rollout engine 和 trainer 数值一致、replay expert/router decisions、在 trainer 侧计算 logprobs 而不是信任 inference engine 来修。</p>
+          <p class="qa-note">读法：这是全文最重要的 infra 答案之一，直接给出异步 RL 三大故障源。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-9">
+          <p class="qa-meta">Infra 9</p>
+          <h3>AReaL / partial rollout 是否保留旧 KV cache？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者不确定 AReaL 的具体做法；有些方法保留 old KV cache，有些不保留。他认为两种做法本身没有真正的性能差异。</p>
+          <p class="qa-note">读法：这是作者明确标注不确定的题。更重要的概念是：KV cache 绑定生成它的 policy version，复用会牵涉 on-policy 语义。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-10">
+          <p class="qa-meta">Infra 10</p>
+          <h3>MoE 的 Expert Parallelism 如何影响 throughput？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>EP 对 MoE 很关键：一组 experts 被放在一个节点或一组 GPU 上，每个设备持有子集。它通过并行 expert FFN 提升吞吐，但增加 all-to-all communication，把 token 路由到正确 expert。实际收益取决于 all-to-all 与 compute 的 overlap，以及 expert load 是否平衡。</p>
+          <p class="qa-note">读法：MoE RL 的瓶颈不是 active params 一个数字，而是 routing、通信重叠和负载均衡。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-11">
+          <p class="qa-meta">Infra 11</p>
+          <h3>FSDP 与 Megatron 并行方式有什么差异？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>通信与计算并行化是关键。FSDP shard grads/params/optim，并按需 gather，简单很多。Megatron 使用 DP、PP、TP 的 3D parallelism，通信更显式；作者说自己没太用过 Megatron，因此不完全确定。</p>
+          <p class="qa-note">读法：这里的重点不是谁绝对更好，而是团队是否能承受 Megatron 的显式并行复杂度。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-12">
+          <p class="qa-meta">Infra 12</p>
+          <h3>确定性 / batch invariance 需要什么条件？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>需要 reduction order 一致、kernels 相同、batch-invariant ops。更多细节参考 Thinking Machines 的相关博客。</p>
+          <p class="qa-note">读法：batch-invariant 不是形式主义；它直接关系到同一条 rollout 在不同 batch 形状下 logprob 是否一致。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-13">
+          <p class="qa-meta">Infra 13</p>
+          <h3>AReaL 与 Slime 如何处理 rollout bottleneck？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者能谈 AReaL：它 fully async with staleness control，把 rollout generation 与 training 解耦，让 trainer 不再等待最慢 rollout；通过 max off-policy steps、importance sampling，或超过阈值后移除 samples 来控制 staleness。对 Slime 作者说需要再读更多。</p>
+          <p class="qa-note">读法：AReaL 的核心是用 staleness 边界替代同步等待；Slime 部分不要扩展成作者已确认观点。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-14">
+          <p class="qa-meta">Infra 14</p>
+          <h3>full async staleness 的实际量级是多少？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>staleness 是生成 rollout 的 policy 与正在训练的 policy 之间的 gap。作者自己的实验通常落后 1–4 steps。更多 staleness 会导致 importance sampling 不稳定，因为 ratios 会 blow up。</p>
+          <p class="qa-note">读法：1–4 steps 是非常具体的工业默认区间，值得单独记住。</p>
+        </article>
+        <article class="qa-item skipped" id="qa-infra-15">
+          <p class="qa-meta">Infra 15 · 原帖保留项</p>
+          <h3>Slime 的 data flow / Megatron 结合 / loss 计算</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>作者再次表示自己对 Slime 不确定，没有展开。</p>
+          <p class="qa-note">读法：这题不应被过度解读；后文只按一般 async rollout/trainer 架构解释可能的数据流。</p>
+        </article>
+        <article class="qa-item" id="qa-infra-16">
+          <p class="qa-meta">Infra 16</p>
+          <h3>VeRL / TRL / AReaL / Slime 等框架选哪个？</h3>
+          <p class="qa-answer"><strong>vivek 答：</strong>none of them, use @PrimeIntellect。</p>
+          <p class="qa-note">读法：这是强产品立场，不是中立 benchmark 结论；但也说明作者认为 Prime Intellect 在 reward / verifier / async RL 平台化上更贴近他的工作流。</p>
+        </article>
       </div>
     </section>
 
@@ -527,7 +761,7 @@
       <h2>边界与风险</h2>
       <div class="callout warn">
         <b>这份答案不能直接当教程</b>
-        <p>vivek 自己说"correct me if anything's off, happy to hear feedback"——32 答里至少有 4 处直接声明"not sure"（Algo 9、19、Infra 9、13、15）。这些边界标记得很诚实，但也意味着：把每条表态都当成普适工程真理会过拟合到 Prime Intellect 自己的工作流。</p>
+        <p>vivek 自己说"correct me if anything's off, happy to hear feedback"——原帖里有多处直接声明"not sure / haven't read"（Algo 9、13 中的 SAPO/DPPO、Algo 16、Algo 19、Infra 9、Infra 11 中的 Megatron、Infra 13/15 中的 Slime）。这些边界标记得很诚实，但也意味着：把每条表态都当成普适工程真理会过拟合到 Prime Intellect 自己的工作流。</p>
       </div>
       <ul>
         <li><strong>作者立场偏置</strong>：原帖明确推荐 Prime Intellect，并对 verl/TRL/AReaL 有具体评价。这与"中立综述"性质不同——读者应意识到 RL 工具市场仍在快速演化，2026 H2 的格局可能显著不同。</li>

@@ -109,7 +109,7 @@ end
 
 def book_chapter_orders
   BOOK_CHAPTER_INDEXES.transform_values do |index_path|
-    File.read(index_path).scan(%r{href=["']chapters/([^"']+\.html)["']}i).flatten.uniq
+    File.read(index_path, encoding: 'UTF-8').scan(%r{href=["']chapters/([^"']+\.html)["']}i).flatten.uniq
   end
 end
 
@@ -170,7 +170,7 @@ errors << "Notes HTML files missing from _data/notes.yml:\n  #{missing_index_ent
 
 missing_assets = []
 note_html_files.each do |html_path|
-  content = File.read(html_path)
+  content = File.read(html_path, encoding: 'UTF-8')
   references = content.scan(REFERENCE_ATTRIBUTES).flatten + content.scan(CSS_URL_REFERENCES).flatten
   references.each do |reference|
     next if external_reference?(reference)
@@ -185,7 +185,7 @@ errors << "Missing local note assets:\n  #{missing_assets.join("\n  ")}" unless 
 
 note_html_files.each do |html_path|
   relative = html_path.delete_prefix("#{ROOT}/")
-  content = File.read(html_path)
+  content = File.read(html_path, encoding: 'UTF-8')
   head = document_head(content)
 
   errors << "#{relative} contains Unicode replacement characters" if content.include?("\uFFFD") || content.include?("�")

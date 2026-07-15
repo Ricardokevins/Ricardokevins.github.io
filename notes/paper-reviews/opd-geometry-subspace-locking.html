@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OPD 参数几何：低秩锁定是正则化，还是泛化瓶颈？</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #f7f3ea;
+      --ink: #20242a;
+      --muted: #5e6871;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf0dc;
+      --blue: #c15f3c;
+      --blue-soft: #edf3fb;
+      --red: #9f3f36;
+      --red-soft: #f8e8e4;
+      --green: #256b52;
+      --green-soft: #e6f2ec;
+      --shadow: 0 18px 46px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 14% 8%, rgba(193, 95, 60, 0.10), transparent 30%),
+        radial-gradient(circle at 86% 0%, rgba(180, 83, 9, 0.11), transparent 32%),
+        linear-gradient(90deg, rgba(193,95,60,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(193, 95, 60,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 44px 44px, 44px 44px, auto;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { color: #161a1f; font-weight: 760; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+
+    header, main, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+    header { padding: clamp(42px, 7vw, 88px) 0 30px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 850 13px/1.3 var(--sans);
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 780 clamp(33px, 5.5vw, 64px)/1.1 var(--serif);
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      max-width: 900px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 16px;
+      margin-top: 26px;
+    }
+    .hero-card {
+      min-width: 0;
+      padding: 17px 19px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, 0.86);
+      box-shadow: var(--shadow);
+    }
+    .hero-card b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    .hero-card span { display: block; color: var(--muted); font-size: 14.5px; }
+
+    main {
+      display: grid;
+      gap: 28px;
+      padding: 24px 0 64px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 760 clamp(24px, 3.2vw, 36px)/1.2 var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.28rem; }
+    li { margin: 7px 0; }
+
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card, .metric, .callout, .table-wrap, .math-display {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card { padding: 16px 18px; }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric { padding: 16px; }
+    .metric b { display: block; margin-bottom: 4px; color: var(--accent-2); font-size: 12px; text-transform: uppercase; }
+    .metric span { display: block; font: 780 26px/1.1 var(--serif); }
+    .metric small { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      box-shadow: none;
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.risk { border-left-color: var(--red); background: var(--red-soft); }
+    .callout.risk > b { color: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .flow div {
+      padding: 13px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .flow b { display: block; color: var(--accent); margin-bottom: 5px; }
+    .flow span { color: var(--muted); font-size: 13.5px; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 760; }
+    .def-list span { min-width: 0; }
+
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      box-shadow: none;
+    }
+    table { width: 100%; min-width: 660px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 760; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.018); }
+
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      box-shadow: none;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    .split-note {
+      display: grid;
+      grid-template-columns: .45fr .55fr;
+      gap: 16px;
+      align-items: stretch;
+      margin: 18px 0;
+    }
+    .split-note > div {
+      padding: 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .split-note .good { background: var(--green-soft); border-left: 4px solid var(--green); }
+    .split-note .bad { background: var(--red-soft); border-left: 4px solid var(--red); }
+
+    footer {
+      padding: 0 0 44px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      .hero-grid, .grid-2, .grid-3, .grid-4, .flow, .split-note { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · On-Policy Distillation · Parameter Geometry</div>
+    <h1>OPD 参数几何：低秩锁定是正则化，还是泛化瓶颈？</h1>
+    <p class="lede">这篇笔记围绕 rosinality 对《On the Geometry of On-Policy Distillation》的评论展开：OPD 的最终更新量级介于 SFT 与 RLVR 之间，但训练轨迹很早就进入低维更新通道。真正值得追问的不是“OPD 像不像 RL”，而是这种早期 subspace locking 究竟是在保护预训练能力，还是把模型锁进 teacher 与数据共同塑造的窄路径。</p>
+    <div class="hero-grid">
+      <div class="hero-card"><b>核心问题</b><span>OPD 用学生自己的 rollout 接收 teacher 的 token-level 指导，既有 on-policy 相关性，又有 dense supervision。论文显示它在参数空间里不是简单折中，而有独立的几何轨迹。</span></div>
+      <div class="hero-card"><b>阅读主线</b><span>先区分 SFT、RLVR、OPD 的信号来源，再看更新稀疏性、光谱漂移、stable rank、rank-16 投影实验，最后讨论泛化与工程诊断。</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>这条讨论的价值在于把 OPD 从“训练目标”问题推进到“参数轨迹”问题。过去我们常说 OPD 是 on-policy RL 与蒸馏的结合：学生自己生成轨迹，teacher 给密集 token 信号。但论文给出的图像更尖锐：OPD 的终点看起来在 SFT 和 RLVR 之间，路径却很早锁进一个低维通道，并且这个通道对 OPD 训练足够有效。</p>
+      <div class="grid-3">
+        <div class="card"><h3>不是线性折中</h3><p>OPD 的更新稀疏性、谱漂移、主子空间旋转都介于 SFT 与 RLVR 之间，但它的训练轨迹并不是从 SFT 慢慢滑向 RLVR。</p></div>
+        <div class="card"><h3>早期低秩锁定</h3><p>OPD 的累计更新从早期 checkpoint 开始就进入稳定低维带；限制到早期 rank-16 子空间后，OPD 表现基本保留。</p></div>
+        <div class="card"><h3>泛化双刃剑</h3><p>低维通道可能是隐式正则化，也可能是 teacher / rollout / objective 早期共同决定的路径依赖瓶颈。</p></div>
+      </div>
+      <div class="callout">
+        <b>我的一句话解读</b>
+        OPD 的高效不只是来自“teacher 信号更密”，而是来自一种早期形成的几何约束：它让模型沿着少数参数方向快速修正行为，同时避免 SFT 式大面积改写。这种约束越强，稳定性越好；但如果任务需要跳出 teacher 覆盖或早期 rollout 分布，它也可能变成泛化上限。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>为什么这个问题重要</h2>
+      <p>LLM 后训练里，SFT、RLVR 与 OPD 经常被放在一个二维表里比较：采样是 off-policy 还是 on-policy，反馈是 dense 还是 sparse。这个表很有用，但也容易让人误以为 OPD 只是“RLVR 加 dense teacher reward”或“SFT 换成学生轨迹”。《On the Geometry of On-Policy Distillation》的贡献是把比较对象从 loss function 换成参数空间：训练之后，权重到底在哪里变了？主奇异方向有没有被改写？累计更新能量集中在多少个方向？</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>方法</th><th>训练状态分布</th><th>监督信号</th><th>典型优势</th><th>典型风险</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>SFT</td><td>固定外部数据或 teacher 轨迹</td><td>token-level 交叉熵，信号密集</td><td>容易注入新知识、新格式、新 token 支持</td><td>训练在 teacher 常见状态上，学生自己跑偏后容易 compounding error；参数改写也更密</td></tr>
+            <tr><td>RLVR</td><td>学生当前策略的 rollout</td><td>可验证结果奖励，通常是序列级稀疏信号</td><td>与学生真实错误分布对齐，更像在自己的行为上改错</td><td>credit assignment 困难，奖励稀疏，训练吞吐与稳定性压力大</td></tr>
+            <tr><td>OPD</td><td>学生当前策略的 rollout</td><td>teacher 在学生状态上的 token-level 指导</td><td>同时获得 on-policy relevance 与 dense feedback</td><td>依赖 teacher 与学生的状态兼容性；可能把学习锁进早期 teacher-guided 通道</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>因此，这篇论文真正追问的是：OPD 在参数空间里的足迹是否和它的表面定义一致？如果 OPD 只是 SFT 与 RLVR 的中间点，那么我们可以把它当作二者的工程折中；如果它有独立几何，那就意味着 OPD recipes 应该监控和控制 update geometry，而不是只调 teacher、token mask、rollout 数量或 KL 系数。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：OPD 怎样产生这种几何</h2>
+      <p>OPD 的训练循环可以理解为五步：学生生成自己的轨迹，teacher 在同一 prefix 上计算 token-level 偏差，训练把这些偏差变成 advantage 或 KL 目标，再通过受限更新改变学生参数。和 SFT 的关键差异是状态来自学生自己；和 RLVR 的关键差异是每个 token 都有 teacher 信号。</p>
+      <div class="flow" aria-label="OPD training flow">
+        <div><b>1. Prompt</b><span>从数学、代码或任务分布采样问题。</span></div>
+        <div><b>2. Rollout</b><span>学生模型按当前策略生成回答与中间推理。</span></div>
+        <div><b>3. Teacher</b><span>强 teacher 在学生访问到的 prefix 上给 token-level 分布或 logprob。</span></div>
+        <div><b>4. Signal</b><span>学生与 teacher 的差异变成逐 token correction。</span></div>
+        <div><b>5. Update</b><span>参数沿这些 correction 诱导的方向小步移动。</span></div>
+      </div>
+      <h3>统一梯度视角</h3>
+      <p>论文用一个抽象形式把 SFT、RLVR、OPD 的更新写在一起：每个 token 的 score function 是 \(\phi_t = \nabla_\theta \log p_\theta(y_t \mid x, y_{\lt t})\)，整体梯度可以看作 token score 的加权和。</p>
+      <div class="math-display">\[
+        g = \sum_{t=1}^{T} a_t \phi_t
+      \]</div>
+      <p>差别在于权重 \(a_t\)。RLVR 里同一条序列的 tokens 通常共享一个序列级 advantage；OPD 里 \(a_t\) 随 teacher-student token disagreement 变化。也就是说，OPD 保留了 RLVR 的 on-policy 状态分布，但把稀疏结果信号替换成更细粒度的 teacher token 信号。</p>
+      <h3>Three-Gate 的放松版本</h3>
+      <p>论文借用了 RLVR 几何里的 Three-Gate 直觉：第一道门是 policy / distribution anchor，让更新不能离初始化太远；第二道门是预训练模型本身的光谱结构，倾向把受限更新路由到非主方向；第三道门是 bf16 精度，只有超过量化阈值的坐标变化才会在存储权重中可见。OPD 的 teacher dense signal 放宽了这些门：它比 RLVR 改更多坐标，但仍不像 SFT 那样大范围触碰主方向。</p>
+      <div class="callout info">
+        <b>为什么不是“小更新所以低秩”</b>
+        论文特别比较了 Frobenius norm：OPD 的累计更新量明显大于 RLVR，但最终 stable rank 却接近 RLVR。这意味着低维不是因为没怎么动，而是因为动得很集中。
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：OPD 的终点与轨迹</h2>
+      <p>论文的证据可以分两层读。第一层是 endpoint localization：训练结束后，OPD 的参数改动在哪里？第二层是 trajectory geometry：训练过程中，累计更新 \(\Delta W_t = W_t - W_0\) 如何演化？rosinality 原帖的观察正是把这两层连在一起：从更新程度看，OPD 介于 RLVR 与 SFT；从轨迹看，OPD 早早表现为低秩。</p>
+      <div class="grid-4">
+        <div class="metric"><b>SFT sparsity</b><span>8.1%</span><small>Qwen3-8B controlled comparison 中近似未变权重比例最低。</small></div>
+        <div class="metric"><b>OPD sparsity</b><span>51.6%</span><small>介于 SFT 与 RLVR，且 OPD 变体大多在 48.6%–57.1%。</small></div>
+        <div class="metric"><b>RLVR sparsity</b><span>77.2%</span><small>权重可见变化最少，更接近 sparse off-principal 更新。</small></div>
+        <div class="metric"><b>Projection</b><span>rank-16</span><small>早期子空间投影保留 OPD，但显著伤害 SFT。</small></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>诊断</th><th>测什么</th><th>论文里的排序</th><th>怎么解释</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>bf16-aware update sparsity</td><td>有多少权重在 bf16 阈值下近似没变</td><td>SFT 改最多，OPD 居中，RLVR 改最少</td><td>OPD 比 SFT 更节制，但 teacher dense signal 让它比 RLVR 改更多坐标</td></tr>
+            <tr><td>Principal-angle rotation</td><td>预训练主奇异子空间被旋转多少</td><td>SFT 最大，OPD 小但非零，RLVR 最小</td><td>OPD 仍保留预训练主结构，不像 SFT 那样明显重写 principal directions</td></tr>
+            <tr><td>Spectral drift</td><td>奇异值谱整体偏移多少</td><td>SFT 约 \(10^{-3}\)，OPD 约 \(10^{-4}\)，RLVR 约 \(10^{-5}\)</td><td>OPD 保谱程度接近 RLVR，但不是完全保守</td></tr>
+            <tr><td>Update-mask overlap</td><td>可见更新落在 principal mask 或低幅值区域的比例</td><td>OPD 和 RLVR 都远离 principal weights，OPD less selective</td><td>OPD 继承了 off-principal 偏置，但因为信号更密，支撑集更宽</td></tr>
+            <tr><td>Stable rank trajectory</td><td>累计更新能量集中在多少有效方向</td><td>OPD 保持窄低秩带，SFT 扩张，RLVR 收缩</td><td>OPD 的低维通道很早形成，不是训练末期偶然结果</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>stable rank 为什么关键</h3>
+      <p>stable rank 用来衡量矩阵有效维度，比普通 rank 更适合分析神经网络更新，因为普通 rank 会被大量微小奇异值干扰。论文使用的定义是：</p>
+      <div class="math-display">\[
+        \operatorname{srank}(\Delta W_t) = \frac{\lVert \Delta W_t \rVert_F^2}{\lVert \Delta W_t \rVert_{op}^2}
+      \]</div>
+      <p>如果 \(\Delta W_t\) 的能量集中在少数主奇异方向，stable rank 就低。OPD 的 stable rank 早早进入稳定低维区间，说明它不是每一步都在探索全新方向，而是在早期确定的通道内反复累积。</p>
+      <h3>rank-16 投影实验的意义</h3>
+      <p>论文在约 20% 训练进度处提取累计更新的 top-16 右奇异子空间，然后把后续梯度投影到这个子空间。结果是：OPD 在这个瓶颈下基本保持表现，SFT 则明显受损。这是全文最关键的因果性线索之一：早期通道对 OPD 不是事后描述，而是训练功能上足够。</p>
+    </section>
+
+    <section id="generalization">
+      <h2>低秩锁定会怎样影响泛化？</h2>
+      <p>rosinality 的问题可以拆成两个相反假设。乐观假设：低秩锁定是隐式正则化，让 OPD 避免破坏预训练主结构，因此泛化更稳。悲观假设：低秩锁定是早期路径依赖，模型过早承诺少数方向，导致 teacher 外、分布外或长链组合任务上缺乏探索能力。两者都可能成立，关键取决于锁住的子空间是否覆盖目标任务真正需要的变化。</p>
+      <div class="split-note">
+        <div class="good">
+          <h3>作为正则化</h3>
+          <p>如果目标任务主要是修正学生在自身 rollout 中的局部错误，且 teacher 的思维模式与学生兼容，那么低维通道会像一个安全阀：它允许模型快速纠偏，又尽量少动预训练主结构。这类情况下，低秩锁定可能提升稳定性、减少遗忘，并让 OPD 比继续 SFT 更高效。</p>
+        </div>
+        <div class="bad">
+          <h3>作为瓶颈</h3>
+          <p>如果任务需要引入新 token 支持、新推理策略或 teacher 没覆盖的状态，早期通道就可能过窄。模型会擅长在熟悉错误上模仿 teacher 的修正，却难以产生真正新的搜索策略；泛化看起来好，可能只是 benchmark 分布与锁定通道高度重合。</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>泛化场景</th><th>低秩锁定可能带来的好处</th><th>可能暴露的问题</th><th>该看什么指标</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>同分布数学推理</td><td>快速修正常见 chain-of-thought 分叉错误，减少无关参数漂移</td><td>可能只学会 teacher 偏好的套路，而不是更强搜索</td><td>按题型、解法类别、错误位置分桶的 pass rate</td></tr>
+            <tr><td>分布外难题</td><td>保留 base model 的通用能力，不被 SFT 数据过拟合拖走</td><td>早期子空间不覆盖新题所需方向，提升停滞</td><td>OOD benchmark、难度外推曲线、失败轨迹多样性</td></tr>
+            <tr><td>代码与工具任务</td><td>可把常见格式、调用习惯、局部修复压进少数方向</td><td>新 API、新环境、新错误模式可能需要更宽参数支撑</td><td>环境迁移、工具组合、长时程 agent 成功率</td></tr>
+            <tr><td>持续学习</td><td>低漂移有利于恢复旧行为，减轻 catastrophic forgetting</td><td>多轮任务切换后，锁定通道可能互相冲突或覆盖</td><td>跨阶段回归测试、subspace similarity、能力保留矩阵</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout risk">
+        <b>最危险的误读</b>
+        低 rank 不是天然好事。LoRA、低秩投影、subspace locking 都可能提升效率，但也都可能把模型限制在“容易更新的方向”。真正的问题不是 rank 小不小，而是这个子空间是否与目标能力的因果方向对齐。
+      </div>
+      <p>从研究设计上看，验证泛化需要超出论文当前的 endpoint benchmark：不仅要看 AIME、代码题或固定 reasoning benchmarks，还要看分布外题型、teacher 不擅长的解法、长链恢复能力、错误前缀干预、不同 teacher 风格下的子空间相似性。如果换 teacher、换 rollout seed、换 curriculum 后早期子空间仍高度一致，低秩锁定更像模型固有的有效通道；如果子空间大幅漂移而 benchmark 仍可被拟合，泛化风险就更大。</p>
+    </section>
+
+    <section id="practice">
+      <h2>工程与研究启发</h2>
+      <p>这篇论文给 OPD recipe 的启发是：不要只把 OPD 当成“更便宜的 RL”或“更贴近学生状态的蒸馏”。一旦 update geometry 成为核心变量，训练系统就应该像监控 loss、reward、KL 一样监控参数更新的谱结构。</p>
+      <div class="grid-2">
+        <div class="card"><h3>训练早期就看子空间</h3><p>在 10%–20% 进度处跟踪 stable rank、top-K subspace similarity 与 Frobenius norm。若 OPD 很早锁定，后续可考虑低秩约束、早停或更小学习率。</p></div>
+        <div class="card"><h3>把 objective 当主旋钮</h3><p>论文控制实验显示 token sparsification 与 off-policy rollout 对 rank trajectory 影响有限，而 OPD/RLVR objective mixing 会改变几何轨迹。</p></div>
+        <div class="card"><h3>区分规模和方向</h3><p>更新 norm 变大不一定代表泛化更强；stable rank、谱尾、principal overlap 能告诉我们更新是在扩展能力还是沿窄方向加码。</p></div>
+        <div class="card"><h3>用诊断驱动 teacher 选择</h3><p>如果不同 teacher 给出相似子空间，说明学生内在可改方向很强；如果 teacher 诱导完全不同的通道，就要警惕 style imitation 与路径依赖。</p></div>
+      </div>
+      <h3>一个可落地的 OPD 监控面板</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>面板项</th><th>目的</th><th>异常信号</th><th>可能动作</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>stable rank over time</td><td>确认是否过早锁进低维通道</td><td>过早极低且 eval 停滞</td><td>提高 objective 多样性、换 teacher、加入 RLVR 成分或重设 curriculum</td></tr>
+            <tr><td>subspace similarity to early checkpoint</td><td>判断通道是否持续稳定</td><td>频繁旋转但性能不涨</td><td>降低学习率、检查 rollout 分布漂移、过滤噪声样本</td></tr>
+            <tr><td>principal-mask overlap</td><td>确认是否破坏预训练主方向</td><td>接近 SFT 式 principal rewrite</td><td>加 anchor、减小 teacher correction scale、减少 SFT 混合</td></tr>
+            <tr><td>OOD eval by capability bucket</td><td>验证低维通道是否真泛化</td><td>同分布涨、分布外不涨</td><td>扩展 prompt/state 分布，而不是只增加 token 密度</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>实践上，OPD 可能最适合“学生已有能力但经常在自己轨迹上局部走错”的场景；最不适合“学生完全缺少相关支持，需要大量新行为、新知识或新工具模式”的场景。前者需要纠偏，低维通道足够；后者需要扩展支持，继续 SFT、mid-training、representation distillation 或 RL 探索可能更必要。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语速查</h2>
+      <div class="def-list">
+        <div><b>OPD</b><span>On-Policy Distillation。学生自己生成轨迹，teacher 在学生访问到的状态上提供 token-level 指导。</span></div>
+        <div><b>RLVR</b><span>Reinforcement Learning with Verifiable Rewards。用可验证结果奖励训练，常见于数学、代码等能自动判分的任务。</span></div>
+        <div><b>SFT</b><span>Supervised Fine-Tuning。在固定示例或 teacher 生成轨迹上做监督学习，通常信号密集但状态分布不是学生自己的。</span></div>
+        <div><b>off-principal</b><span>更新避开预训练权重的主奇异方向或高曲率区域，更多落在非主方向、低幅值或小子网络上。</span></div>
+        <div><b>spectral drift</b><span>训练后权重奇异值谱相对初始化发生的变化。漂移越大，说明模型光谱结构被改写得越明显。</span></div>
+        <div><b>stable rank</b><span>一种有效秩指标，用更新的 Frobenius norm 与 operator norm 之比衡量能量集中在多少主方向。</span></div>
+        <div><b>subspace locking</b><span>累计更新很早进入一个低维子空间，并在后续训练中持续沿这个通道演化。</span></div>
+        <div><b>bf16-aware sparsity</b><span>考虑 bf16 量化阈值后，有多少权重变化小到存储层面近似不可见。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与未解决问题</h2>
+      <p>这篇论文的实验集中在 Qwen3-family reasoning 设置上，核心诊断来自保存 checkpoint 的离线参数分析。它有很强的解释力，但还不能直接推出所有模型家族、所有任务和所有 OPD 实现都会出现同样的几何。尤其是 teacher 的 logit 可访问性、KL 方向、teacher-student tokenizer/style mismatch、rollout 长度、学习率与 batch size，都可能改变实际轨迹。</p>
+      <div class="grid-2">
+        <div class="card"><h3>不能证明因果全集</h3><p>rank-16 投影说明早期通道对 OPD 足够，但没有证明这个通道是唯一原因，也没有证明所有泛化都来自该通道。</p></div>
+        <div class="card"><h3>泛化证据仍需扩展</h3><p>论文主要展示参数几何和标准 reasoning benchmark。真正的 OOD、长时程 agent、teacher 外策略创新还需要额外实验。</p></div>
+        <div class="card"><h3>OPD 实现差异很大</h3><p>reverse KL、forward KL、sampled-token log-ratio、representation distillation、logit-free OPD 都可能诱导不同更新几何。</p></div>
+        <div class="card"><h3>低秩不是 LoRA 等价物</h3><p>这里的低维是训练轨迹显现出的有效更新子空间，不等同于预先规定 adapter rank，也不代表完整模型只能低秩表达。</p></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>最终启发</h2>
+      <p>OPD 的下一步研究不应只问“怎样让 teacher 信号更密、更便宜、更稳定”，而应问“怎样让 teacher 信号诱导正确的更新几何”。如果 OPD 的优势来自早期低维通道，那么我们可以把它变成可控对象：监控它、约束它、扰动它、比较不同 teacher 诱导的通道，甚至把 subspace quality 作为选择数据和 objective 的标准。</p>
+      <p>对泛化来说，最重要的判断是：一个低维通道如果覆盖了任务真正需要的因果变化，它就是高效正则化；如果只覆盖了 benchmark 与 teacher 风格，它就是漂亮的过拟合路径。rosinality 的问题之所以值得认真对待，是因为 OPD 的效率和风险可能来自同一个几何事实。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文基于公开材料整理，重点解释 OPD 参数几何与泛化问题。论文中的具体数值、图表和实验设置以公开 arXiv 版本为准；X 动态用于定位讨论焦点，不作为独立实验依据。本文未复现实验，也未检查作者未公开的训练代码或 checkpoint。</p>
+      <ul>
+        <li>rosinality 关于 OPD 更新程度与低秩轨迹的讨论：<a href="https://x.com/rosinality/status/2063887402385523149">https://x.com/rosinality/status/2063887402385523149</a></li>
+        <li>Zhennan Shen 等，《On the Geometry of On-Policy Distillation》：<a href="https://arxiv.org/abs/2606.07082">https://arxiv.org/abs/2606.07082</a></li>
+        <li>Thinking Machines Lab，《On-Policy Distillation》：<a href="https://thinkingmachines.ai/blog/on-policy-distillation/">https://thinkingmachines.ai/blog/on-policy-distillation/</a></li>
+        <li>状态分布视角下的 SFT、RL 与 OPD 讨论：<a href="https://nrehiew.github.io/blog/sft_rl_opd/">https://nrehiew.github.io/blog/sft_rl_opd/</a></li>
+        <li>OPD 机制与 recipe 相关背景，《Rethinking On-Policy Distillation of Large Language Models》：<a href="https://arxiv.org/abs/2604.13016">https://arxiv.org/abs/2604.13016</a></li>
+        <li>OPD 早期低秩与 foresight 相关背景，《Learning to Foresee》：<a href="https://arxiv.org/abs/2605.11739">https://arxiv.org/abs/2605.11739</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>本文聚焦公开论文和讨论中的机制解释、证据边界与研究启发。</p>
+  </footer>
+</body>
+</html>
