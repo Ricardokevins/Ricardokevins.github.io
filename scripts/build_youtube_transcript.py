@@ -47,6 +47,15 @@ class Paragraph:
     cues: tuple[Cue, ...]
 
 
+@dataclass(frozen=True)
+class TimingRepair:
+    cue_number: int
+    original_start: float
+    original_end: float
+    corrected_start: float
+    corrected_end: float
+
+
 def parse_timestamp(value: str) -> float:
     """Convert VTT HH:MM:SS.mmm or MM:SS.mmm to seconds."""
     parts = value.replace(",", ".").split(":")
@@ -85,8 +94,11 @@ def clean_cue_text(lines: Sequence[str]) -> str:
     return WHITESPACE.sub(" ", TAG.sub("", html.unescape(text))).strip()
 
 
-def parse_vtt(path: Path) -> tuple[list[Cue], dict[str, int]]:
+def parse_vtt(
+    path: Path, repairs: dict[int, TimingRepair] | None = None
+) -> tuple[list[Cue], dict[str, Any]]:
     """Parse a VTT file and reject timing corruption instead of silently dropping it."""
+    repairs = repairs or {}
     try:
         raw = path.read_bytes()
     except OSError as error:
@@ -104,6 +116,7 @@ def parse_vtt(path: Path) -> tuple[list[Cue], dict[str, int]]:
     cues: list[Cue] = []
     malformed_timing_lines = 0
     reversed_cues = 0
+    applied_repairs: list[dict[str, Any]] = []
     blocks = re.split(r"\r?\n\s*\r?\n", source.strip())
     for block in blocks:
         lines = block.splitlines()
@@ -117,6 +130,24 @@ def parse_vtt(path: Path) -> tuple[list[Cue], dict[str, int]]:
             continue
         start = parse_timestamp(match.group("start"))
         end = parse_timestamp(match.group("end"))
+        cue_number = len(cues) + 1
+        repair = repairs.get(cue_number)
+        if repair is not None:
+            if abs(start - repair.original_start) > 0.0005 or abs(end - repair.original_end) > 0.0005:
+                raise TranscriptError(
+                    f"timing repair for cue {cue_number} does not match source timing"
+                )
+            start = repair.corrected_start
+            end = repair.corrected_end
+            applied_repairs.append(
+                {
+                    "cue_number": cue_number,
+                    "original_start_seconds": repair.original_start,
+                    "original_end_seconds": repair.original_end,
+                    "corrected_start_seconds": repair.corrected_start,
+                    "corrected_end_seconds": repair.corrected_end,
+                }
+            )
         if end < start:
             reversed_cues += 1
             continue
@@ -129,13 +160,47 @@ def parse_vtt(path: Path) -> tuple[list[Cue], dict[str, int]]:
         )
     if not cues:
         raise TranscriptError("VTT contains no cues")
+    unused_repairs = sorted(set(repairs) - {item["cue_number"] for item in applied_repairs})
+    if unused_repairs:
+        raise TranscriptError(f"timing repairs were not applied to cues: {unused_repairs}")
     if any(cues[index].start < cues[index - 1].start for index in range(1, len(cues))):
         raise TranscriptError("VTT cues are not ordered by start time")
 
     return cues, {
         "source_bytes": len(raw),
         "source_sha256": sha256_bytes(raw),
+        "timing_repairs": applied_repairs,
     }
+
+
+def parse_timing_repairs(values: Sequence[str]) -> dict[int, TimingRepair]:
+    """Parse explicit, source-checked cue repairs without mutating the uploaded VTT."""
+    repairs: dict[int, TimingRepair] = {}
+    for value in values:
+        parts = value.split(",")
+        if len(parts) != 5:
+            raise TranscriptError(
+                "timing repair must be CUE,ORIGINAL_START,ORIGINAL_END,"
+                "CORRECTED_START,CORRECTED_END in seconds"
+            )
+        try:
+            repair = TimingRepair(
+                cue_number=int(parts[0]),
+                original_start=float(parts[1]),
+                original_end=float(parts[2]),
+                corrected_start=float(parts[3]),
+                corrected_end=float(parts[4]),
+            )
+        except ValueError as error:
+            raise TranscriptError(f"invalid timing repair: {value}") from error
+        if repair.cue_number <= 0:
+            raise TranscriptError("timing repair cue number must be positive")
+        if repair.corrected_end < repair.corrected_start:
+            raise TranscriptError("corrected cue end cannot precede its start")
+        if repair.cue_number in repairs:
+            raise TranscriptError(f"duplicate timing repair for cue {repair.cue_number}")
+        repairs[repair.cue_number] = repair
+    return repairs
 
 
 def load_metadata(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -387,15 +452,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--window", type=int, default=30, help="readable paragraph window in seconds"
     )
+    parser.add_argument(
+        "--timing-repair",
+        action="append",
+        default=[],
+        metavar="CUE,OLD_START,OLD_END,NEW_START,NEW_END",
+        help="explicit source-checked timing repair in seconds; may be repeated",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        cues, vtt_info = parse_vtt(args.vtt)
+        repairs = parse_timing_repairs(args.timing_repair)
+        cues, vtt_info = parse_vtt(args.vtt, repairs)
         metadata, metadata_info = load_metadata(args.metadata)
         chapters, warnings, official_chapter_count = build_chapters(metadata, cues)
+        if repairs:
+            warnings.append(
+                f"applied {len(repairs)} explicit source-checked timing repair(s)"
+            )
         mapped = map_cues_to_chapters(cues, chapters)
         paragraphs = [build_paragraphs(chapter_cues, args.window) for _, chapter_cues in mapped]
         exact = render_exact(cues)
