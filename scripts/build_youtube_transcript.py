@@ -240,6 +240,33 @@ def build_chapters(
                 title = "开场与内容预告"
             official.append(Chapter(start=start, end=float(end), title=title))
 
+    collapsed: list[Chapter] = []
+    collapsed_count = 0
+    for chapter in official:
+        if collapsed and abs(chapter.start - collapsed[-1].start) < 0.0005:
+            previous = collapsed[-1]
+            previous_folded = previous.title.casefold()
+            current_folded = chapter.title.casefold()
+            if previous_folded in current_folded:
+                title = chapter.title
+            elif current_folded in previous_folded:
+                title = previous.title
+            else:
+                title = f"{previous.title}——{chapter.title}"
+            collapsed[-1] = Chapter(
+                start=previous.start,
+                end=max(previous.end, chapter.end),
+                title=title,
+            )
+            collapsed_count += 1
+        else:
+            collapsed.append(chapter)
+    if collapsed_count:
+        official = collapsed
+        warnings.append(
+            f"collapsed {collapsed_count} duplicate chapter entries sharing a start time"
+        )
+
     if not official:
         warnings.append("metadata has no usable official chapters; used one full-interview chapter")
         return (
