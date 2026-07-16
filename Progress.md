@@ -1,5 +1,45 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-16 X 长文：LLM 多视角 Agent Swarm 深读
+
+### 目标与材料
+
+- 完整读取 `h100envy` 发布的 X 长文《A Swarm of Agents for Multi-Angle Analysis》，还原 orchestrator、隔离专家、反方代理、单轮辩论与 merge 五段式设计，而不是只根据链接帖正文判断。
+- 读取原帖结构与回复；原帖本身只包含一条 X Article 短链接，回复中仅一条 GitHub 第三方镜像与低信息致谢，没有可用于验证效果的作者实验或评论区技术反驳。
+- 通过回复中的公开 GitHub 镜像补齐代码块，并用 Ollama 官方 API 文档核对接口；交叉阅读 2023–2026 年多智能体辩论、self-consistency、多样性、置信度、预算公平性和 debate collapse 相关原始论文。
+
+### 关键判断
+
+- 文章最有价值的部分是把“先独立生成、后定向交叉质询、保留少数意见”写成结构约束；它本质上更接近角色条件化的 test-time ensemble 与 learned aggregation，而不是拥有独立知识和行动能力的强意义 agent swarm。
+- 并发只保证各调用在首轮看不到彼此输出，不能保证统计或认知独立。同一个模型、相同训练分布、相同任务与相同证据会产生高度相关的错误；角色名称和较高 temperature 不等于真正的推理或证据多样性。
+- 最新证据支持“多样化初始候选 + 校准置信度”而非无条件自由辩论。Qwen-2.5-7B 的公开结果中，vanilla debate 在 GSM8K 上为 84.7%，低于简单多数投票的 90.8%；高多样性加置信度后为 93.2%。另一项 2026 年等 thinking-token 对照显示，除极低预算外，单 agent 是多跳推理的最强默认方案或与最佳方案统计不可区分。
+- “角色必须冲突、不能互补”是错误二分：高质量决策同时需要互补的专业覆盖和相互冲突的利益函数。更稳妥的协议应先覆盖事实、用户、财务、工程、安全与合规，再对关键假设设置正反审查。
+- merge 不应替用户发明效用函数。对开放式产品决策，正确产物通常不是一个 prose verdict，而是共同事实、争议假设、置信度、少数报告、触发阈值，以及最便宜的下一项消歧实验。
+
+### 代码与证据审计
+
+- 第三方镜像的默认 `analyze(..., debate=True)` 调用了未定义的 `debate_round`，因此会在进入反方代理和最终 merge 前抛出 `NameError`；代码没有达到“完整可运行”的宣传标准。
+- 示例使用 Ollama 原生 `/api/chat` 与 `response.message.content` 数据形状，却称其适用于 OpenAI-compatible provider；官方兼容接口应走 `/v1/chat/completions` 并读取 `choices[0].message.content`。native Ollama 的生成参数也记录在 `options` 中，当前封装不能直接替换 provider。
+- 实现缺少 JSON schema 校验、重试与限流、证据引用、置信度校准、事实验证、token / 成本记录、停止规则和强单 agent / self-consistency baseline。含辩论时总调用数约为 `2n+3`，且每个专家读取其他专家意见会使交互输入成本近似按 `O(n²)` 增长。
+
+### 已完成变更
+
+- 新增站内长篇笔记：`notes/tech-analysis/agent-swarm-multi-agent-debate-decision.html`。
+  - 以“错误相关性而非 agent 数量决定群体收益”为主轴，区分上下文、采样、认知与证据四层独立性，并用等效独立专家数解释同质副本的边际收益递减。
+  - 将 2022–2026 年 self-consistency、MAD、Agent Forest、DMAD、置信度 / 多样性、等 thinking-token 预算与 debate collapse 研究放进同一证据阶梯，区分同行评审结果与预印本。
+  - 区分封闭问答与开放决策：事实冲突交给检索和验证，因果预测交给概率校准，效用冲突交还授权者；把最佳交付物从 prose verdict 改写为证据账本、少数报告、触发阈值和下一项消歧实验。
+  - 给出八阶段生产协议与六组等预算基线，覆盖任务分型、强单 agent、按信息缺口选专家、隔离首轮、工具验证、belief update、可靠性加权和自适应停止。
+- 在 `_data/notes.yml` 登记独立 Notes 卡片；本次提交将只包含该条目，不纳入同一工作区的 Inkling、Context Rot、另一篇同主题并行笔记或规则修改。
+
+### 验证
+
+- X thread 与 X Article 均成功读取；短链接解析到 Article ID `2077369329025196032`，长文标题、作者、正文结构与原帖关系一致。
+- 公开 GitHub 镜像代码静态检查只发现 `debate_round(...)` 调用，未发现对应函数定义；同时核对了 API endpoint、响应字段、temperature 设置与并发入口。
+- 关键结论以 arXiv、OpenReview / ICLR、ICML 和 Ollama 官方文档等原始来源为准；搜索结果中的二手博客和营销页面未作为事实依据。
+- Notes 内容门禁通过：正文约 1.93 万可见字符、14 个二级章节、29 个三级章节、14 个唯一锚点、单一 evidence appendix；统一导航、样式引用、MathJax 与公开生成痕迹检查均正常。
+- `ruby scripts/validate_notes_index.rb`、`git diff --check` 与 Jekyll 隔离构建通过；构建耗时 12.636 秒，仅出现既有 Faraday retry 与无 GitHub API token 提示。
+- 隔离浏览器完成 1440×1000 桌面和 390×844 手机渲染：两种视口均无页面级横向溢出，四张宽表在手机上保留容器内横向滚动，16 个 MathJax 容器正常生成，14 个目录锚点无缺失；Notes 索引存在唯一卡片，页面 console / runtime errors 均为 0。
+
 ## 2026-07-15 全量 Notes 发布收口
 
 ### 发布范围
