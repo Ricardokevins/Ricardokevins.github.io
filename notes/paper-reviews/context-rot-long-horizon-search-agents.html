@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Context Rot 深读：长程搜索 Agent 为什么会被自己的历史拖垮</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #25675f;
+      --accent-soft: #e8f2ee;
+      --accent-2: #9a5c27;
+      --accent-2-soft: #f8eee2;
+      --risk: #9a4545;
+      --risk-soft: #f8eaea;
+      --info: #4e628b;
+      --info-soft: #edf0f7;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(37,103,95,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(125,104,79,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 78px) 0 28px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 1020px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 930px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3, h4 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
+    h3 { margin-top: 24px; font-size: 20px; color: var(--accent); }
+    h4 { margin-top: 18px; font-size: 16px; color: var(--accent-2); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #e8e2d6; color: #70411f; font-family: var(--mono); font-size: .92em; }
+    .muted { color: var(--muted); }
+    .small { font-size: 14px; }
+    .toc {
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,253,248,.9);
+      box-shadow: var(--shadow);
+    }
+    .toc b { display: block; margin-bottom: 8px; color: var(--accent-2); }
+    .toc-links { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+    .toc a { font-size: 14px; text-decoration: none; }
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric { display: block; margin-bottom: 4px; color: var(--ink); font: 760 24px/1.15 var(--serif); }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.risk { border-left-color: var(--risk); background: var(--risk-soft); }
+    .callout.risk > b { color: var(--risk); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(180px, .26fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .flow-step { position: relative; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; top: 50%; right: -11px; z-index: 2; transform: translateY(-50%); color: var(--accent); font-weight: 800; }
+    .flow-step b { display: block; color: var(--accent); }
+    .flow-step span { display: block; margin-top: 5px; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .table-wrap table { width: 100%; min-width: 800px; border-collapse: collapse; font-size: 14.3px; }
+    caption { padding: 12px 14px 8px; color: var(--muted); text-align: left; font-size: 13.5px; }
+    .table-wrap th, .table-wrap td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; overflow-wrap: normal; word-break: normal; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    .nowrap { white-space: nowrap; }
+    .good { color: var(--accent); font-weight: 700; }
+    .bad { color: var(--risk); font-weight: 700; }
+    .pill { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12.5px; }
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: 1fr; }
+      .flow-step:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -15px; transform: translateX(50%); }
+    }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      .table-wrap table { min-width: 800px; }
+      .toc-links { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Review · Agent Systems / Long Context / Deep Search</div>
+    <h1>Context Rot 深读：长程搜索 Agent 为什么会被自己的历史拖垮</h1>
+    <p class="lede">这项工作最重要的发现不是“上下文越长，模型越差”，而是长程 agent 的历史会从记忆逐渐变成控制信号：失败、矛盾、犹豫和半成品判断被反复写回输入，改变下一步搜索策略，使模型在远未触及名义窗口上限时就开始重复、错误收尾或放弃。名义 context window 是存储容量，不是可靠工作记忆容量。</p>
+  </header>
+
+  <main>
+    <nav class="toc" aria-label="本文目录">
+      <b>阅读地图</b>
+      <div class="toc-links">
+        <a href="#takeaway">核心判断</a>
+        <a href="#problem">问题重构</a>
+        <a href="#evaluation">评测对象</a>
+        <a href="#taxonomy">终态分类</a>
+        <a href="#evidence">关键证据</a>
+        <a href="#mechanism">机制推断</a>
+        <a href="#facts-reasoning">事实还是推理</a>
+        <a href="#management">治理方法</a>
+        <a href="#metric-trap">指标陷阱</a>
+        <a href="#rejection">拒绝采样</a>
+        <a href="#code-audit">代码审计</a>
+        <a href="#comparison">研究坐标</a>
+        <a href="#terms">术语</a>
+        <a href="#limits">证据边界</a>
+        <a href="#insight">独立 Insight</a>
+        <a href="#architecture">系统设计</a>
+        <a href="#next">下一步实验</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </nav>
+
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>Context Rot 在长程搜索里首先表现为行为崩溃，而不是硬性的 token 溢出。</strong>当 agent 不断把搜索结果、失败路线和自我评价追加到轨迹中，它不只是在积累信息，也在递归地条件化于自己之前的信念。旧的“无法确认”“证据冲突”“可能无解”会变成下一轮行动选择的新输入，逐渐降低模型对任务可解性的隐式判断，最终形成重复搜索、保守收尾和提前放弃。</p>
+      <div class="grid-4">
+        <div class="card"><span class="metric">4 × 3</span><h3>实验覆盖</h3><p>四个开放模型、三个深度搜索 benchmark；现象跨模型存在，但不同模型的失败风格明显不同。</p></div>
+        <div class="card"><span class="metric">100</span><h3>最大交互回合</h3><p>模型可反复搜索与访问材料；终态既可能是回答，也可能是放弃或预算耗尽。</p></div>
+        <div class="card"><span class="metric">53.4% → 2.4%</span><h3>Rot 可骤降</h3><p>Qwen / BrowseComp 的长度触发摘要大幅降低 rot，却同时把 no-answer 推到 38%，暴露故障转移。</p></div>
+        <div class="card"><span class="metric">+2.6–4.9pp</span><h3>拒绝采样收益</h3><p>八轨迹过滤在当前设置中有效，但这是多倍推理预算下的百分点提升，不是免费修复。</p></div>
+      </div>
+      <div class="callout">
+        <b>一句话读法</b>
+        <p>这篇论文把 context engineering 从“怎么塞更多 token”推进到“如何维护 agent 的决策状态”：上下文治理的真正对象不是文本长度，而是当前证据、假设、矛盾、计划、失败记录和停止条件之间的结构。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>问题重构：为什么更大的窗口没有自动带来更可靠的长期工作</h2>
+      <p>长程搜索与普通长文问答的区别在于：上下文不是一次性给定的。agent 每一轮都会生成 reasoning、调用工具、接收 observation，再把这些内容作为下一轮输入。完整轨迹因此是一个不断增长的闭环，而不是中性的资料库。</p>
+      <p>如果把完整历史每一步都重新放进 prompt，就像让一个服务在做每次决策前，重新阅读全部运行日志、异常堆栈、失败实验和过去的临时判断。日志保留了可追溯性，却不等于它适合作为当前控制状态。随着轨迹变长，模型必须同时完成四件事：</p>
+      <div class="grid-2">
+        <div class="card"><h3>恢复任务状态</h3><p>从大量旧文本里找回最初问题、限定条件、已经证实的事实和仍未完成的子目标。</p></div>
+        <div class="card"><h3>区分证据等级</h3><p>辨别原始来源、工具摘要、模型假设、已否定线索和纯粹的自我评价。</p></div>
+        <div class="card"><h3>避免策略惯性</h3><p>不让早期错误假设、失败搜索词或重复计划持续支配后续行动。</p></div>
+        <div class="card"><h3>正确决定何时停止</h3><p>在“继续探索”“给出有边界的答案”“明确 abstain”和“预算耗尽”之间做校准。</p></div>
+      </div>
+      <p>论文的价值就在于：它没有只把这种失败归结为 recall，而是把终态拆成不同的行为类型，并考察压缩、裁剪和分支隔离如何改变这些行为。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>到底评测了什么：不是读一篇长文，而是完成一个搜索任务</h2>
+      <p>任务输入是一道需要跨来源查证的事实型问题。模型输出不是单次文本，而是一条包含 reasoning、搜索动作、网页访问、工具 observation 和最终回答的轨迹。搜索工具返回候选结果，访问工具再把页面处理成与当前目标相关的证据摘要；因此模型面对的是已经过工具与摘要器加工的 observation，而不是永远直接阅读原始网页。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>论文评测对象与容易误解的地方。</caption>
+          <thead><tr><th>维度</th><th>实际设置</th><th>应该怎样理解</th><th>常见误解</th></tr></thead>
+          <tbody>
+            <tr><td>输入</td><td>BrowseComp、BrowseComp-Plus、xbench-DeepSearch 的复杂事实问题</td><td>问题通常需要多次搜索、实体消歧和条件组合</td><td>把它当成单文档 needle retrieval</td></tr>
+            <tr><td>动作</td><td>reasoning、search、visit、finish，最多 100 个交互回合</td><td>模型既要找证据，也要管理计划和停止策略</td><td>只把最终错误归因于记忆</td></tr>
+            <tr><td>输出</td><td>最终答案、显式不确定、明确放弃，或在预算内没有完成</td><td>答案正确性与终态行为分开打标</td><td>认为 confident 就一定正确</td></tr>
+            <tr><td>正确性</td><td>benchmark 自身答案规则</td><td>判断“答对没有”</td><td>与“模型是否犹豫”混成一个指标</td></tr>
+            <tr><td>行为标签</td><td>GPT-OSS-120B 五次判断后聚合，并做人类抽检</td><td>判断轨迹像自信、不确定、放弃还是未完成</td><td>把行为标签当作真实内部心理状态</td></tr>
+            <tr><td>成本</td><td>论文主要报告工具调用数</td><td>是搜索开销的近似 proxy</td><td>把它当成完整 token、延迟和能耗成本</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>BrowseComp 使用 100 题子集，xbench-DeepSearch 使用公开的 100 题设置；BrowseComp-Plus 的总体数据规模为 860，部分上下文治理实验再随机抽取 200 题。主要实验重复五次。这个规模足以展示稳定现象，但尚不足以支持所有模型、所有 agent scaffold 的普遍定律。</p>
+    </section>
+
+    <section id="taxonomy">
+      <h2>终态分类：Context Rot 是怎样被定义出来的</h2>
+      <p>论文先把“是否答对”和“以什么状态结束”分开，再组合成六类。这个设计比单一准确率有价值，因为两个同样错误的 agent，可能一个自信幻觉，另一个明确意识到证据不足；两者对应的产品风险完全不同。</p>
+      <div class="def-list">
+        <div><b>Confident Correct（CC）</b><span>给出清晰答案，reasoning 表现为已满足关键条件，答案正确。</span></div>
+        <div><b>Uncertain Correct（UC）</b><span>给出清晰答案，但 reasoning 明确保留未解决的不确定性，答案碰巧或实质上正确。</span></div>
+        <div><b>Confident Incorrect（CI）</b><span>给出清晰答案并认为证据充分，但答案错误；这是典型的自信幻觉。</span></div>
+        <div><b>Uncertain Incorrect（UI）</b><span>模型知道证据没有闭合，仍选择一个答案，而且答案错误。</span></div>
+        <div><b>Give Up（GU）</b><span>没有形成清晰答案，明确表示无法解决或停止继续搜索。</span></div>
+        <div><b>No Answer（NA）</b><span>上下文或交互预算耗尽，轨迹没有完成到一个有效回答。</span></div>
+      </div>
+      <p>论文把 <code>Rot = UI + GU</code>。它捕捉的是“带着失败意识结束”的比例，而不是所有错误。CI 不计入 rot，NA 也不计入 rot；这两个排除项正是后面理解指标转移的关键。</p>
+      <div class="callout info">
+        <b>测量质量</b>
+        <p>终态分类器在 300 条人工复核轨迹上的一致率为 98.7%；逐步 struggle classifier 在 198 个 reasoning step 上与人工标注一致率为 91.4%。这支持标签本身较稳定，但不能把文本行为标签直接等同于模型不可观测的内部信念。</p>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据一：同样是 Rot，不同模型以完全不同的方式失败</h2>
+      <p>BrowseComp 的终态分布最能说明为什么 Context Rot 不是一个纯记忆指标。GLM-4.7 倾向直接放弃，MiniMax-M2.5 则很少放弃，却大量产生 uncertain-incorrect；两者都“腐化”，但产品表现截然不同。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>BrowseComp 终态分布。Accuracy 为 CC + UC；Rot 为 UI + GU。单位：%。</caption>
+          <thead><tr><th>模型</th><th>Accuracy</th><th>Confident Incorrect</th><th>Uncertain Incorrect</th><th>Give Up</th><th>No Answer</th><th>Rot</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen3.5-397B-A17B</td><td>35.0</td><td>11.6</td><td>33.6</td><td>19.8</td><td>0.0</td><td>53.4</td></tr>
+            <tr><td>GLM-4.7</td><td>33.8</td><td>8.0</td><td>19.6</td><td class="bad">38.6</td><td>0.0</td><td>58.2</td></tr>
+            <tr><td>GLM-5.0</td><td class="good">44.6</td><td>10.6</td><td>26.2</td><td>18.6</td><td>0.0</td><td class="good">44.8</td></tr>
+            <tr><td>MiniMax-M2.5</td><td>36.0</td><td>10.6</td><td class="bad">48.2</td><td class="good">5.2</td><td>0.0</td><td>53.4</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这组数字至少说明三点：</p>
+      <ol>
+        <li><strong>“不放弃”不等于更可靠。</strong>MiniMax 很少 give up，但只是把大量失败转成带着不确定性的错误答案。</li>
+        <li><strong>Rot 混合了检索、校准与停止策略。</strong>如果只是长文本 recall 下降，不同模型不应呈现如此不同的终态形状。</li>
+        <li><strong>产品风险不能只看 Rot 总量。</strong>直接放弃、谨慎猜错和自信幻觉需要完全不同的治理手段。</li>
+      </ol>
+
+      <h3>轨迹越长，Rot 越高：强描述证据，但不是干净因果证据</h3>
+      <p>论文按轨迹长度分桶后发现，随着上下文增长，confident-correct 比例下降，uncertain-incorrect 与 give-up 上升；逐步 struggle score 也和这两类终态相关。这是清楚的描述性趋势。</p>
+      <div class="callout warn">
+        <b>必须考虑 difficulty 与 survivor bias</b>
+        <p>简单题往往很快结束，只有困难题和走错路线的任务才会进入长轨迹桶；长轨迹还意味着“前面没有成功结束”的条件选择。因此长度曲线同时混合了上下文长度、任务难度和幸存者偏差，不能单凭相关曲线说 token 数本身导致 rot。</p>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制推断：失败叙事如何从日志变成行动先验</h2>
+      <p>论文没有直接读取模型内部信念，但实验现象与一个递归自条件化机制高度一致。关键点是：agent 自己写出的 reasoning 会在下一回合重新进入模型输入，因此历史并非只保存世界事实，也保存模型对世界的解释。</p>
+      <div class="flow" aria-label="Context Rot 的递归反馈环">
+        <div class="flow-step"><b>局部失败</b><span>搜索无结果、来源冲突、实体消歧失败或访问受限。</span></div>
+        <div class="flow-step"><b>写回失败叙事</b><span>reasoning 记录“无法确认”“可能无解”“已经尝试多种路线”。</span></div>
+        <div class="flow-step"><b>可解性先验下降</b><span>下一轮不只看到证据，也看到此前对任务的悲观评价。</span></div>
+        <div class="flow-step"><b>策略收缩</b><span>搜索词重复、探索减少、过度保守或在证据未闭合时提前收尾。</span></div>
+        <div class="flow-step"><b>产生更多失败</b><span>低信息增益行动进一步强化“任务不可解”的叙事，形成闭环。</span></div>
+      </div>
+      <p>这不是传统意义上的“模型忘记了开头”。它更接近<strong>自生成历史造成的策略污染</strong>：模型仍可能看得到问题和事实，却因轨迹中的失败模式改变了接下来愿意采取的动作。</p>
+      <div class="grid-3">
+        <div class="card"><h3>路径依赖</h3><p>早期搜索词和实体假设决定后续能看到什么；错误方向一旦被大量历史强化，就越来越难跳出。</p></div>
+        <div class="card"><h3>认识论扩散</h3><p>一个局部来源的不确定性，可能在自然语言 reasoning 中扩散成对整个问题的悲观判断。</p></div>
+        <div class="card"><h3>停止倾向强化</h3><p>“已经试过很多次”本身会成为停止信号，即使搜索空间里仍有未探索的高价值分支。</p></div>
+      </div>
+      <p>因此，“context window 不是 bottleneck”更准确的表达应是：<strong>许多 agent 会在触及名义窗口上限之前，先发生行为性饱和。</strong>这不能证明容量完全不重要，只能说明可靠工作容量通常显著小于 advertised capacity。</p>
+    </section>
+
+    <section id="facts-reasoning">
+      <h2>到底是 Facts Rot，还是 Reasoning Rot？</h2>
+      <p>论文分别删除旧工具 observation、旧 reasoning，或两者都删除，并保留最近三个交互回合。删除任一类内容都能缓解 rot；尤其值得注意的是，删除 reasoning 后，轨迹有时反而变得更长、回合更多，但 rot 仍然下降。这支持“内容组成比单纯长度更重要”。</p>
+      <div class="grid-2">
+        <div class="card"><h3>Evidence Pollution：证据层污染</h3><p>重复搜索结果、低质量来源、工具摘要遗漏、实体版本混淆、已否定事实残留，以及语义相似但无关的材料共同稀释有效证据。</p></div>
+        <div class="card"><h3>Policy Pollution：策略层污染</h3><p>失败陈述、重复计划、早期假设和模型对自身进展的负面评价，持续改变下一步行动与停止倾向。</p></div>
+      </div>
+      <p>但这些干预仍不是完美因果实验：删除内容同时改变了可用记忆、任务进度、模型行为和最终完成率。论文证明“不同内容值得区别管理”，没有识别出哪一种语义成分是首要病因。</p>
+      <div class="callout">
+        <b>更稳妥的结论</b>
+        <p>Context Rot 是证据检索质量与控制策略稳定性的联合失败。把它简化为“模型忘了事实”或“模型不会推理”，都会漏掉 agent 轨迹中特有的自反馈结构。</p>
+      </div>
+    </section>
+
+    <section id="management">
+      <h2>七种上下文治理方法：它们分别在删除什么风险</h2>
+      <p>论文比较三类治理策略：摘要压缩、历史裁剪和子 agent 隔离。真正的比较对象不是“谁最短”，而是准确率、rot、未完成率与工具成本之间的 Pareto 权衡。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>七种方法的机制、收益与典型风险。</caption>
+          <thead><tr><th>类别</th><th>具体方法</th><th>主要作用</th><th>主要风险</th></tr></thead>
+          <tbody>
+            <tr><td rowspan="3">Compaction</td><td>按长度触发摘要</td><td>在上下文达到 32K / 96K 等阈值时重建工作状态</td><td>触发越频繁，可能越早丢失进展，并增加摘要成本</td></tr>
+            <tr><td>按回合触发摘要</td><td>每十轮左右主动清理，不依赖 token 估算</td><td>简单失败与复杂成功被同样处理</td></tr>
+            <tr><td>按 struggle 触发摘要</td><td>最近十轮 struggle 比例达到阈值时介入</td><td>struggle 是滞后信号，而且分类本身需要额外模型调用</td></tr>
+            <tr><td rowspan="3">Trimming</td><td>丢弃旧工具输出</td><td>清除冗长网页和重复 observation</td><td>可能删除仍需引用的原始证据</td></tr>
+            <tr><td>只保留最近内容</td><td>维持小型活跃工作集</td><td>容易失去早期关键约束与已完成子目标</td></tr>
+            <tr><td>最近内容 + 摘要</td><td>用摘要保留长期状态，用最近回合保留局部细节</td><td>摘要质量成为新的单点故障</td></tr>
+            <tr><td>Isolation</td><td>FoldAgent 子任务隔离</td><td>局部搜索失败不直接污染主 agent 上下文</td><td>主 agent 必须擅长拆解、预算分配和证据合并</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>没有跨模型的绝对冠军</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>三数据集总体准确率的代表性对照。单位：%。</caption>
+          <thead><tr><th>方法</th><th>Qwen</th><th>GLM-4.7</th><th>怎样解读</th></tr></thead>
+          <tbody>
+            <tr><td>原始 ReAct</td><td>54.4</td><td>51.8</td><td>完整历史，无主动治理</td></tr>
+            <tr><td>长度触发摘要</td><td>59.3</td><td class="good">60.4</td><td>对 GLM 最强之一，对 Qwen 不是最优</td></tr>
+            <tr><td>回合触发摘要</td><td>60.7</td><td>58.2</td><td>简单稳定，但对模型行为差异不敏感</td></tr>
+            <tr><td>最近内容 + 摘要</td><td>62.9</td><td>60.2</td><td>跨模型最均衡，兼顾长期状态与局部细节</td></tr>
+            <tr><td>FoldAgent</td><td class="good">64.9</td><td class="bad">57.5</td><td>Qwen 明显受益，GLM 却不如多种普通压缩方案</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>FoldAgent 在 GLM / BrowseComp 上把 rot 降到很低，却让 no-answer 达到 42.6%。它隔离了污染，也消耗了协调与完成预算。子 agent 的价值因此不是“并行一定更聪明”，而是能否让局部噪声留在局部分支，并以高密度证据包返回主线程。</p>
+    </section>
+
+    <section id="metric-trap">
+      <h2>指标陷阱：Rot 降低，可能只是失败换了一个出口</h2>
+      <p>论文最值得警惕的数字来自 Qwen / BrowseComp。长度触发摘要几乎消除了 rot，但很大一部分轨迹变成 no-answer。准确率提高是真实收益，然而 rot 的巨大降幅不能被当成同等幅度的系统可靠性提升。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>原始 ReAct 与 32K 长度触发摘要。单位：%。</caption>
+          <thead><tr><th>方法</th><th>Accuracy</th><th>Rot</th><th>No Answer</th><th>净解释</th></tr></thead>
+          <tbody>
+            <tr><td>原始 ReAct</td><td>35.0</td><td class="bad">53.4</td><td>0.0</td><td>大量 uncertain-incorrect 与 give-up</td></tr>
+            <tr><td>32K 摘要</td><td class="good">46.6</td><td class="good">2.4</td><td class="bad">38.0</td><td>准确率提升 11.6pp，但大量失败转为未完成</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>摘要频率主要改变失败类别，不一定显著改变正确率</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>Qwen / BrowseComp 的摘要阈值实验。单位：%。</caption>
+          <thead><tr><th>触发阈值</th><th>Accuracy</th><th>Rot</th><th>No Answer</th><th>观察</th></tr></thead>
+          <tbody>
+            <tr><td>32K</td><td>46.6 ± 0.9</td><td>2.4</td><td>38.0</td><td>最积极清理，rot 最低但完成率最差</td></tr>
+            <tr><td>48K</td><td>45.2 ± 5.2</td><td>7.2</td><td>26.4</td><td>折中，但方差较大</td></tr>
+            <tr><td>64K</td><td>45.0 ± 2.9</td><td>20.2</td><td>16.0</td><td>正确率近似不变，失败更多显化为 rot</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>三个阈值的准确率区间高度重叠，但 rot 与 no-answer 大幅互换。这说明任何单独优化 rot 的系统，都可能通过沉默、超时或隐藏不确定性获得漂亮数字。</p>
+
+      <h3>摘要提示词可能造成“不确定性洗白”</h3>
+      <p>官方实现的摘要提示词要求只保留确定、明确的信息，并排除不确定、信息不足或无法确认的内容。它能减少负面自我叙事，但也可能删除真正有价值的认识论状态：来源冲突、单来源结论、缺失条件和未验证假设。</p>
+      <div class="callout risk">
+        <b>不确定性是数据，不是垃圾</b>
+        <p>正确的 compaction 应把不确定性从模糊 prose 转成结构化字段，而不是从状态中抹掉。否则下游 agent 会显得更自信，终态分类也更不容易标成 uncertain，但证据质量未必同步提升。</p>
+      </div>
+      <p>可靠评价应联合报告 accuracy、coverage、confident error、uncertain error、abstention、no-answer、校准、token、工具调用、延迟和多轨迹成本，而不是寻找单一“rot 越低越好”的分数。</p>
+    </section>
+
+    <section id="rejection">
+      <h2>Rot-aware Rejection Sampling：风险排序器，不是病因治疗</h2>
+      <p>作者为每道题采样 8 条 ReAct 轨迹，过滤 give-up 与 uncertain 终态，再从 confident 轨迹中按最少回合（FT）、最短上下文（FL）或精确答案多数投票（MV）选择结果。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>过滤前后平均准确率。增益为百分点，不是相对百分比。</caption>
+          <thead><tr><th>模型</th><th>聚合规则</th><th>原始</th><th>过滤后</th><th>增益</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen</td><td>FT：最少回合</td><td>63.1</td><td>68.0</td><td class="good">+4.9pp</td></tr>
+            <tr><td>Qwen</td><td>FL：最短上下文</td><td>65.5</td><td>68.8</td><td>+3.3pp</td></tr>
+            <tr><td>Qwen</td><td>MV：答案多数投票</td><td>64.9</td><td>69.4</td><td>+4.5pp</td></tr>
+            <tr><td>GLM-4.7</td><td>FT：最少回合</td><td>62.1</td><td>66.2</td><td>+4.1pp</td></tr>
+            <tr><td>GLM-4.7</td><td>FL：最短上下文</td><td>63.5</td><td>66.7</td><td>+3.2pp</td></tr>
+            <tr><td>GLM-4.7</td><td>MV：答案多数投票</td><td>64.0</td><td>66.6</td><td>+2.6pp</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>它说明终态行为确实携带正确性信号，但 confident 不是 correctness。Qwen 用 confident 预测正确性的 precision 在 BrowseComp 为 0.779、BrowseComp-Plus 为 0.981，在 xbench 只有 0.692；xbench 的 recall 却达到 0.975。也就是说，过滤器几乎保留所有正确答案，却也保留了不少自信错误。</p>
+      <div class="grid-3">
+        <div class="card"><h3>收益真实</h3><p>在当前设置下，失败意识可以作为轨迹质量的一个排序特征。</p></div>
+        <div class="card"><h3>成本不低</h3><p>每题需要八条完整搜索轨迹，且论文成本核算没有覆盖所有 token、judge 与端到端延迟。</p></div>
+        <div class="card"><h3>风险不对称</h3><p>简单偏爱 confident 会保留自信幻觉，也会丢弃 uncertain-but-correct 的谨慎答案。</p></div>
+      </div>
+      <p>因此它更接近 selective prediction：用行为特征做风险路由，而不是修复产生 rot 的上下文机制。更理想的系统应在轨迹中段识别低信息增益分支并重置计划，而不是等八条轨迹全部结束后再丢弃。</p>
+    </section>
+
+    <section id="code-audit">
+      <h2>官方代码审计：机制可检查，Headline 数字尚不能独立复现</h2>
+      <p>公开仓库包含搜索 scaffold、数据子集、七类上下文管理方法、终态分类和 struggle classifier。实现结构与论文主叙事基本一致，说明这些方法不是只停留在图表描述。</p>
+      <div class="grid-2">
+        <div class="card"><h3>公开得比较好的部分</h3><p>ReAct 工具循环、长度/回合/语义触发摘要、old-tool trimming、recent-context、recent-plus-summary 和 FoldAgent 均能找到对应实现；公开代码可通过基础语法检查。</p></div>
+        <div class="card"><h3>缺失的关键产物</h3><p>没有主表对应的完整原始轨迹、结果文件、依赖锁定、测试套件和 rejection-sampling 聚合脚本，因此能审计“方法怎么实现”，不能独立复算所有主数字。</p></div>
+      </div>
+      <h3>影响数字解释的实现细节</h3>
+      <ol>
+        <li><strong>五票分类实际使用 plurality。</strong>参数中虽有三票阈值，公开实现没有用它拒绝无多数结果；若出现 2–2–1，仍可能选出一个类别，平票还可能受完成顺序影响。人工一致率很高，实际影响可能有限，但应当修正。</li>
+        <li><strong>turn/tool 统计不是完全原始计数。</strong>分析逻辑会对内容相同的 reasoning 与工具响应去重，所以公开统计可能低估重复行为，而重复恰恰是 rot 的一部分。</li>
+        <li><strong>采样配置不完全自洽。</strong>命令入口的默认 temperature、top-p 与部分 rollout 调用的硬编码值不一致，论文也没有完整报告采样参数和随机种子。</li>
+        <li><strong>摘要调用成本的记账边界不清楚。</strong>论文强调工具成本，但 summary、分类、聚合所需的模型 token、延迟与算力没有形成完整端到端账本。</li>
+        <li><strong>v1 附录存在文本拼接瑕疵。</strong>个别案例的预测答案与另一段字符串连在一起，更像排版或复制错误；它不直接推翻实验，但表明版本仍需清理。</li>
+      </ol>
+      <div class="callout warn">
+        <b>复现性结论</b>
+        <p>这是一份有价值的开放 scaffold，而不是完整实验快照。总体趋势得到论文多模型实验和代码结构的共同支持；精确百分点、成本和部分计数口径仍需要原始轨迹与可锁定运行环境才能独立验证。</p>
+      </div>
+    </section>
+
+    <section id="comparison">
+      <h2>放回研究坐标：新意不在“长上下文会退化”</h2>
+      <p>静态长上下文退化已有更早、更受控的证据。Chroma 的 Context Rot 研究在 18 个模型上保持任务基本不变，只改变输入长度、干扰项、语义相似度和结构；它更擅长回答“长度与内容结构怎样影响单轮能力”。本论文则转向逐轮积累的真实 agent 轨迹，更擅长回答“长期搜索为何以不同终态失败，以及治理方法怎样改变系统权衡”。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>三类材料的定位差异。</caption>
+          <thead><tr><th>材料</th><th>研究对象</th><th>最强贡献</th><th>主要边界</th></tr></thead>
+          <tbody>
+            <tr><td>Chroma Context Rot</td><td>受控单轮长上下文任务</td><td>更干净地隔离长度、干扰项、语义相似度与结构影响</td><td>不包含多轮工具调用和自生成历史反馈</td></tr>
+            <tr><td>本论文</td><td>长程深度搜索 agent</td><td>终态行为分类、跨模型失败风格、七类治理方法与拒绝采样权衡</td><td>长度曲线受任务难度与 survivor bias 影响，机制尚未严格识别</td></tr>
+            <tr><td>Anthropic Context Engineering</td><td>生产 agent 的工程实践</td><td>高信号上下文、compaction、工具结果清理、笔记与子 agent 的设计原则</td><td>不是同一 benchmark 下的系统对照实验</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>所以论文的合理创新定位是：<strong>把 context engineering 的经验性 folklore，推进成一个可测量、可比较权衡的 agent systems 问题。</strong>它不是新的神经网络架构，也不是一条已经完成因果证明的理论定律。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语与概念对齐</h2>
+      <div class="def-list">
+        <div><b>Context Rot</b><span>上下文仍在名义窗口内，但模型利用其中信息、维持策略或校准终态的能力随内容积累而退化。本论文用 UI + GU 作为操作性指标。</span></div>
+        <div><b>Advertised Capacity</b><span>模型接口允许输入的最大 token 数；它描述能否接收，不保证每个位置都能被等质量利用。</span></div>
+        <div><b>Effective Working Context</b><span>模型在当前任务中能可靠检索、组合并用于行动选择的有效状态范围，通常小于名义窗口。</span></div>
+        <div><b>Compaction</b><span>把完整历史压成更短的任务状态，目标不是摘要得流畅，而是高保真保留决策所需信息。</span></div>
+        <div><b>Trimming</b><span>直接删除旧工具输出、旧 reasoning 或仅保留最近回合，减少噪声但可能丢失关键进展。</span></div>
+        <div><b>Subagent Isolation</b><span>让局部搜索分支在独立上下文中运行，只把结果返回主线程，以隔离失败叙事和工具噪声。</span></div>
+        <div><b>Struggle Score</b><span>分类器对单步 reasoning 是否表现出重复、受阻、困惑或无进展的判断，用于诊断或触发治理。</span></div>
+        <div><b>Selective Prediction</b><span>系统不强制每次都回答，而是根据风险、置信度和证据覆盖决定回答、复核、继续搜索或 abstain。</span></div>
+        <div><b>Survivor Bias</b><span>只有前面未成功结束的任务才会进入长轨迹，因此长轨迹天然富集困难题和失败路线。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>证据边界：哪些结论强，哪些仍是推断</h2>
+      <div class="table-wrap">
+        <table>
+          <caption>对论文主要命题的证据评级。</caption>
+          <thead><tr><th>命题</th><th>评级</th><th>理由</th><th>还缺什么</th></tr></thead>
+          <tbody>
+            <tr><td>长搜索轨迹中，放弃与不确定错误显著增加</td><td><span class="pill">较强</span></td><td>四模型、三数据集、五次重复，终态分类经过人工复核</td><td>更多 scaffold、闭源模型与真实线上任务</td></tr>
+            <tr><td>Context Rot 不只是触及窗口上限</td><td><span class="pill">较强</span></td><td>大量轨迹在预算耗尽前已放弃；裁剪可以改变终态</td><td>控制有效 context quality 后测硬容量</td></tr>
+            <tr><td>内容组成比纯 token 数更重要</td><td><span class="pill">中等偏强</span></td><td>分别删除 reasoning 与工具输出都能缓解 rot，且 reasoning 删除后轨迹可更长</td><td>等 token、同前缀的配对反事实</td></tr>
+            <tr><td>失败叙事降低模型对任务可解性的判断</td><td><span class="pill">有力推断</span></td><td>与 struggle、长度趋势和裁剪结果一致</td><td>只改写自我评价、不改变事实的因果实验</td></tr>
+            <tr><td>最近内容 + 摘要是最佳方法</td><td><span class="pill">条件成立</span></td><td>跨 Qwen / GLM 最均衡，但并非每个数据集的绝对冠军</td><td>更广模型、相同总成本与不同摘要器对照</td></tr>
+            <tr><td>子 agent 隔离是通用解</td><td><span class="pill">不成立</span></td><td>Qwen 明显受益，GLM 准确率较低且未完成率高</td><td>协调能力、报告格式与预算分配消融</td></tr>
+            <tr><td>拒绝采样提升准确率</td><td><span class="pill">当前设置成立</span></td><td>八轨迹下提升 2.6–4.9pp</td><td>端到端成本、不同样本数、开放式回答和高风险 abstention 评测</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>只测开放模型。</strong>作者需要可见 reasoning 做终态诊断，闭源模型与隐藏思维模式是否同样退化尚未知。</li>
+        <li><strong>只测深度搜索。</strong>软件工程、浏览器操作、数据分析、科学实验和长期个人助理可能有不同的状态结构。</li>
+        <li><strong>工具 observation 已经过摘要。</strong>一部分 rot 可能来自访问摘要器和搜索 scaffold，而不只是主模型上下文。</li>
+        <li><strong>没有显著性检验。</strong>部分阈值准确率差异落在较大方差内，不应对小幅排名过度解读。</li>
+        <li><strong>成本口径窄。</strong>工具调用数不能替代总 token、TTFT、并行资源、judge 成本、延迟和能耗。</li>
+        <li><strong>Abstention 不总是坏事。</strong>在医疗、法律或事实无法验证的任务中，知道何时拒答可能比自信给错更安全；把所有 give-up 都计为 rot 带有任务价值判断。</li>
+      </ul>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：这篇论文真正教会我们的五件事</h2>
+      <div class="grid-2">
+        <div class="card"><h3>1. 上下文也是控制状态</h3><p>长轨迹不只影响 recall。失败、犹豫和计划会改变模型下一步愿意做什么，context quality 因而直接参与 policy selection。</p></div>
+        <div class="card"><h3>2. 自生成历史具有放大器效应</h3><p>模型的旧判断下一轮会伪装成输入证据。没有类型系统时，事实、假设和自我评价都以相同 token 形态出现。</p></div>
+        <div class="card"><h3>3. Context management 是状态估计</h3><p>目标不是达到某个压缩率，而是持续估计“现在知道什么、哪里冲突、下一步最有价值的动作是什么”。</p></div>
+        <div class="card"><h3>4. 故障转移比指标提升更常见</h3><p>删除历史可以把 uncertain/give-up 变成 no-answer；过滤不确定轨迹可以把风险推向 confident error。必须看完整终态分布。</p></div>
+        <div class="card"><h3>5. 长期 agent 需要世界状态，不需要无限聊天</h3><p>完整日志应保留在外部供追溯；当前 prompt 只承载一个经过治理、可检索来源的工作状态。</p></div>
+        <div class="card"><h3>6. 不确定性需要类型，而非删除</h3><p>“已验证”“单来源”“冲突”“假设”“无法访问”应是不同字段；把它们压成顺滑结论会损害可靠性。</p></div>
+      </div>
+      <div class="callout">
+        <b>最深的一层</b>
+        <p>没有显式状态管理的 agent，会逐渐把自己的语言历史误当成世界本身。Context Rot 不是单纯的记忆腐化，而是“事件日志、信念状态与控制策略没有被分层”造成的系统性后果。</p>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>落地设计：事件日志、证据账本与活跃工作集</h2>
+      <p>抗 Context Rot 的系统不应每轮重放所有历史，而应采用类似 event sourcing 的结构：原始事件日志作为事实来源，结构化账本作为长期状态，当前 prompt 则是面向下一步行动的 materialized view。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>推荐的三层上下文架构。</caption>
+          <thead><tr><th>层</th><th>保存什么</th><th>怎样更新</th><th>是否每轮进入 prompt</th></tr></thead>
+          <tbody>
+            <tr><td>原始事件日志</td><td>完整工具输入输出、页面片段、时间戳、决策与错误</td><td>只追加，保留 provenance</td><td>否；按 source pointer 精确回取</td></tr>
+            <tr><td>结构化证据账本</td><td>已验证事实、来源、置信度、矛盾、失败路线、未决问题</td><td>合并、修订、标记失效，保留变更来源</td><td>选择相关字段进入</td></tr>
+            <tr><td>活跃工作集</td><td>当前目标、候选假设、最近高价值证据、下一步动作、停止条件</td><td>每轮重建，保持紧凑</td><td>是；直接服务下一次决策</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>证据账本应显式区分七类状态</h3>
+      <div class="grid-3">
+        <div class="card"><h3>已验证事实</h3><p>结论、原始来源、支持片段、适用时间和验证状态。</p></div>
+        <div class="card"><h3>候选假设</h3><p>当前置信度、支持证据、反对证据以及可证伪条件。</p></div>
+        <div class="card"><h3>矛盾</h3><p>冲突双方、可能原因、尚缺证据和下一项消歧动作。</p></div>
+        <div class="card"><h3>失败路线</h3><p>尝试了什么、为何失败、改变什么条件后才值得重试。</p></div>
+        <div class="card"><h3>当前计划</h3><p>下一步动作、预期信息增益、成功与失败后的分支。</p></div>
+        <div class="card"><h3>未决问题</h3><p>回答主问题仍必须补齐的限定条件与证据缺口。</p></div>
+        <div class="card"><h3>停止条件</h3><p>什么证据足以回答，什么情况下应该复核、降级或 abstain。</p></div>
+      </div>
+
+      <h3>触发治理不应只看 token 数</h3>
+      <p>更有效的 context allocator 应监测信息质量：</p>
+      <ul>
+        <li>最近搜索动作和搜索词的重复率；</li>
+        <li>新 observation 对候选假设的实际信息增益；</li>
+        <li>来源多样性与独立性；</li>
+        <li>未解决矛盾的数量和密度；</li>
+        <li>同一计划被复述但没有执行进展的次数；</li>
+        <li>候选假设排名是否长期不变；</li>
+        <li>工具失败是否来自同一外部限制；</li>
+        <li>事实、计划、失败叙事和原始 observation 在工作区中的占比。</li>
+      </ul>
+      <p>子 agent 返回主线程时，也不应返回完整聊天 prose，而应返回统一证据包：结论、来源、支持与反对证据、置信度、未解决事项和建议动作。隔离只有在返回边界同样结构化时才真正成立。</p>
+    </section>
+
+    <section id="next">
+      <h2>下一步研究：怎样真正识别 Rot 的因果机制</h2>
+      <p>最有价值的后续实验不是再加更多模型，而是构造同任务、同轨迹前缀、同 token 预算的配对反事实，只改变历史内容的语义角色。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>建议的因果实验矩阵。</caption>
+          <thead><tr><th>反事实条件</th><th>保持不变</th><th>只改变什么</th><th>能回答的问题</th></tr></thead>
+          <tbody>
+            <tr><td>已验证事实 vs 失败陈述</td><td>任务、token 数、来源数量</td><td>历史是外部证据还是模型自我评价</td><td>Facts Rot 与 Policy Rot 谁更强</td></tr>
+            <tr><td>原始失败叙事 vs 中性改写</td><td>事实内容与长度</td><td>悲观、自我否定和停止暗示</td><td>语言 framing 是否直接改变继续概率</td></tr>
+            <tr><td>真实矛盾 vs 无关 padding</td><td>上下文长度</td><td>语义冲突密度</td><td>退化来自 token 数还是证据不一致</td></tr>
+            <tr><td>顺序保持 vs 随机重排</td><td>所有事实和 token</td><td>轨迹时间顺序与局部邻近</td><td>路径依赖和 recency 的贡献</td></tr>
+            <tr><td>自然语言摘要 vs 类型化账本</td><td>信息覆盖与压缩长度</td><td>状态表示方式</td><td>结构化不确定性是否优于顺滑 prose</td></tr>
+            <tr><td>完整分支日志 vs 证据包返回</td><td>子任务结果与总预算</td><td>子 agent 的返回协议</td><td>隔离收益来自并行还是信息边界</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>每个实验都应测下一步动作分布、搜索新颖度、任务可解性判断、答案正确性、置信校准、abstention utility、完成率和端到端成本。只有这样，Context Rot 才能从一个现象标签进一步发展成可干预的机制模型。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以论文 arXiv v1、作者公开 thread、官方代码仓库及公开实现为核心证据，并以 Chroma 的受控长上下文实验和 Anthropic 的 agent context engineering 实践作方法论对照。论文主结果按公开表格复核；官方仓库没有提供主表对应的完整原始轨迹、结果快照和锁定依赖，因此本文能够核验实验设计、实现方向和表内算术，不能独立重跑全部 headline 数字。论文尚未覆盖闭源模型、软件工程 agent 和高风险 abstention 场景，相关外推均按推断处理。</p>
+      <ul>
+        <li><a href="https://x.com/ShijieX60925/status/2076630279427703031">Shijie Xia：Announcing “Diagnosing and Mitigating Context Rot in Long-horizon Search”</a></li>
+        <li><a href="https://arxiv.org/abs/2606.29718">Diagnosing and Mitigating Context Rot in Long-horizon Search（arXiv:2606.29718）</a></li>
+        <li><a href="https://arxiv.org/pdf/2606.29718v1">论文 PDF：arXiv v1</a></li>
+        <li><a href="https://github.com/GAIR-NLP/ContextRot">GAIR-NLP / ContextRot 官方代码仓库</a></li>
+        <li><a href="https://www.trychroma.com/research/context-rot">Chroma Research：Context Rot</a></li>
+        <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Anthropic Engineering：Effective context engineering for AI agents</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

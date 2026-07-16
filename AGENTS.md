@@ -38,7 +38,9 @@
 - `opencli` 是默认优先的网站 CLI 和浏览器自动化入口，适用于把公开网站、论文站点、社媒平台、搜索结果页和 Web App 操作转换为可复现的命令行流程。
 - 常见外部资料抓取优先考虑对应 adapter，例如 `opencli arxiv`、`opencli hf`、`opencli twitter`、`opencli github`、`opencli youtube`、`opencli zhihu`、`opencli xiaohongshu`、`opencli web`。
 - 不确定有哪些命令时使用 `opencli list`；不确定某个站点参数时使用 `opencli <site> --help -f yaml`。
-- 浏览器桥接、登录态、页面交互或截图类任务优先使用 `opencli browser ...`；连接异常时先运行 `opencli doctor`。
+- 浏览器桥接连接状态先用 `opencli daemon status` 检查；不要把 `opencli doctor` 当作例行预检，因为其 `__doctor__` live probe 会创建 owned browser session，并可能新建或聚焦 OpenCLI Chrome 标签组。只有真实浏览器命令失败、且用户明确允许占用 Chrome 时才运行 doctor。
+- 用户的前台 Chrome 是正在使用的工作浏览器，默认禁止 bind、导航、聚焦、附加调试器或以其他方式驱动。只有用户明确把某个标签交给当前任务时，才使用 OpenCLI 1.8.6 的位置参数语法 `opencli browser <name> bind`，后续执行 `opencli browser <name> ...`，结束后立即 `opencli browser <name> unbind`。
+- 用户不希望 OpenCLI 自动创建的 Chrome 标签组干扰日常标签管理。优先使用无浏览器 adapter、专用 connector、内置浏览器或其他不侵入用户 Chrome 的工具；默认不创建 owned browser session。确实无法绕过时，先说明会创建 `OpenCLI Browser` 标签组并获得用户明确许可。
 - 若 `opencli` 对目标站点失败、没有 adapter、或返回信息不足，再切换到 Grok-Search、Tavily、WebFetch、专用 MCP 或浏览器自动化工具，并在结果中说明降级原因。
 - `opencli` 不替代本地仓库文件操作；本地文件搜索仍优先使用 Glob/Grep/Read，代码编辑仍使用 `apply_patch`。
 
@@ -48,6 +50,12 @@
 - 当任务是阅读、解读、调研或分析外部材料，并且需要沉淀成文件时，在当前仓库目录内新建或更新合适的本地文档。
 - 普通问答、轻量解释、临时结论和不需要沉淀的分析，直接在终端对用户回答，不新建文档。
 - 保持仓库目录简洁；只有材料分析确有沉淀价值或用户明确要求时，才新建文档。
+
+## Deep Reading Trigger
+
+- 当用户给出论文、推文或 X thread、博客、技术报告、访谈等材料，并说“帮我读一下”“好好读一下”“深度解读”“梳理这篇”或同义表达时，默认读取并遵循 repo-local skill：`.agent/skills/deep-read-to-notes/SKILL.md`。
+- 除非用户明确缩小范围，上述触发默认授权完整流程：读取原文、追踪会影响核心判断的关键内链与参考资料、交叉核验、深度分析、在对话中用中文直接讲解、沉淀站内笔记、更新索引与 `Progress.md`、验证、只提交本任务改动并 push。
+- 用户明确要求只做摘要、暂不写笔记、不提交或不推送时，以本次限制为准。
 
 ## Notes Authoring Standard
 
