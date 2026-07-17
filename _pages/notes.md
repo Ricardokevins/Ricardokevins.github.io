@@ -354,8 +354,8 @@ author_profile: true
 <div class="notes-index" data-page-size="10">
   <header class="notes-hero">
     <p class="notes-hero__kicker">Notes · 站内长文</p>
-    <h1 class="notes-hero__title">技术笔记与论文精读</h1>
-    <p class="notes-lead">这里整理较长的技术笔记、论文精读和可独立访问的学习资源，按最近更新时间倒序排列。可以用下面的搜索和分类，快速定位想看的主题。</p>
+    <h1 class="notes-hero__title">技术笔记、论文精读与访谈深读</h1>
+    <p class="notes-lead">这里整理较长的技术笔记、论文精读、访谈深读和可独立访问的学习资源，按最近更新时间倒序排列。可以用下面的搜索和分类，快速定位想看的主题。</p>
   </header>
 
   <div class="notes-panel">
