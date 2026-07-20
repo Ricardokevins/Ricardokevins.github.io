@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-Improving Agents 综述深读：真正的分界线是“经验能否跨任务写回”</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme: light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#626a70; --line:#d9d2c3; --accent:#a94f34; --accent-soft:#f7e9df; --blue:#1f5b70; --blue-soft:#e8f2f4; --green:#356a52; --green-soft:#e8f2ec; --warn:#8a5a18; --warn-soft:#fbf1df; --shadow:0 14px 38px rgba(31,37,40,.07); --radius:12px; --max:1080px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC",Georgia,serif; --mono:"SFMono-Regular",Menlo,Consolas,monospace; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; color:var(--ink); background:linear-gradient(90deg,rgba(169,79,52,.04) 1px,transparent 1px),linear-gradient(180deg,rgba(90,80,65,.03) 1px,transparent 1px),var(--paper); background-size:44px 44px; font-family:var(--sans); line-height:1.78; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header, main, footer { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(40px,7vw,82px) 0 28px; }
+    .kicker { margin-bottom:12px; color:var(--accent); font-size:13px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+    h1 { max-width:980px; margin:0; font:760 clamp(32px,5vw,58px)/1.12 var(--serif); }
+    .lede { max-width:900px; margin:18px 0 0; color:var(--muted); font-size:clamp(17px,2vw,20px); }
+    main { display:grid; gap:30px; padding-bottom:64px; }
+    section { padding-top:30px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3,h4 { margin:0 0 12px; line-height:1.28; }
+    h2 { font:740 clamp(24px,3.2vw,34px)/1.25 var(--serif); }
+    h3 { margin-top:24px; color:var(--accent); font-size:20px; }
+    p { margin:12px 0; }
+    ul,ol { padding-left:1.3rem; }
+    li { margin:7px 0; }
+    .toc { display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
+    .toc a { padding:7px 11px; border:1px solid var(--line); border-radius:999px; background:var(--surface); font-size:13px; text-decoration:none; }
+    .grid-2,.grid-3 { display:grid; gap:14px; margin:18px 0; }
+    .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card { min-width:0; padding:17px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3,.card h4 { margin:0 0 8px; color:var(--accent); font-size:16px; }
+    .card p { margin:0; color:var(--muted); font-size:14.5px; }
+    .metric { display:block; margin-bottom:7px; color:var(--blue); font:800 25px/1 var(--serif); }
+    .callout { margin:18px 0; padding:15px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); background:var(--accent-soft); }
+    .callout > b { display:block; margin-bottom:6px; color:var(--accent); }
+    .callout.info { border-left-color:var(--blue); background:var(--blue-soft); }
+    .callout.info > b { color:var(--blue); }
+    .callout.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+    .callout.warn > b { color:var(--warn); }
+    .flow { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; align-items:stretch; margin:20px 0; }
+    .flow div { position:relative; min-width:0; padding:13px 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); text-align:center; font-size:13px; font-weight:700; }
+    .flow div:not(:last-child)::after { content:"→"; position:absolute; right:-11px; top:50%; z-index:2; color:var(--accent); transform:translateY(-50%); }
+    .flow span { display:block; margin-top:5px; color:var(--muted); font-size:12px; font-weight:500; }
+    .def-list { display:grid; gap:10px; margin:18px 0; }
+    .def-list > div { display:grid; grid-template-columns:minmax(145px,.25fr) minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .def-list b { color:var(--accent); }
+    .table-wrap { margin:16px 0; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    .notes-shell-page .table-wrap table { min-width:760px; }
+    th,td { padding:11px 13px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:var(--accent-soft); font-weight:750; }
+    tr:nth-child(even) td { background:rgba(0,0,0,.014); }
+    .grade { display:inline-block; padding:2px 8px; border-radius:999px; white-space:nowrap; font-size:12px; font-weight:750; }
+    .strong { color:var(--green); background:var(--green-soft); }
+    .medium { color:var(--warn); background:var(--warn-soft); }
+    .weak { color:#8a3840; background:#f8e7e9; }
+    .math-display { margin:16px 0; padding:13px 15px; max-width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    code { padding:2px 6px; border-radius:5px; background:#ebe4d8; color:#7b321f; font-family:var(--mono); font-size:.92em; }
+    @media (max-width:820px) { .flow { grid-template-columns:repeat(2,minmax(0,1fr)); } .flow div::after { display:none; } }
+    @media (max-width:760px) { header,main,footer { width:min(100% - 24px,var(--max)); } .grid-2,.grid-3 { grid-template-columns:1fr; } .def-list > div { grid-template-columns:1fr; gap:5px; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Self-Improving Agents</div>
+    <h1>Self-Improving Agents 综述深读：真正的分界线是“经验能否跨任务写回”</h1>
+    <p class="lede">这篇 97 页综述最有价值的贡献，不是宣布 Agent 已能无限递归升级，而是把“自我改进”压缩成一个可审计的问题：执行产生的经验，究竟写回了模型权重，还是写回了 prompt、memory、tool 与控制逻辑？只有更新被持久化、能跨过任务边界并接受独立验证，才比一次会话内的 retry / reflection 更接近真正的能力积累。</p>
+    <nav class="toc" aria-label="文章目录"><a href="#takeaway">核心判断</a><a href="#definition">定义</a><a href="#taxonomy">分类地图</a><a href="#evidence">代表证据</a><a href="#evaluation">如何评测</a><a href="#limits">证据边界</a><a href="#insight">独立洞察</a><a href="#practice">工程协议</a><a href="#sources">资料索引</a></nav>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>这是一篇很好的系统设计地图，但不是“自我改进已经被证明”的实证综述。</strong>它把基础模型与外部 scaffold 放进同一状态空间，解决了“微调权重才算学习，还是写入记忆也算学习”的术语混乱；但论文没有做统一效果量、复现实验或文献筛选审计，所覆盖方法也大多是在人工设计的任务、奖励、验证器和沙箱中完成局部优化。</p>
+      <div class="grid-3">
+        <div class="card"><span class="metric">2</span><h3>两类持久化底座</h3><p>慢而难回滚的模型参数 \(\theta\)，以及快而可检查的 scaffold \(\Sigma\)。</p></div>
+        <div class="card"><span class="metric">1</span><h3>真正的控制点</h3><p>不是谁提出更新，而是谁有权验证并把候选更新 commit 到下一版本。</p></div>
+        <div class="card"><span class="metric">0</span><h3>尚未证明的东西</h3><p>没有证据表明现有系统能在开放世界里稳定、通用、低成本地递归提升自身。</p></div>
+      </div>
+      <div class="callout info"><b>一句更实用的定义</b><p>Self-improvement 不是“模型多想了一轮”，而是<strong>经验驱动的、跨任务持久化的、有验收门槛的状态迁移</strong>。如果没有持久写回，它只是推理；如果没有独立验收，它可能只是把错误永久化。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>它解决的真实问题：大家说的“自我改进”根本不是同一种东西</h2>
+      <p>当前文献把 self-training、self-reflection、self-play、memory、prompt optimization、自动造工具、修改 Agent 源码乃至递归自改都放在相似叙事中。只看名称，会把三件完全不同的事混在一起：一次任务内利用上下文做得更好；跨任务保留经验；修改产生更新的机制本身。</p>
+      <p>综述的关键动作是把现代 Agent 拆成“模型核 + 运行 scaffold”。这样，模型微调和外部软件更新不再是两个不相干的领域，而是同一个系统的不同持久化通道。这个视角也解释了为什么近中期最常见的改进并不发生在权重里：prompt、playbook、工具封装、检索规则和代码 diff 更便宜、更透明，也更容易回滚。</p>
+    </section>
+
+    <section id="definition">
+      <h2>定义：先把会话状态与能力状态分开</h2>
+      <p>论文把时刻 \(t\) 的 Agent 写成：</p>
+      <div class="math-display">\[
+        \mathcal{A}_t=(\theta_t,\Sigma_t),\qquad \Sigma_t=(p_t,m_t,\mathcal{T}_t,g_t)
+      \]</div>
+      <div class="def-list">
+        <div><b>\(\theta_t\)</b><span>基础模型参数。通过 SFT、RL、偏好优化或其他梯度方法更新，通常成本高、影响面广、回滚与归因困难。</span></div>
+        <div><b>\(p_t\)</b><span>可复用的系统提示、策略模板或工作流说明；不是一次请求里的临时措辞。</span></div>
+        <div><b>\(m_t\)</b><span>记忆对象、组织结构，以及写入、检索、更新、删除策略。保存原始历史不自动等于有效学习。</span></div>
+        <div><b>\(\mathcal{T}_t\)</b><span>工具集合及调用接口，包括路由、修复、文档和自动创建的新工具。</span></div>
+        <div><b>\(g_t\)</b><span>路由、调度、权限、安全约束等控制逻辑；完整 scaffold 自改通常主要发生在这里和代码实现中。</span></div>
+        <div><b>\(X_t\)</b><span>KV cache、中间计划、当前对话历史等临时执行状态。任务结束后若被丢弃，就不算系统能力的持久更新。</span></div>
+      </div>
+      <p>自我改进被进一步拆成“执行产生信号”与“更新提交状态”两步：</p>
+      <div class="math-display">\[
+        \mathcal{A}_{t+1}=\mathcal{U}\!\left(\mathcal{A}_{1:t},\;\mathcal{E}(\pi_{\theta_t,\Sigma_t};\Sigma_t,\mathcal{C}_t)\right)
+      \]</div>
+      <p>这里 \(\mathcal{E}\) 产生轨迹、批评、偏好、验证结果或候选 patch；\(\mathcal{U}\) 决定是否写回。一个容易忽视的边界是：论文只要求<strong>学习信号由 Agent 的执行诱发</strong>，并不要求更新器、奖励、任务或验收规则都由 Agent 自己设计。因此它采用的是宽口径的 self-improvement，而不是“完全自治地重写自己的学习算法”。</p>
+      <div class="flow" aria-label="自我改进状态迁移流程"><div>执行<span>在任务/环境中行动</span></div><div>取证<span>轨迹、错误、奖励</span></div><div>提议<span>权重或 scaffold 更新</span></div><div>隔离验证<span>功能、安全、成本</span></div><div>提交/回滚<span>形成新版本</span></div><div>迁移评测<span>跨任务验证复利</span></div></div>
+    </section>
+
+    <section id="taxonomy">
+      <h2>分类地图：先问“改哪里”，再问“信号从哪里来”</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>更新面</th><th>信号 / 子类</th><th>典型持久化物</th><th>主要优势</th><th>主要失败模式</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="3"><strong>模型参数 \(\theta\)</strong></td><td>内生生成示范</td><td>合成指令、解题轨迹、self-edit 数据进入 SFT / RL</td><td>行为可摊销到后续推理，不必反复塞入上下文</td><td>模型坍塌、同质化、错误自强化、遗忘</td></tr>
+          <tr><td>内生评估反馈</td><td>自评分、偏好、置信度、一致性、自然语言 critique</td><td>开放任务也能产生训练信号</td><td>生成器与裁判共享盲点；相关错误被多数票放大</td></tr>
+          <tr><td>外生探索经验</td><td>真实环境或 world model 中的轨迹、奖励、可执行结果</td><td>反馈更接近任务后果</td><td>环境昂贵、奖励稀疏、代理环境失真、reward hacking</td></tr>
+          <tr><td rowspan="4"><strong>Scaffold \(\Sigma\)</strong></td><td>Prompt</td><td>标量搜索、文本批评、种群演化、textual gradient</td><td>快、便宜、可读、可回滚</td><td>模板过拟合、上下文坍塌、评价器依赖</td></tr>
+          <tr><td>Memory</td><td>经验对象、层级/图结构、读写更新删除策略</td><td>跨会话积累，可保留罕见恢复路径</td><td>污染、陈旧、隐私泄露、错误合并、检索噪声</td></tr>
+          <tr><td>Tool</td><td>动态路由、迭代修复、自动创建与注册</td><td>把一次成功变成可执行程序</td><td>工具膨胀、接口漂移、供应链与权限风险</td></tr>
+          <tr><td>Full scaffold</td><td>修改 Agent 源码、控制流、组合与 improver 本身</td><td>程序 patch、候选 Agent archive、版本谱系</td><td>评价目标被钻空子；自改范围越大，验收越难</td></tr>
+        </tbody>
+      </table></div>
+      <p>这些类别不是互斥模块，而是不同写回目标。同一条成功轨迹可以先变成 memory / tool，再被蒸馏进权重；一次完整 scaffold patch 也会同时改 prompt、工具和路由。论文把 “skill” 定义为可序列化、可复用的更新算子，因此 skill 的身份不由存储位置决定：它可以是权重、提示、记忆、工具或控制逻辑。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>代表性证据：四条路径都成立，但距离开放式递归改进仍很远</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>方法</th><th>改了什么</th><th>作者报告的关键结果</th><th>结论边界</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SEAL</strong></td><td>模型自己生成 finetuning 数据和更新指令，再用下游表现训练 self-edit policy，最终改 \(\theta\)。</td><td>在经过筛选的 ARC 子集上，self-edit 成功率 72.5%，基座 self-edit 为 20%，ICL 为 0%，人工 oracle TTT 为 100%；单篇 SQuAD 知识写入为 47.0%，基座为 32.7%。</td><td><span class="grade medium">窄证据</span> ARC 只有 11 个训练任务和 8 个评估任务；更大 SQuAD continued-pretraining 中 GPT-4.1 合成数据仍更强；连续编辑出现遗忘，奖励计算昂贵且依赖参考 QA。</td></tr>
+          <tr><td><strong>ACE</strong></td><td>不改权重；把上下文当成可增长 playbook，用 Generator–Reflector–Curator 增量写入 \(p/m\)。</td><td>作者报告 Agent 任务平均 +10.6%、金融任务 +8.6%；AppWorld 相对 GEPA 的离线适配延迟下降 82.3%、rollout 数下降 75.1%。</td><td><span class="grade medium">工程证据</span> 增益依赖足够强的 reflector 和任务反馈；更长 playbook 带来检索与维护成本，仍受基础模型能力上限约束。</td></tr>
+          <tr><td><strong>WebRL</strong></td><td>从失败中生成新任务，用 outcome reward model 与 curriculum RL 更新 Web Agent 权重。</td><td>WebArena-Lite 上 Llama-3.1-8B 从 4.8% 到 42.4%，GLM-4-9B 从 6.1% 到 43.0%。</td><td><span class="grade medium">受控环境</span> 评测为 165 个样本；初始轨迹和 reward-function 数据来自人工标注，reward model 训练集扩展到 12,200 条。“self”主要在课程生成，不是从零获得目标与验证器。</td></tr>
+          <tr><td><strong>DGM</strong></td><td>让 Coding Agent 修改自己的 Python scaffold，保留多样候选 archive，以 benchmark 验收后继版本。</td><td>作者报告 SWE-bench 从 20.0% 到 50.0%，Polyglot 从 14.2% 到 30.7%。</td><td><span class="grade medium">有界自改</span> 一次 SWE-bench 演化约两周、约 22,000 美元；只验证两个 coding benchmark，开放探索算法本身仍固定，系统在沙箱、限时、有限网络和人工监控下运行。</td></tr>
+        </tbody>
+      </table></div>
+      <p>这四个样本支持综述的分类：改权重、改上下文、用环境反馈、改完整程序确实是不同工程路径。但它们不支持“系统会自然越改越通用”。现有最强证据仍来自验证器清晰、环境可重置、失败成本可控的领域；一旦目标开放、评价主观或动作不可逆，闭环最缺的不是生成候选，而是可靠的信用分配与准入控制。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>评测：不要问新版本有多高，先问提升轨迹是否真实</h2>
+      <p>论文最值得直接采纳的是评测框架。对固定的 held-out 分布 \(\mathcal{D}_{\text{eval}}\)，第 \(t\) 个版本的能力应写成：</p>
+      <div class="math-display">\[
+        m_t=\mathbb{E}_{x\sim\mathcal{D}_{\mathrm{eval}},\,\tau\sim\mathcal{A}_t(x)}[\Phi(x,\tau)],\qquad \sum_t b_t\le B_{\max}
+      \]</div>
+      <p>重点不是最终峰值，而是固定预算下的整条曲线。一个可信报告至少需要六列账：</p>
+      <div class="grid-3">
+        <div class="card"><h3>起点与曲线</h3><p>基座、每次更新后的均值与方差，而不是从多轮里挑最好一次。</p></div>
+        <div class="card"><h3>迁移</h3><p>在未参与更新的任务族、时间切片、仓库或环境上验证。</p></div>
+        <div class="card"><h3>回归</h3><p>旧能力、尾部失败、安全违规与灾难性遗忘是否恶化。</p></div>
+        <div class="card"><h3>总预算</h3><p>token、GPU/API、工具调用、墙钟时间与人类监督分别计价。</p></div>
+        <div class="card"><h3>机制归因</h3><p>冻结环境、交换模块、做 component ablation，区分真正更新与采样噪声。</p></div>
+        <div class="card"><h3>裁判独立</h3><p>驱动训练的 judge 不应同时担任最终裁判；用异构 rubric、可执行子集或人工抽检校准。</p></div>
+      </div>
+      <div class="callout"><b>最重要的安全重构</b><p>critic 不是被动 benchmark，而是系统的治理基础设施和攻击面。提议更新的 Agent 不能同时拥有修改验收器、降低门槛并批准自己的权限；否则闭环优化的很可能是“更会通过检查”，而不是“更有能力”。</p></div>
+    </section>
+
+    <section id="limits">
+      <h2>证据边界：为什么它更像 field map，而不是 systematic review</h2>
+      <ol>
+        <li><strong>“239 篇”不是当前材料中可复算的样本量。</strong>当前配套清单有 246 行、228 个唯一标题、224 个唯一论文链接；论文源码含 715 条 bibliography entry，正文实际引用 526 个唯一 citation key。差异可能来自持续更新、重复跨类收录，以及“核心方法 / 全部引用”口径不同，但论文没有给出精确映射。</li>
+        <li><strong>缺少系统综述的检索协议。</strong>没有说明数据库、检索式、时间窗、双人筛选、纳入排除标准、质量评级或遗漏风险。因此它能说明“作者如何组织领域”，不能支持“领域方法的总体效果是多少”。</li>
+        <li><strong>分类包含规范性判断。</strong>例如“权重更新更慢但迁移更广”“scaffold 更快且可回滚”是很好的默认设计启发，不是跨论文统一控制变量后的因果结论。</li>
+        <li><strong>系统边界仍有模糊处。</strong>Agent 被写成 \((\theta,\Sigma)\)，但环境、critic、数据管线与权限系统被放在上下文或更新器外部。若这些部分也会演化，谁算 Agent、谁有最终写权限会直接改变“自我”的含义。</li>
+        <li><strong>很多案例是自动化改进，不是开放式自我决定。</strong>任务分布、奖励函数、测试集、模型 API、沙箱和停止条件大多仍由人类规定；“没有逐步人工介入”不等于“系统自己选择了目标和价值函数”。</li>
+      </ol>
+      <div class="callout warn"><b>不要从这篇综述推出</b><p>不能推出 recursive self-improvement 已经进入失控加速阶段，不能推出 scaffold 更新必然比权重更新安全，也不能把一次 benchmark 上升解释成通用能力复利。现有证据更接近“有界搜索 + 可验证写回”。</p></div>
+    </section>
+
+    <section id="insight">
+      <h2>独立洞察：自我改进的核心不是 intelligence loop，而是 state migration governance</h2>
+      <h3>1. “自我”的可操作定义应落在写权限，而不是生成来源</h3>
+      <p>模型提出一个 prompt diff，并不比工程师提出 diff 更神秘。真正改变系统性质的是它是否能把候选写入未来版本，以及写入前要经过谁的验收。由此可以把自治程度拆成三个独立轴：<strong>proposal autonomy</strong>（谁提议）、<strong>evaluation autonomy</strong>（谁判断）、<strong>commit autonomy</strong>（谁批准持久化）。很多论文只自动化了第一轴，却用“self-improving”描述整个闭环。</p>
+      <h3>2. 最合理的近期架构是“两速学习”，但中间必须有 promotion gate</h3>
+      <p>先在可读、可回滚的 scaffold 层高速探索；只有当某个策略在独立任务、回归集与安全检查上稳定，才把它蒸馏进权重。这与 CPU cache / database compaction 的直觉相似：热状态便于快速修改，冷状态负责压缩和复用。关键不是简单地“memory 最后都进模型”，而是为 promotion 定义证据门槛，并保留那些蒸馏容易丢失的罕见错误恢复轨迹。</p>
+      <h3>3. 自我改进系统的最小可信单位不是 Agent，而是带谱系的 update</h3>
+      <p>静态模型卡不足以描述持续变化的系统。每个更新应携带来源任务、信号类型、适用范围、候选 diff、验证集、成本、回归与安全结果、批准者和回滚点。这样才能回答“为什么变好”“哪里可能退化”“能否把这项能力移植给另一个 Agent”。论文把 skill 视为可序列化 update operator，真正的工程含义正是把能力积累变成可版本化资产。</p>
+      <h3>4. 复利需要测“改进速度的改进”，而不仅是任务分数上升</h3>
+      <p>一次从 20% 到 50% 可能只是高成本搜索找到了更好配置。递归自我改进的更强证据应是：后续每单位预算获得的提升更大、发现新更新所需的样本更少、跨任务 transfer 更强，同时回归与风险不增加。换言之，不仅要测 \(m_t\)，还要测在同一预算下的 \(\Delta m/\Delta b\) 是否随版本改善；否则“self-accelerating”仍只是叙事。</p>
+    </section>
+
+    <section id="practice">
+      <h2>工程落地：一套比“让 Agent 自己学”更具体的协议</h2>
+      <ol>
+        <li><strong>定义可写面。</strong>明确 prompt、memory、tool、workflow、model adapter 哪些可改；权限与最终验收器默认不可被同一闭环修改。</li>
+        <li><strong>把临时状态与持久状态分开。</strong>只有跨任务保留且可版本化的内容进入 improvement ledger；会话内反思不冒充能力积累。</li>
+        <li><strong>候选更新在隔离副本运行。</strong>先做功能测试、权限测试、成本上限、随机扰动与对抗输入，再进入 canary。</li>
+        <li><strong>训练信号与最终裁判分离。</strong>使用隐藏回归集、不同 judge 或可执行 oracle；记录 judge 版本与预算。</li>
+        <li><strong>同时度量 gain、regression 与 cost。</strong>禁止只用最优峰值；报告学习曲线、方差、迁移和每单位资源增益。</li>
+        <li><strong>保留 lineage 与一键回滚。</strong>每次 commit 都能追溯到经验、diff、验证证据与适用范围，失败更新不能污染后续记忆。</li>
+        <li><strong>达到稳定门槛后再做权重固化。</strong>把成熟的 scaffold 经验蒸馏进参数，但重新跑完整安全与遗忘评测。</li>
+      </ol>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>主材料为 arXiv v1（2026-07-14，97 页、12 幅图）及作者维护的项目与论文清单。本文复核了论文正文、图表、附录、公开 LaTeX 与当前清单，并用 SEAL、ACE、WebRL、DGM 原论文校准四类代表机制。数值均为各论文发布方报告，本次未重新训练模型或独立复现实验；配套清单持续更新，文献计数会随版本变化。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2607.13104">Self-Improvements in Modern Agentic Systems: A Survey（arXiv）</a></li>
+        <li><a href="https://selfimproving-agent.github.io/">作者项目页与分类导航</a></li>
+        <li><a href="https://github.com/selfimproving-agent/awesome-Self-Improving-Agents">作者维护的论文、源码与版本记录</a></li>
+        <li><a href="https://x.com/HuggingPapers/status/2078937898175377479">DailyPapers / HuggingPapers 发布帖</a></li>
+        <li><a href="https://arxiv.org/abs/2506.10943">SEAL: Self-Adapting Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2510.04618">ACE: Agentic Context Engineering</a></li>
+        <li><a href="https://arxiv.org/abs/2411.02337">WebRL: Self-Evolving Online Curriculum RL</a></li>
+        <li><a href="https://arxiv.org/abs/2505.22954">Darwin Gödel Machine</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
