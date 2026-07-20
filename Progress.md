@@ -1,5 +1,33 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-20 Self-Guided TTT 长上下文测试时训练深读
+
+### 任务与材料边界
+
+- 深度读取 Xinyu Zhu 于 2026-07-17 发布的 Self-Guided TTT 主帖，以及 arXiv:2607.09415 v1 的 15 页正文、算法、主表、注意力案例、效率曲线、附录、prompt 表与 TeX 源文件。
+- 交叉核验 LongBench-v2 官方仓库/论文、LongBench-Pro 论文/数据集、qTTT、Lost in the Middle 与 TTT++；通过数据集公开统计确认 LongBench-v2 全集 503 题、LongBench-Pro 1,500 题且英中各 750。
+- Twitter adapter 需要浏览器会话，而仓库规则禁止未授权占用用户 Chrome；改用公开后台接口取得主帖全文、媒体与元数据。后续自回复未能在无浏览器条件下稳定取得，未把缺失串文当作证据。论文正文已经覆盖完整方法、结果和附录。
+- 截至 2026-07-20，论文页、Hugging Face 页面与公开检索未显示官方实现仓库；本轮未独立运行训练或复现实验，性能均标为作者报告。
+
+### 关键判断与独立 Insight
+
+- S-TTT 的真正贡献是把长上下文 TTT 的控制面从“如何更新参数”扩展到“哪些 token 有资格产生更新”：基础模型先选最多 8 个问题相关原文 span，再用 query-projection rank-16 LoRA 做 16 步 next-token training，最后仍以完整上下文回答并按实例重置 adapter。
+- 论文最强证据是等长训练 token 下，Qwen / LongBench-v2 从 Base 40.4、Random Span TTT 38.9 到 answer-aware GPT-5.5 oracle span 45.9，说明训练数据质量能把同一适配流程从负收益变为正收益。
+- 独立复算摘要的最高 15%：Qwen / LongBench-v2 64k–128k 从 30.7 到 35.3，绝对提升 4.6pp，相对提升 14.98%；其余七个主表格子的相对提升约 1.0%–11.9%，因此 15% 是最佳桶而不是平均收益。
+- 方法更像“证据放大器”而非“证据发现器”：它必须先通读全文并选对证据才能通过梯度增强；LongBench-Pro 上 Qwen/Llama 的 fallback 达 21.5%/39.9%，直接暴露选择器上限。
+- 将 span selector 视为实例级课程设计器：错误检索不只污染 prompt，还会经梯度写入临时权重。实验每题重置 adapter 限制了风险，但作者设想的会话级复用会新增跨问题污染与文档投毒面，生产化需要更新闸门、作用域、回滚点和审计。
+- 证据不足项包括：主表未给逐桶样本数、置信区间或多 seed；注意力机制只有四个定性案例；效率只有 H200 归一化曲线，没有绝对延迟、显存、吞吐和并发；附录给了最终回答 prompt，但没有关键的 span annotation prompt、解析规则、最终学习率与完整运行配置。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/self-guided-ttt-long-context-llms.html`，覆盖真实问题、两阶段机制、完整实验协议、主表复算、fallback、注意力与效率边界、术语、复现缺口、独立 insight 和生产建议。
+- 更新 `_data/notes.yml`，新增 Paper Note 入口；公开笔记只保留读者所需的来源与证据边界，不包含本地路径、抓取命令或临时材料。
+- Notes 索引校验通过：`notes index ok: 137 entries, 137 top-level note html files`；定向生成痕迹扫描与 `git diff --check` 均无异常。
+- 目标页面结构检查通过：唯一 `main`、唯一证据附录、14 个唯一 id、无重复 id 或失效页内锚点；正文约 7,273 个非空白字符，3 张表格均由响应式容器包裹，MathJax 已加载。
+- Jekyll 在隔离输出目录中构建成功，耗时约 8.5 秒；仅出现仓库既有的 Faraday 可选依赖提示、GitHub Metadata 未认证和 API 限流提示，新笔记无构建错误。
+- 独立无头 Chromium 在 1440×1200 与 390×844 两个视口渲染均返回 HTTP 200：页面级横向溢出为 0，2 个 MathJax 容器正常，控制台错误、页面异常、失败请求、坏图与失效锚点均为 0；桌面和手机全页截图复检未发现错位、截断或不可读结构。
+- 提交时只纳入本任务新增笔记、索引条目和本节 Progress 增量；仓库中其他并行任务改动继续保留。
+
 ## 2026-07-20 `$deep` 显式触发修复
 
 ### 问题与根因
