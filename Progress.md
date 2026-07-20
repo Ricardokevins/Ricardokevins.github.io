@@ -1,5 +1,29 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-20 视频模型 RL 后训练 X Article 深读
+
+### 任务与材料边界
+
+- 深读 Anirudha Majumdar 2026-07-18 发布的 X Article《Understanding Video Models: Part III - RL Post-Training》，完整核对正文、公式与三段对比视频，并追踪 Diffusion-DPO、Flow-DPO / VideoReward、Flow-GRPO、DanceGRPO、RewardDance、Epipolar-DPO、VideoGPA、VGGRPO 的论文和官方项目资料。
+- 未复跑大型视频生成模型训练；论文数据规模、奖励提升、几何指标和人评结果按发布方报告陈述。方法关系、证据强弱、原文笔误和工程建议由一手材料交叉分析得出。
+- X 站点专用读取入口需要浏览器会话，按仓库安全规则未占用用户前台 Chrome；主材料通过公开只读接口完整还原，并用论文、项目页和媒体原文件补足。
+
+### 关键判断与变更
+
+- 新增 `notes/tech-analysis/video-model-rl-post-training.html`，以“问题 → DPO / GRPO 机制 → ODE→SDE → 证据账本 → 可验证性光谱 → 限制 → 独立 insight → 实践建议”组织长篇解读。
+- 核心判断是：DPO / GRPO 正在成为可复用的优化管道，真正瓶颈转向奖励的可观测性与外部有效性；视频所谓 RLVR 从 OCR / 计数规则、VLM 偏好到极线 / 4D 几何代理强弱不等，机器可计算不等于不可作弊的真值。
+- 核对 Flow-GRPO 的 headline 实证主要属于 T2I 而非 T2V；视频直接证据主要来自 DanceGRPO。RewardDance 的高 reward variance 只能作为防模式坍塌的诊断信号，不能单独证明没有 reward hacking。
+- 确认原文 VGGRPO 段把支持动态场景的 4D 几何模型误写成 VideoGPA；结合 VGGRPO 论文，正确归属应是 VGGRPO 的 Latent Geometry Model。
+- 提出分层 reward stack、独立验收裁判、奖励适用域、不确定性降权、Pareto front 和在线探索→人工 / 多裁判复核→离线 DPO 的闭环建议。
+- 在 `_data/notes.yml` 登记新笔记入口；共享 `Progress.md` 中保留并行任务已有内容，本任务提交时只选择性暂存本节。
+
+### 验证状态
+
+- 新笔记定向审计通过：约 8,154 个可见字符，10 个成对 section、唯一 `<main>`、唯一且位于末节的 `evidence-appendix`；页面 ID 无重复，公开生成痕迹、本地路径、占位符、替换字符和空图片 alt 扫描均无结果。
+- `git diff --check` 对本任务笔记、索引和 Progress 增量通过。首次全站 Notes 索引检查曾被并行任务中新建但尚未登记的页面短暂阻塞；索引补齐后重跑通过：`notes index ok: 137 entries, 137 top-level note html files`。
+- Jekyll 在隔离输出目录中构建成功，耗时约 11.6 秒；仅有仓库既有的 Faraday 可选依赖提示、GitHub Metadata 未认证和远端 API 限流提示，不影响静态页面生成。
+- 系统 Chrome headless 在 1440×1200 与 390×844 两个视口渲染通过：HTTP 200，整页横向溢出为 0，三处 MathJax 公式已渲染，手机端 760px 宽表格在 364px 容器内局部滚动；Notes / All Notes / Home 导航、唯一主内容、末节证据附录均正常，console、page error 与功能请求失败均为 0。
+
 ## 2026-07-20 `$deep` 显式触发修复
 
 ### 问题与根因

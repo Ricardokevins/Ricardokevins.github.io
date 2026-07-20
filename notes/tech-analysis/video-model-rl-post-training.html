@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视频模型 RL 后训练深读：真正的瓶颈不是优化器，而是奖励能否代表世界</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true, packages: { '[+]': ['ams', 'noerrors', 'noundefined'] } },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme: light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#5f686f; --line:#dcd6c8; --accent:#b55336; --accent-soft:#f8e9df; --info:#285f73; --info-soft:#e8f2f4; --warn:#8b5a18; --warn-soft:#faf0d8; --good:#356859; --good-soft:#e8f2ed; --shadow:0 16px 44px rgba(31,37,40,.08); --radius:10px; --max:1100px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.78; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header, main { width:min(var(--max), calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(38px,7vw,78px) 0 28px; }
+    .kicker { margin-bottom:12px; color:var(--accent); font-weight:800; letter-spacing:.04em; }
+    h1 { max-width:980px; margin:0; font:760 clamp(32px,5vw,58px)/1.12 var(--serif); }
+    .lede { max-width:900px; margin:18px 0 0; color:var(--muted); font-size:clamp(17px,2vw,20px); }
+    main { display:grid; gap:30px; padding-bottom:68px; }
+    section { padding-top:30px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3 { margin:0 0 12px; line-height:1.3; }
+    h2 { font-size:clamp(24px,3.2vw,34px); }
+    h3 { margin-top:22px; color:var(--accent); font-size:20px; }
+    p { margin:12px 0; } ul,ol { padding-left:1.35rem; } li { margin:7px 0; }
+    .grid-2,.grid-3 { display:grid; gap:14px; margin:18px 0; }
+    .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card { min-width:0; padding:17px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3 { margin:0 0 8px; font-size:17px; } .card p { margin:0; color:var(--muted); font-size:14.5px; }
+    .callout { margin:18px 0; padding:15px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); background:var(--accent-soft); }
+    .callout > b { display:block; margin-bottom:6px; color:var(--accent); }
+    .callout.info { border-left-color:var(--info); background:var(--info-soft); } .callout.info > b { color:var(--info); }
+    .callout.warn { border-left-color:var(--warn); background:var(--warn-soft); } .callout.warn > b { color:var(--warn); }
+    .callout.good { border-left-color:var(--good); background:var(--good-soft); } .callout.good > b { color:var(--good); }
+    .flow { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin:20px 0; }
+    .flow > div { padding:14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); font-size:14px; }
+    .flow b { display:block; color:var(--accent); } .flow span { color:var(--muted); }
+    .math-display { margin:16px 0; padding:13px 15px; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    .table-wrap { margin:16px 0; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .table-wrap table { width:100%; min-width:760px; border-collapse:collapse; font-size:14.5px; }
+    th,td { padding:10px 13px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:var(--accent-soft); font-weight:700; } tr:nth-child(even) td { background:rgba(0,0,0,.015); }
+    .def-list { display:grid; gap:10px; margin:18px 0; }
+    .def-list > div { display:grid; grid-template-columns:minmax(150px,.25fr) minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .def-list b { color:var(--accent); }
+    @media (max-width:800px) { header,main { width:min(100% - 24px,var(--max)); } .grid-2,.grid-3,.flow { grid-template-columns:1fr; } .def-list > div { grid-template-columns:1fr; gap:5px; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">TECH ANALYSIS · VIDEO GENERATION · RL POST-TRAINING</div>
+    <h1>视频模型 RL 后训练：真正的瓶颈不是优化器，而是奖励能否代表世界</h1>
+    <p class="lede">Anirudha Majumdar 的综述准确抓住了视频生成后训练从人类偏好走向自动奖励的主线。但更重要的判断是：DPO、GRPO 只是把奖励写回生成器的管道；视频 RL 的能力上限，最终取决于奖励是否覆盖了人真正关心的时间、几何与物理属性，以及生成器是否能在不钻代理指标空子的情况下提高这些属性。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>这篇文章值得读，因为它用一条清楚的演化线串起 Diffusion-DPO、Flow-DPO、Flow-GRPO、DanceGRPO、RewardDance，以及 Epipolar-DPO、VideoGPA、VGGRPO：先把人类偏好变成成对排序，再让生成器在线探索，最后尝试用几何约束代替昂贵且主观的人类标注。文章的方向判断是对的，但“RLHF / RLVR”这组二分仍然过粗。</p>
+      <div class="grid-3">
+        <div class="card"><h3>优化器正在商品化</h3><p>DPO、GRPO、ODE→SDE、少步采样等训练接口逐渐复用；真正稀缺的是能稳定排序视频轨迹的奖励与评测。</p></div>
+        <div class="card"><h3>可验证是一条光谱</h3><p>文字 OCR、目标计数较接近规则验证；极线误差和 4D 重建仍依赖估计器，只是比人类审美更客观，不是真值。</p></div>
+        <div class="card"><h3>世界一致性不能只靠一项指标</h3><p>几何稳定、主体运动、语义遵循、视觉质量可能相互冲突；单一奖励容易把复杂世界压扁成可投机的分数。</p></div>
+      </div>
+      <div class="callout good"><b>一句话结论</b><p>视频模型后训练的核心竞争会从“谁把 LLM 的 RL 算法搬得更快”，转向“谁能构造覆盖时间因果与三维世界、可审计且难被利用的奖励组合”。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>为什么预训练之后还需要后训练</h2>
+      <p>视频生成器的预训练目标通常要求模型预测噪声、速度场或干净样本，它回答的是“真实视频分布大致长什么样”。产品真正关心的却是另一组问题：是否严格遵循提示词、人物是否在运动中保持身份、镜头是否平滑、空间结构是否随视角变化仍自洽、动作是否符合物理规律。训练数据里这些属性既没有被显式标注，也未必同时出现，因此扩大预训练并不能保证它们被可靠提取出来。</p>
+      <p>Majumdar 用一个 KL 正则化的期望奖励目标概括后训练：</p>
+      <div class="math-display">\[
+      \max_{p_\theta}\;\mathbb{E}_{c\sim\mathcal{D},\,v\sim p_\theta(\cdot\mid c)}
+      \left[r(v,c)-\beta D_{\mathrm{KL}}\!\left(p_\theta(\cdot\mid c)\,\|\,p_{\mathrm{ref}}(\cdot\mid c)\right)\right].
+      \]</div>
+      <p>其中 (c) 是文本、首帧等条件，(v) 是生成视频，(r(v,c)) 是奖励，(p_{\mathrm{ref}}) 是预训练参考模型。第一项鼓励更高分的输出，第二项限制新模型离原模型过远。这个目标揭示了所有方法共同的三角关系：<strong>提高目标属性、保留基础能力、控制探索成本</strong>。</p>
+      <div class="callout warn"><b>KL 不是安全证明</b><p>KL 约束能减缓模式坍塌和奖励投机，却不能证明奖励本身正确。若奖励错误地偏好某种伪影，贴近参考模型只会限制模型钻空子的幅度，不会把错误代理变成真实质量。</p></div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：视频怎样变成一条可优化的策略</h2>
+      <div class="flow" aria-label="视频生成强化学习控制流">
+        <div><b>1. 条件</b><span>文本、首帧、参考图或镜头约束</span></div><div><b>2. 轨迹</b><span>从噪声经过多步去噪或速度积分</span></div><div><b>3. 成片</b><span>解码为像素视频，或保留在潜空间</span></div><div><b>4. 奖励</b><span>人类偏好、VLM、规则或几何模型打分</span></div><div><b>5. 更新</b><span>DPO 离线排序，或 GRPO 在线提升高分轨迹</span></div>
+      </div>
+      <h3>DPO：不显式训练奖励模型，也不等于没有奖励假设</h3>
+      <p>DPO 接收同一条件下的优选视频 (v_w) 与劣选视频 (v_l)，直接提高优选样本相对参考模型的概率优势。它避开了“先训练标量奖励模型、再跑在线 RL”的两阶段流程。Diffusion-DPO 的难点是扩散模型没有像自回归语言模型那样容易计算的序列似然，因此借助 evidence lower bound 构造可微近似；Flow-DPO 再把这套思路扩展到 flow matching。</p>
+      <p>DPO 常被放进 RLHF 家族讨论，但它本质上是<strong>离线偏好优化</strong>：模型不会在训练时持续生成新视频并探索奖励函数。它的优势是稳定、工程成本较低；代价是受离线偏好对覆盖范围约束，超出数据分布后仍可能错误外推。</p>
+      <h3>GRPO：同题多采样，用组内相对分数替代 critic</h3>
+      <p>GRPO 对同一提示生成一组样本，用组内标准化奖励估计 advantage：</p>
+      <div class="math-display">\[
+      A_i=\frac{r_i-\operatorname{mean}(r_1,\ldots,r_K)}{\operatorname{std}(r_1,\ldots,r_K)}.
+      \]</div>
+      <p>高于组均值的轨迹被提升，低于组均值的轨迹被压低，不再额外训练一个高维视频 critic。与 DPO 相比，它能跟随当前模型的真实输出分布在线探索；但视频采样极贵，且同一提示下奖励方差太小时，组内相对优势会变得噪声化。</p>
+      <h3>Flow-GRPO：为什么要把 ODE 改写成 SDE</h3>
+      <p>现代 flow matching 常用确定性 ODE 采样。只有初始噪声而没有逐步随机动作时，条件转移概率和逐步重要性比难以直接使用，探索也受限。Flow-GRPO 构造与原 ODE 在各时刻保持相同边缘分布的 SDE，引入可记录的随机转移；同时在训练采样时把 40 步降到 10 步，推理时恢复完整步数。论文报告这使数据采集得到超过 4 倍加速，而最终奖励没有明显下降。</p>
+      <div class="callout info"><b>不要把迁移性写得过头</b><p>Flow-GRPO 原论文的主要实证是文本生成图像：GenEval 从 63% 到 95%，视觉文字准确率从 59% 到 92%。它提供了可迁移到视频 flow 模型的方法接口，但原论文并没有用同等规模的视频实验直接证明这些 headline 数字在视频上成立。视频验证主要来自同期 DanceGRPO。</p></div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据链：哪些结果最有说服力</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>工作</th><th>训练信号与方式</th><th>最强证据</th><th>应该保留的边界</th></tr></thead>
+        <tbody>
+          <tr><td>Diffusion-DPO</td><td>851K 图像偏好对；离线 DPO</td><td>把 DPO 的似然比目标适配到扩散过程，并用大规模众包偏好验证</td><td>是图像而非视频；ELBO 是似然近似</td></tr>
+          <tr><td>Flow-DPO / VideoReward</td><td>182K 人工视频偏好，覆盖 12 个生成模型；离线 DPO</td><td>同时标注视觉质量、运动质量和文本对齐；Flow-DPO 优于论文内 SFT、Flow-RWR</td><td>标注与评测共享质量轴；绝对泛化和商业模型可迁移性仍有限</td></tr>
+          <tr><td>Flow-GRPO</td><td>规则或模型奖励；在线 GRPO</td><td>ODE→SDE 与少步训练采样有清楚消融；10 步相对 40 步超过 4× 加速</td><td>headline 实验是 T2I，不是 T2V；规则检测器本身仍可能被利用</td></tr>
+          <tr><td>DanceGRPO</td><td>图像/视频美学、对齐、运动与二值奖励；在线 GRPO</td><td>覆盖 diffusion / rectified flow、T2I / T2V / I2V；HunyuanVideo 的视觉与运动奖励相对提升 56% / 181%</td><td>百分比是相对代理分数，不是人类偏好同幅度提升；人评样本分别约 240 / 200 / 200</td></tr>
+          <tr><td>RewardDance</td><td>VLM 生成式 pairwise judge，以 “Yes” token 概率为分数</td><td>从 1B 扩到 26B，并加入任务指令、参考示例和推理上下文；覆盖图像和视频后训练</td><td>“高 reward variance = 未 hacking”只是诊断性代理，不能单独证明真实质量未被利用</td></tr>
+          <tr><td>Epipolar-DPO</td><td>Sampson 极线误差自动构造偏好对；离线 DPO</td><td>论文报告极线误差降低约 31%，人评一致性从 54% 提至 72%</td><td>依赖对应点与基础矩阵估计；训练聚焦静态场景和相机运动</td></tr>
+          <tr><td>VideoGPA</td><td>几何基础模型重建点云并回投影，构造稠密偏好；离线 DPO</td><td>比单一极线约束覆盖更完整的场景级三维一致性；少量偏好对也能改善多项几何指标</td><td>仍在 RGB 空间重复解码；核心几何先验来自外部模型，且假设偏静态</td></tr>
+          <tr><td>VGGRPO</td><td>潜空间 4D 几何模型；相机平滑 + 回投影奖励；在线 GRPO</td><td>支持动态场景，跳过反复 VAE 解码，并能做潜空间测试时奖励引导</td><td>“4D reward”仍是学习到的估计器；分离静态区域、相机与物体运动本身会出错</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Flow-DPO 的真正贡献更偏数据，而非全新优化器</h3>
+      <p>文章对此判断准确。VideoAlign 工作最有长期价值的部分，是 182K 人工偏好、12 个视频模型、多维质量轴，以及 26.5K 三元组的 VideoGen-RewardBench。Flow-DPO、Flow-RWR 和 Flow-NRG 是把既有 KL 正则化对齐框架接到 flow 模型上；数据定义了什么叫“更好”，优化器负责把这一判断写回生成器。若偏好数据把大动作误当作好运动、把高饱和度误当作高质量，算法会高效地放大这种偏差。</p>
+      <h3>RewardDance 的创新是奖励接口，而不是“推理天然正确”</h3>
+      <p>传统 VLM reward model 常在隐藏状态后接回归头，并用 Bradley–Terry loss 拟合成对偏好。RewardDance 改为询问“图 2 是否优于图 1”，把 “Yes” 的 token 概率当作奖励，让训练与 VLM 原生 next-token prediction 对齐。扩展模型规模、加入任务化指令、参考样例和理由文本，确实给 reward scaling 一条更自然的路径。</p>
+      <p>但推理链只是提供更多判别上下文，不会自动让裁判校准。论文把训练后期 reward variance 较高解释为模型仍保持探索、没有模式坍塌，这是有用信号，却不是充分证明：高方差也可能来自裁判不稳定、prompt 难度差异或策略在多个漏洞间切换。真正的防 hacking 证据仍需要保留集人评、跨奖励模型复核和对抗样本。</p>
+    </section>
+
+    <section id="verifiability">
+      <h2>“可验证奖励”到底有多可验证</h2>
+      <p>LLM 的数学 RLVR 常能把最终答案交给符号系统或单元测试，判定与模型审美相对独立。视频没有统一的最终答案。文章主动承认这里的 verifiability 定义并不清楚，并把“客观、非人类偏好”作为工作定义。这个口径方便建立研究版图，却容易把三类不同强度的证据混在一起。</p>
+      <div class="grid-3">
+        <div class="card"><h3>规则可判定</h3><p>目标个数、颜色、空间关系、屏幕文字是否匹配。接近硬验证，但仍依赖检测器、OCR 与数据模板。</p></div>
+        <div class="card"><h3>模型可测量</h3><p>美学、运动自然度、提示对齐，由 VLM 或 reward model 评分。可自动化，但本质是学习到的偏好代理。</p></div>
+        <div class="card"><h3>物理代理约束</h3><p>极线误差、相机轨迹平滑、点云回投影一致性。数学形式明确，但输入量来自不完美的匹配与重建模型。</p></div>
+      </div>
+      <p>Epipolar-DPO 的 Sampson error 是典型例子。对应点 (x,x') 与基础矩阵 (F) 理想情况下满足：</p>
+      <div class="math-display">\[
+      {x'}^{\!\top} F x = 0.
+      \]</div>
+      <p>它比“这段视频是否好看”客观得多，却只约束两帧投影几何，不直接证明深度正确、物体刚性、遮挡合理或动力学真实。低纹理表面、快速运动、滚动快门、反射、粒子、形变主体都可能让对应点或 (F) 的估计失真。奖励可复算，不等于被测属性已被无误差地识别。</p>
+      <p>VideoGPA 把约束从帧对扩展到场景级：几何基础模型估计相机与点云，聚合后再投影回各帧，比较投影与原始观测。VGGRPO 再用 4D 重建模型只聚合静态区域，并训练一个 latent geometry model 直接从视频潜变量预测几何，减少 RGB 解码成本。这条路线体现的不是“奖励越来越真”，而是<strong>奖励的覆盖面、计算成本与估计偏差在重新平衡</strong>。</p>
+      <div class="callout warn"><b>原文的一处明确笔误</b><p>VGGRPO 段落写道为解决静态场景假设，“VideoGPA utilizes geometric foundation models that work with dynamic scenes”。结合 VGGRPO 论文可确认，这里应为 VGGRPO：支持动态场景的是其基于 4D reconstruction 的 Latent Geometry Model；VideoGPA 正是它试图超越的静态 / RGB-space 前序方案。</p></div>
+    </section>
+
+    <section id="terms">
+      <h2>术语对齐</h2>
+      <div class="def-list">
+        <div><b>Diffusion / 扩散模型</b><span>从噪声出发，多步预测噪声或干净样本，逐渐还原图像或视频。</span></div>
+        <div><b>Flow matching</b><span>学习把噪声分布连续搬运到数据分布的速度场；常用确定性 ODE 积分采样。</span></div>
+        <div><b>DPO</b><span>直接偏好优化。用优选 / 劣选样本相对参考模型的概率差更新策略，不需要单独训练显式 reward model。</span></div>
+        <div><b>GRPO</b><span>组相对策略优化。同一条件采样多个结果，用组内相对奖励估计 advantage，省去独立 critic。</span></div>
+        <div><b>ODE → SDE</b><span>把确定性流改写为保持边缘分布的随机过程，以获得逐步转移概率和更强探索。</span></div>
+        <div><b>Preference pair</b><span>同一条件下的一对生成结果，其中一个被标成更好；标签可来自人、VLM 或自动指标。</span></div>
+        <div><b>Sampson error</b><span>点对应偏离极线约束的一阶近似几何误差，计算便宜，但依赖匹配点与基础矩阵质量。</span></div>
+        <div><b>Reward hacking</b><span>生成器提高代理奖励，却没有提高甚至损害真实目标，例如牺牲多样性来迎合单一裁判。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>文章没有证明什么</h2>
+      <ul>
+        <li><strong>没有证明视频 RL 已像 LLM RLVR 一样成熟。</strong> 文章自己指出该方向仍稀疏。多项工作发布时间集中在 2025–2026，实验协议、基础模型、奖励和评测集差异很大。</li>
+        <li><strong>没有证明 DPO 或 GRPO 普遍优于其他后训练方法。</strong> 每篇论文只在自己的数据、模型和预算上比较有限基线；跨论文 headline 数字不能直接排序。</li>
+        <li><strong>没有证明几何更好就等于视频整体更好。</strong> 极线与回投影约束偏向相机和刚性结构；人物表演、流体、衣物、光照变化等重要内容可能不服从同一假设。</li>
+        <li><strong>没有给出端到端成本曲线。</strong> 在线视频 RL 要同题多采样、保存去噪轨迹、计算视频奖励并反向传播。少步采样和潜空间奖励降低成本，却不能从论文数字直接推出商业部署价格。</li>
+        <li><strong>演示视频不是独立评测。</strong> 原文展示的 Flow-DPO、DanceGRPO、VGGRPO 前后对比能帮助理解失败模式，但属于作者挑选的定性样例，不能替代盲测、分桶结果和失败案例。</li>
+      </ul>
+      <div class="callout warn"><b>最关键的缺失实验</b><p>需要统一基础模型、统一提示集和等算力预算，同时比较人类偏好奖励、VLM 奖励、极线奖励、场景级几何奖励与多奖励组合；再用未参与训练的人工盲评和下游 3D / 机器人任务验证。没有这组对照，就无法判断增益来自优化器、奖励质量、数据覆盖还是额外算力。</p></div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：奖励正在变成视频模型的“可观测世界接口”</h2>
+      <h3>1. 后训练的瓶颈会从 policy optimization 转向 observability</h3>
+      <p>DPO 与 GRPO 解决的是“已知一个分数后怎样更新生成器”；更难的问题是从像素序列中观测出身份、深度、相机、主体运动、接触、因果和审美。视频世界的状态大多不可直接见，奖励模型实际承担了状态估计器的角色。奖励看不见的属性，策略就无法稳定优化；奖励误判的属性，策略就会学会利用。</p>
+      <h3>2. 最有前景的不是单一万能 reward，而是分层 reward stack</h3>
+      <p>更可靠的系统应把奖励分层：底层用 OCR、目标计数、相机轨迹与几何约束提供局部硬信号；中层用身份、动作和语义模型覆盖任务属性；顶层用人类或强 VLM 处理风格、叙事与整体偏好。各层分别记录置信度和适用条件，而不是先加权成一个不可解释的总分。发生冲突时，系统应该知道是“几何更稳但动作更僵”，而非只看到总奖励下降 0.03。</p>
+      <h3>3. 潜空间奖励既是效率优化，也是新的耦合风险</h3>
+      <p>VGGRPO 直接把生成潜变量接到几何模型，省去反复 VAE 解码，也减少真实图像几何模型面对生成像素时的域偏移。但这让 generator latent 与 judge latent 更紧密耦合：策略可能找到只在潜空间令几何头满意、解码后却未必对应真实改善的方向。需要用独立 RGB 几何模型、人评和下游重建任务做外部校准。</p>
+      <h3>4. 在线 RL 与离线 DPO 不是替代关系，而是数据飞轮的两段</h3>
+      <p>离线 DPO 适合把昂贵的人类或几何偏好稳定写入模型；在线 GRPO 适合在当前策略分布上发现新失败和新高分轨迹。更合理的闭环是：在线探索发现边界样本 → 多裁判与人工复核 → 沉淀高质量 preference pairs → 离线稳定更新 → 再进入受控在线探索。只做在线 RL 容易追逐瞬时漏洞，只做离线 DPO 则会被固定数据覆盖上限锁住。</p>
+      <h3>5. 对机器人世界模型而言，评测价值高于画面美学</h3>
+      <p>Majumdar 的研究背景使几何路线格外重要：如果视频模型用于机器人策略评估或视觉规划，生成一段“看起来合理”的视频远远不够。奖励必须对动作条件、接触事件、物体持久性与不确定性敏感。几何后训练是必要起点，但在能把像素漂亮度、三维一致性与可行动因果分开校准之前，视频模型不应被当作高风险策略的可信模拟器。</p>
+    </section>
+
+    <section id="practice">
+      <h2>研究与工程实践建议</h2>
+      <ol>
+        <li><strong>先定义失败分类，再选优化器。</strong> 提示不遵循、身份漂移、镜头抖动、几何破碎和物理错误需要不同观测器，不应被一个美学分数统治。</li>
+        <li><strong>为每个 reward 写适用域。</strong> 明确它对静态 / 动态、刚性 / 非刚性、纹理、遮挡、镜头类型和视频长度的假设。</li>
+        <li><strong>至少保留一个独立裁判。</strong> 训练奖励、早停指标和最终验收不能完全共享同一 VLM 或几何模型。</li>
+        <li><strong>报告 Pareto front，而非单一总分。</strong> 同时呈现提示遵循、视觉质量、运动、几何、身份、多样性、计算成本与人评。</li>
+        <li><strong>把不确定性写进奖励。</strong> 当对应点、相机位姿或 VLM 判断不可靠时，降低权重或拒绝更新，而不是把低置信估计当作精确标签。</li>
+        <li><strong>保留失败样本和训练轨迹。</strong> Reward hacking 往往先出现在少数 prompt 或运动类型；只汇报均值会掩盖局部坍塌。</li>
+      </ol>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>主材料为 2026-07-18 发布的 X Article，正文、公式、三段示例视频及关联媒体均已核对。方法与数字回到论文、官方项目页和公开实现交叉验证；本文未复跑大型视频模型训练，论文实验数字均按发布方报告陈述，方法分类、证据强弱、笔误识别与工程判断属于基于一手资料的分析。平台文章和预印本可能继续修订。</p>
+      <ul>
+        <li><a href="https://x.com/Majumdar_Ani/status/2078508177620926531">Anirudha Majumdar：Understanding Video Models: Part III - RL Post-Training</a></li>
+        <li><a href="https://arxiv.org/abs/2311.12908">Diffusion Model Alignment Using Direct Preference Optimization</a></li>
+        <li><a href="https://arxiv.org/abs/2501.13918">Improving Video Generation with Human Feedback（Flow-DPO / VideoReward）</a>；<a href="https://gongyeliu.github.io/videoalign/">官方项目页</a></li>
+        <li><a href="https://arxiv.org/abs/2505.05470">Flow-GRPO: Training Flow Matching Models via Online RL</a>；<a href="https://github.com/yifan123/flow_grpo">官方实现</a></li>
+        <li><a href="https://arxiv.org/abs/2505.07818">DanceGRPO: Unleashing GRPO on Visual Generation</a></li>
+        <li><a href="https://arxiv.org/abs/2509.08826">RewardDance: Reward Scaling in Visual Generation</a></li>
+        <li><a href="https://arxiv.org/abs/2510.21615">Epipolar Geometry Improves Video Generation Models</a>；<a href="https://epipolar-dpo.github.io/">官方项目页</a></li>
+        <li><a href="https://arxiv.org/abs/2601.23286">VideoGPA: Distilling Geometry Priors for 3D-Consistent Video Generation</a>；<a href="https://github.com/Hongyang-Du/VideoGPA">官方实现</a></li>
+        <li><a href="https://arxiv.org/abs/2603.26599">VGGRPO: Towards World-Consistent Video Generation with 4D Latent Reward</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
