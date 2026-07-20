@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Understanding Reasoning 深读：预训练决定 RL 的起点，也塑造它的学习速度</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f2efe8;
+      --surface: #fffdfa;
+      --ink: #20272d;
+      --muted: #59656c;
+      --line: #d7d6cd;
+      --accent: #b34d32;
+      --accent-soft: #f8eae3;
+      --accent-2: #326c73;
+      --accent-2-soft: #e8f1f1;
+      --shadow: 0 14px 38px rgba(31, 39, 45, .07);
+      --radius: 12px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(179,77,50,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(50,108,115,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 48px 48px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 76px) 0 28px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .05em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 60px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    strong { font-weight: 740; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; color: var(--accent); font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.info > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    figure { margin: 22px 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 7px; }
+    figcaption { margin-top: 9px; color: var(--muted); font-size: 14px; }
+    .math-display { margin: 16px 0; padding: 12px 14px; max-width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 740; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    code { padding: 2px 6px; border-radius: 5px; background: #ebe6da; color: #7b3322; font-family: var(--mono); font-size: .92em; }
+    .small { color: var(--muted); font-size: 14px; }
+    footer { padding: 0 0 50px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+      table { min-width: 640px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Pretraining × Reinforcement Learning</div>
+    <h1>Understanding Reasoning 深读：预训练决定 RL 的起点，也塑造它的学习速度</h1>
+    <p class="lede">这篇论文最重要的结论，不是“强化学习占总算力的 20%–28%”，而是 RL 的投资回报率本身由预训练塑造：预训练既决定后训练开始时有多少正确行为可供搜索，也改变 RL 把奖励转成能力的速度。但它没有证明 RL 能从零发明新算法，更没有给出可直接套用到通用大模型的预算公式。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>Shen 等人把十种棋类 Transformer、十一档预训练预算、四种 RL 模型规模和 36 条预训练—RL 组合曲线放进同一个受控试验台。最可信的新证据是：<strong>更低的预训练损失关联更高的 RL 后性能，而更多的预训练 token 又关联更陡的局部 RL 学习斜率</strong>。这让“先预训练多少、再强化多少”从静态预算切分，变成一个耦合优化问题。</p>
+      <div class="grid-3">
+        <div class="card"><h3>起点由预训练决定</h3><p>参考 RL 预算下的性能与预训练损失高度单调相关；随着参考预算增大，相关强度由约 0.93 上升到 0.99。</p></div>
+        <div class="card"><h3>速度也由预训练决定</h3><p>局部 RL 斜率与预训练 token 数的相关系数约为 0.84。相同 RL 算力，底座训练经历不同，回报并不相同。</p></div>
+        <div class="card"><h3>发现伴随放错</h3><p>RL 能把低概率正确棋步推入 top-3，也会把错误主模态进一步放大；困难题上后者明显多于前者。</p></div>
+      </div>
+      <div class="callout">
+        <b>一句话结论</b>
+        预训练建立可搜索的行为覆盖并改善可训练性，RL 再围绕奖励重新分配概率质量。论文支持的是“从尾部救回已有但罕见的正确行为”，而不是“从严格零概率创造原子能力”。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>它真正要回答的问题</h2>
+      <p>常见 scaling law 把预训练写成模型规模 (N)、token 数 (T) 与损失 (L) 的关系；常见后训练论文则从一个固定底座出发，比较算法、奖励或推理预算。两类研究之间缺了一层：<strong>当底座本身变化时，RL 的学习曲线怎样变？</strong></p>
+      <p>如果 RL 只是把既有分布统一锐化，那么更好的预训练主要提高初始性能，未必提高学习斜率；如果 RL 能可靠发现尾部正确行为，那么预训练覆盖、训练时长和题目难度都应改变它的收益。作者因此需要同时控制三种变量：</p>
+      <div class="def-list">
+        <div><b>预训练状态</b><span>模型参数规模、训练 token 数与最终损失共同描述底座处在什么能力阶段。</span></div>
+        <div><b>RL 投入</b><span>用累计训练 FLOPs，而不是单纯步数，比较不同模型规模的后训练成本。</span></div>
+        <div><b>策略变化</b><span>不只看最终 pass@1，还追踪正确动作从头部、尾部或错误模态中如何迁移。</span></div>
+      </div>
+      <p>棋类是一个刻意选择的中间层：状态、合法动作和解题真值可由引擎验证，训练成本又远低于通用语言模型；但它仍包含组合搜索、多步承诺和失败恢复。因此它适合做机制实验，却不能自动代表开放域语言推理。</p>
+    </section>
+
+    <section id="pipeline">
+      <h2>受控试验台：从 54B 棋谱 token 到可验证 RL</h2>
+      <figure>
+        <img src="understanding-reasoning-pretraining-post-training-assets/pretrain-to-rl-overview.png" alt="论文总览图：棋谱预训练、带分支思维轨迹的监督微调、可验证奖励强化学习与联合 scaling law">
+        <figcaption>论文的完整管线。关键设计是所有预训练底座经过同一种 SFT，再用相同二值验证奖励进入 GRPO，使底座差异可以沿后训练曲线被追踪。图源：论文 Figure 1。</figcaption>
+      </figure>
+      <h3>1. 预训练：规模与数据预算同时展开</h3>
+      <p>每一步棋被编码为四个 token：棋子、起点、终点与特殊标志，词表仅 81。作者从 2022 年 Lichess Blitz / Rapid 棋谱构造 54B-token 语料，并按平均 Elo 800–3000 做平衡采样。十个稠密 Qwen3 风格模型覆盖 5M 到 1B 参数；十一档预算约从 (6.5\times10^{16}) 到 (6.5\times10^{19}) FLOPs，对应约 2 亿到 520 亿训练 token。</p>
+      <h3>2. SFT：先生成搜索树，再训练模型提交答案</h3>
+      <p>42K 道棋题不是只配最终答案。固定的 200M proposal model 从局面采样多个续着，把重合前缀合成树，再按深度优先顺序序列化为显式 reasoning trace；Stockfish 选择最佳延续，模型最后提交答案。这里的“思维链”因此更像候选生成与比较过程，而不是人类自然语言解释。消融显示，无轨迹 SFT 主要改善 pass@1；带轨迹 SFT 才同时改善 pass@8 与 pass@16。</p>
+      <h3>3. RL：奖励极简，搜索困难真实存在</h3>
+      <p>69.3K 道训练题中，70% 来自较容易的 B1/B2，30% 来自 B3–B5。GRPO 每组采样 8 个回答；只有完整走对目标序列才得 1 分，否则为 0。论文配置给出学习率 (10^{-5})、KL 系数 0.001、clip 0.2、温度 1.0 与最长 3072 response tokens。这个奖励消除了模糊裁判，却没有消除探索失败：策略若从未采到正确路径，就没有梯度告诉它正确答案在哪里。</p>
+      <h3>4. 测试：同时看精确率与覆盖</h3>
+      <p>独立 benchmark 有 1,480 道题，按难度分为 B1–B5。聚合结果主要用 B1–B4，因为模型几乎解不出 B5；B5 被保留用来观察机制。pass@1 衡量单次成功率，pass@16 更接近多次采样后的覆盖。训练、测试和预训练棋局在标准化棋盘状态层面去重，降低了直接记忆泄漏的可能。</p>
+    </section>
+
+    <section id="law">
+      <h2>联合 scaling law：不是一条万能直线</h2>
+      <p>作者先在每一条 RL 曲线的非饱和局部，把奖励近似为 log-RL-compute 的一次函数：</p>
+      <div class="math-display">
+        \[
+        R_{N,T}(C)=R^{\mathrm{ref}}_{N,T}+B_{N,T}\left(\log_{10}C-\log_{10}C_{\mathrm{ref}}\right).
+        \]
+      </div>
+      <p>再用预训练损失 (L_{\mathrm{pt}}(N,T)) 预测参考预算下的性能，用规模和 token 数预测 RL 斜率：</p>
+      <div class="math-display">
+        \[
+        R(C_{\mathrm{RL}},N,T)=f\!\left(L_{\mathrm{pt}}(N,T)\right)
+        +g(N,T)\left(\log_{10}C_{\mathrm{RL}}-\log_{10}C_{\mathrm{ref}}\right),
+        \]
+        \[
+        f(L)=\alpha_f+\beta_f e^{-\gamma_f L},\qquad
+        g(N,T)=\alpha_g+\beta_g\log_{10}T+\gamma_g\log_{10}N.
+        \]
+      </div>
+      <figure>
+        <img src="understanding-reasoning-pretraining-post-training-assets/joint-scaling-law.png" alt="预训练损失与参考 RL 性能、预训练 token 与 RL 学习斜率的拟合关系图">
+        <figcaption>左：更低预训练损失对应更高参考预算性能。右：更多预训练 token 对应更陡 RL 斜率。它们分别描述“起点”和“局部学习速度”，不能互相替代。图源：论文主结果。</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>验证方式</th><th>RMSE</th><th>MAE</th><th>中位 per-run (R^2)</th><th>应如何理解</th></tr></thead>
+          <tbody>
+            <tr><td>使用实测预训练损失，逐点留一</td><td>0.0102</td><td>0.0078</td><td>0.65</td><td>在已观察模型与预算附近，局部插值较准。</td></tr>
+            <tr><td>先用 Chinchilla 形式预测损失，再留一</td><td>0.0194</td><td>0.0153</td><td>-0.86</td><td>误差翻近一倍；平坦曲线使 (R^2) 尤其不稳定。</td></tr>
+            <tr><td>整种模型规模留出</td><td>0.0242</td><td>—</td><td>—</td><td>跨规模外推更难；留出 680M 时 RMSE 达 0.048。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这组结果说明公式更像<strong>局部响应面</strong>，而不是跨域定律。它对“已有实验网格内怎样分配下一批算力”有用，对“另一个模型家族应该投多少 RL”证据不足。</p>
+    </section>
+
+    <section id="allocation">
+      <h2>20%–28%：一个条件化的预算答案</h2>
+      <p>作者还拟合预训练损失面：</p>
+      <div class="math-display">
+        \[
+        L(N,T)=E+A N^{-\alpha}+B T^{-\beta},
+        \qquad E\approx0.412,\ \alpha\approx0.401,\ \beta\approx0.679.
+        \]
+      </div>
+      <p>把损失面与 RL 响应面合并，在固定总算力下搜索预训练和 RL 的最优切分。实验网格中的 20M 模型，经验最优 RL 份额随总预算由约 5% 上升到 32%；拟合后的全局 frontier 则从 50M 模型约 20% 上升到 680M 约 28%。</p>
+      <div class="callout info">
+        <b>为什么不能把 20%–28% 当通用配方</b>
+        棋类 token 极短、词表极小、奖励完全可验证，且拟合外推超出了部分实测网格；论文自己的最优区域也相当平坦。更合理的迁移结论是：随着底座可训练性增强，RL 的边际预算可能上升，因此预算优化必须联合测量，而不是直接复制百分比。
+      </div>
+      <p>另一个容易被平均分掩盖的结果是 pass@1 与 pass@16 分叉：RL 明显提高 pass@1，却让较大模型的 pass@16 大致持平或略降。也就是说，策略更会把概率压到少数高回报答案上，但候选多样性未同步增加。若部署场景允许 best-of-N、搜索或多样本验证，仅优化 pass@1 可能牺牲后续搜索空间。</p>
+    </section>
+
+    <section id="policy-evolution">
+      <h2>RL 到底改变了什么：锐化、尾部发现与错误锁定</h2>
+      <p>作者对每道题采样 128 条 reasoning traces，估计第一步棋的边际策略。先检验一个最简单假设：RL 只是对所有状态施加同一个温度，把 SFT 分布做幂次锐化。750 步时最佳全局指数约为 1.35，但统一锐化只能解释约 17% 的策略变化；即便改用中心化 logit 线性模型，整体 (R^2) 也只有约 0.56。不同状态的变化显著异质。</p>
+      <div class="def-list">
+        <div><b>正确模态放大</b><span>正确棋步在 SFT 时已位于 top-3，RL 后概率继续增加。</span></div>
+        <div><b>尾部发现</b><span>正确棋步初始概率低于 5% 且不在 top-3，训练后进入 top-3。</span></div>
+        <div><b>错误模态放大</b><span>正确棋步仍在 top-3 外，而 SFT 时最强的错误棋步进一步增大。</span></div>
+      </div>
+      <figure>
+        <img src="understanding-reasoning-pretraining-post-training-assets/policy-evolution.png" alt="不同棋题难度下正确模态放大、尾部发现和错误模态放大的比例变化">
+        <figcaption>容易题以正确模态放大为主；越到困难题，尾部发现虽增加，错误模态放大增加得更快。最难 B5 上，tail discovery 约 5%，wrong-mode amplification 接近 18%–20%。图源：论文策略演化分析。</figcaption>
+      </figure>
+      <h3>“发现”是概率意义，不是能力从无到有</h3>
+      <p>这里的 tail discovery 有严格操作定义：正确动作在 SFT 分布中已有非零但低于 5% 的估计概率，后来进入 top-3。它证明 RL 能救回罕见正确行为，<strong>没有证明正确算法在底座中严格不存在</strong>。有限采样也无法区分极小概率与真零概率。与受控组合任务中“重组已学会的原子函数”、或在 pass@K=0 任务族上观察 grokking 的工作相比，本论文给出的命题更窄，但也更可量化。</p>
+      <h3>思维链变宽，不一定变深</h3>
+      <p>训练后，reasoning tree 的分支数和宽度增加，最大深度大致持平或略降；候选棋步质量与最终承诺改善，但深度优先遍历的一致性下降、重复访问增多，长程恢复能力仍弱。它更像在学习“提出并选择更好的候选”，而不是稳定获得更深的规划算法。这也解释了为何短程 pass@1 能快速进步，而高难度长路径仍是瓶颈。</p>
+    </section>
+
+    <section id="math-transfer">
+      <h2>数学迁移实验：方向一致，证据等级更低</h2>
+      <p>作者用一条约 1B 非 embedding 参数的 OLMo-2 预训练轨迹做自然语言核验。从约 10.5B 到 200B token 取 15 个锚点，每个锚点再做固定 5B-token annealing、约 859K 条 NuminaMath-CoT SFT，然后在约 24.9K 道 GSM8K / MATH / DeepScaler 混合题上运行最多 3,000 步 GRPO。结果仍显示：更晚的预训练 checkpoint 有更好的 post-RL 水平与更快的局部收益。</p>
+      <figure>
+        <img src="understanding-reasoning-pretraining-post-training-assets/math-transfer.png" alt="OLMo-2 数学实验中预训练损失、token 数与后训练性能及学习斜率的关系">
+        <figcaption>数学域出现与棋类相同的定性关系，但所有点来自同一训练 run 的不同 checkpoint，固定模型规模且没有多随机种子。图源：论文数学迁移实验。</figcaption>
+      </figure>
+      <p>因此它是<strong>跨域可迁移性的提示</strong>，不是独立 scaling law 复现。更晚 checkpoint 共享同一训练祖先，误差并不独立；固定规模也无法识别 (N) 与 (T) 的交互。论文正文对 checkpoint 数量还有轻微口径差异：方法描述称 14 个，公开模型集合列出 15 个锚点。这个差异不改变方向判断，但提示完整实验台账仍有整理空间。</p>
+    </section>
+
+    <section id="reproducibility">
+      <h2>开放与复现审计：构件齐全，整篇复现链不闭合</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>发布物</th><th>公开状态</th><th>能验证什么</th><th>仍缺什么</th></tr></thead>
+          <tbody>
+            <tr><td>54B-token 棋谱数据</td><td>公开，约 215GB</td><td>预训练语料结构与规模</td><td>大规模下载与训练成本高</td></tr>
+            <tr><td>棋题 benchmark / 训练数据</td><td>公开</td><td>样本字段、难度与题目数量</td><td>平台当前显示约 229K 行，和论文过滤后 156K 池的版本映射不够清楚</td></tr>
+            <tr><td>预训练与 SFT 权重</td><td>公开</td><td>多个规模和 checkpoint 的基础行为</td><td>集合中未见棋类 RL 权重</td></tr>
+            <tr><td>棋类训练代码</td><td>公开</td><td>tokenizer、SFT trace、二值奖励和 GRPO 构件</td><td>缺完整 36-run 配方、scaling/frontier 拟合脚本和对应测量表</td></tr>
+            <tr><td>数学模型权重</td><td>公开 15 条 pretrain→anneal→SFT→RL 链</td><td>检查 checkpoint 组织和最终权重</td><td>数学训练脚本、优化器状态与完整日志未发布</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>当前公开启动配置与论文还存在几处实际偏差：标为 8-GPU 的脚本只暴露四张 GPU，却配置每节点使用八张；默认 response 上限为 2560，而论文写 3072；公开 sweep 默认仅五个配置、500 步，论文联合分析则使用 36 个组合和 1,000–5,000 步。仓库也没有直接生成主 scaling law 与算力 frontier 的脚本和完整测量数据。</p>
+      <div class="callout">
+        <b>复现结论</b>
+        公开材料足以重建方法的主要组件，并对数据、模型和奖励实现做静态核验；不足以从一个干净环境一键重算论文所有表格与联合拟合。本文没有独立重跑 H200 训练，性能数字与曲线属于作者报告，配置差异与发布物范围属于直接审计结果。
+      </div>
+    </section>
+
+    <section id="limitations">
+      <h2>论文的边界：哪些结论暂时不能外推</h2>
+      <ol>
+        <li><strong>局部线性不等于全程规律。</strong> RL 曲线只在未饱和区间近似线性，极低预算的探索冷启动和高预算的饱和都可能改变形状。</li>
+        <li><strong>单一验证器任务偏向可判定推理。</strong> 棋题有精确答案和廉价引擎，开放式研究、写作、代码架构等任务的奖励噪声与多解性更强。</li>
+        <li><strong>错误模态风险没有被预算公式单独惩罚。</strong> pass@1 提升可与 pass@16 覆盖下降并存；只优化均值可能得到更自信、但更窄的策略。</li>
+        <li><strong>数学实验不足以识别跨规模规律。</strong> 它来自同一预训练 run 的 checkpoint，没有跨模型规模和多 seed。</li>
+        <li><strong>算力只是成本的一部分。</strong> 数据构造、引擎验证、采样吞吐、失败样本和推理时 best-of-N 都会改变真实系统成本。</li>
+        <li><strong>预训练损失并非普适充分统计量。</strong> 在同域棋谱内它预测力很强；换数据分布、任务覆盖或模型家族后，相同 loss 可能对应完全不同的高质量回答覆盖。</li>
+      </ol>
+    </section>
+
+    <section id="insights">
+      <h2>独立推论：把“能力”拆成覆盖、可训练性与选择</h2>
+      <h3>1. 预训练的后训练价值不只体现在最终 loss</h3>
+      <p>两个底座即使 loss 接近，只要训练 token、数据顺序或覆盖不同，RL 斜率也可能不同。论文中 slope 与 (T) 的额外关系提示：模型可能在继续训练中形成更平滑、可被奖励优化的表示。实际评估不应只选“当前 benchmark 最强”的底座，还应做短程 RL probe，估计单位算力增益和错误模态率。</p>
+      <h3>2. Coverage 是必要条件，训练动力学决定能否取出</h3>
+      <p>Coverage Principle 强调高质量回答需要在底座分布中有足够概率质量；本论文补上了动力学视角：覆盖存在并不意味着 RL 会稳定找到它。困难 B5 中 tail discovery 非零，但错误模态放大更多。覆盖决定“有没有可搜索对象”，奖励、采样与优化器决定“能否把它取出来”。</p>
+      <h3>3. 最优预算应是带风险约束的 Pareto front</h3>
+      <p>只最大化 pass@1 会遗漏覆盖、多样性和错误自信。更合理的预算前沿至少同时报告 pass@1、pass@K、错误模态放大率、每题采样成本与跨分布稳健性。对于能使用搜索或 verifier 的系统，保留候选覆盖可能比进一步锐化单次答案更值钱。</p>
+      <h3>4. “RL 创造能力”需要更强的实验定义</h3>
+      <p>要证明从无到有，至少需要预先定义原子技能或组合族，证明底座在大规模采样与诊断下对目标族无成功覆盖，再显示 RL 在控制数据泄漏后获得可泛化解法。本文的 5% tail 定义诚实且有用，但它回答的是低概率行为迁移，不是本体论上的能力创造。</p>
+      <div class="grid-2">
+        <div class="card"><h3>研究者应记录</h3><p>每条底座的 loss、token、数据来源、短程 RL slope、pass@K、策略熵与错误模态变化，而不是只保留最终 checkpoint。</p></div>
+        <div class="card"><h3>工程团队应先做</h3><p>在少量代表性底座上运行等预算 probe，拟合局部响应面；只在可观测区域内决策，并为分布外任务保留独立验收。</p></div>
+      </div>
+    </section>
+
+    <section id="evidence" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>全文结论以论文 v1、附录、官方代码、数据与模型发布物为主；相关论文只用于比较命题边界，不把二手报道当实验事实。大型训练未独立重跑，因此性能数字均按发布方报告陈述。</p>
+      <h3>主材料与官方资产</h3>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2607.16097">Understanding Reasoning from Pretraining to Post-Training</a>：论文摘要、PDF 与版本信息。</li>
+        <li><a href="https://github.com/pavelslab-nyu/pre2post-chess">pre2post-chess</a>：棋类预训练、SFT、RL 与策略分析代码。</li>
+        <li><a href="https://huggingface.co/collections/pavelslab-nyu/pre2post-chess">Pre-to-Post Chess Collection</a>：数据、预训练模型、SFT 模型与相关发布物集合。</li>
+        <li><a href="https://huggingface.co/datasets/pavelslab-nyu/pretrain_v1_54B">Chess Pretraining Dataset</a>、<a href="https://huggingface.co/datasets/pavelslab-nyu/chess_puzzle_benchmark">Chess Puzzle Benchmark</a>、<a href="https://huggingface.co/datasets/pavelslab-nyu/chess_puzzle_training_datasets">Post-training Datasets</a>。</li>
+        <li><a href="https://huggingface.co/pre-to-post-olmo/Math-Models">Pre-to-Post OLMo Math Models</a>：数学迁移实验的模型链。</li>
+      </ul>
+      <h3>用于校准“发现、覆盖与预算”的一手研究</h3>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2504.13837">Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?</a>：RLVR 小 (k) 改善与大 (k) 覆盖边界。</li>
+        <li><a href="https://arxiv.org/abs/2509.25123">Can RL Learn New Reasoning Skills?</a>：受控原子函数与未见组合。</li>
+        <li><a href="https://arxiv.org/abs/2509.21016">The RL Grokking Recipe</a>：在受控代码任务中研究 pass@K=0 家族和 grokking 条件。</li>
+        <li><a href="https://arxiv.org/abs/2510.15020">The Coverage Principle</a>：高质量回答概率质量与后训练、测试时扩展的关系。</li>
+        <li><a href="https://arxiv.org/abs/2512.07783">The Interplay of Pre-Training, Mid-Training, and RL on Reasoning</a>：底座 headroom、数据阶段与 RL 收益。</li>
+        <li><a href="https://arxiv.org/abs/2510.03264">Front-Loading Reasoning</a>：把多样推理模式提前注入预训练和 SFT 的路线。</li>
+      </ul>
+      <p class="small"><a href="#top">返回页首</a></p>
+    </section>
+  </main>
+
+  <footer>这篇笔记区分论文事实、发布方报告与独立推论；预算比例只在原实验条件和局部拟合边界内解释。</footer>
+</body>
+</html>

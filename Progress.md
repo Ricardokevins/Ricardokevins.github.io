@@ -1,3 +1,28 @@
+## 2026-07-20 Understanding Reasoning from Pretraining to Post-Training 深读
+
+### 任务与材料边界
+
+- 已定位主材料为 arXiv:2607.16097 v1（2026-07-17），完整读取 37 页正文、图表、附录与 TeX 源文件；主实验以棋类语言模型为受控试验台，数学实验是自然语言域的定性迁移核验。
+- 已核对官方代码仓、54B-token 预训练语料、棋题 benchmark、训练集、预训练/SFT 模型与 1B OLMo-2 数学模型发布物；大型训练未在本地复跑，性能与曲线均按发布方报告，代码/配置一致性属于本轮直接核验。
+- 已交叉阅读论文直接讨论的 Coverage Principle、RLVR 大 k 覆盖、组合技能、RL grokking、pre/mid/RL interplay 与 front-loading reasoning 等一手材料，用于校准“RL 是放大还是发现”的结论。
+
+### 关键判断
+
+- 论文最有价值的贡献是把 RL 收益拆成两个由预训练决定的量：预训练损失关联固定 RL 预算下的性能水平，预训练 token 数关联局部 RL 学习斜率；它反对把预训练与 RL 当成两张独立账单。
+- “RL 发现新行为”在论文中的精确定义是把 SFT 概率低于 5% 的正确棋步推入 top-3，而不是从严格零概率或不存在的原子技能中创造能力；困难题上 tail discovery 与 wrong-mode amplification 同时增加。
+- 20%→28% 的 RL 算力份额来自棋类局部拟合和有限外推，不是通用 LLM 配方；数学核验来自同一条 1B 预训练轨迹的 15 个 checkpoint，缺少多 seed 和跨规模复现。
+- 官方开放度较高，但当前代码仓没有论文 scaling/frontier 拟合脚本与完整 36-run recipe；发布的 8-GPU 启动脚本还存在只暴露 4 张 GPU、默认 2560 response tokens（论文 3072）且 sweep 默认仅 5 个配置/500 步的复现口径差异，需在公开笔记中作为证据边界说明。
+
+### 完成变更与验证状态
+
+- 新增 `notes/paper-reviews/understanding-reasoning-pretraining-post-training.html`，以“问题—试验台—联合定律—预算边界—策略机制—数学迁移—复现审计—独立推论”组织完整深读，并将论文的性能事实、代码审计结果和分析推断分层表达。
+- 新增四张本地论文图资产，分别用于解释完整训练管线、预训练与 RL 的联合关系、三类策略演化机制和 OLMo-2 数学迁移；页面加载 MathJax，宽公式与表格均采用移动端可滚动容器。
+- 更新 `_data/notes.yml` 登记 Paper Note 入口；公开页面未写入本地路径、临时材料、抓取过程或生成工具痕迹。
+- Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页面有唯一 `main`、唯一且位于末节的证据附录、12 个唯一 id、4 张有效本地图片与 2 张响应式表格，无重复 id、失效页内锚点、空 alt、缺失资源或公开过程噪声；正文约 6,688 个非空白字符，`git diff --check` 无异常。
+- Jekyll 在隔离输出目录构建成功，耗时约 7.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证和 API 限流提示，不影响静态页面生成。
+- 独立无头 Chromium 在 1440×1100 与 390×844 两个视口实际渲染均返回 HTTP 200：页面级横向溢出为 0，4 个 MathJax 容器无错误，控制台异常、失败请求与坏图均为 0；桌面和手机全页截图复检未发现错位、截断或不可读结构。
+
+
 # Ricardokevins.github.io Progress
 
 ## 2026-07-20 Value Leakage / 模型价值隐性泄漏深读
