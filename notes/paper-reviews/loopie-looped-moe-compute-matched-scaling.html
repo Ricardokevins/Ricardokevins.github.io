@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loopie 深读：循环 MoE 真正赢在复用参数，还是复用硬件效率？</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true },
+      chtml: { matchFontHeight: false, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3efe7;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #62686d;
+      --line: #d9d1c3;
+      --accent: #c15f3c;
+      --accent-soft: #f7e9df;
+      --blue: #4f6fae;
+      --blue-soft: #edf1f8;
+      --green: #356b55;
+      --green-soft: #eaf3ee;
+      --warn: #9a5b1f;
+      --warn-soft: #fbf0df;
+      --shadow: 0 14px 38px rgba(39, 37, 32, .07);
+      --radius: 10px;
+      --max: 1080px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(105,95,78,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 76px) 0 26px; }
+    .kicker { color: var(--accent); font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+    h1 { max-width: 940px; margin: 10px 0 0; font: 760 clamp(32px, 5vw, 56px)/1.14 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.3; }
+    h2 { font-size: clamp(24px, 3vw, 34px); }
+    h3 { margin-top: 24px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn b { color: var(--warn); }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 20px 0; }
+    .flow div { position: relative; min-width: 0; padding: 14px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); text-align: center; font-size: 14px; }
+    .flow div:not(:last-child)::after { content: "→"; position: absolute; right: -15px; top: 50%; transform: translateY(-50%); color: var(--accent); font-weight: 800; z-index: 1; }
+    .math-display { max-width: 100%; margin: 16px 0; padding: 12px 14px; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { max-width: 100%; margin: 16px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    .status { white-space: nowrap; font-weight: 750; }
+    .verified { color: var(--green); }
+    .reported { color: var(--blue); }
+    .inferred { color: var(--warn); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(140px, .24fr) minmax(0, 1fr); gap: 15px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow div:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -18px; transform: translateX(50%); }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Looped MoE · Systems Co-design</div>
+    <h1>Loopie 深读：循环 MoE 真正赢在复用参数，还是复用硬件效率？</h1>
+    <p class="lede">Loopie 最值得重视的不是“把同一层跑两遍”，而是把权重共享、激活检查点、microbatch、梯度累积和 MoE 宽度连成一个资源转换链。它给出了少见的大规模、wall-clock 对齐证据；但模型与代码尚不可公开验证，推理端也没有系统测量，因此“训练系统突破”目前比“部署范式突破”更可信。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>这篇论文是有实质内容的，但 X 帖的部署解读走得比证据更远。</strong>Loopie-20B-A2B 用约 20B 总参数、2B 激活参数和 27 个物理层，每层连续执行两次；它对照的是团队自行复现的 Qwen3-like 30B-A3B、48 层模型。真正让 1.424× 名义主干计算能塞进近似相同 step time 的，是物理层减少带来的激活显存下降与 microbatch 翻倍，而不是循环本身凭空减少 FLOPs。</p>
+      <div class="grid-3">
+        <div class="card"><h3>最强证据</h3><p>同数据、同 token/step、同更新数、同硬件分配的 800B-token 直接对照，Loopie 在约 600B token 后反超。</p></div>
+        <div class="card"><h3>真正贡献</h3><p>把同层递归放进大规模 MoE，并按实测 optimizer-step 时间联合搜索宽度、深度和并行配置。</p></div>
+        <div class="card"><h3>最大缺口</h3><p>没有公开 checkpoint、训练/推理代码、绝对 step time、推理延迟、KV cache、吞吐或能耗曲线。</p></div>
+      </div>
+      <div class="callout warn"><b>一句话校准</b><p>当前证据支持“Loopie 在特定训练栈上把显存余量转换成了更高硬件利用率和更强模型”，不支持“loop model 在任何硬件、任何 batch、训练和推理两端都更省算力”。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>它解决的真实问题：参数省了，不代表计算划算</h2>
+      <p>循环 Transformer 反复使用同一组层。若一个 (L) 层模型循环 (R) 次，它只存 (L) 组参数，却执行约 (LR) 次 block。这样可以用较少权重获得较深的有效计算路径，但训练 FLOPs 也随循环次数上升。旧式比较常拿“2.6B 参数、循环 4 次”的模型与 2.6B 非循环模型对比；Loopie 指出，更严格的问题应是：同样训练预算下，它能否击败更大的非循环模型？</p>
+      <p>这不是 Loopie 首次提出的矛盾。Ouro、Huginn、Parcae、Dual-Path 和 Looped-MoE 已分别研究过潜在递归、稳定性、固定 FLOP 下的容量损失与 MoE 路由分化。Loopie 的价值在于把问题推进到 20B 总参数、MoE 主干和真实大规模训练吞吐，而不是发明“同一层在进入下一层前重复执行”这一原语。2025 年的 Intra-Layer Recurrence 已明确研究过逐层内部递归，只是规模、目标和实验强度远小于 Loopie。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制：从 model-loop 改成 layer-loop</h2>
+      <p>传统 <strong>model-loop</strong> 的执行顺序是整栈重跑：(1\to2\to3\to1\to2\to3)。Loopie 的 <strong>layer-loop</strong> 则是每个物理层先局部迭代：(1\to1\to2\to2\to3\to3)。两者执行相同数量的 block，但参数复用位置不同。</p>
+      <div class="grid-2">
+        <div class="card"><h3>表示层面</h3><p>同一参数只处理相邻有效深度的 hidden state，而不是跨越整栈后再次处理分布已经显著变化的状态。论文把这解释为更一致的共享职责，但没有直接测量梯度冲突。</p></div>
+        <div class="card"><h3>系统层面</h3><p>同层的两次调用在计算图中相邻，参数复用距离更短；在 pipeline parallel 下无需让 microbatch 每轮从末 stage 回到首 stage，调度更简单。</p></div>
+      </div>
+
+      <h3>Loopie-20B-A2B 的结构</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>字段</th><th>Loopie-20B-A2B</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>物理层 / 循环</td><td>27 / 2×</td><td>54 次有效层调用，但只存 27 组层参数</td></tr>
+            <tr><td>宽度</td><td>2304</td><td>比 2048 宽的受控基线更宽</td></tr>
+            <tr><td>MoE</td><td>128 experts，Top-8</td><td>约 20B 总参数、每 token 激活约 2B</td></tr>
+            <tr><td>注意力</td><td>72 heads / 36 groups</td><td>GQA、QK norm、RoPE，整体沿用 Qwen3-MoE 风格</td></tr>
+            <tr><td>训练上下文</td><td>8K 预训练；128K SPT</td><td>后训练阶段的序列长度与批量远大于常规 SFT</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Loopie Recipe：把显存变成吞吐，再把吞吐变成容量</h3>
+      <div class="flow">
+        <div>48 层基线</div><div>减为 24 层并 2× 循环</div><div>检查点激活近似减半</div><div>microbatch 1→2</div><div>扩宽至 2304、27 层</div>
+      </div>
+      <p>论文用两个代理刻画候选结构。主干计算代理与激活内存代理分别近似为：</p>
+      <div class="math-display">\[
+        \widehat C=\frac{LRD^2}{48\cdot 2048^2},\qquad
+        \widehat M_{\mathrm{act}}=\frac{DL}{48\cdot 2048}.
+      \]</div>
+      <p>最终结构的激活代理约为 (0.633\times)，主干计算代理却是 (1.424\times)。它之所以仍能接近基线 step time，是 per-device microbatch 翻倍、梯度累积减半后，kernel 得到更多并行工作。图中报告的吞吐为 261.53 对 189.65 TFLOPS/s，比例约 (1.379\times)；用 (1.424/1.379) 粗算，隐含 step time 仍约为基线的 (1.032\times)。这与“approximately matched”相容，但不是严格相等。</p>
+      <div class="callout info"><b>为什么这不是纯架构结论</b><p>若硬件、并行拓扑、kernel、序列长度或 baseline 的 microbatch 已经足够大，microbatch 从 1 到 2 的利用率跃迁可能消失。Loopie Recipe 本质上是一条依赖工作负载的 roofline 优化路径。</p></div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据账本：哪些结论最可信</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>证据状态</th><th>读法</th></tr></thead>
+          <tbody>
+            <tr><td>Loopie 在 800B token 后胜过 30B-A3B 受控基线</td><td class="status reported">发布方报告</td><td>同数据与训练协议的直接对照，是全文最强证据；但只有单条曲线，无 seed、误差条或原始日志。</td></tr>
+            <tr><td>四档 scaling ladder 均领先</td><td class="status reported">发布方报告</td><td>优势约 +0.6 至 +2.2 个平均点；最大档仅到 1B active baseline，不能自动证明更大规模继续成立。</td></tr>
+            <tr><td>layer-loop 后期优于 model-loop</td><td class="status reported">发布方报告</td><td>6B-A0.6B 对照在约 1.2T token 交叉；支持训练后期优势，不证明作者提出的“职责更一致”就是因果机制。</td></tr>
+            <tr><td>少约 1/3 参数和 optimizer states</td><td class="status verified">可直接核对</td><td>20B 对 30B 的存储权重确实约少三分之一；optimizer states 只属于训练部署。</td></tr>
+            <tr><td>理论 FLOPs 相同</td><td class="status inferred">不成立</td><td>论文明确说不是 exact-FLOP matching；Loopie 的主干代理反而约高 42.4%。</td></tr>
+            <tr><td>现实部署更有价值</td><td class="status inferred">待验证推断</td><td>权重更小是利好，但论文未测 decode/prefill 延迟、KV cache、并发、能耗、显存峰值或弹性循环。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>受控结论与横向排行榜必须分开。受控实验比较的是团队自行训练的 Qwen3-like 基线，800B token 时 Loopie 反超；最终排行榜则比较不同机构、不同数据、不同 token 预算和不同后训练 recipe。它能说明最终模型处在什么能力区间，不能单独归因于 layer-loop。</p>
+    </section>
+
+    <section id="training">
+      <h2>训练链路：3.5T 预训练之后，还有 2T 监督预训练</h2>
+      <p>Loopie 先在约 570B unique token 的 Nemotron-CC-v2-HQ 上训练四个 epoch，约 2.28T token；再用 1.263T 高质量混合数据做恒定学习率 annealing，总计约 3.543T。随后不是普通短程 SFT，而是作者命名的 <strong>Supervised Pre-Training（SPT）</strong>：只对回答 token 计算交叉熵，但使用 global batch 1024、128K 序列与 2T token 预算。</p>
+      <div class="callout warn"><b>“3.5T token”需要补全</b><p>最终 Loopie Thinking 至少经历约 3.543T 预训练 token + 2T SPT token，再进入数学与代码 RL。排行榜只在“Pre-training tokens”一行写 3.5T，形式上没有错，但若把它读成最终模型只学习了 3.5T token，就会低估约 2T 的监督阶段。</p></div>
+      <p>SPT 的损失函数没有新意，变化在优化尺度。论文显示 6B 模型训练 10 个 epoch 后 loss 仍平滑下降，ARC-Challenge、MMLU、BBH、DROP、AIME、AMC 趋势整体上升。问题是它没有给出足够的受控矩阵来分离四个因素：</p>
+      <ul>
+        <li>大 batch 是否是关键，还是 2T token 和数据覆盖度本身在起作用；</li>
+        <li>128K packing 是否改变了每次更新看到的任务多样性；</li>
+        <li>target-only loss 与全 token 预训练目标各自贡献多少；</li>
+        <li>所谓常规 SFT 在 2–4 epoch 过拟合，是否来自相同数据、相同 token 数和调参预算。</li>
+      </ul>
+      <p>作者也承认没有完成充分的 SPT 消融。因此，SPT 更适合被看作一个值得复现的规模假说，而不是已经建立的新 scaling law。</p>
+
+      <h3>RL：成熟组件的工程组合</h3>
+      <p>SPT 后先做数学 RL，再做代码 RL。算法是 GSPO 的序列级 ratio，加 DAPO 的 asymmetric clipping 和 dynamic sampling；数学奖励用规则等价，代码奖励用沙箱单测。32K rollout 截断率超过 10% 后切到 64K，并用验证集、长度、熵和截断率选取退化前 checkpoint。这部分组合合理，但并非主要算法创新；论文也没有公开 RL step 数、group size、总 rollout token、算力和完整曲线。</p>
+    </section>
+
+    <section id="benchmarks">
+      <h2>排行榜怎么读：强数学、小模型突出，但不是全面领先</h2>
+      <p>Loopie-20B-A2B 与两个 30B-A3B Nemotron 模型的 15 项横向表中，对 Nano 是 10 胜 5 负，对 Cascade 2 是 9 胜 6 负；它尤其擅长数学和部分通用推理。对更强、训练 36T token 的 Qwen3-30B-A3B Thinking，则只有 AIME 2024 明确领先，AIME 2025 打平，其余 13 项落后。这说明 Loopie 展示的是较高的参数与数据效率，不是同规模全面 SOTA。</p>
+      <p>6B-A0.6B 对紧凑模型的结果更亮眼：AIME 2024/2025 为 80.42/70.83，明显高于表中 Ouro 2.6B Thinking 的 62.50/51.67；但在 MMLU、代码和部分通用任务上又落后 Ouro 2.6B。循环计算倾向于强化知识操作和长程推导，却不能自动补回存储容量，这一模式与既有循环模型研究相符。</p>
+    </section>
+
+    <section id="olympiads">
+      <h2>IMO 金牌：是真结果，但代表高预算搜索上限</h2>
+      <p>IMO 2025 的 35/42 来自 generate–verify–refine 管线，而非六次单样本回答。每题先生成 64 个候选，每个候选采样 64 个 verification analysis，仅初始验证就有 (64\times64=4096) 次；之后每轮对 64 个保留解各采 8 个 critique 并生成修订，最多 16 轮，提前停止条件是某个候选通过全部 64 次验证。最终再由 GPT-5.5 评分三次取平均。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>IMO 2025 题目</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th><th>P6</th><th>总分</th></tr></thead>
+          <tbody><tr><td>论文报告</td><td>7</td><td>7</td><td>4</td><td>6</td><td>7</td><td>4</td><td>35 / 42</td></tr></tbody>
+        </table>
+      </div>
+      <p>附录把六个最终解与三份 judge 反馈都公开出来，这是加分项；同时也明确暴露 P3 的函数分类错误、P4 的下降论证缺口和 P6 的“任意行列置换保持矩形”错误。因而“金牌水平”按该评分口径成立，但更准确的产品含义是：<strong>20B-A2B 模型可以作为昂贵搜索管线中的 generator 与 verifier，在竞赛数学上达到金牌阈值。</strong></p>
+      <p>IPhO 的 20.3 分超过 19.7 金牌线，但正文只有一段概述，没有逐题解答、评分明细、总采样量或裁判配置。它目前应标为发布方报告，证据强度低于 IMO。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语与口径</h2>
+      <div class="def-list">
+        <div><b>stored depth</b><span>真正保存独立权重的物理层数；Loopie-20B-A2B 为 27。</span></div>
+        <div><b>executed depth</b><span>一次前向实际执行的层调用数；2× layer-loop 下近似为 54。</span></div>
+        <div><b>A2B / A3B</b><span>每个 token 激活的参数量约为 2B / 3B，不等于模型总参数量。</span></div>
+        <div><b>microbatch</b><span>单设备一次前后向处理的样本数；增大它常能提高矩阵乘法利用率，但收益强依赖硬件和形状。</span></div>
+        <div><b>gradient accumulation</b><span>在更新权重前累计多个 microbatch 的梯度；microbatch 翻倍时可减半累计次数以保持 global batch 不变。</span></div>
+        <div><b>compute-matched</b><span>本文指实测 optimizer-step wall-clock 近似一致，不是理论 FLOP 完全一致。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>关键限制与复现状态</h2>
+      <ol>
+        <li><strong>发布物尚未闭环。</strong>论文列出的两个 preview 模型当前不对匿名访问开放，官方组织公开模型列表没有 Loopie；GitHub 仓库和两个代码路径返回 404。</li>
+        <li><strong>wall-clock 缺少可迁移信息。</strong>未报告主实验 GPU 型号、卡数、绝对 step time、峰值显存、TP/PP/EP 完整搜索表、重复计时方差与总训练能耗。</li>
+        <li><strong>推理端是空白。</strong>没有 prefill/decode、batch/concurrency、KV cache、吞吐、首 token/每 token 延迟。54 次有效层调用是否仍能靠局部复用获益，需要实际 kernel 和 cache 实现回答。</li>
+        <li><strong>统计证据不足。</strong>主曲线、scaling ladder 与 SPT 曲线没有多 seed、置信区间或原始 checkpoint 指标。</li>
+        <li><strong>归因不完整。</strong>最终能力同时混入 layer-loop、模型尺寸、3.5T 预训练、2T SPT、GSPO/DAPO RL 和大规模 test-time search；排行榜不能隔离架构贡献。</li>
+        <li><strong>“layer-loop”不是从零出现。</strong>逐层内部递归有直接前置工作；Loopie 的新意更准确地位于大规模 MoE、统一 2× schedule 和训练系统共设计。</li>
+      </ol>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：Loopie 是“状态存储与算术强度交换器”</h2>
+      <p>普通 scaling 默认参数、激活和 FLOPs 一起增长；Loopie 则把它们拆开：用参数共享减少持久权重和训练激活，再用重复计算提高算术工作量，最后利用更大的 microbatch 把额外工作喂给 GPU。这让“模型架构”不再是抽象计算图，而是对显存层级、通信、kernel shape 和调度器的联合投标。</p>
+      <div class="grid-2">
+        <div class="card"><h3>什么时候最可能赢</h3><p>训练受激活显存限制、baseline microbatch 很小、增大 microbatch 能显著抬升 MFU、参数或 optimizer state 也是瓶颈时。</p></div>
+        <div class="card"><h3>什么时候优势会消失</h3><p>推理是低 batch 串行 decode、KV cache 或内存带宽主导、baseline 已充分利用硬件，或部署栈无法融合相邻同层调用时。</p></div>
+      </div>
+      <p>因此下一项最有价值的实验不是再加一张能力榜，而是画出二维部署相图：横轴为 batch/concurrency，纵轴为上下文长度，分别报告 Loopie 与 30B-A3B 的权重显存、KV cache、prefill TFLOPS、decode token/s、延迟和能耗。只有这张图能回答 X 帖最关心的“real-world deployment”是否成立。</p>
+      <div class="callout"><b>最终评价</b><p>Loopie 是循环模型从“参数效率概念验证”走向“大规模训练系统候选”的有意义一步。它最可信的贡献是 hardware-aware recipe 和受控训练对照；layer-loop 的概念新颖性有限，SPT 仍缺消融，金牌结果依赖高预算搜索，而部署价值仍待代码、checkpoint 与推理测量兑现。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>已核对目标 X 帖文本与配图、arXiv v1 的 67 页正文、图表、训练超参数、TeX 源文件及 IMO 六题解答与评分反馈；参数比例、吞吐比例、训练 token 合计和主表胜负为基于公开数字的复算。没有独立训练或推理复现。模型、代码与 IPhO 细节的公开状态可能随发布推进而变化。</p>
+      <ul>
+        <li><a href="https://x.com/huskydogewoof/status/2079049322134675797">Benhao Huang：Loopie 推荐帖</a></li>
+        <li><a href="https://arxiv.org/abs/2607.16051">Loop the Loopies!（arXiv:2607.16051 v1）</a></li>
+        <li><a href="https://huggingface.co/papers/2607.16051">Hugging Face Paper Page</a></li>
+        <li><a href="https://arxiv.org/abs/2505.01855">Intra-Layer Recurrence in Transformers for Language Modeling</a></li>
+        <li><a href="https://arxiv.org/abs/2510.25741">Ouro：Scaling Latent Reasoning via Looped Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2502.05171">Huginn：Scaling up Test-Time Compute with Latent Reasoning</a></li>
+        <li><a href="https://arxiv.org/abs/2604.12946">Parcae：Scaling Laws for Stable Looped Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2605.30202">A Dual-Path Architecture for Scaling Compute and Capacity in LLMs</a></li>
+        <li><a href="https://arxiv.org/abs/2605.09165">Sparse Layers are Critical to Scaling Looped Language Models</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

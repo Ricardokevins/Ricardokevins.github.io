@@ -1,3 +1,28 @@
+## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定深读 Benhao Huang 关于 IQuest Research 循环模型的 X 帖；主材料已定位为《Loop the Loopies!》（arXiv:2607.16051 v1，2026-07-17）。
+- 计划完整核对 67 页论文、TeX 源文件、图表与 IMO 解答附录，并追踪官方模型、代码、训练数据、评测口径及会改变核心判断的循环 Transformer 前置工作。
+- X 专用适配器需要浏览器会话；为避免占用用户前台 Chrome，本轮改用公开只读接口获取原帖文本、元数据和配图。论文与项目资产优先通过公开论文页、arXiv、模型平台和官方仓库核验。
+- 当前已确认论文公开入口指向两个 preview 模型和两个代码目录；模型页面对匿名访问返回未授权状态，官方模型列表未显示 Loopie，GitHub 仓库及论文所列代码路径均返回 404。本轮不会把“论文给出链接”写成“模型和代码已经开放”。
+
+### 关键判断与独立 Insight
+
+- Loopie 的核心不是无条件的 FLOP 优势，而是硬件感知的训练系统套利：将 48 个独立层改为 27 个存储层、每层执行两次，把激活内存代理降至约 0.633；由此把单设备 microbatch 从 1 提到 2、梯度累积步数减半，再把实测吞吐余量投入到更宽的 2304 维模型。
+- 所谓 compute-matched 是相同硬件、token/step、更新次数和近似相同 optimizer-step wall-clock，不是理论 FLOPs 相同。Loopie 的主干计算代理约为基线 1.424 倍，因此结论高度依赖具体并行策略、kernel、checkpoint 和硬件利用率。
+- 论文对训练预算与开放性仍有重要缺口：未披露主比较的 GPU 型号、卡数、绝对 step time、完整并行网格和多次计时方差；没有独立复现；模型与代码尚不可公开取得。
+- “3.5T pre-training tokens”不包含后续 2T supervised pre-training。用最终模型和 25T-token 对手比较时只强调 3.5T，会低估 Loopie 的监督训练预算；SPT 也缺少足以分离 batch、序列长度、数据量和目标函数贡献的完整消融。
+- IMO 35/42 为 64 候选 × 每候选 64 次验证、最多 16 轮 refine 后的高计算结果，再由 GPT-5.5 重复评分；附录本身显示第 3、6 题只有 4/7，第 4 题 6/7。它证明强 test-time search 下的上限，不等于单次推理达到金牌水平。IPhO 20.3 的正文仅给一段结果，没有逐题解答、成本和裁判细节。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/loopie-looped-moe-compute-matched-scaling.html`，覆盖 X 帖与论文主张校准、model-loop / layer-loop 机制、训练系统资源转换链、算力复算、SPT/RL 预算、IMO 搜索规模、前置工作、部署边界与公开性审计。
+- 与 Ouro、Huginn、Parcae、Dual-Path、Looped-MoE 及 2025 年 intra-layer recurrence 一手资料对照后，将贡献收窄为“大规模 MoE + 统一逐层两次递归 + 按实测 step time 联合搜索”；layer-loop 原语并非从零发明。
+- 更新 `_data/notes.yml` 新增 Paper Note 入口；目标页结构审计通过：约 6,591 个非空白可见字符、11 个 section、21 个 h2/h3，唯一 `main` 与文末证据附录，无重复 id、失效锚点或公开过程噪声。
+- Jekyll 隔离构建成功；桌面 1440×1000 与真实设备仿真 390×844 的页面渲染完整。手机视口实测 `scrollWidth = clientWidth = 390`，无页面级横向溢出；MathJax 完成渲染，仅容器内长公式可独立滚动。
+- 目标文件 `git diff --check` 通过。全站 Notes 索引校验在本页登记后通过；构建仅有仓库既有的 GitHub Metadata 未认证/API 限流提示，不影响静态产物。
+
 ## 2026-07-20 MOSS-TD × SGLang Omni 90 分钟多说话人 ASR 深读
 
 ### 任务与材料边界
