@@ -53,7 +53,8 @@
 
 ## Deep Reading Trigger
 
-- 当用户给出论文、推文或 X thread、博客、技术报告、访谈等材料，并说“帮我读一下”“好好读一下”“深度解读”“梳理这篇”或同义表达时，默认读取并遵循 repo-local skill：`.agent/skills/deep-read-to-notes/SKILL.md`。
+- 当用户给出论文、推文或 X thread、博客、技术报告、访谈等材料，并说“帮我读一下”“好好读一下”“深度解读”“梳理这篇”或同义表达时，默认读取并遵循 repo-local skill：`.agents/skills/deep/SKILL.md`。
+- `$deep` 是该流程的显式调用名。保持 skill 目录为 `.agents/skills/deep/` 且 frontmatter 为 `name: deep`；Codex 只扫描 `.agents/skills`（复数 `agents`），不要放回 `.agent/skills`。
 - 除非用户明确缩小范围，上述触发默认授权完整流程：读取原文、追踪会影响核心判断的关键内链与参考资料、交叉核验、深度分析、在对话中用中文直接讲解、沉淀站内笔记、更新索引与 `Progress.md`、验证、只提交本任务改动并 push。
 - 用户明确要求只做摘要、暂不写笔记、不提交或不推送时，以本次限制为准。
 

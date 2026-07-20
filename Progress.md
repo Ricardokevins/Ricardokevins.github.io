@@ -1,5 +1,27 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-20 `$deep` 显式触发修复
+
+### 问题与根因
+
+- 用户实测在 Codex 输入框键入 `$deep` 后没有出现目标 Skill 候选；截图中只有其他已安装技能建议，证明 `deep-read-to-notes` 未进入当前仓库的 Skill 发现表。
+- 官方 Codex 手册确认仓库级 Skill 只扫描从当前目录到仓库根目录之间的 `.agents/skills/`；此前文件误放在 `.agent/skills/deep-read-to-notes/`，少了复数 `agents`，因此即使 `AGENTS.md` 能手工读取它，`$` 选择器也不会注册它。
+- 旧 frontmatter 使用 `name: deep-read-to-notes`。即使目录正确，`$deep` 也只是搜索前缀而不是精确调用名；当前需求明确要求发送 `$deep` 即可触发，因此需要同步缩短正式名称。
+
+### 修复
+
+- 将 Skill 迁移到官方仓库发现路径 `.agents/skills/deep/`，并把 frontmatter 改为 `name: deep`。
+- 将 `agents/openai.yaml` 的默认提示改为显式使用 `$deep`；显示名称和说明保持不变。
+- 更新 `AGENTS.md` 的自然语言路由路径，并新增持久约束：不得把该 Skill 放回不被扫描的 `.agent/skills/`。
+- 保留 `.agent/skills/notes-authoring/` 现状；它当前由 `AGENTS.md` 和 `$deep` 工作流显式读取，不属于本次 `$deep` 注册故障的必要修改范围。
+
+### 验证状态
+
+- 官方 `quick_validate.py` 通过；目录名、frontmatter `name: deep`、`$deep` 默认提示和 UI 元数据一致，Skill 共 123 行且无 TODO / placeholder。
+- 旧目录 `.agent/skills/deep-read-to-notes/` 已清理；`AGENTS.md` 与新 Skill 内不再引用旧路径或 `$deep-read-to-notes`。
+- 使用全新、只读、ephemeral 的 Codex 进程执行 `$deep` 显式调用，返回 `name=deep` 与实际加载路径 `/Users/bytedance/Documents/Ricardokevins.github.io/.agents/skills/deep/SKILL.md`，证明 loader 已完成注册，而不只是静态文件存在。
+- 新进程提示当前已安装 Skill 较多，描述被缩短以满足 2% skills context budget；同一提示明确所有 Skill 仍可见，本次 `$deep` 也已成功加载，因此不构成功能阻塞。
+
 ## 2026-07-16 Zhang Xiaojun Podcast AI / 机器人访谈系列知识库（进行中）
 
 ### 范围与交付
