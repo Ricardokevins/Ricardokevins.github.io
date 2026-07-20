@@ -1,5 +1,32 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-20 Agents-A1 / 35B Agent Horizon Scaling 深读
+
+### 目标与材料边界
+
+- 深读 Grigory Sapunov 关于 Agents-A1 的 X 主帖，并完整核对 arXiv:2606.30616 v2 的 29 页正文、公式、主表、案例与附录，以及官方 35B 模型配置、模型卡和公开评测仓库。
+- X 站点公开适配器需要建立登录态浏览器会话；为避免驱动用户前台 Chrome，本轮使用 X 官方嵌入数据与只读公开接口还原主帖文本、作者、日期和配图。自回复无法在无浏览器会话下稳定展开，核心技术判断全部回到论文与官方资产核验。
+- 本轮未加载 35B 权重、运行 12 小时 MLE 或重跑长程搜索 benchmark；参数结构、公式、公开代码范围和材料冲突属于直接核验，性能数字作为发布方报告，系统与工程含义明确标为分析推断。
+
+### 关键判断与完成变更
+
+- 新增 `notes/paper-reviews/agents-a1-scaling-horizon-35b-agent.html`，解释 KAG 的状态—动作—观察—验证器结构、10 万条平均 45K-token SFT 轨迹、搜索/科学/指令/工具专项教师，以及 domain-routed OPD 如何把异质能力重新统一到一个学生。
+- 核对 SVA 为 teacher top-k 支持上的截断 reverse KL，并指出直接前置工作已经提出 teacher top-K local support matching；Agents-A1 的新增价值主要在多教师硬路由和按领域归一化，而非从零发明 top-k 蒸馏。
+- 独立重算论文 Table 9：Agents-A1 对 Kimi-K2.6 为 8 胜 8 负；对 DeepSeek-V4-Pro Max 为 6 胜 1 平 9 负；对 GPT-5.5 xhigh 的 15 个共同指标为 7 胜 8 负。因此“若干任务达到 1T 区间”成立，“35B 全面击败 1T”不成立。
+- 识别最关键评测冲突：论文称四个搜索 benchmark 报告 pass@1，公开 Search README 却写 BrowseComp 使用最多五次清空上下文重试的 retry@5。公开材料无法唯一确定 75.5 的最终口径。
+- 梳理系统预算边界：主策略模型约 35.1B 总参数、A3B active，但搜索依赖商业搜索、独立页面摘要模型、最多 300 次工具调用与不同 judge；MLE 每题允许单 H200 运行 12 小时。参数量不能替代端到端 token、工具、外部模型、环境算力与 wall-clock 核算。
+- 审计开放状态：35B 权重与配置已按 Apache-2.0 发布，搜索和工具评测有公开代码；训练数据、KAG、教师 checkpoint、SVA/OPD 实现与训练算力未公开，MLE README 明示评测 harness 仍待发布，工具评测也缺部分大体积 fixture/oracle。
+- 更新 `_data/notes.yml`，增加 Paper Note 入口；没有新增图片资产，以结构化表格呈现基座增益、1T 对照胜负和复现状态。
+
+### 验证结果
+
+- Notes 索引校验通过：`notes index ok: 137 entries, 137 top-level note html files`；定向 whitespace 与公开过程噪声扫描均无输出。
+- 目标 HTML 结构检查通过：唯一 `main`、唯一且位于末节的证据附录、26 个 h2/h3、3 个 MathJax 容器、无重复 id 或失效页内锚点；可见内容约 7,260 个非空白字符。
+- Jekyll 在隔离输出目录中构建成功，耗时约 6.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证与 API 限流提示，新笔记无构建错误。
+- 使用独立无头 Chrome 在 1440×1000 与 390×844 两个视口完成实际渲染：均返回 HTTP 200，页面级 `scrollWidth == innerWidth`，MathJax 无错误，控制台、页面异常、失败请求和 4xx/5xx 资源均为 0。
+- 三张宽表在桌面完整显示，在手机端保持 680px 内容宽度并由 364px 容器局部横向滚动；桌面与手机全页截图复检未发现错位、截断或不可读结构。
+- 提交时只纳入本任务新增笔记、索引条目和本节 Progress 增量；保留 DeepSeek-V4、视频模型 RL、Self-Guided TTT、UniVR、Lotus 等并行任务改动。
+
 ## 2026-07-20 `$deep` 显式触发修复
 
 ### 问题与根因
