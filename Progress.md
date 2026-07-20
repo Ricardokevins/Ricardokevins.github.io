@@ -1,3 +1,29 @@
+## 2026-07-20 MOSS-TD × SGLang Omni 90 分钟多说话人 ASR 深读
+
+### 任务与材料边界
+
+- 完整读取 Yichi Zhang 原帖所链接的 X Article、公开 Markdown 版本、MOSS Transcribe Diarize 技术报告与模型卡；核对 SGLang Omni 在文章发布时间点与当前主分支的 MOSS-TD 配置、实现、cookbook、路线图、性能 PR 和已知问题。
+- 原帖链接可通过公开只读内容完整还原，未占用用户前台浏览器。技术报告 11 页正文、架构图、评测表和附录已完整读取并渲染检查；本轮无 H100 环境，也未取得受许可限制的 Movies / Podcast 数据，不声称独立复现发布方 GPU 结果。
+- 性能数字按发布方报告陈述；本轮直接验证范围是表内算术、源码默认值、代码时间线、PR 状态、指标实现与跨公开文档一致性。
+
+### 关键判断与独立 Insight
+
+- 0.9B MOSS-TD 使用 128K 上下文，把约 90 分钟音频编码成约 67.5K audio token，并在一次自回归生成中联合输出文字、说话人标签和时间戳；这支持“输入可表示 90 分钟”，却不自动保证默认 API 给足输出 token。
+- 文章的 profiling 显示瓶颈随长度和并发换位：5 秒音频在并发 16 时 encoder/prefill 合计 67.9%，20 分钟时 decode 仍占 85.7%。因此短片段应优先 batch 与 encoder graph，长会议应优先 decode、KV、输出预算和分队列 admission control。
+- 复算 Movies 并发 1→16 的 req/s 和 audio-s/s 均为约 7.2×；AISHELL-4 Long 聚合 audio-s/s 只为 2.07×，并发 16 的单请求 RTF 0.127 实际约 7.9× 实时，并非 97.5×。高聚合吞吐同时把长会议平均延迟从 48.7 秒推到 291 秒。
+- 优化组件并非全部叠加：encoder CUDA Graph 与 `torch.compile` 互斥；4GB/64 条 CPU encoder LRU 由流水线配置默认开启，但主要利好重复输入；各 PR 的 H100/H200、单卡/DP2 与 workload 不同，不能把增益相加归因到最终表。
+- 公开可复现性未闭合：文章未钉 commit/model revision，Movies 与 Podcast 数据私有；官方 cookbook 的 Movies 并发 16 仅 81.98 audio-s/s，文章为 379.5，相差约 4.6×，但长会议数字接近，现有资料不能解释差异。
+- 最关键的生产风险是“成功但不完整”：开放 PR #1034 记录默认 5120 输出 token 会让 38.7 分钟样本在 HTTP 200 下只返回 18,400 字符中的 6,782 个。另有 9.7 秒笑声触发贪心重复循环、单请求慢约 40×；文本归一化会让 CER 隐藏该失败，P95 也可能漏掉 1/800 的异常。
+- 独立 insight：生成式长音频 ASR 已不能把系统性能与模型正确性分开。输出预算、finish reason、最后时间戳、重复率和输出长度/音频时长比既是质量指标，也是保护 KV cache、尾延迟和吞吐的调度指标。
+
+### 完成变更与验证结果
+
+- 新增 `notes/tech-analysis/moss-td-sglang-omni-long-audio-asr.html`，覆盖模型机制、瓶颈换位、优化栈、性能复算、质量指标、公开资料冲突、版本时间线、生产建议、独立 insight 与证据边界。
+- 更新 `_data/notes.yml` 新增 Tech Analysis 入口；未新增图片资产，以响应式流程图、表格和卡片承载信息。
+- `ruby scripts/validate_notes_index.rb` 通过：147 个索引条目与 147 个顶层 HTML 一一对应；目标页 doctype、唯一 `main`、`notes-shell-page`、共享样式与证据附录结构均通过，公开过程噪声扫描为 clean，`git diff --check` 通过。
+- Jekyll 隔离构建成功；构建仅出现未配置 GitHub API 凭据与公共 API 限流警告，不影响静态站点生成。
+- 桌面 1440×1000 与手机 390×844 实际渲染均返回 HTTP 200，标题、单一 H1/main、导航正确，无 console/page/request error，无横向溢出；已目视检查长页面的层级、表格、卡片和移动端堆叠。
+
 ## 2026-07-20 Understanding Reasoning from Pretraining to Post-Training 深读
 
 ### 任务与材料边界

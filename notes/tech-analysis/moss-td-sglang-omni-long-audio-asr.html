@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOSS-TD × SGLang Omni 深读：90 分钟多说话人 ASR 如何真正跑起来</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f2f3ef; --surface: #fffefa; --ink: #202a2c; --muted: #5d696b;
+      --line: #d5dad7; --accent: #176b72; --accent-soft: #e8f2f2;
+      --signal: #b25532; --signal-soft: #f8ece5; --blue: #3f608a; --blue-soft: #ebf0f7;
+      --shadow: 0 14px 36px rgba(28, 46, 48, .08); --radius: 12px; --max: 1080px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body { margin: 0; color: var(--ink); font-family: var(--sans); line-height: 1.78; background: radial-gradient(circle at 12% 0%, rgba(23,107,114,.09), transparent 31rem), linear-gradient(90deg, rgba(32,42,44,.025) 1px, transparent 1px), var(--paper); background-size: auto, 48px 48px, auto; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 7vw, 82px) 0 28px; }
+    .kicker { color: var(--signal); font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 10px 0 0; font: 760 clamp(32px, 5vw, 58px)/1.14 var(--serif); }
+    .lede { max-width: 900px; margin: 20px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 22px; font-size: 14px; }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font-size: clamp(24px, 3vw, 34px); }
+    h3 { margin-top: 24px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #e3ece9; color: #12565b; font-family: var(--mono); }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.warn { border-left-color: var(--signal); background: var(--signal-soft); }
+    .callout.warn > b { color: var(--signal); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1.25fr auto 1fr; gap: 10px; align-items: stretch; margin: 20px 0; }
+    .flow > div { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    .flow b { display: block; color: var(--accent); }
+    .flow span { color: var(--muted); font-size: 14px; }
+    .flow .arrow { align-self: center; padding: 0; border: 0; background: transparent; color: var(--signal); font-size: 22px; }
+    .table-wrap { max-width: 100%; margin: 16px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    .status { white-space: nowrap; font-weight: 750; }
+    .verified { color: var(--accent); } .reported { color: var(--blue); } .limited { color: var(--signal); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(145px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .source-list li { margin-bottom: 10px; }
+    @media (max-width: 780px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow .arrow { text-align: center; transform: rotate(90deg); }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Long-form ASR Serving</div>
+    <h1>MOSS-TD × SGLang Omni 深读：90 分钟多说话人 ASR 如何真正跑起来</h1>
+    <p class="lede">这项工作的价值，不在于某个 CUDA 技巧让 ASR “快了 7 倍”，而在于它展示了长音频推理的瓶颈会随音频长度和并发彻底换位：短音频要批量吞吐，长音频要管住自回归解码、上下文预算与尾部失败。97.5 秒音频/秒的单卡结果可信到“指定环境中的系统测量”，却还不是一个可复现、默认安全的 90 分钟生产承诺。</p>
+    <div class="toc" aria-label="目录"><a href="#takeaway">核心判断</a><a href="#model">模型</a><a href="#bottleneck">瓶颈换位</a><a href="#stack">优化栈</a><a href="#numbers">数字复核</a><a href="#quality">质量</a><a href="#audit">主张审计</a><a href="#production">生产建议</a><a href="#insight">独立 Insight</a><a href="#sources">资料索引</a></div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>原文准确描述了一套成熟的长音频 serving 工程，但把“模型能容纳 90 分钟”“优化组件已经实现”“默认请求能可靠返回完整 90 分钟结果”和“公开数字可被第三方复现”四件事写得过于接近。</strong>逐项核验后，前两项成立；后两项仍有明显缺口。</p>
+      <div class="grid-3">
+        <div class="card"><h3>模型能力：成立</h3><p>0.9B MOSS-TD 使用 128K 上下文，把识别、说话人标签和时间戳放入一次自回归输出；约 12.5 audio token/s，使 90 分钟输入约占 67.5K token。</p></div>
+        <div class="card"><h3>系统结果：有条件成立</h3><p>单张 H100 80GB 上，文章报告短音频并发 16 达 379.5 audio-s/s，38 分钟会议达 97.5 audio-s/s；算术内部一致，但依赖私有数据、未钉住的代码版本与特定运行参数。</p></div>
+        <div class="card"><h3>生产承诺：尚未闭环</h3><p>默认输出预算可能静默截断长转写；极端非语音片段可让贪心解码循环；公开 cookbook 的短音频性能又比文章低约 4.6 倍。</p></div>
+      </div>
+      <div class="callout warn"><b>最重要的限定</b>“支持 90 分钟”首先是输入表示与上下文容量声明，不等于默认 API 已经拥有足够的输出 token 预算。开放中的长音频修复记录显示，38.7 分钟样本曾在 HTTP 200 下只返回 18,400 个字符中的 6,782 个；同一修复分支才完成 90 分钟全量转写。调用方若不检查 <code>finish_reason</code>、末尾时间戳和覆盖时长，会把截断误判为成功。</div>
+    </section>
+
+    <section id="model">
+      <h2>先把模型说清：它不是“Whisper 加一个说话人后处理”</h2>
+      <div class="flow" aria-label="MOSS-TD 数据流">
+        <div><b>16 kHz 波形</b><span>切成约 30 秒片段，提取 80-bin log-Mel</span></div><div class="arrow" aria-hidden="true">→</div>
+        <div><b>Whisper Encoder</b><span>24 层，hidden 1024；四倍时间合并</span></div><div class="arrow" aria-hidden="true">→</div>
+        <div><b>投影与长上下文</b><span>4096→1024 adapter，把音频特征映射到 Qwen3 表示空间</span></div><div class="arrow" aria-hidden="true">→</div>
+        <div><b>一次自回归输出</b><span>正文 + <code>[S01]</code> + 起止时间戳</span></div>
+      </div>
+      <p>技术报告把系统称为 end-to-end speaker-attributed, time-stamped transcription（SATS）：模型在单次生成里共同预测文字、说话人身份和段落时间，而不是先做 ASR、再用另一个 diarization 模型切人、最后对齐时间。它的工程优势是链路短、全局语境连续，尤其适合跨很远距离仍需保持说话人一致性的会议；代价则是<strong>所有结构化结果都继承语言模型解码的失败模式</strong>。</p>
+      <div class="def-list">
+        <div><b>CER</b><span>忽略说话人身份后的字符错误率，主要衡量“字写对没有”。</span></div>
+        <div><b>cpCER</b><span>先寻找预测说话人与真实说话人的最优置换，再计算拼接字符错误率；同时惩罚转写与归属错误。</span></div>
+        <div><b>Δcp</b><span><code>cpCER − CER</code>，发布方用它近似隔离说话人归属造成的额外损失；但两项若采用不同归一化或样本池，差值可能出现反常负数。</span></div>
+        <div><b>DER</b><span>说话人日志错误率。文章代码采用 0 秒 collar，是比常见宽容边界更严格的计分设置。</span></div>
+        <div><b>RTF</b><span>处理时间 / 音频时长。0.021 表示单请求约 47.6× 实时；它与多请求聚合 audio-s/s 不是同一个维度。</span></div>
+      </div>
+    </section>
+
+    <section id="bottleneck">
+      <h2>真正的主线：音频越长，瓶颈越不像传统 ASR</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>工作负载</th><th>并发</th><th>Encoder</th><th>Prefill</th><th>Decode</th><th>系统含义</th></tr></thead>
+        <tbody>
+          <tr><td>5 秒</td><td>1</td><td>8.9%</td><td>14.7%</td><td>76.4%</td><td>单请求仍以解码为主，但短前端开销可见</td></tr>
+          <tr><td>5 秒</td><td>16</td><td>38.2%</td><td>29.7%</td><td>32.1%</td><td>批量化 decode 后，encoder/prefill 成为新热点</td></tr>
+          <tr><td>60 秒</td><td>16</td><td>13.7%</td><td>9.5%</td><td>76.8%</td><td>生成长度开始压倒固定前端成本</td></tr>
+          <tr><td>20 分钟</td><td>16</td><td>11.6%</td><td>2.6%</td><td>85.7%</td><td>长音频的吞吐上限主要由逐 token 解码决定</td></tr>
+        </tbody>
+      </table></div>
+      <p>这张分解表比最终 QPS 更有迁移价值。把并发从 1 提到 16 后，短音频 decode 占比从 76.4% 降到 32.1%，说明批处理确实摊薄了语言模型生成；但 encoder 与 prefill 的相对占比同步升高。到了 20 分钟，哪怕并发 16，decode 仍占 85.7%，说明继续只优化音频编码器不会带来同量级收益。</p>
+      <div class="callout info"><b>长度是调度变量，不只是输入字段</b>短片段服务要优先追求大批量、encoder graph 与低排队开销；长会议服务要优先限制并发、预算 KV cache、按音频时长配置输出上限，并监控生成尾部。将两者放进同一个队列、使用同一并发上限，既容易让长请求拖垮短请求 SLO，也容易让短请求的高 QPS 掩盖长请求的显存与截断风险。</div>
+    </section>
+
+    <section id="stack">
+      <h2>优化栈逐层拆解：哪些互补，哪些互斥，哪些只对特定流量有用</h2>
+      <div class="grid-2">
+        <div class="card"><h3>Encoder CUDA Graph</h3><p>为 1–8 个 30 秒片段预捕获固定 shape，跳过 Python 和 kernel launch 开销；超过默认约 4 分钟的桶范围会回退 eager。短音频、批量小 shape 最受益。</p></div>
+        <div class="card"><h3>torch.compile</h3><p>以静态 bucket 编译 Whisper encoder，是显式 opt-in；与 encoder graph 二选一。曾使用 <code>reduce-overhead</code> 时和 decode graph 共存触发非法内存访问，后改回默认模式。</p></div>
+        <div class="card"><h3>4GB CPU LRU Encoder Cache</h3><p>流水线默认配置把缓存打开，最多 64 条、4GB。对重试、A/B、重复音频有价值；真实 ASR 若大多是一次性输入，命中率不会自动很高。</p></div>
+        <div class="card"><h3>Decode CUDA Graph</h3><p>为固定 batch bucket 捕获语言模型单步解码，减少 launch 开销；收益取决于并发能否稳定落入 bucket，也必须正确回收 KV slot。</p></div>
+        <div class="card"><h3>异步 one-step lookahead</h3><p>CPU 在 GPU 计算当前 token 时准备下一步元数据，利用 pinned buffer 双缓冲；并发越高越能隐藏 host 工作。对应 PR 在另一套 H200/DP2 环境报告约 +14.4% QPS。</p></div>
+        <div class="card"><h3>Chunked Prefill + SSE</h3><p>把长音频 prefill 切成 4096-token 块，与其他请求 decode 交错，避免单个长请求霸占设备；prefill 期间不把中间状态错当输出，流式缓冲还要保留不完整 UTF-8。</p></div>
+      </div>
+      <p>这些组件不是可以直接相加的百分比菜单。encoder CUDA Graph 与 <code>torch.compile</code> 互斥；CPU cache 只在重复输入时命中；异步解码的公开增益来自 H200、两 worker data parallel，而文章总表是单张 H100 colocated。把不同硬件、拓扑和 workload 的 PR 增益相加，得不出文章最终性能。</p>
+      <div class="callout warn"><b>时间线也要分开</b>文章发布后一天，主分支才合入“预语言模型 encoder service”，通过让音频编码与 LM 计算重叠，在 H200、并发 16 的独立测试里再提高约 9% audio throughput。它不能反向解释文章发布时的数字。文章列作下一步的 piecewise prefill graph 已关闭未合并，tensor parallel 仍是 draft，长音频输出预算修复仍开放。</div>
+    </section>
+
+    <section id="numbers">
+      <h2>性能数字复核：算术成立，跨文档口径却没有闭合</h2>
+      <p>文章环境是单张 H100 80GB、BF16、单 GPU colocated、贪心解码，<code>max_running_requests=16</code>、decode graph 最大 batch 16、静态显存比例 0.80。Movies 是 800 条、平均约 12 秒的私有短片段；AISHELL-4 Long 是 20 条、平均约 38 分钟的会议。短集每点取 3 次均值，长集每点只跑 1 次，准确率只在并发 16 跑一次。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>数据 / 并发</th><th>请求吞吐</th><th>RTF</th><th>audio-s/s</th><th>平均延迟</th><th>P95</th></tr></thead>
+        <tbody>
+          <tr><td>Movies / 1</td><td>4.55 req/s</td><td>0.022</td><td>52.7</td><td>0.219 s</td><td>0.500 s</td></tr>
+          <tr><td>Movies / 16</td><td>32.79 req/s</td><td>0.043</td><td>379.5</td><td>0.422 s</td><td>0.935 s</td></tr>
+          <tr><td>AISHELL-4 Long / 1</td><td>0.021 req/s</td><td>0.021</td><td>47.0</td><td>48.7 s</td><td>71.1 s</td></tr>
+          <tr><td>AISHELL-4 Long / 16</td><td>0.043 req/s</td><td>0.127</td><td>97.5</td><td>291.0 s</td><td>374.5 s</td></tr>
+        </tbody>
+      </table></div>
+      <p>复算得到 Movies 从并发 1 到 16 的请求吞吐倍率为 <strong>7.21×</strong>，audio-s/s 倍率为 <strong>7.20×</strong>，两者吻合；长会议的 audio-s/s 则只提高 <strong>2.07×</strong>。38 分钟会议单请求平均 48.7 秒，也确实约等于 47× 实时。需要避免的误读有两种：</p>
+      <ul>
+        <li><strong>97.5× 聚合实时不是单条会议 97.5×。</strong>并发 16 时单请求 RTF 0.127，即约 7.9× 实时；97.5 audio-s/s 是许多请求同时完成后的设备总产能。</li>
+        <li><strong>高吞吐不是低延迟。</strong>长会议并发 16 把设备总产能翻倍，却把平均单请求延迟从 48.7 秒推到 291 秒，约增加 5 倍。</li>
+      </ul>
+      <div class="callout warn"><b>公开资料的直接冲突</b>同一官方仓库的 cookbook 在核验时仍给出 Movies 并发 16 仅 7.08 req/s、81.98 audio-s/s；文章则是 32.79 req/s、379.5 audio-s/s，相差约 4.6 倍。AISHELL-4 Long 两处数字又大致接近。可能原因包括代码版本、router/worker 布局、预热或数据处理差异，但文章未给 commit hash，公开资料也未解释。因此短音频 headline 目前只能视为发布方在未完全钉住环境中的结果。</div>
+    </section>
+
+    <section id="quality">
+      <h2>准确率：短音频的说话人归属仍是主要短板</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>文章数据集</th><th>CER</th><th>cpCER</th><th>Δcp</th><th>Speaker timestamp DER</th><th>解读</th></tr></thead>
+        <tbody>
+          <tr><td>Movies</td><td>5.92%</td><td>13.12%</td><td>7.20pp</td><td>21.20%</td><td>字词识别尚可，但短段、多说话人切换使归属损失明显</td></tr>
+          <tr><td>AISHELL-4 Long</td><td>13.76%</td><td>15.07%</td><td>1.31pp</td><td>10.25%</td><td>长会议文字更难，但说话人额外惩罚较小</td></tr>
+        </tbody>
+      </table></div>
+      <p>技术报告的主表提供了另一组发布方结果：MOSS-TD 在 AISHELL-4 上 CER/cpCER 为 14.84/15.83，在 Movies 上为 6.36/12.76，并在四个数据集上与多家闭源 API 比较。它支持模型的基础竞争力，却有三个边界：Podcast 与 Movies 是内部整理数据；不同闭源服务受输入长度和输出格式约束，表中存在缺测；论文主表没有报告时间戳 DER，尽管“time-stamped”是模型核心卖点。</p>
+      <p>更值得警惕的是，技术报告 Alimeeting 一行的 CER 24.86 高于 cpCER 22.17，导致 Δcp = −2.69。若两者严格在同一归一化和样本池上计算，cpCER 按定义通常不应因为加入说话人约束而更低。报告没有解释这个反常值，说明跨系统表格还需要指标实现和归一化细节才能严谨比较。</p>
+      <div class="callout"><b>解码策略也是正确性的一部分</b>将默认温度校准为 0 的贪心解码，能减少随机性并让 DER 更稳定；但公开问题记录显示，一条 9.7 秒的笑声片段会进入重复 <code>ha ha…</code> 循环直到耗尽输出预算，使单请求慢约 40 倍，并拖低整组吞吐约 19%。评测归一化又可能删掉这些笑声，CER 看不出失败，800 条中的单个异常甚至不一定改变 P95。生产指标必须加入输出长度/音频时长比、重复率、结束原因和最大 token 命中率。</div>
+    </section>
+
+    <section id="audit">
+      <h2>主张审计：证据强度到哪里为止</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>主张</th><th>判断</th><th>证据与边界</th></tr></thead>
+        <tbody>
+          <tr><td>模型可在单上下文表示 90 分钟音频</td><td class="status verified">已验证</td><td>128K 配置、音频 token 密度、技术报告与 90 分钟分支探针相互支持；不等于默认输出不会截断。</td></tr>
+          <tr><td>单卡 H100 可达到 379.5 / 97.5 audio-s/s</td><td class="status reported">发布方测量</td><td>表内算术一致，但数据私有、长集单次运行、代码版本未钉住；短集与官方 cookbook 冲突。</td></tr>
+          <tr><td>整套优化共同带来最终提升</td><td class="status limited">不能归因</td><td>缺少统一 baseline→final 对照；不同 PR 使用 H100/H200、单卡/DP2 和不同数据，且 compile 与 graph 互斥。</td></tr>
+          <tr><td>质量在 serving 优化后保持不变</td><td class="status reported">部分支持</td><td>若干 PR 有小规模或单次 accuracy 对照；早期同 checkpoint 的 SGLang 与 Omni 曾有明显 CER/QPS 差距，关闭 issue 未给出完整最终 parity 复跑。</td></tr>
+          <tr><td>长音频 API 已默认生产就绪</td><td class="status limited">尚未成立</td><td>输出预算、上下文 clamp、超长请求 400 映射和异常时间戳修复截至核验仍在开放 PR。</td></tr>
+          <tr><td>结果可由第三方完整复现</td><td class="status limited">尚未成立</td><td>驱动代码公开，但 Movies 与 Podcast 受许可限制；文章未钉 commit、模型 revision、完整命令和预热策略。</td></tr>
+        </tbody>
+      </table></div>
+      <p>技术报告本身也更像模型发布说明，而非完整训练论文：没有公开训练数据规模、训练 token 数、优化器超参数、训练算力或关键消融；模拟数据描述了 2–12 位说话人、重叠与噪声策略，但真实数据只概括为公开互联网与内部来源。90 分钟长上下文的 corpus-level 45–90 分钟质量验证仍在 roadmap，当前公开的 90 分钟证据是一条拼接探针。</p>
+    </section>
+
+    <section id="production">
+      <h2>如果真要上线，优先补的不是另一个 graph</h2>
+      <ol>
+        <li><strong>按时长分队列。</strong>至少拆分短片段与长会议的 admission control、并发上限和 SLO；调度指标使用 audio-seconds/s、RTF 和排队延迟，不能只看 req/s。</li>
+        <li><strong>输出预算随音频时长增长。</strong>同时 clamp 到剩余上下文；对 <code>finish_reason=length</code>、最后时间戳远离音频末尾、输出段覆盖率不足直接判失败。</li>
+        <li><strong>给贪心循环加护栏。</strong>监控重复 n-gram、字符/音频秒比、异常高 token/speech-second；为非语音和音乐单独建集，不让文本归一化把失败删掉。</li>
+        <li><strong>把基准环境写进结果。</strong>钉住代码 commit、模型 revision、驱动参数、worker/router 拓扑、预热轮数、缓存状态和数据清单；至少报告均值、方差、P99/max 与失败数。</li>
+        <li><strong>质量与系统指标联动。</strong>每次吞吐改动都同时跑 CER、cpCER、DER、timestamp 覆盖、finish reason 和极端输出长度，避免“更快”来自截断或提前终止。</li>
+      </ol>
+      <div class="callout info"><b>一个更诚实的生产表述</b>“在指定单卡 H100 配置与私有基准上，系统展示了高于实时数十倍的聚合处理能力；模型上下文可容纳 90 分钟音频。上线前仍需合入或等价实现时长感知输出预算、极端解码护栏，并用自有长音频集复测。”这比“单卡稳定支持 90 分钟、97.5× 实时”更准确。</div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：长音频 ASR 已经是一个生成式系统问题</h2>
+      <div class="grid-2">
+        <div class="card"><h3>1. 吞吐 headline 属于 scheduler</h3><p>模型决定“能否表示”和基础质量，调度器决定批量、交错与设备利用率。97.5 audio-s/s 不是 0.9B checkpoint 的固有属性，而是模型、实现、队列、硬件和流量分布的联合函数。</p></div>
+        <div class="card"><h3>2. 90 分钟是双预算问题</h3><p>长上下文解决输入预算，完整转写还要解决输出预算。只扩展 <code>max_position_embeddings</code>，却保留固定 <code>max_new_tokens</code>，会制造最危险的“HTTP 200 静默不完整”。</p></div>
+        <div class="card"><h3>3. 尾部正确性会反噬平均吞吐</h3><p>一个笑声循环既是语义失败，也是调度失败：它占住 KV cache、推高 max latency、降低整批 QPS。ASR 系统不能把解码异常只交给 CER 评测。</p></div>
+        <div class="card"><h3>4. 最佳配置应随长度切换</h3><p>短音频值得投入 encoder graph 与大 batch；长音频更需要 decode、KV 和预算治理。下一步合理方向不是为所有请求再叠一个开关，而是 duration-aware routing 与分层容量规划。</p></div>
+      </div>
+      <p>因此，这篇文章最值得带走的不是某张最终表，而是一种性能分析方法：先按音频时长和并发画出 encoder / prefill / decode 的占比，再决定优化对象；每个速度增益都必须和完整输出、说话人归属、时间戳、尾部失败一起验收。对生成式 ASR 来说，系统吞吐与模型正确性已经无法分开治理。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对原帖所链接长文、MOSS-TD 技术报告、模型卡、SGLang Omni 源码与公开 benchmark/issue/PR。性能表是发布方测量，本轮未拥有 H100 环境，也未取得私有 Movies/Podcast 音频，因此只做算术复算、源码默认值、版本时间线和跨文档一致性审计，不声称独立复现实验。</p>
+      <ul class="source-list">
+        <li><a href="https://x.com/YichiZ03/status/2078588932191895976">Yichi Zhang 原帖</a>与<a href="https://x.com/i/article/2078583298859933696">完整 X Article：Optimizing ASR Models to Transcribe 90-Minute Multi-Speaker Audio</a>。</li>
+        <li><a href="https://github.com/zhaochenyang20/Awesome-ML-SYS-Tutorial/blob/main/sglang/sglang-omni/moss-td-asr.md">文章的公开 Markdown 版本</a>：机制、profiling、benchmark 与限制的主要来源。</li>
+        <li><a href="https://arxiv.org/abs/2601.01554">MOSS Transcribe Diarize Technical Report</a>与<a href="https://huggingface.co/OpenMOSS-Team/MOSS-Transcribe-Diarize">官方模型卡</a>：模型结构、上下文、训练数据概况与质量表。</li>
+        <li><a href="https://github.com/sgl-project/sglang-omni">SGLang Omni 仓库</a>及<a href="https://github.com/sgl-project/sglang-omni/blob/main/docs/cookbook_moss_transcribe_diarize.md">官方 cookbook</a>：实现默认值与公开基准对照。</li>
+        <li><a href="https://github.com/sgl-project/sglang-omni/issues/924">ASR 优化路线图 #924</a>、<a href="https://github.com/sgl-project/sglang-omni/issues/959">早期 parity 问题 #959</a>、<a href="https://github.com/sgl-project/sglang-omni/issues/975">贪心解码循环 #975</a>。</li>
+        <li><a href="https://github.com/sgl-project/sglang-omni/pull/966">异步解码 PR #966</a>、<a href="https://github.com/sgl-project/sglang-omni/pull/973">Encoder CUDA Graph PR #973</a>、<a href="https://github.com/sgl-project/sglang-omni/pull/1046">torch.compile 稳定性 PR #1046</a>、<a href="https://github.com/sgl-project/sglang-omni/pull/1045">发布后 encoder/LM overlap PR #1045</a>。</li>
+        <li><a href="https://github.com/sgl-project/sglang-omni/pull/1034">长音频输出预算 PR #1034</a>、<a href="https://github.com/sgl-project/sglang-omni/pull/1035">piecewise prefill graph PR #1035</a>与<a href="https://github.com/sgl-project/sglang-omni/pull/1041">tensor parallel draft #1041</a>：用于区分已合入能力与后续工作。</li>
+      </ul>
+      <p><a href="#top">返回页首 ↑</a></p>
+    </section>
+  </main>
+</body>
+</html>
