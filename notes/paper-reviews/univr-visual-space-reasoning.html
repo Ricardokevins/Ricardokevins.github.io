@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniVR 深读：视觉空间推理，还是视觉轨迹策略学习？</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme: light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#5f686f; --line:#dcd6c8; --accent:#c15f3c; --accent-soft:#f7ece4; --accent-2:#a65c18; --accent-2-soft:#fdf3e7; --info:#365f91; --info-soft:#eef3fb; --red:#9d3e35; --red-soft:#faece9; --green:#2f6b4f; --green-soft:#edf6f0; --shadow:0 16px 44px rgba(31,37,40,.08); --radius:10px; --max:1120px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif; --mono:"SFMono-Regular","Menlo","Consolas",monospace; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; background:linear-gradient(90deg,rgba(193,95,60,.045) 1px,transparent 1px),linear-gradient(180deg,rgba(120,105,85,.03) 1px,transparent 1px),var(--paper); background-size:44px 44px; color:var(--ink); font-family:var(--sans); line-height:1.76; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    main,header { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(38px,6vw,76px) 0 24px; }
+    .kicker { margin-bottom:12px; color:var(--accent-2); font:800 13px/1.3 var(--sans); letter-spacing:.05em; text-transform:uppercase; }
+    h1 { max-width:1040px; margin:0; font:760 clamp(32px,5vw,56px)/1.13 var(--serif); }
+    .lede { max-width:940px; margin:20px 0 0; color:var(--muted); font-size:clamp(17px,2vw,20px); }
+    .paper-meta,.mini-index { display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:18px; }
+    .paper-meta { color:var(--muted); font-size:14px; }
+    .paper-meta span::before { content:"•"; margin-right:8px; color:var(--accent); }
+    .mini-index a { padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:rgba(255,253,248,.8); color:var(--ink); font-size:13px; text-decoration:none; }
+    main { display:grid; gap:30px; padding-bottom:68px; }
+    section { padding-top:30px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3 { margin:0 0 12px; line-height:1.27; }
+    h2 { font-size:clamp(24px,3.2vw,34px); }
+    h3 { margin-top:24px; color:var(--accent); font-size:21px; }
+    p { margin:12px 0; } ul,ol { padding-left:1.35rem; } li { margin:7px 0; }
+    .grid-2,.grid-3 { display:grid; gap:14px; margin:18px 0; }
+    .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card { min-width:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3 { margin:0 0 8px; font-size:16px; } .card p { margin:0; color:var(--muted); font-size:14.5px; } .metric { display:block; margin-bottom:3px; font:760 27px/1.2 var(--serif); }
+    .callout { margin:18px 0; padding:14px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); background:var(--accent-soft); }
+    .callout>b { display:block; margin-bottom:6px; color:var(--accent); } .callout.info { border-left-color:var(--info); background:var(--info-soft); } .callout.info>b { color:var(--info); } .callout.warn { border-left-color:var(--accent-2); background:var(--accent-2-soft); } .callout.warn>b { color:var(--accent-2); } .callout.risk { border-left-color:var(--red); background:var(--red-soft); } .callout.risk>b { color:var(--red); } .callout.good { border-left-color:var(--green); background:var(--green-soft); } .callout.good>b { color:var(--green); }
+    .flow { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:9px; margin:20px 0; }
+    .flow-step { position:relative; min-width:0; padding:14px 11px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); text-align:center; }
+    .flow-step:not(:last-child)::after { content:"→"; position:absolute; top:50%; right:-10px; z-index:2; transform:translateY(-50%); color:var(--accent); font-weight:800; }
+    .flow-step b { display:block; margin-bottom:4px; color:var(--accent); font-size:13px; } .flow-step span { color:var(--muted); font-size:12.5px; line-height:1.45; }
+    figure { margin:24px 0; padding:12px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    img { display:block; width:100%; height:auto; border-radius:6px; } figcaption { margin-top:9px; color:var(--muted); font-size:14px; }
+    .math-display { margin:16px 0; padding:12px 14px; max-width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    .table-wrap { margin:16px 0; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .table-wrap table { width:100%; min-width:720px; border-collapse:collapse; font-size:14.5px; }
+    th,td { padding:10px 13px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; } th { background:var(--accent-soft); }
+    .def-list { display:grid; gap:10px; margin:18px 0; } .def-list>div { display:grid; grid-template-columns:minmax(150px,.25fr) minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); } .def-list b { color:var(--accent); }
+    code { padding:2px 6px; border-radius:5px; background:#ece5d7; color:#7c2d12; font-family:var(--mono); font-size:.92em; }
+    @media (max-width:820px) { .grid-2,.grid-3,.flow { grid-template-columns:1fr; } .flow-step:not(:last-child)::after { content:"↓"; top:auto; right:50%; bottom:-15px; transform:translateX(50%); } .def-list>div { grid-template-columns:1fr; gap:6px; } }
+    @media (max-width:760px) { main,header { width:min(100% - 24px,var(--max)); } .table-wrap table { min-width:720px !important; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header id="top">
+    <div class="kicker">Paper Note · Native Visual Reasoning</div>
+    <h1>UniVR 深读：视觉空间推理，还是视觉轨迹策略学习？</h1>
+    <p class="lede">UniVR 最有价值的贡献，不是证明图像已经可以取代语言进行一般推理，而是把“预测下一张关键帧”扩展成跨任务的策略表示，并用最分歧的中间步骤去约束长程视觉 rollout。它提供了很强的方向性证据；但语言仍存在于指令、数据策展、奖励与评测中，当前开放代码也尚未完整复现论文所述 Step-Focal 选择器。</p>
+    <div class="paper-meta"><span>arXiv:2607.12800 v1</span><span>2026-07-14</span><span>Emu3.5 34B</span><span>VR-X · 16 sources</span></div>
+    <div class="mini-index"><a href="#takeaway">核心判断</a><a href="#problem">问题</a><a href="#mechanism">机制</a><a href="#reward">VR-GRPO</a><a href="#evidence">证据</a><a href="#audit">审计</a><a href="#limits">边界</a><a href="#insight">Insight</a><a href="#sources">资料</a></div>
+  </header>
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>把 UniVR 称为“视觉空间中的 chain-of-thought”容易过度理解。</strong>它并没有展示一个可反省、可搜索、可验证任意命题的通用视觉推理机；模型学习的是从初始图像和文本任务指令到一串关键视觉状态的条件生成。对系绳、叠衣、导航、拼图这类问题，这串状态同时承担计划、预测和答案的角色，所以它确实比“先写文字步骤、再逐帧渲染”更贴近任务本体。</p>
+      <div class="grid-3">
+        <div class="card"><span class="metric">+18.4</span><h3>总体绝对分</h3><p>VR-X 上从 Emu3.5 的 39.8 提升到 58.2；这不是 18.4% 相对增幅，而是 18.4 个评分点。</p></div>
+        <div class="card"><span class="metric">32 + 8</span><h3>训练资源</h3><p>论文报告 SFT/RL 使用 32 张 GPU，Qwen3-VL-30B 奖励模型另占 8 张；34B 长视觉序列训练并不轻量。</p></div>
+        <div class="card"><span class="metric">238,006</span><h3>公开数据行数</h3><p>公开数据仓当前可见总行数，低于论文所述 310k SFT + 3k RL + 1.8k eval；“全部开放”仍需按发布物核对。</p></div>
+      </div>
+      <div class="callout good"><b>最强贡献</b><p>Step-Focal reward 把奖励预算投向同一任务多个 rollout 最分歧的时间段。这是一种“主动寻找决策分叉”的信用分配方法，比只看终态更适合长程生成。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>它真正要解决什么</h2>
+      <p>传统多模态流水线常把语言当中间总线：VLM 先产出文字计划，图像模型再把每一步渲染成画面。问题在于，绳结拓扑、衣物形变、液体倾倒、遮挡关系和手—物接触状态很难被短文字无损表达；逐帧图像编辑还会不断累积身份漂移与物理错误。</p>
+      <p>另一条路线是视频或世界模型，但许多系统只覆盖单一环境、短时间预测，或依赖稠密文字说明。UniVR 的问题重构是：<strong>能否把异构任务都写成“给定初始视觉状态与目标，直接生成关键状态轨迹”，再让同一模型从纯视觉示范轨迹中学习状态转移与策略？</strong></p>
+      <div class="callout info"><b>“纯视觉示范”的准确含义</b><p>答案轨迹不需要逐步文本 CoT，输出中也没有中间文字链；但输入仍包含文本 instruction，310k 数据的问答与关键帧由 Qwen3.5-397B 辅助生成，RL 奖励使用 Qwen3-VL-30B，最终 VLM 指标使用 Qwen3.5-397B。因此它消除的是<strong>密集语言中介</strong>，不是端到端系统里的全部语言监督。</p></div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制：把计划压进可生成的视觉状态</h2>
+      <figure><img src="univr-visual-space-reasoning-assets/architecture.png" alt="UniVR 架构：文本指令和初始图像进入统一自回归模型，输出多步视觉推理轨迹"><figcaption>UniVR 用 Emu3.5 的统一离散 token 空间，自回归生成一串关键图像状态。</figcaption></figure>
+      <div class="flow">
+        <div class="flow-step"><b>输入</b><span>初始图像 + 文本目标</span></div>
+        <div class="flow-step"><b>离散化</b><span>VQ tokenizer 转成视觉 token</span></div>
+        <div class="flow-step"><b>Cold start</b><span>310k 视觉轨迹 SFT</span></div>
+        <div class="flow-step"><b>Rollout</b><span>同一问题采样 K 条轨迹</span></div>
+        <div class="flow-step"><b>VR-GRPO</b><span>全局 + 分叉步骤奖励</span></div>
+        <div class="flow-step"><b>输出</b><span>多步关键视觉状态</span></div>
+      </div>
+      <p>形式上，给定已有视觉序列 (x_{1:t}) 与 instruction，模型学习：</p>
+      <div class="math-display">\[p(x_{t+1}\mid x_{1:t},\,\text{instruction})\]</div>
+      <p>这里的“思考”并不是模型内部隐藏态被直接监督，而是<strong>外显的中间视觉状态</strong>。每一帧既是下一步的上下文，也是可被人或奖励模型检查的中间承诺。其优势是状态变化可视化；代价是每张 512px 短边图像约需 1,000–1,500 个 token，一条轨迹可到 15k–20k token，推理与训练成本远高于短文本动作序列。</p>
+      <h3>两阶段训练</h3>
+      <p>第一阶段从 1.5M 候选中筛出约 310k 样本，统一成“query image、instruction、visual trajectory”。视频以约 0.27 FPS 做场景感知采样，再经历去重、低质帧过滤、问题与关键步骤生成，论文称约 80% 候选会被丢弃。第二阶段从 SFT 数据中挑选约 3k hard samples，进行 250 步全参数 RL。</p>
+    </section>
+
+    <section id="reward">
+      <h2>VR-GRPO：不只问“最后做成了吗”</h2>
+      <figure><img src="univr-visual-space-reasoning-assets/vr-grpo.png" alt="VR-GRPO 奖励：全局成对评估与基于 rollout 分歧的步骤级评估共同产生奖励"><figcaption>全局奖励看完整轨迹；Step-Focal 奖励先定位多个 rollout 的最大分歧区间，再对该局部做成对比较。</figcaption></figure>
+      <p>对同一任务采样 (K) 条轨迹。长度对齐后，在每个时间段用 CLIP 图像特征计算 rollout 间方差：</p>
+      <div class="math-display">\[\sigma(t)=\sqrt{\frac{1}{K}\sum_{k=1}^{K}\lVert z_k(t)-\bar z(t)\rVert_2^2},\qquad t^*=\arg\max_t\sigma(t)\]</div>
+      <p>直觉是：轨迹最分歧的位置往往对应策略分叉、不确定操作或开始崩坏的地方。模型截取 (t^*) 周围宽度 (W=4) 的窗口，让 Qwen3-VL-30B 对候选轨迹做 pairwise 比较，得到步骤奖励 (R_s)；完整轨迹比较产生全局奖励 (R_g)。二者组合为：</p>
+      <div class="math-display">\[R_{\mathrm{reason}}=R_g-\lambda\lvert R_g-R_s\rvert,\qquad \lambda=2\]</div>
+      <p>这个式子不是简单平均：局部与全局不一致会被扣分。例如终态看起来成功、但中途绳子穿模，(R_g) 高而 (R_s) 低，最终奖励可显著下降，甚至变成负数。它迫使 policy 同时满足“结果像成功”和“过程没有明显断裂”。</p>
+      <div class="callout warn"><b>分歧不等于错误</b><p>高 CLIP 方差只是有信息量的审计点：它可能是错误分叉，也可能是多个都正确的策略、镜头变化或外观多样性。方法的有效性仍依赖 VLM 比较器能在该窗口判断物理与逻辑优劣。</p></div>
+    </section>
+
+    <section id="evidence">
+      <h2>最有说服力的证据</h2>
+      <figure><img src="univr-visual-space-reasoning-assets/vr-x.png" alt="VR-X 六类视觉推理任务：视觉指导、机器人操作、编辑、空间感知、视觉搜索和拼图游戏"><figcaption>VR-X 把 16 个来源组织为长程规划与一般视觉推理两大类、六个任务族。</figcaption></figure>
+      <div class="table-wrap"><table><thead><tr><th>比较</th><th>Long-term planning</th><th>General reasoning</th><th>JEPA ↓</th><th>应如何解释</th></tr></thead><tbody>
+        <tr><td>Emu3.5</td><td>38.6 / 42.8 / 32.7</td><td>35.3 / 43.4 / 46.2</td><td>33.62</td><td>同一 34B 基座的起点</td></tr>
+        <tr><td>UniVR</td><td>59.5 / 68.0 / 48.5</td><td>46.5 / 62.2 / 64.3</td><td>13.01</td><td>六类任务均提升，整体 39.8 → 58.2</td></tr>
+        <tr><td>Gemini 3 Pro + Nano Banana 2</td><td>66.2 / 67.1 / 63.7</td><td>55.1 / 65.5 / 79.0</td><td>11.07</td><td>总体 66.1，仍高于 UniVR；机器人项 UniVR 略高</td></tr>
+      </tbody></table></div>
+      <ul>
+        <li><strong>奖励消融：</strong>cold-start 的 LP/GR/JEPA 为 48.2/42.4/18.44；只加全局奖励变成 45.7/46.0/22.30，长程规划和物理分布指标反而恶化；只加步骤奖励为 54.9/45.8/15.87；全局+步骤为 61.6/53.7/12.89；再用 pairwise 变成 63.8/55.4/13.01。这是 Step-Focal 必要性最直接的证据。</li>
+        <li><strong>时间跨度：</strong>相对 Emu3.5，UniVR 在 &gt;60 秒组从 21.7 提升到 45.6（+23.9 点），高于短于 10 秒组的 +16.9 点，与“中间纠错对长程更重要”的机制一致。</li>
+        <li><strong>外部任务：</strong>WorldArena、Uni-MMMU、RBench 分别由 40.3/28.7/31.2 提升到 49.5/54.4/47.7，说明增益不只出现在 VR-X；但这些测试仍使用相同 VLM 评分协议，不等于独立人工成功率。</li>
+        <li><strong>理解任务：</strong>加入 interleaved image-text 序列的 UniVR checkpoint 在 MMMU、MME、MMBench、MathVista、MM-Vet 全部提升；不过这组模型与纯视觉主结果的训练配方并不完全相同。</li>
+      </ul>
+      <div class="callout info"><b>“最高提升 25%”的口径</b><p>机器人操作是 42.8 → 68.0，即 +25.2 个绝对评分点；若算相对提升则约为 58.9%。全局 Overall 是 39.8 → 58.2，即 +18.4 点、约 +46.2% 相对提升。论文 headline 把绝对点数写成百分比，阅读时应区分。</p></div>
+    </section>
+
+    <section id="audit">
+      <h2>论文怎么说，开放材料实际提供了什么</h2>
+      <div class="table-wrap"><table><thead><tr><th>项目</th><th>论文 / 模型卡口径</th><th>公开材料核对</th><th>结论</th></tr></thead><tbody>
+        <tr><td>训练代码</td><td>Step-Focal 使用 CLIP rollout 方差定位窗口</td><td>当前奖励文件的 sampled-frame 路径默认随机抽取 50% 与 GT 对齐帧；未发现论文所述 CLIP 方差定位实现</td><td>框架已开放，精确论文 recipe 尚不完整</td></tr>
+        <tr><td>rollout 数</td><td>论文 (K=8)</td><td>默认 YAML 为 8，但 full-training shell 覆盖成 6</td><td>运行脚本与论文配置不一致</td></tr>
+        <tr><td>SFT 方式与学习率</td><td>34B 全参数；表中 cold-start LR 为 (5\times10^{-4})</td><td>名为 full 的脚本仍传入 <code>--use_lora True</code>，LR 为 (10^{-5})</td><td>不能直接用发布脚本复现主实验</td></tr>
+        <tr><td>数据规模</td><td>310k SFT + 3k RL + 1.8k eval</td><td>公开数据仓 API 当前统计 238,006 行、约 68.4 GB；README 还保留旧下载组织名</td><td>数据已大规模开放，但不是论文宣称规模的完整可核验镜像</td></tr>
+        <tr><td>模型</td><td>34B Planning 与 General</td><td>两个 checkpoint 均有 14 个 safetensors shard，模型卡已公开</td><td>权重开放较完整，但本轮未做 34B 推理复现</td></tr>
+      </tbody></table></div>
+      <p>这些差异不证明论文结果错误，但会改变“可复现”的强度：目前最容易复现的是模型加载、SFT/RL 框架和已有权重推理；最难复现的是与论文完全一致的数据组成、Step-Focal selector、训练超参数与主表评测链。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语与指标</h2>
+      <div class="def-list">
+        <div><b>Visual reasoning trace</b><span>从初始状态到目标状态的一串关键图像。它既是预测轨迹，也是外显计划，但不等同于模型全部内部计算。</span></div>
+        <div><b>GRPO</b><span>对同一 prompt 采样一组输出，用组内相对奖励标准化优势，省去 PPO 的独立 critic；UniVR 的新意主要在视觉奖励和 rollout 系统，而非重新发明 GRPO。</span></div>
+        <div><b>Pairwise reward</b><span>让评估器比较 A/B 哪条更好，而不是各自打绝对分。通常更稳，但需要 (K(K-1)/2) 次全配对比较；若 (K=8)，每个任务有 28 对。</span></div>
+        <div><b>JEPA score</b><span>用 V-JEPA 特征把序列压到 1280 维，再以 polynomial-kernel MMD 比较生成与真实分布；越低表示总体分布更接近，不代表单条轨迹必然物理正确。</span></div>
+        <div><b>Cold initialization</b><span>RL 前的 SFT 阶段，让模型先学会输出合法、多步、任务相关的视觉轨迹，避免从几乎随机的视觉 rollout 开始探索。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>关键限制：它还没有证明什么</h2>
+      <ol>
+        <li><strong>不是完全去语言化。</strong>文本目标、Qwen 数据策展、Qwen 奖励和 Qwen 评测都构成语言先验；更准确的贡献是减少逐步语言轨迹监督。</li>
+        <li><strong>评测与训练存在 evaluator family coupling。</strong>RL 用 Qwen3-VL-30B，主指标用更大的 Qwen3.5-397B，二者共享模型家族与相似判断范式；同一偏好可能同时塑造 policy 和判定结果。</li>
+        <li><strong>VR-X 不是纯独立 benchmark。</strong>同一素材池被处理成 SFT、RL 和 held-out evaluation，论文称 eval 来自 held-out subset，但没有给出视频级、场景级或来源级去重证明；近邻泄漏风险无法量化。</li>
+        <li><strong>缺少统计不确定性。</strong>主表和消融没有多 seed、置信区间或显著性检验；1.8k 总样本分成六类后，几个点的差异是否稳定并不清楚。</li>
+        <li><strong>JEPA 是代理指标。</strong>V-JEPA 表征包含运动知识，但 MMD 接近真实分布不能识别任务特定的拓扑错误、因果错误或危险动作。</li>
+        <li><strong>比较系统并非严格 compute-matched。</strong>闭源 VLM+图像编辑器与 34B 自回归视觉模型的成本、采样策略、上下文、每步渲染次数不同，主表更像产品路线比较，不是同预算算法赛跑。</li>
+        <li><strong>视觉轨迹不是可执行控制。</strong>生成“下一步应该长什么样”与输出机器人低层动作之间仍隔着逆动力学、闭环观测、碰撞约束和安全控制器。</li>
+      </ol>
+      <div class="callout risk"><b>会推翻当前判断的证据</b><p>若独立团队在严格视频级去重、人工任务成功率、多个随机种子和 compute-matched baseline 下无法复现长程增益，UniVR 的主结论会从“视觉轨迹学习有效”降级为“学会迎合特定视觉评估器”。反之，若 Step-Focal 在闭环机器人执行中仍减少中途失败，它会成为很有普适性的长程信用分配方法。</p></div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：视觉 CoT 的真正价值是“可审计状态承诺”</h2>
+      <p>文本 CoT 的每一步通常是命题；UniVR 的每一步则是<strong>对世界状态的承诺</strong>。这带来一个更通用的系统设计：不要只让 agent 输出动作，也让它周期性预测“执行后世界应该是什么样”。真实观测与预测状态的差异，就能成为 replanning、异常检测和训练奖励。</p>
+      <div class="grid-2">
+        <div class="card"><h3>分歧驱动的 verifier allocation</h3><p>Step-Focal 可以推广到代码、GUI agent 和机器人：对多个候选轨迹找状态分歧峰值，把昂贵 verifier 预算集中到最可能改变最终决策的位置。</p></div>
+        <div class="card"><h3>视觉轨迹是 action abstraction</h3><p>关键帧处于文字计划和低层控制之间：比文字保留更多几何信息，比逐像素视频更稀疏。它可能成为跨本体共享的高层 action representation。</p></div>
+        <div class="card"><h3>最危险的是共同盲点</h3><p>若所有 rollout 在同一位置犯同一种错，方差反而很低，Step-Focal 不会聚焦那里。系统仍需要规则、动力学模型或独立传感器捕获低分歧的系统性错误。</p></div>
+        <div class="card"><h3>下一步应从生成走向闭环</h3><p>真正的研究跃迁不是更漂亮的轨迹图，而是“预测状态 → 执行动作 → 读取真实状态 → 比较偏差 → 重规划”的闭环成功率、恢复率和安全率。</p></div>
+      </div>
+      <p><strong>一句工程建议：</strong>如果要复用 UniVR 思路，先复用“在轨迹分叉处加密验证”而不是直接训练 34B 图像 token 模型。前者可插入现有 agent 系统，成本更低，也更容易用真实失败日志检验。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对 arXiv v1 正文、图表与附录，并检查项目页、2026-07-16 的公开代码提交、模型卡、模型文件清单、数据卡和数据服务统计。数值复算包括绝对/相对增益、公开数据行数与全配对数量。本轮没有下载约 34B 权重做推理，也没有用 32+8 GPU 复训；论文主结果因此属于发布方报告，代码/配置/发布物差异属于已核验事实，机制外推与工程建议属于分析推断。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2607.12800">UniVR: Thinking in Visual Space for Unified Visual Reasoning</a></li>
+        <li><a href="https://maverickren.github.io/UniVR.github.io/">UniVR 官方项目页</a></li>
+        <li><a href="https://github.com/bytedance/UniVR">UniVR 官方代码仓库</a></li>
+        <li><a href="https://huggingface.co/ByteDance/UniVR-34B-Planning">UniVR-34B 模型与模型卡</a></li>
+        <li><a href="https://huggingface.co/datasets/ByteDance/VR-X-SFT-RL">VR-X 公开数据仓</a></li>
+        <li><a href="https://arxiv.org/abs/2510.26583">Emu3.5: Native Multimodal Models are World Learners</a></li>
+        <li><a href="https://arxiv.org/abs/2506.09985">V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning</a></li>
+        <li><a href="https://arxiv.org/abs/2402.03300">DeepSeekMath / GRPO</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
