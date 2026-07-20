@@ -1,3 +1,26 @@
+## 2026-07-20 Kimi K3 / Nemotron 3 Super / LatentMoE X Article 深读
+
+### 任务与材料边界
+
+- 深度读取青稞社区发布的 X Article《从 kimi k3 看下一代 MoE 架构的转折点：LatentMoE》，还原全文、署名来源、内嵌图表与作者的核心论证。
+- 已完整核对 NVIDIA `LatentMoE` arXiv:2601.18089 v1 的 18 页正文、公式、消融、95B / hybrid 主表、实测吞吐和万亿参数投影，并定向核对 Nemotron 3 Super 51 页技术报告中的 120B-A12B 架构、512 / Top-22 / latent 1024 配置、MTP 与长上下文口径。
+- 已核对 Moonshot AI 的 Kimi K3 官方技术博客。截止 2026-07-20，官方明确说明完整技术报告稍后发布、模型权重计划于 2026-07-27 前发布；因此 K3 的 2.8T、896 / Top-16、`Stable LatentMoE`、Quantile Balancing 和约 2.5× scaling efficiency 目前均属于发布方报告，不能据此断言其内部实现与 NVIDIA LatentMoE 完全相同。
+
+### 当前关键判断
+
+- 文章抓对了 MoE 的真实系统瓶颈：低并发 decode 常受专家权重搬运限制，高吞吐 expert parallel 常受 All-to-All 通信限制；压缩 routed width 能同时减少专家权重字节和跨卡 payload。
+- “压缩 4×就能咨询 4×专家”只对应 NVIDIA 推荐的 accuracy-oriented 构造：压缩比 `d/ℓ=4` 后同时扩展总专家数与 Top-K。efficiency-oriented 变体只扩总专家数、不扩 Top-K；压缩过度或不补专家数会明显掉点。
+- 95B 主表的提升并不均匀：MMLU-Pro 为 +5.65pp，但 Math 仅 +0.49pp；H100 实测吞吐在五个并发点有正有负，单并发比标准 MoE 低约 12.1%。论文的“350B 额外参数、最高 3.46×”来自 proprietary simulator、Qwen3 Dense 小模型 scaling-law 拟合与等精度构造，不是万亿参数真机对照；约 9% 也是该投影里的相对开销。
+- 独立 insight：LatentMoE 的核心不是“低秩压缩本身”，而是把表示带宽从模型主干宽度中解耦，并把节省下来的字节预算重新配置给 expert diversity；收益是否成立取决于 feature-rank 下限、GEMM 形状、拓扑、并发和路由稳定性，不能只用参数量或组合数判断。
+
+### 完成变更与验证结果
+
+- 新增 `notes/tech-analysis/latentmoe-kimi-k3-nemotron-3-super.html`，覆盖真实系统瓶颈、两种 LatentMoE 变体、公式与数据流、95B / hybrid 证据、H100 实测、万亿参数投影假设、原文主张审计、K3 / Nemotron 差异、术语、失败边界与实践建议；更新 `_data/notes.yml` 登记 Tech Analysis 入口。
+- Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页约 9,793 个非空白可见字符、19 个 h2/h3、唯一 `main` 与末节证据附录，无重复 id、失效页内锚点、控制字符、占位符、公开过程噪声或 whitespace 错误。
+- Jekyll 在隔离输出目录构建成功；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证与公共 API 限流提示，不影响静态产物。
+- 隔离无头浏览器完成 1440×1000 桌面与 390×844 手机渲染：页面级横向溢出、坏图、失效锚点、console / runtime error、失败请求和 4xx / 5xx 资源均为 0，82 个 MathJax 容器正常。
+- 首次手机检查发现共享样式将宽表 `min-width` 重置为 0，导致五张表被压缩；已将本页规则提高为 `.table-wrap table` 并复测。现在手机端五张表均保持 760px 内容宽度，由 364px 容器局部滚动，桌面端完整展开。
+
 ## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
 
 ### 任务与材料边界

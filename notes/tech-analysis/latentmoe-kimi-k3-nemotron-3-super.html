@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LatentMoE 深读：Kimi K3 与 Nemotron 3 Super 真走上了同一条路吗？</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f1eb;
+      --surface: #fffefa;
+      --ink: #1f2928;
+      --muted: #5d6a67;
+      --line: #d5d9d1;
+      --accent: #166b62;
+      --accent-soft: #e8f3ef;
+      --signal: #b45a2a;
+      --signal-soft: #f8eee6;
+      --blue: #355c8a;
+      --blue-soft: #ebf0f7;
+      --shadow: 0 14px 34px rgba(28, 49, 46, .08);
+      --radius: 12px;
+      --max: 1080px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(22,107,98,.08), transparent 32rem),
+        linear-gradient(90deg, rgba(31,41,40,.025) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, 48px 48px, auto;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 7vw, 82px) 0 28px; }
+    .kicker { color: var(--signal); font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 950px; margin: 10px 0 0; font: 760 clamp(32px, 5vw, 58px)/1.14 var(--serif); }
+    .lede { max-width: 900px; margin: 20px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 22px; font-size: 14px; }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font-size: clamp(24px, 3vw, 34px); }
+    h3 { margin-top: 24px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #e4ebe7; color: #134f49; font-family: var(--mono); }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.warn { border-left-color: var(--signal); background: var(--signal-soft); }
+    .callout.warn > b { color: var(--signal); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1.25fr auto 1fr; gap: 10px; align-items: stretch; margin: 20px 0; }
+    .flow > div { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    .flow b { display: block; color: var(--accent); }
+    .flow span { color: var(--muted); font-size: 14px; }
+    .flow .arrow { align-self: center; padding: 0; border: 0; background: transparent; color: var(--signal); font-size: 22px; }
+    .math-display { max-width: 100%; margin: 16px 0; padding: 13px 15px; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { max-width: 100%; margin: 16px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .table-wrap table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    .status { white-space: nowrap; font-weight: 750; }
+    .verified { color: var(--accent); }
+    .reported { color: var(--blue); }
+    .inferred { color: var(--signal); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(135px, .24fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .source-list li { margin-bottom: 10px; }
+    @media (max-width: 780px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow .arrow { text-align: center; transform: rotate(90deg); }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Mixture of Experts</div>
+    <h1>LatentMoE 深读：Kimi K3 与 Nemotron 3 Super 真走上了同一条路吗？</h1>
+    <p class="lede">LatentMoE 最重要的贡献，不是又给 MoE 加了一个压缩层，而是把“主干需要多宽”与“每次路由必须搬多少字节”解耦：专家路径先降到潜在维度，再把节省下来的内存与通信预算换成更多专家和更高 Top-K。这个方向值得重视，但 Kimi K3 与 NVIDIA 方案目前只有名称和高层目标相似；把两者视为同一实现，证据仍然不足。</p>
+    <div class="toc" aria-label="目录">
+      <a href="#takeaway">核心判断</a><a href="#problem">真实问题</a><a href="#mechanism">机制</a><a href="#variants">两种变体</a><a href="#evidence">证据</a><a href="#claim-audit">主张审计</a><a href="#comparison">K3 vs Nemotron</a><a href="#limits">边界</a><a href="#insight">独立 Insight</a><a href="#sources">资料索引</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>这篇 X Article 抓对了 LatentMoE 的动机和 NVIDIA 方案的主体机制，却把三种不同证据压成了一个过强结论：</strong>95B 以内的预训练对照是真实实验，H100 上的吞吐是真机测量，万亿参数的 350B / 3.46× 是模拟投影，而 Kimi K3 的 Stable LatentMoE 截至 2026-07-20 仍只有发布博客，没有技术报告与权重可供结构核验。</p>
+      <div class="grid-3">
+        <div class="card"><h3>机制判断：成立</h3><p>专家权重读取与 All-to-All 的确可能成为 MoE 服务瓶颈；把 routed width 从 \(d\) 降到 \(\ell\) 会按约 \(d/\ell\) 缩减专家权重字节与路由 payload。</p></div>
+        <div class="card"><h3>效果判断：有条件成立</h3><p>LatentMoE 在论文的 95B Transformer 与 73B hybrid 对照上整体更优，但收益随任务不同，真机吞吐也不是所有并发点都更快。</p></div>
+        <div class="card"><h3>K3 归因：尚未核验</h3><p>Moonshot 公布了 896 / Top-16、Quantile Balancing 与 Stable LatentMoE 名称，却没有公开潜在维度、专家矩阵、投影路径或消融。</p></div>
+      </div>
+      <div class="callout warn"><b>最容易被误读的一句话</b>“同等推理成本咨询 4 倍专家”不是所有 LatentMoE 配置自动得到的免费收益。它对应 NVIDIA 的 accuracy-oriented 变体：压缩 routed width 的同时，把总专家数与 Top-K 都放大；如果只压缩、不补专家数量，论文自己的消融显示质量会明显下降。</div>
+    </section>
+
+    <section id="problem">
+      <h2>真实问题：MoE 省了 FLOPs，却没有自动省掉搬运</h2>
+      <p>标准 MoE 的卖点是总参数可以很大，而每个 token 只激活少量专家。但“只算几个专家”不等于“这些专家可以零成本出现”。真实部署至少要支付三笔账：</p>
+      <ol>
+        <li><strong>专家权重读取。</strong>低并发、低延迟 decode 时，每个专家收到的 token 较少，矩阵乘法的算术强度不高，GPU 往往在等 HBM 把专家权重送进计算单元。</li>
+        <li><strong>跨卡路由通信。</strong>专家分散在多张 GPU 上，token 表示要经过 dispatch 与 combine 两次 All-to-All；吞吐场景中，这条通信路径可能比专家 GEMM 本身更慢。</li>
+        <li><strong>小矩阵与负载偏斜。</strong>专家越细、数量越多，单个 GEMM 越可能吃不满 GPU；热门专家还会制造 straggler、padding、溢出与显存峰值。</li>
+      </ol>
+      <p>对标准 routed expert，核心量级可以写成：</p>
+      <div class="math-display">\[
+        \text{expert-weight bytes} \propto d\,m, \qquad
+        \text{all-to-all bytes} \propto T\,K\,d / \mathrm{EP}
+      \]</div>
+      <p>其中 \(d\) 是模型主干 hidden dimension，\(m\) 是专家中间层宽度，\(T\) 是 token 数，\(K\) 是每个 token 激活的专家数，\(\mathrm{EP}\) 是 expert-parallel 规模。NVIDIA 的关键观察是：压 \(m\) 会减少非线性容量，压 \(K\) 会减少激活专家；而压 routed path 的 \(d\) 能同时减少权重搬运和通信。因此，应该让模型主干保留完整 \(d\)，只把专家路径投影到较小的 \(\ell\)。</p>
+      <div class="callout info"><b>为什么传统 FLOPs 口径不够</b>论文用 Qwen3-235B-A22B 与 GB200 做 roofline 建模，得到低并发专家 GEMM 需要约 1,418 个 token / expert 才进入 compute-bound；吞吐模型里的通信时间 / 计算时间估算约为 9。具体数字依赖硬件、精度、拓扑和负载，但它说明了一个稳定事实：MoE 的 Pareto frontier 至少要同时看 accuracy / FLOP 与 accuracy / parameter-byte。</div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制：只压缩 routed path，不压缩整个 residual stream</h2>
+      <div class="flow" aria-label="LatentMoE 数据流">
+        <div><b>输入</b><span>token 表示 \(x\in\mathbb{R}^{d}\)</span></div><div class="arrow" aria-hidden="true">→</div>
+        <div><b>下投影</b><span>\(z=W_{\downarrow}x\in\mathbb{R}^{\ell}\)</span></div><div class="arrow" aria-hidden="true">→</div>
+        <div><b>路由与专家</b><span>在 \(\ell\) 维 payload 上 dispatch；routed experts 的矩阵形状改为 \(m\times\ell\) 与 \(\ell\times m\)</span></div><div class="arrow" aria-hidden="true">→</div>
+        <div><b>聚合与上投影</b><span>\(W_{\uparrow}\sum p_iE_i(z)\in\mathbb{R}^{d}\)</span></div>
+      </div>
+      <p>完整的 recommended 形式可以概括为：</p>
+      <div class="math-display">\[
+        y = W_{\uparrow}\!\left(\sum_{i\in\operatorname{TopK'}(p)} p_i E_i(W_{\downarrow}x;\ell)\right)
+        + \sum_j E^{\mathrm{shared}}_j(x;d),
+        \qquad p=\operatorname{softmax}(W_r x)
+      \]</div>
+      <p>三个细节决定了它不是“把所有 hidden state 做低秩化”：</p>
+      <ul>
+        <li><strong>router 仍看完整 \(d\) 维输入。</strong>门控决策没有被迫在压缩后的表示上进行，降低了路由信息损失。</li>
+        <li><strong>shared experts 仍工作在 \(d\) 维。</strong>压缩只落在大规模 routed experts 上；共享能力路径保持完整宽度。</li>
+        <li><strong>attention、residual stream 与其他非路由模块不变。</strong>LatentMoE 改的是条件计算的 payload 与权重形状，不是整个 backbone 的表征空间。</li>
+      </ul>
+      <p>若压缩比 \(\alpha=d/\ell\)，routed expert 的权重与通信理论上约缩小 \(\alpha\) 倍。新增的 \(W_{\downarrow}\) 与 \(W_{\uparrow}\) 是共享投影，代价不会随专家数线性复制。省下来的预算可以选择换速度，也可以换准确率。</p>
+    </section>
+
+    <section id="variants">
+      <h2>论文其实给了两种 LatentMoE，文章只讲了其中一种</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>方案</th><th>总专家数</th><th>激活 Top-K</th><th>预算去向</th><th>目标</th></tr></thead>
+          <tbody>
+            <tr><td>Standard MoE</td><td>\(N\)</td><td>\(K\)</td><td>完整 \(d\) 维专家路径</td><td>基线</td></tr>
+            <tr><td>\(\ell\)-MoE<sub>eff</sub></td><td>\(N'=\alpha N\)</td><td>\(K\)</td><td>增加专家池，但不增加每 token 激活数</td><td>接近基线质量，减少 active FLOPs / 路由字节</td></tr>
+            <tr><td>\(\ell\)-MoE<sub>acc</sub></td><td>\(N'=\alpha N\)</td><td>\(K'=\alpha K\)</td><td>把压缩节省重新投入更多激活专家</td><td>相近服务成本下提高准确率</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这一区分很重要。文章所说“压缩 4 倍、激活约 4 倍专家”只适用于 \(\ell\)-MoE<sub>acc</sub>。而 \(\ell\)-MoE<sub>eff</sub> 保持 Top-K 不变，目标是更便宜。论文还明确展示了两个负面结果：</p>
+      <ul>
+        <li>在 16B-A2B 消融里，压缩比超过 4 后 validation loss 恶化，说明潜在维度存在任务相关的 feature-rank 下限。</li>
+        <li>把 \(d\) 压 4 倍却不按比例增加总专家数，质量显著下降；压缩不是天然正则化，更不是无条件的信息无损变换。</li>
+      </ul>
+      <div class="callout"><b>真正的新意</b>低维专家或低秩权重本身并不新。LatentMoE 的新贡献是服务感知的预算闭环：共享投影降低 routed bytes → 扩大 \(N\) 保住可训练性与专家多样性 → 选择是否扩大 \(K\) → 用实测与模拟检查 accuracy / parameter / FLOP / latency 的联合 Pareto frontier。</div>
+    </section>
+
+    <section id="evidence">
+      <h2>最有说服力的证据，以及数字应该怎样读</h2>
+      <h3>95B Transformer：提升存在，但不是每个任务都同样大</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>指标</th><th>Standard MoE</th><th>\(\ell\)-MoE<sub>acc</sub></th><th>绝对提升</th><th>相对提升</th></tr></thead>
+          <tbody>
+            <tr><td>MMLU-Pro</td><td>29.26</td><td>34.91</td><td>+5.65pp</td><td>+19.31%</td></tr>
+            <tr><td>MMLU</td><td>58.95</td><td>62.23</td><td>+3.28pp</td><td>+5.56%</td></tr>
+            <tr><td>Code</td><td>40.33</td><td>41.50</td><td>+1.17pp</td><td>+2.90%</td></tr>
+            <tr><td>Math</td><td>64.39</td><td>64.88</td><td>+0.49pp</td><td>+0.76%</td></tr>
+            <tr><td>Commonsense</td><td>74.32</td><td>75.18</td><td>+0.86pp</td><td>+1.16%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这张表支持“同总参数 / 同 active 参数附近，LatentMoE 在所列聚合任务上全部更高”，但不支持“稳定大幅提升”。最强的 MMLU-Pro 与最弱的 Math 相差一个数量级。论文也没有给多 seed、置信区间或显著性检验，不能判断小于 1pp 的增益是否稳定。</p>
+
+      <h3>Hybrid Mamba-Attention：跨 backbone 复现，但仍是同一发布方实验</h3>
+      <p>73B-A8B hybrid 在训练 1T token 后，\(\ell\)-MoE<sub>acc</sub> 相比基线的 MMLU-Pro 为 52.87 vs 48.30、Code 为 55.14 vs 51.95、Math 为 80.19 vs 78.32。它说明机制不只适用于纯 Transformer；但模型、数据、训练 recipe 与评测都来自同一团队，仍缺独立复现。</p>
+
+      <h3>H100 真机吞吐：相近，不是全面更快</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>并发</th><th>LatentMoE tokens/s/GPU</th><th>Standard MoE</th><th>LatentMoE 相对变化</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>181.6</td><td>206.6</td><td>−12.10%</td></tr>
+            <tr><td>4</td><td>528.5</td><td>509.8</td><td>+3.67%</td></tr>
+            <tr><td>16</td><td>1130.8</td><td>1204.6</td><td>−6.13%</td></tr>
+            <tr><td>64</td><td>1569.6</td><td>1549.3</td><td>+1.31%</td></tr>
+            <tr><td>128</td><td>1625.8</td><td>1725.9</td><td>−5.80%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这组数据支持“accuracy-oriented 方案的吞吐大致接近标准 MoE”，不支持“自身就能显著加速”。作者指出小 GEMM kernel、shared / routed expert 并行流仍可优化；这也反过来说明架构级字节节省必须通过 kernel 与调度兑现，理论 FLOPs 不会自动变成端到端延迟。</p>
+
+      <h3>350B 与最高 3.46×：有价值的投影，不是真机事实</h3>
+      <p>论文先用 Qwen3 Dense 0.6B–32B 的 MMLU accuracy 拟合 log-linear scaling law，再把 Kimi-K2-1T-LatentMoE 的预期能力转换成 1.35× effective parameter multiplier，由此构造 1.35T、80 层的标准 MoE 等精度基线；最后用 proprietary simulator 扫描超过 20 万个 serving operating points。得到的 1.24×–3.46× slowdown 与约 350B 额外参数，依赖以下假设：</p>
+      <ul>
+        <li>小型 dense Qwen3 的 MMLU scaling law 能外推到万亿参数 sparse MoE；</li>
+        <li>单一 MMLU 轴可以代表“等准确率”；</li>
+        <li>加深 Kimi-K2 是标准 MoE 追平能力的合理物理构造；</li>
+        <li>模拟器对未来 kernel、网络拓扑、batching 与流量分布的建模足够准确。</li>
+      </ul>
+      <p>所以它适合表达“若用粗暴扩模型追同等能力，部署成本可能显著更高”，不适合改写成“LatentMoE 已经在万亿模型上实测快 3.5 倍”。同理，约 9% 的 projection overhead 也是该投影中相对 native Kimi-K2-1T 的估计，并非所有硬件和并发下的固定税率。</p>
+    </section>
+
+    <section id="claim-audit">
+      <h2>对原文 headline claims 的逐项审计</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>原文主张</th><th>状态</th><th>更准确的说法</th></tr></thead>
+          <tbody>
+            <tr><td>MoE 的权重读取与 All-to-All 会成为结构性瓶颈</td><td class="status verified">已核验事实</td><td>NVIDIA 给出 roofline 与通信模型；是否主导端到端耗时仍依赖 batch、精度、拓扑、EP 和 kernel。</td></tr>
+            <tr><td>LatentMoE 把 token 从 \(d\) 投影到 \(\ell\)，专家在 \(\ell\) 维计算</td><td class="status verified">已核验事实</td><td>对 NVIDIA LatentMoE 成立；router、shared experts 和非路由模块保留完整 \(d\) 维。</td></tr>
+            <tr><td>压 4 倍就能激活 4 倍专家</td><td class="status inferred">条件性结论</td><td>推荐的 \(\ell\)-MoE<sub>acc</sub> 按 \(\alpha=d/\ell\) 同时扩大 \(N\) 与 \(K\)；eff 变体不扩大 \(K\)。</td></tr>
+            <tr><td>专家组合空间指数级扩大，自然对应更强能力</td><td class="status inferred">分析推断</td><td>可选组合数确实组合式增长，但模型是否学到互补专家取决于路由、数据、负载均衡与优化；组合数不是能力证明。</td></tr>
+            <tr><td>同参数、同成本下所有任务都更准</td><td class="status reported">发布方报告</td><td>论文所列聚合任务全部更高，但增益从 +0.49pp 到 +5.65pp 不等，无 seed / CI，且尚无独立复现。</td></tr>
+            <tr><td>标准 MoE 要多 350B 参数，LatentMoE 最高快 3.5×</td><td class="status inferred">模型投影</td><td>来自 dense scaling-law 外推、等精度构造与 proprietary serving simulator，不是 1T / 1.35T 真机 A/B。</td></tr>
+            <tr><td>额外投影开销约 9%</td><td class="status inferred">模型投影</td><td>是万亿参数模拟中 native Kimi-K2-1T 与构造变体的差距上界，不是普适实测常数。</td></tr>
+            <tr><td>Kimi K3 与 Nemotron 3 Super 做了同一个 LatentMoE 选择</td><td class="status reported">名称层面成立</td><td>两家都公开使用 LatentMoE 命名；只有 Nemotron 已公开投影与专家形状，K3 的 Stable LatentMoE 细节仍待技术报告。</td></tr>
+            <tr><td>K3 相比 K2 有约 2.5× scaling efficiency</td><td class="status reported">发布方报告</td><td>Moonshot 官方博客这样表述，但未定义测量轴、拟合方法、训练 compute 或对照曲线，暂时无法独立复算。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="comparison">
+      <h2>Kimi K3 与 Nemotron 3 Super：相似的是方向，不是已经证实的实现</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>Nemotron 3 Super</th><th>Kimi K3</th><th>证据状态</th></tr></thead>
+          <tbody>
+            <tr><td>总 / active 参数</td><td>120.6B / 12.7B（含 embedding）</td><td>2.8T；官方尚未给完整 active-parameter 口径</td><td>Nemotron 技术报告；K3 发布博客</td></tr>
+            <tr><td>专家配置</td><td>512 experts，Top-22</td><td>896 experts，Top-16</td><td>两者均由官方公布</td></tr>
+            <tr><td>主干 / latent 维度</td><td>\(d=4096, \ell=1024\)，压缩比 4</td><td>未公布</td><td>不能从名称反推 K3 形状</td></tr>
+            <tr><td>专家路径</td><td>下投影 → latent dispatch / expert → 上投影；gate 与 shared expert 保持 \(d\)</td><td>官方架构图标注 Stable LatentMoE，但无可核对公式或矩阵尺寸</td><td>K3 实现待报告 / 权重</td></tr>
+            <tr><td>路由平衡</td><td>sigmoid router、bias-based aux-loss-free balancing，并保留小系数 load-balancing loss</td><td>Quantile Balancing，从 router-score quantile 推导分配；细节未披露</td><td>不是同一种公开路由算法</td></tr>
+            <tr><td>序列建模</td><td>Mamba-2 为主，少量全局 attention anchor</td><td>KDA + Gated MLA，并使用 Attention Residuals 处理跨深度信息流</td><td>架构骨架显著不同</td></tr>
+            <tr><td>长上下文</td><td>1M；报告给出 RULER 结果与训练阶段</td><td>1M；官方发布博客声明</td><td>K3 尚无训练 / 评测细节</td></tr>
+            <tr><td>开放状态（2026-07-20）</td><td>报告、BF16 / FP8 / NVFP4 权重、数据与 recipes 已发布</td><td>API 已开放；技术报告待发布，完整权重承诺于 7 月 27 日前发布</td><td>当前不能称两者同等可核验</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>因此，“两条路线、同一方向”可以保留：两者都在把 MoE 的核心竞争从 active FLOPs 转向 accuracy per moved byte，并尝试用极稀疏专家池扩大容量。但“同一种 LatentMoE”必须等待 K3 的技术报告、配置与权重。Stable LatentMoE 还同时包含 Quantile Balancing、Per-Head Muon、SiTU 等稳定性设计；它可能是一个更宽的系统包，而不是 NVIDIA 模块的直接复刻。</p>
+      <div class="callout warn"><b>“开放模型”也要区分时间点</b>Moonshot 称 K3 为 open 3T-class model，但发布博客同时写明完整权重将在 2026-07-27 前发布。截至本文核验日，能调用 API 不等于已拥有可审计的 open weights；架构判断应以当时实际发布物为准。</div>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="def-list">
+        <div><b>Routed width</b><span>参与 expert dispatch、expert GEMM 与 combine 的 token 向量宽度。LatentMoE 将它从主干 \(d\) 解耦为较小的 \(\ell\)。</span></div>
+        <div><b>Accuracy per parameter</b><span>不是只数模型文件大小，而是用参数量近似低并发场景下需要读取的权重字节、显存占用和 sharding 负担。</span></div>
+        <div><b>Combinatorial sparsity</b><span>从 \(N\) 个专家选 \(K\) 个共有 \(\binom{N}{K}\) 种组合。它描述潜在路由多样性，不保证训练后每种组合都有意义。</span></div>
+        <div><b>Feature rank</b><span>保留任务相关信息所需的最低表示自由度。若 \(\ell\) 低于这个隐含下限，投影会造成不可恢复的信息损失。</span></div>
+        <div><b>Iso-FLOP / iso-parameter</b><span>分别在近似相同计算量或相同参数量下比较。论文的多个表格约束不同，不能把一张表的结论直接迁移到另一种预算。</span></div>
+        <div><b>Quantile Balancing</b><span>K3 发布博客提出的专家平衡方法：按 router score 的分位数推导分配，目标是消除启发式 bias 更新和敏感平衡超参数；公式与完整实验尚未公开。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>关键限制与可能的反例</h2>
+      <ol>
+        <li><strong>实验范围有限。</strong>核心对照最高 95B、训练 300B token 或 1T token；万亿参数结果是模拟。模型越大、专家越细，训练稳定性和 kernel shape 可能出现新瓶颈。</li>
+        <li><strong>缺少统计不确定性。</strong>主表没有 seed、误差条或置信区间；0.49pp 这类差异不能自动视为稳健收益。</li>
+        <li><strong>feature-rank 不是可预先计算的常数。</strong>论文通过 sweep 发现压缩比 4 可行，但没有给出按任务、层、训练阶段估计 \(r_{\mathrm{eff}}\) 的方法；固定压缩比可能对某些 token 或层过度压缩。</li>
+        <li><strong>更多组合可能只是更大的搜索空间。</strong>如果 router 只用少数专家、专家趋同或负载平衡过强，\(\binom{N}{K}\) 的理论组合数不会转化为有效 specialization。</li>
+        <li><strong>系统收益依赖拓扑。</strong>NVLink domain 内的结论不能原样外推到 PCIe、RoCE、跨节点 IB 或云上异构集群；高 \(K\) 还会加重 dispatch bookkeeping。</li>
+        <li><strong>共享投影可能成为新的耦合点。</strong>所有 routed experts 共用 \(W_{\downarrow}\) / \(W_{\uparrow}\)，它节省参数，却也可能形成信息瓶颈或专家间相关性；论文没有与 per-group projection 等替代方案做充分消融。</li>
+        <li><strong>K3 当前不可复算。</strong>2.5× scaling efficiency 没有公开定义，Stable LatentMoE 没有结构表，Quantile Balancing 没有算法与消融；任何细节化解释都必须标为假设。</li>
+      </ol>
+      <p>什么证据会改变当前判断？最关键的是 K3 技术报告与配置、公开权重中的 expert tensor shape、独立 serving benchmark，以及 LatentMoE 在非 NVIDIA 拓扑和多 seed 预训练中的复现。若这些证据显示 K3 没有 \(d\rightarrow\ell\rightarrow d\) 的共享专家路径，那么“同一种架构”应被直接撤回；若独立测量在等精度下稳定重现 Pareto 优势，当前较谨慎的效果判断才应上调。</p>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：下一代 MoE 的控制旋钮是“表示带宽”，不是参数量</h2>
+      <p>传统 dense scaling 把 hidden width、FFN capacity、权重带宽和通信 payload 捆在一起。标准 MoE 解开了“总容量”与“active FLOPs”，但 routed token 仍携带完整 \(d\) 维表示，专家权重也仍围绕 \(d\) 构造。LatentMoE 再解开一层：<strong>主干可以保留宽表示，专家网络只接收一个服务预算允许的低维接口。</strong></p>
+      <p>这让 \(\ell\) 成为一个比“总参数多少”更有工程意义的控制旋钮：</p>
+      <ul>
+        <li>\(\ell\) 决定每次 dispatch 搬多少字节，以及 routed expert 的 weight footprint；</li>
+        <li>\(N\) 决定模型能容纳多少专家容量，却不必直接增加每 token 通信；</li>
+        <li>\(K\) 决定每 token 的非线性预算与组合多样性，同时线性推高路由次数；</li>
+        <li>\(m\) 决定每个专家内部的 nonlinear width，并影响 GEMM 形状与计算强度。</li>
+      </ul>
+      <p>因此更准确的设计目标不是“让专家越多越好”，而是在 feature-rank 下限、GPU 算术强度、网络拓扑、负载稳定性和 latency SLO 共同约束下，优化 \((\ell,N,K,m)\) 的联合配置。固定 \(d/\ell=4\) 只是当前被验证的一点，不是终局。</p>
+      <div class="callout"><b>比原文再往前一步</b>自适应压缩的价值不只是“简单 token 少算一点”。真正可研究的是按层、按 token 不确定性或按专家组选择不同的 \(\ell\)，同时让 router 对通信价格敏感。但这会破坏静态 shape、增加 kernel 分支和负载预测难度。下一步不是单纯把压缩比做成可学习参数，而是把网络字节、专家排队与质量损失一起写进训练和部署目标。</div>
+    </section>
+
+    <section id="practice">
+      <h2>对基座模型与推理系统的实践含义</h2>
+      <ul>
+        <li><strong>架构比较至少给四套账。</strong>总参数、active FLOPs、routed bytes、端到端 latency / throughput 缺一不可；只报 active parameter 会掩盖低并发权重带宽。</li>
+        <li><strong>先做两种变体。</strong>同一压缩比下同时训练 efficiency-oriented 与 accuracy-oriented 配置，才能知道节省的预算更适合换吞吐还是换质量。</li>
+        <li><strong>把负面消融当主实验。</strong>必须 sweep \(\ell\)、是否扩大 \(N\)、是否扩大 \(K\)、shared expert 是否保留 \(d\)，并检查路由熵、专家相似度、dead experts 和 token dropping。</li>
+        <li><strong>端到端测量覆盖流量分布。</strong>至少包含 batch 1、交互 decode、中高并发、长 prefill、不同 ISL / OSL 和实际网络拓扑；单个吞吐点无法证明 Pareto 优势。</li>
+        <li><strong>不要让小 GEMM 吃掉字节收益。</strong>要同时评估 grouped GEMM、shared / routed overlap、dispatch fusion、expert placement 和 quantization；否则理论下降的通信会被 kernel launch 与 SM 利用率抵消。</li>
+        <li><strong>对 K3 保持可更新判断。</strong>在报告和权重发布前，只引用官方已披露的 896 / Top-16、1M context 与组件名称，不编造 latent size、active parameters 或 Quantile Balancing 公式。</li>
+      </ul>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对目标 X Article 及其署名来源，技术判断优先回到 NVIDIA LatentMoE 论文、Nemotron 3 Super 技术报告与 Moonshot AI Kimi K3 官方发布页。LatentMoE 论文与 Nemotron 报告中的结构、表格和测量可直接核验；其模型质量与大规模 serving 效果未在本文独立训练复现。Kimi K3 截至 2026-07-20 尚未发布技术报告与完整权重，相关性能和架构摘要均按发布方报告处理。</p>
+      <ul class="source-list">
+        <li><a href="https://x.com/qingke_ai/status/2079035914740019638">青稞社区：从 kimi k3 看下一代 MoE 架构的转折点：LatentMoE</a> — 目标 X Article，发布于 2026-07-20。</li>
+        <li><a href="https://zhuanlan.zhihu.com/p/2061464412574242573">华裳羽照：从 Kimi K3 看下一代 MoE 架构的转折点：LatentMoE</a> — X Article 标注的作者与原始长文入口。</li>
+        <li><a href="https://arxiv.org/abs/2601.18089">LatentMoE: Toward Optimal Accuracy per FLOP and Parameter in Mixture of Experts</a> — arXiv v1，18 页；机制、消融、95B / hybrid 结果、H100 实测与万亿参数模拟的主要依据。</li>
+        <li><a href="https://research.nvidia.com/labs/nemotron/LatentMoE/">NVIDIA：Think Smart About Sparse Compute</a> — 官方项目说明与结果概览。</li>
+        <li><a href="https://arxiv.org/abs/2604.12374">Nemotron 3 Super Technical Report</a> — 120B-A12B、512 / Top-22、\(d=4096\)、\(\ell=1024\)、Mamba-2 / attention、MTP 与 1M context 的一手资料。</li>
+        <li><a href="https://research.nvidia.com/labs/nemotron/Nemotron-3-Super/">NVIDIA Nemotron 3 Super 发布页</a> — 模型、权重、数据、吞吐与上下文发布状态。</li>
+        <li><a href="https://www.kimi.com/blog/kimi-k3">Moonshot AI：Kimi K3 Tech Blog</a> — 2.8T、896 / Top-16、Stable LatentMoE、Quantile Balancing、约 2.5× scaling efficiency 与开放时间表的官方来源。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
