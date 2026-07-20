@@ -1,5 +1,28 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-20 One Layer Deeper / 递归深度与优化器竞赛深读
+
+### 目标与材料边界
+
+- 深读 Mark Saroufim 发布的 One Layer Deeper 竞赛帖，核对原帖配图、竞赛官网、公开规则、数据生成与基线实现，并追踪 looped Transformer、深度外推与循环稳定性的关键一手研究。
+- 核心问题不是“循环 Transformer 是否新颖”，而是固定参数状态下，模型能否学到可重复组合的状态转移，并在测试时执行超过训练深度的串行计算；同时区分优化器问题、循环动力学问题和 benchmark 设计问题。
+- 公开 Easy / Medium 数据与代码可核验；Hard 评测、数据、递推形式和提交源码保持隐藏，因此对 Hard 的机制判断只能依据公开规则与排行榜，不能把竞赛成绩解释成已独立复现的通用推理结论。
+
+### 当前关键判断
+
+- 公开题目 `x_t = x_{t-1}^2 mod N` 的目标是把“算法需要 T 次串行状态更新”变成可控深度轴；固定层 Transformer 没有天然的 T 步执行路径，权重共享循环则把参数量与有效深度解耦。
+- 测试时增加循环次数只有在单步更新已经学成可组合算子时才有意义；普通终点监督容易学到训练深度专用捷径。训练稳定性也不只是换 AdamW：循环 Jacobian 的连乘、残差爆炸、步数条件、随机深度训练、逐步监督与停止机制共同决定能否外推。
+- 公开 practice tier 不是纯粹的密码学顺序性证明：模数仅约 10–22 bit，理论上可轻易因式分解；训练/测试采用 prompt-level IID 划分，且 Hard 明确可能更换递推。因此公开任务主要是可迭代算法学习压力测试，Hard 才试图压制任务特定捷径。
+- 截至本轮核验，Hard 排行榜 12 个有效参赛者，最高 exact accuracy 为 1.15%；这说明格式刚启动且任务仍远未解决，不能从宣传帖推出“递归深度已经成熟”。
+
+### 交付与验证
+
+- 新增站内长篇技术分析 `notes/tech-analysis/one-layer-deeper-recurrent-depth-optimizer-competition.html`，并在 `_data/notes.yml` 登记入口；正文约 5,754 个可见非空白字符、18 个 h2/h3、2 张宽表和 3 处展示公式，覆盖问题、机制、优化、公开评测、证据边界、术语与独立 insight。
+- Notes 结构与索引校验通过：137 条索引与 137 个顶层 HTML 一一对应；目标页只有一个 `<main>` 与一个文末 evidence appendix，所有表格均由滚动容器包裹，无重复 ID、断锚、替换字符、占位文本、本地路径或公开生成痕迹；`git diff --check` 通过。
+- 隔离 Jekyll 构建成功，耗时约 6.5 秒；仅出现仓库既有的 Faraday 可选组件提示与 GitHub Metadata 未认证 / API 限流 warning，不影响静态产物。
+- 专用无头浏览器完成 1440×1000 桌面与 390×844 手机验收：页面均为 HTTP 200，桌面与手机 `scrollWidth == innerWidth`，3 个 MathJax 节点正常渲染，2 张表格保持容器内滚动，无失败请求、console error 或 runtime error；整页截图已人工复核。
+- 最终提交只包含本任务新笔记、索引条目与本节 Progress 记录；原工作区的 DeepSeek-V4、UniVR、LOTUS 等并行任务改动保持原样，不纳入本任务。
+
 ## 2026-07-20 `$deep` 显式触发修复
 
 ### 问题与根因

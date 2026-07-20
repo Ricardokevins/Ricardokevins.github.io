@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One Layer Deeper 深读：测试时多跑几层，为什么不是简单加循环？</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #23665a;
+      --accent-soft: #e8f2ef;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info: #315b8a;
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(35,102,90,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric { display: block; margin-bottom: 5px; color: var(--accent-2); font: 760 28px/1 var(--serif); }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(140px, .25fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .def-list span { min-width: 0; }
+    .math-display { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    @media (max-width: 760px) {
+      main, header { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Recurrent Depth</div>
+    <h1>One Layer Deeper：测试时多跑几层，为什么不是简单加循环？</h1>
+    <p class="lede">这个竞赛把一个很好的研究问题压缩成了单文件实验：在固定模型状态与训练时限下，能否学到一个可重复调用的状态转移，并在测试时执行比训练更深的串行计算？它真正考验的不是“循环次数”，而是算法对齐、循环动力学、信用分配与计算预算之间的联合设计。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>One Layer Deeper 值得关注，因为它把参数规模与计算深度拆开了；但它还不是“潜在推理已经解决”的证据。</strong>公开任务要求模型计算反复模平方，输出必须逐位完全正确。普通固定层 Transformer 的串行计算路径由层数封顶；权重共享的循环模型则可以在不增加参数的前提下增加有效深度。困难在于：测试时多跑的那些循环没有天然监督，循环还会把任何微小误差和不稳定动力学一并重复。</p>
+      <div class="grid-3">
+        <div class="card"><span class="metric">1.15%</span><h3>当前最高 Hard 准确率</h3><p>公开榜单仍处早期，最高 exact accuracy 只有 1.15%；问题远未被“宣布即解决”。</p></div>
+        <div class="card"><span class="metric">500M</span><h3>持久模型状态上限</h3><p>参数与持久 buffer 合计最多 5 亿标量；共享权重只计一次，迫使参赛者用计算而不是堆参数换深度。</p></div>
+        <div class="card"><span class="metric">1× H100</span><h3>统一资源边界</h3><p>Hard 最多训练 3600 秒，最终评估另给训练时限的一半；更深前向会直接减少可完成的优化更新。</p></div>
+      </div>
+      <div class="callout">
+        <b>最重要的辨析</b>
+        <p>“可以循环”只是表达能力；“学到一步正确更新”是算法对齐；“多循环仍不崩”是动力学稳定；“未知深度继续变好”才是深度外推。四件事不能合并成一个成功案例。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>题目为什么专门瞄准串行深度</h2>
+      <p>输入是模数 (N)、初值 (x) 和步数 (T)。状态从 (x_0=xmod N) 开始，每一步只做一次模平方：</p>
+      <div class="math-display">\[
+        x_t = x_{t-1}^{2}\bmod N, \qquad y=x_T=x^{2^T}\bmod N.
+      \]</div>
+      <p>例如 (N=77,x=2,T=4)，状态依次为 (2\to4\to16\to25\to9)，最终答案是 9。每个新状态依赖上一步的余数，无法把所有平方同时算完。若不知道 (N=pq) 的因子，经典通用路径就是按顺序执行 (T) 次模平方；这也是 RSA time-lock puzzle 与可验证延迟函数使用的基本直觉。</p>
+      <p>而标准 Transformer 的一次前向是固定深度的计算图。注意力能在 token 维度并行交换信息，却不会自动获得任意多次的状态更新。层数为 (L) 的网络最多提供与 (L) 同阶的串行非线性阶段；当任务需要的组合深度继续增长时，模型更容易拟合训练分布的输入—输出映射，而不是执行真实的 (T) 步算法。</p>
+      <div class="callout warn">
+        <b>“本质串行”在本竞赛里必须加限定语</b>
+        <p>密码学中的顺序性依赖未知阶群与难以分解的 RSA 模数。公开 practice 数据只有约 10–22 bit 模数，普通程序可以轻易分解；竞赛用“禁止任务专用求解器”约束提交者，而不是用密码学安全参数消灭捷径。因此公开题是算法学习压力测试，不是重复平方顺序性的实验性证明。</p>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>从固定栈到循环：参数、深度和时间被重新拆开</h2>
+      <p>固定栈为每层使用不同参数，状态沿深度依次通过 (f_1,f_2,\ldots,f_L)。循环模型只学习一个或一小组共享块 (f_\theta)，重复应用 (K) 次：</p>
+      <div class="math-display">\[
+        h_{k+1}=f_\theta(h_k; x,N,T,k), \qquad \hat y=g(h_K).
+      \]</div>
+      <p>参数量主要由 (\theta) 决定，有效深度由 (K) 决定。Saunshi 等人的 ICLR 2025 工作表明，在加法、(p)-hop induction 和合成数学题上，(k) 层重复 (L) 次的模型往往接近同等 FLOPs、但拥有 (kL) 组独立参数的深模型，并远强于只运行一次的同参数浅模型。他们还给出构造性结果：合适的循环 Transformer 可以用循环中的隐藏状态模拟多步显式 CoT。</p>
+      <p>但“存在一组参数能模拟”与“有限数据和有限时间能学出来”差距很大。对本题，理想循环块应近似一个通用解释器：读取当前余数、模数和步数状态，完成一次精确模平方，并把新的余数写回。测试时把 (K) 从训练范围增加到更大值，才会自然完成更多步骤。</p>
+      <div class="grid-2">
+        <div class="card"><h3>训练期</h3><p>需要让同一个块在不同循环位置都承担“下一步”语义，避免第一圈、最后一圈形成只对固定深度有效的特化角色。</p></div>
+        <div class="card"><h3>测试期</h3><p>根据输入 (T) 选择循环数，或由停止器判断完成；额外循环必须继续推进计算，而不是反复扰动已经正确的答案。</p></div>
+        <div class="card"><h3>状态表示</h3><p>隐藏状态既要保存当前余数，又要保留模数、计数器和输出位置信息；十进制 token 化还要求内部算法最终精确落到每个数字。</p></div>
+        <div class="card"><h3>资源交换</h3><p>循环越深，每个训练 step 越慢、激活与反向链越长；固定一小时里，深度、batch size 与更新次数直接竞争。</p></div>
+      </div>
+    </section>
+
+    <section id="optimization">
+      <h2>为什么“需要更好的优化器”只说对了一半</h2>
+      <p>循环 (K) 次时，梯度要穿过同一个映射的反复复合。局部线性化后，状态扰动和反向梯度都受 Jacobian 连乘控制：</p>
+      <div class="math-display">\[
+        \frac{\partial h_K}{\partial h_0}
+        =\prod_{k=0}^{K-1}J_k,
+        \qquad J_k=\frac{\partial f_\theta(h_k)}{\partial h_k}.
+      \]</div>
+      <p>若主导奇异值长期大于 1，隐藏状态与梯度会爆炸；长期小于 1，早期信息与梯度会消失；恰好稳定也不代表有效——一个迅速收敛到常数的循环非常稳定，却不会完成 (T) 个不同计算步骤。AdamW、Muon 或二阶预条件可以改善参数更新的尺度与几何，但无法替代一个合理的循环动力系统。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>问题层</th><th>典型失败</th><th>更直接的干预</th><th>优化器能做什么</th></tr></thead>
+          <tbody>
+            <tr><td>信号传播</td><td>残差范数随循环爆炸，或深层表示坍缩</td><td>pre-norm、残差缩放、门控、谱约束、受控注入</td><td>降低更新噪声，但不能保证前向 Jacobian 稳定</td></tr>
+            <tr><td>信用分配</td><td>只有最终答案监督，单步更新没有语义</td><td>随机循环深度、深度课程、中间读出或辅助损失</td><td>预条件可加速已有信号，不能创造缺失监督</td></tr>
+            <tr><td>深度外推</td><td>训练到 8 圈，测试第 9 圈后开始破坏答案</td><td>在步数分布上训练、step conditioning、停止机制、跨深度一致性</td><td>可能改善平坦性，但不能自动获得组合不变性</td></tr>
+            <tr><td>预算分配</td><td>循环很深但更新次数太少，或 batch 太小</td><td>深浅样本混训、截断反传、编译与高效 kernel、动态深度</td><td>样本效率越高，固定时限内越有价值</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>2026 年的后续研究已把这个区别说得更清楚。Parcae 把循环残差视为非线性时变动力系统，将失稳归因到注入参数的谱性质，并用受约束参数化抑制残差爆炸；STARS 直接正则化循环 Jacobian 的谱半径，希望测试时增加循环仍朝稳定点演化；另一些深度外推实验发现“overthinking”——循环超过合适深度后，性能反而下降。这些结果共同说明：新优化器很可能有用，但获胜方案更可能是优化器、架构与训练分布的协同，而不是孤立替换 AdamW。</p>
+    </section>
+
+    <section id="benchmark">
+      <h2>公开 benchmark 到底测了什么</h2>
+      <p>提交是单个 Python 文件，定义模型、优化器、学习率调度器和可选训练损失。评估方控制数据、单次前向—反向外循环、梯度裁剪、随机种子、时间截止与最终评分。模型可在训练和评估阶段采用不同深度，也可以使用权重共享、adaptive computation、路由、记忆 token 或 parameter-free work。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>Easy / Medium</th><th>Hard</th><th>解释</th></tr></thead>
+          <tbody>
+            <tr><td>训练时限</td><td>60 秒 / 600 秒</td><td>3600 秒</td><td>模型构造、导入和编译也计时；不是纯训练 FLOPs 比赛</td></tr>
+            <tr><td>最终评估时限</td><td>训练时限的一半</td><td>1800 秒</td><td>允许测试时加深，但深度仍受真实 wall-clock 约束</td></tr>
+            <tr><td>数据可见性</td><td>公开练习数据</td><td>隐藏</td><td>Hard 还可能改变递推形式，防止只硬编码重复平方</td></tr>
+            <tr><td>输入方式</td><td>完整 prompt 双向注意力</td><td>私有评估器</td><td>这不是标准 causal LM 设置；模型直接映射 prompt 到独立输出张量</td></tr>
+            <tr><td>评分</td><td>test 与合并 OOD 平均</td><td>hidden test、held-out depth、联合 held-out modulus/depth 跨 seed 等权平均</td><td>整条答案必须逐 token 全对，近似余数没有部分分</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>公开 Easy 的训练深度多为 1–4，OOD 深度为 4–7；Medium 主要训练到 8 或 16，OOD 提升到 16 或 32。固定模数、固定深度和联合变化三类数据同时存在。公开生成脚本明确使用 prompt-level IID 划分：训练和测试 prompt 不重复，但可共享相同模数族与深度设置。因此 test 分数主要测族内泛化，真正的深度外推信号来自 OOD split。</p>
+      <div class="callout info">
+        <b>一个容易忽略的评价陷阱</b>
+        <p>exact accuracy 把每位数字的错误相乘放大。若一个五位答案的每位独立正确率是 90%，整条答案正确率只有约 (0.9^5\approx59\%\)；而数字错误实际高度相关。低 exact accuracy 可能同时来自算法错误、进位/位宽错误和解码错误，排行榜单点不能告诉我们模型是否学会了部分状态转移。</p>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>最有说服力的证据与尚未回答的问题</h2>
+      <h3>支持这个方向的证据</h3>
+      <ul>
+        <li><strong>表达能力与经验结果一致。</strong>Saunshi 等人的合成任务中，权重共享循环能以更少参数接近同有效深度的非共享深模型；理论构造说明循环可模拟迭代算法和多步 CoT。</li>
+        <li><strong>深度外推并非完全不可能。</strong>Looped Transformers for Length Generalization 通过 adaptive depth 与针对迭代解法的训练方法，在多种算法任务上显著改善未见长度泛化；2026 年的 recurrent-depth 实验也观察到增加测试循环可解更深组合。</li>
+        <li><strong>稳定性已有可操作诊断。</strong>Parcae、STARS 与 fixed-point 路线不再只说“训练不稳”，而是测残差范数、Jacobian 谱半径、收敛与停止行为，为竞赛中的架构—优化联合设计提供了明确变量。</li>
+      </ul>
+      <h3>当前证据不能证明的事</h3>
+      <ul>
+        <li>循环模型在小整数算法上成功，不等于开放域语言推理会按同样规律无限扩展；自然语言任务缺少唯一的单步状态转移和精确停止条件。</li>
+        <li>循环次数增加后准确率上升，不足以证明每一圈对应一个可解释“thought”；它也可能是迭代去噪、重复特征提取或更长的普通前馈计算。</li>
+        <li>公开 practice 数据允许小模数、族内共享与极短序列，可能奖励记忆、查表式逼近或位模式捷径。Hard 隐藏递推能缓解 gaming，但也降低外界诊断与复现能力。</li>
+        <li>排行榜只公开总 exact accuracy，参赛源码和详细 split 结果保持私有。现阶段无法判断领先方法靠递归深度、优化器、输出编码技巧，还是其他结构性捷径。</li>
+      </ul>
+    </section>
+
+    <section id="terms">
+      <h2>概念对齐</h2>
+      <div class="def-list">
+        <div><b>有效深度</b><span>一次输出前串行经历的非线性计算阶段数。循环共享参数时，有效深度可增长而参数量不增长。</span></div>
+        <div><b>深度外推</b><span>训练只覆盖较浅循环，测试增加循环后仍能解决更深组合；它要求单步更新在不同循环位置保持可组合语义。</span></div>
+        <div><b>持久模型状态</b><span>参数与注册 buffer 等跨样本保留的标量。竞赛上限为 5 亿；optimizer state、activation 和临时 workspace 不计入，但受显存约束。</span></div>
+        <div><b>自适应计算</b><span>根据输入难度动态分配循环次数，通常需要 halting head、收敛标准或预算条件；目标是简单样本早停、困难样本多算。</span></div>
+        <div><b>Jacobian 谱半径</b><span>局部状态更新对微小扰动的放大因子之一。大于 1 往往意味着重复循环可能放大扰动，但小于 1 也可能过快遗忘有效状态。</span></div>
+        <div><b>算法对齐</b><span>模型内部每一循环与目标算法的一步具有稳定对应，而不是只拟合训练深度下的最终输入—输出关系。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 insight：真正的竞赛对象是“可组合更新算子”</h2>
+      <p>这项竞赛表面上允许参赛者同时设计模型与优化器，深层上却是在寻找一种新的可扩展单位：不是更多参数，也不是更多输出 token，而是<strong>一个能被可靠重复调用的 learned update operator</strong>。它若成功，测试时计算就不再只能通过自回归 CoT 增长，也可以在固定隐藏状态宽度里延长内部轨迹。</p>
+      <p>这带来一个反直觉结论：最强方案未必追求“所有循环都收敛到固定点”。反复模平方不是静态去噪，而是要经过一系列不同的精确状态；过强收缩可能在完成足够步骤前丢失信息。理想动力学更像<strong>受控的暂态计算</strong>：在前 (T) 步保持可逆或近等距的信息通道，每步完成规定更新，到达完成态后才进入稳定吸引域或触发停止。稳定性与计算能力之间必须按阶段设计，而不是用一个全局谱半径目标粗暴统一。</p>
+      <p>因此，如果把它转化为工程实验，我会优先验证四件事：</p>
+      <ol>
+        <li>训练多个随机循环深度，而不是固定 (K)，并绘制 accuracy–depth 曲线，确认收益来自新增循环而非固定位置特化。</li>
+        <li>为中间状态增加只在训练时使用的读出或一致性约束，检查每圈是否更接近真实 (x_t)，同时避免把公开题的特定求解器写进模型。</li>
+        <li>分层记录状态范数、相邻循环增量、Jacobian 近似谱尺度、梯度范数与停止置信度，把“学不会”和“循环崩了”区分开。</li>
+        <li>在相同 wall-clock 下比较浅而多更新、深而少更新、深度课程与自适应停止；报告 Pareto 曲线，不只报最终最高分。</li>
+      </ol>
+      <div class="callout warn">
+        <b>外推到通用推理时的边界</b>
+        <p>重复平方拥有确定递推、廉价精确标签和明确完成步数，这是循环模型最友好的场景。开放域研究、代码调试和科学发现往往连“正确的一步”都没有唯一标签。竞赛若能找到稳定可外推的算子学习方法，价值很高；但从这里走到通用 latent reasoning，还需要任务分解、验证器、可解释停止和安全监控。</p>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>原帖、配图、竞赛官网、公开规则、数据生成逻辑、公开基线与 Easy / Medium 配置已核对。Hard 数据、递推形式、详细 split 结果和参赛源码未公开；榜单数字为 2026-07-20 读取时状态，会随比赛推进变化。论文结果按发布方报告处理，本笔记未重新训练对应模型。</p>
+      <ul>
+        <li><a href="https://x.com/marksaroufim/status/2078313317907730725">Mark Saroufim：One Layer Deeper 发布帖</a></li>
+        <li><a href="https://onelayerdeeper.ai/">One Layer Deeper 官网与 Hard 排行榜</a></li>
+        <li><a href="https://onelayerdeeper.ai/problem">竞赛问题定义与评分说明</a></li>
+        <li><a href="https://github.com/tilde-research/one-layer-deeper">公开规则、评估框架、数据生成与 AdamW 基线</a></li>
+        <li><a href="https://arxiv.org/abs/2502.17416">Saunshi et al. (ICLR 2025): Reasoning with Latent Thoughts</a></li>
+        <li><a href="https://openreview.net/forum?id=2edigk8yoU">Fan et al. (ICLR 2025): Looped Transformers for Length Generalization</a></li>
+        <li><a href="https://arxiv.org/abs/2604.12946">Prairie et al. (2026): Parcae</a></li>
+        <li><a href="https://arxiv.org/abs/2605.26733">Yang et al. (2026): STARS</a></li>
+        <li><a href="https://arxiv.org/abs/2604.07822">Kohli et al. (2026): Loop, Think, &amp; Generalize</a></li>
+        <li><a href="https://people.csail.mit.edu/rivest/pubs/RSW96.pdf">Rivest, Shamir &amp; Wagner: Time-lock Puzzles and Timed-release Crypto</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
