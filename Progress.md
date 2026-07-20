@@ -1,5 +1,32 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-20 UniVR 视觉空间推理论文深读
+
+### 目标与材料边界
+
+- 完整阅读 `UniVR: Thinking in Visual Space for Unified Visual Reasoning`（arXiv:2607.12800 v1）正文、图表与附录，核对官方项目页、代码仓、模型卡、模型文件、VR-X 数据卡和公开数据统计。
+- 重点区分“视觉轨迹不依赖逐步文本 CoT”与“整个系统无语言监督”，并核验 VR-GRPO 的 Step-Focal 选择器、奖励组合、实验口径、开放发布物和可复现性。
+- 本轮未下载约 34B 权重做推理，也未用论文所需 32+8 GPU 复训；模型性能属于发布方报告，代码/配置/发布物差异属于直接核验，工程外推明确标为分析推断。
+
+### 关键判断与完成变更
+
+- 新增 `notes/paper-reviews/univr-visual-space-reasoning.html`，将 UniVR 解释为“视觉关键状态轨迹上的策略学习”，而不是已经取代语言的一般推理机；详细拆解 Emu3.5 离散视觉 token、310k cold start、3k hard-sample RL、CLIP rollout 方差定位和 `Rg - λ|Rg - Rs|` 奖励。
+- 本地化官方架构、VR-GRPO 和 VR-X 三张图，全部使用非空、语义化 alt；更新 `_data/notes.yml` 增加 Paper Note 入口。
+- 独立校准 headline：机器人项 42.8→68.0 是 +25.2 个绝对评分点（约 +58.9% 相对），Overall 39.8→58.2 是 +18.4 点（约 +46.2% 相对），不能把绝对点数与相对百分比混写。
+- 识别语言仍存在于文本 instruction、Qwen3.5-397B 数据策展、Qwen3-VL-30B RL 奖励和 Qwen3.5-397B 评测；更准确的贡献是去掉密集的中间语言轨迹监督。
+- 审计开放发布物：当前代码奖励文件没有论文所述 CLIP 方差 Step-Focal selector，而是默认随机抽取 50% GT 对齐帧；full-training shell 将 rollout 从默认 8 覆盖为 6，名为 full 的 SFT 脚本仍启用 LoRA，且学习率为 1e-5 而非论文表中 5e-4。
+- 官方数据服务当前统计公开仓为 238,006 行、约 68.4 GB，低于论文所述 310k SFT + 3k RL + 1.8k eval；模型仓的 Planning/General 两个 checkpoint 各有 14 个权重分片。结论是框架、权重和大规模数据已开放，但论文精确 recipe 尚未完整发布。
+
+### 验证结果
+
+- Notes 索引校验通过：`notes index ok: 134 entries, 134 top-level note html files`；本任务文件 whitespace 检查通过。
+- 目标 HTML 结构与内容检查通过：单一 `main`、11 个唯一 id、9 个本地锚点均可解析、18 个 h2/h3、3 张本地图片全部存在且 alt 非空、证据附录标记唯一；可见内容约 11,598 个非空白字符。
+- 公开过程噪声扫描无输出：未出现本地路径、临时目录、生成器、抓取工具、替换字符或模板占位符。
+- 使用隔离输出目录完成 Jekyll 全量构建，耗时约 7.8 秒；仅出现仓库既有的 GitHub Metadata 未认证/限流和可选 `faraday-retry` 提示，新笔记无构建错误。
+- 桌面 1440×1000 与手机 390×844 实际渲染均返回 HTTP 200：页面级 `scrollWidth == innerWidth`，3 张图片全部加载，3 个 MathJax 容器无错误，证据附录和站内导航存在，控制台 error 与失败请求均为 0。
+- 两张宽表在桌面端完整显示，在手机端保持 720px 内容宽度并由 364px 容器局部横向滚动；桌面与手机全页截图复检未发现错位、坏图或不可读结构。
+- 提交时只纳入本任务新增笔记、三张资产、索引条目和本节 Progress 增量；One Layer Deeper、DeepSeek-V4 等既有未提交改动继续保留。
+
 ## 2026-07-20 `$deep` 显式触发修复
 
 ### 问题与根因
