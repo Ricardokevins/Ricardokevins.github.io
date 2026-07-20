@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>杨松琳访谈深读：注意力的下一场竞争是状态、硬件与评测的共同设计</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root{color-scheme:light;--paper:#f2f0eb;--surface:#fffefa;--ink:#20262a;--muted:#5b656b;--line:#d7d5cd;--accent:#315f72;--soft:#e5eef1;--gold:#936027;--gold-soft:#f7ecdd;--green:#47705c;--green-soft:#e6f0e9;--rose:#8b4e4a;--rose-soft:#f5e9e7;--shadow:0 16px 42px rgba(27,36,41,.08);--radius:10px;--max:1140px;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;--serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif;--mono:"SFMono-Regular","Menlo","Consolas",monospace}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--paper)}body{margin:0;background:linear-gradient(90deg,rgba(49,95,114,.035) 1px,transparent 1px),linear-gradient(180deg,rgba(112,100,76,.025) 1px,transparent 1px),var(--paper);background-size:44px 44px;color:var(--ink);font-family:var(--sans);line-height:1.78}a{color:var(--accent);text-underline-offset:3px}header,main{width:min(var(--max),calc(100% - 32px));margin:0 auto}header{padding:clamp(36px,6vw,76px) 0 28px}.kicker{margin-bottom:12px;color:var(--gold);font:800 13px/1.3 var(--sans);letter-spacing:.04em;text-transform:uppercase}h1{max-width:1080px;margin:0;font:760 clamp(32px,5vw,58px)/1.12 var(--serif)}.lede{max-width:1000px;margin:18px 0 0;color:var(--muted);font-size:clamp(17px,2vw,20px)}.meta{margin-top:14px;color:var(--green);font-size:14px;font-weight:700}main{display:grid;gap:32px;padding-bottom:70px}section{padding-top:32px;border-top:1px solid var(--line);scroll-margin-top:68px}h2,h3{margin:0 0 12px;line-height:1.28}h2{font-size:clamp(24px,3.2vw,34px)}h3{margin-top:24px;color:var(--accent);font-size:20px}p{margin:12px 0}ul,ol{padding-left:1.35rem}li{margin:7px 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.card{padding:17px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.card h3{margin:0 0 8px;font-size:17px}.card p{margin:0;color:var(--muted);font-size:14.5px}.callout{margin:18px 0;padding:15px 18px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--radius);background:var(--soft)}.callout b{display:block;margin-bottom:6px;color:var(--accent)}.callout.warn{border-left-color:var(--gold);background:var(--gold-soft)}.callout.warn b{color:var(--gold)}.callout.info{border-left-color:var(--green);background:var(--green-soft)}.callout.info b{color:var(--green)}.callout.risk{border-left-color:var(--rose);background:var(--rose-soft)}.callout.risk b{color:var(--rose)}.table-wrap{margin:17px 0;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}table{width:100%;min-width:780px;border-collapse:collapse;font-size:14.3px}th,td{padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--soft)}tr:last-child td{border-bottom:0}.formula{margin:17px 0;padding:15px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);font-family:var(--mono);overflow-x:auto}.small{color:var(--muted);font-size:14px}.backtop{text-align:right;font-size:13px}@media(max-width:760px){header,main{width:min(100% - 24px,var(--max))}.grid{grid-template-columns:1fr}table{min-width:760px}}
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header id="top"><div class="kicker">Podcast Interview · Model Architecture & Long Context</div><h1>杨松琳访谈深读：注意力的下一场竞争是状态、硬件与评测的共同设计</h1><p class="lede">这场 1 小时 43 分钟的访谈表面在比较 Linear Attention、Full Attention 与 Sparse Attention，真正讨论的却是一个更难的问题：模型如何在有限状态里保留长程依赖、完成多跳推理，同时把 KV cache、解码吞吐、芯片带宽和训练验证放进同一个可行域。Kimi Linear 的意义不只是“把二次复杂度变成线性”，而是把注意力重新定义为一套可被硬件执行、被任务验证、也能在失败时回退的记忆系统。</p><p class="meta">#119 · 杨松琳 / 张小珺 · 1:43:25 · 33 个章节 · speaker map 可核验 · 访谈口径 / 一手资料 / 本文推断分层</p></header>
+  <main>
+    <section id="thesis"><h2>核心判断：架构不是组件替换，而是状态预算的系统工程</h2><p>把线性注意力写成“更快的 Attention”，会低估它的难度。Full Attention 的优势是每个 query 都能直接访问历史 token；Linear Attention 则把历史压缩进固定大小的递归状态，换取近似线性的序列计算与常数级解码状态。代价是压缩一旦丢失信息，模型没有无限 KV cache 可以回看。因此真正的竞争不是谁的复杂度符号更漂亮，而是谁能在目标任务上把状态写入、遗忘、检索、更新和回退做对。</p><div class="formula">可用长上下文能力 ≈ 状态表达力 × 依赖保真度 × 硬件可执行性 × 评测覆盖 ÷（缓存成本 + 更新误差 + 失败不可见性）</div><div class="grid"><article class="card"><h3>状态</h3><p>模型要决定什么进入有限记忆、什么被擦除，以及新信息如何修正旧关联。</p></article><article class="card"><h3>系统</h3><p>训练算法、CUDA/Triton kernel、FP8、带宽与 KV cache 决定理论收益能否落地。</p></article><article class="card"><h3>验证</h3><p>短上下文、长依赖、多跳推理、检索、RL 和解码吞吐必须用等预算比较。</p></article></div></section>
+
+    <section id="map"><h2>完整内容地图：从 Delta Rule 走到混合架构</h2><div class="table-wrap"><table><thead><tr><th>时间段</th><th>访谈主线</th><th>需要保留的判断</th></tr></thead><tbody>
+      <tr><td>00:00–00:20</td><td>Linear Attention 的历史、输入无关衰减到输入相关门控。</td><td>线性注意力不是单一算法，而是一系列对有限状态记忆的改造。</td></tr>
+      <tr><td>00:20–00:42</td><td>Delta Rule、Gated DeltaNet、Kimi Delta Attention 与硬件实现。</td><td>擦除和定向写入互补；表达力与 kernel 友好性必须一起优化。</td></tr>
+      <tr><td>00:42–01:02</td><td>MiniMax M1、DeepSeek Sparse Attention、Full/Linear/Hybrid 的取舍。</td><td>纯线性并非默认终点，全局层和稀疏层是保留长程能力的不同方案。</td></tr>
+      <tr><td>01:02–01:24</td><td>MoE、Qwen3-Next、NoPE/RoPE、FP8、硬件—算法协同。</td><td>参数容量、激活计算、位置编码与硬件约束构成联合设计。</td></tr>
+      <tr><td>01:24–01:43</td><td>研究方法、旧论文考古、代码与 infra、年轻研究者建议。</td><td>研究贡献的寿命取决于能否被复现、部署、比较和继续改进。</td></tr>
+    </tbody></table></div></section>
+
+    <section id="mechanism"><h2>Kimi Linear 的真实技术贡献：让有限状态更会“记账”</h2><p>官方论文把 Kimi Delta Attention（KDA）描述为 Gated DeltaNet 的扩展：除了对状态做门控，还能用 delta rule 根据当前读出误差进行定向更新。直觉上，普通衰减只回答“旧信息要忘多少”，delta 更新还回答“新证据要怎样改写原来的关联”。这使线性注意力从单纯的指数遗忘，向可控的快权重记忆靠近。</p><p>论文摘要还明确了两件可核验事实：Kimi Linear 是 KDA 与 Multi-Head Latent Attention（MLA）的层级混合架构，公开模型为 48B 总参数、3B 激活参数；在其报告的公平比较中，KV cache 最多减少 75%，1M 上下文解码吞吐最高提升 6 倍。这里的“最高”属于论文设定和测量范围，不应外推成所有硬件、所有任务的固定倍数。</p><div class="callout info"><b>Insight：线性注意力的核心不是“没有 KV cache”</b>它把逐 token 的历史缓存，换成固定维度的状态矩阵。缓存从“存所有过去”变成“存对未来有用的摘要”。因此评估重点应从窗口长度转向状态容量、写入冲突、长程检索和多跳推理的联合曲线。</div><h3>为什么要保留 Full Attention 层</h3><p>访谈中反复出现的工程直觉是：多数层可以用便宜的有限状态处理局部和重复模式，但少数全局层仍需要直接访问远处 token。混合架构相当于给系统留下“精确回看”的稀疏通道。访谈提到一种 3:1 左右的层级安排，这属于嘉宾对业界实践的观察；本次核验的 Kimi Linear 摘要只确认 KDA/MLA 混合，并未把该比例当作论文定论。</p></section>
+
+    <section id="tradeoffs"><h2>三条路线不是擂台，而是三种信息预算</h2><div class="table-wrap"><table><thead><tr><th>路线</th><th>强项</th><th>主要风险</th><th>更适合问什么</th></tr></thead><tbody>
+      <tr><td>Full Attention</td><td>任意 token 间直接检索，表达和调试直观。</td><td>长上下文的训练计算、KV cache 与带宽昂贵。</td><td>任务是否需要精确跨段回看、复杂多跳依赖？</td></tr>
+      <tr><td>Linear / recurrent</td><td>固定状态、低缓存、适合流式与长序列。</td><td>状态碰撞、压缩损失、复杂检索与多跳推理可能退化。</td><td>依赖是否可被稳定摘要，状态容量是否匹配任务？</td></tr>
+      <tr><td>Sparse Attention</td><td>只计算被索引器选中的历史 token，保留显式检索。</td><td>索引器自身有成本，漏选关键 token 会造成不可逆错误。</td><td>相关性选择是否可靠，稀疏模式是否能被硬件高效执行？</td></tr>
+      <tr><td>Hybrid</td><td>把大部分预算给局部/有限状态，少量预算给全局精确通路。</td><td>路由、层比、训练 recipe 和评测更复杂。</td><td>任务分布是否允许不同层承担不同记忆职责？</td></tr>
+    </tbody></table></div><p>这张表也解释了为什么“纯 Linear Attention 必胜”不是访谈的结论。嘉宾提到 MiniMax M1 在多跳推理上曾发现明显短板，后续版本转向更多 Full Attention；这应被记作一个研发反馈，而不是对所有线性架构的否定。官方 MiniMax-M1 资料则确认其使用混合 MoE 与 Lightning Attention，并把 1M context 和 test-time compute 作为设计目标。两类证据合在一起，指向的是任务条件化的混合，而不是阵营化的路线之争。</p></section>
+
+    <section id="hardware"><h2>硬件协同：复杂度只有被 kernel 接住，才会变成能力</h2><p>访谈最值得工程师重视的部分，是对“算法论文速度”的降噪。Linear Attention 的递归表达若按 token 逐步执行，可能无法充分利用 GPU；KDA 的 chunkwise 算法、DPLR 结构、Triton/CUDA kernel 与 vLLM 集成，才把数学上的线性路径转换为大批量并行。反过来，GPU 的矩阵乘、内存层级和通信模式，也会反过来筛选哪些算法有机会扩展。</p><p>同一逻辑适用于 Sparse Attention。索引器如果要为每个 query 扫描全部历史，主注意力虽然变稀疏，选择成本却可能成为新的瓶颈；如果选得太少，模型会在检索任务上掉点；如果选得太多，稀疏收益又被吃掉。所谓硬件友好，不是把复杂度写成 O(kL)，而是要报告端到端吞吐、带宽、kernel launch、batch、序列长度和失败任务。</p><div class="callout warn"><b>评测警报：不要比较不等价的状态预算</b>把 48B/3B 激活的混合模型，与不同参数、不同训练 token、不同 KV 精度、不同 batch 的 Full Attention 模型直接比较，会把数据、容量和实现差异误归因于注意力机制。最低限度应固定训练配方、激活参数、状态大小、上下文长度、硬件和解码预算。</div><h3>MoE 是另一种预算迁移</h3><p>MoE 用稀疏路由把总参数容量和每 token 激活计算分开；它解决的不是注意力记忆，而是前馈层的容量—成本矛盾。访谈把 MoE、注意力和 FP8 放在同一张图上，是因为最终部署成本由多项乘积决定：每 token 激活多少参数、状态占多少显存、通信是否成为瓶颈、低精度是否破坏训练稳定。架构创新因此越来越像一张资源配置表，而不是单个模块的胜负。</p></section>
+
+    <section id="reasoning"><h2>为什么“长上下文”不能等同于“更强推理”</h2><p>线性状态对重复模式、流式输入和长序列有天然吸引力，但多跳推理需要在不同时间点回到不同证据，并保持中间变量之间的精确关系。压缩状态若把相似但不等价的实体混在一起，模型即使能看完 1M token，也可能无法恢复证明链。稀疏索引若漏掉一个关键前提，也会产生同样的尾部错误。</p><p>因此应把长上下文评测拆成四层：第一层是能否保留单个事实；第二层是能否在冲突信息中选对证据；第三层是能否跨多段组合证据；第四层是能否在工具反馈后修正先前结论。前三层主要考记忆与检索，第四层才接近 Agent 工作负载。访谈所说“要在等状态大小下比较”很关键：如果一个方案用更多状态换到更高准确率，必须把状态成本计入结论。</p><div class="grid"><article class="card"><h3>可观测指标</h3><p>KV bytes/token、状态维度、prefill/decode 吞吐、长程检索、跨段组合、错误恢复。</p></article><article class="card"><h3>隐藏变量</h3><p>训练数据是否包含长依赖、位置编码、层比、索引器质量和任务的真实分布。</p></article><article class="card"><h3>失败样式</h3><p>忘记、错配、漏检、重复计算、错误自信，以及无法回退到精确注意力。</p></article></div></section>
+
+    <section id="research"><h2>研究方法：考古、代码与 infra 是同一件事的三面</h2><p>杨松琳把研究描述为在旧论文里寻找被忽略的结构：有些想法早已出现，只是当时没有足够算力、数据或硬件把它做成。这个判断不是“新论文不重要”，而是提醒我们把技术史看成机会函数：一个方法是否成熟，取决于它与当前硬件、训练规模、数据和评价的匹配。</p><p>他同时强调代码、kernel 和工程实现不是论文之后的附属物。对线性注意力来说，真正的研究对象包含数学更新、并行算法、低精度稳定、内存布局和模型仓库；没有可复现实现，社区无法判断收益来自理论、数据还是工程。对年轻研究者的建议也因此偏向“补齐基础、读一手论文、写代码、争取真实算力”，而不是只追逐名词。</p><div class="callout info"><b>Insight：研究的可持续性是一个“部署梯度”</b>越能被 kernel、框架、模型权重和真实任务接住，研究就越容易获得下一轮反馈；只在抽象 benchmark 上成立、无法在系统里运行的想法，会失去继续进化的梯度。</div></section>
+
+    <section id="insights"><h2>进一步推演：四条值得长期跟踪的 Insight</h2><ol>
+      <li><b>注意力的终点可能是“分工”，不是统一。</b> Full、Sparse、Linear 的差异对应不同记忆职责；真正成熟的架构会让层、头或路由承担不同信息预算。</li>
+      <li><b>状态容量会成为新的模型规模指标。</b> 参数量解释容量，激活参数解释每 token 计算，状态大小解释长程工作记忆；三者需要同时进入模型账本。</li>
+      <li><b>索引器与验证器是同构问题。</b> Sparse Attention 先决定“看哪些 token”，Agent 先决定“做哪些动作”；两者都把选择错误放大为不可逆的后续错误，必须有回退和覆盖率评测。</li>
+      <li><b>中国架构创新的优势假设仍需 apple-to-apple 证据。</b> 嘉宾认为算力约束迫使国内团队更重视硬件—算法协同，这是有解释力的行业观察；但若没有相同数据、参数、硬件和预算的公开对照，它只能是待检验假设。</li>
+    </ol></section>
+
+    <section id="falsifiers"><h2>怎样推翻或修正这篇笔记</h2><ul>
+      <li>如果纯线性堆叠在相同训练配方、状态大小和硬件下，长期稳定超过混合/全注意力的多跳推理与长程检索，本文对全局通路的强调过强。</li>
+      <li>如果 DSA 类索引器的选择成本在真实部署中持续高于主注意力，且漏选错误无法通过训练解决，稀疏路线的经济性需要下调。</li>
+      <li>如果 KDA 的收益只在特定上下文和低精度 kernel 出现，换硬件或换任务即消失，那么“架构范式”应改写为“实现协同技巧”。</li>
+      <li>如果更长窗口在真实 Agent 任务上不需要层级状态、摘要和回退，本文对上下文治理的担忧需要收缩。</li>
+    </ul></section>
+
+    <section id="evidence" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>本笔记以 Zhang Xiaojun Podcast #119 的完整访谈为主材料，字幕连续覆盖 1:43:25，speaker map 能稳定区分杨松琳与张小珺。访谈中的 MiniMax 研发经历、比例选择、模型回退、国内外路线比较和个人建议属于嘉宾口述；不能因为叙述具体就自动升级为公开实验结论。对公开技术事实，我只采用论文摘要、官方仓库或官方文档明确写出的内容。</p><ul>
+      <li><a href="https://www.youtube.com/watch?v=858HR43peg">Zhang Xiaojun Podcast #119：杨松琳访谈</a>。</li>
+      <li><a href="https://arxiv.org/abs/2510.26692">Kimi Linear: An Expressive, Efficient Attention Architecture</a>：KDA、KDA/MLA 混合、公开模型与论文报告的 KV/吞吐结果。</li>
+      <li><a href="https://arxiv.org/abs/2412.06464">Gated Delta Networks: Improving Mamba2 with Delta Rule</a>：门控与 delta update 的机制背景及混合架构实验。</li>
+      <li><a href="https://github.com/MiniMax-AI/MiniMax-M1">MiniMax-M1 官方仓库</a>：混合注意力、1M context、RL 与 Lightning Attention 的公开说明。</li>
+      <li><a href="https://api-docs.deepseek.com/news/news250929">DeepSeek-V3.2-Exp 官方说明</a>：DeepSeek Sparse Attention 的公开发布语境。</li>
+      <li><a href="https://github.com/moonshotai/Kimi-K2">MoonshotAI/Kimi-K2</a>：MoE、Muon、MLA、agentic training 与部署信息的公开入口。</li>
+    </ul><p class="small">论文和官方资料的性能数字受版本、硬件、数据、上下文长度、采样与评测协议影响；本文不把厂商自报结果转写成跨模型排名。</p></section>
+    <p class="backtop"><a href="#top">返回顶部 ↑</a></p>
+  </main>
+</body>
+</html>
