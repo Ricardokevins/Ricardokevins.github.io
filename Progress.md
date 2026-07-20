@@ -1,50 +1,4 @@
-## 2026-07-20 Kimi K3 / Nemotron 3 Super / LatentMoE X Article 深读
-
-### 任务与材料边界
-
-- 深度读取青稞社区发布的 X Article《从 kimi k3 看下一代 MoE 架构的转折点：LatentMoE》，还原全文、署名来源、内嵌图表与作者的核心论证。
-- 已完整核对 NVIDIA `LatentMoE` arXiv:2601.18089 v1 的 18 页正文、公式、消融、95B / hybrid 主表、实测吞吐和万亿参数投影，并定向核对 Nemotron 3 Super 51 页技术报告中的 120B-A12B 架构、512 / Top-22 / latent 1024 配置、MTP 与长上下文口径。
-- 已核对 Moonshot AI 的 Kimi K3 官方技术博客。截止 2026-07-20，官方明确说明完整技术报告稍后发布、模型权重计划于 2026-07-27 前发布；因此 K3 的 2.8T、896 / Top-16、`Stable LatentMoE`、Quantile Balancing 和约 2.5× scaling efficiency 目前均属于发布方报告，不能据此断言其内部实现与 NVIDIA LatentMoE 完全相同。
-
-### 当前关键判断
-
-- 文章抓对了 MoE 的真实系统瓶颈：低并发 decode 常受专家权重搬运限制，高吞吐 expert parallel 常受 All-to-All 通信限制；压缩 routed width 能同时减少专家权重字节和跨卡 payload。
-- “压缩 4×就能咨询 4×专家”只对应 NVIDIA 推荐的 accuracy-oriented 构造：压缩比 `d/ℓ=4` 后同时扩展总专家数与 Top-K。efficiency-oriented 变体只扩总专家数、不扩 Top-K；压缩过度或不补专家数会明显掉点。
-- 95B 主表的提升并不均匀：MMLU-Pro 为 +5.65pp，但 Math 仅 +0.49pp；H100 实测吞吐在五个并发点有正有负，单并发比标准 MoE 低约 12.1%。论文的“350B 额外参数、最高 3.46×”来自 proprietary simulator、Qwen3 Dense 小模型 scaling-law 拟合与等精度构造，不是万亿参数真机对照；约 9% 也是该投影里的相对开销。
-- 独立 insight：LatentMoE 的核心不是“低秩压缩本身”，而是把表示带宽从模型主干宽度中解耦，并把节省下来的字节预算重新配置给 expert diversity；收益是否成立取决于 feature-rank 下限、GEMM 形状、拓扑、并发和路由稳定性，不能只用参数量或组合数判断。
-
-### 完成变更与验证结果
-
-- 新增 `notes/tech-analysis/latentmoe-kimi-k3-nemotron-3-super.html`，覆盖真实系统瓶颈、两种 LatentMoE 变体、公式与数据流、95B / hybrid 证据、H100 实测、万亿参数投影假设、原文主张审计、K3 / Nemotron 差异、术语、失败边界与实践建议；更新 `_data/notes.yml` 登记 Tech Analysis 入口。
-- Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页约 9,793 个非空白可见字符、19 个 h2/h3、唯一 `main` 与末节证据附录，无重复 id、失效页内锚点、控制字符、占位符、公开过程噪声或 whitespace 错误。
-- Jekyll 在隔离输出目录构建成功；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证与公共 API 限流提示，不影响静态产物。
-- 隔离无头浏览器完成 1440×1000 桌面与 390×844 手机渲染：页面级横向溢出、坏图、失效锚点、console / runtime error、失败请求和 4xx / 5xx 资源均为 0，82 个 MathJax 容器正常。
-- 首次手机检查发现共享样式将宽表 `min-width` 重置为 0，导致五张表被压缩；已将本页规则提高为 `.table-wrap table` 并复测。现在手机端五张表均保持 760px 内容宽度，由 364px 容器局部滚动，桌面端完整展开。
-
-## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
-
-### 任务与材料边界
-
-- 用户通过 `$deep` 指定深读 Benhao Huang 关于 IQuest Research 循环模型的 X 帖；主材料已定位为《Loop the Loopies!》（arXiv:2607.16051 v1，2026-07-17）。
-- 计划完整核对 67 页论文、TeX 源文件、图表与 IMO 解答附录，并追踪官方模型、代码、训练数据、评测口径及会改变核心判断的循环 Transformer 前置工作。
-- X 专用适配器需要浏览器会话；为避免占用用户前台 Chrome，本轮改用公开只读接口获取原帖文本、元数据和配图。论文与项目资产优先通过公开论文页、arXiv、模型平台和官方仓库核验。
-- 当前已确认论文公开入口指向两个 preview 模型和两个代码目录；模型页面对匿名访问返回未授权状态，官方模型列表未显示 Loopie，GitHub 仓库及论文所列代码路径均返回 404。本轮不会把“论文给出链接”写成“模型和代码已经开放”。
-
-### 关键判断与独立 Insight
-
-- Loopie 的核心不是无条件的 FLOP 优势，而是硬件感知的训练系统套利：将 48 个独立层改为 27 个存储层、每层执行两次，把激活内存代理降至约 0.633；由此把单设备 microbatch 从 1 提到 2、梯度累积步数减半，再把实测吞吐余量投入到更宽的 2304 维模型。
-- 所谓 compute-matched 是相同硬件、token/step、更新次数和近似相同 optimizer-step wall-clock，不是理论 FLOPs 相同。Loopie 的主干计算代理约为基线 1.424 倍，因此结论高度依赖具体并行策略、kernel、checkpoint 和硬件利用率。
-- 论文对训练预算与开放性仍有重要缺口：未披露主比较的 GPU 型号、卡数、绝对 step time、完整并行网格和多次计时方差；没有独立复现；模型与代码尚不可公开取得。
-- “3.5T pre-training tokens”不包含后续 2T supervised pre-training。用最终模型和 25T-token 对手比较时只强调 3.5T，会低估 Loopie 的监督训练预算；SPT 也缺少足以分离 batch、序列长度、数据量和目标函数贡献的完整消融。
-- IMO 35/42 为 64 候选 × 每候选 64 次验证、最多 16 轮 refine 后的高计算结果，再由 GPT-5.5 重复评分；附录本身显示第 3、6 题只有 4/7，第 4 题 6/7。它证明强 test-time search 下的上限，不等于单次推理达到金牌水平。IPhO 20.3 的正文仅给一段结果，没有逐题解答、成本和裁判细节。
-
-### 完成变更与验证结果
-
-- 新增 `notes/paper-reviews/loopie-looped-moe-compute-matched-scaling.html`，覆盖 X 帖与论文主张校准、model-loop / layer-loop 机制、训练系统资源转换链、算力复算、SPT/RL 预算、IMO 搜索规模、前置工作、部署边界与公开性审计。
-- 与 Ouro、Huginn、Parcae、Dual-Path、Looped-MoE 及 2025 年 intra-layer recurrence 一手资料对照后，将贡献收窄为“大规模 MoE + 统一逐层两次递归 + 按实测 step time 联合搜索”；layer-loop 原语并非从零发明。
-- 更新 `_data/notes.yml` 新增 Paper Note 入口；目标页结构审计通过：约 6,591 个非空白可见字符、11 个 section、21 个 h2/h3，唯一 `main` 与文末证据附录，无重复 id、失效锚点或公开过程噪声。
-- Jekyll 隔离构建成功；桌面 1440×1000 与真实设备仿真 390×844 的页面渲染完整。手机视口实测 `scrollWidth = clientWidth = 390`，无页面级横向溢出；MathJax 完成渲染，仅容器内长公式可独立滚动。
-- 目标文件 `git diff --check` 通过。全站 Notes 索引校验在本页登记后通过；构建仅有仓库既有的 GitHub Metadata 未认证/API 限流提示，不影响静态产物。
+# Ricardokevins.github.io Progress
 
 ## 2026-07-20 MOSS-TD × SGLang Omni 90 分钟多说话人 ASR 深读
 
@@ -71,33 +25,6 @@
 - `ruby scripts/validate_notes_index.rb` 通过：147 个索引条目与 147 个顶层 HTML 一一对应；目标页 doctype、唯一 `main`、`notes-shell-page`、共享样式与证据附录结构均通过，公开过程噪声扫描为 clean，`git diff --check` 通过。
 - Jekyll 隔离构建成功；构建仅出现未配置 GitHub API 凭据与公共 API 限流警告，不影响静态站点生成。
 - 桌面 1440×1000 与手机 390×844 实际渲染均返回 HTTP 200，标题、单一 H1/main、导航正确，无 console/page/request error，无横向溢出；已目视检查长页面的层级、表格、卡片和移动端堆叠。
-
-## 2026-07-20 Understanding Reasoning from Pretraining to Post-Training 深读
-
-### 任务与材料边界
-
-- 已定位主材料为 arXiv:2607.16097 v1（2026-07-17），完整读取 37 页正文、图表、附录与 TeX 源文件；主实验以棋类语言模型为受控试验台，数学实验是自然语言域的定性迁移核验。
-- 已核对官方代码仓、54B-token 预训练语料、棋题 benchmark、训练集、预训练/SFT 模型与 1B OLMo-2 数学模型发布物；大型训练未在本地复跑，性能与曲线均按发布方报告，代码/配置一致性属于本轮直接核验。
-- 已交叉阅读论文直接讨论的 Coverage Principle、RLVR 大 k 覆盖、组合技能、RL grokking、pre/mid/RL interplay 与 front-loading reasoning 等一手材料，用于校准“RL 是放大还是发现”的结论。
-
-### 关键判断
-
-- 论文最有价值的贡献是把 RL 收益拆成两个由预训练决定的量：预训练损失关联固定 RL 预算下的性能水平，预训练 token 数关联局部 RL 学习斜率；它反对把预训练与 RL 当成两张独立账单。
-- “RL 发现新行为”在论文中的精确定义是把 SFT 概率低于 5% 的正确棋步推入 top-3，而不是从严格零概率或不存在的原子技能中创造能力；困难题上 tail discovery 与 wrong-mode amplification 同时增加。
-- 20%→28% 的 RL 算力份额来自棋类局部拟合和有限外推，不是通用 LLM 配方；数学核验来自同一条 1B 预训练轨迹的 15 个 checkpoint，缺少多 seed 和跨规模复现。
-- 官方开放度较高，但当前代码仓没有论文 scaling/frontier 拟合脚本与完整 36-run recipe；发布的 8-GPU 启动脚本还存在只暴露 4 张 GPU、默认 2560 response tokens（论文 3072）且 sweep 默认仅 5 个配置/500 步的复现口径差异，需在公开笔记中作为证据边界说明。
-
-### 完成变更与验证状态
-
-- 新增 `notes/paper-reviews/understanding-reasoning-pretraining-post-training.html`，以“问题—试验台—联合定律—预算边界—策略机制—数学迁移—复现审计—独立推论”组织完整深读，并将论文的性能事实、代码审计结果和分析推断分层表达。
-- 新增四张本地论文图资产，分别用于解释完整训练管线、预训练与 RL 的联合关系、三类策略演化机制和 OLMo-2 数学迁移；页面加载 MathJax，宽公式与表格均采用移动端可滚动容器。
-- 更新 `_data/notes.yml` 登记 Paper Note 入口；公开页面未写入本地路径、临时材料、抓取过程或生成工具痕迹。
-- Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页面有唯一 `main`、唯一且位于末节的证据附录、12 个唯一 id、4 张有效本地图片与 2 张响应式表格，无重复 id、失效页内锚点、空 alt、缺失资源或公开过程噪声；正文约 6,688 个非空白字符，`git diff --check` 无异常。
-- Jekyll 在隔离输出目录构建成功，耗时约 7.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证和 API 限流提示，不影响静态页面生成。
-- 独立无头 Chromium 在 1440×1100 与 390×844 两个视口实际渲染均返回 HTTP 200：页面级横向溢出为 0，4 个 MathJax 容器无错误，控制台异常、失败请求与坏图均为 0；桌面和手机全页截图复检未发现错位、截断或不可读结构。
-
-
-# Ricardokevins.github.io Progress
 
 ## 2026-07-20 Value Leakage / 模型价值隐性泄漏深读
 
@@ -150,6 +77,78 @@
 - 目标页结构检查通过：唯一 `main`、唯一且位于末节的证据附录、11 个 section、27 个 h2/h3、无重复 id 或失效锚点；约 7,084 个可见字符，3 张表格均响应式呈现，MathJax 成功渲染。
 - Jekyll 在隔离输出目录构建成功，耗时约 11.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证与 API 限流提示，不影响静态产物。
 - 隔离 Chromium 在 1440×1200 与 390×844 两个视口渲染均返回完整页面：页面级横向溢出为 0，坏图、失效锚点、console / runtime error、失败请求和 4xx/5xx 资源均为 0；桌面与手机全页截图人工复核未见错位或不可读结构。
+
+## 2026-07-20 Understanding Reasoning from Pretraining to Post-Training 深读
+
+### 任务与材料边界
+
+- 已定位主材料为 arXiv:2607.16097 v1（2026-07-17），完整读取 37 页正文、图表、附录与 TeX 源文件；主实验以棋类语言模型为受控试验台，数学实验是自然语言域的定性迁移核验。
+- 已核对官方代码仓、54B-token 预训练语料、棋题 benchmark、训练集、预训练/SFT 模型与 1B OLMo-2 数学模型发布物；大型训练未在本地复跑，性能与曲线均按发布方报告，代码/配置一致性属于本轮直接核验。
+- 已交叉阅读论文直接讨论的 Coverage Principle、RLVR 大 k 覆盖、组合技能、RL grokking、pre/mid/RL interplay 与 front-loading reasoning 等一手材料，用于校准“RL 是放大还是发现”的结论。
+
+### 关键判断
+
+- 论文最有价值的贡献是把 RL 收益拆成两个由预训练决定的量：预训练损失关联固定 RL 预算下的性能水平，预训练 token 数关联局部 RL 学习斜率；它反对把预训练与 RL 当成两张独立账单。
+- “RL 发现新行为”在论文中的精确定义是把 SFT 概率低于 5% 的正确棋步推入 top-3，而不是从严格零概率或不存在的原子技能中创造能力；困难题上 tail discovery 与 wrong-mode amplification 同时增加。
+- 20%→28% 的 RL 算力份额来自棋类局部拟合和有限外推，不是通用 LLM 配方；数学核验来自同一条 1B 预训练轨迹的 15 个 checkpoint，缺少多 seed 和跨规模复现。
+- 官方开放度较高，但当前代码仓没有论文 scaling/frontier 拟合脚本与完整 36-run recipe；发布的 8-GPU 启动脚本还存在只暴露 4 张 GPU、默认 2560 response tokens（论文 3072）且 sweep 默认仅 5 个配置/500 步的复现口径差异，需在公开笔记中作为证据边界说明。
+
+### 完成变更与验证状态
+
+- 新增 `notes/paper-reviews/understanding-reasoning-pretraining-post-training.html`，以“问题—试验台—联合定律—预算边界—策略机制—数学迁移—复现审计—独立推论”组织完整深读，并将论文的性能事实、代码审计结果和分析推断分层表达。
+- 新增四张本地论文图资产，分别用于解释完整训练管线、预训练与 RL 的联合关系、三类策略演化机制和 OLMo-2 数学迁移；页面加载 MathJax，宽公式与表格均采用移动端可滚动容器。
+- 更新 `_data/notes.yml` 登记 Paper Note 入口；公开页面未写入本地路径、临时材料、抓取过程或生成工具痕迹。
+- Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页面有唯一 `main`、唯一且位于末节的证据附录、12 个唯一 id、4 张有效本地图片与 2 张响应式表格，无重复 id、失效页内锚点、空 alt、缺失资源或公开过程噪声；正文约 6,688 个非空白字符，`git diff --check` 无异常。
+- Jekyll 在隔离输出目录构建成功，耗时约 7.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证和 API 限流提示，不影响静态页面生成。
+- 独立无头 Chromium 在 1440×1100 与 390×844 两个视口实际渲染均返回 HTTP 200：页面级横向溢出为 0，4 个 MathJax 容器无错误，控制台异常、失败请求与坏图均为 0；桌面和手机全页截图复检未发现错位、截断或不可读结构。
+
+## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定深读 Benhao Huang 关于 IQuest Research 循环模型的 X 帖；主材料已定位为《Loop the Loopies!》（arXiv:2607.16051 v1，2026-07-17）。
+- 计划完整核对 67 页论文、TeX 源文件、图表与 IMO 解答附录，并追踪官方模型、代码、训练数据、评测口径及会改变核心判断的循环 Transformer 前置工作。
+- X 专用适配器需要浏览器会话；为避免占用用户前台 Chrome，本轮改用公开只读接口获取原帖文本、元数据和配图。论文与项目资产优先通过公开论文页、arXiv、模型平台和官方仓库核验。
+- 当前已确认论文公开入口指向两个 preview 模型和两个代码目录；模型页面对匿名访问返回未授权状态，官方模型列表未显示 Loopie，GitHub 仓库及论文所列代码路径均返回 404。本轮不会把“论文给出链接”写成“模型和代码已经开放”。
+
+### 关键判断与独立 Insight
+
+- Loopie 的核心不是无条件的 FLOP 优势，而是硬件感知的训练系统套利：将 48 个独立层改为 27 个存储层、每层执行两次，把激活内存代理降至约 0.633；由此把单设备 microbatch 从 1 提到 2、梯度累积步数减半，再把实测吞吐余量投入到更宽的 2304 维模型。
+- 所谓 compute-matched 是相同硬件、token/step、更新次数和近似相同 optimizer-step wall-clock，不是理论 FLOPs 相同。Loopie 的主干计算代理约为基线 1.424 倍，因此结论高度依赖具体并行策略、kernel、checkpoint 和硬件利用率。
+- 论文对训练预算与开放性仍有重要缺口：未披露主比较的 GPU 型号、卡数、绝对 step time、完整并行网格和多次计时方差；没有独立复现；模型与代码尚不可公开取得。
+- “3.5T pre-training tokens”不包含后续 2T supervised pre-training。用最终模型和 25T-token 对手比较时只强调 3.5T，会低估 Loopie 的监督训练预算；SPT 也缺少足以分离 batch、序列长度、数据量和目标函数贡献的完整消融。
+- IMO 35/42 为 64 候选 × 每候选 64 次验证、最多 16 轮 refine 后的高计算结果，再由 GPT-5.5 重复评分；附录本身显示第 3、6 题只有 4/7，第 4 题 6/7。它证明强 test-time search 下的上限，不等于单次推理达到金牌水平。IPhO 20.3 的正文仅给一段结果，没有逐题解答、成本和裁判细节。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/loopie-looped-moe-compute-matched-scaling.html`，覆盖 X 帖与论文主张校准、model-loop / layer-loop 机制、训练系统资源转换链、算力复算、SPT/RL 预算、IMO 搜索规模、前置工作、部署边界与公开性审计。
+- 与 Ouro、Huginn、Parcae、Dual-Path、Looped-MoE 及 2025 年 intra-layer recurrence 一手资料对照后，将贡献收窄为“大规模 MoE + 统一逐层两次递归 + 按实测 step time 联合搜索”；layer-loop 原语并非从零发明。
+- 更新 `_data/notes.yml` 新增 Paper Note 入口；目标页结构审计通过：约 6,591 个非空白可见字符、11 个 section、21 个 h2/h3，唯一 `main` 与文末证据附录，无重复 id、失效锚点或公开过程噪声。
+- Jekyll 隔离构建成功；桌面 1440×1000 与真实设备仿真 390×844 的页面渲染完整。手机视口实测 `scrollWidth = clientWidth = 390`，无页面级横向溢出；MathJax 完成渲染，仅容器内长公式可独立滚动。
+- 目标文件 `git diff --check` 通过。全站 Notes 索引校验在本页登记后通过；构建仅有仓库既有的 GitHub Metadata 未认证/API 限流提示，不影响静态产物。
+
+## 2026-07-20 Kimi K3 / Nemotron 3 Super / LatentMoE X Article 深读
+
+### 任务与材料边界
+
+- 深度读取青稞社区发布的 X Article《从 kimi k3 看下一代 MoE 架构的转折点：LatentMoE》，还原全文、署名来源、内嵌图表与作者的核心论证。
+- 已完整核对 NVIDIA `LatentMoE` arXiv:2601.18089 v1 的 18 页正文、公式、消融、95B / hybrid 主表、实测吞吐和万亿参数投影，并定向核对 Nemotron 3 Super 51 页技术报告中的 120B-A12B 架构、512 / Top-22 / latent 1024 配置、MTP 与长上下文口径。
+- 已核对 Moonshot AI 的 Kimi K3 官方技术博客。截止 2026-07-20，官方明确说明完整技术报告稍后发布、模型权重计划于 2026-07-27 前发布；因此 K3 的 2.8T、896 / Top-16、`Stable LatentMoE`、Quantile Balancing 和约 2.5× scaling efficiency 目前均属于发布方报告，不能据此断言其内部实现与 NVIDIA LatentMoE 完全相同。
+
+### 当前关键判断
+
+- 文章抓对了 MoE 的真实系统瓶颈：低并发 decode 常受专家权重搬运限制，高吞吐 expert parallel 常受 All-to-All 通信限制；压缩 routed width 能同时减少专家权重字节和跨卡 payload。
+- “压缩 4×就能咨询 4×专家”只对应 NVIDIA 推荐的 accuracy-oriented 构造：压缩比 `d/ℓ=4` 后同时扩展总专家数与 Top-K。efficiency-oriented 变体只扩总专家数、不扩 Top-K；压缩过度或不补专家数会明显掉点。
+- 95B 主表的提升并不均匀：MMLU-Pro 为 +5.65pp，但 Math 仅 +0.49pp；H100 实测吞吐在五个并发点有正有负，单并发比标准 MoE 低约 12.1%。论文的“350B 额外参数、最高 3.46×”来自 proprietary simulator、Qwen3 Dense 小模型 scaling-law 拟合与等精度构造，不是万亿参数真机对照；约 9% 也是该投影里的相对开销。
+- 独立 insight：LatentMoE 的核心不是“低秩压缩本身”，而是把表示带宽从模型主干宽度中解耦，并把节省下来的字节预算重新配置给 expert diversity；收益是否成立取决于 feature-rank 下限、GEMM 形状、拓扑、并发和路由稳定性，不能只用参数量或组合数判断。
+
+### 完成变更与验证结果
+
+- 新增 `notes/tech-analysis/latentmoe-kimi-k3-nemotron-3-super.html`，覆盖真实系统瓶颈、两种 LatentMoE 变体、公式与数据流、95B / hybrid 证据、H100 实测、万亿参数投影假设、原文主张审计、K3 / Nemotron 差异、术语、失败边界与实践建议；更新 `_data/notes.yml` 登记 Tech Analysis 入口。
+- Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页约 9,793 个非空白可见字符、19 个 h2/h3、唯一 `main` 与末节证据附录，无重复 id、失效页内锚点、控制字符、占位符、公开过程噪声或 whitespace 错误。
+- Jekyll 在隔离输出目录构建成功；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证与公共 API 限流提示，不影响静态产物。
+- 隔离无头浏览器完成 1440×1000 桌面与 390×844 手机渲染：页面级横向溢出、坏图、失效锚点、console / runtime error、失败请求和 4xx / 5xx 资源均为 0，82 个 MathJax 容器正常。
+- 首次手机检查发现共享样式将宽表 `min-width` 重置为 0，导致五张表被压缩；已将本页规则提高为 `.table-wrap table` 并复测。现在手机端五张表均保持 760px 内容宽度，由 364px 容器局部滚动，桌面端完整展开。
 
 ## 2026-07-20 全量改动提交与 Notes 索引收口
 
