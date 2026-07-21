@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-21 RLM Harness / 组合泛化实验深读
+
+### 任务与材料边界
+
+- 完整读取 alphaXiv 单帖及其主材料《Language model harnesses are compositional generalizers》；核对博客正文、附录公式、全部图表、九对代表性轨迹、作者站点源文件和原始 RLM 论文 v3。
+- 审计 RLM 主分支训练环境、系统提示、示例配置、公开分支，以及 `mit-oasys/rlm-qwen3-30b-a3b-v0.1` 模型卡与 LoRA 元数据；核对 MRCRv2、GraphWalks、LongBench-Pro、OOLONG、OOLONG-Pairs 与 Ada-LEval 的任务口径。
+- 本轮未在 8×A100/H100 环境重跑九组 RL 训练，不声称独立复现发布方曲线；直接核验范围是原文与图表口径、公开代码/配置/模型/轨迹的一致性、汇总数字量级和复现材料完整性。
+
+### 关键判断与独立 Insight
+
+- 新增 `notes/tech-analysis/rlm-harness-compositional-generalization.html`，将 RLM 解释为“长状态的任务编译器”：上下文卸载让根模型不直接看到领域数据，程序化子调用把中间结果保存在变量中，RL 主要训练探查、分块、调用、聚合与提交的控制策略。
+- 校准 headline：“8–32×”是六组预选长度 split；“约 10×”是六任务相对各自 step-0 的平均 held-out lift 之比，图末段约 0.42 对 0.04，不是最终准确率十倍。LongBench-Pro、OOLONG、Ada-LEval 的绝对差距明显小于 MRCRv2、GraphWalks 与 OOLONG-Pairs。
+- 三组跨域实验均刻意选择共同分解：解析记录 → 批量语义判断 → 聚合/排序 → 提交，因此支持 harness-induced strategy transfer，而不是任意新领域或新算法结构的零样本泛化。
+- “locally in-distribution”尚未被直接测量。附录比较根轨迹的编辑距离、n-gram、Jaccard 与长度，并从历史正 reward 轨迹选最近邻；公开九对展示样本又要求双方 reward 大于 0.5。它们能证明相似轨迹存在，不能证明 prompt 的 logits/输出分布相同或估计该行为的总体发生率。
+- RLM 与 Base Transformer + YaRN 改变了输入表示、调用次数、外部内存、Python 计算和总推理预算；博客也报告 RLM 训练慢 1.5–3×。当前结果证明系统迁移更强，尚不能把差距全部归因于根模型内部获得了更强组合表征。
+- 公开复现链仍不完整：当前主分支只有 OOLONG 示例环境和一份 200-step 示例配置；博客是六组 150-step 长度训练和三组 500-step 策略训练。公开 53.5MB LoRA 是 mixed-suite 适配器，不是九组独立 checkpoint；完整数值、seed、全部 rollout、距离脚本与博客精确配置未公开。
+- 独立 insight：Harness 不只是工具壳，而是在把原始任务编译成受限控制语言，缩小 RL 的策略搜索空间。未来应把局部同分布从词面相似升级为稳定的 typed subtask contract，并用等 token/FLOPs baseline、结构扰动、调用图尾延迟与单位正确答案成本评估整个 model–harness system。
+
+### 完成变更与验证结果
+
+- 本地化三张作者图：RLM 上下文卸载/程序化子调用、六任务长度外推曲线和三任务策略迁移曲线；均使用准确非空 alt，并更新 `_data/notes.yml` 增加 Tech Analysis 入口。
+- `ruby scripts/validate_notes_index.rb` 通过：149 个索引条目与 149 个顶层 HTML 一一对应；目标页 doctype、唯一 `main`、13 个唯一 id、锚点、本地图片、MathJax 和证据附录结构均通过，公开过程噪声扫描与本任务空白检查无输出。
+- 使用独立输出目录完成 Jekyll 全量构建；仅出现仓库既有的 Faraday 可选依赖提示、GitHub Metadata 未认证与公共 API 限流 warning，不影响静态页面生成。
+- 桌面 1440×1000 与手机 390×844 实际渲染均返回 HTTP 200，单一 H1/main、导航、2 处 MathJax 公式和 3 张图片正常；整页横向溢出为 0，两张 760px 宽表在 364px 手机容器内局部滚动，console、page error 与失败请求均为 0，并已目视检查层级、图表和移动端布局。
+
 ## 2026-07-21 LLM-as-a-Coach / Experiential Learning 深读
 
 ### 任务与材料边界
