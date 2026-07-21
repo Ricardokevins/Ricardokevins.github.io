@@ -1,5 +1,25 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-21 Francesco Bertolotti 预训练—RL 推文复核
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Francesco Bertolotti 于 2026-07-20 发布的 X 帖；原帖包含一段摘要、四张论文配图与 arXiv:2607.16097 链接，指向仓库已经深读并发布的《Understanding Reasoning from Pretraining to Post-Training》。
+- 已通过公开只读来源完整还原原帖文本、发布日期、四张原始分辨率配图和论文链接；再次核对 arXiv v1、TeX 源码、Figure 4 / Figure 5 定义与官方代码仓当前状态。未占用用户前台浏览器，也不重复创建同主题页面。
+
+### 新增判断与原地深化
+
+- 原帖的“50M→700M、RL 份额 20%→30%”是对论文 Figure 4 中“50M→680M、约 20%→28%”的合理取整，但这些数字来自拟合后的连续算力最优前沿，不是两个生产级端点的直接实验配方。
+- 原帖把困难题上的变化压缩为从分布尾部浮现并强化“好的和坏的”动作。论文定义更严格：tail discovery 只指低概率正确动作进入 top-3；wrong-mode amplification 指原本最受偏好的错误动作继续增强，后者未必来自尾部。两者对应不同工程修复方向。
+- 原地更新 `notes/paper-reviews/understanding-reasoning-pretraining-post-training.html`：补入端点取整边界、策略分类校正与原帖资料入口；不新增笔记、索引项或图片资产。
+
+### 验证与发布状态
+
+- Notes 索引校验通过：147 个索引条目与 147 个顶层 HTML 页面一一对应；`git diff --check`、目标页公开过程噪声扫描、重复 ID、页内锚点、图片 alt 与 MathJax 结构检查均通过。
+- Jekyll 隔离构建成功，耗时约 7.6 秒；仅有仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证和公共 API 限流提示，不影响静态页面生成。
+- 系统 Chromium 在 1440×1100 与 390×844 两个视口渲染均返回 HTTP 200：页面级横向溢出为 0，唯一 H1 / `main` / 文末证据附录正确，坏图、断锚、MathJax、console / runtime / request error 均为 0；桌面和手机全页截图目检未见重叠、截断或不可读结构。
+- 只提交并推送本次 `Progress.md` 与既有论文笔记的原地深化，不改索引、不新增资产。
+
 ## 2026-07-20 MOSS-TD × SGLang Omni 90 分钟多说话人 ASR 深读
 
 ### 任务与材料边界
