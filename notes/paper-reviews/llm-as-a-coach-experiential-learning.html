@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM-as-a-Coach 深读：把评分改成经验，真能替代标量奖励吗？</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, .08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193, 95, 60, .045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120, 105, 85, .03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 960px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 60px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { background: var(--info-soft); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(140px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    figure { margin: 22px 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    img { display: block; width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .math-display { margin: 16px 0; padding: 12px 14px; max-width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); }
+    tr:nth-child(even) td { background: rgba(0, 0, 0, .015); }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Post-training</div>
+    <h1>LLM-as-a-Coach：把评分改成经验，真能替代标量奖励吗？</h1>
+    <p class="lede">这篇论文最有价值的地方，不是给 LLM-as-a-Judge 换了一个“教练”名字，而是把开放任务的训练目标从“把分数做高”改成“匹配看过文字反馈的教师分布”。发布方结果方向清晰：在 20 组主表比较中，EL 对 rubric-based RL 为 18 胜、1 平、1 负；但当前证据仍不足以把收益归因于“高带宽”本身，也不足以证明它已解决 reward hacking。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>Experiential Learning（EL）是一种有说服力的 on-policy context distillation 配方，而不是对强化学习的普遍替代。</strong>它保留 LLM 评审产生的文字分析，把分析压缩成可迁移“经验”，再让策略模型模仿被这些经验条件化的教师。它解决的是 1–10 分奖励的粗粒度问题，却没有解决教练本身判断错误、偏见或被攻击的问题。</p>
+      <div class="grid-3">
+        <div class="card"><h3>真正的创新</h3><p>把 response-specific 评估先抽象成 transferable knowledge，再用 token-level 分布蒸馏内化；不是简单把 critique 拼到训练样本前面。</p></div>
+        <div class="card"><h3>最强证据</h3><p>两类 7B/8B policy、self/GPT-4o 两类反馈模型和四个未见 benchmark 上，EL 的方向性优势相当稳定。</p></div>
+        <div class="card"><h3>最大缺口</h3><p>没有多 seed、置信区间、人类评测、绝对训练成本或完整复现代码；同一 GPT-4o 同时参与 rubric 生成、反馈和最终评分。</p></div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>它到底在解决什么问题</h2>
+      <p>数学、代码执行和格式约束可以用自动 verifier 给出近似明确的对错；旅行攻略、解释、推荐、创意写作则同时受事实性、相关性、完整性、组织和风格影响。论文的出发点是：评审模型本来已经写出了逐项分析，但 rubric-based RL 最终只取一个 1–10 分整数，于是两个同为 9 分、但错误类型完全不同的回答会收到相同的序列级信号。</p>
+      <p>这个诊断基本成立。不过需要把范围说准：论文比较的是<strong>特定的 1–10 分 GRPO 基线</strong>，不是所有 scalar-reward 方法。多维 reward、pairwise preference、generative reward model、process feedback 或经过校准的连续 reward，都可能保留比单个离散分数更多的信息。</p>
+      <div class="callout info"><b>问题的本质</b><p>开放任务不是“没有标准”，而是标准由多个相互制约的维度组成。标量化会丢掉“哪里好、哪里坏、下次怎么做”的方向；而原始 critique 又可能把模型带进“评论别人”而不是“完成任务”的分布。EL 试图在二者之间保留可行动、可迁移的中间表示。</p></div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：一次训练更新发生了什么</h2>
+      <ol>
+        <li><strong>On-policy rollout：</strong>当前策略 πθ 对真实用户 prompt (x) 生成回答 (y)，而不是用教师离线生成的答案训练。</li>
+        <li><strong>Coach extraction：</strong>反馈模型 (M) 同时看到 prompt、回答和 prompt-specific rubrics，先逐项评价，再输出一段 <em>experiential knowledge</em> (e)。提示要求它抽象可复用策略，而不是复述本题修正。</li>
+        <li><strong>Context-conditioned teacher：</strong>把 (e) 放在原 prompt 前，让冻结教师 πteacher 在同一个学生回答前缀 (y_{&lt;t}) 上给出下一 token 分布。</li>
+        <li><strong>On-policy context distillation：</strong>在学生自己采样的轨迹上，最小化学生分布到经验条件教师分布的 reverse KL，把文字经验写入参数。</li>
+        <li><strong>Inference：</strong>部署时不再需要 coach、rubrics 或经验上下文，推理接口与原模型相同。</li>
+      </ol>
+      <div class="math-display">\[
+        \mathcal{L}(\theta)=\mathbb{E}_{(x,\mathcal{R}_x),\,y\sim\pi_\theta(\cdot\mid x)}
+        \left[\frac{1}{|y|}\sum_{t=1}^{|y|}
+        D_{\mathrm{KL}}\!\left(\pi_\theta(\cdot\mid x,y_{\lt t})\,\|\,
+        \pi_{\mathrm{teacher}}(\cdot\mid e,x,y_{\lt t})\right)\right]
+      \]</div>
+      <p>实现口径值得注意：论文只在学生概率最高的 256 个词表项上计算 reverse KL，而且不重新归一化。这是对完整 KL 的截断近似；在代码公开前，无法核对低概率 token、mask、数值稳定和分布并行的实际处理。</p>
+      <figure>
+        <img src="llm-as-a-coach-experiential-learning-assets/method.png" alt="强化学习与经验学习的训练回路对比：前者最大化标量奖励，后者匹配经验条件教师分布">
+        <figcaption>图 1：两条链共享 policy rollout、rubrics 和反馈模型；EL 额外引入经验文本、教师前向与分布蒸馏。图源：论文 Figure 2。</figcaption>
+      </figure>
+    </section>
+
+    <section id="novelty">
+      <h2>新贡献、已有组件与命名包装</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>组件</th><th>是否新</th><th>准确理解</th></tr></thead>
+          <tbody>
+            <tr><td>Prompt-specific rubrics</td><td>已有</td><td>来自 Rubrics as Rewards 等工作；本文继续用 GPT-4o 预生成 7,500 个 WildChat-IF prompt 的细粒度标准。</td></tr>
+            <tr><td>文字 critique / verbal feedback</td><td>已有</td><td>Reflexion、TextGrad、GEPA、Critique-GRPO 等已经使用自然语言反馈；单纯保留 critique 不是本文贡献。</td></tr>
+            <tr><td>On-policy context distillation</td><td>同团队 Part I</td><td>在学生轨迹上，用带 privileged context 的教师分布监督学生；本文复用 OPCD 作为内化引擎。</td></tr>
+            <tr><td>Experience extraction + OPCD 用于开放任务</td><td><strong>本文核心组合</strong></td><td>把 rubric assessment 先抽象为 transferable guidance，再把 guidance 翻译成 token 分布；这是最值得保留的设计。</td></tr>
+            <tr><td>LLM-as-a-Coach</td><td>界面命名</td><td>反馈模型仍是同一个 evaluator；角色变化发生在优化器消费什么信号，而不是模型突然获得新的“教练能力”。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>因此，它的创新更接近<strong>反馈接口与训练目标重构</strong>：Judge 产生的文字并没有直接拿去 SFT，而是先抽象、再经教师分布解释、最后在学生自己的状态分布上蒸馏。这比“多写一段 critique”更系统，但仍建立在 rubric 质量与教师可解释这些经验的前提上。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>主结果：方向稳定，但幅度和归因仍需谨慎</h2>
+      <p>主实验用 Qwen3-8B（non-thinking）与 OLMo-3-7B-Instruct 两类 policy，反馈模型分别取初始冻结 policy 或 GPT-4o。每种组合比较 Base、RL 和 EL；训练使用 7,500 条 WildChat-IF、3 个 epoch、每 prompt 8 个 rollout，若每轮完整遍历，约对应 <strong>180,000 条 response-level feedback</strong>。两种方法 batch size 256、学习率 1e-6、rollout temperature 1，最大 response 4,096 tokens。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Policy + Feedback</th><th>WildChat</th><th>AlpacaEval-v2</th><th>WildBench</th><th>ArenaHard-v2</th><th>CreativeWritingV3</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen3-8B + self：EL − RL</td><td>+0.8</td><td>+2.7</td><td>+3.4</td><td>+0.5</td><td>+1.7</td></tr>
+            <tr><td>Qwen3-8B + GPT-4o：EL − RL</td><td>+0.3</td><td><strong>−0.8</strong></td><td>+2.8</td><td>+0.7</td><td>+0.9</td></tr>
+            <tr><td>OLMo-3-7B + self：EL − RL</td><td>+1.1</td><td>+4.9</td><td>+5.4</td><td>+2.9</td><td>0.0</td></tr>
+            <tr><td>OLMo-3-7B + GPT-4o：EL − RL</td><td>+1.4</td><td>+3.8</td><td>+5.9</td><td>+2.6</td><td>+0.2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>独立复算得到 20 个比较单元中 18 个 EL 更高、1 个持平、1 个更低。最显著的优势集中在 OLMo 的 AlpacaEval/WildBench；Qwen + GPT-4o 的 WildChat 只高 0.3，AlpacaEval 反而低 0.8。没有误差条时，不能判断这些小差值是否超过 evaluator noise。</p>
+      <figure>
+        <img src="llm-as-a-coach-experiential-learning-assets/generalization.png" alt="Qwen3-8B 自反馈设置下强化学习与经验学习在训练集、测试集、AlpacaEval 和 WildBench 的分数增益">
+        <figcaption>图 2：作者用于支持“EL 泛化更好”的 Qwen3-8B 自反馈案例。RL 在训练子集增益更高，EL 在测试与两个外部 benchmark 更高。图源：论文 Figure 3。</figcaption>
+      </figure>
+      <div class="callout warn"><b>不要把 Figure 3 直接读成“已经证明 reward hacking”</b><p>图中只有一个 policy/feedback 组合；训练分高、外部评测低与过拟合一致，但也可能受 checkpoint 选择、生成长度、风格偏好或 evaluator shift 影响。论文没有展示具体 hack 行为、因果干预或独立人工审计，所以更准确的表述是“观察到与训练集 reward overoptimization 一致的模式”。</p></div>
+    </section>
+
+    <section id="ablations">
+      <h2>消融真正告诉了我们什么</h2>
+      <h3>1. 经验抽象比原始 critique 更重要</h3>
+      <p>在 Qwen3-1.7B / Qwen3-4B 设置中，Default EL 的 WildChat/IFEval 为 68.6/68.8；Full Critique 是 67.9/64.6，Rubrics Only 是 68.1/65.6，10 类 Multiple-Choice 指令是 66.3/68.5。这个结果支持的不是“文字越长越好”，而是<strong>反馈必须被变换成任务求解分布</strong>：完整评分文本会诱导教师继续评论，rubric 只告诉目标却不告诉当前失误，粗分类又丢失细节。</p>
+      <h3>2. 会自我更新的教师容易把偏差滚大</h3>
+      <p>固定教师的 WildChat/IFEval 为 80.0/83.1；逐 epoch 更新教师把 WildChat 推到 80.7，却把 IFEval 压到 74.9。加入 25% Tulu3 通用 prompt 的初始教师蒸馏后，IFEval 回到 79.9，但仍低于 base 的 83.5。这说明 EL 并不天然防遗忘；它只是提供一种更容易加 replay / anchoring 的接口。</p>
+      <h3>3. 教练看到了完整回答，经验不是纯因果局部信号</h3>
+      <p>Coach 在生成经验时读过整个回答 (y)，随后这段经验被用于监督回答的每个前缀位置。训练上这是一种合法的后验教学信号，但它意味着“教师分布”包含对未来失败的总结。经验如果偷带本题答案、事实或措辞，模型学到的可能是 response-conditioned label leakage，而非真正可迁移的策略。论文提示要求抽象化，并展示三个例子，但没有自动测量 instance-specific leakage。</p>
+    </section>
+
+    <section id="bandwidth">
+      <h2>“5,000× 带宽”该怎么读</h2>
+      <p>论文按通道字母表计算：1–10 分最多是 ⁠\(\log_2 10\approx3.32\) bits；1,024 个 token、词表 150,000 的文本通道上限约为 ⁠\(1024\log_2 150000\approx17{,}607\) bits，二者相除约 5,300。算术成立，论文 Figure 1 将其取整为“over 5,000×”。</p>
+      <p>但这只是<strong>表示容量上限</strong>，不是有效监督的信息量。自然语言高度冗余；经验示例中有不少“准确、清晰、结构化”之类通用建议；coach 可能判断错误；teacher 也可能无法把建议稳定翻译为 token 分布。作者在脚注明确承认这不是 mutual information，但标题式叙事仍容易让人误以为 17,600 bits 全部进入了梯度。</p>
+      <p>更严格的验证应固定 teacher compute 与 token budget，逐渐改变经验长度、压缩率和语义质量，测量性能是否随<strong>有效经验信息</strong>而变化；还应加入随机等长文本、同义改写、错误经验和人工精炼经验作为对照。当前 Multiple-Choice 消融只能说明 10 类指令太粗，不能建立“性能由带宽决定”的 scaling law。</p>
+    </section>
+
+    <section id="limits">
+      <h2>关键证据边界</h2>
+      <ul>
+        <li><strong>评估器耦合：</strong>GPT-4o 生成训练 rubrics，也是部分实验的 coach/judge，还是所有五项主评测的 evaluator。结果可能偏好同一模型家族表达出的风格；论文只称更强 proprietary evaluator 趋势一致，没有披露模型、分数或协议。</li>
+        <li><strong>没有统计不确定性：</strong>未报告训练 seed、均值/方差、置信区间或显著性。WildChat test 只有 250 个 prompt、每条采样 4 个回答；小于 1 分的差距很可能处在 judge 波动范围内。</li>
+        <li><strong>Checkpoint 选择不透明：</strong>训练约 90 个 step、每 10 step 保存一次，却报告“top-3 performing checkpoints”的平均；未说明 top-3 用哪个 split/指标选。若直接按测试 benchmark 选，会造成选择偏差。</li>
+        <li><strong>额外计算未等预算：</strong>RL 与 EL 共享 rollout 和反馈调用，但 EL 额外做带经验上下文的 teacher forward 和 top-256 token-level distillation。论文称额外更新成本相对较小，却没有 wall-clock、GPU-hour、token 或 API 成本表。</li>
+        <li><strong>基线覆盖窄：</strong>只和 1–10 分 GRPO、原始 critique、rubrics-only、10 类指令比较；没有强 pairwise preference、多维 reward、generative reward、DPO/RLAIF 或同等 teacher-compute 蒸馏基线。</li>
+        <li><strong>开放性暂未闭环：</strong>论文已公开完整 prompt，但官方仓库在核验时只有 README，承诺 2026-07-23 前开放 code 与 data；因此 top-256 KL、数据过滤、checkpoint 选择与评测脚本尚不能独立复现。</li>
+      </ul>
+    </section>
+
+    <section id="terms">
+      <h2>术语与概念边界</h2>
+      <div class="def-list">
+        <div><b>Non-verifiable task</b><span>没有唯一、廉价、自动可判定答案的任务；并不等于完全主观，而是质量需要多维 rubric 或偏好判断。</span></div>
+        <div><b>Experiential knowledge</b><span>由某次回答的评估抽象出的可迁移策略，例如“限制之后给出替代路径”；目标是跨样本复用，而不是保存本题答案。</span></div>
+        <div><b>On-policy</b><span>训练轨迹来自当前正在更新的策略，减少用教师离线答案训练后、学生在自己生成状态上失配的问题。</span></div>
+        <div><b>Context distillation</b><span>让学生模仿带额外上下文的教师，把上下文诱导出的行为压进参数，从而在推理时移除这段上下文。</span></div>
+        <div><b>Reverse KL</b><span>⁠\(D_{KL}(\pi_{student}\|\pi_{teacher})\) 更偏 mode-seeking：强烈惩罚学生把概率放在教师认为不好的 token 上，但可能忽略教师分布的次要模式。</span></div>
+        <div><b>Reward hacking</b><span>策略找到能提高评测分却不真正满足目标的模式；训练分高、外部分低只是迹象，确认通常需要行为案例、独立评审或因果干预。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：把“奖励设计”升级为“反馈编译器”</h2>
+      <p>这篇论文真正打开的方向，是把反馈系统看成一个编译器，而不是一个打分器：</p>
+      <div class="grid-2">
+        <div class="card"><h3>前端：多源证据</h3><p>rubrics、用户反馈、自动 verifier、事实检索、安全规则和领域专家意见先保留结构，不急着压成单分。</p></div>
+        <div class="card"><h3>中间表示：经验</h3><p>把实例错误抽象成带适用范围、置信度、正反例和失效条件的可迁移规则，而不是无边界的泛泛建议。</p></div>
+        <div class="card"><h3>后端：分布监督</h3><p>由 teacher 把经验翻译成 token-level target；必要时与 scalar reward、verifier 和 reference anchoring 联合，而非二选一。</p></div>
+        <div class="card"><h3>验收：反事实测试</h3><p>删掉、替换或故意污染某条经验，观察模型在哪些能力桶变化，才能知道它学到的是策略还是评审风格。</p></div>
+      </div>
+      <p>这也给出一个比“EL vs RL”更实用的工程判断：<strong>可验证部分仍交给 verifier，难以验证的质量维度交给经验蒸馏，二者共享同一证据账本。</strong>事实、格式、引用和安全边界不应被模糊语言建议替代；创意、结构、语气和解释深度也不该被压成一个总分。真正可靠的后训练栈会是 hybrid feedback，而不是让 Coach 完全取代 Judge。</p>
+      <div class="callout"><b>建议的下一组关键实验</b><p>在相同 feedback token、teacher FLOPs 和总 wall-clock 下，对比：10 级 reward、多维 reward 向量、pairwise preference、原始 critique、人工压缩经验、自动经验与随机等长上下文；用隐藏的人类评审与异构 judge 报告多 seed 均值。只有这样，才能把“EL 有用”推进到“为什么有用、每一单位成本值多少”。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文核对 arXiv v1 的 21 页正文、图表、附录和 TeX 源，并复算主表差值、rollout 数量与带宽上限；实验结果、成本判断与 reward-hacking 现象均来自发布方报告，本轮未重新训练模型。官方仓库在核验时尚未发布实现与数据，因此实现级判断保留到代码开放后复查。X 原帖为论文摘要摘引，并附论文首页截图，没有额外方法细节。</p>
+      <ul>
+        <li><a href="https://x.com/iScienceLuvr/status/2079516724324663535">Tanishq Mathew Abraham：LLM-as-a-Coach 发布帖</a></li>
+        <li><a href="https://arxiv.org/abs/2607.18110">LLM-as-a-Coach: Experiential Learning for Non-Verifiable Tasks（arXiv:2607.18110 v1）</a></li>
+        <li><a href="https://github.com/microsoft/LMOps/tree/main/el">Microsoft LMOps：EL 官方仓库入口</a></li>
+        <li><a href="https://arxiv.org/abs/2602.12275">Part I：On-Policy Context Distillation for Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2603.16856">Part II：Online Experiential Learning for Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2507.17746">Rubrics as Rewards: Reinforcement Learning Beyond Verifiable Domains</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,5 +1,31 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-21 LLM-as-a-Coach / Experiential Learning 深读
+
+### 任务与材料边界
+
+- 完整还原 Tanishq Mathew Abraham 的 X 原帖文本、元数据与附图；主材料定位为 arXiv:2607.18110 v1《LLM-as-a-Coach: Experiential Learning for Non-Verifiable Tasks》。
+- 完整读取 21 页正文、图表、附录与 TeX 源；交叉核对同团队 Part I（On-Policy Context Distillation）、Part II（Online Experiential Learning）、Rubrics as Rewards 与官方仓库当前开放状态。
+- 论文结果按发布方报告；本轮直接复核范围包括主表差值、训练 rollout 数量、反馈通道容量算术、prompt/公式/消融一致性与代码开放状态。无训练集、GPU/API 预算和完整实现，不声称复现模型结果。
+
+### 关键判断与独立 Insight
+
+- EL 的核心不是给 Judge 改名，而是把 response-specific rubric assessment 抽象成 transferable experiential knowledge，再让当前策略在自己的 rollout 上匹配经验条件教师的 token 分布；这是反馈接口与优化目标的重构。
+- 主表 4 组 policy/feedback × 5 个评测的 20 个 EL−RL 单元中，独立复算为 18 胜、1 平、1 负；优势在 OLMo 的 AlpacaEval/WildBench 最明显，Qwen+GPT-4o 的 WildChat 仅 +0.3、AlpacaEval 为 −0.8。无误差条时不能把小差异视为显著。
+- 7,500 prompts × 3 epochs × 8 responses 对应约 180,000 条 response-level feedback；训练约 90 steps、每 10 steps 存 checkpoint，却只报告 top-3 performing checkpoints 平均且未说明选择 split，存在未量化的 selection bias 风险。
+- 1–10 分与 1,024-token/150K 词表的理论容量复算约为 3.322 bits 与 17,607 bits，比例约 5,300×；算术成立，但它是 alphabet capacity，不是经验文本与目标改进之间的 mutual information，不能单独证明性能来自“带宽”。
+- 消融支持“先抽象再蒸馏”而不是“文字越长越好”：raw critique 会把教师推向评论分布，rubrics-only 缺少 response-specific 反馈，10 类指令过粗；逐 epoch 更新教师又会把 IFEval 从 83.1 降到 74.9，加入 25% 通用 prompt 只恢复到 79.9。
+- 证据缺口包括：GPT-4o 同时生成 rubrics、担任部分 coach/judge 并评估所有主结果；无多 seed、置信区间、人类评测、绝对成本和等 teacher-compute 基线；top-256 未归一化 KL 与 checkpoint 选择无法复核；官方仓库目前只有 README，承诺 2026-07-23 开放 code/data。
+- 独立 insight：更值得延伸的不是 Coach 取代 Judge，而是“反馈编译器”——保留 verifier、rubric、用户与专家证据的结构，编译成带适用范围/置信度的经验中间表示，再转成分布监督；可验证事实仍用 verifier，开放质量维度用经验蒸馏。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/llm-as-a-coach-experiential-learning.html` 与两张本地论文图，覆盖问题、机制、创新边界、主表复算、消融、带宽批判、证据缺口、术语与反馈编译器 insight。
+- 更新 `_data/notes.yml` 新增 Paper Note 入口；公开笔记仅保留公开来源与证据边界，不包含材料获取和本地执行痕迹。
+- Notes 索引校验通过：148 个索引条目与 148 个顶层 HTML 页面一一对应；目标页包含唯一 `main` / H1、11 个章节、21 个标题、2 张本地图、4 个 MathJax 公式容器，无重复 ID、断锚、过程噪声或空白问题，`git diff --check` 通过。
+- Jekyll 隔离构建成功，耗时约 6.9 秒；仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 系统 Chromium 在 1440×1100 与 390×844 两个视口均返回 HTTP 200：坏图、断锚、console / runtime / request error 与页面级横向溢出均为 0；桌面和手机全页截图目检未见重叠、截断或不可读结构。
+
 ## 2026-07-21 Francesco Bertolotti 预训练—RL 推文复核
 
 ### 任务与材料边界
