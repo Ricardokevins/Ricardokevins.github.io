@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CriPO 深读：Rubric RL 缺的不只是探索，而是信号不被标量吞掉</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, .08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193, 95, 60, .045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120, 105, 85, .03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 920px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 60px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { background: var(--info-soft); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+    .flow > div { position: relative; min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .flow > div:not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 50%; z-index: 2; transform: translateY(-50%); color: var(--accent); font-weight: 800; }
+    .flow b { display: block; color: var(--accent); }
+    .flow span { color: var(--muted); font-size: 14px; }
+    .math-display { margin: 16px 0; padding: 12px 14px; max-width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .notes-shell-page .table-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); }
+    tr:nth-child(even) td { background: rgba(0, 0, 0, .015); }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .flow > div:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -20px; transform: translateX(-50%); }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Rubric-based RL</div>
+    <h1>CriPO：Rubric RL 缺的不只是探索，而是信号不被标量吞掉</h1>
+    <p class="lede">这篇论文最有价值的贡献，是把 rubric-based GRPO 的失败拆成两类：模型从未采到某项行为，以及模型已经采到、却被总奖励的负 advantage 一并压掉。CriPO 用同一个模型构造带 criterion 的自教师，只在少数 token 上注入或纠正信号。发布方结果方向稳定，但“约 2×”只稳妥地指优化步数；完整训练每步更贵，四组 wall-clock 提前量从 2.56× 到几乎持平不等，且代码、随机种子、置信区间和 rubric 权重映射仍未公开闭环。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>CriPO 是一套有针对性的 credit-routing 方法，而不是“自蒸馏替代强化学习”。</strong>它保留 GRPO 作为全局优化骨架，再把 criterion 级信息路由到真正相关的 token：对从未满足的 criteria 做局部 forward-KL；对已经满足却被负总奖励压制的 criteria，只翻转被反事实教师定位到的 token advantage。这个组合比把整份 rubric 密集蒸馏到每个 token 更合理，也解释了为什么 standalone OPSD 在本文设置中会崩。</p>
+      <div class="grid-3">
+        <div class="card"><h3>真正的新东西</h3><p>“Suppressed Criteria”诊断，以及用反事实自教师做 token 定位后局部翻转 advantage；rubric-conditioned self-distillation 本身已有同期工作。</p></div>
+        <div class="card"><h3>最强证据</h3><p>两种 Qwen3 规模、五个医学/科学评测中，完整 CriPO 对 GRPO 为 10 胜 0 负，对 HeRL 也为 10 胜 0 负。</p></div>
+        <div class="card"><h3>最大缺口</h3><p>单次训练与 LLM judge 分数没有不确定性；主方法代码未公开，数据过滤、负权重映射和精确计算账本无法独立复现。</p></div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>真实问题：多维标准被压成一个数以后，发生了什么</h2>
+      <p>开放式医疗解释、科学问答和长文本没有唯一字符串答案。Rubrics as Rewards 的做法是：每道题带一组 criteria，judge 分别判断回答是否满足，再按权重聚合成标量奖励。GRPO 在同一 prompt 的一组 rollout 内标准化奖励，得到每条回答的 group-relative advantage，并把这个 advantage 广播到整条回答的所有 token。</p>
+      <p>这一步制造了两个不同问题。第一，某个 criterion 在当前八条 rollout 里一次都没出现，策略没有任何正样本可学；论文称为 <strong>Unexplored Criteria（UC）</strong>。第二，一条回答可能正确完成 criterion C3，却因为 C1、C2 做得差而拿到负 advantage；GRPO 会把 C3 对应的好片段和其他错误一起压低，论文称为 <strong>Suppressed Criteria（SC）</strong>。</p>
+      <div class="callout info"><b>关键区别</b><p>UC 是“行为不存在”，需要注入新模式；SC 是“行为已经存在，但信用分配方向错了”，需要保护局部模式。用同一种全序列蒸馏同时处理两者，会把探索、归因和噪声混在一起。</p></div>
+      <p>在作者的一条 Qwen3-4B × RaR-Medicine 训练轨迹上，83.6%–85.6% 的样本含 UC，57.1%–57.7% 含 SC。摘要所写“平均 1.8 个 SC”只对应最早的 0–50 步；图中随后是 1.9、2.0、2.0，更准确的四阶段均值约为 1.93。这个现象值得重视，但它是特定模型、数据、judge 和训练轨迹上的发布方统计，不是 rubric RL 的普适常数。</p>
+    </section>
+
+    <section id="definitions">
+      <h2>先把两个失败模式写清楚</h2>
+      <p>对 prompt (x)，策略采样 (G) 条回答 (y_i)。criterion (c_j) 的二元得分为 (r_{ij})，权重为 (omega_j)。聚合奖励与组内 advantage 为：</p>
+      <div class="math-display">\[
+        R_i=\frac{\sum_j \omega_j r_{ij}}{\sum_j\omega_j},
+        \qquad
+        A_i=\frac{R_i-\mu_R}{\sigma_R+\epsilon}.
+      \]</div>
+      <p>没有任何 rollout 满足的 criterion 构成 UC 集合：</p>
+      <div class="math-display">\[
+        \mathcal C_u=\left\{c_j\;\middle|\;\forall i,\;r_{ij}=0\right\}.
+      \]</div>
+      <p>令 (mathcal S_j) 为满足 (c_j) 的 rollout 索引。若这些 rollout 的 advantage 总和为负，或总和恰为零且满足率低于一半，作者就把它归入 SC：</p>
+      <div class="math-display">\[
+        \mathcal C_s=\left\{c_j\;\middle|\;\mathcal S_j\neq\varnothing,\;
+        \sum_{i\in\mathcal S_j}A_i\lt0
+        \;\lor\;
+        \left(\sum_{i\in\mathcal S_j}A_i=0\land |\mathcal S_j|\lt G/2\right)
+        \right\}.
+      \]</div>
+      <div class="callout warn"><b>这是诊断代理，不是精确梯度定理</b><p>真实 PPO/GRPO 梯度还受响应长度、token mean、importance ratio 与 clipping 影响；单看 (sum A_i) 不能完全等价于该 criterion 对参数的净梯度。尤其“恰好等于零”没有容差定义。SC 更适合被理解为一个实用筛选规则，而不是严格证明某项行为必然被优化器抹去。</p></div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：两条局部修复路径</h2>
+      <h3>路径一：给 UC 注入模型从未采到的行为</h3>
+      <div class="flow">
+        <div><b>选最好 rollout</b><span>只处理组内最高 advantage 回答，尽量减少需要修改的内容。</span></div>
+        <div><b>构造 criterion 教师</b><span>同一个模型额外看到完整旧回答与未满足 criteria，被要求最小改写。</span></div>
+        <div><b>按 KL 选 token</b><span>计算 teacher→student forward KL，只保留累计贡献达到 95% 的最小 token 集。</span></div>
+        <div><b>局部蒸馏</b><span>在学生自己的 rollout 前缀上更新，不把带 rubric 的改写当作新 rollout 直接训练。</span></div>
+      </div>
+      <p>对 token (t)，student 分布为 (p_t^S)，带 UC 的 self-teacher 分布为 (p_t^T)。CriPO 使用 forward KL，因为它更倾向让学生覆盖教师支持的模式：</p>
+      <div class="math-display">\[
+        d_t=D_{\mathrm{KL}}\!\left(\operatorname{sg}(p_t^T)\,\|\,p_t^S\right),
+        \qquad
+        \mathcal T^u=\operatorname{TopCum}(\{d_t\};0.95).
+      \]</div>
+      <p>作者只在第一批 RaR-Medicine 数据上展示：34.6% 的 token 承担 95% 的 KL。这个观察为稀疏更新提供动机，但不是跨训练阶段、跨模型的稳定统计；论文也没有给出 (gamma) 敏感性。</p>
+
+      <h3>路径二：保护 SC 中已经出现的好片段</h3>
+      <div class="flow">
+        <div><b>找负 rollout</b><span>只看 advantage 为负、但仍满足某个 SC 的回答。</span></div>
+        <div><b>构造反事实教师</b><span>要求同一模型删除或修改满足该 criterion 的部分，其他内容尽量不变。</span></div>
+        <div><b>定位差异 token</b><span>原 token 在反事实下被显著降权，且教师明确偏好替代 token 时才选中。</span></div>
+        <div><b>翻转局部 advantage</b><span>选中 token 统一设为 +0.1，其余 token 保留原负 advantage。</span></div>
+      </div>
+      <div class="math-display">\[
+        \mathcal T_i^s=\left\{t\;\middle|\;
+        \log p_{i,t}^S(y_{i,t})-\log p_{i,t}^T(y_{i,t})\gt0,
+        \;p_{i,t}^T(y_{i,t})\lt0.1\max_v p_{i,t}^T(v)
+        \right\}.
+      \]</div>
+      <div class="math-display">\[
+        \widetilde A_{i,t}=\begin{cases}
+        0.1,&amp;t\in\mathcal T_i^s,\\
+        A_i,&amp;\text{otherwise.}
+        \end{cases}
+        \qquad
+        \mathcal L_{\mathrm{CriPO}}=\mathcal L_{\mathrm{GRPO}}+\beta\mathcal L_{\mathrm{OPSD}}.
+      \]</div>
+      <p>这个设计的优点是克制：它不奖励整条错误回答，只保护被教师判定为 criterion-bearing 的局部 token。代价是 +0.1 与 criterion 权重、教师置信度、原负 advantage 大小都无关；若 token 定位错了，翻转就会把归因误差直接写入策略。</p>
+    </section>
+
+    <section id="causal-audit">
+      <h2>最容易被忽略的机制边界：它是后见 attribution，不是因果 attribution</h2>
+      <p>两个 self-teacher prompt 都包含<strong>完整的旧回答</strong>，随后才要求“最小修改”。但论文公式把 teacher 简写成额外看到 criterion 与当前前缀 (y_{lt t})，容易让人误以为教师只基于因果前缀工作。实际提示意味着教师在给早期 token 分布时，已经从 privileged context 看过整条回答，包括未来后缀。</p>
+      <p>这并不会产生部署时的额外输入：教师只在训练中存在，student rollout 仍是 on-policy。可是它改变了信号含义。某个 token 的大 KL 可能因为教师看过后文后决定整句重写，而不代表该 token 在真实生成时因果地承担 criterion。对于 SC，所谓“token localization”更准确地说是<strong>完整回答条件下的反事实编辑显著性</strong>。</p>
+      <div class="callout warn"><b>独立判断</b><p>CriPO 把 on-policy 与 causal 混在了同一叙事里：轨迹来自当前策略，所以数据分布是 on-policy；教师却拥有完整回答和 criterion 反事实，因此监督是 hindsight-conditioned。要证明真正的 token 因果归因，需要与只看前缀的教师、遮蔽后缀、span deletion、integrated-gradient 或人工标注 span 对照。</p></div>
+    </section>
+
+    <section id="novelty">
+      <h2>新贡献、已有组件与工程组合</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>组件</th><th>定位</th><th>准确理解</th></tr></thead>
+          <tbody>
+            <tr><td>Rubric-based GRPO</td><td>已有</td><td>RaR 已把 prompt-specific checklist 评分聚合成标量奖励；CriPO 沿用同一数据和 judge 接口。</td></tr>
+            <tr><td>Rubric-conditioned OPSD</td><td>已有 / 同期</td><td>RGSD、RCSD 已让带 rubric 的同模型教师提供 token-level 分布；CriPO 不是第一个提出这条主线。</td></tr>
+            <tr><td>GRPO + self-distillation</td><td>已有趋势</td><td>多项 OPSD/RLVR 工作已采用混合目标；论文自己也显示 dense standalone OPSD 在本设置中严重退化。</td></tr>
+            <tr><td>UC 的 best-rollout + KL token filter</td><td>本文方法贡献</td><td>只对最接近目标的回答做最小补丁，并过滤 prompt 扰动带来的低贡献 token。</td></tr>
+            <tr><td>SC 定义 + 反事实 advantage flipping</td><td><strong>本文核心新意</strong></td><td>显式识别“已经做对却被总分压掉”的 criterion，并只翻转相关 token，而非整条回答。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>所以 CriPO 的最强贡献不是一个全新的训练范式，而是把 rubric 信息从“第二个密集损失”升级成<strong>故障触发、局部路由的修复信号</strong>。它回答的是“什么时候蒸馏、蒸馏哪些 token、什么时候只改 policy gradient”，而不是泛泛地说“文字反馈比标量奖励丰富”。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>主结果复算：平均增益成立，但小模型更明显</h2>
+      <p>训练模型为 Qwen3-1.7B 与 Qwen3-4B；医学、科学分别在过滤后的 RaR-Medicine / RaR-Science 上训练 200 步，每个 prompt 采样 8 条、最大回答 4,096 token。训练 judge 是 Qwen3-32B，主评估 judge 是 GPT-4o-mini；评估时只采样 1 条回答，temperature 0.7。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型</th><th>RaR-Med.</th><th>HealthBench</th><th>LLMEval-Med</th><th>RaR-Sci.</th><th>ResearchQA</th><th>五项平均</th></tr></thead>
+          <tbody>
+            <tr><td>1.7B：GRPO</td><td>49.2</td><td>60.5</td><td>58.5</td><td>66.6</td><td>61.3</td><td>59.22</td></tr>
+            <tr><td>1.7B：CriPO</td><td>51.6</td><td>65.6</td><td>62.2</td><td>68.1</td><td>64.7</td><td><strong>62.44（+3.22）</strong></td></tr>
+            <tr><td>4B：GRPO</td><td>60.2</td><td>69.8</td><td>67.8</td><td>74.4</td><td>68.7</td><td>68.18</td></tr>
+            <tr><td>4B：CriPO</td><td>62.1</td><td>70.9</td><td>69.9</td><td>75.0</td><td>70.1</td><td><strong>69.60（+1.42）</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>独立复算与论文的 +3.2、+1.4 一致。逐项差值在 1.7B 上为 +2.4、+5.1、+3.7、+1.5、+3.4；在 4B 上为 +1.9、+1.1、+2.1、+0.6、+1.4。完整 CriPO 对 HeRL 也在十个单元全部更高。方向性很整齐，但模型越强，平均增益越小；4B 的 RaR-Science 只有 +0.6，而论文没有多 seed 或 paired judge 置信区间，不能判断小差值有多少超过训练与评审噪声。</p>
+      <p>使用 Qwen3-32B 替代 GPT-4o-mini 做评估时，CriPO 相对 GRPO 的平均增益为 1.7B +3.4、4B +2.1，说明方向不只绑定一个 evaluator。不过训练期间同一个 Qwen3-32B 已经负责 rubric 打分，这个替代评估不算完全独立的人类或异构裁判。</p>
+
+      <h3>消融支持“局部定位有用”，但覆盖仍窄</h3>
+      <p>UC 路径去掉 KL token filter，医学三项平均从 66.4 降到 65.5；不选 best rollout 降到 65.6。SC 路径把 token localization 换成随机位置，平均从 68.9 降到 64.9，说明收益不是简单“给更多 token 正 advantage”。但消融只在 Qwen3-4B 的医学域完成，没有 (gamma)、(alpha)、(	au_{flip})、criterion 数上限 (K=3) 或 teacher prompt 的敏感性曲线。</p>
+      <div class="callout info"><b>一个表内不一致</b><p>主表把 CriPO-S 的 LLMEval-Med 写为 72.4，消融表写为 72.9；后者才会得到消融所列 68.9 平均。这个 0.5 分差异不改变完整 CriPO 的主结论，但说明当前预印本的数值表还需要勘误。</p></div>
+    </section>
+
+    <section id="efficiency">
+      <h2>“约 2×”到底指什么：步数、总时长和单位成本不是一回事</h2>
+      <p>论文效率图把 GRPO 延长到约 400 步，CriPO 在第 175 步超过这条 GRPO 曲线的最佳点，因此得到“约 2× 更少优化步”。但训练配置表又写总训练步数为 200，主表也统一取 200 步 checkpoint；扩展 GRPO run 的配置与数据顺序没有单独说明。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>设置</th><th>GRPO 完整训练</th><th>CriPO 完整训练</th><th>CriPO 超过 GRPO 的时刻</th><th>提前倍率</th></tr></thead>
+          <tbody>
+            <tr><td>1.7B · Medicine</td><td>6h14m</td><td>6h56m</td><td>2h26m</td><td>2.56×</td></tr>
+            <tr><td>4B · Medicine</td><td>8h37m</td><td>11h02m</td><td>5h04m</td><td>1.70×</td></tr>
+            <tr><td>1.7B · Science</td><td>7h42m</td><td>8h52m</td><td>6h32m</td><td>1.18×</td></tr>
+            <tr><td>4B · Science</td><td>11h32m</td><td>14h06m</td><td>11h29m</td><td>1.00×</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>按图中数字复算，完整 CriPO run 比 GRPO 分别多 11.2%、28.0%、15.2%、22.3% wall-clock，平均约 19.2%。它确实都在 GRPO 训练结束前达到更高分，但 4B Science 只提前 3 分钟。更准确的结论是：<strong>CriPO 提高样本/步数效率，并在四组发布方 wall-clock 中没有拖到比 GRPO 收尾更晚才见效；它没有稳定实现 2× 的端到端时间节省。</strong></p>
+      <p>v1 还披露训练使用 8×A800-40G、Qwen3-32B judge 部署在 64×910B2 NPU；v2 删除了这段硬件说明。当前版本没有 GPU/NPU 利用率、judge 并行度、总 token、FLOPs 或成本，因此也无法把 wall-clock 转成可迁移的资源效率。</p>
+    </section>
+
+    <section id="data-audit">
+      <h2>数据与奖励口径：难题过滤很重，权重映射又没有说清</h2>
+      <p>公开 RaR-Medicine 有 17,926 条 train、2,242 条 test；论文删除 Qwen3-4B reward 高于 0.9 的样本后，剩 15,658 / 1,936，保留率为 87.35% / 86.35%。RaR-Science 从 18,333 / 2,292 变为 10,874 / 1,365，只保留 59.31% / 59.55%。这不是轻微清洗，而是用 Qwen3-4B 和同类 rubric judge 定义了一个明显偏难、与模型弱点相关的条件分布。</p>
+      <p>过滤有助于提高 200 步训练的数据效率，却让 headline 更难外推到完整 RaR 分布。尤其 1.7B 与 4B 共用由 4B 筛出的测试集；HealthBench 和 ResearchQA 又各随机抽 500 条，但没有公开抽样 seed。应同时报告完整 test、固定 hard split、不同基础模型定义的 hard split，才能区分方法收益与筛选策略收益。</p>
+      <p>还有一个复现歧义：公开 RaR 数据的 rubric 数字权重含 −1、−2 的 Pitfall 项，但 criterion 文本通常写成“不要犯某错误”，judge 把成功避免错误判为 PRESENT。RaR 原论文的实际训练说明会把 Pitfall 类别重新映射为正权重 0.9；CriPO 只写 (omega_j) 加权公式，没有说明是用公开原始数字、类别重映射，还是只传不带权重的 rubric 文本。不同选择会改变奖励、UC/SC 统计和 top-3 criterion 选择，必须由代码或配置澄清。</p>
+    </section>
+
+    <section id="limits">
+      <h2>关键证据边界</h2>
+      <ul>
+        <li><strong>没有训练不确定性：</strong>未报告 seed 数、均值、标准差、置信区间或显著性；所有主结果看起来是单 run、单 checkpoint、单次 evaluator 口径。</li>
+        <li><strong>judge 仍是单点故障：</strong>Qwen3-32B 决定训练奖励、UC/SC 与 teacher criteria；GPT-4o-mini 只负责主评估。criterion 误判会同时污染故障检测与局部修复。</li>
+        <li><strong>OPSD 基线并非等配置：</strong>GRPO/CriPO 用 8 rollout、temperature 1.0；standalone OPSD 表中用 1 rollout、temperature 0.7。它的大幅退化说明作者的实现不稳定，不能单独证明所有 dense OPSD 在等计算下都差。</li>
+        <li><strong>HeRL 比较缺少计算账本：</strong>HeRL 原法用 7 条普通 rollout + 1 条带 hindsight 的修订；CriPO 使用 8 条 rollout 外加 teacher logits。论文称沿用默认超参，却没有列总生成 token、teacher forward、judge 调用或显存。</li>
+        <li><strong>完整回答泄漏到教师：</strong>这使 token 选择成为后见编辑显著性，不是严格的因果局部归因；论文只有一个医学 token 案例，没有人工 span precision/recall。</li>
+        <li><strong>超参是离散硬门：</strong>top-3 criteria、KL clamp 10、首尾各 mask 1%、累计 KL 0.95、替代概率比 0.1、flip 值 0.1 都会影响路由；当前没有系统敏感性。</li>
+        <li><strong>长度可能是中介变量：</strong>CriPO-S 生成更长回答，医疗/科学 rubric 往往奖励解释步骤与覆盖面。案例显示更长内容可以更好，但没有 length-matched decoding 或简洁性/幻觉审计。</li>
+        <li><strong>开放复现未闭环：</strong>论文未链接官方 CriPO 仓库、checkpoint、过滤后 split、训练日志或评测脚本；公开搜索只发现预印本，无法核对实现与公式是否一致。</li>
+      </ul>
+    </section>
+
+    <section id="terms">
+      <h2>术语与概念边界</h2>
+      <div class="def-list">
+        <div><b>Rubric</b><span>针对单个 prompt 的检查清单；每项描述一种可观察质量，例如结论正确、解释理由、避免侵入性检查或不遗漏风险。</span></div>
+        <div><b>Group-relative advantage</b><span>同题多条回答按组内均值和标准差归一化后的相对好坏；它表达“比同组平均强多少”，不是绝对质量。</span></div>
+        <div><b>Forward KL</b><span>(D_{KL}(p_T\|p_S)) 倾向要求学生覆盖教师支持的模式，因此适合把当前 rollout 中完全缺失的行为注入学生。</span></div>
+        <div><b>On-policy self-distillation</b><span>回答轨迹来自当前学生，教师与学生是同一模型的不同上下文视图；减少离线教师答案带来的状态分布错配。</span></div>
+        <div><b>Counterfactual teacher</b><span>通过要求教师移除某个已满足 criterion，观察 token 分布哪里变化，用差异定位可能承载该 criterion 的片段。</span></div>
+        <div><b>Train–inference mismatch</b><span>训练时模型生成依赖 rubric/修订提示，部署时却拿不到它；CriPO 不直接训练带提示生成的新 rollout，因此比 HeRL/RuscaRL 更少受这种前缀失配影响。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：把标量奖励旁边加一份“criterion 信用账本”</h2>
+      <p>CriPO 揭示的更通用问题，不只属于 rubric RL。任何把多维目标先聚合成一个数、再把这个数广播到整条轨迹的算法，都会同时丢失两种信息：哪些目标从未被探索，以及当前轨迹的哪些局部决策已经做对。真正可扩展的后训练系统应维护两层账本：</p>
+      <div class="grid-2">
+        <div class="card"><h3>全局 policy 账本</h3><p>保留 scalar reward、KL 约束和组相对更新，保证总体方向稳定，避免自教师在噪声中自我强化。</p></div>
+        <div class="card"><h3>criterion 信用账本</h3><p>记录每项标准的覆盖率、净 advantage、相关 span、教师置信度、冲突 criterion 与历史稳定性，再决定注入、保护或忽略。</p></div>
+        <div class="card"><h3>路由而非全量蒸馏</h3><p>只有被诊断为 UC/SC 且归因可信的 criterion 才消耗 teacher forward；其余样本继续走普通 GRPO，控制噪声与成本。</p></div>
+        <div class="card"><h3>把归因也纳入验收</h3><p>除了最终分数，还要测 span 定位 precision、反事实删除后的 criterion 变化、单位 teacher FLOP 的增益与错误翻转率。</p></div>
+      </div>
+      <p>这比“保留所有 rubric 维度做向量奖励”更实际：向量最终仍要决定一个更新方向，criteria 之间还可能冲突。信用账本的作用不是拒绝聚合，而是让聚合之后仍能追溯局部信号，并在发现被吞掉的证据时做有限修正。</p>
+      <h3>最能改变结论的五组实验</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>实验</th><th>若机制成立，应看到什么</th><th>失败意味着什么</th></tr></thead>
+          <tbody>
+            <tr><td>因果前缀教师 vs 完整回答教师</td><td>去掉未来后缀后，token span 仍能定位 criterion 且性能大体保留</td><td>收益主要来自后见答案泄漏，而非局部 criterion 归因</td></tr>
+            <tr><td>人工 span 标注与反事实删除</td><td>被选 token 的 precision/recall 高，删除后对应 criterion 得分定向下降</td><td>KL 差异只是 prompt/style 扰动</td></tr>
+            <tr><td>等 teacher FLOPs 的 GRPO、HeRL、OPSD、CriPO</td><td>CriPO 的单位总成本增益仍领先</td><td>步数优势由额外 teacher 计算换来</td></tr>
+            <tr><td>完整数据 + 多种 hard split + 多 seed</td><td>方向跨过滤器、模型规模与 seed 保持</td><td>结果依赖 Qwen3-4B 定义的困难子集</td></tr>
+            <tr><td>置信度/权重感知 flip 与超参曲线</td><td>软路由至少不弱于固定 +0.1，并降低错误翻转</td><td>当前收益依赖偶然的离散阈值组合</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><b>工程建议</b><p>如果今天实现这条路线，应先把 CriPO 当作 GRPO 的可插拔诊断器：记录 UC/SC、teacher KL、选中 span 与成本，但默认只在高置信样本启用；同时保留未经 hard-filter 的验证集和异构 judge。等 span 因果性与多 seed 稳定后，再扩大 flip 覆盖率。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文直接核对 arXiv v2 的 18 页正文、公式、全部表格、附录、图表与 v1→v2 修订；复算主表均值、十项逐格差值、数据保留率和四组 wall-clock 比例，并核对 RaR 公开数据字段、HeRL 论文与官方实现、SDPO 实现入口及三篇同期 self-distillation 工作。本文未重跑 200 步训练，也未获得 CriPO 未公开的代码、过滤后 split、checkpoint、逐样本 judge 输出或训练日志，因此模型性能与 token 定位效果仍属于发布方报告。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2607.18082">Enhancing Rubric-based RL via Self-Distillation（arXiv v2）</a></li>
+        <li><a href="https://arxiv.org/abs/2507.17746">Rubrics as Rewards: Reinforcement Learning Beyond Verifiable Domains</a></li>
+        <li><a href="https://huggingface.co/datasets/anisha2102/RaR-Medicine">RaR-Medicine dataset</a></li>
+        <li><a href="https://huggingface.co/datasets/anisha2102/RaR-Science">RaR-Science dataset</a></li>
+        <li><a href="https://arxiv.org/abs/2603.20046">Experience is the Best Teacher / HeRL</a> · <a href="https://github.com/sikelifei/HeRL">official implementation</a></li>
+        <li><a href="https://arxiv.org/abs/2601.18734">Self-Distilled Reasoner: On-Policy Self-Distillation for Large Language Models</a></li>
+        <li><a href="https://github.com/lasgroup/SDPO">Reinforcement Learning via Self-Distillation / SDPO implementation</a></li>
+        <li><a href="https://arxiv.org/abs/2606.12507">Rubric-Guided Self-Distillation</a></li>
+        <li><a href="https://arxiv.org/abs/2606.19327">Rubric-Conditioned Self-Distillation</a></li>
+        <li><a href="https://arxiv.org/abs/2606.11709">RLCSD: Reinforcement Learning with Contrastive On-Policy Self-Distillation</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

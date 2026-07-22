@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 CriPO / Rubric RL 自蒸馏深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 arXiv:2607.18082。完整读取 v2 的 18 页正文、公式、全部图表、附录与 TeX，并比较 v1→v2 修订；交叉核对 Rubrics as Rewards 正文与公开 RaR-Medicine / RaR-Science 数据、HeRL 论文和官方实现、OPSD/SDPO，以及 RGSD、RCSD、RLCSD 三篇同期工作。
+- 本轮直接核验范围包括论文/数据/代码口径、主表均值与逐格差值、数据保留率、wall-clock 比率、提示与公式一致性、公开实现状态；未重跑 200 步训练，不把模型结果或 token 定位效果写成独立复现。
+
+### 关键判断与独立 Insight
+
+- CriPO 的核心贡献不是首次把 rubric 送给 self-teacher，而是把失败分成 Unexplored Criteria 与 Suppressed Criteria，再分别路由到 best-rollout 局部 forward-KL 和反事实 token advantage flipping；完整方法对 GRPO 在两种 Qwen3 规模、五项评测中为 10 胜 0 负，复算平均增益为 +3.22 / +1.42。
+- “约 2×”只稳妥指单条扩展曲线上的优化步数。按论文图中四组时间复算，完整 CriPO run 比 GRPO 多 11.2%–28.0% wall-clock（平均 19.2%）；达到高于 GRPO 最终表现的时间优势为 2.56×、1.70×、1.18×、1.00×，4B Science 只提前 3 分钟。
+- 两类 teacher prompt 都包含完整旧回答，因此早期 token 的 KL 可以依赖未来后缀；token localization 更准确地说是 hindsight-conditioned counterfactual edit saliency，而不是严格因果归因。On-policy 保证轨迹来自当前策略，不等于 teacher supervision 只看因果前缀。
+- 公开 Science train/test 经 Qwen3-4B reward>0.9 过滤后仅保留 59.31% / 59.55%，Medicine 保留 87.35% / 86.35%；hard split 与模型/judge 弱点相关，需完整 test、多过滤器和多 seed 验证外部有效性。
+- 公开 RaR 数据的 Pitfall 数字权重为负，但 criterion 文本把“避免错误”判为满足；RaR 原训练会把 Pitfall 类别重映射为正权重 0.9，CriPO 未说明其映射。该歧义会改变奖励、UC/SC 与 top-3 criterion 选择，需代码澄清。
+- 摘要“平均 1.8 个 SC”只匹配 0–50 步，图中后续为 1.9/2.0/2.0，四阶段均值约 1.93；主表与消融表对 CriPO-S 的 LLMEval-Med 还有 72.4/72.9 差异。v2 删除了 v1 的 8×A800 与 64×910B2 judge 硬件说明，绝对成本透明度下降。
+- 独立 insight：多目标后训练不必拒绝 scalar reward，而应在全局 policy 账本旁维护 criterion 信用账本，记录覆盖、净 advantage、相关 span、教师置信度与冲突，只对高置信 UC/SC 做局部路由，并把 span 因果性与单位 teacher FLOP 收益纳入验收。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/cripo-rubric-rl-self-distillation.html`，同步增加 Notes 索引入口；共享工作区存在其他任务对 `Progress.md`、`_data/notes.yml` 与既有笔记的并行改动，最终只选择性暂存本任务 hunk。
+- `ruby scripts/validate_notes_index.rb` 通过：验证时 152 个索引入口与 152 个顶层页面一一对应；目标页含唯一 H1/main、13 个 section、14 个唯一 id、6 个 MathJax 容器和文末 evidence appendix，无断锚、替换字符、占位文本、公开过程噪声或空白错误。
+- 隔离 Jekyll 全量构建成功，仅保留仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning；严格 HTML 扫描发现并修复公式 `cases` 中裸 `&` 实体问题。
+- 桌面 1440×1000 与手机 390×844 均返回 HTTP 200，整页横向溢出、坏图、重复 ID、断锚、console/page/request error 均为 0。真实手机渲染发现全站壳样式覆盖表格最小宽度，已用目标页更具体选择器修复；四张 720px 宽表最终均只在 364px 容器内局部滚动，截图目检无重叠或截断。
+- 最终将只选择性暂存目标页，以及 `Progress.md` / `_data/notes.yml` 中属于本任务的 hunk；其他并行任务改动不纳入提交。
+
 ## 2026-07-22 Loopie v2 版本审计与部署资源账本深化
 
 ### 任务与新材料边界
