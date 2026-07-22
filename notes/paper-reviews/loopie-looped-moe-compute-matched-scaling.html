@@ -109,24 +109,41 @@
   <header id="top">
     <div class="kicker">Paper Note · Looped MoE · Systems Co-design</div>
     <h1>Loopie 深读：循环 MoE 真正赢在复用参数，还是复用硬件效率？</h1>
-    <p class="lede">Loopie 最值得重视的不是“把同一层跑两遍”，而是把权重共享、激活检查点、microbatch、梯度累积和 MoE 宽度连成一个资源转换链。它给出了少见的大规模、wall-clock 对齐证据；但模型与代码尚不可公开验证，推理端也没有系统测量，因此“训练系统突破”目前比“部署范式突破”更可信。</p>
+    <p class="lede">Loopie 最值得重视的不是“把同一层跑两遍”，而是把权重共享、激活检查点、microbatch、梯度累积和 MoE 宽度连成一个资源转换链。但 2026-07-20 的 v2 主动删除了 IMO/IPhO 金牌表述与整段奥赛章节；而且训练端的小权重优势，在标准推理实现中可能反转为更大的 KV cache。所以更准确的定位是：这是一项有意义的训练系统实验，还不是已被证明的部署范式突破。</p>
   </header>
 
   <main>
     <section id="takeaway">
       <h2>核心判断</h2>
-      <p><strong>这篇论文是有实质内容的，但 X 帖的部署解读走得比证据更远。</strong>Loopie-20B-A2B 用约 20B 总参数、2B 激活参数和 27 个物理层，每层连续执行两次；它对照的是团队自行复现的 Qwen3-like 30B-A3B、48 层模型。真正让 1.424× 名义主干计算能塞进近似相同 step time 的，是物理层减少带来的激活显存下降与 microbatch 翻倍，而不是循环本身凭空减少 FLOPs。</p>
+      <p><strong>这篇论文有实质贡献，但它证明的是一个特定训练栈上的系统共设计，不是循环架构的普适算力优势。</strong>Loopie-20B-A2B 用约 20B 总参数、2B 激活参数和 27 个物理层，每层连续执行两次；它对照团队自行复现的 Qwen3-like 30B-A3B、48 层模型。物理层减少使检查点激活代理降至 0.633×，从而把 microbatch 从 1 提到 2；论文再把利用率收益换成更宽、更深的循环模型。这条资源转换链才是真正的 Loopie Recipe。</p>
       <div class="grid-3">
-        <div class="card"><h3>最强证据</h3><p>同数据、同 token/step、同更新数、同硬件分配的 800B-token 直接对照，Loopie 在约 600B token 后反超。</p></div>
-        <div class="card"><h3>真正贡献</h3><p>把同层递归放进大规模 MoE，并按实测 optimizer-step 时间联合搜索宽度、深度和并行配置。</p></div>
-        <div class="card"><h3>最大缺口</h3><p>没有公开 checkpoint、训练/推理代码、绝对 step time、推理延迟、KV cache、吞吐或能耗曲线。</p></div>
+        <div class="card"><h3>最强证据</h3><p>同数据、同 token/step、同更新数、同硬件分配的 800B-token 直接对照，Loopie 在约 600B token 后反超。但仍只有单次曲线和八项均分。</p></div>
+        <div class="card"><h3>版本红灯</h3><p>v2 删除“最强循环 Transformer”和 IMO/IPhO 金牌主张，整段奥赛章节与解答附录不再出现于当前 PDF。</p></div>
+        <div class="card"><h3>部署反转</h3><p>存储权重约少 1/3，但若基线沿用官方 Qwen3 注意力形状，标准 KV cache 每 token 可能约为基线 2.53×。</p></div>
       </div>
       <div class="callout warn"><b>一句话校准</b><p>当前证据支持“Loopie 在特定训练栈上把显存余量转换成了更高硬件利用率和更强模型”，不支持“loop model 在任何硬件、任何 batch、训练和推理两端都更省算力”。</p></div>
     </section>
 
+    <section id="revision">
+      <h2>v2 修订审计：金牌结果已不是当前论文主张</h2>
+      <p>arXiv v1 发布于 2026-07-17，有67 页；v2 更新于 2026-07-20，只剩 38 页。源文件差异显示，模型架构、预训练、SPT、RL 和主 benchmark 表几乎未变；实质变化集中在奥赛声称。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>位置</th><th>v1</th><th>v2</th><th>证据含义</th></tr></thead>
+          <tbody>
+            <tr><td>摘要</td><td>自称“目前最强的 looped Transformer”，并声称 IMO/IPhO 金牌</td><td>删除两项表述，改为“frontier-level reasoning”</td><td>不能再把金牌当作当前版本 headline claim</td></tr>
+            <tr><td>正文</td><td>含 IMO 35/42、IPhO 20.3 和 test-time pipeline</td><td>整个 Olympiad 章节从编译入口注释掉</td><td>当前 PDF 不再给出这些得分与方法</td></tr>
+            <tr><td>附录</td><td>公开六题解答与 GPT-5.5 judge 反馈</td><td>相关源码仍在，但约 1,900 行被整体注释</td><td>可做版本史审计，但不应冒充 v2 公开附录</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>作者没有在 arXiv 元数据、正文或可检索的官方公开声明中解释删除原因。</strong>因此，合理表述是“v1 曾报告、v2 主动撤下、原因未披露”；不能进一步推断成正式勘误、造假或被证伪。</p>
+      <div class="callout warn"><b>为什么版本审计会改变结论</b><p>第一版笔记把奥赛结果解读为“高预算搜索上限”；现在还必须再降一级：它只能作为 v1 历史声称讨论，不能用来支撑 v2 的当前证据强度。</p></div>
+    </section>
+
     <section id="problem">
       <h2>它解决的真实问题：参数省了，不代表计算划算</h2>
-      <p>循环 Transformer 反复使用同一组层。若一个 (L) 层模型循环 (R) 次，它只存 (L) 组参数，却执行约 (LR) 次 block。这样可以用较少权重获得较深的有效计算路径，但训练 FLOPs 也随循环次数上升。旧式比较常拿“2.6B 参数、循环 4 次”的模型与 2.6B 非循环模型对比；Loopie 指出，更严格的问题应是：同样训练预算下，它能否击败更大的非循环模型？</p>
+      <p>循环 Transformer 反复使用同一组层。若一个 \(L\) 层模型循环 \(R\) 次，它只存 \(L\) 组参数，却执行约 \(LR\) 次 block。这样可以用较少权重获得较深的有效计算路径，但训练 FLOPs 也随循环次数上升。旧式比较常拿“2.6B 参数、循环 4 次”的模型与 2.6B 非循环模型对比；Loopie 指出，更严格的问题应是：同样训练预算下，它能否击败更大的非循环模型？</p>
       <p>这不是 Loopie 首次提出的矛盾。Ouro、Huginn、Parcae、Dual-Path 和 Looped-MoE 已分别研究过潜在递归、稳定性、固定 FLOP 下的容量损失与 MoE 路由分化。Loopie 的价值在于把问题推进到 20B 总参数、MoE 主干和真实大规模训练吞吐，而不是发明“同一层在进入下一层前重复执行”这一原语。2025 年的 Intra-Layer Recurrence 已明确研究过逐层内部递归，只是规模、目标和实验强度远小于 Loopie。</p>
     </section>
 
@@ -161,7 +178,25 @@
         \widehat C=\frac{LRD^2}{48\cdot 2048^2},\qquad
         \widehat M_{\mathrm{act}}=\frac{DL}{48\cdot 2048}.
       \]</div>
-      <p>最终结构的激活代理约为 (0.633\times)，主干计算代理却是 (1.424\times)。它之所以仍能接近基线 step time，是 per-device microbatch 翻倍、梯度累积减半后，kernel 得到更多并行工作。图中报告的吞吐为 261.53 对 189.65 TFLOPS/s，比例约 (1.379\times)；用 (1.424/1.379) 粗算，隐含 step time 仍约为基线的 (1.032\times)。这与“approximately matched”相容，但不是严格相等。</p>
+      <p>最终结构的激活代理约为 \(0.633\times\)，论文的主干计算代理却是 \(1.424\times\)。它之所以仍能接近基线 step time，是 per-device microbatch 翻倍、梯度累积减半后，kernel 得到更多并行工作。图中报告的平均吞吐为 261.53 对 189.65 TFLOPS/s，比例约 \(1.379\times\)。</p>
+      <p><strong>不过，不能再用 \(1.424/1.379\) 反推精确 step-time 比。</strong>\(LD^2R\) 忽略了 MoE 中间宽度、Top-K、Q/K/V/O 投影形状、router、attention 的序列长度项、通信与 optimizer 开销；TFLOPS/s 又依赖实际 FLOP 计数口径。论文声称两者实测 step time 近似匹配，却没有公布绝对时间；因而 1.032× 只是不成立的伪精度，不应保留为结论。</p>
+
+      <h3>更接近实现的算力情景分析</h3>
+      <p>Loopie 附录披露了 72 个 query head、36 个 KV group、head dimension 32 和 MoE hidden size 832；官方 Qwen3-30B-A3B 配置则是 32 个 query head、4 个 KV head、head dimension 128 和 MoE hidden size 768。若论文的 Qwen3-like 复现沿用这些官方形状，可以得到一个比 \(LD^2R\) 稍细的线性层乘法代理：</p>
+      <div class="math-display">\[
+        C_{\mathrm{linear/call}} \approx C_{QKVO}+3D D_{\mathrm{MoE}}K + DN_{\mathrm{expert}}.
+      \]</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>代理口径</th><th>Loopie / Qwen3-like</th><th>解读</th></tr></thead>
+          <tbody>
+            <tr><td>论文 \(LD^2R\)</td><td>1.424×</td><td>只用宽度、物理层和循环次数，适合粗筛候选结构。</td></tr>
+            <tr><td>Q/K/V/O + Top-8 MoE + router</td><td>约 1.23×</td><td>条件性复算：基线必须沿用官方 Qwen3 attention 形状；仍未包含 attention \(s^2D\)、通信和 optimizer。</td></tr>
+            <tr><td>实测 optimizer-step</td><td>论文称近似 1.0×</td><td>这才是论文的 compute-matched 判据，但绝对时间、误差和基线完整配置未公布。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这个情景分析不是为了宣称“真实 FLOPs 就是 1.23×”，而是说明一个更基本的问题：<strong>当两个 MoE 的 head geometry 和 expert width 不同时，\(LD^2R\) 无法承担精确算力结论。</strong>论文自己也承认这一点，所以最终依赖端到端计时。</p>
       <div class="callout info"><b>为什么这不是纯架构结论</b><p>若硬件、并行拓扑、kernel、序列长度或 baseline 的 microbatch 已经足够大，microbatch 从 1 到 2 的利用率跃迁可能消失。Loopie Recipe 本质上是一条依赖工作负载的 roofline 优化路径。</p></div>
     </section>
 
@@ -176,17 +211,29 @@
             <tr><td>layer-loop 后期优于 model-loop</td><td class="status reported">发布方报告</td><td>6B-A0.6B 对照在约 1.2T token 交叉；支持训练后期优势，不证明作者提出的“职责更一致”就是因果机制。</td></tr>
             <tr><td>少约 1/3 参数和 optimizer states</td><td class="status verified">可直接核对</td><td>20B 对 30B 的存储权重确实约少三分之一；optimizer states 只属于训练部署。</td></tr>
             <tr><td>理论 FLOPs 相同</td><td class="status inferred">不成立</td><td>论文明确说不是 exact-FLOP matching；Loopie 的主干代理反而约高 42.4%。</td></tr>
-            <tr><td>现实部署更有价值</td><td class="status inferred">待验证推断</td><td>权重更小是利好，但论文未测 decode/prefill 延迟、KV cache、并发、能耗、显存峰值或弹性循环。</td></tr>
+            <tr><td>现实部署更有价值</td><td class="status inferred">待验证推断</td><td>权重更小是利好；但有效深度、query width 和 KV groups 都可使长上下文解码成本反向增长。</td></tr>
+            <tr><td>v1 的 IMO/IPhO 金牌是 v2 结论</td><td class="status inferred">不成立</td><td>v2 删除摘要与引言中的金牌表述，并不再编译奥赛正文和解答附录。</td></tr>
           </tbody>
         </table>
       </div>
+      <h3>800B 受控对照：控制得比较好，披露得不够</h3>
+      <p>论文明确固定了硬件分配、序列长度、每次更新 token 数、激活检查点策略、optimizer 和训练数据；并允许两个模型分别搜索 TP/PP/EP/MBS，Loopie 最优点为 EP=8、MBS=2，基线为 EP=8、MBS=1。这比“同参数、多跑两遍”的常规循环模型比较严格得多。</p>
+      <p>但公开证据只给出八个任务的均分曲线和“最高平均吞吐”。没有基线完整 attention/MoE 配置、GPU 型号与卡数、绝对 step time、峰值显存、完整并行搜索网格、计时重复与方差。因此，我们可以接受“发布方在其训练栈上实现近似等 wall-clock”，但不能量化这个匹配有多精确，也不能外推到其他 GPU 和集群拓扑。</p>
+
+      <h3>Scaling ladder 不是 scaling law</h3>
+      <p>四级 ladder 的均分优势约为 +1.1、+0.6、+1.7 和 +2.2 个点，方向一致，但最大只到 1B active 的基线。正文先说每档都训练到“active parameters 的 1000倍 token”以确保足够 overtrain，紧接着又说 1B 档因算力限制只用 500B，而不是 1T。这是一个文本内部例外，意味着 ladder 支持“在四个离散点未见优势消失”，不支持已拟合出可外推至 20B/30B 或万亿参数的 scaling law。</p>
+
+      <h3>R=2 的证据也比标题弱</h3>
+      <p>Figure 6 比较 \(N\times\) loop 和 \(N\times\) stored layers，但论文明确承认至少 \(N=2\) 时 stored-layer 基线的实际训练计算“substantially higher”，并非 compute-matched。这张图能说明随 \(N\) 增大，非共享层的优势扩大，因而 2× 是最小、最不容易被普通容量扩展压过的非平凡循环点；它不是一个严格的固定预算 \(R\in\{2,3,4\}\) 最优性实验。</p>
+
       <p>受控结论与横向排行榜必须分开。受控实验比较的是团队自行训练的 Qwen3-like 基线，800B token 时 Loopie 反超；最终排行榜则比较不同机构、不同数据、不同 token 预算和不同后训练 recipe。它能说明最终模型处在什么能力区间，不能单独归因于 layer-loop。</p>
     </section>
 
     <section id="training">
       <h2>训练链路：3.5T 预训练之后，还有 2T 监督预训练</h2>
       <p>Loopie 先在约 570B unique token 的 Nemotron-CC-v2-HQ 上训练四个 epoch，约 2.28T token；再用 1.263T 高质量混合数据做恒定学习率 annealing，总计约 3.543T。随后不是普通短程 SFT，而是作者命名的 <strong>Supervised Pre-Training（SPT）</strong>：只对回答 token 计算交叉熵，但使用 global batch 1024、128K 序列与 2T token 预算。</p>
-      <div class="callout warn"><b>“3.5T token”需要补全</b><p>最终 Loopie Thinking 至少经历约 3.543T 预训练 token + 2T SPT token，再进入数学与代码 RL。排行榜只在“Pre-training tokens”一行写 3.5T，形式上没有错，但若把它读成最终模型只学习了 3.5T token，就会低估约 2T 的监督阶段。</p></div>
+      <div class="callout warn"><b>论文自己存在 3T / 2.28T 口径冲突</b><p>Pre-Training 章开头写 Stage 1 为 3T token，但 Stage 1 详情明确写 570B unique token × 4 epoch = 2.28T；Stage 2 为 1.263T。排行榜的 3.5T 与 2.28T + 1.263T = 3.543T 一致，因而“Stage 1=3T”更像未同步修正的文本错误。在没有训练日志时，应同时保留这个内部不一致。</p></div>
+      <div class="callout warn"><b>“3.5T token”不是最终模型的全部学习预算</b><p>按详细数据复算，Loopie Thinking 在 RL 前至少经历约 3.543T 预训练 token positions + 2T SPT nominal token positions。排行榜只在“Pre-training tokens”一行写 3.5T，形式上没有把 SPT 当预训练；但若据此声称最终模型只用了对手七分之一的学习 token，就会遗漏一个规模巨大且强监督的阶段。</p></div>
       <p>SPT 的损失函数没有新意，变化在优化尺度。论文显示 6B 模型训练 10 个 epoch 后 loss 仍平滑下降，ARC-Challenge、MMLU、BBH、DROP、AIME、AMC 趋势整体上升。问题是它没有给出足够的受控矩阵来分离四个因素：</p>
       <ul>
         <li>大 batch 是否是关键，还是 2T token 和数据覆盖度本身在起作用；</li>
@@ -196,27 +243,32 @@
       </ul>
       <p>作者也承认没有完成充分的 SPT 消融。因此，SPT 更适合被看作一个值得复现的规模假说，而不是已经建立的新 scaling law。</p>
 
+      <h3>SPT 的数学账本：大 batch 减少的是更新次数，不是数据重复</h3>
+      <p>1024 条序列 × 131,072 positions = 134,217,728 个 nominal positions/batch，与文中“128M”一致。若 2T 按 nominal positions 计，总更新数约为 14,901；又因文中说这是约 10 epochs，可反推每 epoch 约 200B nominal positions。这说明大 batch 将同一 epoch 的梯度更新压缩到约 1,490 次，的确可能降低小批量重复特化；但模型仍经历约十次数据暴露，“没有过拟合”不能单由 batch 大小推出。</p>
+      <p>还有一个口径缺口：SPT 只让 target tokens 承担 loss，但论文反复使用“2T tokens”和“128M nominal token positions”，没有披露 target-token 占比。所以 2T 更可能是打包后的总 positions，真正产生梯度的监督 token 数是未知的。正确的复现表至少应同时报告 nominal positions、non-padding positions、target positions、unique examples 和 optimizer updates。</p>
+
       <h3>RL：成熟组件的工程组合</h3>
-      <p>SPT 后先做数学 RL，再做代码 RL。算法是 GSPO 的序列级 ratio，加 DAPO 的 asymmetric clipping 和 dynamic sampling；数学奖励用规则等价，代码奖励用沙箱单测。32K rollout 截断率超过 10% 后切到 64K，并用验证集、长度、熵和截断率选取退化前 checkpoint。这部分组合合理，但并非主要算法创新；论文也没有公开 RL step 数、group size、总 rollout token、算力和完整曲线。</p>
+      <p>SPT 后先做数学 RL，再做代码 RL。算法是 GSPO 的序列级 ratio，加 DAPO 的 asymmetric clipping 和 dynamic sampling；数学奖励用规则等价，代码奖励用沙箱单测。32K rollout 截断率超过 10% 后切到 64K，并用验证集、长度、熵和截断率选取退化前 checkpoint。这部分组合合理，但并非主要算法创新；论文也没有公开 RL step 数、group size、总 rollout token、算力和完整曲线。页面上的训练流程图只画到 Math RL，与正文的“数学后继续代码 RL”也不完全一致。</p>
     </section>
 
     <section id="benchmarks">
       <h2>排行榜怎么读：强数学、小模型突出，但不是全面领先</h2>
       <p>Loopie-20B-A2B 与两个 30B-A3B Nemotron 模型的 15 项横向表中，对 Nano 是 10 胜 5 负，对 Cascade 2 是 9 胜 6 负；它尤其擅长数学和部分通用推理。对更强、训练 36T token 的 Qwen3-30B-A3B Thinking，则只有 AIME 2024 明确领先，AIME 2025 打平，其余 13 项落后。这说明 Loopie 展示的是较高的参数与数据效率，不是同规模全面 SOTA。</p>
-      <p>6B-A0.6B 对紧凑模型的结果更亮眼：AIME 2024/2025 为 80.42/70.83，明显高于表中 Ouro 2.6B Thinking 的 62.50/51.67；但在 MMLU、代码和部分通用任务上又落后 Ouro 2.6B。循环计算倾向于强化知识操作和长程推导，却不能自动补回存储容量，这一模式与既有循环模型研究相符。</p>
+      <p>“只用 3.5T，对手用 25T”可以用于比较 base pre-training 口径，却不是最终 Thinking 模型的总数据/算力账本。Loopie 还有 2T SPT 和未披露预算的数学、代码 RL；Nemotron 对手的后训练口径也未在表中对齐。所以这张表支持“Loopie 的 3.5T base pre-training 很有效”，不支持“最终能力用了七分之一总训练预算”。</p>
+      <p>6B-A0.6B 对紧凑模型的结果更亮眼：AIME 2024/2025 为 80.42/70.83，明显高于表中 Ouro 2.6B Thinking 的 62.50/51.67；但在 MMLU、代码和部分通用任务上又落后 Ouro 2.6B。一个与既有循环模型研究一致、但仍需受控验证的解释是：重复变换可以增强对已存知识的多步操作，却不能自动补回独立权重所承载的存储容量。</p>
     </section>
 
     <section id="olympiads">
-      <h2>IMO 金牌：是真结果，但代表高预算搜索上限</h2>
-      <p>IMO 2025 的 35/42 来自 generate–verify–refine 管线，而非六次单样本回答。每题先生成 64 个候选，每个候选采样 64 个 verification analysis，仅初始验证就有 (64\times64=4096) 次；之后每轮对 64 个保留解各采 8 个 critique 并生成修订，最多 16 轮，提前停止条件是某个候选通过全部 64 次验证。最终再由 GPT-5.5 评分三次取平均。</p>
+      <h2>v1 奥赛结果：高预算搜索记录，不再是 v2 证据</h2>
+      <p>v1 报告的 IMO 2025 35/42 来自 generate–verify–refine 管线，而非六次单样本回答。每题先生成 64 个候选，每个候选采样 64 个 verification analysis，仅初始验证就有 \(64\times64=4096\) 次/题；之后每轮对 64 个保留解各采 8 个 critique 并生成修订，最多 16 轮，即上限 8192 个 critique/题。若六题都跑满，已明确可数的初始验证与 critique 合计上限为 73,728 次，还不包括初始候选生成、修订解生成和最终 judge。提前停止条件是某个候选通过全部 64 次验证，最终再由 GPT-5.5 评分三次取平均。</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>IMO 2025 题目</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th><th>P6</th><th>总分</th></tr></thead>
-          <tbody><tr><td>论文报告</td><td>7</td><td>7</td><td>4</td><td>6</td><td>7</td><td>4</td><td>35 / 42</td></tr></tbody>
+          <tbody><tr><td>v1 报告</td><td>7</td><td>7</td><td>4</td><td>6</td><td>7</td><td>4</td><td>35 / 42</td></tr></tbody>
         </table>
       </div>
-      <p>附录把六个最终解与三份 judge 反馈都公开出来，这是加分项；同时也明确暴露 P3 的函数分类错误、P4 的下降论证缺口和 P6 的“任意行列置换保持矩形”错误。因而“金牌水平”按该评分口径成立，但更准确的产品含义是：<strong>20B-A2B 模型可以作为昂贵搜索管线中的 generator 与 verifier，在竞赛数学上达到金牌阈值。</strong></p>
-      <p>IPhO 的 20.3 分超过 19.7 金牌线，但正文只有一段概述，没有逐题解答、评分明细、总采样量或裁判配置。它目前应标为发布方报告，证据强度低于 IMO。</p>
+      <p>v1 附录把六个最终解与三份 judge 反馈都公开出来，同时也明确暴露 P3 的函数分类错误、P4 的下降论证缺口和 P6 的“任意行列置换保持矩形”错误。即使不考虑 v2 删除，这也只能说明 <strong>20B-A2B 可作为昂贵搜索管线中的 generator 与 verifier，按特定 LLM judge 口径达到阈值</strong>，不是单次推理的模型能力。</p>
+      <p>v1 对 IPhO 的 20.3 分只给一段概述，没有逐题解答、评分明细、总采样量或裁判配置，证据强度原本就低于 IMO。v2 又将两项奥赛声称一并撤下；因此当前最稳健的做法是不用它们评估 Loopie 的当前能力边界，直到作者给出修订说明或新的可审计结果。</p>
     </section>
 
     <section id="terms">
@@ -228,39 +280,46 @@
         <div><b>microbatch</b><span>单设备一次前后向处理的样本数；增大它常能提高矩阵乘法利用率，但收益强依赖硬件和形状。</span></div>
         <div><b>gradient accumulation</b><span>在更新权重前累计多个 microbatch 的梯度；microbatch 翻倍时可减半累计次数以保持 global batch 不变。</span></div>
         <div><b>compute-matched</b><span>本文指实测 optimizer-step wall-clock 近似一致，不是理论 FLOP 完全一致。</span></div>
+        <div><b>nominal token positions</b><span>打包序列中的总位置数；SPT 中只有 target positions 产生 loss，两者不能自动等同。</span></div>
+        <div><b>KV cache</b><span>自回归推理中为每个有效注意力层保留历史 key/value；它随有效层调用、KV head 数、head dimension 和上下文长度增长，不随存储权重数简单缩放。</span></div>
       </div>
     </section>
 
     <section id="limits">
       <h2>关键限制与复现状态</h2>
       <ol>
-        <li><strong>发布物尚未闭环。</strong>论文列出的两个 preview 模型当前不对匿名访问开放，官方组织公开模型列表没有 Loopie；GitHub 仓库和两个代码路径返回 404。</li>
+        <li><strong>版本修订没有说明。</strong>v2 撤下 IMO/IPhO 金牌表述、整个奥赛章节与解答附录，但没有公开修订原因。这不影响架构主实验，却直接降低后训练 headline claim 的可信度。</li>
+        <li><strong>发布物尚未闭环。</strong>截至 2026-07-22，论文列出的两个 preview 模型仍未出现在 IQuestLab 公开模型列表；GitHub 仓库和两个代码路径返回 404。</li>
         <li><strong>wall-clock 缺少可迁移信息。</strong>未报告主实验 GPU 型号、卡数、绝对 step time、峰值显存、TP/PP/EP 完整搜索表、重复计时方差与总训练能耗。</li>
-        <li><strong>推理端是空白。</strong>没有 prefill/decode、batch/concurrency、KV cache、吞吐、首 token/每 token 延迟。54 次有效层调用是否仍能靠局部复用获益，需要实际 kernel 和 cache 实现回答。</li>
+        <li><strong>推理端不只是空白，还存在可计算的反例风险。</strong>论文没有 prefill/decode、batch/concurrency、KV cache、吞吐、首 token/每 token 延迟。若基线沿用官方 Qwen3 的 4 个 KV heads × 128 维，Loopie 则是 36 groups × 32 维，且 54 对 48 次有效层调用，标准实现每 token KV 元素数之比为 \((54\cdot2\cdot36\cdot32)/(48\cdot2\cdot4\cdot128)=2.531\)。除非专用实现能共享或压缩循环调用的 cache，长上下文显存可能比基线更差。</li>
         <li><strong>统计证据不足。</strong>主曲线、scaling ladder 与 SPT 曲线没有多 seed、置信区间或原始 checkpoint 指标。</li>
-        <li><strong>归因不完整。</strong>最终能力同时混入 layer-loop、模型尺寸、3.5T 预训练、2T SPT、GSPO/DAPO RL 和大规模 test-time search；排行榜不能隔离架构贡献。</li>
+        <li><strong>训练账本不完整。</strong>Stage 1 同时出现 3T 与 2.28T 两种口径；SPT 没有报告 target-token 占比；RL 缺 group size、step、rollout token 和算力。</li>
+        <li><strong>归因不完整。</strong>最终能力同时混入 layer-loop、模型尺寸、3.5T 预训练、2T SPT 和 GSPO/DAPO RL；排行榜不能隔离架构贡献。</li>
         <li><strong>“layer-loop”不是从零出现。</strong>逐层内部递归有直接前置工作；Loopie 的新意更准确地位于大规模 MoE、统一 2× schedule 和训练系统共设计。</li>
       </ol>
     </section>
 
     <section id="insight">
-      <h2>独立 Insight：Loopie 是“状态存储与算术强度交换器”</h2>
-      <p>普通 scaling 默认参数、激活和 FLOPs 一起增长；Loopie 则把它们拆开：用参数共享减少持久权重和训练激活，再用重复计算提高算术工作量，最后利用更大的 microbatch 把额外工作喂给 GPU。这让“模型架构”不再是抽象计算图，而是对显存层级、通信、kernel shape 和调度器的联合投标。</p>
+      <h2>独立 Insight：Loopie 是“训练状态压缩器”，不必然是“推理状态压缩器”</h2>
+      <p>普通 scaling 默认参数、激活和 FLOPs 一起增长；Loopie 则把它们拆开：用参数共享减少持久权重和检查点激活，再用重复计算提高算术工作量，最后利用更大的 microbatch 把额外工作喂给 GPU。这让“模型架构”不再是抽象计算图，而是对显存层级、通信、kernel shape 和调度器的联合投标。</p>
+      <p>但训练和推理保存的“状态”不同。训练中，optimizer states 与存储权重绑定，检查点又可以只保留循环单元边界，所以 27 个物理层确实能省显存。自回归推理中，每一个有效注意力深度都需要与历史 token 一致的 key/value 状态；参数能共享，不代表不同循环次的 KV 也能直接共享。<strong>这就产生了一个反直觉的部署相图：短上下文、权重带宽主导时 Loopie 可能赢；长上下文、KV 主导时可能输。</strong></p>
       <div class="grid-2">
         <div class="card"><h3>什么时候最可能赢</h3><p>训练受激活显存限制、baseline microbatch 很小、增大 microbatch 能显著抬升 MFU、参数或 optimizer state 也是瓶颈时。</p></div>
-        <div class="card"><h3>什么时候优势会消失</h3><p>推理是低 batch 串行 decode、KV cache 或内存带宽主导、baseline 已充分利用硬件，或部署栈无法融合相邻同层调用时。</p></div>
+        <div class="card"><h3>什么时候优势会消失</h3><p>推理是低 batch 串行 decode、长上下文 KV cache 或内存带宽主导、baseline 已充分利用硬件，或部署栈无法融合相邻同层调用时。</p></div>
       </div>
-      <p>因此下一项最有价值的实验不是再加一张能力榜，而是画出二维部署相图：横轴为 batch/concurrency，纵轴为上下文长度，分别报告 Loopie 与 30B-A3B 的权重显存、KV cache、prefill TFLOPS、decode token/s、延迟和能耗。只有这张图能回答 X 帖最关心的“real-world deployment”是否成立。</p>
-      <div class="callout"><b>最终评价</b><p>Loopie 是循环模型从“参数效率概念验证”走向“大规模训练系统候选”的有意义一步。它最可信的贡献是 hardware-aware recipe 和受控训练对照；layer-loop 的概念新颖性有限，SPT 仍缺消融，金牌结果依赖高预算搜索，而部署价值仍待代码、checkpoint 与推理测量兑现。</p></div>
+      <p>因此下一项最有价值的实验不是再加一张能力榜，而是画出二维部署相图：横轴为 batch/concurrency，纵轴为上下文长度，分别报告 Loopie 与 30B-A3B 的权重显存、KV cache、prefill TFLOPS、decode token/s、延迟和能耗；并额外给出循环次 KV 独立、共享或压缩三种实现。只有这张图能回答 X 帖最关心的“real-world deployment”是否成立。</p>
+      <div class="callout"><b>最终评价</b><p>Loopie 是循环模型从“参数效率概念验证”走向“大规模训练系统候选”的有意义一步。它最可信的贡献是 hardware-aware recipe 和 800B-token 受控训练对照；layer-loop 的概念新颖性有限，SPT 仍缺消融，v2 已撤下奥赛金牌声称，而部署价值仍待代码、checkpoint 与推理测量兑现。</p></div>
     </section>
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>已核对目标 X 帖文本与配图、arXiv v1 的 67 页正文、图表、训练超参数、TeX 源文件及 IMO 六题解答与评分反馈；参数比例、吞吐比例、训练 token 合计和主表胜负为基于公开数字的复算。没有独立训练或推理复现。模型、代码与 IPhO 细节的公开状态可能随发布推进而变化。</p>
+      <p>第二轮以 arXiv v2（2026-07-20，38 页）为当前版本，逐文件比较 v1（67 页）与 v2 的 TeX 源码，并重新检查架构、compute matching、scaling ladder、SPT、RL、主 benchmark 表和附录。v1 的 IMO 六题解答与评分反馈仅用于版本史审计；v2 已不再将它们编译进当前 PDF。参数、KV cache、线性层计算、SPT 更新数和历史 test-time calls 为基于公开配置的条件性复算，已写明假设。本轮没有独立训练或推理复现。</p>
       <ul>
         <li><a href="https://x.com/huskydogewoof/status/2079049322134675797">Benhao Huang：Loopie 推荐帖</a></li>
-        <li><a href="https://arxiv.org/abs/2607.16051">Loop the Loopies!（arXiv:2607.16051 v1）</a></li>
+        <li><a href="https://arxiv.org/abs/2607.16051v2">Loop the Loopies!（当前 arXiv v2）</a></li>
+        <li><a href="https://arxiv.org/abs/2607.16051v1">Loop the Loopies!（历史 arXiv v1，含后来撤下的奥赛章节）</a></li>
         <li><a href="https://huggingface.co/papers/2607.16051">Hugging Face Paper Page</a></li>
+        <li><a href="https://huggingface.co/Qwen/Qwen3-30B-A3B-Base/blob/main/config.json">Qwen3-30B-A3B-Base 官方架构配置</a></li>
         <li><a href="https://arxiv.org/abs/2505.01855">Intra-Layer Recurrence in Transformers for Language Modeling</a></li>
         <li><a href="https://arxiv.org/abs/2510.25741">Ouro：Scaling Latent Reasoning via Looped Language Models</a></li>
         <li><a href="https://arxiv.org/abs/2502.05171">Huginn：Scaling up Test-Time Compute with Latent Reasoning</a></li>

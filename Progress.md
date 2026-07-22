@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 Loopie v2 版本审计与部署资源账本深化
+
+### 任务与新材料边界
+
+- 用户要求对既有 Loopie 笔记再深入一轮；本轮原地修订 `notes/paper-reviews/loopie-looped-moe-compute-matched-scaling.html`，不新建重复笔记。
+- 发现 arXiv 已于 2026-07-20 更新至 v2。已完整取得并对比 v1/v2 PDF 与 TeX 源文件，重新检查架构、compute matching、scaling ladder、SPT、RL、benchmark 和附录；同时核对官方 Qwen3-30B-A3B 配置与 IQuestLab 当前公开模型/代码状态。
+- 本轮不独立重训 20B/30B 模型，不把论文曲线写成独立复现；线性层计算与 KV cache 为基于公开配置、显式标注假设的条件性复算。
+
+### 新增关键判断
+
+- v2 将论文从 67 页缩至 38 页，删除摘要/引言中的“最强 looped Transformer”与 IMO/IPhO 金牌表述，注释掉整个 Olympiad 章节和约 1,900 行六题解答附录，但未公开说明修订原因。因此金牌结果已从“当前论文证据”降为“v1 历史报告、v2 主动撤下”，不额外推断撤下原因。
+- 第一版用 1.424× `LD²R` 代理与 1.379× 吞吐反推约 1.032× step time 存在伪精度，现已撤回。该代理忽略 Q/K/V/O 形状、MoE hidden size/Top-K、router、attention、通信与 optimizer；若基线沿用官方 Qwen3 attention 配置，QKVO + Top-8 MoE + router 的线性层乘法代理约为 1.23×，仍不是完整 FLOPs。
+- 标准自回归 cache 情景下，Loopie 的 54 次有效层调用、36 KV groups×32 维，相对官方 Qwen3 的 48 层、4 KV heads×128 维，每 token KV 元素数之比约为 2.531。这揭示“训练权重/激活更小”与“长上下文推理状态更小”可能反向。
+- 论文存在 Stage 1=3T 与 570B×4=2.28T 的内部口径冲突；3.5T 排行榜口径与 2.28T+1.263T 一致。SPT 的 1024×131,072 对应 134,217,728 nominal positions/batch，2T 约为 14,901 次更新；但 target-token 占比未披露，2T nominal positions 不等于 2T loss-bearing tokens。
+- scaling ladder 只有四个离散点且 1B active 档因算力限制未遵守正文先声称的 1000× token 规则；`N× loop vs N× layer` 图也非严格 compute-matched。它们支持方向性证据，不构成可外推 scaling law 或 R=2 的全局最优性证明。
+
+### 完成变更与验证结果
+
+- 已原地深化笔记的版本审计、计算代理、实验公平性、SPT 账本、历史奥赛结果、KV cache 与部署相图，并更新 `_data/notes.yml` 摘要。
+- 静态审计通过：正文约 10,747 个可见字符，含唯一 `main` / H1、12 个 section、27 个标题、唯一文末 evidence appendix，无重复 id、断锚、替换字符、占位文本、生成路径或工具痕迹；本任务 diff whitespace 检查通过。
+- `ruby scripts/validate_notes_index.rb` 通过：152 个索引入口与 152 个顶层 Notes HTML 一一对应。
+- 使用仓库现有依赖做隔离 Jekyll 构建成功（17.641 秒）；除既有的 Faraday retry 提示和 GitHub Metadata 未鉴权提醒外无构建错误。
+- Headless Chrome 在 1440×1000 桌面视口和 390×844 移动视口完成渲染核验：页面级宽度一致、5 个表格容器可安全滚动、22 个 MathJax 容器正常、图片缺失与控制台错误均为 0；另对版本审计和独立 Insight 下半页做截图复核，未发现裁切或横向溢出。
+
+
 ## 2026-07-22 Leon Li 预训练—RL 合作者发布帖复核
 
 ### 任务与材料边界
