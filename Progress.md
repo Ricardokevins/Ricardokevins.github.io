@@ -1,5 +1,31 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 Agents-A1 二次深读与笔记深化
+
+### 目标与新增材料
+
+- 按用户要求原地深化既有 Agents-A1 笔记，不创建重复版本；重新读取 arXiv v2 的 TeX 源文件、训练公式、SFT→OPD 表、数据流水线和限制章节，并复查 2026-07-22 的官方仓库、公开 issue、35B / 4B 模型卡与配置。
+- 官方仓库最新 commit 仍为 2026-07-16；训练数据、合成流水线、教师 checkpoint、SVA/OPD 代码及 MLE harness 仍未发布。新增可核验材料是 2026-07-14 发布的 Agents-A1-4B 权重、配置和模型卡结果。
+
+### 新增判断与变更
+
+- 把 10 万条、平均 45K-token SFT 轨迹换算为 packing 与 masking 前约 45 亿 trajectory tokens，明确“缩参数”并非缩总训练计算，而是把预算转移到轨迹、教师、环境和推理阶段。
+- 细分 structured process feedback 的实际通道：assistant 动作 token 承担 SFT loss；工具观察与用户回合只作上下文；验证器主要用于筛选、修复与 RL reward；OPD 只监督学生生成位置。KAG 保存过程不等于所有 verifier 输出都被直接监督。
+- 构造 SVA 的 coverage 反例：若学生只把任意小概率质量放进 teacher top-k，但集合内相对分布与教师一致，截断 reverse KL 仍可为零；集合外 logits 对这项 loss 的梯度也为零。论文只监控 coverage、没有把它加入 loss，也没有报告 k、coverage 曲线或对应消融。
+- 复算论文 SFT→最终模型表：OPD 阶段在 16 项中改善 15 项，仅 XBench 88.0→86.0；这支持“完整 OPD 阶段有效”，但不能把结果单独归因于 SVA。
+- 新增 4B 证据审计：官方模型精确为 4.539B dense 参数，在 13 个共同指标中于 XBench、IFEval、VitaBench、MatTools 四项追平或超过 35B；同时在 SciCode、MLE、IFBench、LongBench-v2 显著落后。该结果支持 scaffold 对小模型杠杆很大，但因缺少 4B 训练报告，仍不是受控参数 scaling curve。
+- 补充模型卡版本漂移与部署边界：当前模型卡部分基线不同于 arXiv 冻结表；4B 默认 system prompt 固定 2026-07-14 日期，若服务端不动态覆盖会污染后续检索任务。
+- 原地更新 `notes/paper-reviews/agents-a1-scaling-horizon-35b-agent.html` 与 `_data/notes.yml` 摘要，增加过程监督通道表、SVA 目标函数反例、SFT→OPD 分解表、4B 对照表和新版复现边界。
+
+### 验证结果
+
+- Notes 索引校验通过：`notes index ok: 137 entries, 137 top-level note html files`；本任务定向公开过程噪声与 whitespace 扫描无输出。
+- 目标页面结构检查通过：唯一 `title`、唯一 `main`、12 个顶层 section、33 个 h2/h3、唯一且位于末节的 evidence appendix；无重复 id 或失效页内锚点，可见正文约 13,281 个非空白字符。
+- 隔离 Jekyll 构建成功，耗时约 10.4 秒；只有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，新笔记无构建错误。
+- 独立无头 Chrome 在 1440×1000 与 390×844 两个视口均返回 HTTP 200：页面级 `scrollWidth == innerWidth`，11 个 MathJax 节点无错误，Notes / All Notes / Home 导航正常，控制台、页面异常、失败请求和 4xx/5xx 资源均为 0。
+- 五张宽表在桌面完整显示，在手机端保持 680px 内容宽度并由 364px 容器局部横向滚动；桌面与手机全页截图复检未发现错位、截断、坏图或不可读结构。
+- 提交仅纳入 Agents-A1 笔记、对应索引摘要和本节 Progress；共享工作区中其他并行任务修改继续保留。
+
 ## 2026-07-20 Agents-A1 / 35B Agent Horizon Scaling 深读
 
 ### 目标与材料边界
