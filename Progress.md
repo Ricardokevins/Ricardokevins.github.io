@@ -1,5 +1,27 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 LLM-as-a-Coach 二轮目标函数审计
+
+### 深化目标与材料边界
+
+- 用户要求在既有深读基础上继续深入。本轮重新核对 arXiv:2607.18110 v1 的 21 页 PDF、TeX 公式、完整 prompt 与消融，并对照 OPCD、OEL、Rubrics as Rewards；确认 arXiv 仍为 v1，官方 `microsoft/LMOps/el` 截至 2026-07-22 仍只有 README，代码和数据尚未开放。
+- 不重复新建笔记，原地深化 `notes/paper-reviews/llm-as-a-coach-experiential-learning.html`；发布方实验结果仍不声称独立训练复现，新增结论来自公式推导、prompt/算法审计和可证伪实验设计。
+
+### 新增关键判断
+
+- 论文的纸面期望同时依赖 (y\sim\pi_\theta) 和 (e=M(x,y,\mathcal R_x))，算法实际先采样再把轨迹/经验视为固定，只反传 KL；更准确地说是持续刷新 on-policy 数据的 semi-gradient，而非复合期望的完整梯度。
+- 实验使用 student-top-256 且不重新归一化；截断和可为负意味着它严格说不再是 KL，loss 尺度受学生概率质量影响，教师偏好但不在学生 top-256 的 token 没有直接 teacher-ratio 项。当前缺少 full-vocabulary、不同 k、teacher-top-k 和归一化对照。
+- Coach 读完当前回答后生成经验，再用它监督同题回答的每个前缀；这既是合法 hindsight signal，也可能包含 instance-specific label leakage。论文没有 experience-swap、去实体、因果前缀经验或跨题复用实验，“transferable”仍主要来自 prompt 约束而非干预证据。
+- Figure 4 的 RL 目标在均匀 reference 下解析最优解为 `π*(y) ∝ exp(r(y)/β)`；预先量化为 5 档后，同档 token 必然等概率，台阶是奖励构造的结果。若标量奖励取 `r(y)=β log p*(y)+C`，同一 RL 目标可以恢复目标分布。因此 toy experiment 证明量化损失，不证明 scalar reward 的数学不可能性。
+- 主表还混合了额外 experience 输出 token、teacher forward、相关的 GPT-4o benchmark 与不透明 top-3 checkpoint 选择。新增五组证伪实验：experience swap/去实体、等 teacher-compute、多种 top-k/full KL、连续/多维 reward，以及隐藏人评与预注册 checkpoint。
+
+### 完成变更与验证结果
+
+- 原地增加目标函数审计、toy experiment 解析推导、可迁移性干预、成本公平性、prompt-injection 风险与证伪实验矩阵；同步更新 Notes 索引摘要。
+- `ruby scripts/validate_notes_index.rb` 通过：149 个索引条目与 149 个顶层 HTML 一一对应；深化后目标页约 11,651 个可见字符、13 个章节、28 个标题、3 张宽表、2 张本地图和 7 个 MathJax 容器，唯一 `main` / H1、重复 ID、页内锚点、图片 alt、表格滚动容器与文末证据附录均通过，过程噪声/占位符扫描和 `git diff --check` 无异常。
+- 使用独立输出目录完成 Jekyll 全量构建，耗时约 8.0 秒；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响页面生成。
+- 独立 Chromium 在 1440×1100 与 390×844 视口均返回 HTTP 200：两张图片与 7 个公式正常渲染，断锚、坏图、console/page/request error、4xx/5xx 响应和页面级横向溢出均为 0；宽公式与表格仅在各自容器内滚动，桌面/手机全页截图目检未见重叠、截断或布局异常。
+
 ## 2026-07-21–22 RLM Harness / 组合泛化实验深读
 
 ### 任务与材料边界

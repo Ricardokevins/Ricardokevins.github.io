@@ -107,17 +107,17 @@
   <header id="top">
     <div class="kicker">Paper Note · Post-training</div>
     <h1>LLM-as-a-Coach：把评分改成经验，真能替代标量奖励吗？</h1>
-    <p class="lede">这篇论文最有价值的地方，不是给 LLM-as-a-Judge 换了一个“教练”名字，而是把开放任务的训练目标从“把分数做高”改成“匹配看过文字反馈的教师分布”。发布方结果方向清晰：在 20 组主表比较中，EL 对 rubric-based RL 为 18 胜、1 平、1 负；但当前证据仍不足以把收益归因于“高带宽”本身，也不足以证明它已解决 reward hacking。</p>
+    <p class="lede">这篇论文最有价值的地方，不是给 LLM-as-a-Judge 换了一个“教练”名字，而是把开放任务的训练目标从“把分数做高”改成“匹配看过文字反馈的教师分布”。发布方结果方向清晰：在 20 组主表比较中，EL 对 rubric-based RL 为 18 胜、1 平、1 负；但更深入审计表明，它证明的是“这套同题后见经验蒸馏优于特定 10 级 GRPO”，还没有隔离高带宽、可迁移性与额外教师计算各自的贡献。</p>
   </header>
 
   <main>
     <section id="takeaway">
       <h2>核心判断</h2>
-      <p><strong>Experiential Learning（EL）是一种有说服力的 on-policy context distillation 配方，而不是对强化学习的普遍替代。</strong>它保留 LLM 评审产生的文字分析，把分析压缩成可迁移“经验”，再让策略模型模仿被这些经验条件化的教师。它解决的是 1–10 分奖励的粗粒度问题，却没有解决教练本身判断错误、偏见或被攻击的问题。</p>
+      <p><strong>Experiential Learning（EL）是一种有说服力的 privileged-context distillation 配方，而不是对强化学习的普遍替代。</strong>它保留 LLM 评审产生的文字分析，把分析压缩成“经验”，再让策略模型模仿被这些经验条件化的教师。当前实验支持这种管线有效，却没有直接证明经验真的跨样本可迁移：训练时，经验由当前回答生成，立刻用于指导同一个 prompt、同一条回答前缀；“transferable”首先是 extraction prompt 的要求，跨题复用效果没有单独测量。</p>
       <div class="grid-3">
         <div class="card"><h3>真正的创新</h3><p>把 response-specific 评估先抽象成 transferable knowledge，再用 token-level 分布蒸馏内化；不是简单把 critique 拼到训练样本前面。</p></div>
         <div class="card"><h3>最强证据</h3><p>两类 7B/8B policy、self/GPT-4o 两类反馈模型和四个未见 benchmark 上，EL 的方向性优势相当稳定。</p></div>
-        <div class="card"><h3>最大缺口</h3><p>没有多 seed、置信区间、人类评测、绝对训练成本或完整复现代码；同一 GPT-4o 同时参与 rubric 生成、反馈和最终评分。</p></div>
+        <div class="card"><h3>最大缺口</h3><p>没有跨题 experience-swap、等 teacher-compute 基线、多 seed、人类评测或透明 checkpoint 选择；同一 GPT-4o 还同时参与 rubric、反馈和评分。</p></div>
       </div>
     </section>
 
@@ -143,11 +143,33 @@
         D_{\mathrm{KL}}\!\left(\pi_\theta(\cdot\mid x,y_{\lt t})\,\|\,
         \pi_{\mathrm{teacher}}(\cdot\mid e,x,y_{\lt t})\right)\right]
       \]</div>
-      <p>实现口径值得注意：论文只在学生概率最高的 256 个词表项上计算 reverse KL，而且不重新归一化。这是对完整 KL 的截断近似；在代码公开前，无法核对低概率 token、mask、数值稳定和分布并行的实际处理。</p>
+      <p>令经验条件教师在某个前缀上的分布为 <code>q_e</code>，完整 reverse KL 可以写成：</p>
+      <div class="math-display">\[
+        D_{\mathrm{KL}}(\pi_\theta\|q_e)
+        = \mathbb{E}_{a\sim\pi_\theta}\!\left[-\log q_e(a)\right]-H(\pi_\theta).
+      \]</div>
+      <p>因此学生并不是直接“背诵经验文本”，而是在每个已访问前缀上，提高教师在经验条件下认为合理的 token，压低教师不认可的 token，同时保留一个熵项。真正进入参数的信号是 <strong>experience 对 teacher logits 造成的改变量</strong>；如果经验只是泛泛而谈、教师不会遵循它，或者它没有改变教师分布，再长的文字也没有训练价值。</p>
       <figure>
         <img src="llm-as-a-coach-experiential-learning-assets/method.png" alt="强化学习与经验学习的训练回路对比：前者最大化标量奖励，后者匹配经验条件教师分布">
         <figcaption>图 1：两条链共享 policy rollout、rubrics 和反馈模型；EL 额外引入经验文本、教师前向与分布蒸馏。图源：论文 Figure 2。</figcaption>
       </figure>
+    </section>
+
+    <section id="objective-audit">
+      <h2>逐目标审计：公式里隐藏了三个重要假设</h2>
+      <h3>1. 这是持续刷新数据的 semi-gradient，不是公式期望的完整梯度</h3>
+      <p>论文把 <code>y ~ πθ</code> 写进期望，而经验 <code>e = M(x, y, R_x)</code> 又依赖整条采样回答。严格对该期望求导，除了 KL 对当前 logits 的直接梯度，还会出现“策略改变采到什么回答、进而改变什么经验”的 score-function 项。算法描述是先采样、抽取经验，再把轨迹与经验视作固定训练数据，只反传 KL；这与常见 on-policy distillation 做法一致，但更准确的说法是<strong>用不断刷新的 on-policy 数据做 semi-gradient 更新</strong>，不是精确最小化纸面上的复合期望。</p>
+      <h3>2. Top-256、未归一化的量严格说不再是 KL</h3>
+      <p>实验只取学生概率最高的集合 <code>S_256</code>，并明确不把截断概率重新归一化。实际量更接近：</p>
+      <div class="math-display">\[
+        \widetilde D(\pi_\theta,q_e)
+        =\sum_{a\in S_{256}}\pi_\theta(a)
+        \log\frac{\pi_\theta(a)}{q_e(a)}.
+      \]</div>
+      <p>完整 KL 必定非负，上式却可以为负；其尺度还随学生 top-256 覆盖的概率质量变化。更关键的是，集合由<strong>学生</strong>决定：教师偏好、但尚未进入学生 top-256 的 token 没有直接的 teacher-ratio 项。这种近似更擅长重排学生已经认为可行的候选，未必擅长引入学生原本忽略的表达模式。论文没有报告 full-vocabulary、不同 <code>k</code>、重新归一化或 teacher-top-<code>k</code> 对照，所以“分布匹配”的效果与这个稀疏近似尚未拆开。</p>
+      <h3>3. 同题后见经验可能是有用的 privileged signal，也可能是泄漏</h3>
+      <p>Coach 先读完整回答 <code>y</code>，再生成经验，随后该经验被用于监督 <code>y</code> 的每个早期前缀。这类似 hindsight learning：晚些位置暴露的错误可以修正早期 token 分布，本身并不违规；但它也让 instance-specific 事实、答案结构或措辞绕过“可迁移抽象”要求。若要证明模型学到的是一般策略，应至少比较：同题经验、同类异题经验、随机配对经验、删除实体后的经验，以及只用前缀生成的因果经验。论文都没有做。</p>
+      <div class="callout warn"><b>核心因果链尚未被隔离</b><p>当前结果可以由三种机制共同解释：经验确实携带可迁移原则；经验作为同题后见提示帮助冻结教师改写答案；额外 teacher forward 提供了比 GRPO 更平滑的正则化。主表无法区分这三者。</p></div>
     </section>
 
     <section id="novelty">
@@ -182,11 +204,13 @@
         </table>
       </div>
       <p>独立复算得到 20 个比较单元中 18 个 EL 更高、1 个持平、1 个更低。最显著的优势集中在 OLMo 的 AlpacaEval/WildBench；Qwen + GPT-4o 的 WildChat 只高 0.3，AlpacaEval 反而低 0.8。没有误差条时，不能判断这些小差值是否超过 evaluator noise。</p>
+      <p>“18 胜”还不能当作 20 次独立重复实验：同一训练 run 被五个相关的 LLM-based benchmark 重复测量，GPT-4o 又是共同 evaluator，误差会相关。论文报告的是“top-3 performing checkpoints”平均，却没有说明是先固定一组三个 checkpoint 再评全部 benchmark，还是每项指标分别挑 top-3；后一种做法会把约 9 个候选 checkpoint 中的选择噪声带进每列。更可靠的口径应预先固定 validation selector，再只评一次隐藏 test。</p>
       <figure>
         <img src="llm-as-a-coach-experiential-learning-assets/generalization.png" alt="Qwen3-8B 自反馈设置下强化学习与经验学习在训练集、测试集、AlpacaEval 和 WildBench 的分数增益">
         <figcaption>图 2：作者用于支持“EL 泛化更好”的 Qwen3-8B 自反馈案例。RL 在训练子集增益更高，EL 在测试与两个外部 benchmark 更高。图源：论文 Figure 3。</figcaption>
       </figure>
       <div class="callout warn"><b>不要把 Figure 3 直接读成“已经证明 reward hacking”</b><p>图中只有一个 policy/feedback 组合；训练分高、外部评测低与过拟合一致，但也可能受 checkpoint 选择、生成长度、风格偏好或 evaluator shift 影响。论文没有展示具体 hack 行为、因果干预或独立人工审计，所以更准确的表述是“观察到与训练集 reward overoptimization 一致的模式”。</p></div>
+      <p>成本公平性也需进一步拆开。两边的 feedback prompt 都要求逐 rubric 分析，EL 还要求额外生成一段 experience，并执行经验条件 teacher forward；所以“共享 rollout 与 feedback model”不等于 feedback token、FLOPs、显存或 wall-clock 相等。论文称方法特有的更新成本相对 online generation 很小，但没有数字。现阶段只能说 EL 在这套预算下效果更好，不能说单位成本更高效。</p>
     </section>
 
     <section id="ablations">
@@ -197,6 +221,8 @@
       <p>固定教师的 WildChat/IFEval 为 80.0/83.1；逐 epoch 更新教师把 WildChat 推到 80.7，却把 IFEval 压到 74.9。加入 25% Tulu3 通用 prompt 的初始教师蒸馏后，IFEval 回到 79.9，但仍低于 base 的 83.5。这说明 EL 并不天然防遗忘；它只是提供一种更容易加 replay / anchoring 的接口。</p>
       <h3>3. 教练看到了完整回答，经验不是纯因果局部信号</h3>
       <p>Coach 在生成经验时读过整个回答 (y)，随后这段经验被用于监督回答的每个前缀位置。训练上这是一种合法的后验教学信号，但它意味着“教师分布”包含对未来失败的总结。经验如果偷带本题答案、事实或措辞，模型学到的可能是 response-conditioned label leakage，而非真正可迁移的策略。论文提示要求抽象化，并展示三个例子，但没有自动测量 instance-specific leakage。</p>
+      <h3>4. “可迁移经验”仍是一个未做干预的中间变量</h3>
+      <p>三段公开经验确实比原始 critique 更像指南，但其中大量内容是“准确、清晰、结构化、遵循要求”一类通用原则。Default EL 胜过 Rubrics Only，说明 response-specific 反馈有用；却不能证明经验已经抽象到合适层级，因为没有测量经验跨 prompt 复用、实体重合率、与 rubric 的语义冗余，或 experience 对 teacher logits 的实际影响。尤其 context ablation 只在 Qwen3-1.7B policy / Qwen3-4B coach 上进行，不能自动外推到主表的 Qwen3-8B 与 OLMo 设置。</p>
     </section>
 
     <section id="bandwidth">
@@ -204,6 +230,20 @@
       <p>论文按通道字母表计算：1–10 分最多是 ⁠\(\log_2 10\approx3.32\) bits；1,024 个 token、词表 150,000 的文本通道上限约为 ⁠\(1024\log_2 150000\approx17{,}607\) bits，二者相除约 5,300。算术成立，论文 Figure 1 将其取整为“over 5,000×”。</p>
       <p>但这只是<strong>表示容量上限</strong>，不是有效监督的信息量。自然语言高度冗余；经验示例中有不少“准确、清晰、结构化”之类通用建议；coach 可能判断错误；teacher 也可能无法把建议稳定翻译为 token 分布。作者在脚注明确承认这不是 mutual information，但标题式叙事仍容易让人误以为 17,600 bits 全部进入了梯度。</p>
       <p>更严格的验证应固定 teacher compute 与 token budget，逐渐改变经验长度、压缩率和语义质量，测量性能是否随<strong>有效经验信息</strong>而变化；还应加入随机等长文本、同义改写、错误经验和人工精炼经验作为对照。当前 Multiple-Choice 消融只能说明 10 类指令太粗，不能建立“性能由带宽决定”的 scaling law。</p>
+    </section>
+
+    <section id="toy-audit">
+      <h2>Toy experiment 深审：台阶来自奖励构造，不是标量的数学宿命</h2>
+      <p>论文 Figure 4 先把目标分布 <code>p*(y)</code> 映射成 <code>L</code> 档整数奖励，再用带均匀分布 KL 正则的 REINFORCE 学习；EL proxy 则被直接给予完整的 <code>p*</code>，最小化到目标分布的 reverse KL。这个实验直观，但两边接收到的目标信息从定义上就不相等。</p>
+      <p>若 RL 优化：</p>
+      <div class="math-display">\[
+        \max_\pi\;\mathbb E_{y\sim\pi}[r(y)]
+        -\beta D_{\mathrm{KL}}(\pi\|u),
+        \qquad
+        \pi^*(y)\propto u(y)\exp\!\left(\frac{r(y)}{\beta}\right),
+      \]</div>
+      <p>所有落在同一奖励档的 token 必然得到相同概率，Figure 4 的台阶因此是目标函数的解析结果，不是额外发现。反过来，只要标量奖励取 <code>r(y) = β log p*(y) + C</code>，均匀 reference 下同一个 RL 目标就能恢复 <code>p*</code>。所以该 toy experiment 证明的是：<strong>把细粒度目标粗暴量化成 5 档会丢信息</strong>；它没有证明连续标量、生成式 reward、多维 rubric reward 或所有 RL 都无法表达多峰偏好。论文正文其实承认这不是 scalar reward 的普遍不可能性证明，但结论叙事比实验边界更强。</p>
+      <div class="callout info"><b>更公平的 toy 对照</b><p>应同时比较 5 档 reward、连续 <code>p*(y)</code> reward、<code>log p*(y)</code> reward、多维 reward 和带噪分布教师，并统一可用的 <code>p*</code> 信息与优化预算。这样才能区分“量化损失”“目标函数选择”和“分布监督”三件事。</p></div>
     </section>
 
     <section id="limits">
@@ -214,6 +254,8 @@
         <li><strong>Checkpoint 选择不透明：</strong>训练约 90 个 step、每 10 step 保存一次，却报告“top-3 performing checkpoints”的平均；未说明 top-3 用哪个 split/指标选。若直接按测试 benchmark 选，会造成选择偏差。</li>
         <li><strong>额外计算未等预算：</strong>RL 与 EL 共享 rollout 和反馈调用，但 EL 额外做带经验上下文的 teacher forward 和 top-256 token-level distillation。论文称额外更新成本相对较小，却没有 wall-clock、GPU-hour、token 或 API 成本表。</li>
         <li><strong>基线覆盖窄：</strong>只和 1–10 分 GRPO、原始 critique、rubrics-only、10 类指令比较；没有强 pairwise preference、多维 reward、generative reward、DPO/RLAIF 或同等 teacher-compute 蒸馏基线。</li>
+        <li><strong>输出分布混杂：</strong>AlpacaEval、ArenaHard 与 WildBench 都是相对 GPT-4-Turbo reference 的 GPT-4o 偏好判断；论文没有报告回答长度、拒答率、格式或风格变化。更长、更结构化、更多免责声明等表面变化可能同时抬高多个相关 judge 指标。</li>
+        <li><strong>经验注入扩大攻击面：</strong>原始 response 被直接嵌进 evaluator 模板，抽出的 experience 又作为高权限上下文喂给 teacher。论文未说明标签转义、prompt-injection 过滤或异常 experience 拒绝策略；若 response 能诱导 coach 输出恶意/伪造经验，EL 会把它从一次评分攻击升级为分布监督。这里是实现风险推断，尚无攻击实验。</li>
         <li><strong>开放性暂未闭环：</strong>论文已公开完整 prompt，但官方仓库在核验时只有 README，承诺 2026-07-23 前开放 code 与 data；因此 top-256 KL、数据过滤、checkpoint 选择与评测脚本尚不能独立复现。</li>
       </ul>
     </section>
@@ -241,11 +283,25 @@
       </div>
       <p>这也给出一个比“EL vs RL”更实用的工程判断：<strong>可验证部分仍交给 verifier，难以验证的质量维度交给经验蒸馏，二者共享同一证据账本。</strong>事实、格式、引用和安全边界不应被模糊语言建议替代；创意、结构、语气和解释深度也不该被压成一个总分。真正可靠的后训练栈会是 hybrid feedback，而不是让 Coach 完全取代 Judge。</p>
       <div class="callout"><b>建议的下一组关键实验</b><p>在相同 feedback token、teacher FLOPs 和总 wall-clock 下，对比：10 级 reward、多维 reward 向量、pairwise preference、原始 critique、人工压缩经验、自动经验与随机等长上下文；用隐藏的人类评审与异构 judge 报告多 seed 均值。只有这样，才能把“EL 有用”推进到“为什么有用、每一单位成本值多少”。</p></div>
+      <h3>五个最能改变结论的证伪实验</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>实验</th><th>若 EL 机制成立，应看到什么</th><th>若失败，意味着什么</th></tr></thead>
+          <tbody>
+            <tr><td>Experience swap：同题 / 同类异题 / 随机异题</td><td>同题最好，同类异题仍有稳定收益，随机异题接近无经验</td><td>收益主要来自同题后见修正，而非可迁移原则</td></tr>
+            <tr><td>实体与答案去除、只保留抽象策略</td><td>大部分收益保留</td><td>experience 含 instance-specific label leakage</td></tr>
+            <tr><td>等 teacher-compute 的无经验蒸馏与多维 reward</td><td>EL 在相同 FLOPs/token 下仍领先</td><td>优势来自额外教师正则或弱基线</td></tr>
+            <tr><td>Full KL / student-top-k / teacher-top-k / 不同 k</td><td>结论对稀疏近似稳健，teacher-only 新 token 也能进入策略</td><td>增益依赖未解释的 top-256 截断技巧</td></tr>
+            <tr><td>隐藏人评 + 异构 judge + 预注册 checkpoint</td><td>方向跨 evaluator、seed 与选择规则保持</td><td>主结果含 judge-family 或 checkpoint-selection 偏差</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>如果上述实验成立，EL 才能从“有效 recipe”升级为较强的方法论主张。当前最稳妥的工程用法，是把它作为 <strong>hybrid feedback stack</strong> 的一条支路：经验先经过去实体、适用域标注、冲突检查和 teacher-effect 测量，再与 verifier、reference policy anchoring、连续或多维 reward 联合训练。</p>
     </section>
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>本文核对 arXiv v1 的 21 页正文、图表、附录和 TeX 源，并复算主表差值、rollout 数量与带宽上限；实验结果、成本判断与 reward-hacking 现象均来自发布方报告，本轮未重新训练模型。官方仓库在核验时尚未发布实现与数据，因此实现级判断保留到代码开放后复查。X 原帖为论文摘要摘引，并附论文首页截图，没有额外方法细节。</p>
+      <p>本文两轮核对 arXiv v1 的 21 页正文、图表、附录和 TeX 源，并复算主表差值、rollout 数量、带宽上限与 toy RL 的解析最优解；同时对照 OPCD、OEL 与 Rubrics as Rewards 的目标和实验口径。实验结果、成本判断与 reward-hacking 现象均来自发布方报告，本轮未重新训练模型。对 semi-gradient、未归一化 top-256、同题后见泄漏与 prompt injection 的判断来自公开公式和 prompt 的方法审计，均明确标为分析推断。官方仓库截至 2026-07-22 仍只有 README，代码和数据尚未开放，因此实现级结论需在发布后复查。</p>
       <ul>
         <li><a href="https://x.com/iScienceLuvr/status/2079516724324663535">Tanishq Mathew Abraham：LLM-as-a-Coach 发布帖</a></li>
         <li><a href="https://arxiv.org/abs/2607.18110">LLM-as-a-Coach: Experiential Learning for Non-Verifiable Tasks（arXiv:2607.18110 v1）</a></li>
