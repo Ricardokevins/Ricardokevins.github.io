@@ -20,6 +20,29 @@
 - 系统 Chrome 在 1440×1100 与 390×844 两个视口均返回 HTTP 200：页面级横向溢出、坏图、断锚、console / runtime / request error 和 4xx/5xx 资源均为 0；桌面与手机全页截图目检未见重叠、截断或不可读结构。
 - 笔记补充已随同主题证据审计提交 `6df9cba` 落库；本区块单独提交，工作区中的并行研究记录不纳入本任务提交。
 
+## 2026-07-22 Red Queen Gödel Machine X 帖深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Yi Lu 的 X 帖 `2079251789489320355`；已完整还原主帖、图片与 arXiv 入口，核验 Cambridge / NVIDIA 的 RQGM 方法、headline 数字和理论边界。
+- X 适配器需要浏览器会话；依照不占用用户前台 Chrome 的规则，改用公开只读页面。主材料覆盖 arXiv:2606.26294 v1 的 38 页正文、附录、TeX 源及 Cambridge ML Systems 作者技术博客。
+- 交叉核验覆盖 Huxley-Gödel Machine、HyperAgents、APReS、CRAVE、Polyglot、IMO-GradingBench 与 LLM self-preference 一手入口。论文未链接作者官方完整实现仓，也未公开多 seed 结果；本轮不声称独立复跑 GPT-5.5 搜索。
+
+### 关键判断与独立 Insight
+
+- RQGM 把 learned evaluator 版本化：epoch 内冻结，边界用固定 anchor 的 `epsilon`-best-belief 下界选举挑战者，换届后擦除依赖旧评委的 utility record，并用指数检查点把累计失效 / 重评量控制为 `O(B)`。
+- 理论保证是 epoch-local，不覆盖跨 epoch 全局最优、累计 regret、真实 accuracy 单调增加或 Agent–评委联合收敛。选择性擦除删除旧分数但保留 archive 拓扑，旧评委造成的扩展路径依赖仍存在。
+- 编码 raw count 为 RQGM 119/166 对 HGM-H 116/166，只多 3 题、+1.8 个百分点；1.35–1.72× 来自达到基线水平时约 90.5M / 71.2M 对 122.5M blended tokens。朴素独立比例检验约 `p=0.72`，不能把单次点估计当作稳定 accuracy 优势。
+- 写作面板比例复算为 `38.8/21.8=1.780`、`40.5/21.8=1.858`；这是四个模型 reviewer 对生成论文的接受率，不是人类同行评审确认。grader headline 是 76/100 对 67/100，属于 +9 个百分点，朴素比例检验约 `p=0.16`。
+- 证明 specialist 的 mean / Pass@6 最好，但 Pass@7 48.3% 仍低于人工工程化 IMO25 pipeline 的 55%。最稳妥的独立 insight 是把 RQGM 理解为“带固定宪法的动态奖励编译器”：不可编辑 verifier、可版本化 soft critic、隔离 final audit 三层，并为每次换届配套 anchor 回归、数据血缘失效、shadow 回放与回滚条件。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/red-queen-godel-machine-coevolving-evaluators.html`，覆盖问题、机制、理论、三领域结果、四组 headline 复算、替代解释、证据缺口、术语与工程建议。
+- 更新 `_data/notes.yml` 新增 Paper Note 入口。最终复跑时 Notes 索引校验通过：152 个索引条目与 152 个顶层 HTML 页面一一对应；目标页具有唯一 H1 / `main` / 文末证据附录、2 个 MathJax 容器，无重复 ID、断锚、替换字符、占位文本或公开过程噪声，`git diff --check` 通过。
+- 隔离 Jekyll 构建已成功生成目标页；仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示。真实浏览器在 1440×1100 与 390×844 两个视口均返回 HTTP 200，console / runtime / request error 与页面级横向溢出均为 0；手机端 780px 表格保持在 364px 局部滚动容器内，桌面与手机全页截图目检未见重叠、截断或不可读结构。
+- 共享工作区存在其他研究任务的并行修改；发布时只隔离提交本页、索引入口和本区块，不纳入无关文件。
+
 ## 2026-07-22 视频模型 RL 后训练二次深挖
 
 ### 材料与核验范围
