@@ -1,5 +1,26 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 视频模型 RL 后训练二次深挖
+
+### 材料与核验范围
+
+- 在既有 X Article 深读基础上，重新完整核对 Diffusion-DPO、Flow-DPO / VideoReward、Flow-GRPO、DanceGRPO、RewardDance、Epipolar-DPO、VideoGPA、VGGRPO 的正文与附录，并审计 VideoAlign、Flow-GRPO、DanceGRPO、Epipolar-DPO、VideoGPA 的公开实现与训练配置。
+- 追加 SAGE-GRPO 与 CVPR 2026 SoliReward 两项会改变核心判断的后续证据，分别检查 ODE→SDE 探索的 off-manifold 风险，以及 reward accuracy、reward margin 与 post-training utility 的脱钩。
+- 本轮不复跑数百至数千 GPU 小时的视频训练；数值按一手论文报告，代码结论限定为公开仓库当前实现，不外推为论文私有训练的逐位复现。
+
+### 深化结论与变更
+
+- 原地深化视频 RL 笔记：新增 DPO 隐式奖励推导、SDE 局部 KL 的真实含义、终局 reward 广播造成的信用分配边界，以及五项公开训练协议的算力 / 采样对照。
+- 修复正文行内公式丢失 MathJax 定界符的问题；新增实现级审计，确认 VideoAlign 的 MQ 明确惩罚静态 / 小运动，VQ 混入安全策略，Overall 将标准化 VQ/MQ/TA 等权相加，因此 reward 既在测量质量，也在规定运动幅度与价值权重。
+- 新增 SAGE-GRPO / SoliReward 反证：探索噪声可能制造离流形 rollout；离线 reward accuracy 相近的 BT 与 BT-WT 可产生显著不同的 post-training 结果。最终判断从“奖励是可观测接口”深化为“视频 RL 是会改变自身输入分布的闭环测量系统”。
+- 更新 Notes 索引摘要和证据边界；保留并隔离工作区中其他任务的并行改动，本任务仅选择性提交对应页面、索引条目和本区块。
+
+### 验证
+
+- Notes 索引校验通过：149 个索引条目与 149 个顶层 HTML 一一对应；目标页存在唯一 main、13 个唯一 id、MathJax、证据附录，公开过程噪声与 whitespace 检查无异常。
+- 全站 Jekyll 构建因本机 bundle 中缺失锁定的 Jekyll 3.9.2 及依赖而无法启动，属于本地依赖缺口，不作为页面通过证据。
+- 使用独立本地服务完成真实浏览器验收：桌面 1440×1000 与手机 390×844 均 HTTP 200，唯一 H1/main、12 个 section、20 个已渲染 MathJax 容器、console/page/request error 为 0；整页横向溢出为 0，两张 760px 表格在 364px 手机容器内局部横向滚动。全页截图目视检查层级、公式、表格与 callout 均正常。
+
 ## 2026-07-22 LLM-as-a-Coach 二轮目标函数审计
 
 ### 深化目标与材料边界

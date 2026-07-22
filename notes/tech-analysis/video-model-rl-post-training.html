@@ -64,7 +64,7 @@
   <header id="top">
     <div class="kicker">TECH ANALYSIS · VIDEO GENERATION · RL POST-TRAINING</div>
     <h1>视频模型 RL 后训练：真正的瓶颈不是优化器，而是奖励能否代表世界</h1>
-    <p class="lede">Anirudha Majumdar 的综述准确抓住了视频生成后训练从人类偏好走向自动奖励的主线。但更重要的判断是：DPO、GRPO 只是把奖励写回生成器的管道；视频 RL 的能力上限，最终取决于奖励是否覆盖了人真正关心的时间、几何与物理属性，以及生成器是否能在不钻代理指标空子的情况下提高这些属性。</p>
+    <p class="lede">Anirudha Majumdar 的综述准确抓住了视频生成后训练从人类偏好走向自动奖励的主线。本文进一步核对八篇论文的正文与附录、五个官方实现和训练配置，并纳入 SAGE-GRPO、SoliReward 两项后续反证。更完整的结论是：DPO、GRPO 只是把奖励写回生成器的管道；视频 RL 的能力上限，取决于奖励是否覆盖真实目标、探索是否仍贴着视频流形，以及评测是否独立于训练裁判。</p>
   </header>
 
   <main>
@@ -77,6 +77,7 @@
         <div class="card"><h3>世界一致性不能只靠一项指标</h3><p>几何稳定、主体运动、语义遵循、视觉质量可能相互冲突；单一奖励容易把复杂世界压扁成可投机的分数。</p></div>
       </div>
       <div class="callout good"><b>一句话结论</b><p>视频模型后训练的核心竞争会从“谁把 LLM 的 RL 算法搬得更快”，转向“谁能构造覆盖时间因果与三维世界、可审计且难被利用的奖励组合”。</p></div>
+      <div class="callout info"><b>二次深挖后的校准</b><p>原文的研究地图基本正确，但把“奖励”“探索”和“验证”各自压缩成了一个词。实现审计显示：奖励常把质量、安全、运动幅度混在同一分数里；ODE→SDE 的探索可能把轨迹推离视频流形；而同一个 reward model 同时参与训练与验收，会制造闭环自证。真正的分析单位应是完整的<strong>测量—探索—更新—独立验收</strong>系统。</p></div>
     </section>
 
     <section id="problem">
@@ -87,7 +88,7 @@
       \max_{p_\theta}\;\mathbb{E}_{c\sim\mathcal{D},\,v\sim p_\theta(\cdot\mid c)}
       \left[r(v,c)-\beta D_{\mathrm{KL}}\!\left(p_\theta(\cdot\mid c)\,\|\,p_{\mathrm{ref}}(\cdot\mid c)\right)\right].
       \]</div>
-      <p>其中 (c) 是文本、首帧等条件，(v) 是生成视频，(r(v,c)) 是奖励，(p_{\mathrm{ref}}) 是预训练参考模型。第一项鼓励更高分的输出，第二项限制新模型离原模型过远。这个目标揭示了所有方法共同的三角关系：<strong>提高目标属性、保留基础能力、控制探索成本</strong>。</p>
+      <p>其中 \(c\) 是文本、首帧等条件，\(v\) 是生成视频，\(r(v,c)\) 是奖励，\(p_{\mathrm{ref}}\) 是预训练参考模型。第一项鼓励更高分的输出，第二项限制新模型离原模型过远。这个目标揭示了所有方法共同的三角关系：<strong>提高目标属性、保留基础能力、控制探索成本</strong>。</p>
       <div class="callout warn"><b>KL 不是安全证明</b><p>KL 约束能减缓模式坍塌和奖励投机，却不能证明奖励本身正确。若奖励错误地偏好某种伪影，贴近参考模型只会限制模型钻空子的幅度，不会把错误代理变成真实质量。</p></div>
     </section>
 
@@ -97,7 +98,11 @@
         <div><b>1. 条件</b><span>文本、首帧、参考图或镜头约束</span></div><div><b>2. 轨迹</b><span>从噪声经过多步去噪或速度积分</span></div><div><b>3. 成片</b><span>解码为像素视频，或保留在潜空间</span></div><div><b>4. 奖励</b><span>人类偏好、VLM、规则或几何模型打分</span></div><div><b>5. 更新</b><span>DPO 离线排序，或 GRPO 在线提升高分轨迹</span></div>
       </div>
       <h3>DPO：不显式训练奖励模型，也不等于没有奖励假设</h3>
-      <p>DPO 接收同一条件下的优选视频 (v_w) 与劣选视频 (v_l)，直接提高优选样本相对参考模型的概率优势。它避开了“先训练标量奖励模型、再跑在线 RL”的两阶段流程。Diffusion-DPO 的难点是扩散模型没有像自回归语言模型那样容易计算的序列似然，因此借助 evidence lower bound 构造可微近似；Flow-DPO 再把这套思路扩展到 flow matching。</p>
+      <p>DPO 接收同一条件下的优选视频 \(v_w\) 与劣选视频 \(v_l\)，直接提高优选样本相对参考模型的概率优势。其理论桥梁是 KL 正则化最优策略的隐式奖励：</p>
+      <div class="math-display">\[
+      r^*(v,c)=\beta\log\frac{p^*(v\mid c)}{p_{\mathrm{ref}}(v\mid c)}+\beta\log Z(c).
+      \]</div>
+      <p>成对比较时，与条件有关的 \(\log Z(c)\) 抵消，于是可以直接优化策略概率比。它避开了“先训练标量奖励模型、再跑在线 RL”的两阶段流程；但 flow / diffusion 没有自回归模型那样可直接求和的序列似然，Diffusion-DPO 借助 ELBO，Flow-DPO 则以随机时间步上的速度预测误差差值代理整段视频的 log-ratio。这里优化的是<strong>可计算代理</strong>，不是精确视频似然。</p>
       <p>DPO 常被放进 RLHF 家族讨论，但它本质上是<strong>离线偏好优化</strong>：模型不会在训练时持续生成新视频并探索奖励函数。它的优势是稳定、工程成本较低；代价是受离线偏好对覆盖范围约束，超出数据分布后仍可能错误外推。</p>
       <h3>GRPO：同题多采样，用组内相对分数替代 critic</h3>
       <p>GRPO 对同一提示生成一组样本，用组内标准化奖励估计 advantage：</p>
@@ -105,9 +110,26 @@
       A_i=\frac{r_i-\operatorname{mean}(r_1,\ldots,r_K)}{\operatorname{std}(r_1,\ldots,r_K)}.
       \]</div>
       <p>高于组均值的轨迹被提升，低于组均值的轨迹被压低，不再额外训练一个高维视频 critic。与 DPO 相比，它能跟随当前模型的真实输出分布在线探索；但视频采样极贵，且同一提示下奖励方差太小时，组内相对优势会变得噪声化。</p>
+      <p>还有一个常被公式掩盖的信用分配问题：这些工作通常只在最终成片上计算一次奖励，再把同一个终局 advantage 广播给整条去噪轨迹。算法知道“这条轨迹整体好”，却不知道哪一个时间步修复了手指、哪一步破坏了遮挡。PPO clipping 能限制更新幅度，不能凭空产生细粒度时间归因。</p>
       <h3>Flow-GRPO：为什么要把 ODE 改写成 SDE</h3>
       <p>现代 flow matching 常用确定性 ODE 采样。只有初始噪声而没有逐步随机动作时，条件转移概率和逐步重要性比难以直接使用，探索也受限。Flow-GRPO 构造与原 ODE 在各时刻保持相同边缘分布的 SDE，引入可记录的随机转移；同时在训练采样时把 40 步降到 10 步，推理时恢复完整步数。论文报告这使数据采集得到超过 4 倍加速，而最终奖励没有明显下降。</p>
+      <p>实现中每一步的策略与参考策略都是共享方差的高斯转移，因此所谓 KL 可以化成条件均值偏移的平方：</p>
+      <div class="math-display">\[
+      D_{\mathrm{KL}}\!\left(\pi_\theta(\cdot\mid x_t)\,\|\,\pi_{\mathrm{ref}}(\cdot\mid x_t)\right)
+      =\frac{\|\mu_\theta(x_t,t)-\mu_{\mathrm{ref}}(x_t,t)\|_2^2}{2\sigma_t^2\Delta t}.
+      \]</div>
+      <p>这不是对最终视频分布做精确 KL，而是对离散 SDE 转移的局部、同方差近似。噪声越小，分母越小，同样的均值偏移惩罚越强；所以噪声日程、步长和 KL 系数共同定义了实际 trust region，不能只看论文写出的 \(\beta\)。</p>
       <div class="callout info"><b>不要把迁移性写得过头</b><p>Flow-GRPO 原论文的主要实证是文本生成图像：GenEval 从 63% 到 95%，视觉文字准确率从 59% 到 92%。它提供了可迁移到视频 flow 模型的方法接口，但原论文并没有用同等规模的视频实验直接证明这些 headline 数字在视频上成立。视频验证主要来自同期 DanceGRPO。</p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>公开训练协议</th><th>组大小 / 采样</th><th>算力</th><th>解读</th></tr></thead>
+        <tbody>
+          <tr><td>Flow-GRPO（SD3.5-M）</td><td>每题 \(G=24\)；训练 10 步，评测 40 步；噪声系数 0.7</td><td>24×A800；LoRA \(r=32\)</td><td>组降到 12 或 6 时论文报告训练不稳；“省 critic”不等于低成本</td></tr>
+          <tr><td>DanceGRPO（HunyuanVideo T2V）</td><td>25 步；超过 10K prompts；曲线使用移动平均</td><td>64×H800</td><td>56% / 181% 是训练 reward 的相对提升，不能换算成人评幅度</td></tr>
+          <tr><td>Epipolar-DPO（Wan2.1 1.3B）</td><td>24K T2V + 30K I2V 三元组；LoRA，10K iterations</td><td>生成数据约 1,980 A6000 GPU 小时；训练 4×A6000 两天</td><td>自动奖励省了标注，不一定省总计算</td></tr>
+          <tr><td>VideoGPA（CogVideoX 5B）</td><td>每个变体过滤后约 2.5K preference pairs；10K steps</td><td>8×A100</td><td>小数据有效依赖强几何教师、候选多采样与严格过滤</td></tr>
+          <tr><td>VGGRPO</td><td>潜空间 4D reward；训练/推理采用不同步数</td><td>论文报告总计约 1,536 GPU 小时</td><td>reward 计算 54.73s→41.33s（−24.5%），并非端到端训练加速 24.5%</td></tr>
+        </tbody>
+      </table></div>
     </section>
 
     <section id="evidence">
@@ -127,9 +149,22 @@
       </table></div>
       <h3>Flow-DPO 的真正贡献更偏数据，而非全新优化器</h3>
       <p>文章对此判断准确。VideoAlign 工作最有长期价值的部分，是 182K 人工偏好、12 个视频模型、多维质量轴，以及 26.5K 三元组的 VideoGen-RewardBench。Flow-DPO、Flow-RWR 和 Flow-NRG 是把既有 KL 正则化对齐框架接到 flow 模型上；数据定义了什么叫“更好”，优化器负责把这一判断写回生成器。若偏好数据把大动作误当作好运动、把高饱和度误当作高质量，算法会高效地放大这种偏差。</p>
+      <p>公开实现把这个风险写得比论文摘要更具体：VideoReward 的 Motion Quality 提示明确规定“视频大体静止或运动很少时给低分”，Visual Quality 又把安全性并入画质，并要求政治、暴力或成人内容获得最低分。也就是说 MQ 同时测<strong>运动正确性与运动幅度</strong>，VQ 同时测<strong>视觉质量与内容政策</strong>。此外，推理代码把标准化后的 VQ、MQ、TA 直接相加得到 Overall。这个接口简单可用，却默认三轴等权、可加且量纲已充分校准；策略完全可能通过增加无关运动来抬高 MQ，或让一个轴的极端分数掩盖另一个轴的退化。</p>
       <h3>RewardDance 的创新是奖励接口，而不是“推理天然正确”</h3>
       <p>传统 VLM reward model 常在隐藏状态后接回归头，并用 Bradley–Terry loss 拟合成对偏好。RewardDance 改为询问“图 2 是否优于图 1”，把 “Yes” 的 token 概率当作奖励，让训练与 VLM 原生 next-token prediction 对齐。扩展模型规模、加入任务化指令、参考样例和理由文本，确实给 reward scaling 一条更自然的路径。</p>
       <p>但推理链只是提供更多判别上下文，不会自动让裁判校准。论文把训练后期 reward variance 较高解释为模型仍保持探索、没有模式坍塌，这是有用信号，却不是充分证明：高方差也可能来自裁判不稳定、prompt 难度差异或策略在多个漏洞间切换。真正的防 hacking 证据仍需要保留集人评、跨奖励模型复核和对抗样本。</p>
+      <div class="callout warn"><b>同一方差，可能有相反含义</b><p>RewardDance 把较高 reward variance 当作持续探索、抗 hacking 的证据；后续 SoliReward 却显示，标准 Bradley–Terry reward 在一组质量相近的高分样本上产生过大的组内 advantage，反而会驱动 GRPO 追逐异常高分特征。前者观察策略输出分数的离散程度，后者分析 reward margin 如何进入更新；两者并不逻辑矛盾，但足以说明“方差高/低”都不能脱离独立质量评测单独解释。</p></div>
+    </section>
+
+    <section id="implementation-audit">
+      <h2>从论文公式走到公开实现：五个容易漏掉的事实</h2>
+      <ol>
+        <li><strong>“KL”不是统一对象。</strong> DPO 的参考比、Flow-GRPO 的逐步高斯均值距离、LoRA 隐式参考和论文叙述中的最终分布 KL，数学与工程含义并不相同。</li>
+        <li><strong>同一终局奖励被复用到所有去噪步。</strong> 这是低成本 credit assignment，不是逐帧、逐动作的因果监督。</li>
+        <li><strong>组相对优势依赖 prompt 内可排序性。</strong> 同题样本全对、全错或分数挤在一起时，标准化会放大裁判噪声；扩大 group 能缓解，却线性增加 rollout 成本。</li>
+        <li><strong>训练裁判与报告指标常不独立。</strong> DanceGRPO 用 VideoAlign 训练 HunyuanVideo，也用 VideoAlign 报告核心增长；VideoAlign 自己的 benchmark 又沿用 VQ/MQ/TA 标注轴。人评能补强，但不是每个消融都有独立人评。</li>
+        <li><strong>开源程度不等于可复现程度。</strong> Flow-GRPO、DanceGRPO、VideoAlign、Epipolar-DPO、VideoGPA 有公开实现或配置；RewardDance 与 VGGRPO 的关键训练资产截至核验时并未形成同等完整的公开复现链。公开代码也无法替代模型、偏好数据、精确 commit、seed 与完整训练日志。</li>
+      </ol>
     </section>
 
     <section id="verifiability">
@@ -140,13 +175,27 @@
         <div class="card"><h3>模型可测量</h3><p>美学、运动自然度、提示对齐，由 VLM 或 reward model 评分。可自动化，但本质是学习到的偏好代理。</p></div>
         <div class="card"><h3>物理代理约束</h3><p>极线误差、相机轨迹平滑、点云回投影一致性。数学形式明确，但输入量来自不完美的匹配与重建模型。</p></div>
       </div>
-      <p>Epipolar-DPO 的 Sampson error 是典型例子。对应点 (x,x') 与基础矩阵 (F) 理想情况下满足：</p>
+      <p>Epipolar-DPO 的 Sampson error 是典型例子。对应点 \((x,x')\) 与基础矩阵 \(F\) 理想情况下满足：</p>
       <div class="math-display">\[
       {x'}^{\!\top} F x = 0.
       \]</div>
-      <p>它比“这段视频是否好看”客观得多，却只约束两帧投影几何，不直接证明深度正确、物体刚性、遮挡合理或动力学真实。低纹理表面、快速运动、滚动快门、反射、粒子、形变主体都可能让对应点或 (F) 的估计失真。奖励可复算，不等于被测属性已被无误差地识别。</p>
+      <p>它比“这段视频是否好看”客观得多，却只约束两帧投影几何，不直接证明深度正确、物体刚性、遮挡合理或动力学真实。低纹理表面、快速运动、滚动快门、反射、粒子、形变主体都可能让对应点或 \(F\) 的估计失真。奖励可复算，不等于被测属性已被无误差地识别。</p>
       <p>VideoGPA 把约束从帧对扩展到场景级：几何基础模型估计相机与点云，聚合后再投影回各帧，比较投影与原始观测。VGGRPO 再用 4D 重建模型只聚合静态区域，并训练一个 latent geometry model 直接从视频潜变量预测几何，减少 RGB 解码成本。这条路线体现的不是“奖励越来越真”，而是<strong>奖励的覆盖面、计算成本与估计偏差在重新平衡</strong>。</p>
       <div class="callout warn"><b>原文的一处明确笔误</b><p>VGGRPO 段落写道为解决静态场景假设，“VideoGPA utilizes geometric foundation models that work with dynamic scenes”。结合 VGGRPO 论文可确认，这里应为 VGGRPO：支持动态场景的是其基于 4D reconstruction 的 Latent Geometry Model；VideoGPA 正是它试图超越的静态 / RGB-space 前序方案。</p></div>
+    </section>
+
+    <section id="followups">
+      <h2>原文发表后的两项反证：探索与奖励都可能成为故障源</h2>
+      <h3>SAGE-GRPO：ODE→SDE 不是免费探索</h3>
+      <p>原文把 ODE 改写为 SDE 主要描述为“获得随机策略与探索”。后续 SAGE-GRPO 针对视频指出更尖锐的问题：若直接套用通用 SDE，注入噪声形成的探索区域可能偏离视频数据流形，表现为时间抖动、伪影和低质量 rollout；此时 reward 看到的不是模型能力边界，而是人为制造的离流形样本。它提出更贴近 flow trajectory 的 manifold-aware SDE、梯度范数均衡和移动锚点 + 逐步约束的双 trust region。这里最重要的不是又一个算法名，而是把探索质量加入了因果链：</p>
+      <div class="math-display">\[
+      \text{有效更新}=\text{奖励可信度}\times\text{rollout 在流形附近的程度}\times\text{信用分配质量}.
+      \]</div>
+      <p>如果第二项接近零，提高噪声只会获得更差、更难判的样本；“探索更强”不能直接等价为“学习信号更多”。</p>
+      <h3>SoliReward：reward accuracy 不是 reward utility</h3>
+      <p>SoliReward（CVPR 2026）直接研究视频 reward 的标注噪声与 post-training hacking。论文报告，单视频 Pass/Fail 标注的五人一致性高于传统成对比较：Krippendorff’s \(\alpha\) 为 0.4939 对 0.3516，原始一致率为 77.33% 对 54.67%。更有启发的是，普通 BT 与加入 win-tie 约束的 BT-WT 在 reward accuracy 上只差 0.64 个百分点（77.63% 对 78.27%），后者引导 HunyuanVideo 后训练时的 VBench2 却从 0.8693 提到 0.8999、MQ 从 0.1719 提到 0.3302。</p>
+      <p>这说明 reward model 的离线排序准确率并不能充分预测它被策略主动优化后的效用。部署后的策略会寻找 reward landscape 的尖峰，因此还要审计高分区 margin、组内 advantage、OOD 校准和 on-policy 对抗样本。奖励模型不是静态 benchmark 分类器，而是闭环控制器的一部分。</p>
+      <div class="callout good"><b>二次深挖后的最强 Insight</b><p>视频 RL 不是“生成器 + 一个分数”，而是一套会改变自身输入分布的测量系统。策略更新后，reward model 面对的样本不再服从训练时的偏好数据；探索噪声又会进一步改变分布。因而真正需要验证的是<strong>闭环稳定性</strong>：奖励在 on-policy 样本上是否仍校准、更新是否保持在可感知流形附近、独立裁判是否确认目标属性真实改善。</p></div>
     </section>
 
     <section id="terms">
@@ -170,6 +219,8 @@
         <li><strong>没有证明 DPO 或 GRPO 普遍优于其他后训练方法。</strong> 每篇论文只在自己的数据、模型和预算上比较有限基线；跨论文 headline 数字不能直接排序。</li>
         <li><strong>没有证明几何更好就等于视频整体更好。</strong> 极线与回投影约束偏向相机和刚性结构；人物表演、流体、衣物、光照变化等重要内容可能不服从同一假设。</li>
         <li><strong>没有给出端到端成本曲线。</strong> 在线视频 RL 要同题多采样、保存去噪轨迹、计算视频奖励并反向传播。少步采样和潜空间奖励降低成本，却不能从论文数字直接推出商业部署价格。</li>
+        <li><strong>没有证明 ODE→SDE 的探索轨迹仍是高质量视频。</strong> 保持理论边缘分布不等于有限步离散、近似 score 与实际高维潜变量下不发生 off-manifold drift。</li>
+        <li><strong>没有证明 reward benchmark accuracy 能预测 RL 效用。</strong> 策略会主动搜索训练分布外的高分区域；同等离线准确率的裁判可能产生完全不同的 margin 和更新稳定性。</li>
         <li><strong>演示视频不是独立评测。</strong> 原文展示的 Flow-DPO、DanceGRPO、VGGRPO 前后对比能帮助理解失败模式，但属于作者挑选的定性样例，不能替代盲测、分桶结果和失败案例。</li>
       </ul>
       <div class="callout warn"><b>最关键的缺失实验</b><p>需要统一基础模型、统一提示集和等算力预算，同时比较人类偏好奖励、VLM 奖励、极线奖励、场景级几何奖励与多奖励组合；再用未参与训练的人工盲评和下游 3D / 机器人任务验证。没有这组对照，就无法判断增益来自优化器、奖励质量、数据覆盖还是额外算力。</p></div>
@@ -178,7 +229,7 @@
     <section id="insight">
       <h2>独立 Insight：奖励正在变成视频模型的“可观测世界接口”</h2>
       <h3>1. 后训练的瓶颈会从 policy optimization 转向 observability</h3>
-      <p>DPO 与 GRPO 解决的是“已知一个分数后怎样更新生成器”；更难的问题是从像素序列中观测出身份、深度、相机、主体运动、接触、因果和审美。视频世界的状态大多不可直接见，奖励模型实际承担了状态估计器的角色。奖励看不见的属性，策略就无法稳定优化；奖励误判的属性，策略就会学会利用。</p>
+      <p>DPO 与 GRPO 解决的是“已知一个分数后怎样更新生成器”；更难的问题是从像素序列中观测出身份、深度、相机、主体运动、接触、因果和审美。视频世界的状态大多不可直接见，奖励模型实际承担了状态估计器的角色。奖励看不见的属性，策略就无法稳定优化；奖励误判的属性，策略就会学会利用。二次核验进一步表明，这个接口还是闭环的：策略每次进步都会改变 reward 的输入分布，因此 observability 必须和 on-policy calibration 一起评估。</p>
       <h3>2. 最有前景的不是单一万能 reward，而是分层 reward stack</h3>
       <p>更可靠的系统应把奖励分层：底层用 OCR、目标计数、相机轨迹与几何约束提供局部硬信号；中层用身份、动作和语义模型覆盖任务属性；顶层用人类或强 VLM 处理风格、叙事与整体偏好。各层分别记录置信度和适用条件，而不是先加权成一个不可解释的总分。发生冲突时，系统应该知道是“几何更稳但动作更僵”，而非只看到总奖励下降 0.03。</p>
       <h3>3. 潜空间奖励既是效率优化，也是新的耦合风险</h3>
@@ -198,22 +249,26 @@
         <li><strong>报告 Pareto front，而非单一总分。</strong> 同时呈现提示遵循、视觉质量、运动、几何、身份、多样性、计算成本与人评。</li>
         <li><strong>把不确定性写进奖励。</strong> 当对应点、相机位姿或 VLM 判断不可靠时，降低权重或拒绝更新，而不是把低置信估计当作精确标签。</li>
         <li><strong>保留失败样本和训练轨迹。</strong> Reward hacking 往往先出现在少数 prompt 或运动类型；只汇报均值会掩盖局部坍塌。</li>
+        <li><strong>把 reward 当成受攻击接口做红队。</strong> 主动搜索高 reward / 低人评分歧样本，检查静止、过度运动、闪烁、文字贴片、重复纹理和潜空间对抗方向。</li>
+        <li><strong>做闭环而非静态验收。</strong> 在多个训练 checkpoint 上重测 reward 的 OOD 准确率、校准、margin 与独立人评，确认裁判没有随着 policy shift 失效。</li>
       </ol>
     </section>
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>主材料为 2026-07-18 发布的 X Article，正文、公式、三段示例视频及关联媒体均已核对。方法与数字回到论文、官方项目页和公开实现交叉验证；本文未复跑大型视频模型训练，论文实验数字均按发布方报告陈述，方法分类、证据强弱、笔误识别与工程判断属于基于一手资料的分析。平台文章和预印本可能继续修订。</p>
+      <p>主材料为 2026-07-18 发布的 X Article，正文、公式、三段示例视频及关联媒体均已核对。二次深挖完整核对八篇核心论文的正文与附录，并审计 VideoAlign、Flow-GRPO、DanceGRPO、Epipolar-DPO、VideoGPA 的公开实现 / 配置；SAGE-GRPO 与 SoliReward 用作会改变核心判断的后续反证。本文未复跑数百至数千 GPU 小时的大型视频训练，实验数字均按发布方报告陈述；代码路径只证明公开实现的当前行为，不证明论文私有训练与之逐位一致。方法分类、证据强弱、笔误识别与工程判断属于基于一手资料的分析。平台文章、预印本与仓库仍可能继续修订。</p>
       <ul>
         <li><a href="https://x.com/Majumdar_Ani/status/2078508177620926531">Anirudha Majumdar：Understanding Video Models: Part III - RL Post-Training</a></li>
         <li><a href="https://arxiv.org/abs/2311.12908">Diffusion Model Alignment Using Direct Preference Optimization</a></li>
-        <li><a href="https://arxiv.org/abs/2501.13918">Improving Video Generation with Human Feedback（Flow-DPO / VideoReward）</a>；<a href="https://gongyeliu.github.io/videoalign/">官方项目页</a></li>
+        <li><a href="https://arxiv.org/abs/2501.13918">Improving Video Generation with Human Feedback（Flow-DPO / VideoReward）</a>；<a href="https://gongyeliu.github.io/videoalign/">官方项目页</a>；<a href="https://github.com/KlingAIResearch/VideoAlign">官方实现</a></li>
         <li><a href="https://arxiv.org/abs/2505.05470">Flow-GRPO: Training Flow Matching Models via Online RL</a>；<a href="https://github.com/yifan123/flow_grpo">官方实现</a></li>
-        <li><a href="https://arxiv.org/abs/2505.07818">DanceGRPO: Unleashing GRPO on Visual Generation</a></li>
+        <li><a href="https://arxiv.org/abs/2505.07818">DanceGRPO: Unleashing GRPO on Visual Generation</a>；<a href="https://github.com/XueZeyue/DanceGRPO">官方实现</a></li>
         <li><a href="https://arxiv.org/abs/2509.08826">RewardDance: Reward Scaling in Visual Generation</a></li>
         <li><a href="https://arxiv.org/abs/2510.21615">Epipolar Geometry Improves Video Generation Models</a>；<a href="https://epipolar-dpo.github.io/">官方项目页</a></li>
         <li><a href="https://arxiv.org/abs/2601.23286">VideoGPA: Distilling Geometry Priors for 3D-Consistent Video Generation</a>；<a href="https://github.com/Hongyang-Du/VideoGPA">官方实现</a></li>
         <li><a href="https://arxiv.org/abs/2603.26599">VGGRPO: Towards World-Consistent Video Generation with 4D Latent Reward</a></li>
+        <li><a href="https://arxiv.org/abs/2603.21872">SAGE-GRPO: Manifold-Aware Exploration for RL in Video Generation</a>；<a href="https://github.com/Tencent-Hunyuan/SAGE-GRPO">官方实现</a></li>
+        <li><a href="https://openaccess.thecvf.com/content/CVPR2026/html/Lian_SoliReward_Mitigating_Susceptibility_to_Reward_Hacking_and_Annotation_Noise_in_CVPR_2026_paper.html">SoliReward: Mitigating Susceptibility to Reward Hacking and Annotation Noise in Video Reward Models（CVPR 2026）</a></li>
       </ul>
     </section>
   </main>
