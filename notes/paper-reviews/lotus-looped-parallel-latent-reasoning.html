@@ -56,7 +56,9 @@
     ul, ol { padding-left: 1.3rem; }
     li { margin: 7px 0; }
     code { padding: 2px 6px; border-radius: 5px; background: #e9e3d7; color: #7c2d12; font: .92em var(--mono); }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
     .card h3 { margin: 0 0 7px; font-size: 16px; }
     .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
@@ -86,7 +88,7 @@
     .status { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 750; }
     @media (max-width: 760px) {
       header, main { width: min(100% - 24px, var(--max)); }
-      .grid-3, .flow { grid-template-columns: 1fr; }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
       .def-list > div { grid-template-columns: 1fr; gap: 6px; }
     }
   </style>
@@ -103,7 +105,7 @@
   <header id="top">
     <div class="kicker">Paper Note · Latent Reasoning</div>
     <h1>LOTUS 深读：并行潜变量推理真正压缩的是什么？</h1>
-    <p class="lede">LOTUS 最值得重视的不是“模型终于可以无声思考”，而是它把推理的关键串行轴从可变长的 CoT token 数，改写为固定的循环深度 (R)。这在单请求延迟上确实有效，但当前证据仍局限于 3B 模型、学校数学、固定计算预算和单张 H100；它距离通用、可伸缩、可验证的内部推理系统还有明显距离。</p>
+    <p class="lede">LOTUS 最值得重视的不是“模型终于可以无声思考”，而是它把推理的关键串行轴从可变长的 CoT token 数，改写为固定的循环深度 (R)，再用并行 token 级监督把潜变量工作区锚回可读的推理结构。这个设计在单请求延迟上确实有效，但当前证据仍局限于 3B 模型、学校数学、固定计算预算和单张 H100；它距离通用、可伸缩、可验证的内部推理系统还有明显距离。</p>
   </header>
 
   <main>
@@ -161,6 +163,14 @@
         \operatorname{CE}\!\left(f_{\mathrm{head}}(h^{(R)}_{i,j}),T_{i,j}\right).
       \]</div>
       <p>第二项是 answer loss：模型在完整的 post-loop latent 配置上生成最终答案。它补上并行位置独立监督缺失的全局选择压力。总目标是答案损失与 λ 倍 step loss 之和，论文默认 λ=0.05。消融很有说明力：只保留答案损失为 63.3%，加入 post-loop 直接监督后升到 70.0%；但只用 step loss 同样不能形成可靠的全局链。</p>
+
+      <h3>更深一层：step loss 学的是“支持集覆盖”，不是完整链分布</h3>
+      <p>论文最容易被忽略的技术点，是它并不声称并行 step loss 在概率上等价于显式 CoT 的自回归似然。显式 CoT 学的是 \(p(T_{i,j}\mid Q,T_{<i,j})\)，前一个中间 token 会条件化后一个；LOTUS 的 step loss 则诱导一个 parallel chain likelihood：</p>
+      <div class="math-display">\[
+        p_{\theta}^{\mathrm{PCL}}(T\mid Q)=\prod_{i=1}^{K}\prod_{j=1}^{c}p_{\theta}(T_{i,j}\mid Q).
+      \]</div>
+      <p>这看起来把链条里的依赖切断了，但作者的解释是：依赖不放在 loss 的自回归条件里，而放在同一个 looped Transformer 对整个 padded workspace 的联合计算里。于是 \(L_{\mathrm{step}}\) 的角色更像覆盖：让每个位置把概率质量放到正确 token 的支持集上；\(L_{\mathrm{ans}}\) 的角色更像选择：让整组 latent state 必须共同支持正确答案。</p>
+      <div class="callout info"><b>为什么这点重要</b><p>PCL 的最优 NLL 下界通常高于自回归 NLL，因为条件化不会增加熵。也就是说，如果拿 LOTUS readout 的 NLL 直接和 teacher-forced CoT NLL 比，天然不公平；更合理的问题是这些边缘 token 信号是否足够指导最终答案、是否能被干预验证。</p></div>
     </section>
 
     <section id="parallelism">
@@ -185,6 +195,7 @@
             <tr><td>紧凑 CoT 思考延迟</td><td>133.0 ms</td><td>显式 CoT 338.8 ms</td><td>复算为 2.55×；端到端是 181.2 vs 384.2 ms，即 2.12×。</td></tr>
             <tr><td>自然语言 CoT</td><td>68.13±0.77%；140.8 ms</td><td>68.41±0.59%；963.6 ms</td><td>准确率数值接近，思考延迟复算 6.84×；论文未给正式显著性检验。</td></tr>
             <tr><td>公开权重</td><td>924/1319 = 70.05%</td><td>论文均值 70.0%</td><td>模型卡报告权重可复测主数字，但这不是第三方独立重训，也未覆盖三随机种子全套结果。</td></tr>
+            <tr><td>HF collection</td><td>math 70.05%；CODI 70.58%；NL 68.54%</td><td>论文表格 70.0 / 70.6 / 68.13</td><td>三个 3B checkpoint 均已公开登记；小数差异来自单个公开权重评测与论文多 seed 均值口径不同。</td></tr>
           </tbody>
         </table>
       </div>
@@ -193,6 +204,17 @@
       <h3>消融比 headline 数字更有价值</h3>
       <p>深度不足会直接崩溃：分别训练 (R=2,3,4,5,6) 的模型，GSM8K 为 14.6%、23.2%、52.6%、68.1%、70.0%。宽度也存在阈值：(c=1,5,10,25,30) 对应 49.7%、67.5%、68.4%、70.0%、70.0%。这说明 LOTUS 不是把六个自然语言步骤无损“压成六个向量”；它需要足够大的并行工作区和足够深的迭代，才有能力承载任务。</p>
       <p>另一个重要结果是监督路由：post-loop 主 LM head 为 70.0%，per-iteration 主 head 为 68.2%；辅助 decoder 的最佳方式反而是 per-iteration，为 69.9%。这支持论文的工程结论——直接主 head 方案更简单且跨模型规模更稳——但并不能推出它在所有任务上都优于辅助 decoder。</p>
+    </section>
+
+    <section id="curriculum">
+      <h2>训练课程：LOTUS 不是一步跳进无文字推理</h2>
+      <p>把 LOTUS 理解成“直接训练一个潜变量推理器”会漏掉一半事实。官方训练流程是两阶段：先做显式 CoT supervised fine-tuning，再从 CoT checkpoint 初始化 looped latent training。第二阶段采用 curriculum：每个 epoch 多把一个 CoT step 替换成 latent block；当替换步数超过 (K=6) 后，最多只替换前六步，剩余 CoT 尾部仍作为可见 token 留在训练序列里。</p>
+      <div class="grid-2">
+        <div class="card"><h3>课程的好处</h3><p>它降低了从文字 CoT 到 latent workspace 的迁移难度。模型不是从随机 hidden state 学会六步数学，而是逐步把已学会的显式步骤内化到固定 block 中。</p></div>
+        <div class="card"><h3>课程的代价</h3><p>它仍依赖高质量 gold CoT 和一个显式 CoT 初始化模型。所谓“latent reasoning”在训练经济学上仍背着显式推理轨迹这副脚手架。</p></div>
+      </div>
+      <p>自然语言 stress test 的设置也不同于紧凑数学表达：论文把 latent width 从 \(c=25\) 提到 \(c=50\)，并把 step loss 权重从 0.05 调到 0.033。这说明 6.9× 加速并不是“同一个潜变量预算在更长文本上自然免费扩展”，而是换用了更宽的每步工作区来吸收更长、更松散的自然语言 rationale。</p>
+      <div class="callout warn"><b>长链处理的真实边界</b><p>训练时长链尾部可见，推理时公开评测脚本只插入固定 latent prefix 后直接生成答案。两者之间缺少一个自适应控制器：模型没有显式判断“我需要第七步”，也没有在公开 inference path 中切换到继续输出显式尾部。</p></div>
     </section>
 
     <section id="interpretability">
@@ -206,7 +228,8 @@
     <section id="code-audit">
       <h2>代码与复现审计</h2>
       <p><span class="status">已核验事实</span>官方仓库提供训练、评测、数据预处理、Llama/GPT-2 配置与 MIT 许可证；Llama-3.2-3B 的 LOTUS 和 LOTUS+CODI 权重已公开。主配置与论文一致：全参数微调、30 epoch、总 batch 128、AdamW、bf16、学习率 5×10<sup>−5</sup>、K=R=6、c=25、step loss 权重 0.05。</p>
-      <p><span class="status">代码审计推断</span>循环实现确实复用问题前缀 KV cache，并在每轮把原始 latent embedding 与上一轮 hidden state 相加；最终答案直接条件于 post-loop states，latent token 的离散 readout 只用于训练或分析。公开 3B 权重不能直接交给普通文本生成管线得到 LOTUS 行为，必须由仓库的 wrapper 插入 latent prefix 并执行循环；模型卡正文写明了这一点，页面自动生成的通用 pipeline 示例则容易误导。</p>
+      <p><span class="status">已核验事实</span>官方项目页和 Hugging Face collection 还登记了自然语言 CoT 版本权重。公开 README 明确说明：Hugging Face 模型只提供权重，looped padded 架构由仓库中的 wrapper 在评测时注入；因此普通文本生成 pipeline 不会自动执行 LOTUS 的循环推理。</p>
+      <p><span class="status">代码审计推断</span>循环实现确实复用问题前缀 KV cache，并在每轮把原始 latent embedding 与上一轮 hidden state 相加；最终答案直接条件于 post-loop states，latent token 的离散 readout 只用于训练或分析。公开评测脚本当前只支持 batch size 1 的 generate 路径，这与论文的 latency setup 一致，但也意味着批量吞吐、服务端并发和 P99 仍没有公开实测。</p>
       <p><span class="status">尚未独立复现</span>仓库没有随附论文所有随机种子日志、逐项原始预测和完整 timing 产物。本次完成源码/配置审计、公开权重元数据核对和表格数值复算，也验证核心 Python 文件可解析；没有在同规格 H100 上重训 3B 或重跑 1,319 道评测，因此准确率与速度仍应标为发布方报告。</p>
 
       <h3>“超过六步自动回退”存在实现语义缺口</h3>
@@ -237,6 +260,9 @@
       <h3>2. Gold CoT 在这里是训练脚手架，不是推理接口</h3>
       <p>LOTUS 并没有证明自然语言是最优内部算法。它证明的是：用自然语言 CoT 提供稠密、位置对齐的课程，可以训练一个最终不输出这些文字的连续工作区。下一步最有价值的问题不是继续模仿更长的人工 rationale，而是让模型从可验证答案、程序执行或形式证明中学习<strong>比人类叙述更适合并行硬件的 latent algorithm</strong>，同时保留可干预的检查点。</p>
 
+      <h3>2.5. 真正值得借鉴的是“把 joint state 学在模型里，把边缘提示暴露在读出面上”</h3>
+      <p>LOTUS 的 PCL 视角给了一个比“隐藏 CoT”更锋利的工程模板：训练时可以把复杂链条拆成多个可并行监督的边缘目标，但不能指望这些边缘目标自己形成全局一致性；必须再给一个面向任务结果的 joint objective。这个思想可以迁移到代码修复、规划、检索组合和多工具 Agent：每个阶段状态可以有局部可读目标，但最终仍要通过 verifier、测试或用户任务成功率来选择联合状态。</p>
+
       <h3>3. 固定六轮的优势同时也是分布外风险</h3>
       <p>固定深度让 latency 可预测，这是部署优势；它也让难题悄无声息地在预算内失败。显式 CoT 至少可以继续生成，LOTUS 当前缺少可靠的“我还没想完”信号。生产化版本需要 learned halting、难度路由、置信度校准和可观测 fallback；否则平均延迟漂亮，复杂样本的尾部正确率可能反而更难诊断。</p>
 
@@ -259,12 +285,14 @@
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>本文以 2026-07-13 的 arXiv v2、2026-07-18 的解读线程及截至 2026-07-20 可见的官方代码和模型卡为准。论文正文、附录、训练配置、推理路径与公开模型元数据已经核对；headline 比例已按表格独立复算。未进行 3B 重训、H100 全量评测或第三方跨硬件复现，因此准确率、延迟和多随机种子稳定性仍属于发布方报告。X 页面和在线仓库可能继续修订。</p>
+      <p>本文以 2026-07-13 的 arXiv v2、2026-07-18 的解读线程及截至 2026-07-22 可见的官方项目页、代码仓和 Hugging Face collection 为准。论文正文、附录、训练配置、推理路径与公开模型元数据已经核对；headline 比例已按表格独立复算。未进行 3B 重训、H100 全量评测或第三方跨硬件复现，因此准确率、延迟和多随机种子稳定性仍属于发布方报告。X 页面和在线仓库可能继续修订。</p>
       <ul>
         <li><a href="https://x.com/che_shr_cat/status/2078559277313061198">Grigory Sapunov：LOTUS 10 条解读线程</a></li>
         <li><a href="https://x.com/yingfan_bot/status/2077441955202482419">Ying Fan：论文发布线程与作者补充回复</a></li>
         <li><a href="https://arxiv.org/abs/2606.31779">Bridging the Gap Between Latent and Explicit Reasoning with Looped Transformers（arXiv v2）</a></li>
+        <li><a href="https://yingfan-bot.github.io/lotus/">LOTUS 官方项目页</a></li>
         <li><a href="https://github.com/yingfan-bot/lotus">LOTUS 官方代码与评测配置</a></li>
+        <li><a href="https://huggingface.co/collections/yingfanbot/looped-padded-6a552f7ef667cb41db2431a3">LOTUS Hugging Face 模型集合</a></li>
         <li><a href="https://huggingface.co/yingfanbot/gsm-lotus-llama3b">LOTUS Llama-3.2-3B 公开权重与模型卡</a></li>
         <li><a href="https://aclanthology.org/2025.emnlp-main.47/">PCCoT：Parallel Continuous Chain-of-Thought with Jacobi Iteration</a></li>
         <li><a href="https://aclanthology.org/2025.emnlp-main.36/">CODI：Compressing Chain-of-Thought into Continuous Space via Self-Distillation</a></li>

@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 LOTUS 并行潜变量推理笔记二次深化
+
+### 本轮目标与材料边界
+
+- 用户要求确认是否已经完整深读，并“再深入一点、更新笔记”；本轮在既有 LOTUS 深读分支 `codex/lotus-parallel-latent-reasoning` 上原地深化，不新建重复笔记。
+- 重新核对 arXiv 当前页面：主论文为 arXiv:2606.31779 v2，2026-07-13 修订；补查官方项目页、Hugging Face `looped-padded` collection、官方代码 README、训练/评测/数据脚本，以及论文正文、附录 D/E/F 中会改变机制理解的细节。
+- 直接核验范围包括：PCL 与自回归 NLL 下界解释、训练 curriculum、长链 tail 的训练处理、自然语言 stress test 的宽度/损失权重变化、公开 HF checkpoint 列表、wrapper 注入 looped padded 架构的推理要求、batch size 1 generate 限制。仍未在 H100 上重训或重跑全量评测。
+
+### 新增关键判断
+
+- 将 step loss 的角色从“并行预测 gold CoT”深化为 parallel chain likelihood 的支持集覆盖：它学习每个 latent 位置对正确 token 的边缘概率；链条一致性不来自自回归 loss，而来自 looped workspace 的联合计算与 answer loss 的全局选择压力。
+- 补充 PCL 与 autoregressive NLL 的可比性边界：PCL 的最优 NLL 下界通常更高，因为自回归条件化不会增加熵；因此不能把 LOTUS readout NLL 直接当作 CoT NLL 的等价替代。
+- 补充训练课程边界：LOTUS 是 CoT SFT 后再逐步 latent 化，不是从零一步训练无文字推理器；超过 K=6 的训练样本保留显式 CoT 尾部，但公开推理路径没有自适应“第七步”检测或显式尾部 fallback。
+- 补充自然语言 stress test 的预算差异：3B NL 版本使用 c=50、λstep=0.033，不是完全沿用紧凑数学表达的 c=25 配置；6.9× 延迟收益应按更宽 latent workspace 的设置理解。
+- 补充公开模型现状：HF collection 现在列出 math、LOTUS+CODI、natural-language 三个 3B checkpoint；公开权重需要仓库 wrapper 执行 looped padded 架构，普通文本生成 pipeline 不等价于 LOTUS 推理。
+
+### 完成变更与验证结果
+
+- 原地更新 `notes/paper-reviews/lotus-looped-parallel-latent-reasoning.html`：新增 PCL 机制解释、训练 curriculum 章节、HF collection 证据行、代码/复现边界与更强的独立 insight。
+- 更新 `_data/notes.yml` 中 LOTUS 条目的摘要，使首页摘要反映 PCL、curriculum、HF checkpoint 和自然语言配置差异。
+- Notes 索引校验通过：137 个索引条目与 137 个顶层 HTML 页面一一对应；`git diff --check` 通过，目标页公开过程噪声扫描无输出。
+- 目标页结构检查通过：唯一 `main`、唯一且位于末节的证据附录、12 个正文 section、31 个 h2/h3、1 张本地图且 alt 非空、无重复 id。
+- Jekyll 隔离构建通过；仅出现仓库既有的 Faraday retry 可选依赖提示与 GitHub Metadata 未认证 warning，不影响静态产物。
+- 桌面 1440×1100 与手机 390×844 渲染均返回 HTTP 200：唯一 H1/main、12 个 section、7 个 MathJax 容器、坏图 0、空 alt 0、断锚 0、页面级横向溢出 0，console / page error / failed request 均为 0；截图目检未见重叠、截断或不可读结构。
+
 ## 2026-07-20 `$deep` 显式触发修复
 
 ### 问题与根因
