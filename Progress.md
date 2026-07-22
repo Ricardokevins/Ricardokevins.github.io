@@ -229,6 +229,28 @@
 - Jekyll 在隔离输出目录构建成功，耗时约 7.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证和 API 限流提示，不影响静态页面生成。
 - 独立无头 Chromium 在 1440×1100 与 390×844 两个视口实际渲染均返回 HTTP 200：页面级横向溢出为 0，4 个 MathJax 容器无错误，控制台异常、失败请求与坏图均为 0；桌面和手机全页截图复检未发现错位、截断或不可读结构。
 
+## 2026-07-22 Understanding Reasoning 二轮证据审计
+
+### 任务与材料边界
+
+- 用户要求在既有 `$deep` 笔记基础上继续深入。已重新核对完整 TeX、附录公式、图表、官方代码、模型集合和 Lichess puzzle 定义；截至 2026-07-22，arXiv:2607.16097 仍为 v1，官方代码 HEAD 仍为 `256e8b6`。
+- 原地更新既有《Understanding Reasoning from Pretraining to Post-Training》页面，不重复创建同主题笔记或索引项；第一作者串文的局部性警告与动态阶段切换含义继续保留。
+
+### 新增判断与原地深化
+
+- 新增证据等级矩阵：预训练 loss 对域内 post-RL 水平的预测较强；token 与局部 RL 斜率的关系是中等偏强相关，但 sigmoid 工作点、上限和 checkpoint 祖先结构尚未被因果隔离。固定 200M trace generator 也使结果成为完整 pretrain→SFT→RL 管线的总效应。
+- 复核交叉验证后确认：run-level LOO 不在每折重拟合 Chinchilla loss surface；LMSO 才完整重拟合。附录把 `0.0194-0.0102` 写成 0.0099，独立复算应为 0.0092（47.4%）。
+- 补全总算力公式：前沿包含预训练、SFT 训练和 RL model FLOPs，RL 按 rollout/reference/policy training 合计 `10N·T_rollout`；但 trace 生成、数据筛选、系统空转和墙钟成本不完全在该口径内。新增近优分配色带图，强调“RL 份额随算力上升”的趋势比 20%–28% 精确端点可靠。
+- 对策略机制新增测量审计：128-trace Monte Carlo、5% tail 阈值和 top-3 均缺敏感性分析；精确线路 reward 在少数 mate-in-one 多解题上可能产生有效答案假阴性。新增五组可证伪实验，覆盖 matched-loss 干预、多 seed/簇交叉验证、分类阈值扫描、大模型饱和和跨模型族复现。
+- 修复正文中失效的 inline MathJax 定界符，新增渐近上限与算力近优带两张附录图，并同步深化 Notes 索引摘要。
+
+### 验证与发布状态
+
+- Notes 索引校验通过：149 个索引条目与 149 个顶层 HTML 页面一一对应；目标页包含 13 个唯一章节、3 张表格、6 张有效本地图和 6 组源公式，无重复 ID、空 alt、缺图、公开过程噪声或差异空白错误。
+- Jekyll 隔离构建成功；仅有仓库既有的 `faraday-retry` 建议和 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 专用无头浏览器在 1440×1100 与 390×844 两个视口均返回 HTTP 200；MathJax 生成 38 个公式容器，横向溢出、坏图、console/runtime/request error 均为 0。桌面与手机全页截图目检未见重叠、截断或不可读结构。
+- 只暂存本任务页面、两张新增图、Notes 索引中的对应 entry 和本节 `Progress.md` hunk；其他并行笔记与进度改动不纳入本次提交。
+
 ## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
 
 ### 任务与材料边界

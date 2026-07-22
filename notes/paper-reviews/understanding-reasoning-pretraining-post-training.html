@@ -136,7 +136,7 @@
 
     <section id="problem">
       <h2>它真正要回答的问题</h2>
-      <p>常见 scaling law 把预训练写成模型规模 (N)、token 数 (T) 与损失 (L) 的关系；常见后训练论文则从一个固定底座出发，比较算法、奖励或推理预算。两类研究之间缺了一层：<strong>当底座本身变化时，RL 的学习曲线怎样变？</strong></p>
+      <p>常见 scaling law 把预训练写成模型规模 \(N\)、token 数 \(T\) 与损失 \(L\) 的关系；常见后训练论文则从一个固定底座出发，比较算法、奖励或推理预算。两类研究之间缺了一层：<strong>当底座本身变化时，RL 的学习曲线怎样变？</strong></p>
       <p>如果 RL 只是把既有分布统一锐化，那么更好的预训练主要提高初始性能，未必提高学习斜率；如果 RL 能可靠发现尾部正确行为，那么预训练覆盖、训练时长和题目难度都应改变它的收益。作者因此需要同时控制三种变量：</p>
       <div class="def-list">
         <div><b>预训练状态</b><span>模型参数规模、训练 token 数与最终损失共同描述底座处在什么能力阶段。</span></div>
@@ -153,11 +153,11 @@
         <figcaption>论文的完整管线。关键设计是所有预训练底座经过同一种 SFT，再用相同二值验证奖励进入 GRPO，使底座差异可以沿后训练曲线被追踪。图源：论文 Figure 1。</figcaption>
       </figure>
       <h3>1. 预训练：规模与数据预算同时展开</h3>
-      <p>每一步棋被编码为四个 token：棋子、起点、终点与特殊标志，词表仅 81。作者从 2022 年 Lichess Blitz / Rapid 棋谱构造 54B-token 语料，并按平均 Elo 800–3000 做平衡采样。十个稠密 Qwen3 风格模型覆盖 5M 到 1B 参数；十一档预算约从 (6.5\times10^{16}) 到 (6.5\times10^{19}) FLOPs，对应约 2 亿到 520 亿训练 token。</p>
+      <p>每一步棋被编码为四个 token：棋子、起点、终点与特殊标志，词表仅 81。作者从 2022 年 Lichess Blitz / Rapid 棋谱构造 54B-token 语料，并按平均 Elo 800–3000 做平衡采样。十个稠密 Qwen3 风格模型覆盖 5M 到 1B 参数；十一档预算约从 \(6.5\times10^{16}\) 到 \(6.5\times10^{19}\) FLOPs，对应约 2 亿到 520 亿训练 token。</p>
       <h3>2. SFT：先生成搜索树，再训练模型提交答案</h3>
       <p>42K 道棋题不是只配最终答案。固定的 200M proposal model 从局面采样多个续着，把重合前缀合成树，再按深度优先顺序序列化为显式 reasoning trace；Stockfish 选择最佳延续，模型最后提交答案。这里的“思维链”因此更像候选生成与比较过程，而不是人类自然语言解释。消融显示，无轨迹 SFT 主要改善 pass@1；带轨迹 SFT 才同时改善 pass@8 与 pass@16。</p>
       <h3>3. RL：奖励极简，搜索困难真实存在</h3>
-      <p>69.3K 道训练题中，70% 来自较容易的 B1/B2，30% 来自 B3–B5。GRPO 每组采样 8 个回答；只有完整走对目标序列才得 1 分，否则为 0。论文配置给出学习率 (10^{-5})、KL 系数 0.001、clip 0.2、温度 1.0 与最长 3072 response tokens。这个奖励消除了模糊裁判，却没有消除探索失败：策略若从未采到正确路径，就没有梯度告诉它正确答案在哪里。</p>
+      <p>69.3K 道训练题中，70% 来自较容易的 B1/B2，30% 来自 B3–B5。GRPO 每组采样 8 个回答；只有完整走对目标序列才得 1 分，否则为 0。论文配置给出学习率 \(10^{-5}\)、KL 系数 0.001、clip 0.2、温度 1.0 与最长 3072 response tokens。这个奖励消除了模糊裁判，却没有消除探索失败：策略若从未采到正确路径，就没有梯度告诉它正确答案在哪里。</p>
       <h3>4. 测试：同时看精确率与覆盖</h3>
       <p>独立 benchmark 有 1,480 道题，按难度分为 B1–B5。聚合结果主要用 B1–B4，因为模型几乎解不出 B5；B5 被保留用来观察机制。pass@1 衡量单次成功率，pass@16 更接近多次采样后的覆盖。训练、测试和预训练棋局在标准化棋盘状态层面去重，降低了直接记忆泄漏的可能。</p>
     </section>
@@ -170,7 +170,7 @@
         R_{N,T}(C)=R^{\mathrm{ref}}_{N,T}+B_{N,T}\left(\log_{10}C-\log_{10}C_{\mathrm{ref}}\right).
         \]
       </div>
-      <p>再用预训练损失 (L_{\mathrm{pt}}(N,T)) 预测参考预算下的性能，用规模和 token 数预测 RL 斜率：</p>
+      <p>再用预训练损失 \(L_{\mathrm{pt}}(N,T)\) 预测参考预算下的性能，用规模和 token 数预测 RL 斜率：</p>
       <div class="math-display">
         \[
         R(C_{\mathrm{RL}},N,T)=f\!\left(L_{\mathrm{pt}}(N,T)\right)
@@ -185,17 +185,52 @@
         <img src="understanding-reasoning-pretraining-post-training-assets/joint-scaling-law.png" alt="预训练损失与参考 RL 性能、预训练 token 与 RL 学习斜率的拟合关系图">
         <figcaption>左：更低预训练损失对应更高参考预算性能。右：更多预训练 token 对应更陡 RL 斜率。它们分别描述“起点”和“局部学习速度”，不能互相替代。图源：论文主结果。</figcaption>
       </figure>
+      <h3>“统一”统一的是预测接口，不是训练动力学</h3>
+      <p>合作者 Leon Li 的发布帖把问题压缩成“能否为完整预训练—RL 流程写出统一 scaling law”。论文给出的答案其实是<strong>函数拼接</strong>：先由预训练配置预测损失，再由损失预测固定 RL 预算下的性能，并用模型规模与训练 token 预测局部 RL 斜率。它把两个阶段接到同一张预算响应面上，却没有证明预训练梯度与策略梯度服从同一种动力学，也没有覆盖奖励设计、SFT 数据量、交错训练或在线数据分布变化。因此这里的 unified 应读成“跨阶段可联合预测”，而不是“一条跨任务、跨算法都不变的基础定律”。</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>验证方式</th><th>RMSE</th><th>MAE</th><th>中位 per-run (R^2)</th><th>应如何理解</th></tr></thead>
+          <thead><tr><th>验证方式</th><th>RMSE</th><th>MAE</th><th>中位 per-run \(R^2\)</th><th>应如何理解</th></tr></thead>
           <tbody>
             <tr><td>使用实测预训练损失，逐点留一</td><td>0.0102</td><td>0.0078</td><td>0.65</td><td>在已观察模型与预算附近，局部插值较准。</td></tr>
-            <tr><td>先用 Chinchilla 形式预测损失，再留一</td><td>0.0194</td><td>0.0153</td><td>-0.86</td><td>误差翻近一倍；平坦曲线使 (R^2) 尤其不稳定。</td></tr>
+            <tr><td>先用 Chinchilla 形式预测损失，再留一</td><td>0.0194</td><td>0.0153</td><td>-0.86</td><td>误差翻近一倍；平坦曲线使 \(R^2\) 尤其不稳定。</td></tr>
             <tr><td>整种模型规模留出</td><td>0.0242</td><td>—</td><td>—</td><td>跨规模外推更难；留出 680M 时 RMSE 达 0.048。</td></tr>
           </tbody>
         </table>
       </div>
       <p>这组结果说明公式更像<strong>局部响应面</strong>，而不是跨域定律。它对“已有实验网格内怎样分配下一批算力”有用，对“另一个模型家族应该投多少 RL”证据不足。</p>
+    </section>
+
+    <section id="evidence-audit">
+      <h2>证据强度审计：相关、预测与因果不是一回事</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>直接证据</th><th>证据等级</th><th>仍成立的替代解释</th></tr></thead>
+          <tbody>
+            <tr><td>预训练损失预测参考 RL 性能</td><td>36 条曲线；observed-loss LOO RMSE 0.0102；LMSO RMSE 0.0242</td><td>域内预测较强，跨规模中等</td><td>同一模型家族、数据与固定 SFT 管线内的共同因素</td></tr>
+            <tr><td>更多预训练 token 关联更陡局部 RL 斜率</td><td>四个规模、8–11 个 checkpoint；Spearman 0.84</td><td>相关性中等偏强，因果性不足</td><td>sigmoid 工作点、预训练损失、模型规模与 checkpoint 祖先相关性</td></tr>
+            <tr><td>更强预训练抬高 RL 最终上限</td><td>只有 20M 的 10 条曲线足够饱和；500 次参数 bootstrap</td><td>探索性证据</td><td>更大模型尚未跑到可识别上限，误差区间较宽</td></tr>
+            <tr><td>最优 RL 份额随总算力增加</td><td>拟合响应面上的网格搜索与 \(\epsilon\)-近优区域</td><td>趋势比精确端点可靠</td><td>目标函数、奖励噪声、系统成本和模型族改变后前沿可能移动</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>局部斜率会被 sigmoid 所处位置机械性改变</h3>
+      <p>附录自己指出，若真实 RL 曲线是从初值 \(R_0\) 向上限 \(A\) 饱和的 sigmoid，那么参考点附近的 log-compute 斜率近似满足：</p>
+      <div class="math-display">
+        \[
+        B\approx \gamma\ln 10\,
+        \frac{R_{\mathrm{ref}}-R_0}{A-R_0}
+        \left(A-R_{\mathrm{ref}}\right).
+        \]
+      </div>
+      <p>它在刚起步和接近饱和时都小，在曲线中段最大。因此“token 更多时 \(B\) 更大”可能同时包含三件事：底座真的更可训练、底座拥有更高的可达上限，以及该 run 恰好落在 sigmoid 的陡峭区。作者用未饱和的 B3–B4 减弱后两者，却没有做“保持损失和参考性能相近、只改变预训练 token”的干预实验。最稳妥表述应是<strong>预训练经历携带了 loss 之外的 RL 斜率信息</strong>，而不是已经证明 token 本身因果地改善优化性。</p>
+      <h3>交叉验证比标题暗示得更弱，也比普通拟合更认真</h3>
+      <p>逐 run LOO 会在 35 条曲线上重拟合 \(f\) 与 \(g\)，但 Chinchilla 损失面没有在每一折内重拟合，因此被留出的预训练损失行仍可能参与损失面估计。更严格的 LMSO 会删掉整个模型规模的预训练行并重拟合全部管线，不过只有四折，且留出 680M 时 RMSE 上升到 0.048。论文还存在一个可复算的小错误：表中 0.0194 与 0.0102 的差是 0.0092、占严格 LOO RMSE 的 47.4%，正文却写成 0.0099 和约 49%。这不推翻主趋势，但说明精确误差分解不宜照抄。</p>
+      <h3>固定 SFT 不等于移除了所有中介变量</h3>
+      <p>所有学生模型都使用固定的 200M proposal model 生成 reasoning traces，这提高了横向一致性；同时，教师轨迹与不同容量、不同预训练阶段学生的适配程度也可能不同。因而观测对象更准确地说是“pretrain → 同一轨迹生成流程的 SFT → RL”的总效应，而不是预训练对 RL 的纯直接效应。</p>
+      <figure>
+        <img src="understanding-reasoning-pretraining-post-training-assets/asymptotic-ceiling.png" alt="20M 模型的 RL 渐近上限与预训练损失、每参数 token 和总 token 的关系">
+        <figcaption>只有 20M 模型的 RL 曲线在观测窗口内充分饱和，能估计渐近上限。图中 10 个点显示更低损失对应更高上限，但 500 次参数 bootstrap 给出的单点区间仍宽；更大模型的上限尚未被实验识别。图源：论文附录。</figcaption>
+      </figure>
     </section>
 
     <section id="allocation">
@@ -207,18 +242,43 @@
         \qquad E\approx0.412,\ \alpha\approx0.401,\ \beta\approx0.679.
         \]
       </div>
+      <p>这里的“总算力”并非只把预训练和 RL 两项相加。论文把三阶段模型 FLOPs 写为：</p>
+      <div class="math-display">
+        \[
+        C_{\mathrm{total}}=6NT+C_{\mathrm{SFT}}+C_{\mathrm{RL}},
+        \qquad
+        C_{\mathrm{SFT}}=6N E_{\mathrm{SFT}}n_{\mathrm{SFT}}L_{\mathrm{SFT}},
+        \]
+        \[
+        C_{\mathrm{RL}}=(2N+2N+6N)T_{\mathrm{rollout}}
+        =10NT_{\mathrm{rollout}}.
+        \]
+      </div>
+      <p>RL 的 10 倍系数分别来自策略 rollout 前向、reference model 前向与策略反向训练。前沿实际求解的是 \(C_{\mathrm{RL}}=C_{\mathrm{total}}-6NT-C_{\mathrm{SFT}}\)，所以 SFT 训练已经计入分母；但用于生成 SFT traces 的模型推理、Stockfish 标注、数据筛选、通信空转和推理吞吐没有全部进入这个 model-FLOP 口径。论文也给出一个系统侧锚点：50M 模型跑 2,000 个 RL steps 约需 160 H200 GPU-hours，说明相同 FLOPs 不等于相同墙钟成本。</p>
       <p>把损失面与 RL 响应面合并，在固定总算力下搜索预训练和 RL 的最优切分。实验网格中的 20M 模型，经验最优 RL 份额随总预算由约 5% 上升到 32%；拟合后的全局 frontier 则从 50M 模型约 20% 上升到 680M 约 28%。</p>
       <p>Francesco Bertolotti 的原帖把这组端点概括为“模型从 50M 增至 700M，最优 RL 份额从 20% 增至 30%”。方向没有错，但 700M 与 30% 都是对论文 Figure 4 中 680M 与 28% 的取整；而且这些端点来自拟合后的连续最优前沿，不是两个生产级大模型上直接测得的固定配方。</p>
       <div class="callout info">
         <b>为什么不能把 20%–28% 当通用配方</b>
         棋类 token 极短、词表极小、奖励完全可验证，且拟合外推超出了部分实测网格；论文自己的最优区域也相当平坦。更合理的迁移结论是：随着底座可训练性增强，RL 的边际预算可能上升，因此预算优化必须联合测量，而不是直接复制百分比。
       </div>
+      <figure>
+        <img src="understanding-reasoning-pretraining-post-training-assets/allocation-uncertainty.png" alt="总算力增加时最优 RL 算力比例及不同近优容差下的宽区间">
+        <figcaption>黑线是报告的 argmax；色带是距离最优奖励不超过 \(\epsilon=0.001\) 或 0.005 的近优分配。峰值周围很平，精确 RL 份额识别得很弱；但整个近优带随总算力上移，所以“份额上升”的方向比 20% 与 28% 两个端点更可靠。图源：论文附录。</figcaption>
+      </figure>
+      <p>第一作者 Jingyan Shen 在发布串文里也主动收紧了这个结论：该定律只拟合未饱和区间，精确比例依赖当前实验 regime，算力前沿应被理解为“经验趋势 + 分配问题的量化框架”。她把后续问题写成何时从预训练切到 RL、数据分布与约束如何改变 scaling、以及两阶段能否交错。这进一步说明，真正可迁移的对象不是某个百分比，而是<strong>用短程测量持续更新阶段切换决策</strong>。</p>
       <p>另一个容易被平均分掩盖的结果是 pass@1 与 pass@16 分叉：RL 明显提高 pass@1，却让较大模型的 pass@16 大致持平或略降。也就是说，策略更会把概率压到少数高回报答案上，但候选多样性未同步增加。若部署场景允许 best-of-N、搜索或多样本验证，仅优化 pass@1 可能牺牲后续搜索空间。</p>
     </section>
 
     <section id="policy-evolution">
       <h2>RL 到底改变了什么：锐化、尾部发现与错误锁定</h2>
-      <p>作者对每道题采样 128 条 reasoning traces，估计第一步棋的边际策略。先检验一个最简单假设：RL 只是对所有状态施加同一个温度，把 SFT 分布做幂次锐化。750 步时最佳全局指数约为 1.35，但统一锐化只能解释约 17% 的策略变化；即便改用中心化 logit 线性模型，整体 (R^2) 也只有约 0.56。不同状态的变化显著异质。</p>
+      <p>作者对每道题采样 128 条 reasoning traces，估计第一步棋的边际策略：</p>
+      <div class="math-display">
+        \[
+        \widehat{\pi}(a\mid s)=\frac{1}{128}\sum_{k=1}^{128}
+        \pi(a\mid s,r_k),\qquad r_k\sim\pi(r\mid s).
+        \]
+      </div>
+      <p>先检验一个最简单假设：RL 只是对所有状态施加同一个温度，把 SFT 分布做幂次锐化。750 步时最佳全局指数约为 1.35，但统一锐化只能解释约 17% 的策略变化；即便改用中心化 logit 线性模型，整体 \(R^2\) 也只有约 0.56。不同状态的变化显著异质。</p>
       <div class="def-list">
         <div><b>正确模态放大</b><span>正确棋步在 SFT 时已位于 top-3，RL 后概率继续增加。</span></div>
         <div><b>尾部发现</b><span>正确棋步初始概率低于 5% 且不在 top-3，训练后进入 top-3。</span></div>
@@ -234,6 +294,9 @@
       </figure>
       <h3>“发现”是概率意义，不是能力从无到有</h3>
       <p>这里的 tail discovery 有严格操作定义：正确动作在 SFT 分布中已有非零但低于 5% 的估计概率，后来进入 top-3。它证明 RL 能救回罕见正确行为，<strong>没有证明正确算法在底座中严格不存在</strong>。有限采样也无法区分极小概率与真零概率。与受控组合任务中“重组已学会的原子函数”、或在 pass@K=0 任务族上观察 grokking 的工作相比，本论文给出的命题更窄，但也更可量化。</p>
+      <p>不过 5% 不是天然分界线，而是研究者设定的阈值。若把单个动作简化成二项比例，在 \(p=0.05\)、\(K=128\) 时，朴素标准误约为 \(\sqrt{0.05\times0.95/128}=0.019\)，95% 半宽约 0.038；真实估计项是连续条件概率，因此这只是量级提示，不是论文结果或严格置信区间。论文没有报告 \(K\)、5% 阈值或 top-3 选择的敏感性分析，边界附近的单题类别可能翻转。更可信的是跨难度的聚合方向，不是某道题被精确标成“发现”。</p>
+      <h3>精确线路奖励也不是完全无歧义</h3>
+      <p>公开奖励实现逐步比对整条目标 UCI 线路，长度和每一步都完全相同才得 1。Lichess 说明其 puzzle solution 中玩家着通常是唯一走法，但 mate-in-one 可能存在多个将杀着，任一将杀都应获胜；公开预处理脚本未见专门排除这类多解。于是极少数有效替代杀法可能被记为 0。这是奖励定义的边缘假阴性，而非足以推翻整体结果的大规模标签问题，却提醒我们“可验证”不等于“唯一规范答案”。</p>
       <h3>思维链变宽，不一定变深</h3>
       <p>训练后，reasoning tree 的分支数和宽度增加，最大深度大致持平或略降；候选棋步质量与最终承诺改善，但深度优先遍历的一致性下降、重复访问增多，长程恢复能力仍弱。它更像在学习“提出并选择更好的候选”，而不是稳定获得更深的规划算法。这也解释了为何短程 pass@1 能快速进步，而高难度长路径仍是瓶颈。</p>
     </section>
@@ -245,7 +308,8 @@
         <img src="understanding-reasoning-pretraining-post-training-assets/math-transfer.png" alt="OLMo-2 数学实验中预训练损失、token 数与后训练性能及学习斜率的关系">
         <figcaption>数学域出现与棋类相同的定性关系，但所有点来自同一训练 run 的不同 checkpoint，固定模型规模且没有多随机种子。图源：论文数学迁移实验。</figcaption>
       </figure>
-      <p>因此它是<strong>跨域可迁移性的提示</strong>，不是独立 scaling law 复现。更晚 checkpoint 共享同一训练祖先，误差并不独立；固定规模也无法识别 (N) 与 (T) 的交互。论文正文对 checkpoint 数量还有轻微口径差异：方法描述称 14 个，公开模型集合列出 15 个锚点。这个差异不改变方向判断，但提示完整实验台账仍有整理空间。</p>
+      <p>因此它是<strong>跨域可迁移性的提示</strong>，不是独立 scaling law 复现。更晚 checkpoint 共享同一训练祖先，误差并不独立；固定规模也无法识别 \(N\) 与 \(T\) 的交互。模型架构约 1.48B 总参数、1.07B 非 embedding 参数；论文正文称 14 个 checkpoint，公开模型集合列出 15 个锚点。正文又把预训练数据写为 70% Nemotron-CC-Math-v1 + 30% Dolma3，而附录超参数表写 Dolma3 / Dolmino mix。</p>
+      <p>数学 GRPO 与棋类也不是同一配方的机械复制：数学实验不使用 KL，采用 0.2/0.26 双 clip 与 \(10^{-6}\) 学习率；棋类使用 KL 0.001、单 clip 0.2 与 \(10^{-5}\) 学习率。跨越这些差异仍出现同方向关联，提升了现象的可信度；但单 run、固定规模、无重复 seed 和文档口径差异，仍不足以给出数学域的数值定律。</p>
     </section>
 
     <section id="reproducibility">
@@ -263,6 +327,7 @@
         </table>
       </div>
       <p>当前公开启动配置与论文还存在几处实际偏差：标为 8-GPU 的脚本只暴露四张 GPU，却配置每节点使用八张；默认 response 上限为 2560，而论文写 3072；公开 sweep 默认仅五个配置、500 步，论文联合分析则使用 36 个组合和 1,000–5,000 步。仓库也没有直接生成主 scaling law 与算力 frontier 的脚本和完整测量数据。</p>
+      <p>数据去污染的论文定义很严格：重放每局预训练棋谱，只要任一中间状态与后训练或测试棋题重合，就删除整局；匹配键是“棋子布局 + 轮到哪方”的标准化 FEN，棋题之间再按根局面去重。这能强力抑制精确状态泄漏，但不会消除战术 motif 或棋形层面的语义重合。公开脚本可以接收任意 puzzle 文件，README 示例却只传 test 文件；要复现论文声称的“post-training + test”去污染，执行者必须自行把两类状态都传入。这是文档闭环问题，不是算法本身不支持。</p>
       <div class="callout">
         <b>复现结论</b>
         公开材料足以重建方法的主要组件，并对数据、模型和奖励实现做静态核验；不足以从一个干净环境一键重算论文所有表格与联合拟合。本文没有独立重跑 H200 训练，性能数字与曲线属于作者报告，配置差异与发布物范围属于直接审计结果。
@@ -273,10 +338,12 @@
       <h2>论文的边界：哪些结论暂时不能外推</h2>
       <ol>
         <li><strong>局部线性不等于全程规律。</strong> RL 曲线只在未饱和区间近似线性，极低预算的探索冷启动和高预算的饱和都可能改变形状。</li>
+        <li><strong>斜率关联尚未隔离因果。</strong> 四个规模共享模型家族和固定管线，没有 matched-loss / different-token 干预，也没有每个配置的多 RL seed；sigmoid 工作点能系统性改变局部斜率。</li>
         <li><strong>单一验证器任务偏向可判定推理。</strong> 棋题有精确答案和廉价引擎，开放式研究、写作、代码架构等任务的奖励噪声与多解性更强。</li>
+        <li><strong>策略分类存在测量边界。</strong> 128 条 traces、5% tail 阈值与 top-3 都是有限采样下的操作定义，论文未报告这些超参数的敏感性。</li>
         <li><strong>错误模态风险没有被预算公式单独惩罚。</strong> pass@1 提升可与 pass@16 覆盖下降并存；只优化均值可能得到更自信、但更窄的策略。</li>
         <li><strong>数学实验不足以识别跨规模规律。</strong> 它来自同一预训练 run 的 checkpoint，没有跨模型规模和多 seed。</li>
-        <li><strong>算力只是成本的一部分。</strong> 数据构造、引擎验证、采样吞吐、失败样本和推理时 best-of-N 都会改变真实系统成本。</li>
+        <li><strong>算力只是成本的一部分。</strong> SFT 训练 FLOPs 已计入，但 traces 生成、引擎验证、数据构造、通信空转、失败样本和推理时 best-of-N 仍会改变真实系统成本。</li>
         <li><strong>预训练损失并非普适充分统计量。</strong> 在同域棋谱内它预测力很强；换数据分布、任务覆盖或模型家族后，相同 loss 可能对应完全不同的高质量回答覆盖。</li>
       </ol>
     </section>
@@ -284,7 +351,7 @@
     <section id="insights">
       <h2>独立推论：把“能力”拆成覆盖、可训练性与选择</h2>
       <h3>1. 预训练的后训练价值不只体现在最终 loss</h3>
-      <p>两个底座即使 loss 接近，只要训练 token、数据顺序或覆盖不同，RL 斜率也可能不同。论文中 slope 与 (T) 的额外关系提示：模型可能在继续训练中形成更平滑、可被奖励优化的表示。实际评估不应只选“当前 benchmark 最强”的底座，还应做短程 RL probe，估计单位算力增益和错误模态率。</p>
+      <p>两个底座即使 loss 接近，只要训练 token、数据顺序或覆盖不同，RL 斜率也可能不同。论文中 slope 与 \(T\) 的额外关系提示：模型可能在继续训练中形成更平滑、可被奖励优化的表示；但也可能只是处于更有利的 sigmoid 区间。实际评估不应只选“当前 benchmark 最强”的底座，还应做短程 RL probe，同时估计单位算力增益、离饱和程度和错误模态率。</p>
       <h3>2. Coverage 是必要条件，训练动力学决定能否取出</h3>
       <p>Coverage Principle 强调高质量回答需要在底座分布中有足够概率质量；本论文补上了动力学视角：覆盖存在并不意味着 RL 会稳定找到它。困难 B5 中 tail discovery 非零，但错误模态放大更多。覆盖决定“有没有可搜索对象”，奖励、采样与优化器决定“能否把它取出来”。</p>
       <h3>3. 最优预算应是带风险约束的 Pareto front</h3>
@@ -297,21 +364,39 @@
       </div>
     </section>
 
+    <section id="falsification">
+      <h2>什么实验会真正改写结论</h2>
+      <ol>
+        <li><strong>做 matched-loss 干预。</strong> 用不同 token 数、数据顺序或规模训练出 loss 和初始性能相近的底座，再比较多 seed RL 斜率，才能分离“训练经历”与“sigmoid 工作点”。</li>
+        <li><strong>把 run 当成相关簇。</strong> 每个 pretraining checkpoint 重复多次 SFT 与 RL，报告 seed 方差；交叉验证按模型规模、预训练祖先和数据切分成组，而不只逐 run 留一。</li>
+        <li><strong>压力测试策略分类。</strong> 系统扫描 \(K\in\{128,512,2048\}\)、tail 阈值和 top-k，给每类转移报告区间；若 tail discovery 方向稳定，机制证据才更硬。</li>
+        <li><strong>让大模型真正跑到饱和。</strong> 20M 上限关系需要在 50M–680M 上用约一个数量级更多 RL 算力复核，才能判断更强预训练究竟提升学习速度、最终上限，还是两者兼有。</li>
+        <li><strong>跨模型族与奖励噪声复现。</strong> 在自然语言、代码和多解任务上，用不同模型族、verifier 质量与总端到端成本重算前沿；若 RL 份额上升趋势仍在，才接近可迁移定律。</li>
+      </ol>
+      <div class="callout">
+        <b>最值得保留的研究程序</b>
+        不要问“预训练还是 RL 哪个更重要”，而应为每个候选底座测量起点、局部斜率、饱和迹象、覆盖变化和系统成本，再滚动更新阶段切换。论文给出了这套程序的第一个受控版本，尚未给出跨域常数。
+      </div>
+    </section>
+
     <section id="evidence" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>全文结论以论文 v1、附录、官方代码、数据与模型发布物为主；相关论文只用于比较命题边界，不把二手报道当实验事实。大型训练未独立重跑，因此性能数字均按发布方报告陈述。</p>
+      <p>截至 2026-07-22，arXiv 仍只有 2026-07-17 发布的 v1，官方代码仓 HEAD 仍为 <code>256e8b6</code>。全文结论以论文、附录、官方代码、数据与模型发布物为主；相关论文只用于比较命题边界，不把二手报道当实验事实。本文独立复算了 LOO 误差差值、策略采样误差量级和算力分解，但未重跑 H200 训练，因此性能数字均按发布方报告陈述。</p>
       <h3>主材料与官方资产</h3>
       <ul>
+        <li><a href="https://x.com/iamleonli/status/2079250874228949041">合作者 Leon Li 的发布帖</a>：以“完整训练管线能否拥有统一 scaling law”为主问题，配图对应论文的预训练—SFT—RL 管线、联合拟合与策略变化总览。主帖与配图可公开核验；页面所示 3 条自回复在未登录公开视图中不可读，因此本文不把其可能内容当作证据。</li>
+        <li><a href="https://x.com/evangelinejy99/status/2079250052476752325">第一作者 Jingyan Shen 的完整发布串文</a>：依次概括受控棋类试验台、固定总算力下的权衡、局部 log-linear 定律、算力分配前沿、pass@16 分叉、搜索宽度与深度，以及 OLMo-2 数学迁移；作者明确提示精确比例是 regime-specific 的局部结果。</li>
         <li><a href="https://x.com/f14bertolotti/status/2079146964592001234">Francesco Bertolotti 的论文导读帖</a>：四张配图分别概括论文摘要、完整训练管线、算力最优前沿与三类策略变化；其中预算端点为取整表述，策略分类需按论文定义拆开解释。</li>
         <li><a href="https://arxiv.org/abs/2607.16097">Understanding Reasoning from Pretraining to Post-Training</a>：论文摘要、PDF 与版本信息。</li>
         <li><a href="https://github.com/pavelslab-nyu/pre2post-chess">pre2post-chess</a>：棋类预训练、SFT、RL 与策略分析代码。</li>
+        <li><a href="https://database.lichess.org/#puzzles">Lichess Puzzle Database</a>：棋题生成、CSV 字段与“通常唯一走法；mate-in-one 可有多个有效将杀着”的官方说明，用于校准精确线路奖励的边界。</li>
         <li><a href="https://huggingface.co/collections/pavelslab-nyu/pre2post-chess">Pre-to-Post Chess Collection</a>：数据、预训练模型、SFT 模型与相关发布物集合。</li>
         <li><a href="https://huggingface.co/datasets/pavelslab-nyu/pretrain_v1_54B">Chess Pretraining Dataset</a>、<a href="https://huggingface.co/datasets/pavelslab-nyu/chess_puzzle_benchmark">Chess Puzzle Benchmark</a>、<a href="https://huggingface.co/datasets/pavelslab-nyu/chess_puzzle_training_datasets">Post-training Datasets</a>。</li>
         <li><a href="https://huggingface.co/pre-to-post-olmo/Math-Models">Pre-to-Post OLMo Math Models</a>：数学迁移实验的模型链。</li>
       </ul>
       <h3>用于校准“发现、覆盖与预算”的一手研究</h3>
       <ul>
-        <li><a href="https://arxiv.org/abs/2504.13837">Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?</a>：RLVR 小 (k) 改善与大 (k) 覆盖边界。</li>
+        <li><a href="https://arxiv.org/abs/2504.13837">Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?</a>：RLVR 小 \(k\) 改善与大 \(k\) 覆盖边界。</li>
         <li><a href="https://arxiv.org/abs/2509.25123">Can RL Learn New Reasoning Skills?</a>：受控原子函数与未见组合。</li>
         <li><a href="https://arxiv.org/abs/2509.21016">The RL Grokking Recipe</a>：在受控代码任务中研究 pass@K=0 家族和 grokking 条件。</li>
         <li><a href="https://arxiv.org/abs/2510.15020">The Coverage Principle</a>：高质量回答概率质量与后训练、测试时扩展的关系。</li>
