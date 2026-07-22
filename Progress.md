@@ -1,10 +1,11 @@
 # Ricardokevins.github.io Progress
 
-## 2026-07-21 RLM Harness / 组合泛化实验深读
+## 2026-07-21–22 RLM Harness / 组合泛化实验深读
 
 ### 任务与材料边界
 
-- 完整读取 alphaXiv 单帖及其主材料《Language model harnesses are compositional generalizers》；核对博客正文、附录公式、全部图表、九对代表性轨迹、作者站点源文件和原始 RLM 论文 v3。
+- 2026-07-22 用户通过 `$deep` 指定 Alex Zhang 的作者原帖 `2079203524395573442`。公开只读嵌入确认原帖发布时间为 2026-07-20，核心主张是“Transformer 难以泛化到未显式训练的任务，组合泛化应由 harness 承担”；该帖与站内既有深读指向同一篇实验博客，因此原地深化而不创建重复页面。
+- 完整读取作者原帖、alphaXiv 次日介绍及主材料《Language model harnesses are compositional generalizers》；核对博客正文、附录公式、全部图表、九对代表性轨迹、作者站点源文件和原始 RLM 论文 v3。
 - 审计 RLM 主分支训练环境、系统提示、示例配置、公开分支，以及 `mit-oasys/rlm-qwen3-30b-a3b-v0.1` 模型卡与 LoRA 元数据；核对 MRCRv2、GraphWalks、LongBench-Pro、OOLONG、OOLONG-Pairs 与 Ada-LEval 的任务口径。
 - 本轮未在 8×A100/H100 环境重跑九组 RL 训练，不声称独立复现发布方曲线；直接核验范围是原文与图表口径、公开代码/配置/模型/轨迹的一致性、汇总数字量级和复现材料完整性。
 
@@ -20,6 +21,9 @@
 
 ### 完成变更与验证结果
 
+- 原地修正笔记的来源层级：开头改以 Alex Zhang 作者原帖为 canonical 发布入口，alphaXiv 降为传播语境；文末新增作者原帖链接，并保留原有博客、论文、代码、模型和 benchmark 一手资料索引。
+- 复核后未发现需要重复建页的新材料缺口。Notes 索引校验继续通过（149 个入口对应 149 个顶层页面），`git diff --check` 与目标页公开过程噪声扫描无输出；Jekyll 隔离全量构建成功，仅保留既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示。
+- 在 1440×1000 与 390×844 视口重新渲染目标页：均返回 HTTP 200，作者原帖入口、唯一 H1/main、证据附录、2 处公式和 3 张本地图正常；页面级横向溢出、坏图、空 alt、console/page/request error 均为 0，手机端两张宽表仅在各自容器内横向滚动，截图目检无异常。
 - 本地化三张作者图：RLM 上下文卸载/程序化子调用、六任务长度外推曲线和三任务策略迁移曲线；均使用准确非空 alt，并更新 `_data/notes.yml` 增加 Tech Analysis 入口。
 - `ruby scripts/validate_notes_index.rb` 通过：149 个索引条目与 149 个顶层 HTML 一一对应；目标页 doctype、唯一 `main`、13 个唯一 id、锚点、本地图片、MathJax 和证据附录结构均通过，公开过程噪声扫描与本任务空白检查无输出。
 - 使用独立输出目录完成 Jekyll 全量构建；仅出现仓库既有的 Faraday 可选依赖提示、GitHub Metadata 未认证与公共 API 限流 warning，不影响静态页面生成。
