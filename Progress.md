@@ -157,6 +157,30 @@
 - 使用独立输出目录完成 Jekyll 全量构建，耗时约 8.0 秒；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响页面生成。
 - 独立 Chromium 在 1440×1100 与 390×844 视口均返回 HTTP 200：两张图片与 7 个公式正常渲染，断锚、坏图、console/page/request error、4xx/5xx 响应和页面级横向溢出均为 0；宽公式与表格仅在各自容器内滚动，桌面/手机全页截图目检未见重叠、截断或布局异常。
 
+## 2026-07-22 Latent Rishi 六篇 LLM 记忆论文深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Latent Rishi 的 X 帖 `2078880375418638362`。原帖发表于 2026-07-19，只列出六篇论文：模型记忆容量、原始/机制化 Cartridges、Active Reading、Sparse Memory Finetuning 与 Cartridges at Scale；没有附带作者自己的论证。
+- 完整读取六篇 arXiv 最新版本的 PDF、TeX、附录与图表；交叉核对官方 `HazyResearch/cartridges` 仓库、Meta WikiExpert 模型与 Active Reading 数据集。公开页面只能确认原帖有 3 条回复，无法恢复回复正文，笔记不推测讨论区观点。
+- 由于共享工作区有并行任务，本任务在独立 `codex/llm-memory-systems-synthesis` 分支收口，只提交本页、四张图、Notes entry 与本节 Progress。
+
+### 关键判断与独立 Insight
+
+- 六篇论文分别解决容量、写入、寻址、读取与生命周期中的局部问题，不能合并成“参数记忆已经替代 RAG”的结论。综合判断是容量通常早于可用记忆出现，首要瓶颈是地址冲突、写放大、组合隔离、更新/删除与来源治理。
+- 约 3.6 bits/parameter 只来自 100K–20M 参数、从零训练的 GPT-2 式模型，是训练可达的经验估计而非架构无关上界；membership F1 外推中目标 0.75 的两组结果分别偏 3.92 与 9.31 个点，与正文“通常 1.5 点内”的概括不一致。
+- Active Reading 与 Self-Study 共同表明记忆写入首先是数据编译问题；但推理时节约前缀会转化为离线合成和训练成本。WikiExpert 的“1T generated tokens”最终与 1T 预训练数据混合训练四轮，总训练量为 8T token；Cartridge 论文没有报告查询复用的 break-even。
+- 原始 Cartridge 的两份文档组合不能外推到大规模。CAS 的 LongHealth ablation 中独立 cartridge 单独使用为 73.6%，同时拼接 20 个跌至 26.0%；加入 distractor 的联合训练恢复到 77.8%，直接支持“寻址冲突先于容量耗尽”。
+- CAS 数据表存在可复算问题：QASPER `407×4,751≈1.934M` 却列 665K，QuALITY `115×5,713≈657K` 却列 1.9M，两列总量疑似互换；TechQA 又出现 496/471 docs 两种口径。该问题不推翻准确率主结果，但降低 token-budget 精确数字的可信度。
+- 独立提出分层记忆架构：原始证据与版本/ACL 作为 source of truth，检索负责寻址，per-document Cartridge 作为可重建 materialized view，稀疏 memory 只巩固经过验证的稳定知识，基座模型不承担高频变化事实。完整验收需覆盖 acquisition、association、retention、composition、freshness/deletion、economics 与 auditability。
+
+### 完成变更与验证结果
+
+- 新增 `notes/tech-analysis/llm-memory-systems-six-paper-synthesis.html`，本地化容量拟合、Active Reading、Sparse Memory TF-IDF 与 CAS isolation 四张原论文图；页面包含 10 个章节、3 张滚动表、12 个 MathJax 容器和文末 evidence appendix。
+- 更新 `_data/notes.yml` 增加 Tech Analysis 入口；精确分支快照通过 `ruby scripts/validate_notes_index.rb`，目标页无生成路径/工具痕迹，`git diff --check` 通过。
+- 补齐锁定依赖后完成隔离全站构建；只出现仓库既有的 GitHub Metadata 未认证与 Faraday 可选依赖提示，不影响静态生成。
+- Playwright 技能自带 CLI wrapper 因 npm 包未暴露 `playwright-cli` 可执行文件而不可用，改用工作区同版本 Playwright/Chromium 完成等价验收。桌面 1440×1000 与手机 390×844 均 HTTP 200：唯一 H1/main、10 个 section、4 张图、12 个公式、导航与 evidence appendix 正常；页面级横向溢出、断锚、失败请求、4xx/5xx 与 runtime error 均为 0，三张宽表在手机端仅于 364px 容器内局部滚动。MathJax 只产生组件版本信息 warning，公式实际渲染正常；桌面和手机全页截图目检无重叠、截断或坏图。
+
 ## 2026-07-21–22 RLM Harness / 组合泛化实验深读
 
 ### 任务与材料边界
