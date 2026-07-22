@@ -1,5 +1,25 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-22 Jingyan Shen 预训练—RL 作者串文复核
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定第一作者 Jingyan Shen 的 X 主帖 `2079250052476752325`。已完整还原主帖、9 条编号串文、合作者与官方论文/代码/模型入口，并核对 arXiv:2607.16097 v1、官方代码仓和模型集合当前状态；未占用用户前台 Chrome。
+- 该串文对应仓库已发布的《Understanding Reasoning from Pretraining to Post-Training》深读，且没有新增实验或版本，因此采用原地深化，不重复创建同主题页面或索引项。
+
+### 新增判断与原地深化
+
+- 作者串文对 headline claim 有明确自我限缩：联合定律只拟合 RL 未饱和区间，精确算力比例是 regime-specific 的局部外推；它应被视为经验趋势和量化分配框架，而非通用配方。
+- 作者把开放问题指向“何时从预训练切到 RL、数据分布和约束如何改变 scaling、两阶段如何交错”。独立判断是：可迁移的工程对象不是一次性预算比例，而是用短程 RL probe 持续更新阶段切换决策。
+- 原地更新 `notes/paper-reviews/understanding-reasoning-pretraining-post-training.html`：补入作者串文的局部性警告、动态阶段切换含义和第一作者主帖资料入口；既有论文机制、复算、代码审计与风险判断保持不变。
+
+### 验证与发布状态
+
+- Notes 索引校验通过：149 个索引条目与 149 个顶层 HTML 页面一一对应；目标页具有唯一 `main` / H1 / 文末证据附录、12 个唯一 ID、4 张有效本地图和 4 个 MathJax 容器，无断锚、空 alt、重复 ID、占位文本、替换字符或公开过程噪声，`git diff --check` 通过。
+- Jekyll 隔离构建成功；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响静态页面生成。
+- 系统 Chrome 在 1440×1100 与 390×844 两个视口均返回 HTTP 200：页面级横向溢出、坏图、断锚、console / runtime / request error 和 4xx/5xx 资源均为 0；桌面与手机全页截图目检未见重叠、截断或不可读结构。
+- 笔记补充已随同主题证据审计提交 `6df9cba` 落库；本区块单独提交，工作区中的并行研究记录不纳入本任务提交。
+
 ## 2026-07-22 视频模型 RL 后训练二次深挖
 
 ### 材料与核验范围
