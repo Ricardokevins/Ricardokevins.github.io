@@ -109,7 +109,8 @@
         <figcaption>作者给出的两项核心设计。蓝色区域是根模型真正看见的历史；任务数据与子调用结果尽量留在外部环境。</figcaption>
       </figure>
       <h3>RL 更新的对象是根策略，不是整条语义链</h3>
-      <p>公开训练实现把 RLM 包装成多轮 RL 环境。根模型每轮产生代码，运行环境执行代码并把有限输出返还；子模型调用通过代理服务完成。训练重点是根模型的控制动作：何时探查、如何切分、怎样批量调用、如何合并以及何时结束。叶子调用仍是通用语言模型请求，不需要把全部子调用 token 当作一条超长可微轨迹。</p>
+      <p>公开训练实现把 RLM 包装成多轮 RL 环境。根模型每轮产生代码，运行环境执行代码并把有限输出返还；子模型调用通过独立代理完成，代理为子请求创建空 trajectory，返回文本再以环境观察进入根历史。按公开 wrapper 与 prime-rl 的默认多轮 GRPO 路径，最终任务 reward 先变成组相对标量 advantage，再广播到这一 rollout 中所有<strong>由根策略采样的 action token</strong>；system/user/REPL 观察 token 被 mask，子调用生成的 token 也不在根策略损失中。博客没有钉住精确 prime-rl commit，因此这描述的是公开实现所呈现的信用分配结构，而不是对九个私有训练作逐 token 复现。</p>
+      <p>这个细节改变了“学会组合”的含义：训练没有告诉模型“第三次分类调用是关键步骤”，而是用最终答案的稀疏结果同时奖励或惩罚整段根控制轨迹。它确实可能让模型发现探查、切分、批调、聚合和提交的整体程序；但也带来经典的 temporal credit assignment 问题——现有实验不能识别性能来自哪一步、哪类子调用，或只是某个输出格式 token 的改善。公开 rubric 还支持用最少轮数、最少子调用和最低 reward 设门槛；示例 OOLONG 配置的 <code>min_subcall=0</code>，说明“必须分解”并非框架的固有约束。</p>
       <p>长度实验使用 Qwen3-30B-A3B-Instruct-2507，训练 150 step、batch size 64、每例 4 个 rollout，并采用带 KL 的 decoupled PPO 与类似 GRPO 的组内 advantage。六个环境分别训练，不是一个模型同时学会六类任务。跨领域实验训练到 500 step；博客没有给出同等完整的优化器、样本数和随机种子表。</p>
       <div class="callout warn"><b>递归不是必要条件</b><p>真正提供这一归纳偏置的是“外置状态 + 稳定控制流 + 可调用语义函数”。子调用可以递归地再成为 RLM，但本轮公开训练深度为 1；把结果简称为“递归带来泛化”会掩盖主要变量。</p></div>
     </section>
@@ -144,6 +145,7 @@
       </figure>
       <p>三组任务分别是 OOLONG 的 TREC 六分类统计 → 短信 spam/ham 统计、OBLIQ 写作风格检索 → 数学证明策略检索、推文隐含立场检索 → WildChat 对话错误检索。表面 token 分布确实相差很大，但解决流程都是一类程序：解析记录、为每条记录构造相同格式的语义判断、批量调用、统计或按分数排序。</p>
       <p>RLM 的 held-out 曲线随训练上升，Base Transformer 的训练 reward 更高、跨域 eval 却大多停滞。这支持作者的主张：外部控制流让模型更容易学到可以换数据域复用的算法骨架。不过“completely different domains”不等于“无关联任务”。实验对是按共同 latent structure 人工选择的，尚未展示训练与评测需要不同分解、结构只部分重合、或开放世界里事先不知道共同算法骨架时的迁移。</p>
+      <p>这三组也不是完全正交的“只换领域”实验。TREC → spam 同时把约 32K 的训练输入换成约 132K 的评测输入，因而混合了领域迁移与长度外推；另外两组虽都各有 300 个候选文档，但文档字符长度、语义难度与相关性分布并未报告为匹配。反过来，MRCRv2 的“长度实验”又同时从 2 needle 变成 8 needle。现有设计展示的是<strong>联合分布移位下仍可迁移</strong>，却不能用 factorial attribution 判断收益究竟来自长度不变性、领域抽象还是任务难度变化。</p>
       <div class="callout info"><b>更准确的贡献名称</b><p>这组结果是<strong>harness-induced strategy transfer</strong>：harness 把两个表面不同的任务编码成相似控制轨迹，从而提高迁移。它是组合泛化的重要特例，但还不是对开放式组合泛化的完整证明。</p></div>
     </section>
 
@@ -154,7 +156,30 @@
       [\tau']_H=\{\tau\in\mathcal{T}:\tau'\sim_H\tau\}.
       \]</div>
       <p>附录比较评测轨迹与此前训练轨迹的最近邻，使用 token 编辑距离、3-gram containment、Jaccard、加权 Jaccard 和长度比。RLM 在八个可比较 panel 上都比 Base Transformer 更接近训练轨迹，这与“外置上下文使根前缀稳定”一致。</p>
+      <h3>严格说，它还不是一个已建立的等价关系</h3>
+      <p>若要求精确等价，可以定义两个任务在给定策略下诱导完全相同的根轨迹分布；这天然具有自反、对称和传递性。但博客实际采用的是“距离小于某个 \(\epsilon\)”的近似版本。一般距离中的阈值邻近并不传递：A 接近 B、B 接近 C，不保证 A 接近 C，因此不能自动得到 quotient set。更重要的是，轨迹不是由 harness 单独生成，而是由 \(H\)、当前策略 \(\pi_\theta\)、采样随机性和环境共同生成。较严谨的对象应写成：</p>
+      <div class="math-display">\[
+      x \approx_{H,\pi_\theta,\epsilon} y
+      \quad\Longleftrightarrow\quad
+      D\!\left(P_{H,\pi_\theta}(\tau_{root}\mid x),P_{H,\pi_\theta}(\tau_{root}\mid y)\right)\le\epsilon.
+      \]</div>
+      <p>这意味着“同一 harness 的等价类”可能随 checkpoint 改变：早期策略把整题塞给一个子调用，后期策略学会分块，两者对同一对任务形成的轨迹关系不同。当前结果更适合称为<strong>policy-dependent approximate behavioral clustering</strong>，而不是已经证明的、由 harness 独立诱导的数学等价关系。</p>
       <p>但这还不能推出两个 prompt 对模型诱导了相同输出分布。固定 system prompt、重复的运行环境模板、相似代码骨架和接近的轮数，本来就会抬高词面相似度；最近邻还会从全部历史正 reward 轨迹中挑最相似者。公开的九对展示样本进一步要求双方 reward 大于 0.5，并被标成 representative，因此适合说明“这种同构轨迹存在”，不适合估计它在所有 rollout 中出现的概率。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>公开配对</th><th>最近邻 token-LCS</th><th>共享控制骨架</th><th>仍有的差异</th></tr></thead>
+        <tbody>
+          <tr><td>OOLONG 长度</td><td>0.824</td><td>解析 → 按用户过滤 → 批量六分类 → 计数比较</td><td>用户与目标类别变化</td></tr>
+          <tr><td>LongBench-Pro</td><td>0.767</td><td>检查变量 → 关键词计数 → 排序提交</td><td>词表与大小写处理变化</td></tr>
+          <tr><td>MRCRv2</td><td>0.667</td><td>探查 → 定位请求 → 截取回答 → 加 hash</td><td>评测多验证两轮</td></tr>
+          <tr><td>OOLONG-Pairs</td><td>0.628</td><td>解析 → 分类 → 按用户聚合 → 枚举 pair</td><td>set/list、ID 类型与调用接口变化</td></tr>
+          <tr><td>GraphWalks</td><td>0.621</td><td>解析边 → 反向邻接 → 查父节点</td><td>图规模约 8 倍、解析防护变化</td></tr>
+          <tr><td>Ada-LEval</td><td>0.564</td><td>抽候选 → 批量筛选 → 两两比较</td><td>多一次变量探查、判断词表变化</td></tr>
+          <tr><td>Twitter → WildChat</td><td>0.599</td><td>抽文档 → 批量打分 → 排序</td><td>训练多一次单文档 smoke test</td></tr>
+          <tr><td>TREC → spam</td><td>0.514</td><td>按用户过滤 → 批量分类 → 计数比较</td><td>六分类变二分类，且输入更长</td></tr>
+          <tr><td>写作 → 数学</td><td>0.494</td><td>解析 300 文档 → 批量相关性打分 → 排序</td><td>评分尺度、解析写法与领域变化</td></tr>
+        </tbody>
+      </table></div>
+      <p>九对中 5 对被发布方标为逐步分解相同，4 对为只多探查、验证或调试轮次；这个人工判读比单一词面分数更有语义价值。但流程先做全局最近邻搜索，再只保留成功轨迹，每个 case 只展示一对，且“sub-agent verification”属于发布方自审而非外部盲评。最低 LCS 仅 0.494 也说明“相同策略”与“近 token-for-token”是两种不同主张，不能互换。</p>
       <div class="grid-2">
         <div class="card"><h3>已直接支持</h3><p>根轨迹的词面与长度确实更稳定；公开九对样本共享解析、批量调用、聚合、提交的顺序；训练策略会在更长或新领域任务中重现。</p></div>
         <div class="card"><h3>仍未直接支持</h3><p>每个局部 prompt 真正属于训练分布；相近文本会产生相近 logits；同构轨迹是性能提升的因果中介，而不是模板化 harness 的伴随现象。</p></div>
@@ -178,6 +203,21 @@
       <p>这不削弱系统结果：产品最终关心的本来就是“模型 + harness”是否更好。它只改变归因。当前实验能证明 RLM 系统在这些任务上更会迁移，不能单独证明根模型内部获得了比 Transformer 更强的组合泛化表征。要分离原因，需要加入等总 token / FLOPs 的多调用 baseline、只有 context offloading 的版本、只有程序化子调用的版本、无 Python 语义处理的版本，以及让 base 也获得相同工具预算的 ReAct / CodeAct 对照。</p>
     </section>
 
+    <section id="causal-audit">
+      <h2>从结果到机制：目前还缺哪几级因果证据</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>命题</th><th>当前证据</th><th>能否成立</th><th>关键补实验</th></tr></thead>
+        <tbody>
+          <tr><td>短任务 RL 可提高长任务/新领域表现</td><td>九组发布方曲线</td><td><strong>支持</strong>，但无多 seed 与独立复现</td><td>公开曲线、seed、checkpoint 后重跑</td></tr>
+          <tr><td>成功迁移复用了训练中的控制骨架</td><td>九对最近成功轨迹与人工对齐</td><td><strong>存在性支持</strong>，总体频率未知</td><td>对全量 rollout 盲评并报告分布</td></tr>
+          <tr><td>根轨迹相似是性能提升的中介</td><td>词面相似与性能同时较高</td><td><strong>相关性</strong>，未做中介干预</td><td>结构扰动 + 相似度/性能 dose-response</td></tr>
+          <tr><td>每个 LM 调用 locally in-distribution</td><td>只测根轨迹文本代理</td><td><strong>未直接支持</strong></td><td>根与叶 prompt 的覆盖率、logit/KL、校准与局部成功率</td></tr>
+          <tr><td>优势来自组合泛化而非额外系统算力</td><td>不等预算 RLM vs 单次 base</td><td><strong>无法分离</strong></td><td>等 token/FLOPs/工具/内存的多调用对照</td></tr>
+        </tbody>
+      </table></div>
+      <p>最有信息量的反证测试不是再加一个相似 benchmark，而是主动打破理论链条。如果等预算多调用 baseline 追平 RLM，收益更像 test-time compute；如果对变量重命名、无关输出模板变化极敏感，策略更像表面模仿；如果根轨迹相似度下降但迁移不变，它就不是必要中介；如果叶子调用在新领域失准而根轨迹仍相似，则“所有调用 LID”不成立。一个成熟理论应提前列出这些可证伪条件，而不仅解释成功曲线。</p>
+    </section>
+
     <section id="reproducibility">
       <h2>开放程度：框架可用，博客实验尚未闭环</h2>
       <div class="grid-3">
@@ -185,6 +225,7 @@
         <div class="card"><h3>部分公开</h3><p>训练仓只有 OOLONG 示例环境和一份示例配置；模型卡给出 mixed-suite 适配器，但不是博客九组独立训练 checkpoint。</p></div>
         <div class="card"><h3>仍然缺失</h3><p>九组精确配置、完整逐 step 数值、数据 split 清单、seed、全部 rollout、距离计算脚本和端到端复现说明。</p></div>
       </div>
+      <p>轨迹仓的 README 提到用于全局搜索、保存配对、距离计算和绘图的脚本及数据目录，但这些路径并未随公开站点仓一同提交；因此九对文本和相似度 JSON 可检查，无法从原始全量 rollout 独立重建“为什么它是最近邻”。这比“完全没公开轨迹”好很多，却仍不足以审计选择过程与总体分布。</p>
       <p>公开 LoRA 适配器确认了核心工程形态：基础模型为 Qwen3-30B-A3B-Instruct-2507，rank 32，只适配 q/k/v/o 投影，训练深度为 1，硬件标为 8×A100。模型卡还明确写着部分推理 flag 的精确列表待补。当前训练仓的示例是 200 step、batch 32、每例 2 rollout，并将 MLP 投影也列入 LoRA target；博客长度实验是 150 step、batch 64、每例 4 rollout。示例从未声称等同博客配置，所以这是<strong>复现缺口</strong>，不是直接矛盾。</p>
       <p>原始 RLM 论文为方法与已有长上下文结果提供了扎实背景，并公开了更多成本与失败案例：子调用数可能爆炸，轨迹成本呈长尾；某些模型会做数百次调用却丢弃已算出的正确中间答案。本轮新博客没有重新报告这些系统级尾部风险。把 RLM 部署为真实 Agent 时，调用上限、缓存、超时、变量污染、沙箱和可观测性仍是不可省略的工程层。</p>
       <div class="callout warn"><b>证据评级</b><p>“短训练能迁移到更长的同结构 RLM 任务”可评为<strong>强发布方证据</strong>；“harness 诱导相似控制轨迹”有代码与样本支持；“每个调用均处于训练分布”“组合泛化主要应由 harness 承担”仍是分析框架与研究假说，等待独立复现和因果消融。</p></div>
@@ -216,6 +257,8 @@
       <p>上下文不再爆炸，不代表复杂度消失。复杂度转化为子调用数量、依赖深度、错误累积、变量生命周期与调度尾延迟。RLM 原论文已经观察到调用爆炸和长尾成本。下一代 harness 的核心指标不应只有 reward，还要包括总模型 tokens、调用图宽度与深度、P95/P99 延迟、失败恢复率、变量可追溯性和单位正确答案成本。</p>
       <h3>5. 最终竞争单位将是共同训练的 model–harness system</h3>
       <p>这项工作的深层含义不是“模型不重要”，而是模型架构边界正在外扩。只在裸模型 benchmark 上训练，可能无法发挥一个受结构约束 harness 的优势；只写手工 harness，又会被脆弱规则限制。更可扩展的路线是固定少量安全、通用的系统原语，让模型通过 RL 学会何时组合它们，并在等系统预算下评测整个闭环。</p>
+      <h3>6. 真正可迁移的对象不是“轨迹文本”，而是带语义的行为商空间</h3>
+      <p>两段代码可以 token 完全不同却执行同一数据流，也可以 token 几乎相同却因一个比较符号改变答案。更稳健的 abstraction 应以可观察行为定义：读了哪些状态、调用了什么 typed primitive、数据依赖如何连接、各中间结果满足什么后置条件。换言之，未来要比较的不是字符串 quotient，而是调用图或程序语义的 quotient；这也能把 harness 论点接到状态抽象、bisimulation 与 hierarchical RL 的成熟问题上。</p>
     </section>
 
     <section id="practice">
@@ -232,17 +275,19 @@
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>主材料是 Alex Zhang 于 2026-07-20 发布的作者原帖与同日实验博客，alphaXiv 的次日介绍只作为传播语境。博客正文、附录、全部图表、公开九对代表性轨迹、RLM 主分支训练实现、示例配置、模型卡与适配器元数据均已核对；原始 RLM 论文 v3 的正文与附录用于补充方法、成本和失败模式。本文没有在 8×A100/H100 环境重跑九组 RL 训练，曲线结果均按发布方报告，图中近似数值只用于校准量级。公开材料目前未提供博客全部实验的精确配置、完整数值与独立复现，平台回复树也不作为核心证据。</p>
+      <p>主材料是 Alex Zhang 于 2026-07-20 发布的作者原帖与同日实验博客，alphaXiv 的次日介绍只作为传播语境。博客正文、附录、全部图表、公开九对代表性轨迹、逐对 decomposition verdict、RLM 主分支训练 wrapper、prime-rl 的多轮 token mask/advantage 设计、示例配置、模型卡与适配器元数据均已核对；原始 RLM 论文 v3 的正文与附录用于补充方法、成本和失败模式。本文没有在 8×A100/H100 环境重跑九组 RL 训练，曲线结果均按发布方报告，图中近似数值只用于校准量级。公开材料目前未提供博客全部实验的精确配置、完整数值、用于筛选轨迹的全量数据/脚本与独立复现；截至 2026-07-22 也未发现独立复现实验，平台回复树不作为核心证据。</p>
       <ul>
         <li><a href="https://x.com/a1zhang/status/2079203524395573442">Alex Zhang：作者发布帖</a></li>
         <li><a href="https://x.com/askalphaxiv/status/2079359061435261306">alphaXiv：Language model harnesses are compositional generalizers</a></li>
         <li><a href="https://alexzhang13.github.io/blog/2026/harness/">Alex Zhang、Omar Khattab：Language model harnesses are compositional generalizers</a></li>
         <li><a href="https://arxiv.org/abs/2512.24601">Recursive Language Models（arXiv:2512.24601 v3）</a></li>
         <li><a href="https://github.com/alexzhang13/rlm">RLM 官方实现与训练环境</a></li>
+        <li><a href="https://github.com/PrimeIntellect-ai/prime-rl">prime-rl：多轮轨迹、token mask 与组相对信用分配实现</a></li>
         <li><a href="https://huggingface.co/mit-oasys/rlm-qwen3-30b-a3b-v0.1">RLM Qwen3-30B-A3B v0.1 LoRA 适配器与模型卡</a></li>
         <li><a href="https://github.com/google-deepmind/eval_hub/tree/master/eval_hub/mrcr_v2">MRCRv2 官方评测实现</a>；<a href="https://huggingface.co/datasets/openai/graphwalks">OpenAI GraphWalks 数据集</a></li>
         <li><a href="https://arxiv.org/abs/2601.02872">LongBench Pro</a>；<a href="https://arxiv.org/abs/2511.02817">OOLONG</a>；<a href="https://arxiv.org/abs/2404.06480">Ada-LEval</a></li>
         <li><a href="https://verl.readthedocs.io/en/latest/algo/rollout_corr_math.html#decoupled-ppo-achieving-batch-size-invariance">Decoupled PPO / rollout correlation 说明</a></li>
+        <li><a href="https://arxiv.org/abs/1912.09713">Measuring Compositional Generalization：以 atom / compound divergence 构造组合泛化 split</a></li>
       </ul>
     </section>
   </main>

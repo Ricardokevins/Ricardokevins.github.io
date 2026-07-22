@@ -19,6 +19,15 @@
 - 公开复现链仍不完整：当前主分支只有 OOLONG 示例环境和一份 200-step 示例配置；博客是六组 150-step 长度训练和三组 500-step 策略训练。公开 53.5MB LoRA 是 mixed-suite 适配器，不是九组独立 checkpoint；完整数值、seed、全部 rollout、距离脚本与博客精确配置未公开。
 - 独立 insight：Harness 不只是工具壳，而是在把原始任务编译成受限控制语言，缩小 RL 的策略搜索空间。未来应把局部同分布从词面相似升级为稳定的 typed subtask contract，并用等 token/FLOPs baseline、结构扰动、调用图尾延迟与单位正确答案成本评估整个 model–harness system。
 
+### 2026-07-22 二次深化审计
+
+- 继续追到公开 RLM wrapper 与 prime-rl 的多轮信用分配：子调用通过独立代理完成，其 token 不进入根策略损失；最终任务 reward 经组相对 advantage 广播到根模型采样的 action token，system/user/REPL 观察 token 被 mask。由此明确该训练依赖稀疏的整轨迹信用，而没有对子调用或中间步骤作直接监督；博客未钉精确 prime-rl commit，笔记已标注实现推断边界。
+- 逐对复核九组公开成功轨迹及 decomposition verdict：最近邻 token-LCS 为 0.494–0.824；5 对逐步骨架相同，4 对只增加探查、验证或调试轮次。它支持“成功迁移时存在复用控制骨架”，但每个 case 只展示一对从历史正 reward 轨迹中筛出的最近邻，属于存在性证据，不代表全部 rollout 的同构率；发布方 sub-agent 判读也不是独立盲评。
+- 补上形式化断点：若以距离阈值定义“近似同构”，关系通常不满足传递性，不能自动形成 quotient set；根轨迹又由 harness、当前策略、采样与环境共同生成，因此所谓等价类是 checkpoint-dependent 的近似行为聚类，不是 harness 单独诱导的固定等价关系。
+- 补上实验因子混杂：TREC → spam 同时发生约 32K → 132K 的长度变化，MRCRv2 的 64K → 2M 又同时从 2 needle 变成 8 needle；当前结果展示联合分布移位下的迁移，不能分别归因于长度不变性、领域抽象或难度变化。
+- 新增五级因果证据表和可证伪测试，区分发布方性能曲线、成功轨迹的存在性、轨迹相似的中介因果、所有调用 LID、以及等系统预算归因；同时指出公开 README 所引用的全局搜索/距离脚本与全量数据未随站点仓提交，无法独立重建最近邻筛选。
+- 二次验证通过：Notes 索引为 149/149；目标页唯一 `main`/H1、13 个章节、14 个唯一 id、3 个公式源块、证据附录与 `git diff --check` 均正常。补齐临时 bundle 后完成 Jekyll 隔离构建；独立无头浏览器在 1440×1000 与 390×844 下均返回 HTTP 200，页面级横向溢出、坏图、断锚、console/page/request error 全为 0，4 张宽表在手机端只做局部横向滚动，桌面和手机全页截图目视检查通过。
+
 ### 完成变更与验证结果
 
 - 原地修正笔记的来源层级：开头改以 Alex Zhang 作者原帖为 canonical 发布入口，alphaXiv 降为传播语境；文末新增作者原帖链接，并保留原有博客、论文、代码、模型和 benchmark 一手资料索引。
