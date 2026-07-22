@@ -356,14 +356,19 @@
 - 复核交叉验证后确认：run-level LOO 不在每折重拟合 Chinchilla loss surface；LMSO 才完整重拟合。附录把 `0.0194-0.0102` 写成 0.0099，独立复算应为 0.0092（47.4%）。
 - 补全总算力公式：前沿包含预训练、SFT 训练和 RL model FLOPs，RL 按 rollout/reference/policy training 合计 `10N·T_rollout`；但 trace 生成、数据筛选、系统空转和墙钟成本不完全在该口径内。新增近优分配色带图，强调“RL 份额随算力上升”的趋势比 20%–28% 精确端点可靠。
 - 对策略机制新增测量审计：128-trace Monte Carlo、5% tail 阈值和 top-3 均缺敏感性分析；精确线路 reward 在少数 mate-in-one 多解题上可能产生有效答案假阴性。新增五组可证伪实验，覆盖 matched-loss 干预、多 seed/簇交叉验证、分类阈值扫描、大模型饱和和跨模型族复现。
+- 逐页复核 37 页 PDF 与原始图文件，确认主文与附录的 B3–B4 斜率拟合口径一致：token-only 为 `R²=0.701`、Pearson `r=0.84`、Spearman `ρ=0.839`，联合拟合为 `R²=0.841`；据此把笔记中的相关系数类型和精确系数写清，避免把相关回归系数误读成因果效应。
+- 补全论文未在主文 Figure 5 展示的策略 taxonomy：除正确模态放大、tail discovery、wrong-mode amplification 外，还有 top-k correction、ground-truth regression 与 Other；同时收紧 CoT 结论，因为“变宽不变深”只来自 20M/50M 两条代表性 run，附录最深仅检查 4 个 player plies。
+- 通过 Hugging Face 官方 API 与三个原始 CSV 逐文件核对发布物：公开训练导出分别为 69,367、68,000、91,619 行，合并后的 228,986 行不是 156K 唯一候选池；公开 think benchmark 有 1,484 个唯一 PuzzleId，比论文表格多 4 道且没有版本变更说明。
+- 静态审计公开启动配置：SFT 示例的 2048 context / `5e-5` 学习率不同于论文 3072 / `3e-4`；RL sweep 仅五个配置、默认 500 步/2560 response，且 8-GPU launcher 只暴露四张 GPU。公开仓库能复核组件，不能视为论文实验的冻结配方。
 - 修复正文中失效的 inline MathJax 定界符，新增渐近上限与算力近优带两张附录图，并同步深化 Notes 索引摘要。
 
 ### 验证与发布状态
 
-- Notes 索引校验通过：149 个索引条目与 149 个顶层 HTML 页面一一对应；目标页包含 13 个唯一章节、3 张表格、6 张有效本地图和 6 组源公式，无重复 ID、空 alt、缺图、公开过程噪声或差异空白错误。
-- Jekyll 隔离构建成功；仅有仓库既有的 `faraday-retry` 建议和 GitHub Metadata 未认证提示，不影响静态页面生成。
-- 专用无头浏览器在 1440×1100 与 390×844 两个视口均返回 HTTP 200；MathJax 生成 38 个公式容器，横向溢出、坏图、console/runtime/request error 均为 0。桌面与手机全页截图目检未见重叠、截断或不可读结构。
-- 只暂存本任务页面、两张新增图、Notes 索引中的对应 entry 和本节 `Progress.md` hunk；其他并行笔记与进度改动不纳入本次提交。
+- Notes 索引校验通过：152 个索引条目与 152 个顶层 HTML 页面一一对应；目标页包含 13 个唯一章节、35 个二三级标题、3 张表格、6 张有效本地图和 6 组源公式，无重复 ID、空 alt、缺图、断锚、公开过程噪声或差异空白错误。
+- 使用隔离依赖目录完成 Jekyll 全量构建，耗时约 15.7 秒；仅有仓库既有的 `faraday-retry` 建议和 GitHub Metadata 未认证提示，不影响目标页生成。
+- 专用无头浏览器在 1440×1100 与 390×844 两个视口均返回 HTTP 200；MathJax 生成 51 个公式容器，页面级横向溢出、坏图、断锚、console/page/request error 与 4xx/5xx 响应均为 0。桌面与手机全页截图目检未见重叠、截断或不可读结构。
+- 后续只暂存本任务页面、两张新增图、Notes 索引中的对应 entry 和本节 `Progress.md` hunk；其他并行笔记与进度改动不纳入本次提交。
+
 
 ## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
 

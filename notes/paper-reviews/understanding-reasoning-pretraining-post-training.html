@@ -125,7 +125,7 @@
       <p>Shen 等人把十种棋类 Transformer、十一档预训练预算、四种 RL 模型规模和 36 条预训练—RL 组合曲线放进同一个受控试验台。最可信的新证据是：<strong>更低的预训练损失关联更高的 RL 后性能，而更多的预训练 token 又关联更陡的局部 RL 学习斜率</strong>。这让“先预训练多少、再强化多少”从静态预算切分，变成一个耦合优化问题。</p>
       <div class="grid-3">
         <div class="card"><h3>起点由预训练决定</h3><p>参考 RL 预算下的性能与预训练损失高度单调相关；随着参考预算增大，相关强度由约 0.93 上升到 0.99。</p></div>
-        <div class="card"><h3>速度也由预训练决定</h3><p>局部 RL 斜率与预训练 token 数的相关系数约为 0.84。相同 RL 算力，底座训练经历不同，回报并不相同。</p></div>
+        <div class="card"><h3>速度也由预训练决定</h3><p>局部 RL 斜率与预训练 token 数的 Pearson \(r=0.84\)，附录另报 Spearman \(\rho=0.839\)。相同 RL 算力，底座训练经历不同，回报并不相同。</p></div>
         <div class="card"><h3>发现伴随放错</h3><p>RL 能把低概率正确棋步推入 top-3，也会把错误主模态进一步放大；困难题上后者明显多于前者。</p></div>
       </div>
       <div class="callout">
@@ -185,6 +185,7 @@
         <img src="understanding-reasoning-pretraining-post-training-assets/joint-scaling-law.png" alt="预训练损失与参考 RL 性能、预训练 token 与 RL 学习斜率的拟合关系图">
         <figcaption>左：更低预训练损失对应更高参考预算性能。右：更多预训练 token 对应更陡 RL 斜率。它们分别描述“起点”和“局部学习速度”，不能互相替代。图源：论文主结果。</figcaption>
       </figure>
+      <p>主图给出的斜率拟合更具体：token-only 模型为 \(B=-0.1221+0.0156\log_{10}T\)，\(R^2=0.701\)；加入规模后为 \(B=-0.2083+0.0172\log_{10}T+0.0088\log_{10}N\)，\(R^2=0.841\)。这说明 \(N\) 提供了额外解释力，但两项自变量沿同一批 checkpoint 网格共同变化，系数不应直接读成可干预的边际因果效应。</p>
       <h3>“统一”统一的是预测接口，不是训练动力学</h3>
       <p>合作者 Leon Li 的发布帖把问题压缩成“能否为完整预训练—RL 流程写出统一 scaling law”。论文给出的答案其实是<strong>函数拼接</strong>：先由预训练配置预测损失，再由损失预测固定 RL 预算下的性能，并用模型规模与训练 token 预测局部 RL 斜率。它把两个阶段接到同一张预算响应面上，却没有证明预训练梯度与策略梯度服从同一种动力学，也没有覆盖奖励设计、SFT 数据量、交错训练或在线数据分布变化。因此这里的 unified 应读成“跨阶段可联合预测”，而不是“一条跨任务、跨算法都不变的基础定律”。</p>
       <div class="table-wrap">
@@ -207,7 +208,7 @@
           <thead><tr><th>主张</th><th>直接证据</th><th>证据等级</th><th>仍成立的替代解释</th></tr></thead>
           <tbody>
             <tr><td>预训练损失预测参考 RL 性能</td><td>36 条曲线；observed-loss LOO RMSE 0.0102；LMSO RMSE 0.0242</td><td>域内预测较强，跨规模中等</td><td>同一模型家族、数据与固定 SFT 管线内的共同因素</td></tr>
-            <tr><td>更多预训练 token 关联更陡局部 RL 斜率</td><td>四个规模、8–11 个 checkpoint；Spearman 0.84</td><td>相关性中等偏强，因果性不足</td><td>sigmoid 工作点、预训练损失、模型规模与 checkpoint 祖先相关性</td></tr>
+            <tr><td>更多预训练 token 关联更陡局部 RL 斜率</td><td>四个规模、8–11 个 checkpoint；Pearson 0.84、Spearman 0.839</td><td>相关性中等偏强，因果性不足</td><td>sigmoid 工作点、预训练损失、模型规模与 checkpoint 祖先相关性</td></tr>
             <tr><td>更强预训练抬高 RL 最终上限</td><td>只有 20M 的 10 条曲线足够饱和；500 次参数 bootstrap</td><td>探索性证据</td><td>更大模型尚未跑到可识别上限，误差区间较宽</td></tr>
             <tr><td>最优 RL 份额随总算力增加</td><td>拟合响应面上的网格搜索与 \(\epsilon\)-近优区域</td><td>趋势比精确端点可靠</td><td>目标函数、奖励噪声、系统成本和模型族改变后前沿可能移动</td></tr>
           </tbody>
@@ -254,7 +255,7 @@
         =10NT_{\mathrm{rollout}}.
         \]
       </div>
-      <p>RL 的 10 倍系数分别来自策略 rollout 前向、reference model 前向与策略反向训练。前沿实际求解的是 \(C_{\mathrm{RL}}=C_{\mathrm{total}}-6NT-C_{\mathrm{SFT}}\)，所以 SFT 训练已经计入分母；但用于生成 SFT traces 的模型推理、Stockfish 标注、数据筛选、通信空转和推理吞吐没有全部进入这个 model-FLOP 口径。论文也给出一个系统侧锚点：50M 模型跑 2,000 个 RL steps 约需 160 H200 GPU-hours，说明相同 FLOPs 不等于相同墙钟成本。</p>
+      <p>RL 的 10 倍系数分别来自策略 rollout 前向、reference model 前向与策略反向训练。前沿实际求解的是 \(C_{\mathrm{RL}}=C_{\mathrm{total}}-6NT-C_{\mathrm{SFT}}\)，所以 SFT 训练已经计入分母。按论文的 42K 样本、3 epochs 和固定 3072 长度复算，SFT 最多处理 3.871 亿 padded tokens，对 20.5M、47.3M、203.1M、678.6M 模型分别约为 \(4.76\times10^{16}\)、\(1.10\times10^{17}\)、\(4.72\times10^{17}\)、\(1.58\times10^{18}\) FLOPs；低总预算下它不是可忽略常数。但用于生成 SFT traces 的模型推理、Stockfish 标注、数据筛选、通信空转和推理吞吐没有全部进入这个 model-FLOP 口径。论文也给出一个系统侧锚点：50M 模型跑 2,000 个 RL steps 约需 160 H200 GPU-hours，说明相同 FLOPs 不等于相同墙钟成本。</p>
       <p>把损失面与 RL 响应面合并，在固定总算力下搜索预训练和 RL 的最优切分。实验网格中的 20M 模型，经验最优 RL 份额随总预算由约 5% 上升到 32%；拟合后的全局 frontier 则从 50M 模型约 20% 上升到 680M 约 28%。</p>
       <p>Francesco Bertolotti 的原帖把这组端点概括为“模型从 50M 增至 700M，最优 RL 份额从 20% 增至 30%”。方向没有错，但 700M 与 30% 都是对论文 Figure 4 中 680M 与 28% 的取整；而且这些端点来自拟合后的连续最优前沿，不是两个生产级大模型上直接测得的固定配方。</p>
       <div class="callout info">
@@ -280,9 +281,12 @@
       </div>
       <p>先检验一个最简单假设：RL 只是对所有状态施加同一个温度，把 SFT 分布做幂次锐化。750 步时最佳全局指数约为 1.35，但统一锐化只能解释约 17% 的策略变化；即便改用中心化 logit 线性模型，整体 \(R^2\) 也只有约 0.56。不同状态的变化显著异质。</p>
       <div class="def-list">
-        <div><b>正确模态放大</b><span>正确棋步在 SFT 时已位于 top-3，RL 后概率继续增加。</span></div>
+        <div><b>正确模态放大</b><span>正确棋步在 SFT 时已位于 top-3，RL 后仍在 top-3 且概率继续增加。</span></div>
         <div><b>尾部发现</b><span>正确棋步初始概率低于 5% 且不在 top-3，训练后进入 top-3。</span></div>
+        <div><b>Top-k 修正</b><span>正确棋步原本已有至少 5% 概率、但不在 top-3；RL 后进入 top-3。</span></div>
+        <div><b>正确棋步回退</b><span>正确棋步原本在 top-3，RL 后跌出 top-3。</span></div>
         <div><b>错误模态放大</b><span>正确棋步仍在 top-3 外，而 SFT 时最强的错误棋步进一步增大。</span></div>
+        <div><b>其他</b><span>不满足上述条件的剩余迁移。主文 Figure 5 只展示三类，并不意味着完整 taxonomy 只有三类。</span></div>
       </div>
       <div class="callout info">
         <b>原帖里一个容易混淆的压缩表达</b>
@@ -298,7 +302,7 @@
       <h3>精确线路奖励也不是完全无歧义</h3>
       <p>公开奖励实现逐步比对整条目标 UCI 线路，长度和每一步都完全相同才得 1。Lichess 说明其 puzzle solution 中玩家着通常是唯一走法，但 mate-in-one 可能存在多个将杀着，任一将杀都应获胜；公开预处理脚本未见专门排除这类多解。于是极少数有效替代杀法可能被记为 0。这是奖励定义的边缘假阴性，而非足以推翻整体结果的大规模标签问题，却提醒我们“可验证”不等于“唯一规范答案”。</p>
       <h3>思维链变宽，不一定变深</h3>
-      <p>训练后，reasoning tree 的分支数和宽度增加，最大深度大致持平或略降；候选棋步质量与最终承诺改善，但深度优先遍历的一致性下降、重复访问增多，长程恢复能力仍弱。它更像在学习“提出并选择更好的候选”，而不是稳定获得更深的规划算法。这也解释了为何短程 pass@1 能快速进步，而高难度长路径仍是瓶颈。</p>
+      <p>训练后，reasoning tree 的分支数和宽度增加，最大深度大致持平或略降；候选棋步质量与最终承诺改善，但深度优先遍历的一致性下降、重复访问增多，长程恢复能力仍弱。它更像在学习“提出并选择更好的候选”，而不是稳定获得更深的规划算法。这项结构分析只来自 matched-compute 的 20M 与 50M 两条代表性 run，并非 36 条曲线的总体统计；附录最深只检查前 4 个 player plies，50M 到第 1,000 步时也只有少数 rollout 覆盖完整 4-ply 目标。因此“变宽不变深”应视为有解释力的机制切片，而不是跨规模定律。</p>
     </section>
 
     <section id="math-transfer">
@@ -319,14 +323,15 @@
           <thead><tr><th>发布物</th><th>公开状态</th><th>能验证什么</th><th>仍缺什么</th></tr></thead>
           <tbody>
             <tr><td>54B-token 棋谱数据</td><td>公开，约 215GB</td><td>预训练语料结构与规模</td><td>大规模下载与训练成本高</td></tr>
-            <tr><td>棋题 benchmark / 训练数据</td><td>公开</td><td>样本字段、难度与题目数量</td><td>平台当前显示约 229K 行，和论文过滤后 156K 池的版本映射不够清楚</td></tr>
+            <tr><td>棋题 benchmark / 训练数据</td><td>公开，但版本口径不完全一致</td><td>样本字段、难度、导出文件与逐题 ID</td><td>公开 think benchmark 为 1,484 道而论文为 1,480；三个训练导出也不等于 156K 唯一候选池</td></tr>
             <tr><td>预训练与 SFT 权重</td><td>公开</td><td>多个规模和 checkpoint 的基础行为</td><td>集合中未见棋类 RL 权重</td></tr>
             <tr><td>棋类训练代码</td><td>公开</td><td>tokenizer、SFT trace、二值奖励和 GRPO 构件</td><td>缺完整 36-run 配方、scaling/frontier 拟合脚本和对应测量表</td></tr>
             <tr><td>数学模型权重</td><td>公开 15 条 pretrain→anneal→SFT→RL 链</td><td>检查 checkpoint 组织和最终权重</td><td>数学训练脚本、优化器状态与完整日志未发布</td></tr>
           </tbody>
         </table>
       </div>
-      <p>当前公开启动配置与论文还存在几处实际偏差：标为 8-GPU 的脚本只暴露四张 GPU，却配置每节点使用八张；默认 response 上限为 2560，而论文写 3072；公开 sweep 默认仅五个配置、500 步，论文联合分析则使用 36 个组合和 1,000–5,000 步。仓库也没有直接生成主 scaling law 与算力 frontier 的脚本和完整测量数据。</p>
+      <p>公开数据可以进一步拆开：训练仓库实际包含 69,367 行 <code>rl_dataset.csv</code>、68,000 行 easy-skewed RL 导出和 91,619 行 SFT 导出，平台合并后才得到 228,986 行；它们是不同用途且可能重叠的导出，不应与论文过滤后的 156K 唯一 puzzle pool 比较。公开 think benchmark 有 B1/B2/B3/B4/B5 = 310/299/267/288/320，共 1,484 个唯一 PuzzleId；论文表格则为 308/298/267/287/320，共 1,480，道数差 4。当前材料没有给出这 4 道题的版本变更记录。</p>
+      <p>当前公开启动配置与论文还存在几处实际偏差：SFT 示例使用 2048 context、学习率 \(5\times10^{-5}\)，论文是 3072 与 \(3\times10^{-4}\)；标为 8-GPU 的 RL 脚本只暴露四张 GPU，却配置每节点使用八张；默认 response 上限为 2560，而论文写 3072；公开 sweep 默认仅五个配置、500 步，论文联合分析则使用 36 个组合和 1,000–5,000 步。仓库也没有直接生成主 scaling law 与算力 frontier 的脚本和完整测量数据。因此代码发布适合核验方法组件，不是论文配方的逐项冻结快照。</p>
       <p>数据去污染的论文定义很严格：重放每局预训练棋谱，只要任一中间状态与后训练或测试棋题重合，就删除整局；匹配键是“棋子布局 + 轮到哪方”的标准化 FEN，棋题之间再按根局面去重。这能强力抑制精确状态泄漏，但不会消除战术 motif 或棋形层面的语义重合。公开脚本可以接收任意 puzzle 文件，README 示例却只传 test 文件；要复现论文声称的“post-training + test”去污染，执行者必须自行把两类状态都传入。这是文档闭环问题，不是算法本身不支持。</p>
       <div class="callout">
         <b>复现结论</b>
@@ -397,11 +402,13 @@
       <h3>用于校准“发现、覆盖与预算”的一手研究</h3>
       <ul>
         <li><a href="https://arxiv.org/abs/2504.13837">Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?</a>：RLVR 小 \(k\) 改善与大 \(k\) 覆盖边界。</li>
-        <li><a href="https://arxiv.org/abs/2509.25123">Can RL Learn New Reasoning Skills?</a>：受控原子函数与未见组合。</li>
+        <li><a href="https://arxiv.org/abs/2509.25123">From f(x) and g(x) to f(g(x))</a>：受控原子函数与未见组合，显示 RL 可通过组合旧技能获得新技能。</li>
         <li><a href="https://arxiv.org/abs/2509.21016">The RL Grokking Recipe</a>：在受控代码任务中研究 pass@K=0 家族和 grokking 条件。</li>
         <li><a href="https://arxiv.org/abs/2510.15020">The Coverage Principle</a>：高质量回答概率质量与后训练、测试时扩展的关系。</li>
         <li><a href="https://arxiv.org/abs/2512.07783">The Interplay of Pre-Training, Mid-Training, and RL on Reasoning</a>：底座 headroom、数据阶段与 RL 收益。</li>
         <li><a href="https://arxiv.org/abs/2510.03264">Front-Loading Reasoning</a>：把多样推理模式提前注入预训练和 SFT 的路线。</li>
+        <li><a href="https://arxiv.org/abs/2510.13786">The Art of Scaling Reinforcement Learning Compute for LLMs</a>：用 sigmoid 曲线区分 RL 的算力效率与渐近上限，是本文 20M 饱和分析的直接方法背景。</li>
+        <li><a href="https://arxiv.org/abs/2606.04272">RL Excursions during Pre-Training</a>：显示 RL 在早期 checkpoint 也能有效，且数据组成可能比模型规模更能改变 RL 收益，进一步说明 token 数不是唯一因果变量。</li>
       </ul>
       <p class="small"><a href="#top">返回页首</a></p>
     </section>
