@@ -66,9 +66,9 @@
   <header id="top">
     <div class="kicker">Paper Note · Native Visual Reasoning</div>
     <h1>UniVR 深读：视觉空间推理，还是视觉轨迹策略学习？</h1>
-    <p class="lede">UniVR 最有价值的贡献，不是证明图像已经可以取代语言进行一般推理，而是把“预测下一张关键帧”扩展成跨任务的策略表示，并用最分歧的中间步骤去约束长程视觉 rollout。它提供了很强的方向性证据；但语言仍存在于指令、数据策展、奖励与评测中，当前开放代码也尚未完整复现论文所述 Step-Focal 选择器。</p>
-    <div class="paper-meta"><span>arXiv:2607.12800 v1</span><span>2026-07-14</span><span>Emu3.5 34B</span><span>VR-X · 16 sources</span></div>
-    <div class="mini-index"><a href="#takeaway">核心判断</a><a href="#problem">问题</a><a href="#mechanism">机制</a><a href="#reward">VR-GRPO</a><a href="#evidence">证据</a><a href="#audit">审计</a><a href="#limits">边界</a><a href="#insight">Insight</a><a href="#sources">资料</a></div>
+    <p class="lede">UniVR 最有价值的贡献，不是证明图像已经取代语言进行一般推理，而是把关键视觉状态变成可生成、可审计的策略表示，并把验证预算投向多条 rollout 最容易分叉的步骤。重新核对论文、训练数据路径和奖励代码后，结论需要进一步收紧：论文主张的是“无语言监督”，但公开 SFT 入口会监督逐帧 caption 与最终文字答案；公开 RL 又没有论文描述的 CLIP 方差选择器。因此现有证据支持“视觉轨迹训练有效”，还不足以单独证明“知识直接从纯视觉示范中学得”。</p>
+    <div class="paper-meta"><span>arXiv:2607.12800 v1 · 截至 2026-07-22 无新版</span><span>Emu3.5 34B</span><span>VR-X · 16 sources</span><span>论文 / 代码 / 模型 / 数据交叉审计</span></div>
+    <div class="mini-index"><a href="#takeaway">核心判断</a><a href="#problem">问题</a><a href="#mechanism">机制</a><a href="#reward">VR-GRPO</a><a href="#evidence">证据</a><a href="#causality">因果审计</a><a href="#audit">复现审计</a><a href="#limits">边界</a><a href="#insight">Insight</a><a href="#falsify">证伪方案</a><a href="#sources">资料</a></div>
   </header>
   <main>
     <section id="takeaway">
@@ -77,16 +77,17 @@
       <div class="grid-3">
         <div class="card"><span class="metric">+18.4</span><h3>总体绝对分</h3><p>VR-X 上从 Emu3.5 的 39.8 提升到 58.2；这不是 18.4% 相对增幅，而是 18.4 个评分点。</p></div>
         <div class="card"><span class="metric">32 + 8</span><h3>训练资源</h3><p>论文报告 SFT/RL 使用 32 张 GPU，Qwen3-VL-30B 奖励模型另占 8 张；34B 长视觉序列训练并不轻量。</p></div>
-        <div class="card"><span class="metric">238,006</span><h3>公开数据行数</h3><p>公开数据仓当前可见总行数，低于论文所述 310k SFT + 3k RL + 1.8k eval；“全部开放”仍需按发布物核对。</p></div>
+        <div class="card"><span class="metric">238,006</span><h3>公开数据行数</h3><p>公开数据仓当前只有一个 train split，低于论文所述 310k SFT + 3k RL + 1.8k eval；无法直接按用途做泄漏审计。</p></div>
       </div>
       <div class="callout good"><b>最强贡献</b><p>Step-Focal reward 把奖励预算投向同一任务多个 rollout 最分歧的时间段。这是一种“主动寻找决策分叉”的信用分配方法，比只看终态更适合长程生成。</p></div>
+      <div class="callout risk"><b>最关键的新审计结论</b><p>公开 <code>train.py</code> 固定启用 <code>interleaved_text=True</code>：<code>global_summary</code>、逐帧 <code>vlm_frame_captions</code> 和 <code>final_answer</code> 会进入有标签的 assistant 输出。它可能对应论文表 2a 的 <em>UniVR*</em> 交错版本，而不是主表纯视觉 checkpoint；但仓库没有另一条与论文“无语言监督”主实验完全对应的可执行 SFT recipe。当前发布物因而不能把语言监督排除为混杂变量。</p></div>
     </section>
 
     <section id="problem">
       <h2>它真正要解决什么</h2>
       <p>传统多模态流水线常把语言当中间总线：VLM 先产出文字计划，图像模型再把每一步渲染成画面。问题在于，绳结拓扑、衣物形变、液体倾倒、遮挡关系和手—物接触状态很难被短文字无损表达；逐帧图像编辑还会不断累积身份漂移与物理错误。</p>
       <p>另一条路线是视频或世界模型，但许多系统只覆盖单一环境、短时间预测，或依赖稠密文字说明。UniVR 的问题重构是：<strong>能否把异构任务都写成“给定初始视觉状态与目标，直接生成关键状态轨迹”，再让同一模型从纯视觉示范轨迹中学习状态转移与策略？</strong></p>
-      <div class="callout info"><b>“纯视觉示范”的准确含义</b><p>答案轨迹不需要逐步文本 CoT，输出中也没有中间文字链；但输入仍包含文本 instruction，310k 数据的问答与关键帧由 Qwen3.5-397B 辅助生成，RL 奖励使用 Qwen3-VL-30B，最终 VLM 指标使用 Qwen3.5-397B。因此它消除的是<strong>密集语言中介</strong>，不是端到端系统里的全部语言监督。</p></div>
+      <div class="callout info"><b>“纯视觉示范”的三个层级</b><p><strong>输出模态：</strong>主方法把中间轨迹画成图像；<strong>数据生产：</strong>Qwen3.5-397B 先合成问题、答案和关键步，再据此挑选帧；<strong>公开训练：</strong>默认 SFT 入口还把这些文字摘要、逐帧 caption 和 final answer 纳入监督。论文最多证明了视觉状态是主要中间载体，不能按字面理解为训练信号完全没有语言。</p></div>
     </section>
 
     <section id="mechanism">
@@ -100,21 +101,35 @@
         <div class="flow-step"><b>VR-GRPO</b><span>全局 + 分叉步骤奖励</span></div>
         <div class="flow-step"><b>输出</b><span>多步关键视觉状态</span></div>
       </div>
-      <p>形式上，给定已有视觉序列 (x_{1:t}) 与 instruction，模型学习：</p>
+      <p>形式上，给定已有视觉序列 \(x_{1:t}\) 与 instruction，模型学习：</p>
       <div class="math-display">\[p(x_{t+1}\mid x_{1:t},\,\text{instruction})\]</div>
       <p>这里的“思考”并不是模型内部隐藏态被直接监督，而是<strong>外显的中间视觉状态</strong>。每一帧既是下一步的上下文，也是可被人或奖励模型检查的中间承诺。其优势是状态变化可视化；代价是每张 512px 短边图像约需 1,000–1,500 个 token，一条轨迹可到 15k–20k token，推理与训练成本远高于短文本动作序列。</p>
       <h3>两阶段训练</h3>
       <p>第一阶段从 1.5M 候选中筛出约 310k 样本，统一成“query image、instruction、visual trajectory”。视频以约 0.27 FPS 做场景感知采样，再经历去重、低质帧过滤、问题与关键步骤生成，论文称约 80% 候选会被丢弃。第二阶段从 SFT 数据中挑选约 3k hard samples，进行 250 步全参数 RL。</p>
+      <h3>它学到的是世界模型，还是示范策略？</h3>
+      <p>仅从观测轨迹学习 \(p(s_{t+1}mid s_{le t},g)\)，无法把“环境动力学”和“示范者的动作策略”唯一分解。没有动作标签与干预数据时，多组不同的策略—动力学组合都可能产生同一串画面。UniVR 因而更接近<strong>目标条件下的观察轨迹模型</strong>：它学习“专家通常让世界接下来变成什么样”，而不是被识别出来的 \(p(s_{t+1}mid s_t,a_t)\) 动力学。</p>
+      <p>这个区别在长程操作上尤其重要。0.27 FPS 的采样以及每条约 10 个关键步骤，会丢掉抓取力、接触瞬间、滑动、碰撞等高频信息。论文展示的是稀疏关键状态的连贯性，不是连续时间力学的精确预测；“fine-grained physical dynamics”应理解为关键帧层面的物理外观与程序一致性。</p>
     </section>
 
     <section id="reward">
       <h2>VR-GRPO：不只问“最后做成了吗”</h2>
       <figure><img src="univr-visual-space-reasoning-assets/vr-grpo.png" alt="VR-GRPO 奖励：全局成对评估与基于 rollout 分歧的步骤级评估共同产生奖励"><figcaption>全局奖励看完整轨迹；Step-Focal 奖励先定位多个 rollout 的最大分歧区间，再对该局部做成对比较。</figcaption></figure>
-      <p>对同一任务采样 (K) 条轨迹。长度对齐后，在每个时间段用 CLIP 图像特征计算 rollout 间方差：</p>
+      <p>对同一任务采样 \(K\) 条轨迹。长度对齐后，在每个时间段用 CLIP 图像特征计算 rollout 间方差：</p>
       <div class="math-display">\[\sigma(t)=\sqrt{\frac{1}{K}\sum_{k=1}^{K}\lVert z_k(t)-\bar z(t)\rVert_2^2},\qquad t^*=\arg\max_t\sigma(t)\]</div>
-      <p>直觉是：轨迹最分歧的位置往往对应策略分叉、不确定操作或开始崩坏的地方。模型截取 (t^*) 周围宽度 (W=4) 的窗口，让 Qwen3-VL-30B 对候选轨迹做 pairwise 比较，得到步骤奖励 (R_s)；完整轨迹比较产生全局奖励 (R_g)。二者组合为：</p>
+      <p>直觉是：轨迹最分歧的位置往往对应策略分叉、不确定操作或开始崩坏的地方。模型截取 \(t^*\) 周围宽度 \(W=4\) 的窗口，让 Qwen3-VL-30B 对候选轨迹做 pairwise 比较，得到步骤奖励 \(R_s\)；完整轨迹比较产生全局奖励 \(R_g\)。二者组合为：</p>
       <div class="math-display">\[R_{\mathrm{reason}}=R_g-\lambda\lvert R_g-R_s\rvert,\qquad \lambda=2\]</div>
-      <p>这个式子不是简单平均：局部与全局不一致会被扣分。例如终态看起来成功、但中途绳子穿模，(R_g) 高而 (R_s) 低，最终奖励可显著下降，甚至变成负数。它迫使 policy 同时满足“结果像成功”和“过程没有明显断裂”。</p>
+      <p>这个式子不是简单平均，而是以全局奖励为锚的<strong>一致性惩罚</strong>。当 \(\lambda=2\) 时：</p>
+      <div class="math-display">\[R=\begin{cases}2R_s-R_g,&amp;R_s\le R_g\\3R_g-2R_s,&amp;R_s\ge R_g\end{cases}\qquad\Rightarrow\qquad R\le\min(R_g,R_s)\]</div>
+      <div class="table-wrap"><table><thead><tr><th>\(R_g\)</th><th>\(R_s\)</th><th>组合奖励</th><th>含义</th></tr></thead><tbody>
+        <tr><td>0.9</td><td>0.4</td><td>−0.1</td><td>终态好看、中途失败会被强惩罚</td></tr>
+        <tr><td>0.4</td><td>0.9</td><td>−0.6</td><td>局部漂亮但整体未完成，惩罚更重</td></tr>
+        <tr><td>0.3</td><td>0.3</td><td>0.3</td><td>两位裁判一致地低分时不会额外惩罚</td></tr>
+        <tr><td>0.9</td><td>0.9</td><td>0.9</td><td>高质量且一致才保留高奖励</td></tr>
+      </tbody></table></div>
+      <p>因此它不是 \(\min(R_g,R_s)\) 的柔和近似，而是比两者最小值更保守的“同意度门”。好处是抑制只优化终态的 shortcut；风险是奖励模型的一点噪声会被差值项放大，而且“两个裁判共同看漏同一错误”不会触发惩罚。</p>
+      <h3>论文奖励与公开奖励不是同一个选择器</h3>
+      <p>公开代码保留了同一组合式，但局部奖励默认从 GT 对齐帧中随机抽取 50%，而不是先计算多个 rollout 的 CLIP 方差再选择最大分歧窗口。若生成图片数与 GT 不同，局部帧分数被置零，最终总分也可被直接清零。这把“输出步数等于标注步数”变成强先验：一条语义正确但使用不同数量关键步的计划，可能仅因长度不同而失败。</p>
+      <p>全配对还很昂贵：论文 \(K=8\) 时每个 prompt 仅全局比较就有 \(K(K-1)/2=28\) 对；发布脚本覆盖为 \(K=6\) 后是 15 对，减少约 46%，但同时改变组内奖励统计。论文没有报告奖励模型推理调用量、延迟与成本，这也是复现长视觉 RL 时不可忽略的系统变量。</p>
       <div class="callout warn"><b>分歧不等于错误</b><p>高 CLIP 方差只是有信息量的审计点：它可能是错误分叉，也可能是多个都正确的策略、镜头变化或外观多样性。方法的有效性仍依赖 VLM 比较器能在该窗口判断物理与逻辑优劣。</p></div>
     </section>
 
@@ -135,16 +150,39 @@
       <div class="callout info"><b>“最高提升 25%”的口径</b><p>机器人操作是 42.8 → 68.0，即 +25.2 个绝对评分点；若算相对提升则约为 58.9%。全局 Overall 是 39.8 → 58.2，即 +18.4 点、约 +46.2% 相对提升。论文 headline 把绝对点数写成百分比，阅读时应区分。</p></div>
     </section>
 
+    <section id="causality">
+      <h2>证据能支持相关性，但还不能锁定因果机制</h2>
+      <p>主表最稳妥的结论是：<strong>在 Emu3.5 上加入 VR-X 定向训练与 VR-GRPO 后，发布方的自动指标显著提高。</strong>从这个结果继续推到“视觉空间本身产生了新推理能力”，还需要排除四类混杂。</p>
+      <div class="grid-2">
+        <div class="card"><h3>数据与表示没有分离</h3><p>cold-start 同时改变了数据域、任务分布、答案格式和中间表示。提升可能来自高质量定向策展、更多任务样本或视觉轨迹监督，现有消融没有逐项分离。</p></div>
+        <div class="card"><h3>视觉与文本 baseline 未知是否等预算</h3><p>一张图需要 1,000–1,500 token，整条视觉轨迹可达 15k token；论文没有报告 text-only 与 visual trace 是否在样本数、token、训练 FLOPs、信息量上匹配。</p></div>
+        <div class="card"><h3>理解增益来自交错模型</h3><p>标准理解 benchmark 的 <em>UniVR*</em> 明确使用 interleaved image-text sequences，比主方法多一种监督模态；这组结果不能独立证明“纯视觉推理”迁移到理解。</p></div>
+        <div class="card"><h3>训练裁判与评测裁判同族</h3><p>RL 使用 Qwen3-VL-30B-A3B，主 VLM 指标使用 Qwen3.5-397B。规模不同但模型家族和偏好范式接近，可能共同奖励同一类视觉叙事。</p></div>
+      </div>
+      <h3>人类对齐与 JEPA 也没有完全封口</h3>
+      <p>附录报告 VLM 与人工评分的 Spearman 相关约 0.85，但没有给样本量、评分者数量、评分协议细节、置信区间或 inter-rater reliability。文字还说“先展示 VLM 与人工分数，让标注者判断哪个更优，再计算 Spearman”，这与通常直接对两组分数算秩相关的流程表述不清。0.85 是积极信号，却不足以审计评分器在关键失败类型上的校准。</p>
+      <p>JEPA 指标把序列编码成 1280 维向量，再用 polynomial-kernel MMD 比较生成与真实分布。它是<strong>约 1,000 个样本后收敛的分布级指标</strong>，只用于长程规划，不能告诉我们某条轨迹在哪一步违反拓扑或接触约束。更低的 MMD 说明整体视频特征更像真实数据，不等于单样本任务执行正确。</p>
+      <div class="callout warn"><b>新意应拆成三层</b><p><strong>方法新意：</strong>用跨 rollout 的视觉分歧定位局部验证窗口，并统一训练异构视觉轨迹；<strong>组件复用：</strong>Emu3.5、VQ token、SFT+GRPO、CLIP、VLM pairwise、V-JEPA MMD 均来自已有方法；<strong>营销外延：</strong>“first”“pure visual”“without language supervision”比已隔离验证的因果结论更宽。</p></div>
+    </section>
+
     <section id="audit">
       <h2>论文怎么说，开放材料实际提供了什么</h2>
       <div class="table-wrap"><table><thead><tr><th>项目</th><th>论文 / 模型卡口径</th><th>公开材料核对</th><th>结论</th></tr></thead><tbody>
-        <tr><td>训练代码</td><td>Step-Focal 使用 CLIP rollout 方差定位窗口</td><td>当前奖励文件的 sampled-frame 路径默认随机抽取 50% 与 GT 对齐帧；未发现论文所述 CLIP 方差定位实现</td><td>框架已开放，精确论文 recipe 尚不完整</td></tr>
-        <tr><td>rollout 数</td><td>论文 (K=8)</td><td>默认 YAML 为 8，但 full-training shell 覆盖成 6</td><td>运行脚本与论文配置不一致</td></tr>
-        <tr><td>SFT 方式与学习率</td><td>34B 全参数；表中 cold-start LR 为 (5\times10^{-4})</td><td>名为 full 的脚本仍传入 <code>--use_lora True</code>，LR 为 (10^{-5})</td><td>不能直接用发布脚本复现主实验</td></tr>
-        <tr><td>数据规模</td><td>310k SFT + 3k RL + 1.8k eval</td><td>公开数据仓 API 当前统计 238,006 行、约 68.4 GB；README 还保留旧下载组织名</td><td>数据已大规模开放，但不是论文宣称规模的完整可核验镜像</td></tr>
-        <tr><td>模型</td><td>34B Planning 与 General</td><td>两个 checkpoint 均有 14 个 safetensors shard，模型卡已公开</td><td>权重开放较完整，但本轮未做 34B 推理复现</td></tr>
+        <tr><td>Step-Focal</td><td>CLIP rollout 方差定位 \(t^*\) 附近窗口</td><td>当前 sampled-frame 路径默认随机抽取 50% GT 对齐帧；仓库内未发现论文选择器</td><td>组合公式有实现，关键采样机制没有</td></tr>
+        <tr><td>SFT 监督</td><td>主文称不依赖语言监督、没有 fine-grained text procedural annotations</td><td>公开入口固定开启交错文本；summary、逐帧 caption、final answer 均进入有标签输出</td><td>公开 recipe 更像表 2a 的 <em>UniVR*</em>，主实验 recipe 缺失</td></tr>
+        <tr><td>rollout 数</td><td>论文 \(K=8\)</td><td>默认 YAML 为 8，但 full-training shell 覆盖成 6</td><td>运行脚本与论文配置不一致</td></tr>
+        <tr><td>SFT 方式与学习率</td><td>34B 全参数；cold-start LR \(5\times10^{-4}\)</td><td>名为 full 的脚本仍传入 <code>--use_lora True</code>，LR 为 \(10^{-5}\)</td><td>不能直接用发布脚本复现主实验</td></tr>
+        <tr><td>数据组织</td><td>310k SFT + 3k RL + 1.8k held-out eval</td><td>公开仓统计 238,006 行、约 68.4 GB，只有 <code>default/train</code> 单一 split</td><td>缺量且用途未拆分，难以做泄漏安全审计</td></tr>
+        <tr><td>模型</td><td>34B Planning 与 General</td><td>两个 checkpoint 各有 14 个 safetensors shard；截至 7 月 20 日模型仓已更新</td><td>权重开放较完整，但本轮未执行 34B 推理</td></tr>
+        <tr><td>使用说明</td><td>模型卡提供通用 Transformers / vLLM 示例</td><td>官方仓 quick start 需要自定义 tokenizer、vision tokenizer 与多处 vLLM patch；模型卡 citation 作者列表也有重复/错位</td><td>发布可用性仍需人工拼接和清理</td></tr>
       </tbody></table></div>
       <p>这些差异不证明论文结果错误，但会改变“可复现”的强度：目前最容易复现的是模型加载、SFT/RL 框架和已有权重推理；最难复现的是与论文完全一致的数据组成、Step-Focal selector、训练超参数与主表评测链。</p>
+      <h3>数据账本还有两个容易忽略的信号</h3>
+      <ul>
+        <li>附录表 4 的 16 个 “Frames” 相加为 <strong>1,332,698</strong>，不是正文的 1.5M raw candidates；两者可能分别表示通过早期处理的帧数与原始候选，但论文没有定义差异。</li>
+        <li>表中 “Ratios” 与 frame 占比并不一致：例如 AgiBot 占列出 frames 的约 32.1%，ratio 却是 24.5%。论文说按 sample counts 加权，因此 ratio 更可能是训练采样占比，而不是 frame 占比；列名与单位不足以独立复算 310k 配方。</li>
+        <li>RL 的 3k hard samples 约为 310k 的 0.97%。小而有针对性的 RL 集合能产生大增益是有价值的结果，也意味着样本筛选器和 evaluator 的偏好可能比数据量本身更决定最终行为。</li>
+      </ul>
     </section>
 
     <section id="terms">
@@ -152,7 +190,7 @@
       <div class="def-list">
         <div><b>Visual reasoning trace</b><span>从初始状态到目标状态的一串关键图像。它既是预测轨迹，也是外显计划，但不等同于模型全部内部计算。</span></div>
         <div><b>GRPO</b><span>对同一 prompt 采样一组输出，用组内相对奖励标准化优势，省去 PPO 的独立 critic；UniVR 的新意主要在视觉奖励和 rollout 系统，而非重新发明 GRPO。</span></div>
-        <div><b>Pairwise reward</b><span>让评估器比较 A/B 哪条更好，而不是各自打绝对分。通常更稳，但需要 (K(K-1)/2) 次全配对比较；若 (K=8)，每个任务有 28 对。</span></div>
+        <div><b>Pairwise reward</b><span>让评估器比较 A/B 哪条更好，而不是各自打绝对分。通常更稳，但需要 \(K(K-1)/2\) 次全配对比较；若 \(K=8\)，每个任务有 28 对。</span></div>
         <div><b>JEPA score</b><span>用 V-JEPA 特征把序列压到 1280 维，再以 polynomial-kernel MMD 比较生成与真实分布；越低表示总体分布更接近，不代表单条轨迹必然物理正确。</span></div>
         <div><b>Cold initialization</b><span>RL 前的 SFT 阶段，让模型先学会输出合法、多步、任务相关的视觉轨迹，避免从几乎随机的视觉 rollout 开始探索。</span></div>
       </div>
@@ -161,13 +199,15 @@
     <section id="limits">
       <h2>关键限制：它还没有证明什么</h2>
       <ol>
-        <li><strong>不是完全去语言化。</strong>文本目标、Qwen 数据策展、Qwen 奖励和 Qwen 评测都构成语言先验；更准确的贡献是减少逐步语言轨迹监督。</li>
+        <li><strong>“无语言监督”与公开 recipe 直接冲突。</strong>不仅文本目标、Qwen 数据策展、奖励和评测构成语言先验，公开 SFT 的交错模式还把细粒度 caption 作为目标 token 训练。除非发布方补充主表使用的非交错配置与 checkpoint provenance，否则只能说视觉轨迹是主要表示，不能说训练没有语言监督。</li>
         <li><strong>评测与训练存在 evaluator family coupling。</strong>RL 用 Qwen3-VL-30B，主指标用更大的 Qwen3.5-397B，二者共享模型家族与相似判断范式；同一偏好可能同时塑造 policy 和判定结果。</li>
         <li><strong>VR-X 不是纯独立 benchmark。</strong>同一素材池被处理成 SFT、RL 和 held-out evaluation，论文称 eval 来自 held-out subset，但没有给出视频级、场景级或来源级去重证明；近邻泄漏风险无法量化。</li>
         <li><strong>缺少统计不确定性。</strong>主表和消融没有多 seed、置信区间或显著性检验；1.8k 总样本分成六类后，几个点的差异是否稳定并不清楚。</li>
         <li><strong>JEPA 是代理指标。</strong>V-JEPA 表征包含运动知识，但 MMD 接近真实分布不能识别任务特定的拓扑错误、因果错误或危险动作。</li>
         <li><strong>比较系统并非严格 compute-matched。</strong>闭源 VLM+图像编辑器与 34B 自回归视觉模型的成本、采样策略、上下文、每步渲染次数不同，主表更像产品路线比较，不是同预算算法赛跑。</li>
         <li><strong>视觉轨迹不是可执行控制。</strong>生成“下一步应该长什么样”与输出机器人低层动作之间仍隔着逆动力学、闭环观测、碰撞约束和安全控制器。</li>
+        <li><strong>高分歧选择漏掉共同盲点。</strong>所有 rollout 一致地犯错时，CLIP 方差很低；镜头变化或多种正确策略却可能制造高方差。分歧适合分配审计预算，不是错误概率本身。</li>
+        <li><strong>GT 步数可能成为捷径。</strong>公开奖励要求生成图像数匹配 GT，并在不匹配时归零；这会惩罚合理的不同粒度方案，也可能让模型先学标注格式而非任务因果结构。</li>
       </ol>
       <div class="callout risk"><b>会推翻当前判断的证据</b><p>若独立团队在严格视频级去重、人工任务成功率、多个随机种子和 compute-matched baseline 下无法复现长程增益，UniVR 的主结论会从“视觉轨迹学习有效”降级为“学会迎合特定视觉评估器”。反之，若 Step-Focal 在闭环机器人执行中仍减少中途失败，它会成为很有普适性的长程信用分配方法。</p></div>
     </section>
@@ -181,16 +221,35 @@
         <div class="card"><h3>最危险的是共同盲点</h3><p>若所有 rollout 在同一位置犯同一种错，方差反而很低，Step-Focal 不会聚焦那里。系统仍需要规则、动力学模型或独立传感器捕获低分歧的系统性错误。</p></div>
         <div class="card"><h3>下一步应从生成走向闭环</h3><p>真正的研究跃迁不是更漂亮的轨迹图，而是“预测状态 → 执行动作 → 读取真实状态 → 比较偏差 → 重规划”的闭环成功率、恢复率和安全率。</p></div>
       </div>
-      <p><strong>一句工程建议：</strong>如果要复用 UniVR 思路，先复用“在轨迹分叉处加密验证”而不是直接训练 34B 图像 token 模型。前者可插入现有 agent 系统，成本更低，也更容易用真实失败日志检验。</p>
+      <h3>视觉状态、动作与控制应拆成三层</h3>
+      <p>UniVR 的关键帧最适合作为中层 <em>state sketch</em>：上层描述目标和约束，中层承诺若干可检查的未来状态，下层控制器产生动作并闭环纠偏。把三者混成像素生成会造成信息昂贵、动作不可执行和错误难归因。更实用的系统往往是混合表示——视觉状态保留几何，符号约束表达不可违反的规则，动作 token 连接真实执行器。</p>
+      <p><strong>一句工程建议：</strong>如果要复用 UniVR 思路，先复用“在轨迹分叉处加密验证”和“让 agent 预测执行后的可观测状态”，而不是直接训练 34B 图像 token 模型。前者可插入现有 agent 系统，成本更低，也更容易用真实失败日志检验。</p>
+    </section>
+
+    <section id="falsify">
+      <h2>怎样真正验证“视觉空间推理”</h2>
+      <p>下一轮实验不应只追求更高的同族 VLM 分数，而应让主张承担可失败的检验。</p>
+      <ol>
+        <li><strong>表示控制：</strong>视觉轨迹、文本 CoT、动作序列和视觉—文本交错版本使用相同任务、样本、token/FLOPs 与优化步数；否则无法判断收益来自表示还是预算。</li>
+        <li><strong>语言消融：</strong>发布不含 frame captions、global summary target 与 final answer 的主实验 recipe，并与交错版本逐项对照；同时记录数据生产阶段使用了哪些语言模型。</li>
+        <li><strong>严格去重：</strong>按原视频、场景、任务实例和近邻视觉特征切分，而不只是样本行 held-out；公开 SFT/RL/eval manifest 与 source ID。</li>
+        <li><strong>裁判正交化：</strong>训练奖励、自动验收和人工评测使用不同模型家族；报告 evaluator swap 后的排序稳定性，以及对 shared-blind-spot 对抗样本的表现。</li>
+        <li><strong>任务级真值：</strong>对绳结拓扑、物体计数、碰撞、目标到达等可验证属性使用规则或模拟器；对开放任务报告盲评人工成功率、物理违规率和评分者一致性。</li>
+        <li><strong>长度反事实：</strong>构造多个步数不同但都正确的计划，检验 image-count reward 是否把标注粒度误当成正确性。</li>
+        <li><strong>统计完整性：</strong>报告多 seed、bootstrap CI、每个任务样本数和失败类型，不只给六类平均分。</li>
+        <li><strong>闭环执行：</strong>把状态草图转换成动作，在新观测下重规划；最终指标应是执行成功、恢复率、安全违规和实际推理成本。</li>
+      </ol>
+      <div class="callout good"><b>如果这些检验仍成立</b><p>那么 UniVR 的意义会超出“更好的视觉生成”：它将证明稀疏视觉状态可以成为跨任务、跨本体的策略接口，而 Step-Focal 则会成为一种通用的长程 verifier 调度机制。</p></div>
     </section>
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>本文完整核对 arXiv v1 正文、图表与附录，并检查项目页、2026-07-16 的公开代码提交、模型卡、模型文件清单、数据卡和数据服务统计。数值复算包括绝对/相对增益、公开数据行数与全配对数量。本轮没有下载约 34B 权重做推理，也没有用 32+8 GPU 复训；论文主结果因此属于发布方报告，代码/配置/发布物差异属于已核验事实，机制外推与工程建议属于分析推断。</p>
+      <p>本文完整核对 arXiv v1 正文、图表与附录；截至 2026-07-22，arXiv 仍只有 2026-07-14 提交的 v1。同步检查官方项目页、GitHub 两个公开提交、唯一 issue 及作者回复、模型卡与文件清单、数据 schema 和数据服务统计。数值复算包括绝对/相对增益、奖励分段函数、全配对数量、表 4 frame 总数与采样占比。本轮没有下载约 34B 权重做推理，也没有用 32+8 GPU 复训；论文性能属于发布方报告，代码/配置/发布物差异属于已核验事实，因果判断与工程建议属于分析推断。</p>
       <ul>
         <li><a href="https://arxiv.org/abs/2607.12800">UniVR: Thinking in Visual Space for Unified Visual Reasoning</a></li>
         <li><a href="https://maverickren.github.io/UniVR.github.io/">UniVR 官方项目页</a></li>
         <li><a href="https://github.com/bytedance/UniVR">UniVR 官方代码仓库</a></li>
+        <li><a href="https://github.com/bytedance/UniVR/issues/1">官方发布 issue 与模型 / 数据开放回复</a></li>
         <li><a href="https://huggingface.co/ByteDance/UniVR-34B-Planning">UniVR-34B 模型与模型卡</a></li>
         <li><a href="https://huggingface.co/datasets/ByteDance/VR-X-SFT-RL">VR-X 公开数据仓</a></li>
         <li><a href="https://arxiv.org/abs/2510.26583">Emu3.5: Native Multimodal Models are World Learners</a></li>

@@ -343,6 +343,17 @@
 
 ## 2026-07-20 UniVR 视觉空间推理论文深读
 
+### 2026-07-22 二次深化
+
+- 重新逐段核对 arXiv v1 正文与附录；截至 2026-07-22 仍无新版本。进一步检查 SFT/RL 的实际数据路径、模型与数据仓更新、GitHub 提交和发布 issue，不再只停留于 README 与配置表层。
+- 发现公开 SFT 入口固定启用 `interleaved_text=True`：`global_summary`、逐帧 `vlm_frame_captions` 和 `final_answer` 均进入有标签的 assistant 输出；这更像表 2a 的 `UniVR*` 交错版本，仓库没有提供与论文“without language supervision”主表完全对应的可执行 recipe。笔记据此将“纯视觉”从措辞边界升级为核心混杂变量。
+- 完整推导 `R = Rg - 2|Rg - Rs|` 的分段形式并证明其不超过 `min(Rg, Rs)`；增加数值案例，说明它本质是全局锚定的一致性门，会放大奖励噪声且无法发现多个裁判的共同盲点。同步说明公开实现以随机 50% GT 对齐帧替代 CLIP 最大方差窗口，且 GT 图像数量不匹配可直接归零，会引入标注步数捷径。
+- 新增“世界模型还是示范策略”辨析：无动作/干预数据只能学习目标条件下的观察轨迹分布，不能唯一识别动作条件动力学；0.27 FPS 与约 10 个关键步也不足以证明连续接触力学。新增表示预算、同族 evaluator、人工相关性、JEPA 分布指标和理解 benchmark 交错训练等因果审计。
+- 独立复算附录表 4 的 frame 总数为 1,332,698，确认 ratio 不是直接 frame 占比；公开数据仍为 238,006 行单一 `default/train` split。补充模型卡通用用法与官方自定义 tokenizer/vLLM patch 的落差，以及 citation 作者重复问题。
+- 原地扩写笔记，不新增重复文档；增加八项证伪协议，覆盖等 token/FLOPs 表示对照、语言消融、视频级去重、裁判正交化、任务真值、长度反事实、多 seed/CI 与闭环执行。
+- Notes 索引校验通过：149 条索引与 149 个顶层 HTML 一一对应；本任务文件 whitespace 检查无输出。隔离 Jekyll 全量构建约 11.1 秒完成，仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示。
+- 桌面 1440×1200 与手机 390×844 的无界面浏览器渲染均返回 HTTP 200：唯一 `main`、12 个正文 section、3 张本地图、25 个 MathJax 容器、唯一末节证据附录和 Notes / All Notes / Home 导航均正常；MathJax error、console error、page error 与页面级横向溢出均为 0。手机端三张宽表保持 720px 内容宽度，在 364px 容器内局部滚动；全页截图人工复检未见错位、坏图或不可读区域。
+
 ### 目标与材料边界
 
 - 完整阅读 `UniVR: Thinking in Visual Space for Unified Visual Reasoning`（arXiv:2607.12800 v1）正文、图表与附录，核对官方项目页、代码仓、模型卡、模型文件、VR-X 数据卡和公开数据统计。
