@@ -1,55 +1,5 @@
 # Ricardokevins.github.io Progress
 
-## 2026-07-22 CriPO / Rubric RL 自蒸馏深读
-
-### 任务与材料边界
-
-- 用户通过 `$deep` 指定 arXiv:2607.18082。完整读取 v2 的 18 页正文、公式、全部图表、附录与 TeX，并比较 v1→v2 修订；交叉核对 Rubrics as Rewards 正文与公开 RaR-Medicine / RaR-Science 数据、HeRL 论文和官方实现、OPSD/SDPO，以及 RGSD、RCSD、RLCSD 三篇同期工作。
-- 本轮直接核验范围包括论文/数据/代码口径、主表均值与逐格差值、数据保留率、wall-clock 比率、提示与公式一致性、公开实现状态；未重跑 200 步训练，不把模型结果或 token 定位效果写成独立复现。
-
-### 关键判断与独立 Insight
-
-- CriPO 的核心贡献不是首次把 rubric 送给 self-teacher，而是把失败分成 Unexplored Criteria 与 Suppressed Criteria，再分别路由到 best-rollout 局部 forward-KL 和反事实 token advantage flipping；完整方法对 GRPO 在两种 Qwen3 规模、五项评测中为 10 胜 0 负，复算平均增益为 +3.22 / +1.42。
-- “约 2×”只稳妥指单条扩展曲线上的优化步数。按论文图中四组时间复算，完整 CriPO run 比 GRPO 多 11.2%–28.0% wall-clock（平均 19.2%）；达到高于 GRPO 最终表现的时间优势为 2.56×、1.70×、1.18×、1.00×，4B Science 只提前 3 分钟。
-- 两类 teacher prompt 都包含完整旧回答，因此早期 token 的 KL 可以依赖未来后缀；token localization 更准确地说是 hindsight-conditioned counterfactual edit saliency，而不是严格因果归因。On-policy 保证轨迹来自当前策略，不等于 teacher supervision 只看因果前缀。
-- 公开 Science train/test 经 Qwen3-4B reward>0.9 过滤后仅保留 59.31% / 59.55%，Medicine 保留 87.35% / 86.35%；hard split 与模型/judge 弱点相关，需完整 test、多过滤器和多 seed 验证外部有效性。
-- 公开 RaR 数据的 Pitfall 数字权重为负，但 criterion 文本把“避免错误”判为满足；RaR 原训练会把 Pitfall 类别重映射为正权重 0.9，CriPO 未说明其映射。该歧义会改变奖励、UC/SC 与 top-3 criterion 选择，需代码澄清。
-- 摘要“平均 1.8 个 SC”只匹配 0–50 步，图中后续为 1.9/2.0/2.0，四阶段均值约 1.93；主表与消融表对 CriPO-S 的 LLMEval-Med 还有 72.4/72.9 差异。v2 删除了 v1 的 8×A800 与 64×910B2 judge 硬件说明，绝对成本透明度下降。
-- 独立 insight：多目标后训练不必拒绝 scalar reward，而应在全局 policy 账本旁维护 criterion 信用账本，记录覆盖、净 advantage、相关 span、教师置信度与冲突，只对高置信 UC/SC 做局部路由，并把 span 因果性与单位 teacher FLOP 收益纳入验收。
-
-### 完成变更与验证结果
-
-- 新增 `notes/paper-reviews/cripo-rubric-rl-self-distillation.html`，同步增加 Notes 索引入口；共享工作区存在其他任务对 `Progress.md`、`_data/notes.yml` 与既有笔记的并行改动，最终只选择性暂存本任务 hunk。
-- `ruby scripts/validate_notes_index.rb` 通过：验证时 152 个索引入口与 152 个顶层页面一一对应；目标页含唯一 H1/main、13 个 section、14 个唯一 id、6 个 MathJax 容器和文末 evidence appendix，无断锚、替换字符、占位文本、公开过程噪声或空白错误。
-- 隔离 Jekyll 全量构建成功，仅保留仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning；严格 HTML 扫描发现并修复公式 `cases` 中裸 `&` 实体问题。
-- 桌面 1440×1000 与手机 390×844 均返回 HTTP 200，整页横向溢出、坏图、重复 ID、断锚、console/page/request error 均为 0。真实手机渲染发现全站壳样式覆盖表格最小宽度，已用目标页更具体选择器修复；四张 720px 宽表最终均只在 364px 容器内局部滚动，截图目检无重叠或截断。
-- 最终将只选择性暂存目标页，以及 `Progress.md` / `_data/notes.yml` 中属于本任务的 hunk；其他并行任务改动不纳入提交。
-
-## 2026-07-22 Loopie v2 版本审计与部署资源账本深化
-
-### 任务与新材料边界
-
-- 用户要求对既有 Loopie 笔记再深入一轮；本轮原地修订 `notes/paper-reviews/loopie-looped-moe-compute-matched-scaling.html`，不新建重复笔记。
-- 发现 arXiv 已于 2026-07-20 更新至 v2。已完整取得并对比 v1/v2 PDF 与 TeX 源文件，重新检查架构、compute matching、scaling ladder、SPT、RL、benchmark 和附录；同时核对官方 Qwen3-30B-A3B 配置与 IQuestLab 当前公开模型/代码状态。
-- 本轮不独立重训 20B/30B 模型，不把论文曲线写成独立复现；线性层计算与 KV cache 为基于公开配置、显式标注假设的条件性复算。
-
-### 新增关键判断
-
-- v2 将论文从 67 页缩至 38 页，删除摘要/引言中的“最强 looped Transformer”与 IMO/IPhO 金牌表述，注释掉整个 Olympiad 章节和约 1,900 行六题解答附录，但未公开说明修订原因。因此金牌结果已从“当前论文证据”降为“v1 历史报告、v2 主动撤下”，不额外推断撤下原因。
-- 第一版用 1.424× `LD²R` 代理与 1.379× 吞吐反推约 1.032× step time 存在伪精度，现已撤回。该代理忽略 Q/K/V/O 形状、MoE hidden size/Top-K、router、attention、通信与 optimizer；若基线沿用官方 Qwen3 attention 配置，QKVO + Top-8 MoE + router 的线性层乘法代理约为 1.23×，仍不是完整 FLOPs。
-- 标准自回归 cache 情景下，Loopie 的 54 次有效层调用、36 KV groups×32 维，相对官方 Qwen3 的 48 层、4 KV heads×128 维，每 token KV 元素数之比约为 2.531。这揭示“训练权重/激活更小”与“长上下文推理状态更小”可能反向。
-- 论文存在 Stage 1=3T 与 570B×4=2.28T 的内部口径冲突；3.5T 排行榜口径与 2.28T+1.263T 一致。SPT 的 1024×131,072 对应 134,217,728 nominal positions/batch，2T 约为 14,901 次更新；但 target-token 占比未披露，2T nominal positions 不等于 2T loss-bearing tokens。
-- scaling ladder 只有四个离散点且 1B active 档因算力限制未遵守正文先声称的 1000× token 规则；`N× loop vs N× layer` 图也非严格 compute-matched。它们支持方向性证据，不构成可外推 scaling law 或 R=2 的全局最优性证明。
-
-### 完成变更与验证结果
-
-- 已原地深化笔记的版本审计、计算代理、实验公平性、SPT 账本、历史奥赛结果、KV cache 与部署相图，并更新 `_data/notes.yml` 摘要。
-- 静态审计通过：正文约 10,747 个可见字符，含唯一 `main` / H1、12 个 section、27 个标题、唯一文末 evidence appendix，无重复 id、断锚、替换字符、占位文本、生成路径或工具痕迹；本任务 diff whitespace 检查通过。
-- `ruby scripts/validate_notes_index.rb` 通过：152 个索引入口与 152 个顶层 Notes HTML 一一对应。
-- 使用仓库现有依赖做隔离 Jekyll 构建成功（17.641 秒）；除既有的 Faraday retry 提示和 GitHub Metadata 未鉴权提醒外无构建错误。
-- Headless Chrome 在 1440×1000 桌面视口和 390×844 移动视口完成渲染核验：页面级宽度一致、5 个表格容器可安全滚动、22 个 MathJax 容器正常、图片缺失与控制台错误均为 0；另对版本审计和独立 Insight 下半页做截图复核，未发现裁切或横向溢出。
-
-
 ## 2026-07-22 Leon Li 预训练—RL 合作者发布帖复核
 
 ### 任务与材料边界
@@ -90,6 +40,55 @@
 - Jekyll 隔离构建成功；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响静态页面生成。
 - 系统 Chrome 在 1440×1100 与 390×844 两个视口均返回 HTTP 200：页面级横向溢出、坏图、断锚、console / runtime / request error 和 4xx/5xx 资源均为 0；桌面与手机全页截图目检未见重叠、截断或不可读结构。
 - 笔记补充已随同主题证据审计提交 `6df9cba` 落库；本区块单独提交，工作区中的并行研究记录不纳入本任务提交。
+
+## 2026-07-22 Loopie v2 版本审计与部署资源账本深化
+
+### 任务与新材料边界
+
+- 用户要求对既有 Loopie 笔记再深入一轮；本轮原地修订 `notes/paper-reviews/loopie-looped-moe-compute-matched-scaling.html`，不新建重复笔记。
+- 发现 arXiv 已于 2026-07-20 更新至 v2。已完整取得并对比 v1/v2 PDF 与 TeX 源文件，重新检查架构、compute matching、scaling ladder、SPT、RL、benchmark 和附录；同时核对官方 Qwen3-30B-A3B 配置与 IQuestLab 当前公开模型/代码状态。
+- 本轮不独立重训 20B/30B 模型，不把论文曲线写成独立复现；线性层计算与 KV cache 为基于公开配置、显式标注假设的条件性复算。
+
+### 新增关键判断
+
+- v2 将论文从 67 页缩至 38 页，删除摘要/引言中的“最强 looped Transformer”与 IMO/IPhO 金牌表述，注释掉整个 Olympiad 章节和约 1,900 行六题解答附录，但未公开说明修订原因。因此金牌结果已从“当前论文证据”降为“v1 历史报告、v2 主动撤下”，不额外推断撤下原因。
+- 第一版用 1.424× `LD²R` 代理与 1.379× 吞吐反推约 1.032× step time 存在伪精度，现已撤回。该代理忽略 Q/K/V/O 形状、MoE hidden size/Top-K、router、attention、通信与 optimizer；若基线沿用官方 Qwen3 attention 配置，QKVO + Top-8 MoE + router 的线性层乘法代理约为 1.23×，仍不是完整 FLOPs。
+- 标准自回归 cache 情景下，Loopie 的 54 次有效层调用、36 KV groups×32 维，相对官方 Qwen3 的 48 层、4 KV heads×128 维，每 token KV 元素数之比约为 2.531。这揭示“训练权重/激活更小”与“长上下文推理状态更小”可能反向。
+- 论文存在 Stage 1=3T 与 570B×4=2.28T 的内部口径冲突；3.5T 排行榜口径与 2.28T+1.263T 一致。SPT 的 1024×131,072 对应 134,217,728 nominal positions/batch，2T 约为 14,901 次更新；但 target-token 占比未披露，2T nominal positions 不等于 2T loss-bearing tokens。
+- scaling ladder 只有四个离散点且 1B active 档因算力限制未遵守正文先声称的 1000× token 规则；`N× loop vs N× layer` 图也非严格 compute-matched。它们支持方向性证据，不构成可外推 scaling law 或 R=2 的全局最优性证明。
+
+### 完成变更与验证结果
+
+- 已原地深化笔记的版本审计、计算代理、实验公平性、SPT 账本、历史奥赛结果、KV cache 与部署相图，并更新 `_data/notes.yml` 摘要。
+- 静态审计通过：正文约 10,747 个可见字符，含唯一 `main` / H1、12 个 section、27 个标题、唯一文末 evidence appendix，无重复 id、断锚、替换字符、占位文本、生成路径或工具痕迹；本任务 diff whitespace 检查通过。
+- `ruby scripts/validate_notes_index.rb` 通过：152 个索引入口与 152 个顶层 Notes HTML 一一对应。
+- 使用仓库现有依赖做隔离 Jekyll 构建成功（17.641 秒）；除既有的 Faraday retry 提示和 GitHub Metadata 未鉴权提醒外无构建错误。
+- Headless Chrome 在 1440×1000 桌面视口和 390×844 移动视口完成渲染核验：页面级宽度一致、5 个表格容器可安全滚动、22 个 MathJax 容器正常、图片缺失与控制台错误均为 0；另对版本审计和独立 Insight 下半页做截图复核，未发现裁切或横向溢出。
+
+## 2026-07-22 CriPO / Rubric RL 自蒸馏深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 arXiv:2607.18082。完整读取 v2 的 18 页正文、公式、全部图表、附录与 TeX，并比较 v1→v2 修订；交叉核对 Rubrics as Rewards 正文与公开 RaR-Medicine / RaR-Science 数据、HeRL 论文和官方实现、OPSD/SDPO，以及 RGSD、RCSD、RLCSD 三篇同期工作。
+- 本轮直接核验范围包括论文/数据/代码口径、主表均值与逐格差值、数据保留率、wall-clock 比率、提示与公式一致性、公开实现状态；未重跑 200 步训练，不把模型结果或 token 定位效果写成独立复现。
+
+### 关键判断与独立 Insight
+
+- CriPO 的核心贡献不是首次把 rubric 送给 self-teacher，而是把失败分成 Unexplored Criteria 与 Suppressed Criteria，再分别路由到 best-rollout 局部 forward-KL 和反事实 token advantage flipping；完整方法对 GRPO 在两种 Qwen3 规模、五项评测中为 10 胜 0 负，复算平均增益为 +3.22 / +1.42。
+- “约 2×”只稳妥指单条扩展曲线上的优化步数。按论文图中四组时间复算，完整 CriPO run 比 GRPO 多 11.2%–28.0% wall-clock（平均 19.2%）；达到高于 GRPO 最终表现的时间优势为 2.56×、1.70×、1.18×、1.00×，4B Science 只提前 3 分钟。
+- 两类 teacher prompt 都包含完整旧回答，因此早期 token 的 KL 可以依赖未来后缀；token localization 更准确地说是 hindsight-conditioned counterfactual edit saliency，而不是严格因果归因。On-policy 保证轨迹来自当前策略，不等于 teacher supervision 只看因果前缀。
+- 公开 Science train/test 经 Qwen3-4B reward>0.9 过滤后仅保留 59.31% / 59.55%，Medicine 保留 87.35% / 86.35%；hard split 与模型/judge 弱点相关，需完整 test、多过滤器和多 seed 验证外部有效性。
+- 公开 RaR 数据的 Pitfall 数字权重为负，但 criterion 文本把“避免错误”判为满足；RaR 原训练会把 Pitfall 类别重映射为正权重 0.9，CriPO 未说明其映射。该歧义会改变奖励、UC/SC 与 top-3 criterion 选择，需代码澄清。
+- 摘要“平均 1.8 个 SC”只匹配 0–50 步，图中后续为 1.9/2.0/2.0，四阶段均值约 1.93；主表与消融表对 CriPO-S 的 LLMEval-Med 还有 72.4/72.9 差异。v2 删除了 v1 的 8×A800 与 64×910B2 judge 硬件说明，绝对成本透明度下降。
+- 独立 insight：多目标后训练不必拒绝 scalar reward，而应在全局 policy 账本旁维护 criterion 信用账本，记录覆盖、净 advantage、相关 span、教师置信度与冲突，只对高置信 UC/SC 做局部路由，并把 span 因果性与单位 teacher FLOP 收益纳入验收。
+
+### 完成变更与验证结果
+
+- 新增 `notes/paper-reviews/cripo-rubric-rl-self-distillation.html`，同步增加 Notes 索引入口；共享工作区存在其他任务对 `Progress.md`、`_data/notes.yml` 与既有笔记的并行改动，最终只选择性暂存本任务 hunk。
+- `ruby scripts/validate_notes_index.rb` 通过：验证时 152 个索引入口与 152 个顶层页面一一对应；目标页含唯一 H1/main、13 个 section、14 个唯一 id、6 个 MathJax 容器和文末 evidence appendix，无断锚、替换字符、占位文本、公开过程噪声或空白错误。
+- 隔离 Jekyll 全量构建成功，仅保留仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning；严格 HTML 扫描发现并修复公式 `cases` 中裸 `&` 实体问题。
+- 桌面 1440×1000 与手机 390×844 均返回 HTTP 200，整页横向溢出、坏图、重复 ID、断锚、console/page/request error 均为 0。真实手机渲染发现全站壳样式覆盖表格最小宽度，已用目标页更具体选择器修复；四张 720px 宽表最终均只在 364px 容器内局部滚动，截图目检无重叠或截断。
+- 最终将只选择性暂存目标页，以及 `Progress.md` / `_data/notes.yml` 中属于本任务的 hunk；其他并行任务改动不纳入提交。
 
 ## 2026-07-22 Red Queen Gödel Machine X 帖深读
 
@@ -135,6 +134,32 @@
 - 全站 Jekyll 构建因本机 bundle 中缺失锁定的 Jekyll 3.9.2 及依赖而无法启动，属于本地依赖缺口，不作为页面通过证据。
 - 使用独立本地服务完成真实浏览器验收：桌面 1440×1000 与手机 390×844 均 HTTP 200，唯一 H1/main、12 个 section、20 个已渲染 MathJax 容器、console/page/request error 为 0；整页横向溢出为 0，两张 760px 表格在 364px 手机容器内局部横向滚动。全页截图目视检查层级、公式、表格与 callout 均正常。
 
+## 2026-07-22 Agents-A1 二次深读与笔记深化
+
+### 目标与新增材料
+
+- 按用户要求原地深化既有 Agents-A1 笔记，不创建重复版本；重新读取 arXiv v2 的 TeX 源文件、训练公式、SFT→OPD 表、数据流水线和限制章节，并复查 2026-07-22 的官方仓库、公开 issue、35B / 4B 模型卡与配置。
+- 官方仓库最新 commit 仍为 2026-07-16；训练数据、合成流水线、教师 checkpoint、SVA/OPD 代码及 MLE harness 仍未发布。新增可核验材料是 2026-07-14 发布的 Agents-A1-4B 权重、配置和模型卡结果。
+
+### 新增判断与变更
+
+- 把 10 万条、平均 45K-token SFT 轨迹换算为 packing 与 masking 前约 45 亿 trajectory tokens，明确“缩参数”并非缩总训练计算，而是把预算转移到轨迹、教师、环境和推理阶段。
+- 细分 structured process feedback 的实际通道：assistant 动作 token 承担 SFT loss；工具观察与用户回合只作上下文；验证器主要用于筛选、修复与 RL reward；OPD 只监督学生生成位置。KAG 保存过程不等于所有 verifier 输出都被直接监督。
+- 构造 SVA 的 coverage 反例：若学生只把任意小概率质量放进 teacher top-k，但集合内相对分布与教师一致，截断 reverse KL 仍可为零。论文只监控 coverage、没有把它加入 loss，也没有报告 k、coverage 曲线或对应消融。
+- 复算论文 SFT→最终模型表：OPD 阶段在 16 项中改善 15 项，仅 XBench 88.0→86.0；这支持“完整 OPD 阶段有效”，但不能把结果单独归因于 SVA。
+- 新增 4B 证据审计：官方模型精确为 4.539B dense 参数，在 13 个共同指标中于 XBench、IFEval、VitaBench、MatTools 四项追平或超过 35B；同时在 SciCode、MLE、IFBench、LongBench-v2 显著落后。该结果支持 scaffold 对小模型杠杆很大，但因缺少 4B 训练报告，仍不是受控参数 scaling curve。
+- 补充模型卡版本漂移与部署边界：当前模型卡部分基线不同于 arXiv 冻结表；4B 默认 system prompt 固定 2026-07-14 日期，若服务端不动态覆盖会污染后续检索任务。
+- 原地更新 `notes/paper-reviews/agents-a1-scaling-horizon-35b-agent.html` 与 `_data/notes.yml` 摘要，增加过程监督通道表、SVA 目标函数反例、SFT→OPD 分解表、4B 对照表和新版复现边界。
+
+### 验证结果
+
+- Notes 索引校验通过：`notes index ok: 149 entries, 149 top-level note html files`；本任务定向公开过程噪声与 whitespace 扫描无输出。
+- 目标页面结构检查通过：唯一 `title`、唯一 `main`、12 个顶层 section、33 个 h2/h3、唯一且位于末节的 evidence appendix；无重复 id 或失效页内锚点，可见正文约 13,281 个非空白字符。
+- 隔离 Jekyll 构建成功，耗时约 10.4 秒；只有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，新笔记无构建错误。
+- 独立无头 Chrome 在 1440×1000 与 390×844 两个视口均返回 HTTP 200：页面级 `scrollWidth == innerWidth`，11 个 MathJax 节点无错误，Notes / All Notes / Home 导航正常，控制台、页面异常、失败请求和 4xx/5xx 资源均为 0。
+- 五张宽表在桌面完整显示，在手机端保持 680px 内容宽度并由 364px 容器局部横向滚动；桌面与手机全页截图复检未发现错位、截断、坏图或不可读结构。
+- 提交时仅纳入 Agents-A1 笔记、对应索引摘要和本节 Progress；共享文件中其他并行任务的修改继续保留。
+
 ## 2026-07-22 LLM-as-a-Coach 二轮目标函数审计
 
 ### 深化目标与材料边界
@@ -156,6 +181,56 @@
 - `ruby scripts/validate_notes_index.rb` 通过：149 个索引条目与 149 个顶层 HTML 一一对应；深化后目标页约 11,651 个可见字符、13 个章节、28 个标题、3 张宽表、2 张本地图和 7 个 MathJax 容器，唯一 `main` / H1、重复 ID、页内锚点、图片 alt、表格滚动容器与文末证据附录均通过，过程噪声/占位符扫描和 `git diff --check` 无异常。
 - 使用独立输出目录完成 Jekyll 全量构建，耗时约 8.0 秒；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响页面生成。
 - 独立 Chromium 在 1440×1100 与 390×844 视口均返回 HTTP 200：两张图片与 7 个公式正常渲染，断锚、坏图、console/page/request error、4xx/5xx 响应和页面级横向溢出均为 0；宽公式与表格仅在各自容器内滚动，桌面/手机全页截图目检未见重叠、截断或布局异常。
+
+## 2026-07-22 Understanding Reasoning 二轮证据审计
+
+### 任务与材料边界
+
+- 用户要求在既有 `$deep` 笔记基础上继续深入。已重新核对完整 TeX、附录公式、图表、官方代码、模型集合和 Lichess puzzle 定义；截至 2026-07-22，arXiv:2607.16097 仍为 v1，官方代码 HEAD 仍为 `256e8b6`。
+- 原地更新既有《Understanding Reasoning from Pretraining to Post-Training》页面，不重复创建同主题笔记或索引项；第一作者串文的局部性警告与动态阶段切换含义继续保留。
+
+### 新增判断与原地深化
+
+- 新增证据等级矩阵：预训练 loss 对域内 post-RL 水平的预测较强；token 与局部 RL 斜率的关系是中等偏强相关，但 sigmoid 工作点、上限和 checkpoint 祖先结构尚未被因果隔离。固定 200M trace generator 也使结果成为完整 pretrain→SFT→RL 管线的总效应。
+- 复核交叉验证后确认：run-level LOO 不在每折重拟合 Chinchilla loss surface；LMSO 才完整重拟合。附录把 `0.0194-0.0102` 写成 0.0099，独立复算应为 0.0092（47.4%）。
+- 补全总算力公式：前沿包含预训练、SFT 训练和 RL model FLOPs，RL 按 rollout/reference/policy training 合计 `10N·T_rollout`；但 trace 生成、数据筛选、系统空转和墙钟成本不完全在该口径内。新增近优分配色带图，强调“RL 份额随算力上升”的趋势比 20%–28% 精确端点可靠。
+- 对策略机制新增测量审计：128-trace Monte Carlo、5% tail 阈值和 top-3 均缺敏感性分析；精确线路 reward 在少数 mate-in-one 多解题上可能产生有效答案假阴性。新增五组可证伪实验，覆盖 matched-loss 干预、多 seed/簇交叉验证、分类阈值扫描、大模型饱和和跨模型族复现。
+- 逐页复核 37 页 PDF 与原始图文件，确认主文与附录的 B3–B4 斜率拟合口径一致：token-only 为 `R²=0.701`、Pearson `r=0.84`、Spearman `ρ=0.839`，联合拟合为 `R²=0.841`；据此把笔记中的相关系数类型和精确系数写清，避免把相关回归系数误读成因果效应。
+- 补全论文未在主文 Figure 5 展示的策略 taxonomy：除正确模态放大、tail discovery、wrong-mode amplification 外，还有 top-k correction、ground-truth regression 与 Other；同时收紧 CoT 结论，因为“变宽不变深”只来自 20M/50M 两条代表性 run，附录最深仅检查 4 个 player plies。
+- 通过 Hugging Face 官方 API 与三个原始 CSV 逐文件核对发布物：公开训练导出分别为 69,367、68,000、91,619 行，合并后的 228,986 行不是 156K 唯一候选池；公开 think benchmark 有 1,484 个唯一 PuzzleId，比论文表格多 4 道且没有版本变更说明。
+- 静态审计公开启动配置：SFT 示例的 2048 context / `5e-5` 学习率不同于论文 3072 / `3e-4`；RL sweep 仅五个配置、默认 500 步/2560 response，且 8-GPU launcher 只暴露四张 GPU。公开仓库能复核组件，不能视为论文实验的冻结配方。
+- 修复正文中失效的 inline MathJax 定界符，新增渐近上限与算力近优带两张附录图，并同步深化 Notes 索引摘要。
+
+### 验证与发布状态
+
+- Notes 索引校验通过：152 个索引条目与 152 个顶层 HTML 页面一一对应；目标页包含 13 个唯一章节、35 个二三级标题、3 张表格、6 张有效本地图和 6 组源公式，无重复 ID、空 alt、缺图、断锚、公开过程噪声或差异空白错误。
+- 使用隔离依赖目录完成 Jekyll 全量构建，耗时约 15.7 秒；仅有仓库既有的 `faraday-retry` 建议和 GitHub Metadata 未认证提示，不影响目标页生成。
+- 专用无头浏览器在 1440×1100 与 390×844 两个视口均返回 HTTP 200；MathJax 生成 51 个公式容器，页面级横向溢出、坏图、断锚、console/page/request error 与 4xx/5xx 响应均为 0。桌面与手机全页截图目检未见重叠、截断或不可读结构。
+- 后续只暂存本任务页面、两张新增图、Notes 索引中的对应 entry 和本节 `Progress.md` hunk；其他并行笔记与进度改动不纳入本次提交。
+
+## 2026-07-22 Latent Rishi 六篇 LLM 记忆论文深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Latent Rishi 的 X 帖 `2078880375418638362`。原帖发表于 2026-07-19，只列出六篇论文：模型记忆容量、原始/机制化 Cartridges、Active Reading、Sparse Memory Finetuning 与 Cartridges at Scale；没有附带作者自己的论证。
+- 完整读取六篇 arXiv 最新版本的 PDF、TeX、附录与图表；交叉核对官方 `HazyResearch/cartridges` 仓库、Meta WikiExpert 模型与 Active Reading 数据集。公开页面只能确认原帖有 3 条回复，无法恢复回复正文，笔记不推测讨论区观点。
+- 当前分支为 `codex/video-model-rl-post-training`；执行期间共享工作区出现其他任务的并行修改，最终只选择性提交本任务页面、四张图、对应 Notes entry 与本节 Progress hunk。
+
+### 关键判断与独立 Insight
+
+- 六篇论文分别解决容量、写入、寻址、读取与生命周期中的局部问题，不能合并成“参数记忆已经替代 RAG”的结论。综合判断是容量通常早于可用记忆出现，首要瓶颈是地址冲突、写放大、组合隔离、更新/删除与来源治理。
+- 约 3.6 bits/parameter 只来自 100K–20M 参数、从零训练的 GPT-2 式模型，是训练可达的经验估计而非架构无关上界；membership F1 外推中目标 0.75 的两组结果分别偏 3.92 与 9.31 个点，与正文“通常 1.5 点内”的概括不一致。
+- Active Reading 与 Self-Study 共同表明记忆写入首先是数据编译问题；但推理时节约前缀会转化为离线合成和训练成本。WikiExpert 的“1T generated tokens”最终与 1T 预训练数据混合训练四轮，总训练量为 8T token；Cartridge 论文没有报告查询复用的 break-even。
+- 原始 Cartridge 的两份文档组合不能外推到大规模。CAS 的 LongHealth ablation 中独立 cartridge 单独使用为 73.6%，同时拼接 20 个跌至 26.0%；加入 distractor 的联合训练恢复到 77.8%，直接支持“寻址冲突先于容量耗尽”。
+- CAS 数据表存在可复算问题：QASPER `407×4,751≈1.934M` 却列 665K，QuALITY `115×5,713≈657K` 却列 1.9M，两列总量疑似互换；TechQA 又出现 496/471 docs 两种口径。该问题不推翻准确率主结果，但降低 token-budget 精确数字的可信度。
+- 独立提出分层记忆架构：原始证据与版本/ACL 作为 source of truth，检索负责寻址，per-document Cartridge 作为可重建 materialized view，稀疏 memory 只巩固经过验证的稳定知识，基座模型不承担高频变化事实。完整验收需覆盖 acquisition、association、retention、composition、freshness/deletion、economics 与 auditability。
+
+### 完成变更与验证结果
+
+- 新增 `notes/tech-analysis/llm-memory-systems-six-paper-synthesis.html`，本地化容量拟合、Active Reading、Sparse Memory TF-IDF 与 CAS isolation 四张原论文图；页面包含 10 个章节、3 张滚动表、12 个 MathJax 容器和文末 evidence appendix。
+- 更新 `_data/notes.yml` 增加 Tech Analysis 入口；全工作区索引为 152/152，精确 staged snapshot 为 151/151，二者均通过 `ruby scripts/validate_notes_index.rb`。目标页无生成路径/工具痕迹，`git diff --check` 通过。
+- 首次构建发现临时 bundle 缺少 Jekyll，补齐锁定依赖后分别对全工作区与精确 staged snapshot 完成隔离全站构建；只出现仓库既有的 GitHub Metadata 未认证与 Faraday 可选依赖提示，不影响静态生成。
+- Playwright 技能自带 CLI wrapper 因 npm 包未暴露 `playwright-cli` 可执行文件而不可用，改用工作区同版本 Playwright/Chromium 完成等价验收。桌面 1440×1000 与手机 390×844 均 HTTP 200：唯一 H1/main、10 个 section、4 张图、12 个公式、导航与 evidence appendix 正常；页面级横向溢出、断锚、失败请求、4xx/5xx 与 runtime error 均为 0，三张宽表在手机端仅于 364px 容器内局部滚动。MathJax 只产生组件版本信息 warning，公式实际渲染正常；桌面和手机全页截图目检无重叠、截断或坏图。
 
 ## 2026-07-21–22 RLM Harness / 组合泛化实验深读
 
@@ -342,33 +417,6 @@
 - Notes 全站索引校验通过：`147 entries, 147 top-level note html files`；目标页面有唯一 `main`、唯一且位于末节的证据附录、12 个唯一 id、4 张有效本地图片与 2 张响应式表格，无重复 id、失效页内锚点、空 alt、缺失资源或公开过程噪声；正文约 6,688 个非空白字符，`git diff --check` 无异常。
 - Jekyll 在隔离输出目录构建成功，耗时约 7.1 秒；仅出现仓库既有的 Faraday 可选依赖、GitHub Metadata 未认证和 API 限流提示，不影响静态页面生成。
 - 独立无头 Chromium 在 1440×1100 与 390×844 两个视口实际渲染均返回 HTTP 200：页面级横向溢出为 0，4 个 MathJax 容器无错误，控制台异常、失败请求与坏图均为 0；桌面和手机全页截图复检未发现错位、截断或不可读结构。
-
-## 2026-07-22 Understanding Reasoning 二轮证据审计
-
-### 任务与材料边界
-
-- 用户要求在既有 `$deep` 笔记基础上继续深入。已重新核对完整 TeX、附录公式、图表、官方代码、模型集合和 Lichess puzzle 定义；截至 2026-07-22，arXiv:2607.16097 仍为 v1，官方代码 HEAD 仍为 `256e8b6`。
-- 原地更新既有《Understanding Reasoning from Pretraining to Post-Training》页面，不重复创建同主题笔记或索引项；第一作者串文的局部性警告与动态阶段切换含义继续保留。
-
-### 新增判断与原地深化
-
-- 新增证据等级矩阵：预训练 loss 对域内 post-RL 水平的预测较强；token 与局部 RL 斜率的关系是中等偏强相关，但 sigmoid 工作点、上限和 checkpoint 祖先结构尚未被因果隔离。固定 200M trace generator 也使结果成为完整 pretrain→SFT→RL 管线的总效应。
-- 复核交叉验证后确认：run-level LOO 不在每折重拟合 Chinchilla loss surface；LMSO 才完整重拟合。附录把 `0.0194-0.0102` 写成 0.0099，独立复算应为 0.0092（47.4%）。
-- 补全总算力公式：前沿包含预训练、SFT 训练和 RL model FLOPs，RL 按 rollout/reference/policy training 合计 `10N·T_rollout`；但 trace 生成、数据筛选、系统空转和墙钟成本不完全在该口径内。新增近优分配色带图，强调“RL 份额随算力上升”的趋势比 20%–28% 精确端点可靠。
-- 对策略机制新增测量审计：128-trace Monte Carlo、5% tail 阈值和 top-3 均缺敏感性分析；精确线路 reward 在少数 mate-in-one 多解题上可能产生有效答案假阴性。新增五组可证伪实验，覆盖 matched-loss 干预、多 seed/簇交叉验证、分类阈值扫描、大模型饱和和跨模型族复现。
-- 逐页复核 37 页 PDF 与原始图文件，确认主文与附录的 B3–B4 斜率拟合口径一致：token-only 为 `R²=0.701`、Pearson `r=0.84`、Spearman `ρ=0.839`，联合拟合为 `R²=0.841`；据此把笔记中的相关系数类型和精确系数写清，避免把相关回归系数误读成因果效应。
-- 补全论文未在主文 Figure 5 展示的策略 taxonomy：除正确模态放大、tail discovery、wrong-mode amplification 外，还有 top-k correction、ground-truth regression 与 Other；同时收紧 CoT 结论，因为“变宽不变深”只来自 20M/50M 两条代表性 run，附录最深仅检查 4 个 player plies。
-- 通过 Hugging Face 官方 API 与三个原始 CSV 逐文件核对发布物：公开训练导出分别为 69,367、68,000、91,619 行，合并后的 228,986 行不是 156K 唯一候选池；公开 think benchmark 有 1,484 个唯一 PuzzleId，比论文表格多 4 道且没有版本变更说明。
-- 静态审计公开启动配置：SFT 示例的 2048 context / `5e-5` 学习率不同于论文 3072 / `3e-4`；RL sweep 仅五个配置、默认 500 步/2560 response，且 8-GPU launcher 只暴露四张 GPU。公开仓库能复核组件，不能视为论文实验的冻结配方。
-- 修复正文中失效的 inline MathJax 定界符，新增渐近上限与算力近优带两张附录图，并同步深化 Notes 索引摘要。
-
-### 验证与发布状态
-
-- Notes 索引校验通过：152 个索引条目与 152 个顶层 HTML 页面一一对应；目标页包含 13 个唯一章节、35 个二三级标题、3 张表格、6 张有效本地图和 6 组源公式，无重复 ID、空 alt、缺图、断锚、公开过程噪声或差异空白错误。
-- 使用隔离依赖目录完成 Jekyll 全量构建，耗时约 15.7 秒；仅有仓库既有的 `faraday-retry` 建议和 GitHub Metadata 未认证提示，不影响目标页生成。
-- 专用无头浏览器在 1440×1100 与 390×844 两个视口均返回 HTTP 200；MathJax 生成 51 个公式容器，页面级横向溢出、坏图、断锚、console/page/request error 与 4xx/5xx 响应均为 0。桌面与手机全页截图目检未见重叠、截断或不可读结构。
-- 后续只暂存本任务页面、两张新增图、Notes 索引中的对应 entry 和本节 `Progress.md` hunk；其他并行笔记与进度改动不纳入本次提交。
-
 
 ## 2026-07-20 Loopie 循环 MoE 与固定训练预算深读
 
