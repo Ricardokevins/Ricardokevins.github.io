@@ -1,5 +1,35 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-23 SAI × ICML 2026 执行式复现深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Chenhao Tan 于 2026-07-22 发布的 X Article `2079969545629118737`。已完整还原文章正文、作者补充回复、六张统计图及 `sai.science/icml` 的 168 篇动态面板；并通读 VERITAS、MechEvalAgent、OpenAIReview 三篇上游方法论文，核对国家科学院与 ACM 对 reproducibility / replicability / artifact evaluation 的定义。
+- 当前公开面板仍会动态更新：文章首发图把 105 次完成运行拆为 67 次作者代码与 38 次论文重建，2026-07-23 面板则显示 93 次有代码、12 次无代码。本轮将其作为两个不同时间快照，不混写成一个稳定数据集。
+- 本轮没有独立重跑 105 篇论文，也没有逐项向作者申诉；结论限定为公开材料、方法设计、动态面板数据与代表性报告的证据审计。
+
+### 关键复算与判断
+
+- 从 168 条公开面板记录复算：105 篇已完成执行式复现，得分中位数约 `20.45%`、均值约 `28.40%`；27 篇超过 40%，7 篇超过 80%，与文章 headline 一致。排除两篇已完成的 position paper 后，超过 80% 仍为 7 篇。
+- 105 篇并非随机样本：团队先做资源估算，再从低资源向高资源论文推进，63 篇尚未开始。9 篇 position paper 仅 2 篇完成执行式复现，因此 `7/105` 不能外推为 ICML 2026 科学质量的无偏比例。
+- VERITAS 论文将 match / partial / no match / not attempted 分别记为 1 / 0.5 / 0 / 0，并按 headline=3、supporting=2 加权；该分数衡量外部复现者当前能验证多少，不是论文为真的概率。线上 GoodDiffusion 页面却以 1/14 counted coverage 给出 50%（唯一已执行主张为 partial），说明 partial run 的线上分母还会排除未计入主张或改变适用集合。VERITAS 自身 benchmark 为公平比较又绕过了自动 claim extraction 和 importance-weighted score，因而没有直接验证 ICML 面板最依赖的主张抽取、分级、coverage 与总分校准。
+- 文章成本图六档篇数 `18+12+26+32+14+3=105`，所以 8,900 美元中位数来自被选择运行的 105 篇，不是全部 168 篇。图注称包含尝试后放弃的运行，正文却称只计论文报告工作、失败方向可能再放大 2–3 倍，两者存在直接口径冲突；且统一按 Google Cloud 按需价折算，不等于作者真实支出。
+- 78% 指至少两位人类审稿人同意的问题被 SAI 覆盖的 recall，不是所有 SAI 评论的 precision。OpenAIReview 的独立评测也明确承认 precision 未建立专家金标准，公开服务点踩中 false positive、琐碎挑刺与不合理索取细节是主要失败模式。
+- 独立 insight：单一复现总分会把结果冲突、工件失败和协议失败压成同一低分；更合理的基础设施应同时记录主张状态与证据链状态，并把执行式审查前移到投稿前和 camera-ready 前的持续集成。
+
+### 页面变更
+
+- 新增 `notes/tech-analysis/sai-icml-2026-agent-replication-audit.html`，解释执行流程、分母与选择偏差、成本口径、人机分工、术语边界和证据状态图。
+- 更新 `_data/notes.yml`，增加 Tech Analysis 索引入口；公开笔记不包含抓取过程、临时文件、本地路径或执行日志。
+
+### 验证与发布状态
+
+- Notes 索引校验通过：153 个索引入口与 153 个顶层 HTML 页面一一对应；目标页约 6,072 个可见字符，含唯一 `main` / H1、10 个 section、11 个唯一 ID、唯一文末 evidence appendix，无断锚、空 alt、重复 ID、MathJax 误加载、占位符、替换字符、公开过程噪声或 whitespace 错误。
+- 隔离 Jekyll 全量构建成功；仅出现仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning，没有目标页构建错误。
+- 隔离 Chromium 在 1440×1100 与 390×844 两个视口均返回 HTTP 200，页面宽度分别等于视口宽度，console / runtime / request error 和 4xx/5xx 资源均为 0；两张 720px 宽表在手机端限制于 364px 容器内局部滚动。
+- 桌面与手机全页截图目检通过：标题、卡片、五步流程、callout、表格、术语区与文末来源无重叠、截断或不可读结构。仓库 Playwright 技能包装器因上游 CLI 入口更名不可用，本轮使用工作区捆绑的同版本隔离浏览器运行库完成等价验收，不修改全局依赖。
+- 最终只暂存本任务新增笔记、索引增量与本 Progress 区块；完成提交后推送当前分支。
+
 ## 2026-07-23 DeFiMinty 预训练—RL 二次解读复核
 
 ### 任务与材料边界
