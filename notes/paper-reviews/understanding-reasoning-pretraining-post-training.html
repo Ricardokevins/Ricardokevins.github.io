@@ -89,7 +89,7 @@
     .math-display { margin: 16px 0; padding: 12px 14px; max-width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
     .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    .notes-shell-page .table-wrap table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
     th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
     th { background: var(--accent-soft); font-weight: 740; }
     tr:nth-child(even) td { background: rgba(0,0,0,.015); }
@@ -100,7 +100,7 @@
       main, header, footer { width: min(100% - 24px, var(--max)); }
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .def-list > div { grid-template-columns: 1fr; gap: 5px; }
-      table { min-width: 640px; }
+      .notes-shell-page .table-wrap table { min-width: 640px; }
     }
   </style>
 </head>
@@ -214,6 +214,8 @@
           </tbody>
         </table>
       </div>
+      <h3>“RL 无法补偿弱预训练”比实验多走了一步</h3>
+      <p>Minty 的二次解读把问题概括成“RL 能否补偿弱预训练”，并据相同 RL 算力下弱底座增益较小，写成 RL 不能完全补偿不足的预训练。前半句符合观测：更强底座在参考预算下更好，局部学习斜率也通常更陡；后半句只能成立于<strong>论文实际跑过的有限算力窗口</strong>。除 20M 外，大模型曲线没有充分饱和，实验没有为每个弱底座一直增加 RL 直到确认其可达上限，也没有比较“弱底座 + 大量 RL”与“强底座 + 少量 RL”的等成本交叉点。因此现有证据支持“弱预训练降低有限预算内的 RL 杠杆”，不支持无条件的“RL 永远补不回来”。</p>
       <h3>局部斜率会被 sigmoid 所处位置机械性改变</h3>
       <p>附录自己指出，若真实 RL 曲线是从初值 \(R_0\) 向上限 \(A\) 饱和的 sigmoid，那么参考点附近的 log-compute 斜率近似满足：</p>
       <div class="math-display">
@@ -255,7 +257,7 @@
         =10NT_{\mathrm{rollout}}.
         \]
       </div>
-      <p>RL 的 10 倍系数分别来自策略 rollout 前向、reference model 前向与策略反向训练。前沿实际求解的是 \(C_{\mathrm{RL}}=C_{\mathrm{total}}-6NT-C_{\mathrm{SFT}}\)，所以 SFT 训练已经计入分母。按论文的 42K 样本、3 epochs 和固定 3072 长度复算，SFT 最多处理 3.871 亿 padded tokens，对 20.5M、47.3M、203.1M、678.6M 模型分别约为 \(4.76\times10^{16}\)、\(1.10\times10^{17}\)、\(4.72\times10^{17}\)、\(1.58\times10^{18}\) FLOPs；低总预算下它不是可忽略常数。但用于生成 SFT traces 的模型推理、Stockfish 标注、数据筛选、通信空转和推理吞吐没有全部进入这个 model-FLOP 口径。论文也给出一个系统侧锚点：50M 模型跑 2,000 个 RL steps 约需 160 H200 GPU-hours，说明相同 FLOPs 不等于相同墙钟成本。</p>
+      <p>RL 的 10 倍系数分别来自策略 rollout 前向、reference model 前向与策略反向训练。前沿实际求解的是 \(C_{\mathrm{RL}}=C_{\mathrm{total}}-6NT-C_{\mathrm{SFT}}\)，所以 SFT 训练已经计入分母。按论文的 42K 样本、3 epochs 和固定 3072 长度复算，SFT 最多处理 3.871 亿 padded tokens，对 20.5M、47.3M、203.1M、678.6M 模型分别约为 \(4.76\times10^{16}\)、\(1.10\times10^{17}\)、\(4.72\times10^{17}\)、\(1.58\times10^{18}\) FLOPs；低总预算下它不是可忽略常数。但用于生成 SFT traces 的模型推理、Stockfish 标注、数据筛选、通信空转和推理吞吐没有全部进入这个 model-FLOP 口径。论文给出的系统侧锚点是 50M 模型跑 2,000 个 RL steps 约需 160 H200 GPU-hours；官方 README 后续补充的近似值则是 8×H200、每步约 30 秒，即每 1,000 步约 8 小时、64 H200 GPU-hours，线性推算 2,000 步约 128 H200 GPU-hours。两者相差约 20%，README 同时提醒 response 变长会拖慢 step，因此这些数字只适合做墙钟量级估计，不能当作精确换算常数。</p>
       <p>把损失面与 RL 响应面合并，在固定总算力下搜索预训练和 RL 的最优切分。实验网格中的 20M 模型，经验最优 RL 份额随总预算由约 5% 上升到 32%；拟合后的全局 frontier 则从 50M 模型约 20% 上升到 680M 约 28%。</p>
       <p>Francesco Bertolotti 的原帖把这组端点概括为“模型从 50M 增至 700M，最优 RL 份额从 20% 增至 30%”。方向没有错，但 700M 与 30% 都是对论文 Figure 4 中 680M 与 28% 的取整；而且这些端点来自拟合后的连续最优前沿，不是两个生产级大模型上直接测得的固定配方。</p>
       <div class="callout info">
@@ -386,12 +388,13 @@
 
     <section id="evidence" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>截至 2026-07-22，arXiv 仍只有 2026-07-17 发布的 v1，官方代码仓 HEAD 仍为 <code>256e8b6</code>。全文结论以论文、附录、官方代码、数据与模型发布物为主；相关论文只用于比较命题边界，不把二手报道当实验事实。本文独立复算了 LOO 误差差值、策略采样误差量级和算力分解，但未重跑 H200 训练，因此性能数字均按发布方报告陈述。</p>
+      <p>截至 2026-07-23，arXiv 仍只有 2026-07-17 发布的 v1；官方代码仓 HEAD 为 <code>40f0442</code>，相较前一版只新增 RL 墙钟估计，没有改变训练实现。全文结论以论文、附录、官方代码、数据与模型发布物为主；相关论文只用于比较命题边界，不把二手报道当实验事实。本文独立复算了 LOO 误差差值、策略采样误差量级、算力分解和两种墙钟口径，但未重跑 H200 训练，因此性能数字均按发布方报告陈述。</p>
       <h3>主材料与官方资产</h3>
       <ul>
         <li><a href="https://x.com/iamleonli/status/2079250874228949041">合作者 Leon Li 的发布帖</a>：以“完整训练管线能否拥有统一 scaling law”为主问题，配图对应论文的预训练—SFT—RL 管线、联合拟合与策略变化总览。主帖与配图可公开核验；页面所示 3 条自回复在未登录公开视图中不可读，因此本文不把其可能内容当作证据。</li>
         <li><a href="https://x.com/evangelinejy99/status/2079250052476752325">第一作者 Jingyan Shen 的完整发布串文</a>：依次概括受控棋类试验台、固定总算力下的权衡、局部 log-linear 定律、算力分配前沿、pass@16 分叉、搜索宽度与深度，以及 OLMo-2 数学迁移；作者明确提示精确比例是 regime-specific 的局部结果。</li>
         <li><a href="https://x.com/f14bertolotti/status/2079146964592001234">Francesco Bertolotti 的论文导读帖</a>：四张配图分别概括论文摘要、完整训练管线、算力最优前沿与三类策略变化；其中预算端点为取整表述，策略分类需按论文定义拆开解释。</li>
+        <li><a href="https://x.com/DeFiMinty/status/2079715564432359708">Minty 的二次解读帖</a>：主文准确概括了有限 RL 预算内的底座差异、困难题上的正确尾部发现与错误模态放大，以及单条 OLMo-2 数学轨迹的定性迁移；“RL 不能完全补偿弱预训练”仍需限定为已观测算力窗口。配图是论文 Figure 4 的外推算力前沿，并不直接展示主文所讲的策略演化或弱底座曲线。公开只读材料显示 6 条回复，但未提供完整回复正文，本文不据此推测争议内容。</li>
         <li><a href="https://arxiv.org/abs/2607.16097">Understanding Reasoning from Pretraining to Post-Training</a>：论文摘要、PDF 与版本信息。</li>
         <li><a href="https://github.com/pavelslab-nyu/pre2post-chess">pre2post-chess</a>：棋类预训练、SFT、RL 与策略分析代码。</li>
         <li><a href="https://database.lichess.org/#puzzles">Lichess Puzzle Database</a>：棋题生成、CSV 字段与“通常唯一走法；mate-in-one 可有多个有效将杀着”的官方说明，用于校准精确线路奖励的边界。</li>
