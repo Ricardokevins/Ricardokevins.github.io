@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One Layer Deeper 深读：测试时多跑几层，为什么不是简单加循环？</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #23665a;
+      --accent-soft: #e8f2ef;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info: #315b8a;
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(35,102,90,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric { display: block; margin-bottom: 5px; color: var(--accent-2); font: 760 28px/1 var(--serif); }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(140px, .25fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .def-list span { min-width: 0; }
+    .math-display { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 760px !important; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; word-break: normal; overflow-wrap: normal; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    @media (max-width: 760px) {
+      main, header { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Recurrent Depth</div>
+    <h1>One Layer Deeper：测试时多跑几层，为什么不是简单加循环？</h1>
+    <p class="lede">这个竞赛把一个重要问题压缩成了单文件实验：固定模型状态与训练时限后，能否学到可重复调用的状态转移，并在测试时执行比训练更深的计算？再往下一层看，真正难点不只是循环动力学，还包括一个识别问题：终点答对，究竟证明了逐步算法，还是固定模数、周期、样本复用与输出编码共同提供的捷径？</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>One Layer Deeper 值得关注，因为它把参数规模与计算深度拆开了；但公开分数最多证明“在这套分布上得到正确终点”，不能单独证明模型执行了 \(T\) 次神经状态更新。</strong>普通固定层 Transformer 的串行计算路径由层数封顶；权重共享循环可以不增加参数而增加有效深度。可终点监督并不识别内部算法：真实递推、因式分解后的指数捷径、固定 \(N\) 的周期映射、按 \(x\) 记忆，甚至十进制输出模式，都可能得到同一个标签。</p>
+      <div class="grid-3">
+        <div class="card"><span class="metric">0.19%</span><h3>当前最高 Hard 准确率</h3><p>2026-07-22 官网快照为 15 人上榜、最高 0.19%；榜单会变化，且不公开提交源码与分项机制。</p></div>
+        <div class="card"><span class="metric">500M</span><h3>持久模型状态上限</h3><p>参数与持久 buffer 合计最多 5 亿标量；共享权重只计一次，迫使参赛者用计算而不是堆参数换深度。</p></div>
+        <div class="card"><span class="metric">1× H100</span><h3>统一资源边界</h3><p>Hard 最多训练 3600 秒，最终评估另给训练时限的一半；更深前向会直接减少可完成的优化更新。</p></div>
+      </div>
+      <div class="callout">
+        <b>最重要的辨析</b>
+        <p>“可以循环”只是表达能力；“学到一步正确更新”是算法对齐；“多循环仍不崩”是动力学稳定；“未知深度继续变好”是行为外推；排除记忆、周期和代数捷径后，才接近机制证据。这五层不能合并成一个成功案例。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>题目为什么专门瞄准串行深度</h2>
+      <p>输入是模数 \(N\)、初值 \(x\) 和步数 \(T\)。状态从 \(x_0=x\bmod N\) 开始，每一步只做一次模平方：</p>
+      <div class="math-display">\[
+        x_t = x_{t-1}^{2}\bmod N, \qquad y=x_T=x^{2^T}\bmod N.
+      \]</div>
+      <p>例如 \(N=77,x=2,T=4\)，状态依次为 \(2\to4\to16\to25\to9\)，最终答案是 9。若不知道 \(N=pq\) 的因子，已知通用方法就是按顺序执行 \(T\) 次模平方；这也是 RSA time-lock puzzle 的基本直觉。这里的准确表述是“没有已知更快通用算法”，不是已经证明任意计算模型都需要深度 \(T\) 的无条件下界。</p>
+      <p>标准 Transformer 的一次前向是固定深度计算图。注意力能在 token 维度并行交换信息，却不会自动获得任意多次状态更新。不过，“目标函数可写成 \(T\) 次递推”仍不意味着任何在有限输入域上答对的网络都实施了这 \(T\) 步；这正是 benchmark 的机制识别缺口。</p>
+      <div class="callout warn">
+        <b>“本质串行”在本竞赛里必须加限定语</b>
+        <p>密码学中的顺序性依赖未知阶群与难以分解的 RSA 模数。公开 practice 数据只有约 10–22 bit 模数，普通程序可以轻易分解；竞赛用“禁止任务专用求解器”约束提交者，而不是用密码学安全参数消灭捷径。因此公开题是算法学习压力测试，不是重复平方顺序性的实验性证明。</p>
+      </div>
+    </section>
+
+    <section id="algebraic-shortcuts">
+      <h2>更深一层：固定模数把长轨迹压成了小有限状态系统</h2>
+      <p>公开固定-\(N\) 数据只采样与 \(N=pq\) 互素的 \(x\)。因此 \(x\) 位于有限乘法群中，指数只需按 Carmichael 函数 \(\lambda(N)=\operatorname{lcm}(p-1,q-1)\) 考虑：</p>
+      <div class="math-display">\[
+        x^{2^T}\bmod N
+        =x^{\,2^T\bmod \lambda(N)}\bmod N.
+      \]</div>
+      <p>令 \(\lambda(N)=2^a m\)，其中 \(m\) 为奇数。超过 \(a\) 步后，指数的二次幂部分已经饱和，余下只是在模 \(m\) 意义下周期运动；周期整除 2 在模 \(m\) 下的乘法阶。于是固定 \(N\) 时，“任意增大的 \(T\)”最终不是无限新行为，而是一个有限周期表。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>公开组</th><th>\(\lambda(N)\)</th><th>指数进入周期后</th><th>各深度可能输出数</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>E1: \(17\times19=323\)</td><td>\(144=2^4\cdot9\)</td><td>周期 6</td><td>\(T=1,2,3,6:\ 72,36,18,9\)</td><td>OOD \(T=6\) 只有 9 种可能余数，分类难度远小于 323 类</td></tr>
+            <tr><td>E2: \(29\times31=899\)</td><td>\(420=2^2\cdot105\)</td><td>周期 12</td><td>\(T=1,2,4,7:\ 210,105,105,105\)</td><td>从 \(T=2\) 起像空间不再缩小</td></tr>
+            <tr><td>M1: \(101\times103=10403\)</td><td>\(5100=2^2\cdot1275\)</td><td>周期 40</td><td>\(T=4,8,16,32:\ 1275\)</td><td>所有公开深度都落在同一大小的低维像空间</td></tr>
+            <tr><td>M2: \(193\times197=38021\)</td><td>\(9408=2^6\cdot147\)</td><td>周期 42</td><td>\(T=4,8,16,32:\ 588,147,147,147\)</td><td>OOD 输出仍只落在 147 个群元素中</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>“可能输出数”可直接由中国剩余定理得到：映射 \(z\mapsto z^{2^T}\) 在 \(\mathbb Z_p^*\times\mathbb Z_q^*\) 上的像大小为</p>
+      <div class="math-display">\[
+        \left|\operatorname{Im}_T\right|
+        =\frac{p-1}{\gcd(p-1,2^T)}
+         \frac{q-1}{\gcd(q-1,2^T)}.
+      \]</div>
+      <div class="callout warn">
+        <b>这不是说参赛模型一定利用了群论捷径</b>
+        <p>规则禁止显式任务求解器，私有 Hard 也可能更换递推；但从科学测量看，存在一个未被控制的替代解释就足以降低证据强度。固定-\(N\) OOD 分数可以测工程泛化，却不能单独证明“神经网络在测试时执行了更多串行步骤”。</p>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>从固定栈到循环：参数、深度和时间被重新拆开</h2>
+      <p>固定栈为每层使用不同参数，状态沿深度依次通过 \(f_1,f_2,\ldots,f_L\)。循环模型只学习一个或一小组共享块 \(f_\theta\)，重复应用 \(K\) 次：</p>
+      <div class="math-display">\[
+        h_{k+1}=f_\theta(h_k; x,N,T,k), \qquad \hat y=g(h_K).
+      \]</div>
+      <p>参数量主要由 \(\theta\) 决定，有效深度由 \(K\) 决定。Saunshi 等人的 ICLR 2025 工作表明，在加法、\(p\)-hop induction 和合成数学题上，\(k\) 层重复 \(L\) 次的模型往往接近同等 FLOPs、但拥有 \(kL\) 组独立参数的深模型，并远强于只运行一次的同参数浅模型。他们还给出构造性结果：合适的循环 Transformer 可以用循环中的隐藏状态模拟多步显式 CoT。</p>
+      <p>但“存在一组参数能模拟”与“有限数据和有限时间能学出来”差距很大。对本题，理想循环块应近似一个通用解释器：读取当前余数、模数和步数状态，完成一次精确模平方，并把新的余数写回。测试时把 \(K\) 从训练范围增加到更大值，才会自然完成更多步骤。</p>
+      <div class="grid-2">
+        <div class="card"><h3>训练期</h3><p>需要让同一个块在不同循环位置都承担“下一步”语义，避免第一圈、最后一圈形成只对固定深度有效的特化角色。</p></div>
+        <div class="card"><h3>测试期</h3><p>根据输入 \(T\) 选择循环数，或由停止器判断完成；额外循环必须继续推进计算，而不是反复扰动已经正确的答案。</p></div>
+        <div class="card"><h3>状态表示</h3><p>隐藏状态既要保存当前余数，又要保留模数、计数器和输出位置信息；十进制 token 化还要求内部算法最终精确落到每个数字。</p></div>
+        <div class="card"><h3>资源交换</h3><p>循环越深，每个训练 step 越慢、激活与反向链越长；固定一小时里，深度、batch size 与更新次数直接竞争。</p></div>
+      </div>
+    </section>
+
+    <section id="optimization">
+      <h2>为什么“需要更好的优化器”只说对了一半</h2>
+      <p>循环 \(K\) 次时，梯度要穿过同一个映射的反复复合。局部线性化后，状态扰动和反向梯度都受 Jacobian 连乘控制：</p>
+      <div class="math-display">\[
+        \frac{\partial h_K}{\partial h_0}
+        =\prod_{k=0}^{K-1}J_k,
+        \qquad J_k=\frac{\partial f_\theta(h_k)}{\partial h_k}.
+      \]</div>
+      <p>若主导奇异值长期大于 1，隐藏状态与梯度会爆炸；长期小于 1，早期信息与梯度会消失；恰好稳定也不代表有效——一个迅速收敛到常数的循环非常稳定，却不会完成 \(T\) 个不同计算步骤。AdamW、Muon 或二阶预条件可以改善参数更新的尺度与几何，但无法替代一个合理的循环动力系统。</p>
+      <p>共享参数还带来第二种困难：同一个 \(\theta\) 在每一圈都被使用，所以参数梯度不是一条单纯的 Jacobian 链，而是各时间位置贡献之和。早期圈想保留输入，计算圈想改写余数，末圈想形成十进制输出，这些目标可能互相冲突。加入绝对 step embedding 能缓解角色冲突，却也可能把模型重新绑死在训练见过的 step index；完全不提供步数位置，又要求单一映射自己同时学会计数、计算与停止。</p>
+      <div class="math-display">\[
+        \frac{\partial \mathcal L}{\partial \theta}
+        =\sum_{k=0}^{K-1}
+        \frac{\partial \mathcal L}{\partial h_K}
+        \left(\prod_{j=k+1}^{K-1}J_j\right)
+        \frac{\partial f_\theta(h_k)}{\partial\theta}.
+      \]</div>
+      <p>随机深度训练的价值也不只是正则化。它迫使同一更新算子同时解释多种组合长度，近似施加半群一致性 \(f^{a+b}=f^a\circ f^b\)；若只在固定 \(K\) 上训练，网络可以让不同循环位置共同实现一个不可拆分的端到端函数。截断反传能缩短梯度路径，却会让训练目标更短视，因此需要和中间读出、局部一致性或课程设计一起评估。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>问题层</th><th>典型失败</th><th>更直接的干预</th><th>优化器能做什么</th></tr></thead>
+          <tbody>
+            <tr><td>信号传播</td><td>残差范数随循环爆炸，或深层表示坍缩</td><td>pre-norm、残差缩放、门控、谱约束、受控注入</td><td>降低更新噪声，但不能保证前向 Jacobian 稳定</td></tr>
+            <tr><td>信用分配</td><td>只有最终答案监督，单步更新没有语义</td><td>随机循环深度、深度课程、中间读出或辅助损失</td><td>预条件可加速已有信号，不能创造缺失监督</td></tr>
+            <tr><td>深度外推</td><td>训练到 8 圈，测试第 9 圈后开始破坏答案</td><td>在步数分布上训练、step conditioning、停止机制、跨深度一致性</td><td>可能改善平坦性，但不能自动获得组合不变性</td></tr>
+            <tr><td>预算分配</td><td>循环很深但更新次数太少，或 batch 太小</td><td>深浅样本混训、截断反传、编译与高效 kernel、动态深度</td><td>样本效率越高，固定时限内越有价值</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>2026 年的后续研究已把这个区别说得更清楚。Parcae 把循环残差视为非线性时变动力系统，将失稳归因到注入参数的谱性质，并用受约束参数化抑制残差爆炸；STARS 直接正则化循环 Jacobian 的谱半径，希望测试时增加循环仍朝稳定点演化；另一些深度外推实验发现“overthinking”——循环超过合适深度后，性能反而下降。这些结果共同说明：新优化器很可能有用，但获胜方案更可能是优化器、架构与训练分布的协同，而不是孤立替换 AdamW。</p>
+    </section>
+
+    <section id="benchmark">
+      <h2>公开 benchmark 到底测了什么</h2>
+      <p>提交是单个 Python 文件，定义模型、优化器、学习率调度器和可选训练损失。评估方控制数据、单次前向—反向外循环、梯度裁剪、随机种子、时间截止与最终评分。模型可在训练和评估阶段采用不同深度，也可以使用权重共享、adaptive computation、路由、记忆 token 或 parameter-free work。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>Easy / Medium</th><th>Hard</th><th>解释</th></tr></thead>
+          <tbody>
+            <tr><td>训练时限</td><td>60 秒 / 600 秒</td><td>3600 秒</td><td>模型构造、导入和编译也计时；不是纯训练 FLOPs 比赛</td></tr>
+            <tr><td>最终评估时限</td><td>训练时限的一半</td><td>1800 秒</td><td>允许测试时加深，但深度仍受真实 wall-clock 约束</td></tr>
+            <tr><td>数据可见性</td><td>公开练习数据</td><td>隐藏</td><td>Hard 还可能改变递推形式，防止只硬编码重复平方</td></tr>
+            <tr><td>输入方式</td><td>完整 prompt 双向注意力</td><td>私有评估器</td><td>这不是标准 causal LM 设置；模型直接映射 prompt 到独立输出张量</td></tr>
+            <tr><td>评分</td><td>test 与合并 OOD 平均</td><td>hidden test、held-out depth、联合 held-out modulus/depth 跨 seed 等权平均</td><td>整条答案必须逐 token 全对，近似余数没有部分分</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>公开 Easy 的训练深度多为 1–4，OOD 深度为 4–7；Medium 主要训练到 8 或 16，OOD 提升到 16 或 32。固定模数、固定深度和联合变化三类数据同时存在。生成脚本使用 prompt-level IID 划分：它只保证三元组 \((N,x,T)\) 不重复，并不保证 \(x\) 或 \(N\) 跨 split 隔离。因此 test 分数主要测族内插值，OOD 也只是“新 \(T\)”，不自动意味着新初值或新模数。</p>
+      <h3>跨深度复用同一个 \(x\)：一个比“小模数”更隐蔽的混杂</h3>
+      <p>固定-\(N\) 生成器为每个深度分别抽样，只用 \((N,x,T)\) 去重；同一个 \(x\) 可以在训练深度、测试深度和 OOD 深度反复出现。按公开样本量计算，一个合法 \(x\) 至少在某个训练深度出现过的近似概率非常高：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>公开组</th><th>合法 \(x\) 总数 \(\varphi(N)\)</th><th>每个 ID 深度训练样本</th><th>三个训练深度后的 \(x\) 覆盖率</th></tr></thead>
+          <tbody>
+            <tr><td>E1 / \(N=323\)</td><td>288</td><td>200</td><td>约 97.15%</td></tr>
+            <tr><td>E2 / \(N=899\)</td><td>840</td><td>640</td><td>约 98.65%</td></tr>
+            <tr><td>M1 / \(N=10403\)</td><td>10,200</td><td>9,000</td><td>约 99.84%</td></tr>
+            <tr><td>M2 / \(N=38021\)</td><td>37,632</td><td>27,000</td><td>约 97.74%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这些百分比是按各深度近似独立、每个深度内不放回抽样得到的覆盖率 \(1-(1-n/\varphi(N))^3\)，不是对实际文件逐行统计；但它准确揭示了 split 规则允许的重叠规模。模型可能从同一个 \(x\) 的较浅标签重建轨迹、记住 \(x\mapsto y_T\) 的有限表，或把 \(T\) 当作选择器。更严格的深度外推集应至少额外报告 <code>OOD-T / seen-x</code> 与 <code>OOD-T / unseen-x</code>；生成器其实已实现按 \(x\) 分组和这两种 OOD split，只是公开 Easy / Medium manifest 仍选择 <code>split_group=prompt</code>。</p>
+      <div class="callout info">
+        <b>一个容易忽略的评价陷阱</b>
+        <p>exact accuracy 把每位数字的错误相乘放大。若一个五位答案的每位独立正确率是 90%，整条答案正确率只有约 \(0.9^5\approx59\%\)；而数字错误实际高度相关。低 exact accuracy 可能同时来自算法错误、进位/位宽错误和解码错误，排行榜单点不能告诉我们模型是否学会了部分状态转移。</p>
+      </div>
+    </section>
+
+    <section id="identifiability">
+      <h2>核心科学问题不是准确率，而是算法可识别性</h2>
+      <p>只观察输入 \((N,x,T)\) 与最终输出 \(y\)，无法唯一恢复模型内部算法。设训练集为有限集合 \(D\)，以下机制都可能在 \(D\) 上达到相同损失：</p>
+      <div class="grid-2">
+        <div class="card"><h3>逐步执行</h3><p>隐藏状态表示 \(x_t\)，每圈近似一次模平方；这是竞赛叙事希望发现的机制。</p></div>
+        <div class="card"><h3>代数压缩</h3><p>先隐式识别固定 \(N\) 的阶或周期，再直接选择 \(2^T\bmod\lambda(N)\) 对应的映射。</p></div>
+        <div class="card"><h3>样本记忆</h3><p>利用高 \(x\) 覆盖率和小输出像空间，按初值或局部数字模式检索终点。</p></div>
+        <div class="card"><h3>深度专用电路</h3><p>共享块在不同圈形成位置特化，整体只对训练过的 \(K\) 工作，并没有可组合的“一步”。</p></div>
+      </div>
+      <p>所以，held-out depth 是必要条件，却不是充分条件。即使准确率随循环数上升，也可能只是更深的普通前馈电路获得更多计算，而非每圈执行同一种语义更新；反过来，一个真正学会代数压缩的模型可能用少于 \(T\) 圈答对，它在任务上更聪明，却不支持“顺序深度外推”的机制主张。</p>
+      <div class="callout info">
+        <b>行为目标与机制目标必须分开</b>
+        <p>如果目标是赢榜，任何合规且能泛化到隐藏递推的架构都成立；如果目标是证明测试时深度带来可组合算法，就必须加入能区分上述机制的干预实验。竞赛规则可以阻止显式手写求解器，却无法从最终准确率判断神经网络内部是否形成了等价捷径。</p>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>最有说服力的证据与尚未回答的问题</h2>
+      <h3>支持这个方向的证据</h3>
+      <ul>
+        <li><strong>表达能力与经验结果一致。</strong>Saunshi 等人的合成任务中，权重共享循环能以更少参数接近同有效深度的非共享深模型；理论构造说明循环可模拟迭代算法和多步 CoT。</li>
+        <li><strong>深度外推并非完全不可能。</strong>Looped Transformers for Length Generalization 通过 adaptive depth 与针对迭代解法的训练方法，在多种算法任务上显著改善未见长度泛化；2026 年的 recurrent-depth 实验也观察到增加测试循环可解更深组合。</li>
+        <li><strong>稳定性已有可操作诊断。</strong>Parcae、STARS 与 fixed-point 路线不再只说“训练不稳”，而是测残差范数、Jacobian 谱半径、收敛与停止行为，为竞赛中的架构—优化联合设计提供了明确变量。</li>
+      </ul>
+      <h3>当前证据不能证明的事</h3>
+      <ul>
+        <li>循环模型在小整数算法上成功，不等于开放域语言推理会按同样规律无限扩展；自然语言任务缺少唯一的单步状态转移和精确停止条件。</li>
+        <li>循环次数增加后准确率上升，不足以证明每一圈对应一个可解释“thought”；它也可能是迭代去噪、重复特征提取或更长的普通前馈计算。</li>
+        <li>公开 practice 数据允许小模数、固定 \(N\)、跨深度复用 \(x\) 与极短序列；固定-\(N\) 输出还会坍缩到很小的有限像空间。Hard 隐藏递推能缓解针对性 gaming，但不能替代公开可诊断的机制对照。</li>
+        <li>排行榜只公开总 exact accuracy，参赛源码和详细 split 结果保持私有。2026-07-20 曾显示 12 名、最高 1.15%，2026-07-22 已变为 15 名、最高 0.19%；缺少榜单版本说明时，它适合描述服务状态，不适合承担稳定研究结论。</li>
+      </ul>
+    </section>
+
+    <section id="falsification">
+      <h2>怎样把“看起来会外推”升级为可证伪结论</h2>
+      <p>一个更严格的研究协议应同时改变输入分布、计算预算与内部状态，并预先规定什么结果会推翻“学到可组合更新算子”的解释。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>检验</th><th>应控制什么</th><th>支持逐步算法的结果</th><th>会削弱主张的结果</th></tr></thead>
+          <tbody>
+            <tr><td>二维留出矩阵</td><td>分别留出 \(x\)、\(N\)、\(T\)，再联合留出</td><td>新 \(x\)+新 \(N\)+新 \(T\) 仍随循环数系统改善</td><td>只在 seen-\(x\) 或固定 \(N\) 上改善</td></tr>
+            <tr><td>循环—难度剂量反应</td><td>同一 checkpoint 扫描执行圈数 \(K\)</td><td>需要 \(T\) 步的样本在 \(K\approx T\) 前逐步改善，完成后平台化</td><td>所有 \(T\) 在同一 \(K\) 突然改善，或额外循环随机破坏</td></tr>
+            <tr><td>中间状态探针</td><td>仅训练读出器预测真实 \(x_t\)</td><td>第 \(t\) 圈最容易读出 \(x_t\)，且因果干预后轨迹按递推恢复</td><td>只能读出终点或探针相关、干预无因果效果</td></tr>
+            <tr><td>递推家族随机化</td><td>训练/测试切换参数化更新规则</td><td>模型根据规则描述复用解释器式更新</td><td>换递推后退化为随机，说明只学了平方专用电路</td></tr>
+            <tr><td>等预算基线</td><td>参数、训练 wall-clock、推理 FLOPs 分别配平</td><td>共享循环在同预算下优于静态深网、显式 scratchpad 和直接映射</td><td>收益完全由更多 FLOPs 或更少训练更新解释</td></tr>
+            <tr><td>代数反事实</td><td>控制群阶、周期、像空间大小和模数位数</td><td>表现跟所需串行步数走，而非跟周期/类别数走</td><td>小像空间与短周期决定分数</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>中间探针本身也不是证明：高维隐藏状态常能线性读出许多相关变量。更强证据是<strong>定位后干预</strong>——把第 \(t\) 圈的余数子空间替换成另一个合法 \(x_t'\)，看后续状态是否沿 \(x_{t+1}'=(x_t')^2\bmod N\) 演化；或者冻结其他状态，只扰动计数器，检查停止位置是否按预期平移。</p>
+      <p>对 adaptive halting 还要额外区分两类能力。本题把 \(T\) 明文给出，模型只需“服从已知预算”，并不需要从问题内容推断未知难度。真正的自适应计算基准应隐藏所需步数，提供可验证完成条件，并惩罚不必要循环；否则 halting head 很可能只是一个学习到的 \(T\mapsto K\) 回归器。</p>
+    </section>
+
+    <section id="terms">
+      <h2>概念对齐</h2>
+      <div class="def-list">
+        <div><b>有效深度</b><span>一次输出前串行经历的非线性计算阶段数。循环共享参数时，有效深度可增长而参数量不增长。</span></div>
+        <div><b>深度外推</b><span>训练只覆盖较浅循环，测试增加循环后仍能解决更深组合；它要求单步更新在不同循环位置保持可组合语义。</span></div>
+        <div><b>持久模型状态</b><span>参数与注册 buffer 等跨样本保留的标量。竞赛上限为 5 亿；optimizer state、activation 和临时 workspace 不计入，但受显存约束。</span></div>
+        <div><b>自适应计算</b><span>根据输入难度动态分配循环次数，通常需要 halting head、收敛标准或预算条件；目标是简单样本早停、困难样本多算。</span></div>
+        <div><b>Jacobian 谱半径</b><span>局部状态更新对微小扰动的放大因子之一。大于 1 往往意味着重复循环可能放大扰动，但小于 1 也可能过快遗忘有效状态。</span></div>
+        <div><b>算法对齐</b><span>模型内部每一循环与目标算法的一步具有稳定对应，而不是只拟合训练深度下的最终输入—输出关系。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 insight：真正的竞赛对象是“可组合更新算子”</h2>
+      <p>这项竞赛表面上允许参赛者同时设计模型与优化器，深层上却是在寻找一种新的可扩展单位：不是更多参数，也不是更多输出 token，而是<strong>一个能被可靠重复调用的 learned update operator</strong>。它若成功，测试时计算就不再只能通过自回归 CoT 增长，也可以在固定隐藏状态宽度里延长内部轨迹。但这里必须补一句：最终答案正确只证明“函数算对了”，不证明这个可扩展单位真的被学到；后者需要轨迹级和干预级证据。</p>
+      <p>这带来一个反直觉结论：最强方案未必追求“所有循环都收敛到固定点”。反复模平方不是静态去噪，而是要经过一系列不同的精确状态；过强收缩可能在完成足够步骤前丢失信息。理想动力学更像<strong>受控的暂态计算</strong>：在前 \(T\) 步保持可逆或近等距的信息通道，每步完成规定更新，到达完成态后才进入稳定吸引域或触发停止。稳定性与计算能力之间必须按阶段设计，而不是用一个全局谱半径目标粗暴统一。</p>
+      <p>因此，如果把它转化为工程实验，我会优先验证五件事：</p>
+      <ol>
+        <li>训练多个随机循环深度，而不是固定 \(K\)，并绘制 accuracy–depth 曲线，确认收益来自新增循环而非固定位置特化。</li>
+        <li>为中间状态增加只在训练时使用的读出或一致性约束，检查每圈是否更接近真实 \(x_t\)，同时避免把公开题的特定求解器写进模型。</li>
+        <li>分层记录状态范数、相邻循环增量、Jacobian 近似谱尺度、梯度范数与停止置信度，把“学不会”和“循环崩了”区分开。</li>
+        <li>在相同 wall-clock 下比较浅而多更新、深而少更新、深度课程与自适应停止；报告 Pareto 曲线，不只报最终最高分。</li>
+        <li>强制 \(x/N/T\) 分组留出，并控制 \(\lambda(N)\)、周期与输出像空间；若优势只在高重叠、短周期数据上出现，就把结论降级为分布内工程优化。</li>
+      </ol>
+      <div class="callout warn">
+        <b>外推到通用推理时的边界</b>
+        <p>重复平方拥有确定递推、廉价精确标签和明确完成步数，这是循环模型最友好的场景。开放域研究、代码调试和科学发现往往连“正确的一步”都没有唯一标签。竞赛若能找到稳定可外推的算子学习方法，价值很高；但从这里走到通用 latent reasoning，还需要任务分解、验证器、可解释停止和安全监控。</p>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>原帖、配图、竞赛官网、公开规则、数据生成逻辑、公开基线、Easy / Medium manifests 与 2026-07-22 最新代码历史均已核对；固定模数的 Carmichael 周期、像空间大小和样本覆盖率为依据公开参数做的独立计算。Hard 数据、递推形式、详细 split 结果和参赛源码未公开；榜单数字采用 2026-07-22 快照，会随比赛服务推进或重算。论文结果按发布方报告处理，本笔记未重新训练对应模型。</p>
+      <ul>
+        <li><a href="https://x.com/marksaroufim/status/2078313317907730725">Mark Saroufim：One Layer Deeper 发布帖</a></li>
+        <li><a href="https://onelayerdeeper.ai/">One Layer Deeper 官网与 Hard 排行榜</a></li>
+        <li><a href="https://onelayerdeeper.ai/problem">竞赛问题定义与评分说明</a></li>
+        <li><a href="https://github.com/tilde-research/one-layer-deeper">公开规则、评估框架、数据生成与 AdamW 基线</a></li>
+        <li><a href="https://arxiv.org/abs/2502.17416">Saunshi et al. (ICLR 2025): Reasoning with Latent Thoughts</a></li>
+        <li><a href="https://openreview.net/forum?id=2edigk8yoU">Fan et al. (ICLR 2025): Looped Transformers for Length Generalization</a></li>
+        <li><a href="https://arxiv.org/abs/2604.12946">Prairie et al. (2026): Parcae</a></li>
+        <li><a href="https://arxiv.org/abs/2605.26733">Yang et al. (2026): STARS</a></li>
+        <li><a href="https://arxiv.org/abs/2604.07822">Kohli et al. (2026): Loop, Think, &amp; Generalize</a></li>
+        <li><a href="https://people.csail.mit.edu/rivest/pubs/RSW96.pdf">Rivest, Shamir &amp; Wagner: Time-lock Puzzles and Timed-release Crypto</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
