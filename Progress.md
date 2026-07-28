@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-28 Kimi K3 技术报告笔记深度扩写
+
+### 任务与材料边界
+
+- 用户反馈现有 Kimi K3 笔记过于粗糙、简略；本轮在原 HTML 上深化，不新增重复版本，不纳入当前工作区内无关的 `span.log`。
+- 重新逐页核对 Moonshot AI 47 页技术报告正文、图表、脚注与附录，并复查官方博客、GitHub 三次提交与引用修订 issue、Hugging Face 配置 / 权重索引 / 许可证、SGLang 最新部署说明、KDA / AttnRes / LatentMoE 上游论文、Optimus prior art 与 AISI / CAISI 独立 cyber 评估。
+- 公共 GitHub 站点 adapter 不提供非浏览器正文读取，外部 GitHub 透传又无法稳定处理二进制 PDF；本轮降级为官方 raw PDF 与公共 API，未接管或干扰用户前台 Chrome。结论继续区分发布物事实、发布方报告、第三方证据、分析推断和建议。
+
+### 关键判断与补充分析
+
+- 原稿约 12,459 个非空白可见字符，判断方向基本正确，但将 47 页报告压成高密度提纲：KDA / AttnRes / QB / MOPD / KCP / speculative decoding 没有公式与逐步数据流，训练、RL 环境、混合缓存、内部评测和案例证据只给概括，因此读者难以从正文真正学懂。
+- K3 的统一主线仍是序列、深度、宽度三维信息流，但更完整的闭环应包含：原生多模态输入 → KDA / MLA + AttnRes + Stable LatentMoE → 四阶段 1M 课程 → 三领域 × 三 effort RL → MOPD → KCP / MoonEP / AgentENV → 混合状态缓存与 fleet scheduling。
+- 最新官方部署文档对草稿模型状态比原稿更细：公开主权重仍不内含报告所述 MTP / EAGLE tensor；SGLang 已描述 DSPARK 草稿路径和 7-token proposal，但 final checkpoint 的 serving round 尚未闭环，DFLASH 仍无公开 draft checkpoint。应写成“路径正在开放、主仓库未内含、生产收益待复测”，而不是笼统称完全不存在。
+- 报告在 2026-07-28 更新 PDF，并在社区指出后补入 Optimus 对 ViT pipeline-bubble 调度的 prior-art 引用；这进一步支持“系统规模化整合是主要贡献，但单点创新归属必须逐项追溯”的判断。
+- 官方博客明确列出 preserved-thinking history 敏感、过度主动和总体体验仍落后最强闭源模型三项限制；这些产品负面证据应与 benchmark、长期环境和权限设计一起分析，而不应只放在使用提示中。
+
+### 页面变更与验证状态
+
+- [x] 原地扩写 `notes/paper-reviews/kimi-k3-technical-report.html`：新增阅读地图、真实问题、K2 / K3 规格对照、端到端前向流程、11 个公式块、预训练数据与 1M 课程、后训练目标、七类 RL 环境、训练 / RL / serving 基础设施、公共 / 内部 / 第三方评测、案例、部署、成本、限制、十条独立 insight、研究矩阵与扩展术语表。
+- [x] 第一轮静态审计通过：正文约 35,102 个非空白可见字符、24 个 section、69 个 h2/h3、16 张宽表、11 个公式块；ID 唯一、页内锚点无断链、公式中无裸尖括号、无公开过程噪声或 whitespace 错误。
+- [x] Notes 全站索引校验通过：172 个索引入口对应 172 个顶层笔记 HTML。
+- [x] 隔离 Jekyll 全量构建通过；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，不影响产物生成。
+- [x] Codex 内置 Playwright 无头浏览器验收通过：1440×1100 桌面端与 390×844 手机端均 HTTP 200；24 个正文 section、16 张表、61 个渲染后 MathJax 容器与唯一 evidence appendix 均存在，断锚、坏图、页面级横向溢出、console / runtime / request error 均为 0。手机宽表只在 364px 局部容器内横向滚动，桌面与手机关键区段截图目检无正文裁切、公式溢出或布局断裂。
+- [x] 选择性暂存、提交与推送完成；提交范围仅含目标页面与本节进度记录，无关的 `span.log` 未纳入。
+
 ## 2026-07-28 误公开内部笔记下线
 
 ### 清理范围
