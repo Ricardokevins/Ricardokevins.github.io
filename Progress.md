@@ -30,6 +30,34 @@
 - 1440 × 1000 桌面端与 390 × 844 手机端渲染通过，无页面级横向溢出、无浏览器控制台错误；手机表格保留内部横向滚动，并在首轮视觉检查后修复论文缩写逐字母换行。
 - `git diff --check` 与选择性暂存复核通过；索引和 `Progress.md` 的其他并行改动均未纳入本任务提交。
 
+## 2026-07-28 组会双报告深读：Agentic RL / SpanRL
+
+### 任务与材料边界
+
+- 用户提供两份 2026-07-28 组会材料：熊浚丞的 PDF 汇报与周同学的 `SpanRL` PPTX，要求详细讲解、交叉讨论并给出独立 insight。
+- 已逐页读取 PDF 的 26 个物理页面与 PPTX 的 14 页正文、图表和公式，并核验 OPSD、Feedback-Augmented Self-Distillation、RGSD、Privileged Information Distillation、xCOMET、AutoMQM、TACL 2026 token-level MT RL 与 reward gaming 一手论文。
+- 结论区分报告页直接陈述、上游论文事实、分析推断与研究建议；两份组会材料均没有附原始代码、checkpoint、多 seed 或逐样本评测记录，因此不把页面结果当作独立复现。
+- 当前工作区仅有一个与本任务无关的未跟踪日志 `span.log`；本轮保留不动，不纳入分析、修改或后续提交。
+
+### 关键复算与判断
+
+- 第一份报告准确识别了数学 OPSD 与 Agentic OPSD 的 PI 差异，但“补全完整推理链”只是候选处方，不是当前证据支持的单调规律。RGSD 报告 raw rubric 比生成 golden response 高约 2–3 个百分点并因 rubric 泄漏而屏蔽 thinking；Agent PI distillation 又证明正确 tool call / action-only PI 可以有效。更稳妥的研究对象是让教师在关键分叉处改判的最小充分 PI，而不是最大长度 CoT。
+- 两个精选 logit probe 支持“特权上下文能翻转关键 token 排序”的机制假说，却没有建立训练收益。下一步应成规模比较终局、错误定位、rubric、正确动作、真实 state transition 与 full CoT，并同时测正确动作 margin、pivot / non-pivot KL、泄漏率、最终成功率和跨模板迁移。
+- SpanRL 的实际目标是 `A_token = A_sequence - 2 × error_mask`，属于序列级 GRPO 加局部负向 unlikelihood penalty；它降低已生成错误 token 的概率，但不指定正确替代。由于 GRPO 组内 advantage 均值接近 0，减去非负 mask 后整体均值自然变负，因此日志中的约 `-0.1` 主要是代数结果，不是学习成功的独立证据。
+- 复算测试表：Flores、WMT24pp、challenge set 上 SpanRL 分别以 23.8% / 29.1% / 28.6% 输给基线的 35.0% / 39.1% / 44.7%，净差为 `-11.2 / -10.0 / -16.1 pp`。Challenge set 三项只合计 99.4%，超出一位小数舍入范围；判胜模型、A/B 随机化、人评和置信区间也未说明，因此当前结果应按方向一致的负结果处理，而不是只称“泛化较弱”。
+- 2026 年 TACL 已有直接 prior art：用 xCOMET 错误严重度、字符到子词对齐和 token-level PPO，在 NLLB/TOWER/GEMMA、多语言及专业译者人评中比较 sentence-level 与 token-level RL。SpanRL 更合适的定位是研究 noisy CoT-derived spans 在 LLM-GRPO 中何时有净收益，以及同源 judge 相关误差何时导致泛化退化。
+- 独立统一框架：两份工作都把完整 rollout 的后见诊断写回局部 token，但 hindsight localization 不等于 causal attribution。建议采用“诊断候选 pivot → 最小 PI 教师干预 → 替换后继续 rollout 复验 → 仅对真实结果改善的位置做局部分布蒸馏”，把训练单位从表面 token 提升为经反事实验证的 decision pivot。
+
+### 页面变更与验证结果
+
+- 新增 `notes/tech-analysis/agentic-opsd-spanrl-credit-assignment-audit.html`，系统讲解两份报告、审计关键表格与目标函数、补齐直接 prior art，并给出联合方法和最小实验矩阵。
+- 更新 `_data/notes.yml`，增加 Tech Analysis 索引入口；公开笔记不包含本地路径、临时文件、抓取过程或未公开原始材料链接。
+- [x] Notes 索引校验通过：155 个索引入口与 155 个顶层 HTML 页面一一对应；目标页含唯一 `main` / H1、11 个 section、12 个唯一 ID、4 张表及唯一文末 evidence appendix，无断锚、重复 ID、生成痕迹或 whitespace 错误。
+- [x] 隔离 Jekyll 3.9.2 全量构建成功；仅保留仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning，目标页没有构建错误。
+- [x] 隔离 Chromium 在 1440×1100 与 390×844 两个视口均返回 HTTP 200，页面宽度分别等于视口宽度；17 个 MathJax 容器正常、错误数为 0，console / runtime / request error 和 4xx/5xx 资源均为 0。
+- [x] 桌面与手机全页截图目检通过；4 张 760px 宽表在手机端限制于 364px 容器内局部滚动，标题、卡片、公式、流程与证据索引无重叠、截断或不可读结构。
+- [x] 选择性暂存复核通过；只提交并推送本任务的分析页、索引入口与本 Progress 区块，保留并行任务文件及 `span.log` 不动。
+
 ## 2026-07-23 SAI × ICML 2026 执行式复现深读
 
 ### 任务与材料边界
