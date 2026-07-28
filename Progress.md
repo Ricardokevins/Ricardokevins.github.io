@@ -1,5 +1,27 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-28 全部分支合并回 main 与站点发布修复
+
+### 问题与处理范围
+
+- GitHub Pages 只从 `main` 发布，但近期笔记分散在多个 `codex/*` 分支，导致分支内已经完成的笔记没有出现在站点上。
+- 本轮在独立 worktree 中处理 `main`，没有切换或改写原工作区，也没有碰无关的未跟踪 `span.log`。
+- 共审计 9 个非 `main` 本地分支及其远端对应分支；其中 8 个此前未被 `main` 包含，已分别生成 merge commit，`codex/zhang-xiaojun-podcast-series` 原本已是 `main` 祖先。
+
+### 合并与冲突决策
+
+- 已合并 Agents-A1、Agent Self-Improvement Survey、LLM Memory Systems、LOTUS、One Layer Deeper、Self-Guided TTT、UniVR 和 Video Model RL Post-Training 全部分支历史。
+- 对 `Progress.md` 和 `_data/notes.yml` 做语义合并，以 URL 和二级标题去重，保留所有新增条目；最终索引从远端 `main` 的既有状态扩展为 173 个唯一入口。
+- 同名正文不做机械覆盖：LOTUS 采用更新且分析更完整的深化版；UniVR 保留当前分支中更晚、更完整的因果机制审计版；One Layer Deeper 作为新页面纳入；Podcast 索引保留 34 期版本，不回退到旧的 18 期摘要。
+- 本轮只合并，不删除任何功能分支，便于后续确认后再单独清理。
+
+### 验证结果
+
+- 本地与远端 9 个非 `main` 分支尖端均通过 `merge-base --is-ancestor` 审计，全部已包含在当前 `main` 历史中。
+- `ruby scripts/validate_notes_index.rb` 通过：173 个索引入口与 173 个顶层笔记 HTML 一一对应。
+- 隔离 Jekyll 全量构建成功；173/173 个索引 URL 均实际生成，抽查 10 个本轮关键合并页面全部存在。
+- 826 个站内本地资源引用、311 个唯一资源 URL 均能在源码中解析到实际文件；`git diff --check` 与冲突标记扫描通过。
+
 ## 2026-07-28 leanxbt《Graph Engineering》深读
 
 ### 任务与材料边界
