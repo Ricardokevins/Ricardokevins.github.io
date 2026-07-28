@@ -6675,3 +6675,44 @@ bundle exec jekyll build               # done in 7.6s, 仅 NOTE_TEMPLATE.md 模�
 - 已同步更新四篇个案、系列页和 `_data/notes.yml`（公开日期更新为 2026-07-22）；Notes 索引通过（148 entries / 148 top-level note html files），`git diff --check` 通过，5 个源页面与 5 个生成页面均通过 HTML 结构、唯一 ID、`main`/证据附录和新增章节检查，所有相对链接目标存在。
 - 已用隔离依赖完成 Jekyll 构建（`/tmp/zhang-podcast-deep-build-20260722`，exit 0）；仅有既有的 GitHub Metadata 未认证与 Faraday retry 提示，没有构建失败。公开页面扫描未发现本地路径、抓取工具痕迹、TODO、占位符或乱码。
 - 已提交为 `efee206`，并将 `codex/zhang-xiaojun-podcast-series` 与 `origin/main` 以 fast-forward 方式推送到同一版本；远端复核两条引用均指向 `efee206e58cec9091f661ca5b4771fbccbe93307`，工作树干净。主工作区的并行修改未进入本任务分支。
+## 2026-07-20 Self-Improvements in Modern Agentic Systems 综述深读（2026-07-22 二次深化）
+
+### 目标与材料边界
+
+- 深读 DailyPapers / HuggingPapers 发布的 X 帖及其对应论文 `Self-Improvements in Modern Agentic Systems: A Survey`（arXiv:2607.13104），核对作者给出的 239 篇文献、模型自改进与 scaffold 自改进分类、评测与安全边界。
+- 主材料以论文全文、附录、图表和公开项目材料为准；X 帖只作为传播入口，不把一句宣传性摘要当作论文结论。
+- 重点追踪会改变核心判断的代表方法、调查方法与引用统计，区分综述作者的分类、被引工作的原始证据和本轮分析推断；不机械复述全部 239 篇参考文献。
+
+### 材料审计与关键判断
+
+- 完整核验 97 页 arXiv v1、12 张图、论文 LaTeX 源码、项目页和持续更新的官方论文列表，并交叉阅读 SEAL、ACE、WebRL、Darwin Gödel Machine 四篇代表性原论文。论文源码的 526 个引用键均能在 715 条 BibTeX 记录中解析，但没有给出数据库、检索式、纳排标准、双人筛选、质量分级或 PRISMA 流程，因此它适合作为领域地图，不应按可复现的系统综述解读。
+- X 帖宣称“239 papers”，当前官方列表的方法区实际包含 245 行，另有 1 行 benchmark；按大小写归一后为 226 个唯一标题、223 个规范化唯一论文 URL，并有 18 个重复标题组和 1 个缺失论文链接。公开材料无法复现 239 的计数口径，且存在明显实体错配；笔记将该数字标为发布时点的策展口径，未包装成稳定样本量。
+- 综述最有效的定义不是“模型会反思”，而是执行产生的信号能否通过持久更新算子写回参数或 scaffold，并在后续任务中继续生效。临时上下文、当前计划和 KV cache 本身不构成能力改进。
+- “self”被进一步拆为提案、评估、提交三种自治权。现有系统大多只自动化提案，目标、验证器、更新算法和提交门仍由人预先设定；因此当前证据更接近“有界搜索 + 可验证的持久写回”，尚不足以证明开放世界递归自我改进。
+- SEAL 证明模型可生成训练指令并更新权重，但实验窄、成本高且存在顺序编辑遗忘；ACE 以 Generator–Reflector–Curator 更新 playbook，显示 scaffold 的低成本可逆优势；WebRL 用失败课程和结果奖励提升网页策略，但依赖人类标注轨迹与奖励函数；DGM 可修改完整 Python scaffold 并保留谱系，但一次 SWE 实验约两周、约 2.2 万美元，且仍处于固定基准、沙箱和人类监控边界内。
+- 独立结论是把自改进视为“带谱系的状态迁移治理”：近期更可信的架构是 scaffold 快速试验、独立验证与回滚、通过晋升门后再慢速蒸馏进参数；最低可信单元不是一个笼统的 Agent 标签，而是一条记录来源、差异、评测、成本、回归、安全、审批和回滚信息的更新谱系。
+
+### 2026-07-22 二次深化
+
+- 重新核对 arXiv 与官方仓库：论文仍为 2026-07-14 的 v1；初次阅读后官方仓库新增的 3 个提交只替换社群二维码，没有修改论文正文、方法列表或实验材料。
+- 对 245 条方法记录进行结构化复算：参数更新 74 条（30.2%），scaffold 更新 171 条（69.8%）；2025–2026 年记录 196 条（80.0%），venue 标为 arXiv 的 143 条（58.4%），带代码 URL 的 152 条（62.0%）。这些比例描述当前策展列表，不能推断方法成功率或领域真实分布。
+- 审计出清单边界与数据质量问题：大小写无关去重后只有 226 个标题；至少存在 SEDM 指向 EvoPrompt、RoboCat 指向 prompt-engineer 代码、Dynamic Cheatsheet 的冲突论文 ID、空或嵌套错误链接，以及 benchmark / survey / 非持续更新方法混入方法列表。
+- 新增 Self-Refine、Reflexion、OPRO 三个边界样本。Self-Refine 只在当前输出上迭代且不要求跨任务写回；Reflexion 的 episodic memory 是否构成长期学习取决于 retention boundary；OPRO 只有在最优 prompt 被保存并部署后才成为 scaffold 更新。这证明 feedback loop 本身不足以定义 self-improvement。
+- 发现论文形式化的核心缺口：原算子保证 self-induced persistent adaptation，却没有要求 held-out 增益、回归上限或安全约束，因此坏更新也满足定义。笔记新增候选状态、独立 promotion gate 与受保护治理状态 \(\Gamma\)，把“产生更新”与“允许提交”分离。
+- 将树状 taxonomy 深化为多轴 change manifest：除 update target / signal 外，还必须记录 proposer、verifier、committer、lifetime、scope、reversibility 与 cost；同时把 skill 重新定义为带前置条件、依赖、权限、测试、版本和回滚契约的可部署更新包。
+
+### 交付与验证
+
+- 原地深化 `notes/paper-reviews/self-improving-modern-agentic-systems-survey.html` 并更新 `_data/notes.yml`；新增文献清单结构统计、数据质量审计、三个定义边界样本、adaptation/improvement 形式化差异、统计准入门槛、多轴更新清单与 skill 部署契约，来源统一置于最后的证据附录。
+- Notes 索引校验通过：137 条索引与 137 个顶层 HTML 一一对应；深化后正文包含 11 个章节、36 个二/三级标题、38 个公式节点和 5 张宽表，`git diff --check`、重复 ID、失效页内锚点、占位文本、公开生成痕迹和空图片替代文本扫描均无异常。
+- Jekyll 隔离构建成功；仅有仓库既有的 Faraday 可选组件与 GitHub Metadata 未认证提示，不影响静态产物。
+- 隔离无头浏览器完成 1440×1200 桌面与 390×844 手机验收：两种视口均为 HTTP 200，只有一个 `main`，11 个章节和 38 个公式节点完整；无页面级横向溢出、重复 ID、失效锚点、失败请求、console / runtime error，5 张手机宽表只在各自容器内滚动。`corpus` 与 `evaluation` 锚点在两种视口均落于约 68px，位于 46–47px 顶部导航下方；桌面与手机长页均已人工视觉复核。
+- 为避免污染主工作区中未完成的 DeepSeek-V4 修改，本任务从 `origin/main` 建立隔离 worktree 与分支 `codex/deep-agent-self-improvement-survey`；提交范围严格限定为上述笔记、Notes 索引和本节研发记录。
+
+### 执行状态
+
+- [x] 获取并完整阅读论文、补充材料与关键公开实现，建立主张—来源—限制证据账本。
+- [x] 复核 taxonomy、代表方法、评测口径和引用覆盖，形成可证伪的独立判断。
+- [x] 新增站内笔记、更新 Notes 索引，并完成内容、结构、构建和桌面/手机渲染验证。
+- [x] 将提交范围隔离为本任务文件；提交、推送及远端状态核对在本轮交付末尾完成。
+
