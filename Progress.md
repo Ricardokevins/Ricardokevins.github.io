@@ -30,6 +30,38 @@
 - 1440 × 1000 桌面端与 390 × 844 手机端渲染通过，无页面级横向溢出、无浏览器控制台错误；手机表格保留内部横向滚动，并在首轮视觉检查后修复论文缩写逐字母换行。
 - `git diff --check` 与选择性暂存复核通过；索引和 `Progress.md` 的其他并行改动均未纳入本任务提交。
 
+## 2026-07-28 原生多模态预训练 Scaling Law 深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 HuggingPapers 的 X 帖 `2081900711777026218`；本轮完整核对主帖、arXiv `2607.22043` v1 的正文、附录、TeX、全部拟合图与结果表，并追踪 Chinchilla、两项原生多模态 Scaling Law 及数据混合 Scaling Law 一手材料。
+- 实验曲线、benchmark 与训练结论按作者报告处理，不写成独立复现；独立部分限定为公式/配置审计、指数与表格复算、跨论文比较和条件性参数量核算。截至 2026-07-28，论文页、作者页与 Hugging Face 论文页均未链接公开代码、checkpoint 或可复现数据配方。
+- X 适配器需要接入用户前台 Chrome，按仓库非侵入规则未调用；主帖经公开只读接口交叉确认，回复正文作为未闭环边界。工作区存在其他并行任务对 `Progress.md`、`_data/notes.yml` 的修改及无关 `span.log`，本轮均保留不动。
+
+### 关键复算与判断
+
+- 论文的所谓 multimodal objective 只在含图像上下文的记录上预测文本 token，vision tokens 全部 mask；因此它研究的是 image-conditioned text modeling，不是视觉 token 预测、图像生成或一般多模态目标的统一规律。
+- Language IsoFLOP 指数在非零配比下为 `a=.684/.667/.663`，multimodal 为 `.709/.679/.643`；图文目标确实随配比上升而相对更 data-hungry，但在 `r=.1/.2` 时其数据指数仍低于对应语言目标，不能表述为任何配置下都绝对更 data-hungry。
+- 既有原生多模态 MoE 与统一理解—生成研究分别报告约 `a=.361,b=.656` 和视觉 `a=.36,b=.64`，与本文整体 `a=.64–.71,b=.29–.36` 方向相反。差异更可能来自预测目标、数据、宽深路径、专家 recipe、optimizer 与训练/验证损失口径，因而当前数字应定位为 recipe-conditional law。
+- 联合 Pareto 的多模态模型指数只从 `.69` 移到 `.66`，却把主要观测区约 `10^20–10^21` FLOPs 外推到 `10^25`；多模态 frontier 的不可约损失底值又随配比从 `.827/.576` 变到 `.001`。这足以构成局部搜索先验，不足以支撑“精确、可部署”的通用配置。
+- 16 项语言均分支持“加入最多 23.08% 图文 token 不损害语言”，但论文的“每档差异均小于 1pp”有两个字面反例：874M 极差恰为 `1.00pp`，3B 为 `1.26pp`。对 21 项多模态 benchmark 复算确认 3B 的 1-shot / 3-shot 平均提升 `+1.98/+2.43pp`，同时 3-shot 在 CountBench 下跌 `10.43pp`，所谓稳健 ICL 仍有明显任务依赖。
+- 根据披露配置做条件性估算，3B active 档约对应 29.6B total parameters；active \(N\) 可近似 token FLOPs，却不能代替部署所需的总权重显存、专家通信与实际吞吐。
+
+### 页面变更
+
+- 新增 `notes/paper-reviews/native-multimodal-pretraining-scaling-laws.html`，按“目标语义—拟合方法—指数对照—Pareto 外推—下游复算—可证伪实验”展开，并在文末统一收束证据边界与一手资料。
+- 更新 `_data/notes.yml`，新增 Paper Note 索引入口、摘要、标签和证据范围；公开笔记不包含本地路径、临时文件、抓取过程或工具痕迹。
+
+### 验证与发布状态
+
+- `ruby scripts/validate_notes_index.rb` 在完整共享工作区通过：本轮校验时 158 个索引入口与 158 个顶层笔记 HTML 一一对应。
+- 选择性暂存后导出的隔离快照再次通过索引校验与 Jekyll 全量构建：本任务提交态为 156 个索引入口和 156 个顶层笔记 HTML；差额来自未纳入提交的并行任务。
+- HTML 合同检查通过：唯一 H1 / `main`、13 个 section、7 张表、唯一文末 evidence appendix、ID 唯一、断锚为 0、无占位符、替换字符、公开过程噪声或 whitespace 错误；正文约 8,723 个可见字符。
+- 隔离 Jekyll 全量构建成功；仅出现仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning，没有目标页构建错误。
+- Playwright 技能包装器因上游包未暴露 `playwright-cli` 入口而不可用，本轮复用缓存的 Playwright 1.62 与系统 Chrome 做等价无头验收，不接管前台浏览器。1440×1100 桌面端和 390×844 手机端均 HTTP 200，console / runtime / request error 与 4xx/5xx 资源均为 0，页面级横向溢出和断锚均为 0。
+- 首轮手机截图发现全局样式把宽表压缩到不可读列宽，已提高选择器优先级修复；复测确认 7 张表均在 364px 容器内以 720px 内容宽度局部滚动。桌面与手机全页截图目检无重叠、截断、公式错误或不可读结构。
+- 最终只暂存本任务新增笔记、Notes 索引增量与本 Progress 区块；其他并行任务文件、共享文件 hunk 和 `span.log` 不纳入本任务提交。
+
 ## 2026-07-28 组会双报告深读：Agentic RL / SpanRL
 
 ### 任务与材料边界
