@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Graph Engineering 深读：图不是比循环更强，而是把控制权收回来</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --surface-2: #f8f2e8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7e9df;
+      --accent-2: #8a5a2b;
+      --accent-2-soft: #f4eadc;
+      --good: #456653;
+      --good-soft: #e8efe9;
+      --warn: #9b4a39;
+      --warn-soft: #f6e6e1;
+      --shadow: 0 16px 42px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { font-weight: 760; }
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #ece5d7;
+      color: #7c2d12;
+      font-family: var(--mono);
+      font-size: .91em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 16px 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: var(--radius);
+      background: #1d2524;
+      color: #f4eee2;
+      font: 13.5px/1.65 var(--mono);
+    }
+    pre code { padding: 0; background: transparent; color: inherit; overflow-wrap: normal; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 7vw, 82px) 0 30px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 760 clamp(34px, 5vw, 60px)/1.13 var(--serif);
+    }
+    .lede {
+      max-width: 920px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+    }
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 4px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,253,248,.84);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 740;
+      text-decoration: none;
+    }
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 70px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+      scroll-margin-top: 68px;
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(25px, 3.2vw, 36px)/1.22 var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 17px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; color: var(--accent); font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+    .callout.good > b { color: var(--good); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn > b { color: var(--warn); }
+    .table-wrap {
+      margin: 18px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.5px; }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 760; }
+    tr:last-child td { border-bottom: 0; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+      align-items: stretch;
+    }
+    .flow-step {
+      position: relative;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .flow-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -9px;
+      top: 42%;
+      z-index: 2;
+      color: var(--accent-2);
+      font-weight: 900;
+    }
+    .flow-step b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .flow-step span { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(140px, .25fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); }
+    .label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+    .label.fact { background: var(--good-soft); color: var(--good); }
+    .label.inference { background: var(--accent-soft); color: var(--accent); }
+    @media (max-width: 900px) {
+      .flow { grid-template-columns: 1fr; }
+      .flow-step:not(:last-child)::after {
+        content: "↓";
+        right: auto;
+        left: 50%;
+        top: auto;
+        bottom: -20px;
+      }
+    }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      .notes-shell-page .table-wrap > table { min-width: 720px; }
+      .toc a { flex: 1 1 145px; justify-content: center; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Agent Workflow · 2026-07-28</div>
+    <h1>Graph Engineering 深读：图不是比循环更强，而是把控制权收回来</h1>
+    <p class="lede">leanxbt 的核心直觉是对的：当分支、并发、人工审批与异构执行者增多时，不应继续把控制流藏在一个提示词里。但文章把“画出拓扑”写成了“已经拥有运行时”。逐段核对与代码复现表明，它解释好了节点、边与业务状态，却没有真正实现调度、合并和恢复。</p>
+    <nav class="toc" aria-label="文章目录">
+      <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题与语境</a>
+      <a href="#mechanism">机制拆解</a>
+      <a href="#runtime">三层运行时</a>
+      <a href="#audit">代码审计</a>
+      <a href="#merge">并发合并</a>
+      <a href="#durability">暂停与恢复</a>
+      <a href="#decision">选型阶梯</a>
+      <a href="#insight">独立 Insight</a>
+      <a href="#limits">边界</a>
+      <a href="#sources">资料索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>这是一篇有价值的架构启蒙文，不是一份可直接采用的图执行引擎设计。</strong>它最值得保留的不是“loop 会进化成 graph”这个比喻，而是更精确的一句话：把哪些步骤可以发生、谁有权执行、何时必须停下，从模型的自由裁量移回程序契约。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>方向成立</h3>
+          <p>节点负责工作、边负责路由、状态负责传递，是把隐式 agent 行为变成可观察 workflow 的正确第一步。</p>
+        </div>
+        <div class="card">
+          <h3>二分法不成立</h3>
+          <p>循环与图没有计算能力上的高低之分；文章自己的图执行器就是一个循环。变化的是控制流表示、约束与治理方式。</p>
+        </div>
+        <div class="card">
+          <h3>实现未闭环</h3>
+          <p>默认入口、并行分发、join、reducer、checkpoint 与 resume 均有缺口，示例更适合作为伪代码阅读。</p>
+        </div>
+      </div>
+      <div class="callout good">
+        <b>推荐吸收的架构</b>
+        外层使用类型化、可持久化的确定性 workflow graph 管权限、路由、预算与审批；每个需要开放式探索的节点内部，保留一个有上限、有验证器的 agent loop。图不是替代 agent，而是限定 agent 在哪里可以自由。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>它试图解决什么：提示词里的隐式流程失控</h2>
+      <p>文章用一个 bug 流水线贯穿全文：分诊、复现、识别故障类型、修复、更新测试、验证；网络抖动、逻辑错误、数据缺口走不同分支；修复涉及计费时还要等待人工批准。作者认为，继续把这一切塞进“自己决定下一步”的提示词，会让系统的真实控制流只能在运行后猜测。</p>
+      <p>这个问题真实存在。Anthropic 对 agentic system 的划分也采用相似边界：workflow 由预定义代码路径编排模型与工具，agent 则由模型动态决定过程。文章真正要做的，是从后者收回一部分决策权，形成“有限的允许转移集合”。</p>
+      <p>它还是作者系列文章的自然延伸：早期的 Loop Engineering 强调外部验证与停止条件，Conductor 一文加入多 worker、依赖图和集成测试，本篇再把这些隐式依赖提升为显式 graph。这个演进脉络解释了文章为何如此强调“不要让节点决定下一步”。</p>
+      <div class="callout warn">
+        <b>需要修正的说法</b>
+        “出现异构步骤就必须上图”并不成立。便宜分类器、强编码模型和人工审批完全可以组成一条线性 pipeline；反过来，即使没有分支，为了跨天恢复、审计、权限隔离和失败重试，也可能值得使用显式 workflow。真正的分界线不是图形形状，而是是否需要<strong>受约束的状态转移与持久化执行语义</strong>。
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：外层 workflow，内层 agent loop</h2>
+      <p>把文章的直觉改写成可落地模型，可以分成五步。输入是 bug 与运行上下文；处理过程不是一个大 agent 连续自由行动，而是让每个阶段只看到所需状态，并把结果写成结构化更新；输出既包括修复产物，也包括可追溯的执行证据。</p>
+      <div class="flow" aria-label="外层工作流与内层循环的五段控制流">
+        <div class="flow-step"><b>输入契约</b><span>bug、仓库版本、权限、预算、验收标准</span></div>
+        <div class="flow-step"><b>结构化分诊</b><span>模型可参与判断，但输出必须落到有限枚举、置信度与证据</span></div>
+        <div class="flow-step"><b>确定性路由</b><span>guard 检查枚举、权限与风险；未知状态进入人工或安全失败</span></div>
+        <div class="flow-step"><b>局部 agent loop</b><span>在隔离环境内修复—验证—重试，受步数、时间与费用上限约束</span></div>
+        <div class="flow-step"><b>集成与终态</b><span>合并产物、端到端验证、审批，然后明确成功、失败或等待</span></div>
+      </div>
+      <p>这里的关键不是把所有判断都写死。分诊仍可由模型完成，修复仍可由 agent 自主探索；但模型只能提出结构化状态，路由器只接受登记过的目标，关键副作用只能在审批后发生。模型负责“不确定空间里的搜索”，workflow 负责“确定边界里的治理”。</p>
+      <h3>文章的三要素只覆盖了第一层</h3>
+      <div class="def-list">
+        <div><b>Node / 节点</b><span>一次工作单元。生产环境中应返回局部状态更新或产物引用，而不是任意修改同一个共享字典。</span></div>
+        <div><b>Edge / 边</b><span>允许的转移关系。若路由结果来自模型，仍需枚举校验、置信度门槛与未知分支，不能把任意字符串直接当节点名。</span></div>
+        <div><b>Business state / 业务状态</b><span>bug 文本、故障类型、补丁、测试结论等领域数据。它不等于执行器恢复所需的全部状态。</span></div>
+      </div>
+    </section>
+
+    <section id="runtime">
+      <h2>真正的图引擎有三层：拓扑、调度、持久化</h2>
+      <p>文章把一个 <code>current</code> 字符串、节点字典和边字典称为图引擎。在线性或单分支执行时，这其实是一个有限状态机解释器；一旦允许列表返回多个节点，运行模型已经改变，不能继续用同一条 <code>current</code> 指针假装并行存在。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>层级</th><th>必须回答的问题</th><th>文章覆盖</th><th>缺失会怎样</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>拓扑 / 状态机</td><td>有哪些节点、允许哪些边、入口与终点是什么？</td><td>覆盖较多</td><td>路由隐式、无法静态检查、权限边界不清</td></tr>
+            <tr><td>调度 / 数据流</td><td>哪些节点活跃、并行何时开始、join 等待哪些本次激活、失败如何取消兄弟分支？</td><td>只给接口想象</td><td>列表无法执行、join 死锁、旧分支结果污染新一轮</td></tr>
+            <tr><td>持久化 / durable execution</td><td>崩溃后从哪里继续、哪些副作用已发生、重放是否安全、代码版本如何迁移？</td><td>以单个 JSON 文件带过</td><td>从入口重跑、重复扣款、重复写记录、恢复到错误版本</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>LangGraph 的公开运行时用 message passing 与 super-step 描述并行：同一 super-step 的活跃节点一起执行，直到没有活跃节点和在途消息才终止。Temporal 则把命令与事件写入有序历史，通过确定性重放恢复流程。这两种实现不同，却共同说明：<strong>graph topology 只是声明，scheduler 与 history 才让声明变成可恢复执行。</strong></p>
+      <div class="callout">
+        <b>最容易忽略的 join 问题</b>
+        “等待所有入边”并不总是正确。若条件分支只激活 A、没有激活 B，静态等待 A+B 会永久阻塞；若图中有循环，上一轮 B 的完成也不能误算进下一轮。join 必须等待同一 fan-out 实例实际派发的动态 token，并用 run ID、activation ID 或 super-step 隔离轮次。
+      </div>
+    </section>
+
+    <section id="audit">
+      <h2>代码审计：概念示意可以，按原样运行不行</h2>
+      <p>将文章给出的主类与扩展示例按原结构组合，可以稳定复现以下断点。这些是代码直接行为，不依赖对作者意图的猜测。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>位置</th><th>文章意图</th><th>可复现事实</th><th>应有修复</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>默认入口</td><td><code>START</code> 作为虚拟起点</td><td><code>entry</code> 被设为 <code>START</code>，但节点表没有该键；第一个执行动作直接触发 <code>KeyError: 'START'</code></td><td>把 START 当虚拟节点解析到登记过的 entry，或显式设置入口并在编译期验证</td></tr>
+            <tr><td>结构验证</td><td>启动前抓住断边</td><td>只检查“每个已登记节点是否有出边”；不检查入口、目标节点、可达性、终点可达、条件路由返回范围</td><td>编译期做入口/终点、源/目标、可达性、非法环与路由映射检查</td></tr>
+            <tr><td>fan-out</td><td>路由器返回节点列表并行执行</td><td>runner 下一轮把列表当节点字典键，触发不可哈希错误；正文调用的 <code>add_join</code> 在类中不存在</td><td>引入 active task set、队列或 super-step 调度器，并定义 branch-local input</td></tr>
+            <tr><td>fan-in</td><td>等待 code 与 tests 两支完成</td><td>没有 join token、分支完成记录、错误传播、超时、取消和多轮隔离</td><td>用 fan-out 实例生成动态 barrier；记录每支状态与失败策略</td></tr>
+            <tr><td>checkpoint</td><td>触及 billing 时暂停</td><td>暂停被编码为 <code>END</code>，与正常完成不可区分；只写业务字典，不保存下一节点与活跃分支</td><td>使用明确的 WAITING 终态、持久 cursor、待审批事件与恢复令牌</td></tr>
+            <tr><td>resume</td><td>注入人工答案后继续</td><td><code>graph.run(state)</code> 每次从 entry 开始；最小复现中入口节点被重复执行</td><td>从 checkpoint 的 next task / program counter 恢复，并保证重放副作用幂等</td></tr>
+            <tr><td>节点安全</td><td>执行复现命令</td><td>命令字符串使用 <code>shell=True</code>；若字符串受 issue、模型或外部输入影响，会扩大 shell 注入面</td><td>使用参数数组、命令 allowlist、隔离执行环境与节点级权限</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code>默认入口       → KeyError: 'START'
+fan-out 列表   → TypeError: list cannot be used as a node key
+join API       → 未实现
+恢复后入口访问 → 1 次变 2 次</code></pre>
+      <p>此外，文章称节点应是“纯状态函数”，但示例节点会启动进程、写文件并原地修改字典。真实节点当然可以有副作用，问题不在“不纯”，而在于没有区分<strong>可重放的决策</strong>和<strong>不可随意重放的外部动作</strong>。把二者拆开，才是恢复安全的起点。</p>
+    </section>
+
+    <section id="merge">
+      <h2>Reducer 不是魔法：有合并函数，不等于并发确定</h2>
+      <p>文章正确指出，两个并行分支同时写同一字段时不能默认 last-write-wins；但它随后把“为每个字段注册 reducer”写成了充分条件。实际只解决了“如何调用一个二元函数”，没有保证不同完成顺序、批次分组与失败重试得到同一结果。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>示例字段</th><th>文章 reducer</th><th>真实性质</th><th>风险</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>messages</code></td><td>旧列表 + 新列表</td><td>能保留两边内容，但顺序随分支合并顺序改变；重复投递会重复追加</td><td>日志次序不稳定、重试产生重复记录</td></tr>
+            <tr><td><code>files</code></td><td>集合去重后排序</td><td>对纯文件名集合较接近交换、结合与幂等</td><td>只能合并“有哪些文件”，不能合并同一文件的补丁冲突</td></tr>
+            <tr><td><code>risk</code></td><td>取最大值</td><td>若风险是同一量纲全序标尺，性质良好</td><td>多维风险被压成单值时可能丢失语义</td></tr>
+            <tr><td><code>status</code></td><td>新值覆盖旧值</td><td>结果直接依赖谁最后合并</td><td>code 先 / tests 先会得到不同终态，正是文章声称已消除的问题</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>按文章函数分别以 A→B 与 B→A 合并，消息顺序分别是 <code>[code, tests]</code> 与 <code>[tests, code]</code>，status 分别停在 <code>tests_done</code> 与 <code>code_done</code>。所以“无论哪支先完成都可预测”并未成立。</p>
+      <div class="grid-3">
+        <div class="card"><h3>结合律</h3><p><code>merge(merge(a,b),c)</code> 与 <code>merge(a,merge(b,c))</code> 相同，避免批次分组改变结果。</p></div>
+        <div class="card"><h3>交换律</h3><p><code>merge(a,b)</code> 与 <code>merge(b,a)</code> 相同，适用于不希望完成先后影响语义的并发字段。</p></div>
+        <div class="card"><h3>幂等或去重</h3><p>同一个带唯一 ID 的更新重复到达时不产生第二份副作用，适应至少一次执行与恢复重试。</p></div>
+      </div>
+      <p>并非所有 reducer 都必须同时满足三项；关键是调度器承诺什么。若承诺固定、可重放的合并顺序，列表可以保序；若允许按完成顺序合并，又希望结果不受时序影响，就需要交换性；若任务可能重试，则要有幂等更新或稳定去重键。生产设计要先写清执行语义，再选 reducer，不能反过来。</p>
+      <div class="callout warn">
+        <b>文件修改不是普通字典合并</b>
+        “修代码”和“更新测试”也未必真正独立：两支可能同时改接口、fixture 或同一文件。可靠做法是让分支产生带基线 commit 的不可变 patch / artifact，在隔离工作区执行，然后显式做三方合并、冲突检查与集成测试；共享一个可变目录并靠字典 reducer 无法解决源码冲突。
+      </div>
+    </section>
+
+    <section id="durability">
+      <h2>显式 state 是必要条件，不会让暂停与恢复“几乎免费”</h2>
+      <p>文章把“所有状态在一个对象里”直接推到“任意节点后序列化即可恢复”。这忽略了 workflow 至少有四类状态，而示例只保存了第一类。</p>
+      <div class="def-list">
+        <div><b>业务状态</b><span>bug、分类、补丁、测试、审批答案。这是文章字典主要覆盖的内容。</span></div>
+        <div><b>执行状态</b><span>run ID、当前 / 下一节点、活跃分支、join token、尝试次数、超时、等待事件、取消状态。</span></div>
+        <div><b>副作用账本</b><span>哪个外部调用、写入、付款、通知或提交已经发生；对应的 idempotency key、结果与补偿动作是什么。</span></div>
+        <div><b>版本契约</b><span>graph version、state schema version、节点实现版本与迁移策略。等待数天后恢复时，当前代码可能已经变化。</span></div>
+      </div>
+      <p>LangGraph 的 interrupt 需要 checkpointer 与 thread ID，并明确说明节点在恢复时可能从函数开头重新执行，因此中断前的副作用必须幂等。Temporal 更进一步，以有序 Event History 为事实来源；恢复时重放 workflow 决策，但复用已经记录的外部活动结果。两者都远超“把 dict 写进 JSON”。</p>
+      <p>一个生产级人工审批还要区分 WAITING 与 SUCCEEDED、为请求分配稳定 ID、在审批后校验版本与权限、处理拒绝 / 超时 / 重复回答，并确保批准前没有执行受保护副作用。文章示例在写 checkpoint 后才设置暂停标记，又把暂停路由到 END；这既没有持久化准确 cursor，也没有表达等待是一种仍可继续的开放状态。</p>
+      <div class="callout">
+        <b>更深一层的判断</b>
+        Durable execution 的核心不是“保存内存”，而是“保存足够的历史，使同一执行在崩溃、重试和代码变化后仍能给出可解释的一致决定”。只存快照却没有 effect ledger，会把失败恢复变成重复副作用生成器。
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据与新颖性：表达新鲜，机制并不新</h2>
+      <p><span class="label fact">已核验事实</span> 文章完整给出 49 个正文块和 6 段代码，但没有附可运行仓库、单元测试、性能比较、故障注入或 loop / graph 的对照数据。代码中宣称的并行与 join 接口不在主类实现中。</p>
+      <p><span class="label fact">已核验事实</span> 节点、边、状态、分支、并发与持久化并不是新的 agent 专属机制。Harel 1987 年的 statecharts 已把层次、并发和通信引入复杂状态系统；Pregel 用消息与 super-step 定义图并行；LangGraph 将相近概念包装进 agent workflow；Temporal 则提供长期执行所需的事件历史和重放。</p>
+      <p><span class="label inference">分析推断</span> 本文的原创价值主要是教学叙事：它用同一个 bug pipeline 把 loop、router、cycle、fan-out/fan-in、reducer 和 human gate 串成一条容易记忆的路线。这种压缩很有用，但不能把可读性误当成实现完备性。</p>
+      <p><span class="label inference">分析推断</span> 作者系列文章反复强调外部验证、预算、超时和隔离；本篇移到 graph 后却只保留 <code>max_steps</code>。这暴露了一个常见迁移陷阱：拓扑变清楚后，人会误以为系统也更安全。实际上一个节点仍可永久阻塞或一次花光预算，图级步数上限无法替代节点级 timeout、费用、权限、重试和取消。</p>
+    </section>
+
+    <section id="decision">
+      <h2>什么时候用哪一层：不要从 loop 直接跳到自制图框架</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>任务形态</th><th>最小合适抽象</th><th>升级触发器</th><th>避免的过度设计</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>一次模型调用即可完成，输入输出稳定</td><td>单调用 + 结构化输出 + eval</td><td>需要环境反馈后再改</td><td>不要为了“agent”加循环</td></tr>
+            <tr><td>同一个动作围绕一个验证器反复修正</td><td>有上限的 loop</td><td>出现不同权限、多个终态、人工等待或多种重试政策</td><td>不要把简单 retry 画成十个节点</td></tr>
+            <tr><td>有明确阶段、条件路由与审批，但单次只激活一条路径</td><td>类型化状态机 / workflow</td><td>需要真正并行、动态 map-reduce 或多分支 join</td><td>异构执行者本身不要求并发图</td></tr>
+            <tr><td>独立任务可并行，存在 fan-out / fan-in</td><td>具备任务隔离与 barrier 语义的数据流运行时</td><td>流程跨进程、跨天、需容灾和重放</td><td>不要用共享 dict 模拟调度器</td></tr>
+            <tr><td>长时间运行、外部副作用、人工审批、故障恢复</td><td>成熟 durable workflow engine 或具备等价保证的运行时</td><td>只有在约束非常特殊且有完整测试时才自研</td><td>不要用单个 JSON 文件承担事务与恢复</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>对文章的 bug pipeline，合理最小实现不是复制“50 行引擎”，而是：</p>
+      <ol>
+        <li>分诊节点输出有限枚举、置信度、证据与未知状态；router 对输出做 schema 与 allowlist 校验。</li>
+        <li>每条分支拥有不同权限、环境、模型、时间与费用上限；未知分类或高风险动作安全失败到人工。</li>
+        <li>局部修复节点内部运行 agent loop，但只提交不可变 patch / commit 与验证证据。</li>
+        <li>只有经依赖分析证明独立的工作才并行；合并时使用动态 branch token、固定基线与集成验证。</li>
+        <li>审批是可恢复 interrupt，不是 END；受保护副作用放在审批后，并带幂等键。</li>
+        <li>终态至少区分 succeeded、failed、cancelled、timed_out 与 waiting，不能把“停止”都当“完成”。</li>
+      </ol>
+    </section>
+
+    <section id="terms">
+      <h2>术语对齐</h2>
+      <div class="def-list">
+        <div><b>Agent loop</b><span>模型根据环境反馈反复观察、行动、验证，下一步通常由模型动态决定。</span></div>
+        <div><b>Workflow graph</b><span>由预定义节点、边和状态契约约束允许执行路径；节点内部仍可调用模型或 agent。</span></div>
+        <div><b>Fan-out / fan-in</b><span>把一次激活拆成多支并行任务，再在明确 barrier 上汇合；不是简单返回一个字符串列表。</span></div>
+        <div><b>Reducer</b><span>把多个状态更新合成一个值的函数；其顺序、批次与重试语义必须显式定义。</span></div>
+        <div><b>Checkpoint</b><span>能让某次执行继续的持久记录，通常包含业务状态、执行 cursor、任务元数据与版本信息。</span></div>
+        <div><b>Idempotency</b><span>同一操作重复执行不会产生额外效果；是重试与恢复面对外部副作用时的核心要求。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：真正被“收回”的应是能力，不只是路线</h2>
+      <p>文章把 graph 的价值描述为收回“下一步去哪”的决定权。更完整的安全模型还要收回三种能力：节点能看什么、能改什么、最多能消耗什么。若所有节点仍共享同一文件系统、凭证、网络和无限预算，那么显式边只让流程更好看，没有缩小任何 blast radius。</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Control-plane graph</h3>
+          <p>负责路由、权限、预算、版本、审批、终态与审计。它应尽可能确定、可重放、可静态检查。</p>
+        </div>
+        <div class="card">
+          <h3>Data-plane agent</h3>
+          <p>负责在被授权的局部环境中探索、写代码、调用工具。它可以灵活，但每次激活都有输入、输出与资源边界。</p>
+        </div>
+      </div>
+      <p>因此，“什么时候从 loop 升级到 graph”的最佳信号，不只是出现第一个 fork，而是出现第一个<strong>必须由系统而非模型强制执行的差异化政策</strong>：不同权限、不同验证器、不同重试策略、不同预算、需要跨故障存活的等待，或不能重复发生的副作用。此时 graph 才从视觉重构变成治理边界。</p>
+    </section>
+
+    <section id="limits">
+      <h2>边界、反例与什么会推翻当前判断</h2>
+      <ul>
+        <li>本轮完整核对主文、全部代码与作者相关系列上下文；主帖显示一条回复和一条引用，但公开页面没有返回其正文，因此无法判断是否存在作者后续修正或外部技术反驳。</li>
+        <li>文章没有发布可运行仓库；本轮只能审计其公开代码块，不能排除作者在未链接实现中已经补齐入口、调度、join 与恢复。</li>
+        <li>代码复现证明的是“公开示例不闭环”，不是“图编排无效”。成熟运行时已经证明这类抽象可以成立。</li>
+        <li>这里没有做 loop 与 graph 的真实团队 A/B 实验，关于可维护性、故障率和成本的判断属于由执行语义推导的工程分析。</li>
+        <li>若作者发布带单元测试、故障注入、确定性 merge、动态 join、持久 cursor 与副作用幂等保证的完整实现，“示例只是伪代码”的判断应相应上调。</li>
+      </ul>
+      <div class="callout warn">
+        <b>最终评级</b>
+        作为“为什么要外显 agent 控制流”的文章，值得读；作为“如何从零构建并行、可恢复图引擎”的实现指南，不应照抄。先吸收架构原则，再使用成熟运行时，或把自研范围严格限制在单活跃节点、无外部副作用的教学状态机。
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>主材料的正文、代码块、标题与发布时间已核对；其互动计数会继续变化，回复与引用正文未纳入结论。代码行为来自公开片段的最小复现；关于成熟运行时的对照只采用官方文档与原始论文。文中“分析推断”是基于这些材料的工程判断，不代表作者或框架维护方声明。</p>
+      <ul>
+        <li><a href="https://x.com/leanxbt/status/2081421355958911280">leanxbt：Graph Engineering: What a Loop Grows Into When One Cycle Is Not Enough</a></li>
+        <li><a href="https://x.com/leanxbt/status/2069409628920991753">leanxbt：Loop Engineering: You're Not Delegating Code, You're Delegating Judgment</a></li>
+        <li><a href="https://x.com/leanxbt/status/2076679468186513600">leanxbt：How to Build a Conductor: Orchestrating Multi-Agent Loops from Scratch</a></li>
+        <li><a href="https://www.anthropic.com/engineering/building-effective-agents">Anthropic：Building effective agents</a></li>
+        <li><a href="https://docs.langchain.com/oss/python/langgraph/graph-api">LangGraph：Graph API overview</a></li>
+        <li><a href="https://docs.langchain.com/oss/python/langgraph/pregel">LangGraph：Runtime 与 reducer 语义</a></li>
+        <li><a href="https://docs.langchain.com/oss/python/langgraph/interrupts">LangGraph：Interrupts 与 human-in-the-loop</a></li>
+        <li><a href="https://docs.langchain.com/oss/python/langgraph/persistence">LangGraph：Persistence</a></li>
+        <li><a href="https://docs.temporal.io/workflows">Temporal：Workflow、Event History 与 replay</a></li>
+        <li><a href="https://docs.temporal.io/workflow-execution">Temporal：Workflow Execution</a></li>
+        <li><a href="https://docs.python.org/3/library/subprocess.html#security-considerations">Python：subprocess security considerations</a></li>
+        <li><a href="https://doi.org/10.1016/0167-6423(87)90035-9">David Harel：Statecharts: A Visual Formalism for Complex Systems</a></li>
+        <li><a href="https://research.google/pubs/pregel-a-system-for-large-scale-graph-processing/">Google Research：Pregel: a system for large-scale graph processing</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

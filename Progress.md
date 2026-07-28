@@ -1,5 +1,38 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-28 leanxbt《Graph Engineering》深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 leanxbt 的 X Article `2081421355958911280`；站内按 status ID、作者、标题与核心术语去重后未发现既有解读，因此本轮新做完整分析。
+- 已还原 2026-07-26 发布的 49 个正文块、6 段代码与封面，并读取作者此前的 Loop Engineering / Conductor 系列文章以校准“loop”语义；主帖计数显示 1 条回复、1 条引用，但公开接口未返回其正文，且未接管用户前台 Chrome。
+- 本轮以文章代码实跑、LangGraph / Temporal / Python 官方文档、Anthropic workflow–agent 边界与 statecharts 原始论文交叉核验；严格区分文章主张、可复现代码事实、分析推断与工程建议。
+- 当前工作区存在多项并行任务对 `Progress.md`、`_data/notes.yml` 的 staged / unstaged 修改及无关 `span.log`；本轮保留不动，最终只选择性提交本任务页面与共享文件 hunk。
+
+### 关键判断
+
+- 文章最有价值的命题不是“图比循环更强”，而是把允许的控制流、权限与状态契约从模型提示词移回可测试的程序；更准确的落地形态是外层确定性 workflow graph 管边界，内层 agent loop 管局部探索。
+- 文中的 50 行引擎不能按原样运行：默认入口 `START` 不在节点表中；返回节点列表会触发不可哈希错误；`add_join` 未实现；checkpoint resume 从入口重跑而不是从暂停点继续。
+- reducers 只解决“有合并函数”，不自动解决并发确定性：示例中的列表拼接和 last-write status 会随分支完成顺序改变结果。并行 merge 还需要分支隔离、动态 join token、确定性调度，或满足交换律 / 结合律 / 幂等性的状态更新。
+- 显式 state 只是 durable execution 的必要条件，不会让 pause / resume “几乎免费”；还必须持久化程序计数器、活跃分支、重试与副作用账本、运行 / 图版本，并保证重放时副作用幂等。
+
+### 已完成变更
+
+- [x] 去重并完整还原主文、全部代码、系列上下文与公开互动边界。
+- [x] 实跑入口、fan-out、reducer 顺序与 resume 路径，复现四类关键断点。
+- [x] 完成概念、执行语义、证据强度、安全与生产化边界分析。
+- [x] 新增 `notes/tech-analysis/leanxbt-graph-engineering-workflow-audit.html`，并更新 Notes 索引、摘要、标签与证据范围。
+- [x] 完成结构、构建、桌面端与移动端渲染验证；首轮发现公共样式压缩手机宽表后，提高目标页规则优先级并复测通过。
+- [x] 隔离提交并推送本任务改动。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：159 个索引入口与 159 个顶层笔记 HTML 一一对应，目标 URL 唯一。
+- HTML5 解析与定向合同检查通过：目标页约 7,904 个可见字符、13 个正文 section、14 个唯一 ID、4 张响应式宽表、唯一 `main` / H1 与文末 evidence appendix；重复 ID、断锚、占位文本、替换字符和公开过程噪声均为 0。
+- 隔离 Jekyll 3.9.2 全量构建通过并实际生成目标页面；仅有仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning，不影响页面。
+- Playwright 技能包装器因上游包没有暴露 `playwright-cli` 入口而不可用，改用 Codex 内置 Playwright 连接独立无头 Chrome 做等价验收，不接管前台浏览器。1440×1100 桌面端和 390×844 手机端均 HTTP 200，console / runtime / request error 与 4xx / 5xx 资源均为 0，页面级横向溢出、断锚与正文裁切均为 0。
+- 手机端四张表均在 364px 容器内保持 720px 内容宽度和局部横向滚动；桌面和手机全页截图目检未见重叠、错误嵌套、不可读正文或布局断裂。
+
 ## 2026-07-28 Agentic RL 信用分配 / Prefix Replay 深读
 
 ### 任务与材料边界
