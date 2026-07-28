@@ -1,5 +1,35 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-28 Agentic RL 信用分配 / Prefix Replay 深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定知乎文章 `credit-assignment-is-all-you-need`；本轮完整读取原文、图表、作者关于 SWE-bench 环境恢复的回复、配套 SAO 小实验，并核验 PivoARL、PivotRL、ReOPD、TreeRL、EVPO、SAO 与 TITO 的一手材料。
+- 论文实验数字按发布方报告处理，不写成独立复现；原文内部曲线缺少模型、任务、seed、误差条与等预算口径，只作为“可能提升早期样本效率”的探索性证据。
+- 工作区存在其他并行任务对 `Progress.md` 的修改和无关未跟踪日志 `span.log`；本轮保留不动，最终只选择性暂存本任务的文件与 hunk。
+
+### 关键判断
+
+- Outcome-based GRPO 的轨迹级 advantage 确会误伤失败轨迹中的正确前缀，但 TITO、importance sampling、baseline estimation 与 temporal credit assignment 是四个不同层级，不能混为同一种稳定性修复。
+- Prefix Replay 是“冻结前缀、恢复状态、重采后缀”的训练接口，不是单一算法；PivotRL、PivoARL、ReOPD、TreeRL 分别优化局部回报、重试回报、教师 KL 与树节点价值。
+- SWE-bench 的核心工程瓶颈不是切点本身，而是恢复文件系统、进程、依赖和工具状态，并验证恢复后仍是同一个 MDP 状态；错误 pivot 或失准 verifier 可能比稀疏终局奖励引入更隐蔽的偏差。
+- EVPO 的正式结果是特定假设下 critic / group-mean baseline 选择的梯度方差保证，不是任意 partial credit 的性能安全保证；PivotRL 在 SWE-Bench 低于同数据 SFT 也是必要反例。
+
+### 已完成变更
+
+- [x] 新增站内长篇笔记，包含四层问题拆分、四类 prefix 方法对照、论文证据边界、SWE-bench 状态恢复契约、pivot 风险与最小实验设计。
+- [x] 更新 Notes 数据索引，补充摘要、标签与证据范围。
+- [x] 运行 Notes 索引、HTML 结构、Jekyll 构建、桌面端和移动端渲染验证。
+- [x] 复核差异并隔离提交、推送本任务改动。
+
+### 验证结果
+
+- `ruby scripts/validate_notes_index.rb` 通过：索引与 154 个顶层笔记 HTML 一一对应，目标 URL 唯一。
+- 自定义 HTML 合同检查通过：DOCTYPE、语言、viewport、`notes-shell-page`、单一 `main`、公共样式、返回导航、证据附录、ID 唯一性和生成痕迹均符合约束。
+- 隔离 Jekyll 3.9.2 构建通过，目标页面实际生成；仅有未配置 GitHub API token 的项目级非阻塞元数据提示。
+- 1440 × 1000 桌面端与 390 × 844 手机端渲染通过，无页面级横向溢出、无浏览器控制台错误；手机表格保留内部横向滚动，并在首轮视觉检查后修复论文缩写逐字母换行。
+- `git diff --check` 与选择性暂存复核通过；索引和 `Progress.md` 的其他并行改动均未纳入本任务提交。
+
 ## 2026-07-23 SAI × ICML 2026 执行式复现深读
 
 ### 任务与材料边界

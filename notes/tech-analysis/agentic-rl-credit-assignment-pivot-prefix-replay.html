@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Credit Assignment 深读：长程 Agent RL 真缺的是分数，还是可重放的状态？</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f0e8;
+      --surface: #fffdf8;
+      --ink: #20262a;
+      --muted: #5e696e;
+      --line: #d9d4c7;
+      --accent: #b9523b;
+      --accent-soft: #f8eae3;
+      --accent-2: #356f67;
+      --accent-2-soft: #eaf3f0;
+      --warn: #956018;
+      --warn-soft: #fcf2df;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(185,82,59,.042) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(74,100,93,.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 78px) 0 28px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 1000px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 930px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 72px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece6da; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card b { display: block; color: var(--accent); font-size: 17px; line-height: 1.25; }
+    .card span { display: block; margin-top: 7px; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.good { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.good > b { color: var(--accent-2); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn > b { color: var(--warn); }
+    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 20px 0; }
+    .step { position: relative; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .step:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; z-index: 2; color: var(--accent); font-weight: 800; transform: translate(50%, -50%); }
+    .step b { display: block; color: var(--accent); }
+    .step span { color: var(--muted); font-size: 13.5px; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .table-wrap table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.25px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th:first-child, td:first-child { min-width: 112px; overflow-wrap: normal; word-break: keep-all; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(165px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .source-note { color: var(--muted); font-size: 14px; }
+    @media (max-width: 820px) {
+      .grid-3, .pipeline { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -16px; transform: translate(50%, 50%); }
+    }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Agentic Reinforcement Learning</div>
+    <h1>Credit Assignment 深读：长程 Agent RL 真缺的是分数，还是可重放的状态？</h1>
+    <p class="lede">haotian 的文章抓住了一个真实而关键的失败模式：只有轨迹级结果奖励时，一次晚期错误会让整条失败轨迹都背负负优势，早先正确的推理与工具调用也被连带压制。但“找到一个 pivot、冻结前缀、只训后缀”不是免费的通用答案。它真正要求四份契约同时成立：错误边界可定位、外部状态可恢复、局部结果可验证、重放状态仍与当前策略分布相容。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>文章的方向判断是对的，最强的洞见却不是“partial credit 一定优于 outcome reward”，而是“长程 Agent RL 的训练单元不应被默认等同于整条轨迹”。</strong>一条轨迹可以被拆成多个有因果意义的局部决策单元；Prefix Replay 提供了冻结历史、重新采样未来的接口，使训练信号更接近真正改变结果的动作。但从接口到可靠算法，中间还隔着 pivot 定位、状态快照、局部 verifier 和分布偏移四道门。</p>
+      <div class="grid-3">
+        <div class="card"><b>问题成立</b><span>同一个序列级 advantage 乘到全部可训练 token 上，会把失败轨迹中的正确部分一并压低，尤其浪费昂贵的长程交互。</span></div>
+        <div class="card"><b>方法并不等价</b><span>PivotRL、PivoARL、ReOPD、TreeRL 都会“复用前缀、重采后缀”，但分别优化局部回报、重试回报、教师 KL 与树节点价值。</span></div>
+        <div class="card"><b>瓶颈不是切一刀</b><span>数学推理中的文本前缀常可直接分叉；SWE-bench 的前缀还包含文件系统、进程、依赖与工具状态，恢复失败就不是同一个 MDP 状态。</span></div>
+      </div>
+      <div class="callout warn">
+        <b>一句话校准</b>
+        Credit assignment 不是“给每一步多打一个分”这么简单；它是对“哪个动作造成了哪个后果”的因果近似。错误的局部标签可能比稀疏但无偏的最终奖励更危险。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>文章命中的真实故障：正确前缀被失败结局抵押</h2>
+      <p>在常见的 outcome-based GRPO 中，同一 prompt 采样一组完整响应，最终可验证奖励被标准化成组内 advantage。实现可以有 token mask、KL、importance ratio 和裁剪，但对一条给定响应而言，全部可训练 token 往往仍共享同一个轨迹级 advantage。于是出现两个对称错误：</p>
+      <ol>
+        <li><strong>成功轨迹里的坏动作被奖励。</strong>模型可能走了弯路、误读一次观察、执行了无效工具调用，最后靠后续修复完成任务；只看终局会把这些偶然存活的坏动作一并强化。</li>
+        <li><strong>失败轨迹里的好动作被惩罚。</strong>模型可能正确定位 bug、写出大部分补丁、通过绝大多数测试，只在最后一步改坏配置；负 advantage 仍会覆盖前面所有正确行为。</li>
+      </ol>
+      <p>这不意味着 outcome reward 在期望意义上必然学不到正确策略：跨大量轨迹后，真正与成功稳定相关的动作仍可能获得净正相关。问题在于长程 Agent 交互特别昂贵，单条轨迹动辄数万 token、几十次工具调用；把一条轨迹压成一个标量，会让有效样本量远小于收集成本，并让梯度方差随无关前缀增长。文章所说“训练曲线健康但评测长期不动”，很可能就是这种信噪比不足的一种外观，但也可能来自 verifier 偏差、状态分布漂移、harness bug 或数据难度不匹配，不能只凭曲线反推信用分配是唯一原因。</p>
+      <div class="callout good">
+        <b>更准确的目标</b>
+        不是让每个 token 都有独立 reward，而是尽量缩短“得到一个结果”与“真正决定这个结果的动作集合”之间的距离。
+      </div>
+    </section>
+
+    <section id="four-layers">
+      <h2>先把四类问题分开：它们经常被误装进同一个“训练稳定性”抽屉</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>层级</th><th>它在修什么</th><th>典型方法</th><th>它没有自动解决什么</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Token 完整性</strong></td><td>训练器评估的 token 必须与 rollout 时真正采样、真正作为下轮前缀的 token 一致。</td><td>TITO（Token-In, Token-Out）</td><td>不判断哪一步对错，也不改变 reward 或 advantage。</td></tr>
+            <tr><td><strong>分布校正</strong></td><td>rollout policy 与更新时 policy 不同，或异步样本过旧时，修正 off-policy 偏差。</td><td>token / sequence / cumulative importance sampling、双侧裁剪</td><td>不定位首个错误，也不提供过程监督。</td></tr>
+            <tr><td><strong>基线估计</strong></td><td>用组均值或 critic 估计 baseline，降低 policy-gradient 方差。</td><td>GRPO、PPO、SAO、EVPO</td><td>critic 若只学终局回报，仍可能无法准确区分局部因果贡献。</td></tr>
+            <tr><td><strong>时序信用</strong></td><td>把回报归到真正影响未来的状态、动作或后缀。</td><td>PivotRL、PivoARL、TreeRL、过程奖励、局部重试</td><td>必须额外解决状态恢复、局部验证与错误定位。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这一区分会修正原文中一个容易误导的并列：<strong>TITO 不是 credit assignment 变体。</strong>它要求后一轮 prompt 逐 token 包含前一轮的 prompt + completion，避免 decode—re-encode、chat template 重写或 reasoning 裁剪让训练器在“模型从未采样过的序列”上反传。TITO 是数学正确性的底座；Pivot 是在底座之上改变训练支持区域。一个系统可以完美满足 TITO，却仍把失败轨迹中的每个模型 token 都乘上同一个负 advantage。</p>
+    </section>
+
+    <section id="primitive">
+      <h2>Prefix Replay 不是一个算法，而是一个训练接口</h2>
+      <div class="pipeline" aria-label="Pivot 后缀训练的五步接口">
+        <div class="step"><b>收集轨迹</b><span>保存 token、动作、观察、奖励与外部状态版本。</span></div>
+        <div class="step"><b>定位 pivot</b><span>找首个不可逆错误、混合成功状态或高价值分叉点。</span></div>
+        <div class="step"><b>恢复状态</b><span>重建模型上下文与 sandbox 的同一因果状态。</span></div>
+        <div class="step"><b>采样后缀</b><span>从 pivot 重新决策，前缀不进入 loss。</span></div>
+        <div class="step"><b>局部归因</b><span>用 verifier、教师 KL、重试回报或节点价值更新。</span></div>
+      </div>
+      <p>“冻结前缀、只训后缀”只是共同的数据面。不同论文把不同的信号接在这个接口上：</p>
+      <div class="def-list">
+        <div><b>PivotRL</b><span>从专家 SFT 轨迹抽取中间状态，在那些“同一状态下尝试不同动作会同时出现成功和失败”的位置做局部 on-policy RL；奖励依赖领域 functional-equivalence verifier。</span></div>
+        <div><b>PivoARL</b><span>让模型反思失败轨迹、定位最早错误，再从该状态重试；未来重试成功的回报被隔离地传给 pivot 之前的可保留部分，而不是继续奖励错误后缀。</span></div>
+        <div><b>ReOPD</b><span>回放教师轨迹前缀，让学生在当前动作位置 on-policy 采样，再以教师对学生动作的 token-level KL 做蒸馏；它不是标量 reward 的 policy gradient。</span></div>
+        <div><b>TreeRL</b><span>在高熵 token 处分叉，依据叶子成功率估计节点价值，用父子或根节点价值差形成 local / global advantage；主要验证于数学和代码推理树。</span></div>
+      </div>
+      <p>所以，看到它们都复用了 prefix，不能推出它们彼此提供了同一种证据。ReOPD 的收益可能来自强教师提供稠密分布目标；TreeRL 的过程信号来自可批量展开的推理树；PivotRL 依赖专家状态和功能等价验证器；PivoARL 依赖反思模型能找准首错。共同点是把优化窗口缩小，因果假设却完全不同。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>论文证据到底支持到哪一步</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>工作</th><th>最有力结果</th><th>真正证明了什么</th><th>主要边界</th></tr></thead>
+          <tbody>
+            <tr><td><strong>PivoARL</strong></td><td>Qwen3-4B 上，完整方法在 ALFWorld / SciWorld / Minesweeper 达到 94.5 / 100 / 78.1；移除 pivotal isolation 后分别为 91.8 / 95.9 / 54.6。作者报告相对 GRPO 减少约 29.1% 训练交互。</td><td>反思定位 + 从错误点重试 + 跨重试隔离信用，在所测环境中明显优于把整条失败轨迹统一处理。</td><td>只有一个 4B backbone；定位错 pivot 会直接污染信号；真实工具环境的恢复成本尚未充分覆盖。</td></tr>
+            <tr><td><strong>PivotRL</strong></td><td>在 τ²-Bench、TerminalBench、BrowseComp 上优于同数据 SFT；SWE-Bench 为 32.67，对应 SFT 为 37.40，但以相近准确率对端到端 RL 节省约 4× rollout turns、5.5× wall-clock。</td><td>局部训练可以显著改善每次环境交互的产出，并缓解 SFT 的 OOD 退化；不是所有领域都提高最终准确率。</td><td>需要专家轨迹覆盖、有判别力的局部 verifier；“低均值且非零方差”的 pivot 是可学习状态，不等同于因果首错。</td></tr>
+            <tr><td><strong>ReOPD</strong></td><td>在存在 teacher gap 的数学蒸馏中，Qwen3-4B 学生平均分从 OPD 的 51.0 升到 53.7，AIME 2024 从 28.3 升到 36.7；搜索任务则基本持平（40.5 对 40.6）。</td><td>录制的教师前缀可以把多轮蒸馏转为无在线环境交互的局部学习，并在部分任务改善收敛。</td><td>受教师轨迹池覆盖与质量上限约束；学生只在当前动作 on-policy，完整前缀不是学生 occupancy；深度衰减只是教师可靠性的粗代理。</td></tr>
+            <tr><td><strong>TreeRL</strong></td><td>在多个数学推理模型上大多优于 ChainRL；例如 Qwen-14B 聚合均值 44.5 对 41.6，GLM-9B 为 29.3 对 27.2。</td><td>树叶结果能提供比整链回报更细的节点级相对价值，local 与 global advantage 都有作用。</td><td>推理树没有真实 sandbox 副作用；树推理引擎尚未优化，部分设置约有 2× 额外时间。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>原文内部曲线的正确读法</h3>
+      <p>文章展示的内部实验中，pivot 曲线更早进入较高区间，baseline 经过更多 step 后达到相近峰值并略有回落。这个图与“前缀重放可提高早期样本效率、训练更稳”的叙述一致，但没有披露 benchmark、模型、样本量、seed、误差条、实际环境交互量，也没有在相同训练 horizon 上报告末端比较。因此它是有价值的探索性信号，<strong>不能单独证明最终上限更高，更不能证明模型越大、训练越久就必然持续获益</strong>。</p>
+      <div class="callout warn">
+        <b>最重要的反例就在 PivotRL 自己的表里</b>
+        在 SWE-Bench 上，PivotRL 低于同数据 SFT 4.73 个百分点。它仍可能因显著节省 rollout 与墙钟时间而值得使用，但这直接否定了“只要不是最差的 credit assignment 就一定比 group mean 好”的强版本。
+      </div>
+    </section>
+
+    <section id="state">
+      <h2>SWE-bench 的核心难题：文本前缀不是环境状态</h2>
+      <p>作者在评论区给出了两个实际方案：缓存 sandbox 状态，使一个 prefix 对应一个可恢复环境；或者在新环境中重放 prefix 的工具动作，把环境重建到 pivot，再继续 rollout。这个回答非常关键，因为它揭示了 prefix replay 在 coding agent 上的真实成本。</p>
+      <div class="def-list">
+        <div><b>模型上下文</b><span>系统提示、用户任务、模型生成 token、工具观察与 loss mask；需要满足 TITO 或明确把重写前缀设为纯 prompt。</span></div>
+        <div><b>文件系统状态</b><span>仓库 commit、未提交修改、生成文件、依赖安装、缓存、权限与工作目录。仅保存对话无法恢复这些副作用。</span></div>
+        <div><b>运行时状态</b><span>后台进程、端口、数据库、环境变量、测试服务与临时凭据；有些不能由容器镜像静态表示。</span></div>
+        <div><b>验证状态</b><span>测试选择、超时、随机种子、网络响应与隐藏评测版本；局部 verifier 必须判断两个动作“功能等价”，而非只做文本匹配。</span></div>
+      </div>
+      <p>因此“一个 prefix 对应一个 image”只有在 image 实际代表 pivot 时刻的完整可恢复快照时才足够。若它只是同一个基础镜像，仍需按原顺序确定性重放工具动作。确定性重放又会遭遇网络漂移、包版本变化、随机测试、并发进程和时间依赖。任何一项不同，后缀就不再从同一状态出发，所谓局部 credit 变成了跨状态比较。</p>
+      <p>这也解释了为什么 TreeRL 在数学推理里更自然：其“环境”主要是静态题目与已生成 token，分叉不会改变外部世界。把相同算法迁移到浏览器、终端或软件工程任务时，最先要投资的通常不是更聪明的 judge，而是<strong>可版本化的状态快照、动作日志与恢复校验</strong>。</p>
+      <div class="callout good">
+        <b>可操作的恢复校验</b>
+        在 pivot 处记录仓库树哈希、关键进程与端口、依赖锁文件、工作目录、环境变量白名单及一组轻量 probe。恢复后全部相等，才允许后缀样本进入训练；否则把它记为基础设施失败，而不是负 reward。
+      </div>
+    </section>
+
+    <section id="pivot-errors">
+      <h2>Pivot 定位本身就是一个高风险 critic</h2>
+      <p>原文提出用 LLM judge、entropy、first-error-step、TreeRL 分支或人工规则选择 cut point。这些方法并不等价：</p>
+      <ul>
+        <li><strong>LLM judge</strong>能读完整轨迹做后见分析，但容易把“最显眼的错误”误当“最早造成不可逆后果的错误”，也可能使用后续信息给早期动作贴标签。</li>
+        <li><strong>Entropy</strong>衡量策略不确定性，不衡量因果重要性。低熵动作也可能稳定地错，高熵 token 也可能只是措辞差异。</li>
+        <li><strong>First-error-step</strong>接近因果边界，但要求 verifier 能判断当时状态下某动作是否已让成功概率不可逆下降；只看最终失败无法识别。</li>
+        <li><strong>树分支价值</strong>最接近反事实：在同一状态采样多个未来，用成功率估计动作价值。但它以成倍 rollout 成本换取更可靠的局部信号。</li>
+      </ul>
+      <p>切点偏早时，大量本可保留的正确 token 被重新优化，节省有限；切点偏晚时，真正的坏动作被冻结进 prompt，模型只被要求在一个已损坏状态上补救。更微妙的是，某些任务没有单一首错：两个看似无害的早期决定组合起来才导致失败。此时单 pivot 是对真实信用结构的低秩近似，可能需要多个 span、因果图或 value function，而不是一刀切。</p>
+      <div class="callout warn">
+        <b>“critic-free”并不等于“没有 critic 风险”</b>
+        只要用 judge 选择 pivot、用 verifier 评估局部动作，就已经引入了两个隐式 critic。它们可以不参与反向传播，但仍决定训练数据的方向。
+      </div>
+    </section>
+
+    <section id="evpo">
+      <h2>EVPO 能支持什么，不能支持什么</h2>
+      <p>EVPO 比较两种 baseline：学习到的 value critic 与 prompt group 的经验均值。Explained Variance 为正，表示在当前总体分布上 critic 对 return 的均方预测误差低于用常数均值；为非正时则退回 group mean。论文证明，在终局奖励、<code>γ = λ = 1</code> 等设定下，这个 hard gate 的梯度估计方差不高于两种固定选择中更优者。</p>
+      <p>这是一个漂亮但边界很窄的结果。第一，它比较的是<strong>baseline estimator</strong>，不是任意过程奖励或 pivot judge；第二，它给的是方差保证，不是最终任务性能单调保证；第三，理论使用 population EV，而训练只能看到有限 batch 的估计，论文也没有给出有限样本误判的集中界；第四，即使 gate 回退到 group mean，系统仍承担 critic 的显存与训练成本。</p>
+      <p>因此，EVPO 可以支持“当 critic 暂时不如组均值时，应该有一个可观测的回退机制”，却不能推出“任何非最差的 partial credit 都不会比 group mean 差”。要让 pivot 方法获得类似安全性，需要单独估计 pivot 标签误差、恢复状态偏差与局部 verifier 的校准度。</p>
+    </section>
+
+    <section id="critic">
+      <h2>为什么 value pretraining 仍值得做，但不是唯一答案</h2>
+      <p>原文链接的 SAO 小规模实验给出一个务实观察：critic 预训练能提高初始 explained variance；当 value pretrain 与 RL 数据更同分布时，EV 在后续训练中保持得更好。公开配置是 Qwen3.5-4B-base、DeepMath-103k 或 DAPO17k、batch size 16、每题 8 条 rollout、最大 16k token；HL-Gauss 回归式分类在这组实验里通常比直接 MSE 更稳，PPO + critic pretrain 的小实验可接近或超过 GRPO。</p>
+      <p>这仍是探索性内部证据：没有完整 seed、误差条与统计检验，AIME 2024 / 2025 的变化也并非每项都一致。更大规模 SAO 论文则在 Qwen3-30B-A3B、单 prompt 单 rollout、最长 128k 的设定中，通过 critic、更快 value 更新、冻结 attention、跳过 observation 的 GAE 与严格双侧 token clipping，在 SWE-Bench Verified 报告 29.8，对 GRPO + DIS 的 27.0。它说明“长程 Agent RL 必须依赖大 group 才能学”不是定律，但也说明一个可靠 critic 是系统工程，不是加一颗 value head 就结束。</p>
+      <p>Value model 与 pivot replay 实际上可以互补：value model 先筛出不确定且有学习空间的状态，局部树 rollout 再提供反事实样本；反过来，可靠的 pivot 数据也能成为 value pretraining 的更高信噪比语料。真正要避免的是把 critic、judge、verifier 三个误差源同时上线，却只监控总 reward。</p>
+    </section>
+
+    <section id="experiment">
+      <h2>如果要把这条路线做扎实，最小实验应这样设计</h2>
+      <p>一个可信实验不能只比较“baseline vs pivot”两条曲线，而应把 credit、恢复与计算预算拆开。建议至少做以下六组：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>组别</th><th>目的</th><th>必须对齐的预算</th></tr></thead>
+          <tbody>
+            <tr><td>Outcome GRPO</td><td>完整轨迹、组均值 baseline，作为原始参考。</td><td>环境 step、生成 token、GPU 小时、训练 token。</td></tr>
+            <tr><td>Oracle pivot</td><td>用可验证的首错或人工标注切点，估计 credit assignment 的理论上限。</td><td>包含标注成本，并与相同后缀采样数比较。</td></tr>
+            <tr><td>Judge pivot</td><td>评估实际自动定位器与 oracle 的差距。</td><td>judge token、延迟、首错 precision / recall。</td></tr>
+            <tr><td>Random / shifted pivot</td><td>将切点前后移动 1–3 个动作，测收益是否真来自因果定位而非缩短序列。</td><td>后缀长度与 rollout 数量匹配。</td></tr>
+            <tr><td>Replay without snapshot</td><td>只回放文本或从基础环境重演动作，量化状态漂移的损害。</td><td>记录恢复成功率、哈希差异和重演墙钟时间。</td></tr>
+            <tr><td>Snapshot + local verifier</td><td>完整方案，隔离状态恢复与局部奖励的共同收益。</td><td>快照存储、恢复延迟、verifier 调用全部计入。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>除了最终成功率，还应报告：单位环境交互提升、达到同一分数的墙钟时间、有效 loss token 占比、pivot 定位混淆矩阵、局部 verifier 的校准曲线、状态恢复通过率、训练中 KL / entropy / EV、不同后缀深度的 OOD 退化，以及至少多 seed 的置信区间。只有这样才能回答三件不同的事：模型是否学得更好、是否只是更快、是否把成本从 rollout 转移给了 judge 与 snapshot。</p>
+    </section>
+
+    <section id="decision">
+      <h2>落地决策：什么时候该用哪条路线</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>任务条件</th><th>优先路线</th><th>原因</th></tr></thead>
+          <tbody>
+            <tr><td>短期交付、sandbox 可确定性恢复、已有功能 verifier</td><td><strong>离线筛 pivot + prefix replay + 标准 GRPO</strong></td><td>最接近原文的低改造方案，能显著减少无效长前缀训练与环境重复交互。</td></tr>
+            <tr><td>有高质量教师轨迹池，在线工具运行很贵</td><td><strong>ReOPD 类 prefix-conditioned distillation</strong></td><td>训练时无需 live environment，但要接受教师覆盖和 occupancy mismatch 的上限。</td></tr>
+            <tr><td>数学、代码生成等可廉价分叉且终局可验证</td><td><strong>TreeRL / 局部树搜索</strong></td><td>能直接用分支成功率估计节点价值，外部状态恢复负担较小。</td></tr>
+            <tr><td>异步长程任务、group sampling 成本不可承受</td><td><strong>critic + SAO / PPO，并监控 EV</strong></td><td>单 rollout 可运行，但需要可靠 value 训练与严格 off-policy 控制。</td></tr>
+            <tr><td>浏览器或软件工程任务，状态无法稳定重放</td><td><strong>先建设 snapshot / event log / verifier 基础设施</strong></td><td>否则任何局部 credit 都建立在“看起来相同、实际不同”的状态上。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout good">
+        <b>我的最终判断</b>
+        这篇文章值得重视，因为它把 Agent RL 的关注点从“如何把整条轨迹算得更稳”推进到“什么才是合理的训练单元”。但更完整的命题应是：<strong>Credit assignment matters，state restoration makes it real，verifier calibration keeps it honest。</strong>没有后两项，pivot 只是把稀疏奖励换成更隐蔽的标签噪声。
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对了原文、作者关于 SWE-bench 环境恢复的公开回复、文中六项核心引用、配套小规模实验，以及 TITO 的原始技术说明。论文数字均来自作者报告，不等同于独立复现；原文内部曲线缺少模型、任务、seed、误差条与等预算口径，因此只作为探索性证据。对 PivotRL、PivoARL、ReOPD、TreeRL 的比较按各自论文真实目标拆分，没有把“复用前缀”视为同一优化算法。</p>
+      <ul>
+        <li><a href="https://zhuanlan.zhihu.com/p/2064646116927344943">haotian：credit-assignment-is-all-you-need</a></li>
+        <li><a href="https://zhuanlan.zhihu.com/p/2064452938018322060">haotian：SAO 以及小规模实验</a></li>
+        <li><a href="https://arxiv.org/abs/2607.03702">PivoARL: Agent Reinforcement Learning via Pivotal-Aware Self-Feedback Retry</a></li>
+        <li><a href="https://github.com/yuki-younai/PivoARL">PivoARL 官方代码仓库</a></li>
+        <li><a href="https://arxiv.org/abs/2603.21383">PivotRL: High Accuracy Agentic Post-Training at Low Compute Cost</a></li>
+        <li><a href="https://arxiv.org/abs/2607.04763">ReOPD: Multi-Turn On-Policy Distillation with Prefix Replay</a></li>
+        <li><a href="https://arxiv.org/abs/2506.11902">TreeRL: LLM Reinforcement Learning with On-Policy Tree Search</a></li>
+        <li><a href="https://github.com/THUDM/TreeRL">TreeRL 官方代码仓库</a></li>
+        <li><a href="https://arxiv.org/abs/2604.19485">EVPO: Explained Variance Policy Optimization</a></li>
+        <li><a href="https://arxiv.org/abs/2607.07508">SAO: Single-Rollout Asynchronous Optimization for Agentic Reinforcement Learning</a></li>
+        <li><a href="https://huggingface.co/blog/huggingface/tito">Hugging Face：Agentic RL — Token-In, Token-Out Done Right</a></li>
+        <li><a href="https://www.lmsys.org/blog/2026-05-13-no-token-left-behind/">LMSYS：No Token Left Behind — Demystifying TITO in Miles</a></li>
+      </ul>
+      <p class="source-note">对内部实验的评价只覆盖公开图表与文字；没有模型权重、训练日志和多 seed 结果，无法判断曲线差异的统计显著性。对外部状态恢复的建议属于本文基于 agent runtime 与论文机制做出的工程推断。</p>
+    </section>
+  </main>
+</body>
+</html>
