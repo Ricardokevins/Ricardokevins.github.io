@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SAI × ICML 2026 深读：只有 7 篇撑住，还是只有 7 篇可验证？</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #9a5a19;
+      --accent-2-soft: #fdf3e7;
+      --good: #386a55;
+      --good-soft: #edf5f0;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 920px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 70px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card b { display: block; color: var(--accent); font-size: 28px; line-height: 1.15; }
+    .card span { display: block; margin-top: 7px; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+    .callout.good > b { color: var(--good); }
+    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 18px 0; }
+    .step { position: relative; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .step:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; z-index: 2; color: var(--accent); font-weight: 800; transform: translate(50%, -50%); }
+    .step b { display: block; color: var(--accent); }
+    .step span { color: var(--muted); font-size: 13.5px; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .table-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(145px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .source-note { color: var(--muted); font-size: 14px; }
+    @media (max-width: 820px) {
+      .grid-3, .pipeline { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -16px; transform: translate(50%, 50%); }
+    }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Scientific Verification</div>
+    <h1>SAI × ICML 2026 深读：只有 7 篇撑住，还是只有 7 篇可验证？</h1>
+    <p class="lede">Chenhao Tan 团队用 AI agent 审查 168 篇 ICML 2026 oral，并对其中 105 篇做执行式复现。最重要的结果不是“多数论文错了”，而是传统审稿没有稳定覆盖代码能否运行、数据是否齐全、数值能否重算这条证据链；最需要警惕的，则是把“当前外部人员无法验证”压缩成“科学结论不成立”。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>这是一次很有价值的研究基础设施原型，但还不是对 ICML 2026 科学质量的无偏普查。</strong>它证明 AI agent 已经能批量执行传统审稿几乎不会做的工作：抽取主张、运行仓库、修复环境、重建缺失实现、对照数值，并把问题定位到具体代码与段落。可是 headline 指标同时混入结果不匹配、代码缺失、数据不可得、依赖退役、运行失败和未尝试；105 篇又按预计资源成本选择，而不是随机抽样。因此最稳妥的读法是：<strong>只有 7/105 在这套特定、自动化、外部复现协议下取得超过 80% 的加权主张匹配分</strong>，不能简化成“只有 7 篇论文是真的”。</p>
+      <div class="grid-3">
+        <div class="card"><b>105 / 168</b><span>完成执行式复现；其余 63 篇尚未开始，完成集不是全体。</span></div>
+        <div class="card"><b>20.5%</b><span>当前公开面板中 105 篇得分的中位数；平均值约 28.4%。</span></div>
+        <div class="card"><b>7 / 105</b><span>得分超过 80%；这个最醒目的数字对排除 position paper 后仍不变。</span></div>
+      </div>
+      <div class="callout warn">
+        <b>一句话校准</b>
+        “不可验证”是一个重要的工程与治理失败，但它不等于“已被证伪”。前者包括证据链断裂；后者要求可比较的实验真正给出冲突结果。
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>它解决了什么真实问题</h2>
+      <p>论文审稿主要审的是叙事：问题是否重要、方法是否新、论证是否合理、实验表格看起来是否支持结论。审稿人通常没有时间、硬件和隔离环境去重跑几十个实验，更不会逐个核查 appendix、超参数 sweep、模型 checkpoint 与评分脚本。于是一个论文可以“读起来合理”，但其公开证据仍可能出现四种断裂：仓库无法启动、仓库与论文方法不一致、关键数据或模型没有发布、发布结果无法生成论文中的表格。</p>
+      <p>SAI 的价值在于把审稿拆成两层：第一层仍然检查论文与代码叙事；第二层把主张放进可执行环境里检验。公开材料显示，105 篇已运行论文中有 101 篇至少命中一类复现障碍；最常见的是“代码不能按发布状态运行”58 篇、“数值对不上”48 篇、“数据不可得”42 篇和“没有可运行代码”38 篇。这些类别可以重叠，因此不能相加为论文数。</p>
+      <div class="callout good">
+        <b>真正的新能力</b>
+        这套系统不只是生成一份像审稿意见的文本，而是要求意见引用运行证据。它把 research review 从语言任务变成了带状态、工具、失败恢复和确定性比较器的长时程任务。
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>SAI / VERITAS 到底怎么工作</h2>
+      <div class="pipeline" aria-label="执行式复现流程">
+        <div class="step"><b>抽取主张</b><span>从论文或 README 提取数值、表格、趋势与定性结论，并标注重要性。</span></div>
+        <div class="step"><b>准备实现</b><span>有仓库就复制到可写环境；只有论文时，依据方法描述重新实现。</span></div>
+        <div class="step"><b>规划与执行</b><span>把主张映射到运行步骤，解决依赖、路径、数据与配置问题。</span></div>
+        <div class="step"><b>比较证据</b><span>模型先把运行产物提取成结构化值，数值主张再由确定规则评分。</span></div>
+        <div class="step"><b>聚合得分</b><span>match=1、partial=0.5、no match / not attempted=0，再按主张重要性加权。</span></div>
+      </div>
+      <p>公开的 VERITAS 方法把主张分成 scalar、range、table、qualitative 和 figure 五类；headline 权重为 3，supporting 权重为 2。数值类可以用相对误差或论文给出的不确定性做确定性比较，定性与图形趋势仍要依赖模型判断。执行 agent 看得到主张编号和需要生成的证据，但看不到论文报告的目标值，以降低把答案硬编码回程序的风险；另一个 manager 根据退出码、输出文件、重复命令、修复次数和墙钟时间决定是否要求重试。</p>
+      <p>这个设计比“让一个模型读完论文后打分”强得多，但有一个关键证据边界：VERITAS 自己的 65 篇 benchmark 实验为了和基线公平，直接使用 benchmark 已给出的任务主张，并用 benchmark 原生评分器计分。也就是说，那篇方法论文主要验证了 PLAN、REPLICATE、VERIFY 三段，<strong>没有在实验中验证自动主张抽取、重要性分级以及最终 Replication Score 是否校准</strong>。而恰恰是这三个环节决定了 ICML 面板的 headline 数字。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>数字哪些成立，哪些需要重新命名</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>公开主张</th><th>本轮核对</th><th>更准确的解释</th></tr></thead>
+          <tbody>
+            <tr><td>168 篇 oral 全部审查</td><td>当前面板确有 168 个条目，paper + code review 标为 100%。</td><td>“全部审查”成立，但执行式复现只完成 105 篇。</td></tr>
+            <tr><td>27 篇超过 40%，7 篇超过 80%</td><td>直接由 105 个公开得分复算一致；中位数约 20.5%，均值约 28.4%。</td><td>阈值统计成立，但得分是加权主张匹配，不是论文真伪概率。</td></tr>
+            <tr><td>104 篇发布了可运行代码</td><td>文章图中给出 104/168；同一图把 105 次完成运行拆成 67 次作者代码与 38 次从论文重建。</td><td>“有可运行代码”和“本次使用作者代码完成”不是同一个分母。</td></tr>
+            <tr><td>当前站点为 93 次有代码、12 次无代码</td><td>发布后的动态面板显示 93 + 12 = 105，与文章静态图的 67 + 38 不一致。</td><td>面板仍在更新，结果需要日期化快照；不能把动态图和首发图混成一个稳定数据集。</td></tr>
+            <tr><td>中位成本约 8,900 美元，最高 220 万美元</td><td>六个成本柱的篇数为 18、12、26、32、14、3，合计正好 105，而非 168。</td><td>这是被选择执行的 105 篇估算分布，且按公开云按需价折算，不是作者真实支出。</td></tr>
+            <tr><td>SAI 覆盖 78% 的人类共识评论</td><td>它是“至少两位人类审稿人同意的问题”的召回率；图同时列出 AI-only 与 human-only 数量。</td><td>78% 不是整体准确率，也没有给 AI-only 评论的专家标注 precision。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>成本部分存在一处实质性文本冲突</h3>
+      <p>成本图的说明写“包括尝试后放弃的运行”；正文却说当前估算只包含论文中报告的工作，研究中的重试可能再把成本放大 2–3 倍。二者不能同时成立。再加上成本使用 Google Cloud 公共按需价格、部分实验由模型规模与超参数推算，8,900 美元更适合称为<strong>按统一云价折算的论文实验复算成本</strong>，而不是“做出一篇 oral 的实际花费”。它没有计入工资、数据采集、基础设施摊销，也无法观察论文形成过程中失败的研究方向。</p>
+    </section>
+
+    <section id="score">
+      <h2>“复现分数”混合了三种不同失败</h2>
+      <div class="def-list">
+        <div><b>结果冲突</b><span>同一方法、可比较配置下跑出了显著不同的数值或趋势。这是最接近“证据反驳原主张”的情况。</span></div>
+        <div><b>工件失败</b><span>代码、数据、checkpoint、依赖、脚本或超参数不完整，外部团队无法形成可比较结果。这证明证据链不可用，但未必证明方法错。</span></div>
+        <div><b>协议失败</b><span>agent 没有完成运行，修复预算耗尽，或者论文所需资源超出本轮约束。它首先反映这套复现协议的能力与预算边界。</span></div>
+      </div>
+      <p>VERITAS 论文中的公式把 no match 与 not attempted 都记为 0，因此理论上的总分有意衡量“一个外部复现者现在能验证多少”，而不是纯粹估计“成功运行后有多少结果相符”。这是一个合理的<strong>可验证性</strong>指标，却不应被命名成无条件的科学正确率。回复区有人要求另算“只在代码成功运行的主张中，复现成功的比例”，正是为了把工件/协议失败与结果冲突拆开。作者回复会补充更清晰的 precision 表述，但当前文章和面板尚未给出足够的逐主张执行状态汇总，无法可靠复算这个条件比例。</p>
+      <p>一个具体例子还暴露了论文公式与线上计分之间需要解释的差异：GoodDiffusion 页面显示 14 个跟踪主张只执行了 1 个，剩余 13 个因三类桥模型代码路径、攻击脚本、指标 harness、checkpoint 与数据缺失而未验证；面板却显示 50% 分数，正好对应唯一已执行主张的 partial=0.5，而不是把其余 13 项按 not attempted=0 纳入分母。这意味着线上 partial run 可能只对 counted claims 计分，或把未执行项移出了适用集合。无论是哪一种，页面都应同时展示 score 与 coverage；50% 不能代表整篇论文有一半证据复现。好消息是，超过 80% 的 7 篇都没有这种低覆盖标记，所以最醒目的 7/105 并不是由这一特例制造的；但中间分布和 27/105 仍需要 coverage 才能解释。</p>
+    </section>
+
+    <section id="selection">
+      <h2>为什么这还不是“ICML 复现危机”的无偏估计</h2>
+      <ol>
+        <li><strong>完成集有选择偏差。</strong>团队先做资源估算，再从低资源论文逐步走向高资源论文。尚未开始的 63 篇不是随机缺失；它们很可能系统性地更贵、更慢或更依赖私有资源。</li>
+        <li><strong>论文类型异质。</strong>168 篇包含 75 篇 empirical、57 篇 theory + experiments、14 篇 theory、13 篇 benchmark 和 9 篇 position。9 篇 position 中当前只有 2 篇完成执行式复现。把同一“主张复现分”跨类型比较，会把可执行证据的天然差异混进排名。</li>
+        <li><strong>自动主张抽取决定分母。</strong>一篇论文是被拆成 9 个还是 28 个主张，哪些算 headline，表格按整表还是逐格计分，都会改变总分；当前没有作者确认的 gold claim set。</li>
+        <li><strong>单次 agent 运行有方差。</strong>VERITAS 论文明确报告单次运行，并承认随机计算、接近阈值的数值和模型判断会使个别 cell 波动；MechEvalAgent 也发现三次运行的多数投票能把人类一致率提高到 89.4%。</li>
+        <li><strong>没有系统的作者申诉闭环。</strong>真正的 artifact evaluation 通常允许复现者向作者澄清、修订环境和补充工件。这里强调独立外部可运行性有其价值，但“无人协助的首轮失败”与“作者协作后仍无法复现”应分账。</li>
+      </ol>
+      <div class="callout warn">
+        <b>最容易犯的推理错误</b>
+        从“101/105 至少有一种复现障碍”推到“96% 的论文科学结论有问题”。前者的事件是并集，包含 README、路径、依赖、数据授权和模型退役；后者需要逐主张、逐配置、可比较运行的证据。
+      </div>
+    </section>
+
+    <section id="human-ai">
+      <h2>人类与 agent 的合理分工</h2>
+      <p>SAI 图中最强的结果不是 7/105，而是任务互补性：AI 在 soundness、代码、可复现性、实验严谨性和局部表述上发现更多问题；人类在 novelty 与 positioning 上仍占优势。这里的 “AI-only” 不能自动视为正确，因为 OpenAIReview 的独立评测显示，当前系统主要优化的是 recall，而 precision 仍是部署中的主要问题：公开服务 27,587 条意见只有 2.5% 得到投票；283 条点踩意见中，模型分类认为 38.5% 是 false positive，17.3% 是琐碎挑刺，15.2% 是不合理地索取细节。更重要的是，这些点踩原因仍由模型标注，不是完整专家金标准。</p>
+      <p>所以合理制度不是用 agent 替代 reviewer，而是把审稿拆成不同责任层：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>层级</th><th>最适合的主体</th><th>输出</th><th>不能越权的地方</th></tr></thead>
+          <tbody>
+            <tr><td>工件体检</td><td>自动化系统</td><td>依赖、数据、模型、入口、脚本、许可证和环境可用性。</td><td>不能把启动失败直接写成研究结论错误。</td></tr>
+            <tr><td>数值复算</td><td>agent + 确定性评分器</td><td>主表、消融、关键图形、误差和配置差异。</td><td>不能隐去修复、降配、替代数据与预算差异。</td></tr>
+            <tr><td>科学判断</td><td>领域专家</td><td>新颖性、因果解释、替代假说、外部有效性和贡献大小。</td><td>不能只看叙事而忽略执行证据。</td></tr>
+            <tr><td>裁决与修订</td><td>作者—审稿人闭环</td><td>对争议主张逐项回应，冻结工件版本并保留审计轨迹。</td><td>不能把动态仓库的当前状态倒推成投稿时状态。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 insight：真正需要的不是一个总分，而是一张证据状态图</h2>
+      <p>SAI 把复杂复现过程压成 0–100%，便于排序，却牺牲了最重要的信息：失败发生在哪里。对作者、审稿人和读者而言，一个二维账本比单一总分更有用。第一维是<strong>主张状态</strong>：match、partial、conflict、unattempted、not applicable；第二维是<strong>证据链状态</strong>：artifact available、environment functional、data accessible、execution complete、metric comparable、author confirmed。这样，“代码不运行但方法被独立重建成功”和“代码运行且核心数值冲突”就不会落在同一个低分桶里。</p>
+      <p>进一步看，这套工作最值得落地的场景不是会后给 168 篇论文做排行榜，而是<strong>在投稿前和 camera-ready 前做持续集成</strong>：作者提交冻结 commit、容器、数据清单、每个表格的生成入口与允许误差；系统先跑工件体检，再按成本抽样执行 headline claims；失败项交给作者修正，最终把证据状态随论文发布。这样 agent 的价值从“事后判卷”变成“降低研究供应链的接口税”。</p>
+      <div class="callout good">
+        <b>我的最终判断</b>
+        这项工作足以支持“ML 论文需要执行式审查”，不足以支持“ICML 2026 只有 7 篇可信”。它发现的首先是一场可验证性危机：论文、仓库、数据、模型和评测脚本没有被当成一个需要版本化交付的产品。
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语边界</h2>
+      <div class="def-list">
+        <div><b>Reproducibility</b><span>按美国国家科学院的常用定义，使用相同输入数据、计算步骤、方法、代码和分析条件得到一致计算结果。</span></div>
+        <div><b>Replicability</b><span>针对同一科学问题开展新的研究、获得新数据，并得到一致结论。文章与产品多处把两词混用，实际覆盖从运行原代码到根据论文重新实现的多个层级。</span></div>
+        <div><b>Artifact evaluation</b><span>检查代码、数据和脚本是否可获得、完整、可执行、可复用；它与“结果是否复现”相关但不是同一件事。</span></div>
+        <div><b>Precision / Recall</b><span>Recall 问“已知问题抓到了多少”；precision 问“系统报出的问题有多少是真的”。78% 人类共识覆盖率主要是 recall，不是 precision。</span></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文直接核对了 X Article 全文、作者公开回复、六张首发图、SAI 的 168 篇动态面板与代表性逐篇报告，并读取三套上游方法的正文与限制。公开面板会继续更新，文中的 93/12、得分分布和逐篇 coverage 是 2026-07-23 的页面状态；首发文章中的 67/38 属于发布时静态图，两者不应视为同一冻结快照。本文未独立重跑 105 篇论文，也无法从当前公开汇总恢复“只在成功执行的主张中计算匹配率”这一条件统计。</p>
+      <ul>
+        <li><a href="https://x.com/ChenhaoTan/status/2079969545629118737">Chenhao Tan：How much science is verifiable?</a></li>
+        <li><a href="https://sai.science/icml">SAI：ICML 2026 Orals × SAI Review 动态结果面板</a></li>
+        <li><a href="https://arxiv.org/abs/2607.02931">VERITAS: Towards a General-Purpose Replication Tool for Scientific Research</a></li>
+        <li><a href="https://arxiv.org/abs/2602.18458">The Story is Not the Science: Execution-Grounded Evaluation of Mechanistic Interpretability Research</a></li>
+        <li><a href="https://arxiv.org/abs/2606.19749">Benchmarking Agentic Review Systems</a></li>
+        <li><a href="https://nap.nationalacademies.org/catalog/25303/reproducibility-and-replicability-in-science">National Academies：Reproducibility and Replicability in Science</a></li>
+        <li><a href="https://www.acm.org/publications/policies/artifact-review-and-badging-current">ACM Artifact Review and Badging</a></li>
+        <li><a href="https://icml.cc/Conferences/2026/CallForPositionPapers">ICML 2026 Position Paper Track</a></li>
+      </ul>
+      <p class="source-note">事实层、发布方报告与本文推断已分开表述；涉及系统对论文的具体判定时，应继续回到对应逐篇报告、冻结工件版本和作者回应核对。</p>
+    </section>
+  </main>
+</body>
+</html>

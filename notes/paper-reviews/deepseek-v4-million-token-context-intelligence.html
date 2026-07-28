@@ -68,7 +68,7 @@
     h1 { max-width: 1000px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
     .lede { max-width: 920px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
     main { display: grid; gap: 30px; padding-bottom: 64px; }
-    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
     h2, h3, h4 { margin: 0 0 12px; line-height: 1.25; }
     h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
     h3 { margin-top: 24px; font-size: 20px; color: var(--accent); }
@@ -165,6 +165,7 @@
         <a href="#problem">问题重构</a>
         <a href="#specs">模型全貌</a>
         <a href="#architecture">架构总览</a>
+        <a href="#architecture-zoom">架构细读</a>
         <a href="#attention">CSA / HCA</a>
         <a href="#mhc-muon">mHC / Muon / MoE</a>
         <a href="#infrastructure">系统基础设施</a>
@@ -252,9 +253,37 @@
       <p>DeepSeekMoE 也有两处变化：routing affinity 从 sigmoid 改为 \(\sqrt{\operatorname{Softplus}(\cdot)}\)，并在无辅助损失负载均衡之外保留权重 \(10^{-4}\) 的 sequence-wise balance loss；最前面的 3 个 MoE 层不再用 dense FFN，而是按 token ID 预定义 hash 到专家。这样既省掉早期 dense 层，也减少最底层 routing 的动态不稳定。</p>
     </section>
 
+    <section id="architecture-zoom">
+      <h2>架构细读：一次 Token 到底经历什么</h2>
+      <p>把总体图展开后，V4 的主干并不是“attention → residual add → MoE → residual add”这条传统直线，而是四路跨层状态、局部与压缩 KV、稀疏检索地址和条件专家四类状态同时更新。以 Pro 的普通主干层为例，一个 token 的 embedding 先被复制为 \(X\in\mathbb{R}^{4\times7168}\) 的四路残差状态；attention 前的 mHC 根据当前 token 的四路状态动态生成 \(A\in\mathbb{R}^{1\times4}\)、\(B\in\mathbb{R}^{4\times4}\)、\(C\in\mathbb{R}^{4\times1}\)，先把四路压回 7168 维交给 attention，再把 attention 输出写回四路。MoE 子层会独立重复一次同样的 pre-mix / post-mix，而不是复用 attention 的混合权重。</p>
+      <p>attention 内部又是一条低秩路径：Pro 将 7168 维 hidden state 先降到 1536 维 query latent，再展开成 128 个 512 维 query head；Flash 对应 4096 → 1024 → 64×512。所有 query heads 共享一条 512 维 KV 流。attention 输出因此分别有 65,536 与 32,768 维，随后通过 grouped output projection 回到主干 hidden size，而不是使用一张巨大的直接投影矩阵。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>主干前向中并存的状态。形状来自论文与公开配置；“主要风险”是基于结构的工程分析。</caption>
+          <thead><tr><th>状态</th><th>Pro 形状 / 规模</th><th>何时更新</th><th>设计作用</th><th>主要风险</th></tr></thead>
+          <tbody>
+            <tr><td>mHC 残差状态</td><td>每 token 4×7168；内层 block 仍只处理 7168 维</td><td>每个 attention 与 MoE 子层各更新一次</td><td>增加跨层路径与状态容量，不把每个 attention / expert 的宽度直接放大 4×</td><td>activation、通信和动态混合开销；四路并非四份彼此独立的长期记忆</td></tr>
+            <tr><td>局部原始 KV</td><td>每 attention 层最近 128 个 512 维共享 KV</td><td>每生成一个 token 更新环形窗口</td><td>保留精确局部依赖，并补足当前压缩块尚不可见的因果盲区</td><td>只能覆盖很短的近邻细节</td></tr>
+            <tr><td>CSA 主 KV</td><td>约 \(n/4\) 个 512 维条目；每个条目步幅为 4、感受野跨相邻 8 token</td><td>每凑齐 4 个 token 产生一个新条目</td><td>保留中等分辨率的远程内容，供主 attention 读取</td><td>只有被 indexer 选中的条目可见；错误漏选后主路径无法补救</td></tr>
+            <tr><td>CSA 索引 KV</td><td>约 \(n/4\) 个 128 维条目；64 个 indexer query heads</td><td>与 CSA 主 KV 同步按 4-token 边界更新</td><td>用低维、低精度路径扫描历史并产生 top-k 地址</td><td>仍需线性扫描压缩历史；检索误差与内容压缩误差叠加</td></tr>
+            <tr><td>HCA 主 KV</td><td>约 \(n/128\) 个 512 维条目</td><td>每凑齐 128 个 token 产生一个新条目</td><td>让所有远程区块保持粗粒度全局可见</td><td>128→1 是强信息瓶颈，顺序、实体与跨句关系可能被挤掉</td></tr>
+            <tr><td>MoE 路由</td><td>每 token 选择 6 个 routed experts，并始终经过 1 个 shared expert</td><td>每层、每 token 重新决定；前三个 MoE 层按 token ID 固定映射</td><td>用较低激活计算访问大参数容量</td><td>负载失衡、专家异常值和 router / backbone 同步正反馈</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info">
+        <b>Grouped output projection 不是小优化</b>
+        <p>按公开尺寸复算，Pro 若把 65,536 维 attention 输出直接投到 7168 维，单 token 仅该投影约需 469.8M 次标量乘法；实际设计先把 128 heads 分为 16 组，每组 4096→1024，再做 16,384→7168，总计约 184.5M，投影乘法约少 60.7%。Flash 对应从约 134.2M 降到 67.1M，约少 50%。这是忽略 bias、并行切分和 kernel 实现的结构复算，不等同于端到端延迟降幅。</p>
+      </div>
+      <p>MTP depth 1 是主干之外的辅助预测模块，配置和 V3 相同；官方参考前向不会在普通 logits 路径中逐层调用它。它可提供额外训练信号并支持多 token 预测相关用途，但不是 1M context 的来源，也不应与 CSA/HCA 的运行时记忆混在一起。</p>
+    </section>
+
     <section id="attention">
       <h2>CSA 与 HCA：把长历史变成两种不同分辨率的记忆</h2>
       <p>两种 attention 都不是把所有原始 token 保存在标准 K/V 中。它们先用逐维 learned gating 把一段 token 压成一个 512 维共享 KV 条目，再让多个 query heads 读取同一组 key/value；最近 128 token 另走未压缩滑窗。区别在于：CSA 压得较轻，再稀疏检索；HCA 压得很重，但对全部压缩条目做 dense attention。</p>
+
+      <h3>先纠正一个直觉：压缩器不是“给每个区块写一段摘要”</h3>
+      <p>压缩权重的 softmax 是逐通道计算的：512 个通道各自决定 4/128 个位置中哪些投影值应被保留。同一个压缩条目里，某些通道可以偏向人名所在 token，另一些偏向数字、代码符号或关系特征；它更像 feature-wise soft selection，而不是一段可解释的自然语言 summary。learned positional bias 和 partial RoPE 提供位置信号，但单个 512 维条目仍不可能无损编码任意 128-token 区块中的全部顺序与组合关系。</p>
 
       <h3>CSA：4× 压缩之后再 top-k</h3>
       <figure>
@@ -277,6 +306,15 @@
         <figcaption>图 3：HCA 不使用 top-k；每 128 token 压成一个条目后，对此前全部压缩条目做 dense attention。</figcaption>
       </figure>
       <p>HCA 的压缩率是 128，且不使用重叠块。1M token 最终约对应 8192 个远程条目；每个 query 对这 8192 个压缩条目加 128 个局部 token 做 attention。它保留“全局都可见”的拓扑，但每 128 token 只有一个 512 维共享 KV，信息带宽远低于原序列。</p>
+
+      <h3>为什么三种分辨率要同时存在</h3>
+      <div class="grid-3">
+        <div class="card"><span class="metric">128</span><h3>局部原文</h3><p>每层精确读取最近 128 token，负责语法、当前工具结果和压缩块内部因果依赖。</p></div>
+        <div class="card"><span class="metric">8192</span><h3>HCA 全局目录</h3><p>1,048,576 token 被压成约 8192 个远程条目；主 attention 加上局部窗口约读取 8320 项。</p></div>
+        <div class="card"><span class="metric">0.39%</span><h3>CSA 精选历史</h3><p>Pro 在约 262,144 个 4× 压缩条目中选 1024 个，再加 128 个局部 KV；Flash 选 512 个，比例约 0.20%。</p></div>
+      </div>
+      <p>公开配置中，Pro 的 61 个主干层由 31 个 HCA 与 30 个 CSA 交替构成；Flash 先用 2 层纯滑窗，再交替使用 21 个 CSA 与 20 个 HCA。由于每层都从该层 hidden states 重新生成压缩 KV，深层 HCA 条目不是固定的“文档摘要”，而是已经吸收前面 attention、MoE 与 mHC 变换后的层级表示。把这种交替理解成“粗粒度全局定位 → 中粒度选择性细读 → 局部精确续写”的反复 refinement 是合理的架构解释，但论文没有提供只用 CSA、只用 HCA 或不同交替比例的消融，因此这仍是机制推断，不是已证明的因果结论。</p>
+      <p>还有一个很关键的约束：主压缩条目同时充当 key 和 value。标准 attention 可以把 key 当“地址”、value 当“载荷”；V4 为省 KV 把两者绑在同一个 512 维向量上。CSA 用独立 lightning indexer 恢复了一条较便宜的地址路径，HCA 则仍由同一个压缩表示同时负责匹配与传递内容。attention sink 允许某个 head 把总注意力质量降到接近 0，等价于在压缩记忆都不合适时“拒绝硬读”；局部窗口则提供未压缩的保底路径。这些设计都是在补偿强压缩与 shared K=V 带来的副作用。</p>
       <div class="figure-grid">
         <figure>
           <img src="deepseek-v4-million-token-context-intelligence-assets/performance-and-efficiency.png" alt="DeepSeek-V4 主要 benchmark 与相对 DeepSeek-V3.2 的单 token FLOPs 和 KV cache 曲线">
@@ -338,7 +376,7 @@
       </div>
 
       <h3>异构 KV cache 与磁盘前缀复用</h3>
-      <p>CSA main KV、CSA indexer KV、HCA KV、滑窗 KV、尚不足一块的未压缩尾部状态，长度和更新规则都不同。V4 把 SWA 与未压缩尾部视为每个请求固定大小的 state cache，把压缩条目放进 classical block cache；每个 block 覆盖 \(\operatorname{lcm}(4,128)\) 个原 token，以同时满足两种压缩率和 kernel alignment。</p>
+      <p>CSA main KV、CSA indexer KV、HCA KV、滑窗 KV、尚不足一块的未压缩尾部状态，长度和更新规则都不同。V4 把 SWA 与未压缩尾部视为每个请求固定大小的 state cache，把压缩条目放进 classical block cache；每个 block 覆盖 \(\operatorname{lcm}(4,128)=128\) 个原 token，以同时满足两种压缩率和 kernel alignment。于是同一个服务 block 在每个 CSA 层对应 32 个主压缩条目和 32 个 indexer 条目，在每个 HCA 层只对应 1 个压缩条目；尚未凑齐 4/128 token 的尾部必须留在 state cache，不能冒充完整压缩块复用。</p>
       <p>共享前缀可写入磁盘：CSA/HCA 的完整压缩条目直接缓存；SWA 提供三种策略——全量保存、周期 checkpoint、完全不保存并重算最后 \(n_{\mathrm{win}}\times L\) 个 token。这里最重要的不是某个策略更好，而是长上下文部署变成了“存储写放大 vs 重新 prefill”的系统优化问题。</p>
 
       <h3>上下文并行必须理解压缩边界</h3>
@@ -521,6 +559,7 @@
       <ol>
         <li><strong>效率是估算，不是完整 serving benchmark。</strong>Headline 使用 equivalent FP8 single-token FLOPs 与 accumulated KV size；没有给 1M prefill latency、decode tok/s、并发吞吐、TTFT、能耗、磁盘命中率或真实价格。FP4×FP8 在现有硬件上峰值与 FP8×FP8 相同，论文所说未来可再快约 \(1/3\) 仍是硬件潜力。</li>
         <li><strong>1M 是容量上限，不是无损能力保证。</strong>MRCR 8-needle 在 128K 后持续下滑；HCA 把 128 token 压成一个条目，本身就是强信息瓶颈。论文没有按信息密度、needle 数、位置、跨块依赖给出完整 stress test。</li>
+        <li><strong>压缩误差有多层来源，现有评测没有拆开。</strong>CSA 同时可能发生 feature pooling 失真、indexer 漏选和 fixed top-k 容量不足；HCA 还把地址与载荷绑定到同一个 shared K=V。报告给出的 99.7% KV-entry recall 只衡量 index score 从 FP32 降到 BF16 后的 top-k 集合一致性，不代表 selector 对任务相关信息有 99.7% 的语义召回。</li>
         <li><strong>数据透明度有限。</strong>只描述 32T+ 的大类与原则，没有比例、截止时间、语言分布、污染控制结果、合成数据占比、版权与敏感数据审计，也没有训练 FLOPs、GPU/NPU 数、wall time 或能耗。</li>
         <li><strong>Benchmark 可比性有限。</strong>闭源模型由作者内部重测，部分 API 因繁忙或长请求失败而空缺；Max 同时拥有更长窗口、更多输出、不同 RL 配置和特殊提示；agent harness 与上下文策略也不统一。</li>
         <li><strong>内部真实任务不是公开 benchmark。</strong>中文写作、搜索、白领任务、R&amp;D code 与员工调查提供很有价值的产品信号，但数据、rubric、judge、环境和抽样不可复验。</li>

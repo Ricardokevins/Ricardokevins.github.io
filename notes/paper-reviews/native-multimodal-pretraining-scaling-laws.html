@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生多模态 Scaling Law 深读：测到的是通用规律，还是一条 MoE 配方曲线？</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3efe7;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #62686d;
+      --line: #d9d1c3;
+      --accent: #b45d3f;
+      --accent-soft: #f7e9df;
+      --blue: #486b98;
+      --blue-soft: #edf2f8;
+      --green: #356b55;
+      --green-soft: #eaf3ee;
+      --warn: #945b21;
+      --warn-soft: #fbf0df;
+      --shadow: 0 14px 38px rgba(39, 37, 32, .07);
+      --radius: 10px;
+      --max: 1080px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+      background:
+        linear-gradient(90deg, rgba(180, 93, 63, .04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(105, 95, 78, .03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 76px) 0 26px; }
+    .kicker { color: var(--accent); font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 10px 0 0; font: 760 clamp(32px, 5vw, 56px)/1.14 var(--serif); }
+    .lede { max-width: 930px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.3; }
+    h2 { font-size: clamp(24px, 3vw, 34px); }
+    h3 { margin-top: 24px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 17px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info b { color: var(--blue); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn b { color: var(--warn); }
+    .math-display {
+      max-width: 100%;
+      margin: 16px 0;
+      padding: 12px 14px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap {
+      max-width: 100%;
+      margin: 16px 0;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .notes-shell-page table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    .status { white-space: nowrap; font-weight: 750; }
+    .verified { color: var(--green); }
+    .reported { color: var(--blue); }
+    .inferred { color: var(--warn); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr);
+      gap: 15px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); }
+    .compact { color: var(--muted); font-size: 14.5px; }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Native Multimodal Pre-training · Scaling Laws</div>
+    <h1>原生多模态 Scaling Law 深读：测到的是通用规律，还是一条 MoE 配方曲线？</h1>
+    <p class="lede">这篇论文最有价值的发现，不是“多模态也服从幂律”，而是同一套原生 MoE 在不同图文比例下，语言损失和图文条件文本损失呈现不同的算力分配趋势。问题在于：它把训练损失代理外推到观测算力之外四个数量级，又把只预测文本的目标称为“多模态目标”。所以它是一张值得复用的局部航海图，还不是跨架构、跨目标函数的物理定律。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>论文在自己的模型族内建立了可信的方向性证据，但没有建立可直接部署的通用 scaling law。</strong>六档 7100 万至 30 亿激活参数的原生视觉语言 MoE、三种非零图文配比和两套拟合方法，都显示语言目标的最优指数较稳定，而所谓多模态目标更受数据配比影响；加入图文数据也没有压低平均语言能力，并在少数空间任务和多模态 few-shot 上呈现正迁移。</p>
+      <div class="grid-3">
+        <div class="card"><h3>真正的新信息</h3><p>同一个共享主干上的两类文本损失，最优参数/数据分配不完全相同；用一个 Chinchilla 比例统管所有模态并不稳妥。</p></div>
+        <div class="card"><h3>最重要的校准</h3><p>视觉 token 不承担预测损失。“多模态目标”实际是看图后预测文本，不是视觉重建、图像生成或视觉 token 建模。</p></div>
+        <div class="card"><h3>最大的证据缺口</h3><p>无 seed、置信区间、原始日志和未见配比验证；Pareto 曲线最远外推至观测算力约一万倍之外。</p></div>
+      </div>
+      <div class="callout warn"><b>一句话结论</b><p>若你正在训练相似的 decoder-only 图文理解 MoE，这篇论文可作为局部预算搜索的先验；若你要训练 dense VLM、视觉生成模型或通用 omnimodal 模型，直接照抄指数并不成立。</p></div>
+    </section>
+
+    <section id="tweet">
+      <h2>主帖说了什么，又省略了什么</h2>
+      <p>HuggingPapers 的帖子把论文概括为：从头训练视觉语言模型，系统研究算力最优的模型规模与 token 数，并发现语言目标和多模态目标具有不同 scaling law。这个摘要没有误读论文，但省略了三个决定结论外延的限定：</p>
+      <ul>
+        <li>模型不是一般 VLM，而是固定 recipe 下的 decoder-only MoE；规模变化时层数、宽度和学习率也一起变化。</li>
+        <li>两种目标都只对文本 token 计算交叉熵，差别是样本是否含图像上下文。</li>
+        <li>“精确、可部署”的前沿包含远距离幂律外推，尚未用更大实际训练或未见图文配比验证。</li>
+      </ul>
+      <p>因此，帖子适合作为论文入口，却不能把“distinct scaling laws”读成已经发现一条架构无关、任务无关的多模态定律。</p>
+    </section>
+
+    <section id="setup">
+      <h2>到底训练了什么：原生视觉输入，单一文本预测头</h2>
+      <p>模型不使用预训练视觉编码器。图像被切成 \(32\times32\) 像素的 patch，再由一个投影层映射成连续表示送入语言主干；图像和文字随后进入同一个 decoder-only Transformer。主干使用 128 个专家、每个 token 激活 8 个专家，另有一个共享专家。所谓“native”因此指视觉表示和语言主干从头联合学习，而不是视觉 token 本身也被预测。</p>
+      <div class="math-display">\[
+        \mathcal L=-\sum_{i\in\mathcal T_{\text{text}}}\log p(x_i\mid x_{\lt i},\,v),
+        \qquad
+        i\in\mathcal T_{\text{vision}}\ \text{时损失被屏蔽}.
+      \]</div>
+      <div class="callout info"><b>最容易被标题掩盖的语义</b><p>论文中的 language loss 是纯文本样本上的 next-token loss；multimodal loss 是图文或交错样本上的<strong>文本</strong> next-token loss。它研究的是视觉条件下的语言建模资源分配，不是“文字预测与视觉预测之间如何分配计算”。</p></div>
+
+      <h3>数据、规模与计算口径</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>论文设置</th><th>解读时必须保留的限定</th></tr></thead>
+          <tbody>
+            <tr><td>文本池</td><td>250B text tokens</td><td>来自网页、书籍、论文等；原始配方和去重细节未充分披露。</td></tr>
+            <tr><td>多模态池</td><td>75B multimodal tokens</td><td>网页图文对与交错文档；公开材料没有可复现的数据清单。</td></tr>
+            <tr><td>图文比例</td><td>\(r=D_{\mathrm{mm}}/D_{\mathrm{text}}\in\{0,.1,.2,.3\}\)</td><td>非零设置只有三个；\(r\) 不是图文 token 占总 token 的比例。</td></tr>
+            <tr><td>激活参数</td><td>71M、128M、340M、590M、874M、3B</td><td>同时改变层数、宽度与学习率，不是只缩放一个独立变量。</td></tr>
+            <tr><td>训练</td><td>Muon，4096 上下文，16M-token global batch</td><td>单一 optimizer 与 recipe；没有跨 optimizer、dense 或视觉编码器对照。</td></tr>
+            <tr><td>计算代理</td><td>\(C=6ND\)</td><td>\(N\) 是非 embedding 的激活参数，不包含全部专家的存储与通信成本。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>比例换算尤其重要：当 \(r=.1,.2,.3\) 时，多模态 token 占总 token 的实际份额分别是 \(r/(1+r)=9.09\%,16.67\%,23.08\%\)。把它们口头称作 10%、20%、30% 总数据配比，会系统性夸大图文份额。</p>
+      <p>根据论文披露的层数、宽度、专家宽度与路由配置做条件性参数核算，3B 激活参数档的全部专家权重约为 29.6B；其余档也大致是激活参数的 8–10 倍。这不否定用 active \(N\) 近似 token FLOPs，但说明“部署最优”还必须计入总权重显存、专家并行通信和实际吞吐。</p>
+    </section>
+
+    <section id="method">
+      <h2>Scaling law 是怎样拟合出来的</h2>
+      <p>论文沿用 compute-optimal scaling 的标准框架：对每个固定算力预算，寻找使损失最低的激活参数量 \(N_{\mathrm{opt}}\) 与 token 数 \(D_{\mathrm{opt}}\)，再拟合幂律：</p>
+      <div class="math-display">\[
+        N_{\mathrm{opt}}(C)=A C^a,\qquad
+        D_{\mathrm{opt}}(C)=B C^b,\qquad a+b\approx1.
+      \]</div>
+      <p>\(a\) 越大，新增算力越倾向扩模型；\(b\) 越大，越倾向增加数据。论文采用两条互相校验的估计路线：</p>
+      <div class="grid-2">
+        <div class="card"><h3>IsoFLOP 抛物线</h3><p>在固定算力下，用 loss 对 \(\log N\) 拟合二次曲线，以最低点得到最优 \(N\)。这是论文主估计，也是后续 Pareto 模型唯一使用的数据。</p></div>
+        <div class="card"><h3>训练曲线下包络</h3><p>把不同规模的训练曲线汇总，在每个算力点取最优包络，再反推 \(N_{\mathrm{opt}}\) 与 \(D_{\mathrm{opt}}\)。它能做方向交叉检查，但并非独立实验。</p></div>
+      </div>
+      <p>每个 token 大致只见一次，作者因此用平滑训练损失替代测试损失，并称多模态领域缺少稳健的统一验证指标。这个选择避免了验证集配方难题，却也使拟合更容易吸收训练数据难度、重复度和混合比例差异；它测到的是“在当前数据流上把训练损失压低”的最优点，不必然等于下游泛化最优点。</p>
+      <div class="callout warn"><b>两套拟合不是两次独立复现</b><p>它们来自同一批训练曲线，且都缺少 seed、bootstrap 区间和残差表。两者方向一致能降低方法偶然性，却不能替代统计不确定性。</p></div>
+    </section>
+
+    <section id="exponents">
+      <h2>指数结果：差异存在，但比 headline 更细腻</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>目标</th><th>图文比 \(r\)</th><th>IsoFLOP：\(a/b\)</th><th>下包络：\(a/b\)</th><th>应如何读</th></tr></thead>
+          <tbody>
+            <tr><td>语言</td><td>0</td><td>.697 / .303</td><td>.671 / .329</td><td>纯文本基线；已经明显偏向扩模型。</td></tr>
+            <tr><td>语言</td><td>.1</td><td>.684 / .316</td><td>.643 / .357</td><td rowspan="3">在相同非零配比范围内，语言 \(a\) 的跨度为 .021（IsoFLOP）或 .005（下包络），相对稳定。</td></tr>
+            <tr><td>语言</td><td>.2</td><td>.667 / .333</td><td>.644 / .356</td></tr>
+            <tr><td>语言</td><td>.3</td><td>.663 / .337</td><td>.639 / .361</td></tr>
+            <tr><td>图文条件文本</td><td>.1</td><td>.709 / .291</td><td>.665 / .335</td><td rowspan="3">随 \(r\) 增大，\(a\) 下降、\(b\) 上升；跨度为 .066 或 .031，配比敏感性更强。</td></tr>
+            <tr><td>图文条件文本</td><td>.2</td><td>.679 / .321</td><td>.641 / .359</td></tr>
+            <tr><td>图文条件文本</td><td>.3</td><td>.643 / .357</td><td>.634 / .366</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>最稳健的结论是：<strong>图文条件文本目标对数据配比更敏感，且配比越高时最优分配越向数据侧移动。</strong>但“多模态天然更 data-hungry”需要加限定。在 \(r=.1\) 和 \(r=.2\) 的 IsoFLOP 结果中，多模态的 \(b=.291/.321\) 反而低于对应语言目标的 \(b=.316/.333\)；只有 \(r=.3\) 时才高于语言目标。也就是说，论文证明的是<strong>相对移动</strong>，不是所有配置下多模态都比语言更需要数据。</p>
+
+      <h3>与一手前序工作的冲突，不能用“任务不同”一句带过</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>研究</th><th>模型 / 目标</th><th>模型指数 \(a\)</th><th>数据指数 \(b\)</th><th>关键差异</th></tr></thead>
+          <tbody>
+            <tr><td>Chinchilla（2022）</td><td>dense 文本 LM</td><td>约 .5</td><td>约 .5</td><td>400+ 模型、held-out loss，并实际训练预测的 70B 模型验证前沿。</td></tr>
+            <tr><td>Native Multimodal Models（2025）</td><td>早期融合 dense，三类数据平均</td><td>.526</td><td>.473</td><td>457 个模型，含验证损失、架构和数据混合对照。</td></tr>
+            <tr><td>Native Multimodal Models（2025）</td><td>早期融合 sparse MoE，平均</td><td>.361</td><td>.656</td><td>该研究的 MoE 明显偏数据，而不是偏激活参数。</td></tr>
+            <tr><td>Beyond Language Modeling（2026）</td><td>dense：语言 / 视觉扩散</td><td>.47 / .37</td><td>.53 / .63</td><td>视觉端是真正的 diffusion 生成损失，并使用 held-out validation。</td></tr>
+            <tr><td>Beyond Language Modeling（2026）</td><td>16× sparse：语言 / 视觉扩散</td><td>.41 / .36</td><td>.59 / .64</td><td>增加稀疏度后仍更偏数据。</td></tr>
+            <tr><td>本文（2026）</td><td>MoE：文本 / 图文条件文本</td><td>.64–.71</td><td>.29–.36</td><td>训练损失、固定 expert recipe，只预测文本，整体明显偏激活参数。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这些数字不应直接做排行榜，因为数据、模型族、损失和 FLOPs 口径并不相同；但方向性冲突本身就是重要事实。本文没有解释为什么自己的 MoE 从头预训练比 dense 更 parameter-hungry，而前两项原生多模态研究中的 sparse 模型更 data-hungry。更可能的答案不是某一方“错了”，而是 scaling exponent 同时依赖预测目标、数据复杂度、宽深路径、专家设置、optimizer 和损失测量位置。于是，论文的数字更像<strong>recipe conditional law</strong>，而不是 multimodality conditional law。</p>
+    </section>
+
+    <section id="pareto">
+      <h2>Pareto 前沿：有用的框架，过强的“精确可部署”表述</h2>
+      <p>语言和图文条件文本共享参数，因此论文进一步寻找同时兼顾两种损失的 Pareto 前沿。联合拟合把语言指数固定为 \(a=.67,b=.33\)，让多模态指数随 \(r\) 变化：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>\(r\)</th><th>图文 token 占总量</th><th>多模态 \(a/b\)</th><th>100× 算力时 \(N/D\) 倍数</th><th>10,000× 算力时 \(N/D\) 倍数</th></tr></thead>
+          <tbody>
+            <tr><td>.1</td><td>9.09%</td><td>.69 / .31</td><td>23.99× / 4.17×</td><td>575.44× / 17.38×</td></tr>
+            <tr><td>.2</td><td>16.67%</td><td>.67 / .33</td><td>21.88× / 4.57×</td><td>478.63× / 20.89×</td></tr>
+            <tr><td>.3</td><td>23.08%</td><td>.66 / .34</td><td>20.89× / 4.79×</td><td>436.52× / 22.91×</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>从 .1 到 .3，模型指数只移动 .03。在 100× 算力内，这是“模型放大约 24× 还是 21×”的差别；到 10,000× 外推时才被放大成 575× 对 437×。这正说明小指数差为什么可能具有工程意义，也说明为什么必须先验证外推稳定性。</p>
+      <ul>
+        <li><strong>观测与外推距离：</strong>主要观测区约在 \(10^{20}\)–\(10^{21}\) FLOPs，图中虚线延伸至 \(10^{25}\)，最远约四个数量级之外。</li>
+        <li><strong>不可约损失不稳定：</strong>多模态 frontier 的拟合底值 \(E\) 随 \(r\) 从 .827、.576 变到 .001，提示 \(E\)、临界算力和斜率可能互相补偿；长距离外推尤其脆弱。</li>
+        <li><strong>共享梯度没有被因果分开：</strong>把 \(C_{\text{text}}=6ND_{\text{text}}\) 和 \(C_{\text{mm}}=6ND_{\text{mm}}\) 分开是会计口径，同一参数实际上同时接受两类样本的梯度。</li>
+        <li><strong>架构路径被绑定：</strong>规模越大时深度、宽度和学习率一起变化，“最优模型大小”只对这条预设路径成立。</li>
+      </ul>
+      <div class="callout warn"><b>为什么“deployable”还差一步</b><p>真正可部署的前沿至少还要同时报告总参数显存、token/s、专家通信、held-out 泛化和目标硬件。仅用激活参数与 \(6ND\) 可以做训练算力研究，不能完成系统部署决策。</p></div>
+    </section>
+
+    <section id="downstream">
+      <h2>下游复核：语言没有退化成立，few-shot“稳健”只成立一半</h2>
+      <h3>语言能力：结论方向成立，论文的“始终小于 1 分”不成立</h3>
+      <p>论文在 16 项文本 benchmark 上比较四种配比。各规模平均分如下：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>\(r\)</th><th>71M</th><th>128M</th><th>340M</th><th>590M</th><th>874M</th><th>3B</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>22.75</td><td>24.97</td><td>30.43</td><td>33.63</td><td>37.30</td><td>44.77</td></tr>
+            <tr><td>.1</td><td>22.59</td><td>24.32</td><td>30.62</td><td>33.97</td><td>36.91</td><td>45.50</td></tr>
+            <tr><td>.2</td><td>22.75</td><td>24.72</td><td>30.57</td><td>34.45</td><td>37.71</td><td>45.21</td></tr>
+            <tr><td>.3</td><td>22.32</td><td>24.70</td><td>30.18</td><td>34.31</td><td>36.71</td><td>46.03</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这组结果足以支持“最多 23.1% 图文 token 没有损害平均语言能力”：最大档 \(r=.3\) 反而比纯文本高 1.26 分。但论文称每个规模的差异都小于 1 个百分点并不精确：874M 档的极差恰好是 1.00，3B 档是 1.26。这个复算修正的是字面口径，不改变方向性结论。</p>
+
+      <h3>空间迁移：是窄任务信号，不是一般物理 grounding</h3>
+      <p>论文用 SpatialEval 的 MazeNav 与 SpatialMap 两个纯文本抽象子任务展示正迁移。\(r=.3\) 相对纯文本在多个规模上更高，但增益并不随规模单调扩大：约 590M 时接近 +14.5 分，874M 时约 +3 分，3B 时约 +9.5 分。没有 seed 与置信区间时，证据支持“图文预训练可能迁移到两个空间文本任务”，不足以推出普遍的物理世界 grounding。</p>
+
+      <h3>多模态 few-shot：平均提升真实，但任务级有系统性反例</h3>
+      <p>主文在平均值中排除 ScienceQA 和 LogicVista，因为它们在零样本 CoT 下崩溃。对剩余 21 项按附录表独立重算：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>上下文示例</th><th>71M</th><th>128M</th><th>340M</th><th>590M</th><th>874M</th><th>3B</th></tr></thead>
+          <tbody>
+            <tr><td>0-shot</td><td>25.87</td><td>26.14</td><td>27.16</td><td>29.57</td><td>30.06</td><td>33.67</td></tr>
+            <tr><td>1-shot</td><td>25.47</td><td>26.37</td><td>27.83</td><td>30.02</td><td>30.99</td><td>35.65</td></tr>
+            <tr><td>3-shot</td><td>25.85</td><td>27.11</td><td>28.47</td><td>30.55</td><td>31.86</td><td>36.10</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>3B 模型的 1-shot / 3-shot 平均增益是 +1.98 / +2.43 分，与论文主图一致；但 3-shot 在 21 项中是 16 胜 5 负。最大的反例是 CountBench -10.43、HallusionBench -3.91、TextVQA -2.82；最大的提升则包括 OmniSpatial +14.24、MME +9.51、AI2D +7.43。信号很像“空间/图解任务受益、计数与部分 OCR/识别任务受损”，而不是对所有视觉任务都稳健。</p>
+      <p>few-shot 示例还可能教会输出格式、选项先验或答案长度，而不只提供新语义推理。要证明 in-context learning 机制，至少应加入标签置乱、无关示例、只给格式模板和跨任务示例等对照。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>证据账本：哪些结论可以带走</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>证据状态</th><th>当前最稳健的表述</th></tr></thead>
+          <tbody>
+            <tr><td>语言与图文条件文本具有不同最优分配</td><td class="status reported">方向可信</td><td>在当前 MoE recipe 与三个非零配比内，两套拟合都显示图文目标更受配比影响。</td></tr>
+            <tr><td>多模态目标天然更 data-hungry</td><td class="status inferred">需收窄</td><td>随 \(r\) 增大时相对变得更 data-hungry；低配比下其 \(b\) 仍小于语言 \(b\)。</td></tr>
+            <tr><td>新增图文数据不损害语言</td><td class="status verified">表内成立</td><td>16 项平均分总体持平或提高；但“所有差异 &lt;1pp”有两个字面反例。</td></tr>
+            <tr><td>图文训练产生空间正迁移</td><td class="status reported">窄证据</td><td>两个 SpatialEval 文本子任务为正；趋势非单调、无不确定区间，不能泛化为物理 grounding。</td></tr>
+            <tr><td>从头训练模型涌现稳健多模态 ICL</td><td class="status verified">平均成立</td><td>大模型平均显著提升，但 CountBench、OCR/识别类存在明显倒退，且缺少格式控制实验。</td></tr>
+            <tr><td>Pareto 配置精确且可部署</td><td class="status inferred">证据不足</td><td>是有用的局部拟合框架；长外推、总参数与硬件指标尚未验证。</td></tr>
+            <tr><td>指数代表通用多模态规律</td><td class="status inferred">不成立</td><td>同类一手研究给出相反的 MoE 方向，说明结果高度依赖目标和训练 recipe。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="insights">
+      <h2>进一步 insight：这篇论文真正改变了什么</h2>
+      <h3>1. “模态”可能不是正确的资源分配单位，预测目标才是</h3>
+      <p>本文的视觉输入没有对应视觉预测损失，却已经出现一条不同曲线；另一项统一多模态研究使用视觉 diffusion loss，又得到更强的数据倾向。两者合起来提示：决定 scaling law 的也许不是输入里有没有图像，而是模型必须压缩和预测什么分布。未来更应按“纯文本预测、视觉条件文本预测、离散视觉 token 预测、连续视觉生成”拆分目标，而不是只写 language / multimodal。</p>
+
+      <h3>2. 数据配比会改变“每种数据的边际价值”，不是只改变样本数</h3>
+      <p>当 \(r\) 上升，图文样本不只是数量增加；网页图文、交错文档、文本样本在 batch 中的相对竞争也变化，共享参数学到的表征随之变化。因此 \(C_{\mathrm{mm}}=6ND_{\mathrm{mm}}\) 不是一份可独立结算的计算预算。真正的多目标 scaling law 应估计交叉偏导：增加一种数据时，另一种损失如何变化。</p>
+
+      <h3>3. .03 的指数差既不能忽略，也不能脱离外推距离</h3>
+      <p>幂律会放大小指数差，但放大依赖跨度。在已观测算力附近，.03 的工程影响有限；在一万倍算力处，它会变成数百倍模型尺度之间的巨大差异。论文最该做的不是给更远的虚线，而是在下一档真实训练上检验指数是否保持。</p>
+
+      <h3>4. MoE 的“模型大小”必须拆成激活、存储与通信三条轴</h3>
+      <p>active parameters 适合近似单 token 的 MLP 计算，却掩盖了总专家权重。论文的 3B active 档条件性估算接近 30B total；部署时，显存和 all-to-all 通信不会因为只激活八个专家而消失。一个真正有系统价值的 Pareto 面应至少包含 loss、active FLOPs、total parameters、吞吐和延迟。</p>
+    </section>
+
+    <section id="practice">
+      <h2>如何把它用于真实训练决策</h2>
+      <ol>
+        <li><strong>只把指数当作搜索中心。</strong>若模型和数据接近本文，先在预测点周围用三档 \(N\) 和三档 token 数做小规模 IsoFLOP，不直接按 .67/.33 扩到终局。</li>
+        <li><strong>为每个预测目标保留 held-out loss。</strong>训练 loss 可做快速代理，但最终预算选择应由去重验证集和下游能力共同决定。</li>
+        <li><strong>固定并拆解架构变量。</strong>至少做一次“只变宽度”或“只变深度”的对照，并固定学习率调参规则，避免把 architecture schedule 写进规模指数。</li>
+        <li><strong>验证未见配比。</strong>用 \(r=.15,.25\) 检验插值，再用 .4 或更高配比测试趋势是否继续；只拟合三个非零点不足以支撑连续 Pareto 面。</li>
+        <li><strong>给外推设置闸门。</strong>先训练一个比拟合区大 10×–100× 算力的模型；若真实损失和预算配置落出预注册区间，停止继续外推。</li>
+        <li><strong>把 few-shot 格式效应分离出来。</strong>增加无关示例、标签置乱、只给格式说明、同任务跨图像示例，区分语义 ICL 与 answer-format adaptation。</li>
+      </ol>
+      <div class="callout info"><b>最小可证伪实验</b><p>三种未见 \(r\) × 三个模型规模 × 两个 token 预算 × 三个随机种子，同时报告训练/验证损失、总参数、吞吐和 21 项 few-shot task-level 结果。它不需要复刻整篇论文，却能直接回答配比指数能否插值、长外推是否可信、下游收益是否稳定。</p></div>
+    </section>
+
+    <section id="terms">
+      <h2>术语与口径</h2>
+      <div class="def-list">
+        <div><b>Native multimodal</b><span>视觉表示和语言主干从头联合训练，不依赖冻结或预训练视觉编码器；不等于一定预测视觉 token。</span></div>
+        <div><b>IsoFLOP</b><span>在相同计算预算下比较不同模型规模和 token 数，用损失最低点寻找 compute-optimal 配置。</span></div>
+        <div><b>Active parameters</b><span>MoE 对单个 token 实际调用的参数量；它近似计算负载，但不等于总权重规模。</span></div>
+        <div><b>Scaling exponent</b><span>\(N_{\mathrm{opt}}\propto C^a\)、\(D_{\mathrm{opt}}\propto C^b\) 中的 \(a,b\)；指数差会随外推跨度被放大。</span></div>
+        <div><b>Pareto frontier</b><span>无法在不恶化一个目标的前提下继续改善另一个目标的一组配置；本文的两个目标共享同一主干。</span></div>
+        <div><b>Data-hungry</b><span>更大算力增量中有更高比例应投入 token。本文主要证明随图文配比上升的相对移动，不是绝对高于语言。</span></div>
+      </div>
+    </section>
+
+    <section id="verdict">
+      <h2>最终评价</h2>
+      <p>这是一篇问题意识很好的系统性研究：它不再默认文本世界的 compute-optimal 配比能无损迁移到图文模型，也把多目标 Pareto 作为一等问题。六档模型、多个配比、两种拟合和较完整下游表，使“同一配方里不同数据流有不同缩放行为”成为有分量的实证结论。</p>
+      <p>但论文最重要的词需要重新命名：multimodal objective 更准确地说是 <strong>image-conditioned text objective</strong>；precise 更准确地说是 <strong>point estimate without uncertainty</strong>；deployable 更准确地说是 <strong>active-FLOP-aware candidate</strong>。一旦做完这三次校准，论文仍然值得读，而且其贡献反而更清楚——它不是发现了多模态训练的终极定律，而是证明了我们不该再期待只有一条定律。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文核对的是 2026-07-24 提交的 arXiv v1、论文源码中的配置/表格/拟合图，以及截至 2026-07-28 可见的发布页面。实验分数与训练曲线均为作者报告，本笔记完成了表内复算与跨论文对照，但没有重新训练这些模型。截至该日期，论文页、作者页与 Hugging Face 论文页均未链接公开代码、checkpoint 或可复现数据配方；原帖回复正文也不在本次可核验材料内。</p>
+      <ul>
+        <li><a href="https://x.com/HuggingPapers/status/2081900711777026218">HuggingPapers 发布帖</a></li>
+        <li><a href="https://arxiv.org/abs/2607.22043">Scaling Native Multimodal Pre-Training From Scratch（arXiv:2607.22043）</a></li>
+        <li><a href="https://huggingface.co/papers/2607.22043">Hugging Face Paper 页面</a></li>
+        <li><a href="https://wuhy68.github.io/publication/arxiv-nmm/">作者项目页</a></li>
+        <li><a href="https://arxiv.org/abs/2203.15556">Training Compute-Optimal Large Language Models（Chinchilla）</a></li>
+        <li><a href="https://arxiv.org/abs/2504.07951">Scaling Laws for Native Multimodal Models</a></li>
+        <li><a href="https://arxiv.org/abs/2507.09404">Scaling Laws for Optimal Data Mixtures</a></li>
+        <li><a href="https://arxiv.org/abs/2603.03276">Beyond Language Modeling: An Exploration of Multimodal Pretraining</a></li>
+      </ul>
+      <p class="compact"><a href="#top">返回页首</a></p>
+    </section>
+  </main>
+</body>
+</html>

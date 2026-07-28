@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self-Guided TTT 深读：长上下文真正缺的不是窗口，而是可信训练信号</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true },
+      chtml: { matchFontHeight: false, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme: light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#5f686f; --line:#dcd6c8; --accent:#c15f3c; --accent-soft:#f7ece4; --accent-2:#9a5c27; --accent-2-soft:#f8eee2; --risk:#9a4545; --risk-soft:#f8eaea; --info:#4e628b; --info-soft:#edf0f7; --shadow:0 16px 44px rgba(31,37,40,.08); --radius:10px; --max:1120px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif; --mono:"SFMono-Regular","Menlo","Consolas",monospace; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body { margin:0; background:linear-gradient(90deg,rgba(193,95,60,.045) 1px,transparent 1px),linear-gradient(180deg,rgba(120,105,85,.03) 1px,transparent 1px),var(--paper); background-size:44px 44px; color:var(--ink); font-family:var(--sans); line-height:1.75; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header, main { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(36px,6vw,76px) 0 26px; }
+    .kicker { margin-bottom:12px; color:var(--accent-2); font:800 13px/1.3 var(--sans); letter-spacing:.07em; text-transform:uppercase; }
+    h1 { max-width:1020px; margin:0; font:760 clamp(32px,5vw,58px)/1.12 var(--serif); }
+    .lede { max-width:930px; margin:18px 0 0; color:var(--muted); font-size:clamp(17px,2vw,20px); }
+    main { display:grid; gap:30px; padding-bottom:64px; }
+    section { padding-top:30px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3 { margin:0 0 12px; line-height:1.25; }
+    h2 { font:740 clamp(24px,3.2vw,34px)/1.25 var(--serif); }
+    h3 { margin-top:24px; font-size:20px; color:var(--accent); }
+    p { margin:12px 0; } ul,ol { padding-left:1.25rem; } li { margin:7px 0; }
+    code { padding:2px 6px; border-radius:5px; background:#ece5d7; color:#7c2d12; font-family:var(--mono); font-size:.92em; }
+    .toc { padding:14px 18px; border:1px solid var(--line); border-radius:var(--radius); background:rgba(255,253,248,.92); box-shadow:var(--shadow); }
+    .toc b { display:block; margin-bottom:8px; color:var(--accent-2); }
+    .toc-links { display:flex; flex-wrap:wrap; gap:8px 14px; } .toc a { font-size:14px; text-decoration:none; }
+    .grid-2,.grid-3,.grid-4 { display:grid; gap:14px; margin:18px 0; } .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); } .grid-4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .card { min-width:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3 { margin:0 0 8px; font-size:16px; color:var(--accent); } .card p { margin:0; color:var(--muted); font-size:14.5px; } .metric { display:block; margin-bottom:4px; color:var(--ink); font:760 24px/1.15 var(--serif); }
+    .callout { margin:18px 0; padding:14px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); background:var(--accent-soft); } .callout>b { display:block; margin-bottom:6px; color:var(--accent); }
+    .callout.info { border-left-color:var(--info); background:var(--info-soft); } .callout.info>b { color:var(--info); } .callout.warn { border-left-color:var(--accent-2); background:var(--accent-2-soft); } .callout.warn>b { color:var(--accent-2); } .callout.risk { border-left-color:var(--risk); background:var(--risk-soft); } .callout.risk>b { color:var(--risk); }
+    .flow { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin:18px 0; } .flow-step { position:relative; min-width:0; padding:14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); } .flow-step:not(:last-child)::after { content:"→"; position:absolute; top:50%; right:-11px; z-index:2; transform:translateY(-50%); color:var(--accent); font-weight:800; } .flow-step b { display:block; color:var(--accent); } .flow-step span { display:block; margin-top:5px; color:var(--muted); font-size:13.5px; line-height:1.55; }
+    .def-list { display:grid; gap:10px; margin:18px 0; } .def-list>div { display:grid; grid-template-columns:minmax(180px,.26fr) minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); } .def-list b { color:var(--accent); }
+    .table-wrap { margin:16px 0; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); } table { width:100%; min-width:820px; border-collapse:collapse; font-size:14.3px; } caption { padding:12px 14px 8px; color:var(--muted); text-align:left; font-size:13.5px; } th,td { padding:10px 13px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; } th { background:var(--accent-soft); } tr:nth-child(even) td { background:rgba(0,0,0,.015); }
+    .good { color:#25675f; font-weight:700; } .bad { color:var(--risk); font-weight:700; } .math-display { margin:16px 0; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); max-width:100%; overflow-x:auto; overflow-y:hidden; } mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    @media(max-width:900px){ .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.flow{grid-template-columns:1fr}.flow-step:not(:last-child)::after{content:"↓";top:auto;right:50%;bottom:-15px;transform:translateX(50%)} }
+    @media(max-width:760px){ header,main{width:min(100% - 24px,var(--max))}.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.def-list>div{grid-template-columns:1fr;gap:6px}.toc-links{display:grid;grid-template-columns:1fr 1fr} }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+  <header id="top">
+    <div class="kicker">Paper Review · Long Context / Test-Time Training</div>
+    <h1>Self-Guided TTT 深读：长上下文真正缺的不是窗口，而是可信训练信号</h1>
+    <p class="lede">这篇工作最有价值的地方不是又发明了一种复杂训练算法，而是把长上下文测试时训练的瓶颈从“怎么更新参数”移到“拿什么 token 更新参数”：先让模型找出与问题有关的原文片段，再只用这些片段做短暂 LoRA 训练。结果支持“训练数据选择很重要”，但还不足以证明模型已经学会可靠地自我检索，更没有证明它已具备低成本生产可用性。</p>
+  </header>
+  <main>
+    <nav class="toc" aria-label="本文目录"><b>阅读地图</b><div class="toc-links"><a href="#takeaway">核心判断</a><a href="#problem">真实问题</a><a href="#mechanism">机制</a><a href="#setup">实验设置</a><a href="#evidence">关键证据</a><a href="#calculation">数字复算</a><a href="#attention">机制证据</a><a href="#efficiency">效率</a><a href="#terms">术语</a><a href="#limits">证据边界</a><a href="#insight">独立 Insight</a><a href="#practice">工程建议</a><a href="#sources">资料索引</a></div></nav>
+
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>S-TTT 更像“证据放大器”，而不是“证据发现器”。</strong>它的前提是基础模型先通读完整上下文并成功找出相关 span；随后，参数更新把这些已经找到的 token 变成当前问题专用的短期权重偏置。论文较有力地证明了高质量训练 span 比随机 span 好，却没有解决最困难的前置问题：当模型第一次就没找到证据时，谁来纠正选择器？</p>
+      <div class="grid-4">
+        <div class="card"><span class="metric">40.4 → 45.9</span><h3>Oracle 诊断</h3><p>同等 span 长度下，带真值答案的 GPT-5.5 选段把 LongBench-v2 提高 5.5 个百分点；随机选段反而降到 38.9。</p></div>
+        <div class="card"><span class="metric">最多 8 spans</span><h3>自选训练材料</h3><p>模型返回与问题相关的原文连续片段；选段无效时退回随机 span。</p></div>
+        <div class="card"><span class="metric">16 steps</span><h3>实例级 LoRA</h3><p>只更新 query projection 的 rank-16 LoRA；每题结束后丢弃更新，下一题从基座重新开始。</p></div>
+        <div class="card"><span class="metric">+4.6pp</span><h3>最高增益本体</h3><p>Qwen 在 LongBench-v2 的 64k–128k 桶由 30.7 提至 35.3，换算后才是摘要所说的约 15% 相对提升。</p></div>
+      </div>
+      <div class="callout"><b>一句话读法</b><p>这不是“模型把 128k 上下文永久学会了”，而是“模型先猜哪些证据重要，再用一次临时梯度更新把这些证据提高到更容易被后续解码使用的位置”。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>真实问题：窗口容量不等于信息可用性</h2>
+      <p>长上下文模型可以接收十万级 token，不代表它能在每个问题上稳定定位并组合埋在其中的证据。既有研究已经表明，相关信息放在长输入中间时，模型表现常显著下降。常见补救方案各自改变不同环节：</p>
+      <div class="grid-2">
+        <div class="card"><h3>检索 / 压缩</h3><p>先删掉大部分上下文，只把候选证据交给模型；成本低，但召回失败会直接丢失信息。</p></div>
+        <div class="card"><h3>更长 thinking</h3><p>给模型更多解码 token 做推理，却不改变权重；如果证据最初没有被可靠读出，额外思考可能只是围绕错误状态展开。</p></div>
+        <div class="card"><h3>全上下文 TTT</h3><p>把整段测试输入当训练数据，代价随长度迅速增加，而且大量无关 token 会稀释实例相关信号。</p></div>
+        <div class="card"><h3>随机 span TTT</h3><p>降低单次训练量，但长文档中随机命中的通常是 distractor，可能把模型向与当前问题无关的局部分布适配。</p></div>
+      </div>
+      <p>S-TTT 的核心重构是：<strong>测试时适配的控制面不只是优化器和可训练参数，还包括训练 token 的选择策略。</strong>训练目标完全不变，只改变数据，就足以让同一套适配过程从负收益变成正收益。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：选择、临时学习、再读全文</h2>
+      <div class="flow" aria-label="S-TTT 五阶段流程"><div class="flow-step"><b>1. 输入</b><span>完整上下文 (x_{1:T}) 与问题 (q)。</span></div><div class="flow-step"><b>2. 自选 span</b><span>基础模型复制最多 8 段与问题相关的原文证据。</span></div><div class="flow-step"><b>3. 临时 LoRA</b><span>在选中 span 上做 16 步 next-token prediction。</span></div><div class="flow-step"><b>4. 全文回答</b><span>适配后的模型仍读取原始完整上下文，而不是只看选段。</span></div><div class="flow-step"><b>5. 重置</b><span>丢弃本题 LoRA，下一实例从原始基座重新开始。</span></div></div>
+      <p>给定连续 span (x_{s_j:e_j})，论文使用标准语言模型损失：</p>
+      <div class="math-display">\[\mathcal{L}_{\mathrm{TTT}}(\theta')=-\sum_{i=s_j}^{e_j}\log p_{\theta'}(x_i\mid x_{\lt i}).\]</div>
+      <p>这里没有新的奖励模型、监督答案或专用架构。训练信号就是“让模型更会预测它刚刚选中的原文”。最终答案仍由 (p_{\theta'}(\cdot\mid x_{1:T},q)) 从全文生成。因而它不是把上下文压缩掉，而是尝试把相关片段通过梯度写入一个临时、问题特定的参数状态。</p>
+      <div class="callout info"><b>容易忽略的细节</b><p>选段只决定哪些 token 贡献训练损失，不等于训练计算只需要这些孤立 token。公式仍以 (x_{\lt i}) 为条件，效率分析也把 span 所在位置对应的前缀长度计入有效训练窗口；S-TTT 的速度收益部分来自自选 span 平均更集中、更靠前，而不只是目标 token 更少。</p></div>
+    </section>
+
+    <section id="setup">
+      <h2>实验设置：结论覆盖了什么，没有覆盖什么</h2>
+      <div class="table-wrap"><table><caption>论文 v1 的主要实验协议。</caption><thead><tr><th>维度</th><th>设置</th><th>对结论的含义</th></tr></thead><tbody>
+        <tr><td>模型</td><td>Qwen3-4B-Thinking-2507、Llama-3.1-8B-Instruct</td><td>跨两个模型族，但规模只覆盖 4B/8B，不能直接外推到前沿闭源模型或 MoE。</td></tr>
+        <tr><td>Benchmark</td><td>LongBench-v2；LongBench-Pro 英文子集；仅保留 Qwen tokenizer 下不超过 128k 的样本</td><td>覆盖多选与开放问答，但不是完整 2M/256k 长度范围，也不覆盖 LongBench-Pro 中文部分。</td></tr>
+        <tr><td>训练</td><td>query projection LoRA，rank 16、scaling 32；AdamW，weight decay 0.01；每题 16 步</td><td>参数高效，但仍需要训练栈、反向传播与每会话 adapter 生命周期。</td></tr>
+        <tr><td>超参</td><td>学习率在 (3\times10^{-5},10^{-4},3\times10^{-4}) 中用小验证集选择</td><td>不是完全无调参的测试时方法；论文没有给验证集规模和逐设置最终学习率。</td></tr>
+        <tr><td>评测</td><td>每题采样 4 个回答，temperature 0.6、top-p 0.95，报告四次分数均值</td><td>数字不是单次 greedy accuracy；没有报告样本间方差、置信区间或独立训练 seed。</td></tr>
+        <tr><td>基线</td><td>Base、LongLLMLingua、qTTT、QRHead、随机 span、全上下文 TTT</td><td>覆盖压缩、注意力选段与多种 TTT，但没有外部强检索器、reranker 或检索后不训练的同预算对照。</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：自选 span 一致优于基座，但领先幅度并不总大</h2>
+      <div class="table-wrap"><table><caption>主表中 Base 与 S-TTT 的直接对比。括号为独立复算。</caption><thead><tr><th>模型</th><th>Benchmark / 长度</th><th>Base</th><th>S-TTT</th><th>绝对变化</th><th>相对变化</th></tr></thead><tbody>
+        <tr><td>Qwen3-4B-Thinking</td><td>LongBench-v2 &lt;64k</td><td>46.7</td><td>47.7</td><td class="good">+1.0pp</td><td>+2.1%</td></tr>
+        <tr><td>Qwen3-4B-Thinking</td><td>LongBench-v2 64k–128k</td><td>30.7</td><td>35.3</td><td class="good">+4.6pp</td><td class="good">+15.0%</td></tr>
+        <tr><td>Qwen3-4B-Thinking</td><td>LongBench-Pro &lt;64k</td><td>55.1</td><td>56.2</td><td>+1.1pp</td><td>+2.0%</td></tr>
+        <tr><td>Qwen3-4B-Thinking</td><td>LongBench-Pro 64k–128k</td><td>41.6</td><td>42.0</td><td>+0.4pp</td><td>+1.0%</td></tr>
+        <tr><td>Llama-3.1-8B</td><td>LongBench-v2 &lt;64k / 64k–128k</td><td>36.9 / 26.3</td><td>38.4 / 28.2</td><td>+1.5 / +1.9pp</td><td>+4.1% / +7.2%</td></tr>
+        <tr><td>Llama-3.1-8B</td><td>LongBench-Pro &lt;64k / 64k–128k</td><td>28.2 / 19.4</td><td>29.9 / 21.7</td><td>+1.7 / +2.3pp</td><td>+6.0% / +11.9%</td></tr>
+      </tbody></table></div>
+      <p>最可信的积极信号不是单个“15%”，而是八个“模型 × benchmark × 长度”格子全部为正。与此同时，S-TTT 并非每列都赢：Qwen / LongBench-Pro 的短上下文上，qTTT 为 56.6、QRHead 为 56.7，都略高于 S-TTT 的 56.2。更准确的表述是：<strong>S-TTT 对基座的改善方向一致，在多个长桶领先，但优势大小依赖模型和数据分布。</strong></p>
+      <h3>选择器质量比“难预测程度”更重要</h3>
+      <p>在 Qwen / LongBench-v2 上，问题条件化的模型标注得到 47.7 / 35.3；按 perplexity 选最高的 span 为 46.7 / 31.9；按 token entropy 选最高的 span 为 45.1 / 33.0。高困惑度文本可能只是格式异常、罕见实体或局部分布偏移，并不等于它对当前问题有用。这项消融支持“相关性”而不是“惊讶度”应成为测试时课程的核心。</p>
+      <h3>选择器失效不是边角情况</h3>
+      <div class="grid-2"><div class="card"><h3>LongBench-v2 fallback</h3><p>Qwen 8.2%，Llama 6.9%。大多数实例能返回可验证的原文 span。</p></div><div class="card"><h3>LongBench-Pro fallback</h3><p>Qwen 21.5%，Llama 39.9%。开放问答上，尤其 Llama，近四成实例实际退化成随机 span TTT。</p></div></div>
+      <p>这组 fallback 比主表更揭示方法上限：S-TTT 的收益被选择器的“可形成合法原文证据”能力直接门控。论文把无效选择统一回退到随机训练，但既然随机训练在诊断实验中可能伤害模型，更合理的生产策略未必是“选不到也训练”，而可能是跳过更新或切换到独立检索器。</p>
+    </section>
+
+    <section id="calculation">
+      <h2>“最高 15%”如何复算：相对提升放大了观感</h2>
+      <p>摘要中的最高相对提升来自 Qwen / LongBench-v2 的 64k–128k 桶：</p>
+      <div class="math-display">\[\frac{35.3-30.7}{30.7}\times 100\%=14.98\%\approx15\%.\]</div>
+      <p>以更直观的百分点口径，它是 <strong>+4.6pp</strong>。两种说法都正确，但含义不同：相对提升强调对较低基线的比例变化，百分点强调实际多答对的比例。其余七个格子的相对提升约为 1.0%–11.9%，所以“最高 15%”不能当成方法的平均收益。</p>
+      <div class="callout warn"><b>不能进一步算显著性</b><p>论文没有在主表按长度桶报告样本数、每题四次采样的方差、置信区间或多 seed 结果。LongBench-v2 全集为 503 题，LongBench-Pro 全集为英中各 750 题，但论文又按 tokenizer 与语言筛选；没有最终逐桶计数，就无法从公开表格严谨判断 +0.4pp、+1.0pp 这类差异是否超出抽样波动。</p></div>
+    </section>
+
+    <section id="attention">
+      <h2>注意力图说明了什么，又没有说明什么</h2>
+      <p>论文展示四个案例，把问题与答案 token 对上下文的注意力在 S-TTT 前后进行比较。适配后，选中 span 附近的注意力在若干中层更强，差分图的变化大体局部化。这与“query projection LoRA 将查询方向拉向选中证据”相符，也与 qTTT 的理论直觉一致。</p>
+      <p>但这仍是<strong>定性机制线索</strong>，不是因果闭环：</p>
+      <ol><li>案例没有给出系统抽样规则，也没有统计“注意力增量”与正确率提升的跨样本相关性。</li><li>attention weight 不是证据使用的充分证明；模型可能提高注意却仍以错误方式组合信息。</li><li>选中 span 本来就是模型认为相关的区域，训练后在该区域增加注意力部分是目标函数的预期结果，不等于它解释了所有性能增益。</li></ol>
+      <p>因此，最稳妥的结论是“参数更新产生了与机制假说一致的局部注意变化”，而不是“S-TTT 已被证明通过注意力重排实现推理提升”。</p>
+    </section>
+
+    <section id="efficiency">
+      <h2>效率：比全上下文训练便宜，不等于比直接推理便宜</h2>
+      <p>作者在单张 NVIDIA H200 上测量端到端延迟，并以直接全文推理归一化。随着上下文变长，S-TTT 从 64k 起比 Full Context TTT 更便宜；到 128k，它也是所有<strong>非 frozen-KV</strong> TTT 中延迟最低的方案。原因是随机 span 的平均有效训练窗口约为 (0.50C)，而自选 span 在两个 benchmark 上约为 (0.39C) 与 (0.37C)。</p>
+      <div class="callout risk"><b>标题之外的成本事实</b><p>S-TTT 仍需要一次完整选段推理、16 次梯度更新和最终回答；图中它始终显著慢于直接推理，也明显慢于复用 frozen KV 的 qTTT。论文只给归一化曲线，没有原始毫秒数、吞吐、显存峰值、训练/推理切换成本或多用户并发数据。它证明的是“在一组 TTT 方案中更可控”，不是“已经适合线上高并发服务”。</p></div>
+    </section>
+
+    <section id="terms"><h2>术语解释</h2><div class="def-list">
+      <div><b>Test-Time Training（TTT）</b><span>模型在处理某个测试实例时临时更新参数，再用更新后的模型回答；不同于只增加采样或思考 token 的 test-time scaling。</span></div>
+      <div><b>Span</b><span>从原始上下文逐字复制的一段连续 token。要求 verbatim 的好处是可以验证它确实来自输入，而不是模型编出的摘要。</span></div>
+      <div><b>Oracle span</b><span>由知道正确答案的强模型挑出的证据段，只用于诊断“选段质量上限”，不是实际可部署流程。</span></div>
+      <div><b>LoRA</b><span>在原权重旁增加低秩更新矩阵，只训练少量参数。本论文仅在 attention query projection 上挂 rank-16 LoRA。</span></div>
+      <div><b>Frozen KV</b><span>先对全文计算并缓存 key/value，训练时不重算它们；qTTT 依赖这一技巧获得更低延迟，S-TTT 的非冻结变体则会随有效前缀长度增加成本。</span></div>
+      <div><b>Fallback rate</b><span>模型无法输出合法原文 span 时回退随机选段的比例；它是选择器可靠性的直接观测，而不是普通格式错误的无关统计。</span></div>
+    </div></section>
+
+    <section id="limits">
+      <h2>证据边界：当前还不能下哪些结论</h2>
+      <div class="table-wrap"><table><caption>从“论文支持”到“仍待证明”。</caption><thead><tr><th>问题</th><th>当前证据</th><th>缺失项</th><th>结论强度</th></tr></thead><tbody>
+        <tr><td>训练 span 质量重要吗？</td><td>随机 38.9、等长 oracle 45.9；自选 span 跨八格均优于 Base</td><td>更强外部检索器与 matched-token 对照</td><td class="good">较强</td></tr>
+        <tr><td>模型能可靠自选证据吗？</td><td>LongBench-v2 fallback 低</td><td>LongBench-Pro 上 21.5%–39.9% fallback；无 selector precision/recall</td><td>中等</td></tr>
+        <tr><td>机制是注意力重排吗？</td><td>四个局部注意力案例与假说一致</td><td>系统统计、干预实验、正确/错误案例对照</td><td class="bad">弱</td></tr>
+        <tr><td>收益稳定且显著吗？</td><td>两个模型、两个 benchmark、两个长度桶方向一致</td><td>逐桶样本数、CI、seed、显著性与任务级分解</td><td>中等偏弱</td></tr>
+        <tr><td>能独立复现吗？</td><td>论文给出核心公式、LoRA 配置和最终回答 prompt</td><td>未公开代码；缺选段 prompt、解析规则、最终学习率与完整运行配置</td><td class="bad">不足</td></tr>
+        <tr><td>已可生产部署吗？</td><td>H200 上相对延迟曲线显示长上下文时优于非冻结基线</td><td>绝对延迟、显存、吞吐、并发、成本、安全与多轮状态实验</td><td class="bad">不足</td></tr>
+      </tbody></table></div>
+      <p>LongBench-v2 的自选阶段会看到四个答案选项，而 LongBench-Pro 的开放问答选段只看到问题与上下文；这不是泄漏正确答案，但意味着两个 benchmark 的选择难度并不相同。Oracle 诊断则明确让 GPT-5.5 看到真值答案，只能解释训练数据质量上限，不能算 S-TTT 的可用组件。</p>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：它把检索器变成了测试时课程设计器</h2>
+      <p>普通 RAG 的检索结果直接进入 prompt；S-TTT 的选段结果则先进入优化器，再通过参数改变后续全文解码。于是 span selector 不再只是“上下文过滤器”，而是一个<strong>实例级课程设计器</strong>：它决定模型本题将被什么文本塑形。这个角色变化带来三条更深的工程含义。</p>
+      <div class="grid-3"><div class="card"><h3>检索错误会被梯度放大</h3><p>RAG 选错文档会污染一次 prompt；S-TTT 选错 span 会先更新权重，再让被污染的模型阅读全文。选择精度的重要性因此高于普通检索。</p></div><div class="card"><h3>“选不到就随机训练”不是安全默认</h3><p>论文自己的随机 span 诊断会降分。生产系统应把 selector confidence 变成更新闸门，而不是把格式失败自动转换成有害训练。</p></div><div class="card"><h3>持久 LoRA 改变威胁模型</h3><p>实验每题重置参数，但作者设想会话级复用 adapter。一旦跨问题保留，错误证据、提示注入与恶意文档可能写进会话权重，产生比 prompt 更持久的污染。</p></div></div>
+      <p>由此得到一个比论文标题更实用的判断：<strong>长上下文系统的下一层控制面不是更大的窗口，而是“哪些证据有资格进入参数状态”的治理协议。</strong>它需要选择器、校验器、更新门控、adapter 生命周期、回滚点和审计日志共同组成，而不只是多跑几步梯度。</p>
+    </section>
+
+    <section id="practice">
+      <h2>工程建议：怎样把 S-TTT 变成更可信的系统</h2>
+      <ol>
+        <li><strong>先做检索不训练的同预算基线。</strong>用同一批自选 span 直接回答，比较“更干净的输入”与“参数适配”各贡献多少，避免把选择器收益全归到 TTT。</li>
+        <li><strong>给更新加 abstain gate。</strong>当 verbatim 校验失败、selector 置信度低、多个选择器不一致或 span 互相冲突时，跳过 TTT；不要默认随机训练。</li>
+        <li><strong>把 selector 与 adapter 分账评测。</strong>单独报告证据 precision/recall、答案覆盖率、fallback、选择位置分布与更新后收益，才能知道瓶颈在找证据还是学证据。</li>
+        <li><strong>做污染与反事实测试。</strong>加入看似相关但错误的 span、prompt injection、互相矛盾版本和证据位置移动，观察 LoRA 是否放大错误，以及重置能否完全清除状态。</li>
+        <li><strong>会话级 adapter 必须有作用域。</strong>按文档、问题族或租户隔离，限制更新步数和权重范数，保存可回滚 checkpoint；默认不跨不相关问题继承。</li>
+        <li><strong>报告真实服务成本。</strong>除了归一化延迟，还应给 prefill、annotation、backward、decode 各阶段毫秒数，显存峰值、并发退化、能耗和失败重试成本。</li>
+      </ol>
+      <div class="callout"><b>最值得做的下一项实验</b><p>在完全相同的自选 span、token 预算和最终全文输入下，对比：不训练、只做 prompt 标记、只更新 query LoRA、更新更广参数四种方案，并按 selector 正确/错误分层。这个实验能直接分离“找对证据”“提醒模型看证据”和“把证据写进权重”三种机制。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文核验了 X 主帖、arXiv v1 的 15 页正文、图表、算法、完整附录与 TeX 源文件，并交叉核对 LongBench-v2、LongBench-Pro、qTTT、Lost in the Middle 与 TTT++ 的一手材料。X 串文的后续自回复无法在不占用用户浏览器会话的前提下稳定取得，因此未把未读取的 thread 文案当作证据；核心方法与全部论文实验已由正式论文覆盖。截至 2026-07-20，arXiv、Hugging Face 论文页及公开检索未显示官方实现仓库，本文没有独立运行训练或复现实验。所有性能值属于作者报告；相对提升为依据主表的独立算术复算。</p>
+      <ul>
+        <li><a href="https://x.com/tianhongzxy/status/2078266009308553304">Xinyu Zhu：Self-Guided TTT 发布主帖（2026-07-17）</a></li>
+        <li><a href="https://arxiv.org/abs/2607.09415">Self-Guided Test-Time Training for Long-Context LLMs（arXiv v1）</a></li>
+        <li><a href="https://arxiv.org/abs/2512.13898">Let's (not) just put things in Context：qTTT 前置工作</a></li>
+        <li><a href="https://github.com/THUDM/LongBench">LongBench-v2 官方仓库与数据说明</a></li>
+        <li><a href="https://aclanthology.org/2025.acl-long.183/">LongBench-v2 论文（ACL 2025）</a></li>
+        <li><a href="https://arxiv.org/abs/2601.02872">LongBench-Pro 官方论文</a></li>
+        <li><a href="https://huggingface.co/datasets/caskcsg/LongBench-Pro">LongBench-Pro 官方数据集</a></li>
+        <li><a href="https://aclanthology.org/2024.tacl-1.9/">Lost in the Middle（TACL 2024）</a></li>
+        <li><a href="https://proceedings.neurips.cc/paper/2021/hash/b618c3210e934362ac261db280128c22-Abstract.html">TTT++（NeurIPS 2021）</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HalfLife 深读：开放评论能否污染语言模型预训练数据？</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #a4432f;
+      --accent-soft: #f7e9e2;
+      --accent-2: #7b5b24;
+      --accent-2-soft: #f8f0dd;
+      --safe: #2d6a4f;
+      --safe-soft: #e9f4ee;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(164,67,47,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 72px) 0 28px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 950px; margin: 0; font: 760 clamp(32px, 5vw, 56px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 70px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ebe3d5; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.safe { border-left-color: var(--safe); background: var(--safe-soft); }
+    .callout.safe > b { color: var(--safe); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    .math-display { margin: 16px 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .flow > div { position: relative; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .flow b { display: block; color: var(--accent); }
+    .flow span { color: var(--muted); font-size: 14px; }
+    @media (max-width: 760px) {
+      main, header { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · AI Security · Data Provenance</div>
+    <h1>HalfLife 深读：开放评论能否污染语言模型预训练数据？</h1>
+    <p class="lede">这篇论文真正推进的不是“互联网已被证明能大规模操纵前沿模型”，而是把攻击链第一次拆成可估计的注入、抓取与过滤三段，并证明普通评论在一个公开训练数据管线里确实可能一路存活。它建立了值得认真防守的攻击面，却尚未完成从模拟评论、单一过滤管线和 1.3B 小模型到真实商业模型的端到端实证。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p><strong>把它当成“供应链风险的可测量框架”是准确的，把它当成“攻击者已经能用少量评论稳定操纵任意大模型”则过头了。</strong>论文的强证据是：评论文本经静态网页采集和文档级质量过滤后仍可能进入语料；受控预训练中，自然语言偏好注入会改变 base model 的相对似然。最薄弱的连接是：作者没有在真实网站执行攻击，没有观察评论真正进入一次实际预训练快照，也没有用同一批评论完成从网页到模型行为的端到端训练。</p>
+      <div class="grid-3">
+        <div class="card"><h3>真实贡献</h3><p>HalfLife 把“能发出去”与“能进入训练集”分开，迫使研究者审计整个数据供应链，而不是只展示一个理想化 poison 样本。</p></div>
+        <div class="card"><h3>最强结果</h3><p>按论文所用 Dolma 3 管线，三段概率相乘得到每次上游尝试约 0.13% 的最终纳入估计；自然语言信念主张经合成改写仍保留 65.3%。</p></div>
+        <div class="card"><h3>最大缺口</h3><p>“250 份文档足够”的依据来自另一篇触发式 DoS 后门研究，不能直接替代本文的自然语言信念操纵阈值。</p></div>
+      </div>
+      <div class="callout warn"><b>对原帖的校准</b><p>原帖说论文“proves”低量注入可在大规模上结构性操纵模型。更严谨的表述应是：论文证明了攻击链中的“可进入公开语料管线”和“进入后可影响受控小模型”两段，但两段由不同实验连接，尚未在同一次真实世界攻击中闭环。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>真正的问题：训练数据的内容所有者并不等于网页所有者</h2>
+      <p>过去的预训练投毒工作常选择 Wikipedia、已知数据集 URL 或攻击者自有网站，因为这些目标便于控制和验证。但现代预训练的大头是异构网页：文章主体可能由站点编辑发布，评论、论坛回复、嵌入模块和广告却来自第三方。若数据管线把整个网页视为一个文档，攻击者就可能让恶意片段“搭便车”通过高质量正文的筛选。</p>
+      <p>HalfLife 的关键视角是：风险单位不该只是“恶意文档”，还应包括<strong>高质量文档中的低可信片段</strong>。传统质量分类器通常回答“这篇网页像不像高质量文本”，而不是“其中每一段是谁写的、何时出现、是否可由匿名第三方批量提交”。这正是内容质量与内容可信度的错位。</p>
+      <div class="grid-2">
+        <div class="card"><h3>旧问题</h3><p>攻击者能否制造有效的 poison，以及模型看到 poison 后会不会学到目标行为。</p></div>
+        <div class="card"><h3>本文补上的问题</h3><p>攻击者通过公开网页接口投放的内容，究竟有多大概率穿过抓取、正文抽取、去重、语言和质量过滤。</p></div>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>HalfLife 机制：不是一个新过滤器，而是一张概率账本</h2>
+      <p>对攻击向量 (v) 和数据管线 (S)，作者把最终纳入概率拆成三个条件事件。输入是候选网页与注入文本；处理中依次判断页面是否可注入、抓取器是否保留该片段、数据策展是否保留文档；输出是一次上游尝试最终进入训练语料的估计概率。</p>
+      <div class="math-display">\[
+        P(\mathrm{include}\mid v,S)=P(\mathrm{injectable}\mid v,S)\times
+        P(\mathrm{captured}\mid\mathrm{injectable},v,S)\times
+        P(\mathrm{not\ filtered}\mid\mathrm{captured},\mathrm{injectable},v,S)
+      \]</div>
+      <div class="flow" aria-label="HalfLife 四阶段数据流">
+        <div><b>S1 注入面</b><span>网页是否暴露评论或讨论接口，攻击者能否提交内容。</span></div>
+        <div><b>S2 抓取与抽取</b><span>评论是否存在于静态 HTML，并被正文抽取器保留。</span></div>
+        <div><b>S3 数据策展</b><span>文档能否通过启发式、语言、质量和去重过滤。</span></div>
+        <div><b>模型效应</b><span>进入训练后，目标偏好是否改变模型对候选补全的似然。</span></div>
+      </div>
+      <h3>论文如何估计三个概率</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>阶段</th><th>实验设置</th><th>论文结果</th><th>应如何解释</th></tr></thead>
+          <tbody>
+            <tr><td>S1 可注入</td><td>扫描 Common Crawl CC-MAIN-2025-51 的 200 个 WARC、181,857 个页面，识别评论平台特征。</td><td>3.4% 页面检测到评论。</td><td>这是“存在评论基础设施”的代理，不等于每个页面都允许匿名、自动、无需审核地发帖。</td></tr>
+            <tr><td>S2 被捕获</td><td>把平均 37.5 词的 Q/A poison 替换进已识别评论，再用 Resiliparse 抽取纯文本。</td><td>71.9% 注入评论出现在抽取文本。</td><td>说明静态 HTML 评论常会被正文抽取保留；这是模拟替换，不是一次真实线上提交后再抓取。</td></tr>
+            <tr><td>S3 未过滤</td><td>应用 Dolma 3 风格的启发式、英语、主题条件质量分类和文档级去重。</td><td>条件存活率 5.5%。</td><td>三类过滤的串联结果；只代表这一条公开管线，不能外推到所有实验室。</td></tr>
+            <tr><td>端到端估计</td><td>三项相乘。</td><td>(0.034\times0.719\times0.055=0.001344\)，即约 0.134%。</td><td>是“每次尝试的纳入概率”，不是互联网中已经有 0.13% 文档被污染。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>若攻击者希望最终语料中出现 (n) 个 poison 文档，最简估计需要尝试 (n/p) 个页面。以 (p=0.001344) 计算，250 个最终样本对应约 18.6 万次尝试。但这个计算只在各概率估计合理、页面尝试近似独立、攻击内容与实验替换文本具有相似存活率时成立。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>进入训练以后，模型到底变了多少？</h2>
+      <p>作者另做了一组受控训练实验。模型从 65M 扩到 1.3B 参数，使用约 (40\times) 参数量的训练 token；poison 由 Citroen/Renault、Boeing/Airbus、Pfizer/Moderna 三组实体偏好组成。每个实验从 60 组人工样本中抽 40 组混入预训练，poison token 比例为 0.001%、0.01% 或 0.1%。评估比较模型更偏好攻击者指定实体的次数，随后用不含 poison 的 Dolci safety/chat 数据做两轮 SFT。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型</th><th>Base clean</th><th>Base 0.001%</th><th>Base 0.1%</th><th>SFT clean</th><th>SFT 0.1%</th></tr></thead>
+          <tbody>
+            <tr><td>65M</td><td>55.3%</td><td>58.3%（+3.0pp）</td><td>73.9%（+18.6pp）</td><td>56.5%</td><td>63.9%（+7.4pp）</td></tr>
+            <tr><td>260M</td><td>53.3%</td><td>59.8%（+6.5pp）</td><td>73.0%（+19.6pp）</td><td>54.8%</td><td>59.7%（+4.9pp）</td></tr>
+            <tr><td>709M</td><td>52.1%</td><td>63.2%（+11.1pp）</td><td>72.9%（+20.7pp）</td><td>53.5%</td><td>54.4%（+0.9pp）</td></tr>
+            <tr><td>1.3B</td><td>52.5%</td><td>63.7%（+11.2pp）</td><td>71.5%（+19.0pp）</td><td>51.3%</td><td>54.0%（+2.6pp）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这张表支持两个相反方向的判断。第一，极低 token 比例仍能让 base model 的相对偏好发生可见移动，污染效应并没有随参数规模在所测区间内消失。第二，SFT 是明显的衰减器：0.1% poison 在 1.3B base model 上是 +19.0pp，SFT 后只剩 +2.6pp；709M 只剩 +0.9pp。论文没有继续做 DPO、RLHF 或现代安全后训练，因此不能声称“所有安全层都绕过”。</p>
+      <h3>自然语言形式更难清除，但并非都能穿过后训练</h3>
+      <p>作者比较 User/Assistant、Q:/A: 和无标签三种格式。0.1% 比例下，三者对 base model 都造成约 +17.4 至 +20.7pp 的移动；但 1.3B 经 SFT 后分别为 +2.6、+2.2 和 −0.3pp。也就是说，去掉显眼模板不妨碍 base model 学到偏好，却可能让该信号在更大模型的 SFT 后几乎消失。</p>
+      <p>合成改写实验提供了另一块证据：GPT-4o-mini 按 WRAP 风格逐段重写时，信念操纵语义保留 65.3%，有害回答内容保留 70.0%，但 jailbreak 触发字符串只保留 6.7%；随机 Unicode 与逐字重复约为 1%。这说明重写能清除依赖表面字符串的后门，却可能把流畅的错误主张“洗白”为更自然的文字。</p>
+    </section>
+
+    <section id="audit">
+      <h2>证据审计：论文最关键的五个断点</h2>
+      <h3>1. “250 个文档”并不是本文信念操纵实验得到的阈值</h3>
+      <p>250 这一数字来自 Souly 等人的外部研究：它测试的是遇到固定触发词后输出乱码的 DoS 后门，模型规模 600M–13B，平均每个 poison 样本约 1,680 token。本文则测试无触发词的实体偏好，训练时按 token 比例重复 40 组人工样本。攻击目标、样本长度、重复方式和评测指标都不同。因而“约 18.6 万次评论尝试即可达到 250 份文档”是一个情景估算，不是对本文信念操纵攻击成功率的实证阈值。</p>
+      <p>按本文自己的训练预算，1.3B 模型约看 520 亿 token；即使最低 0.001% 比例也对应约 52 万 poison token，而不是只看 250 条短评论。作者没有报告把这些 token 折算成独立文档或实际重复次数，也没有做固定 poison 文档数的 scaling ablation。</p>
+      <h3>2. S1 把“检测到评论”近似成“可注入”，上限偏乐观</h3>
+      <p>正文用 3.4% 的评论检测率作为 (P(\mathrm{injectable}))。但附录表中只有 84,429 / 372,883 个评论页面被标为开放表单，约 22.6%；WordPress 也只有 66,541 / 317,640，约 20.9%。其余页面可能要求账号、审核、验证码或已关闭发帖。作者只在本地默认 WordPress 环境验证 HTTP POST、Selenium 和 Playwright 均能成功，没有验证真实站点的审核与反滥用系统。</p>
+      <h3>3. 文档内部存在尚未解释的样本统计冲突</h3>
+      <p>正文写“200 个 WARC、共扫描 181,857 页”，附录表标题却写“100 个 WARC”，同时列出 372,883 个评论页面；后者甚至超过正文扫描的总页面数。引言还保留 0.15% 纳入概率，而公式分项与主结果给出约 0.13%。这些很可能是版本编辑或不同扫描批次混用，但在作者澄清前，平台分布和开放表单比例不应被当成无歧义统计。</p>
+      <h3>4. 行为评估太窄，缺少不确定性</h3>
+      <p>只有三组实体、人工编写的偏好理由和 20 组 held-out 对照；表中没有置信区间、显著性检验或多随机种子。分数以约 1.7pp 为步长，与 60 个二元比较的分辨率一致。更大的 +18–20pp 信号很难仅由一个样本波动解释，但 SFT 后 +0.9、+2.2、+2.6pp 的小差值没有足够统计信息支持强结论。</p>
+      <h3>5. 公开复现状态没有达到论文脚注的承诺</h3>
+      <p>论文脚注称已公开 HalfLife 代码，但截至本文核验时，所列仓库地址返回不存在，公开检索也没有定位到替代仓库。论文提供了 TeX 源文和相当多的实验细节，但评论平台检测模式、抽样清单、过滤配置、训练脚本和结果种子暂时无法独立复跑。</p>
+      <div class="callout"><b>因此最稳妥的证据等级</b><p>“评论是可能进入预训练语料的供应链攻击面”有直接支持；“在一个公开管线上的纳入概率约 0.13%”是作者估计；“约 10 万到 100 万次注入足以操纵未来模型”依赖跨论文阈值迁移和多项未验证假设；“商业前沿模型已可被如此操纵”没有证据。</p></div>
+    </section>
+
+    <section id="counterexample">
+      <h2>反例为什么重要：广告看似更强，实际上进不了文本层</h2>
+      <p>论文没有只寻找成功案例，还用 HalfLife 否定了程序化广告这一看似理想的向量。作者在 Common Crawl 中检查超过 100 万个广告单元：92.9% 只是等待 JavaScript 填充的空占位符，静态 HTML 中没有广告正文；重新渲染 10,000 个页面后，75.9% 广告落在跨域 iframe，受同源策略隔离，正文抽取器仍看不到其文本。少量 inline text 又主要是平台自动建议或泄漏脚本，不由广告主控制。</p>
+      <p>这个失败案例是 HalfLife 最值得保留的方法论价值：<strong>“攻击者能让人类在网页上看到文本”不等于“训练爬虫能抓到文本”</strong>。同样，“爬虫抓到了”也不等于“文本会通过过滤并被训练采样”。安全评估必须逐层追踪，不能从入口可用直接跳到模型受控。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语与概念边界</h2>
+      <div class="def-list">
+        <div><b>Data poisoning</b><span>通过改变训练数据，使训练后的模型出现攻击者期望的错误、偏好或后门行为。它发生在训练供应链，不等同于推理时 prompt injection。</span></div>
+        <div><b>Backdoor</b><span>模型平时表现正常，只有出现特定触发条件才执行恶意行为。250 文档研究测试的正是触发式后门，不是本文主要行为实验的无触发实体偏好。</span></div>
+        <div><b>Belief manipulation</b><span>让模型更偏向某个主张、实体或叙事。本文通过交换实体名称的成对补全似然测量偏移，并不证明模型形成了稳定、跨任务的“信念”。</span></div>
+        <div><b>WARC</b><span>保存网页抓取响应的归档格式。Common Crawl 的 WARC 主要保留服务器返回的静态 HTML，不执行页面 JavaScript。</span></div>
+        <div><b>Document-level filter</b><span>对整篇网页打分或应用规则的过滤器。它可能认可高质量正文，却无法区分其中一小段匿名评论的来源和可信度。</span></div>
+        <div><b>Provenance</b><span>内容的来源、作者角色、时间、采集路径与变更历史。高质量并不自动意味着高可信，防投毒需要把来源属性带入训练数据。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：真正需要防守的是“片段级信任边界”</h2>
+      <h3>1. 数据管线需要从质量工程升级为供应链安全</h3>
+      <p>现有过滤器主要优化平均训练价值：语言是否通顺、文档是否像教育内容、是否重复。对抗者优化的却是条件存活率。两者目标不对称。把质量分数再调高，只会逼攻击者写得更像高质量评论；它不能回答“这段话是否由匿名第三方在抓取前突然加入”。</p>
+      <p>更合理的最小数据单元不是 URL 或 document，而是带来源标签的 segment：主体文章、作者更新、认证用户评论、匿名评论、引用文本和嵌入内容应保留不同的信任级别。训练配比、去重、异常检测和审计也应在片段层工作。</p>
+      <h3>2. 透明开放既提高可复现性，也暴露可优化的防线</h3>
+      <p>开放数据管线让研究者能发现这个问题，也让攻击者能够针对公开阈值迭代文本。解决办法不是关闭研究，而是避免把单一、确定、长期不变的过滤器当安全边界：应采用隐藏的 canary 检查、多个异构检测器、时间快照差分和抽样人工审核，并把异常模式反馈给平台。</p>
+      <h3>3. 低资源语言与小语料域的风险可能更大，但论文没有测</h3>
+      <p>在语料更小、来源更集中的语言或专业领域，同样数量的注入占比更高，也更容易集中影响实体关系。然而本文所有过滤和训练实验都是英语设置。这个方向是合理风险推断，不是论文已验证结果；需要按语言重测评论平台覆盖、抓取存活、过滤误差和模型行为。</p>
+      <h3>4. 最关键的后续实验不是再训练一个更大模型，而是闭合整条链</h3>
+      <p>高价值验证应在不伤害真实网站的前提下，由合作平台建立可审计测试页面：真实提交、等待公开爬虫、确认进入一个版本化语料快照、执行片段级过滤、以固定独立文档数训练多 seed 模型，再经 SFT 与偏好优化检验持续性。只有这样才能把当前的“可行链条”升级为定量攻击风险。</p>
+    </section>
+
+    <section id="recommendations">
+      <h2>工程上的优先级</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>优先级</th><th>措施</th><th>它降低哪一项风险</th><th>主要代价</th></tr></thead>
+          <tbody>
+            <tr><td>P0</td><td>正文抽取时识别并分离评论、论坛回复和第三方嵌入；默认不与主文档共享同一信任权重。</td><td>直接降低 S2 与 S3 的评论存活。</td><td>可能损失有价值的社区知识和对话数据。</td></tr>
+            <tr><td>P0</td><td>保留 URL、DOM 区域、作者角色、提交时间、认证状态与抓取时间等片段级 provenance。</td><td>让过滤、训练采样和事后追溯有依据。</td><td>数据格式、存储和隐私治理更复杂。</td></tr>
+            <tr><td>P1</td><td>跨 crawl epoch 比较同一页面，标记抓取前短期激增、重复叙事和跨域协同发布。</td><td>识别计算宣传的时间与网络结构。</td><td>需要长期快照、实体解析和误报控制。</td></tr>
+            <tr><td>P1</td><td>对低资源语言、医疗、法律等高影响域使用更严格的来源配额与多源交叉验证。</td><td>降低小语料域被少量样本占据的风险。</td><td>覆盖率和新鲜度可能下降。</td></tr>
+            <tr><td>P2</td><td>训练前后使用 canary 叙事、对称实体交换、异常似然与数据影响分析做红队测试。</td><td>检测已进入语料或权重的偏置。</td><td>无法替代上游治理，影响函数在大模型上成本高。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout safe"><b>实践结论</b><p>不要把“删除所有评论”当唯一答案。更稳妥的是保留来源、分层采样、限制匿名片段权重，并让高影响主张必须来自多个独立来源。安全目标不是让网络语料绝对纯净，而是避免任何一个低信任入口以不透明方式获得过大的梯度影响。</p></div>
+    </section>
+
+    <section id="limits">
+      <h2>这篇论文没有证明什么</h2>
+      <ul>
+        <li>没有证明任何现有商业模型已被评论投毒，也没有访问商业训练数据或私有爬虫。</li>
+        <li>没有在真实第三方网站批量发评论；线上审核、验证码、封禁、删除和 crawl timing 均未进入实测。</li>
+        <li>没有用一批注入评论完成“发布 → 公开爬取 → 进入训练集 → 训练 → 后训练 → 用户输出”的统一实验。</li>
+        <li>没有验证 250 文档阈值适用于自然语言信念操纵、无触发叙事或本文的短评论格式。</li>
+        <li>没有覆盖 1.3B 以上模型、DPO/RLHF、现代安全训练、多语言或多种数据管线。</li>
+        <li>没有给行为主表的多 seed、置信区间、显著性检验和训练数据折算后的独立 poison 文档数。</li>
+      </ul>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对 2026-07-16 的 arXiv v1 正文、附录与公开 TeX 源，并读取引发讨论的 X 原帖。训练效果均为论文作者报告，本轮未重新预训练模型或复跑 Common Crawl / Dolma 3 过滤。论文所列代码仓库在核验时不可访问，因此平台检测、过滤配置和训练结果尚不能独立复现。原帖的传播性表述不作为技术事实来源。</p>
+      <ul>
+        <li><a href="https://x.com/gurtej__gill_/status/2079101041514356899">Gill：论文推荐与风险解读原帖</a></li>
+        <li><a href="https://arxiv.org/abs/2607.15267">Graf et al.：Pretraining Data Can Be Poisoned through Computational Propaganda（arXiv v1）</a></li>
+        <li><a href="https://arxiv.org/html/2607.15267">论文结构化全文</a></li>
+        <li><a href="https://arxiv.org/abs/2510.07192">Souly et al.：Poisoning Attacks on LLMs Require a Near-constant Number of Poison Samples</a></li>
+        <li><a href="https://arxiv.org/abs/2410.13722">Zhang et al.：Persistent Pre-Training Poisoning of LLMs</a></li>
+        <li><a href="https://arxiv.org/abs/2302.10149">Carlini et al.：Poisoning Web-Scale Training Datasets is Practical</a></li>
+        <li><a href="https://arxiv.org/abs/2402.00159">Soldaini et al.：Dolma: an Open Corpus of Three Trillion Tokens</a></li>
+        <li><a href="https://arxiv.org/abs/2512.13961">Olmo 3 / Dolma 3 数据与模型流程</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="深读 PerceptionBench：从失败驱动的能力归纳、3000 题公开数据、16 个模型榜单与复现边界，判断它究竟测到了什么。">
+  <title>PerceptionBench 深读：它测到的是原子视觉，还是困难样本的失误尾部？</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e7;
+      --surface: #fffdf8;
+      --surface-2: #f9f4ea;
+      --ink: #202722;
+      --muted: #5f6b63;
+      --line: #d9d4c8;
+      --accent: #a44a2a;
+      --accent-soft: #f7e9df;
+      --forest: #2f6555;
+      --forest-soft: #e3efe9;
+      --gold: #9a681c;
+      --gold-soft: #f8edd6;
+      --danger: #8f3e3e;
+      --danger-soft: #f6e5e2;
+      --shadow: 0 16px 42px rgba(34, 44, 37, .075);
+      --radius: 12px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 9% 5%, rgba(164, 74, 42, .09), transparent 24rem),
+        radial-gradient(circle at 92% 17%, rgba(47, 101, 85, .08), transparent 27rem),
+        linear-gradient(90deg, rgba(90, 76, 55, .035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(90, 76, 55, .025) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, auto, 48px 48px, 48px 48px, auto;
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 34px)); margin: 0 auto; }
+    header { padding: clamp(42px, 7vw, 82px) 0 30px; }
+    main { display: grid; gap: 32px; padding: 6px 0 72px; }
+    section { padding-top: 32px; border-top: 1px solid var(--line); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.32rem; }
+    li { margin: 7px 0; }
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #ece5d8;
+      color: #7a321f;
+      font-family: var(--mono);
+      font-size: .92em;
+    }
+
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--forest);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font: 760 clamp(34px, 5.2vw, 60px)/1.1 var(--serif);
+      letter-spacing: -.018em;
+    }
+    .lede {
+      max-width: 920px;
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+    .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+    .header-meta span {
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, .72);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    h2, h3, h4 { line-height: 1.28; }
+    h2 { margin: 0 0 14px; font-size: clamp(25px, 3.2vw, 35px); }
+    h3 { margin: 25px 0 10px; color: var(--accent); font-size: 20px; }
+    h4 { margin: 0 0 7px; font-size: 16px; }
+
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 17px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin-top: 0; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .card strong.metric {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--forest);
+      font: 760 27px/1.15 var(--serif);
+    }
+
+    .callout {
+      margin: 20px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout p { margin: 0; }
+    .callout.info { border-left-color: var(--forest); background: var(--forest-soft); }
+    .callout.info > b { color: var(--forest); }
+    .callout.warn { border-left-color: var(--gold); background: var(--gold-soft); }
+    .callout.warn > b { color: var(--gold); }
+    .callout.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+    .callout.danger > b { color: var(--danger); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px 14px;
+      margin: 24px 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: flow-step;
+    }
+    .flow li {
+      position: relative;
+      min-width: 0;
+      margin: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      counter-increment: flow-step;
+    }
+    .flow li::before {
+      display: inline-grid;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 10px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--forest);
+      color: white;
+      content: counter(flow-step);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .flow li::after {
+      position: absolute;
+      top: 49%;
+      right: -13px;
+      color: var(--accent);
+      content: "→";
+      font-weight: 900;
+    }
+    .flow li:nth-child(4)::after, .flow li:last-child::after { content: ""; }
+    .flow b { display: block; margin-bottom: 4px; color: var(--accent); }
+    .flow span { display: block; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+
+    .table-wrap {
+      max-width: 100%;
+      margin: 18px 0;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .notes-shell-page .table-wrap table {
+      width: 100%;
+      min-width: 660px;
+      border-collapse: collapse;
+      font-size: 14.5px;
+    }
+    th, td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    tr:nth-child(even) td { background: rgba(50, 58, 50, .018); }
+    td.num, th.num { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+
+    .scoreboard {
+      display: grid;
+      gap: 10px;
+      margin: 19px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .score-row {
+      display: grid;
+      grid-template-columns: minmax(150px, .85fr) minmax(160px, 2fr) 55px;
+      gap: 11px;
+      align-items: center;
+      font-size: 14px;
+    }
+    .score-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e1d8;
+    }
+    .score-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--forest), #6b9b86); }
+    .score-row:first-child .score-fill { background: linear-gradient(90deg, var(--accent), #d98962); }
+    .score-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .evidence-list { display: grid; gap: 10px; margin: 18px 0; }
+    .evidence-item {
+      display: grid;
+      grid-template-columns: minmax(112px, .2fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .badge {
+      align-self: start;
+      width: fit-content;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--forest-soft);
+      color: var(--forest);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .badge.reported { background: var(--gold-soft); color: var(--gold); }
+    .badge.inference { background: var(--accent-soft); color: var(--accent); }
+    .badge.open { background: var(--danger-soft); color: var(--danger); }
+    .evidence-item p { margin: 0; min-width: 0; }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr);
+      gap: 15px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); }
+
+    .source-list { columns: 2; column-gap: 34px; }
+    .source-list li { break-inside: avoid; }
+    .micro { color: var(--muted); font-size: 13.5px; }
+
+    @media (max-width: 860px) {
+      .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow li:nth-child(2)::after, .flow li:nth-child(4)::after, .flow li:last-child::after { content: ""; }
+    }
+    @media (max-width: 620px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .grid-4, .flow { grid-template-columns: 1fr; }
+      .flow li::after { top: auto; right: 50%; bottom: -22px; transform: rotate(90deg); }
+      .flow li:nth-child(2)::after { content: "→"; }
+      .flow li:nth-child(4)::after, .flow li:last-child::after { content: ""; }
+      .score-row { grid-template-columns: minmax(120px, 1fr) 48px; }
+      .score-track { grid-column: 1 / -1; grid-row: 2; }
+      .evidence-item, .def-list > div { grid-template-columns: 1fr; gap: 7px; }
+      .source-list { columns: 1; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Multimodal Evaluation</div>
+    <h1>PerceptionBench 深读：它测到的是原子视觉，还是困难样本的失误尾部？</h1>
+    <p class="lede">PerceptionBench 最有价值的地方，不是宣布“最强模型看图也只有 60 分”，而是把真实失败轨迹拆成可定位的视觉能力剖面。它是一张很好的<strong>困难失误地图</strong>，但还不是一把经过独立标定的“通用视觉智商尺”。</p>
+    <div class="header-meta">
+      <span>3,000 个公开问题</span>
+      <span>10 类视觉能力</span>
+      <span>16 个发布方评测模型</span>
+      <span>失败驱动归纳</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>核心判断</h2>
+      <p>Kimi 团队从 42 个既有基准的前沿模型错误出发，定位推理轨迹中最早出现的错误，再把其中 10 类感知错误做成 3,000 道短答案题。这个方向正确地把“最后答错了”改写为“最先在哪里看错了”，因而比单一总分更能指导数据和训练。</p>
+      <div class="grid-3">
+        <article class="card">
+          <strong class="metric">诊断强</strong>
+          <h3>从失败反推能力</h3>
+          <p>不是先拍脑袋列任务，而是先观察当前模型怎么失败，再归纳关系、计数、定位、OCR、幻觉等能力。</p>
+        </article>
+        <article class="card">
+          <strong class="metric">外推弱</strong>
+          <h3>困难尾部不是自然分布</h3>
+          <p>两轮前沿模型筛选会剔除“全部稳定做对”的题；低于 60% 至少部分来自困难样本挖掘，不能翻译成日常看图准确率。</p>
+        </article>
+        <article class="card">
+          <strong class="metric">待复现</strong>
+          <h3>数据开放，榜单未闭环</h3>
+          <p>公开了题库、基础推理脚本和裁判提示词，但没有逐模型输出、裁判记录、完整配置和构造流水线。</p>
+        </article>
+      </div>
+      <div class="callout">
+        <b>一句话结论</b>
+        <p>把 PerceptionBench 当成<strong>能力级回归测试与错误探针</strong>很合适；把 59.7 对 58.5 当作稳定的模型名次，或把 60% 当作模型视觉的自然上限，都超出了现有证据。</p>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>它真正想解决什么问题</h2>
+      <p>传统多模态问答把看图、知识调用、数学计算、空间模拟和语言输出揉进一个最终答案。模型答错时，研究者很难知道是“没看见”“看错了”，还是“看对了但不会推”。PerceptionBench 的关键动作是把完整推理轨迹交给分析模型，执行<strong>最早错误归因</strong>：只要第一处错误是视觉事实读取错误，后面即使还出现推理错误，也优先归入感知类别；只有视觉事实都正确时，才归到推理或知识错误。</p>
+      <p>这使它回答的不是“模型能否完成某个任务”，而是“当前模型最先在哪类视觉操作上失真”。这一转向很重要：下游推理无法可靠补回一个根本没被读取、被数错或被幻觉出来的视觉事实。</p>
+      <div class="callout info">
+        <b>更准确的定位</b>
+        <p>它不是第一个证明多模态模型存在基础视觉缺口的基准，也不是第一个使用“atomic visual skills”概念的工作。它更具体的新增价值，是把<strong>跨基准真实失败、最早错误归因、人工原子化重写</strong>组合成一条较完整的诊断流水线。</p>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>方法链路：从 42 个基准到 3,000 道题</h2>
+      <ol class="flow" aria-label="PerceptionBench 构造流程">
+        <li><b>收集失败</b><span>在 42 个公开视觉基准上运行前沿多模态模型，保留错误回答与完整轨迹。</span></li>
+        <li><b>标最早错误</b><span>由更强分析模型读取问题、图像、参考答案和轨迹，生成开放词表错误标签。</span></li>
+        <li><b>聚类归纳</b><span>语言模型合并标签，得到 5 个错误大类、22 个错误类型，其中保留 10 类感知错误。</span></li>
+        <li><b>第一次筛难</b><span>四个前沿模型组成筛选集合；所有模型在所有重复运行中都答对的样本被移除。</span></li>
+        <li><b>人工原子化</b><span>十余名专业标注者把复杂失败拆成短子问题，并为补充图像编写新问题。</span></li>
+        <li><b>近重复检查</b><span>使用图像描述子排除与大规模网页图像库高度相似的图像，阈值为余弦相似度 0.95。</span></li>
+        <li><b>二次筛选验证</b><span>再次做前沿模型筛难、能力一致性检测、视觉可回答性检查与独立人工复核。</span></li>
+        <li><b>平衡发布</b><span>从超过 17,000 道内部题池发布 3,000 道，兼顾十类能力与难度层级。</span></li>
+      </ol>
+
+      <h3>公开集里到底有什么</h3>
+      <p>公开数据可直接核对为 3,000 行：1,800 道由既有基准失败拆解而来，1,200 道是新编问题。前 1,800 道保留来源基准和原始索引；按来源与索引去重后，对应约 1,413 个原始条目，说明一个复杂失败经常被拆成多个子问题。每题包含问题、短参考答案、能力标签、来源信息以及 1–8 张图像。</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>能力</th><th class="num">题数</th><th>它试图隔离的视觉操作</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>视觉关系</td><td class="num">330</td><td>读取物体之间直接可见的方向、邻接、遮挡或拓扑关系。</td></tr>
+            <tr><td>视觉计数</td><td class="num">330</td><td>在指定范围和约束下统计实例、部件或图形元素。</td></tr>
+            <tr><td>视觉属性</td><td class="num">330</td><td>识别颜色、形状、材质、朝向和局部状态等属性。</td></tr>
+            <tr><td>深度与 3D</td><td class="num">330</td><td>判断深度、视角、可见面和三维结构。</td></tr>
+            <tr><td>视觉定位</td><td class="num">330</td><td>在图像、棋盘、界面或坐标结构中找到目标位置。</td></tr>
+            <tr><td>视觉比较</td><td class="num">279</td><td>跨对象或区域比较数量、位置、尺寸与图案。</td></tr>
+            <tr><td>细粒度识别</td><td class="num">290</td><td>区分外观接近的对象、部件、符号或状态。</td></tr>
+            <tr><td>上下文整合</td><td class="num">255</td><td>整合多区域、多图或局部与全局信息。</td></tr>
+            <tr><td>OCR</td><td class="num">255</td><td>读取自然图像、图表、界面和数学图形中的文字或数字。</td></tr>
+            <tr><td>感知相关幻觉</td><td class="num">271</td><td>拒绝报告不存在的对象、线路、数量、文字或关系。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="atomicity">
+      <h2>“原子能力”成立到什么程度</h2>
+      <p>这里的“原子”更像一个<strong>操作性定义</strong>：标注者尽量让每题只需要一种主要视觉能力，并用最早错误规则强制给出一个主标签。它不是对人类视觉系统的本体论分解，也没有证明十类能力彼此独立。</p>
+      <div class="grid-2">
+        <article class="card">
+          <h3>标签仍有交叠</h3>
+          <p>“某列有多少棋子”同时涉及定位与计数；“哪组图案含相同数量的三角形”同时涉及计数与比较；“上下文整合”本身就是组合能力。单标签记录的是首要归因，不是题目只包含一种计算。</p>
+        </article>
+        <article class="card">
+          <h3>部分题仍需推断</h3>
+          <p>隐藏方块的最少数量要求推断不可见结构；把夜景图旋转到文字可读方向涉及心理旋转；路线追踪、缺块匹配和多图整合也超出“看一眼即可抄写事实”。</p>
+        </article>
+      </div>
+      <p>因此，发布帖所说的“无需推理、只要看”应理解为<strong>尽量降低领域知识与长链条推理</strong>，而不是所有题都不存在空间模拟、比较、约束满足或短程推断。论文自己的错误体系也承认空间推理与深度感知之间需要人为消歧，这说明边界是标注协议，而非天然分界。</p>
+      <div class="callout warn">
+        <b>“自下而上”也不是完全无先验</b>
+        <p>最终分类受 42 个源基准、当代模型的失败分布、未具名分析模型、四模型筛选集合、语言模型聚类、人工重写与能力平衡共同影响。更准确的说法是<strong>失败驱动的混合式分类法</strong>：证据来自底层失败，但类别仍经过模型和人工设计。</p>
+      </div>
+    </section>
+
+    <section id="results">
+      <h2>榜单告诉了我们什么</h2>
+      <p>发布方在统一裁判下评测 16 个模型。GPT-5.6-Sol 为 59.7%，Kimi K3 为 58.5%，随后是 Claude-Fable-5 的 57.2%、Gemini-3.1-Pro 的 56.2%、GPT-5.5 的 55.8% 和 Seed-2.1-Pro 的 55.0%。最低为 GLM-4.6V 的 32.5%。</p>
+      <div class="scoreboard" aria-label="PerceptionBench 前六名发布分数">
+        <div class="score-row"><span>GPT-5.6-Sol</span><div class="score-track"><div class="score-fill" style="width:59.7%"></div></div><strong>59.7</strong></div>
+        <div class="score-row"><span>Kimi K3</span><div class="score-track"><div class="score-fill" style="width:58.5%"></div></div><strong>58.5</strong></div>
+        <div class="score-row"><span>Claude-Fable-5</span><div class="score-track"><div class="score-fill" style="width:57.2%"></div></div><strong>57.2</strong></div>
+        <div class="score-row"><span>Gemini-3.1-Pro</span><div class="score-track"><div class="score-fill" style="width:56.2%"></div></div><strong>56.2</strong></div>
+        <div class="score-row"><span>GPT-5.5</span><div class="score-track"><div class="score-fill" style="width:55.8%"></div></div><strong>55.8</strong></div>
+        <div class="score-row"><span>Seed-2.1-Pro</span><div class="score-track"><div class="score-fill" style="width:55%"></div></div><strong>55.0</strong></div>
+      </div>
+
+      <h3>第一条有效结论：总分相近，能力结构可以不同</h3>
+      <p>GPT-5.5 与 Gemini-3.1-Pro 总分只差 0.4，但前者定位高 13.1 分，后者 OCR 高 7.8 分、细粒度识别高 7.6 分。GPT-5.6-Sol 总分最高，定位达到 76.7，却在幻觉类只有 26.9；Gemini-3.5-Flash 总分 52.0，幻觉类反而最高，为 50.6。对训练与产品而言，十维能力向量比一个总分更有用。</p>
+
+      <h3>第二条有效结论：平均稳定不等于逐题稳定</h3>
+      <p>论文对三个模型各运行四次。总分标准差很小，但同一道题的成功状态经常改变。根据论文的 pass@4 与 pass4 重排，可以把题目分成“从未做对”“间歇做对”“四次全对”三类：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型</th><th class="num">四次均分</th><th class="num">从未做对</th><th class="num">间歇做对</th><th class="num">四次全对</th></tr></thead>
+          <tbody>
+            <tr><td>GPT-5.6-Sol</td><td class="num">59.7%</td><td class="num">27.1%</td><td class="num">26.0%</td><td class="num">46.9%</td></tr>
+            <tr><td>Gemini-3.5-Flash</td><td class="num">52.0%</td><td class="num">29.8%</td><td class="num">37.6%</td><td class="num">32.6%</td></tr>
+            <tr><td>Kimi K3</td><td class="num">58.5%</td><td class="num">26.1%</td><td class="num">31.2%</td><td class="num">42.7%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这支持“能力尚未稳健获取”的判断，却不能把所有波动都归因于视觉。采样温度、长思维链、输出格式、图像预处理和裁判随机性都可能造成同样现象。要定位原因，需要公开逐题多次输出并做误差分解。</p>
+
+      <h3>第三条需要收紧：低于 60% 不是自然视觉上限</h3>
+      <p>构造流程会两次使用前沿模型筛选，并排除筛选集合能够稳定答对的题。被评测的 16 个模型与筛选集合不重叠，这降低了直接针对榜单模型选题的风险，但仍然明确改变了题目难度分布。因此，“没有模型超过 60%”能证明<strong>前沿模型仍有大量被精心挖出的视觉失败</strong>；它不能证明模型在普通图片上只能正确感知六成内容。</p>
+    </section>
+
+    <section id="statistics">
+      <h2>独立复算：几组数字该如何读</h2>
+      <div class="grid-4">
+        <article class="card"><strong class="metric">≈36 题</strong><h3>第一与第二</h3><p>1.2 个百分点乘以 3,000 题，对应约 36 道题的差距。</p></article>
+        <article class="card"><strong class="metric">31.2%</strong><h3>K3 间歇区</h3><p>至少一次做对、但没有四次全对的题目占比。</p></article>
+        <article class="card"><strong class="metric">39.1%</strong><h3>幻觉类零答案</h3><p>271 道幻觉题中，106 道参考答案恰好是“0”。</p></article>
+        <article class="card"><strong class="metric">0.84</strong><h3>公开与私有相关</h3><p>只在 10 个能力均值上计算的 Pearson 相关。</p></article>
+      </div>
+
+      <h3>1.2 分不足以单独支撑稳定排名</h3>
+      <p>在把每题近似视为独立伯努利试验的简化条件下，59.7% 的 95% Wilson 参考区间约为 57.93%–61.44%，58.5% 约为 56.73%–60.25%，两者明显重叠。这个区间不是自然任务分布上的置信区间，因为题目经过分层与困难挖掘；它只说明 1.2 分的量级并不大。真正比较同一批题上的两个模型，应基于逐题配对结果做 McNemar 检验或配对自举，而这些输出尚未公开。</p>
+
+      <h3>299/300 的裁判一致率很好，但样本仍小</h3>
+      <p>自动裁判在随机抽取的 300 个预测中与人工判断一致 299 次。对应的 Wilson 95% 区间约为 98.14%–99.94%。这是积极证据，但论文没有披露抽样是否跨模型与能力分层、人工标注者数量、分歧解决规则，也没有说明唯一一例分歧的方向。榜首差约 36 题，裁判误差若对模型或答案格式不均匀，仍可能影响近距离排名。</p>
+
+      <h3>r = 0.84 只验证了十个能力点</h3>
+      <p>论文用公开子集与超过 17,000 题的内部池比较十类能力准确率，得到 Pearson r = 0.84。因为样本点只有十个，Fisher 变换下的 95% 参考区间约为 0.45–0.96，范围很宽；更重要的是，这张图验证的是<strong>能力级难度结构</strong>，不是逐模型排名保持。论文从中进一步推断“相对模型表现”得以保留，证据仍不充分。</p>
+
+      <h3>“幻觉”成绩也混入了回答策略</h3>
+      <p>公开数据中，271 道幻觉题至少有 106 道答案恰为“0”；若把“0 cats”“0 lamps”等形式也计入，以 0 开头的答案有 118 道，占 43.5%。这类题确实测视觉假阳性，但也会受模型是否愿意回答“没有”、选项偏置、校准和强制作答策略影响。论文把 GPT-5.6-Sol 的低幻觉分归因于“更积极的回答承诺”，目前只是合理假说，尚无校准实验或干预实验支持。</p>
+    </section>
+
+    <section id="reproducibility">
+      <h2>开放性与复现：已经公开了什么，还缺什么</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>已经开放</h3>
+          <ul>
+            <li>3,000 道问题、参考答案、图像、能力标签和样本来源；</li>
+            <li>一个通用的兼容接口推理脚本；</li>
+            <li>GPT-oss-120B 自动裁判提示词与解析代码；</li>
+            <li>论文、能力计数、16 模型总分与能力分、三模型四次运行摘要。</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>尚未开放</h3>
+          <ul>
+            <li>16 个模型的逐题预测、裁判判定和错误日志；</li>
+            <li>精确模型版本、端点、图像缩放、随机种子与每模型完整请求参数；</li>
+            <li>“max / xhigh / high”推理预算在请求中的实现；</li>
+            <li>分析模型与四模型筛选集合的身份、构造提示词、采样与验证脚本；</li>
+            <li>超过 17,000 题的内部池、难度标签与完整人工审核记录。</li>
+          </ul>
+        </article>
+      </div>
+      <p>公开脚本可以复跑题库，但不能从零复刻论文榜单。它没有编码论文描述的各模型推理预算，也没有实现 Claude-Fable-5 遇到安全拒绝时切换到 Claude-Opus-4.8 的规则；而论文报告该回退覆盖 1.1% 的答案。裁判温度为 0.3，推理或裁判失败会落为错误答案，却没有单独报告失败率。对近距离排名而言，这些都是实质配置。</p>
+
+      <h3>数据说明里还有两个值得修正文档的细节</h3>
+      <div class="callout warn">
+        <b>来源集合未完全对齐</b>
+        <p>公开数据的 1,800 道来源题覆盖 42 个具名来源，其中包含 22 道 VibeEval；论文附录列出的 42 个发现基准不含 VibeEval，却包含 RealWorldQA，并明确说 RealWorldQA 只用于失败分析、不贡献公开样本。发现集合与发布样本来源集合可以不同，但当前论文与数据卡没有解释这次替换。</p>
+      </div>
+      <div class="callout warn">
+        <b>许可证口径需要逐样本理解</b>
+        <p>数据卡把整个数据集标为 CC BY-NC 4.0；论文则称新编问题和自有标注采用 Apache-2.0，来源题继续受原基准的 Apache、MIT、Creative Commons、非商业、禁止演绎或未明确许可等不同条款约束。实际再分发或商用时，单一数据集标签不足以覆盖全部样本来源。</p>
+      </div>
+    </section>
+
+    <section id="validity">
+      <h2>测量效度：四个仍未闭环的问题</h2>
+      <div class="evidence-list">
+        <div class="evidence-item"><span class="badge reported">发布方报告</span><p><strong>42 个基准的错误分布平均加权 Jaccard 仅 0.20。</strong>这说明所选基准暴露的错误构成较分散，但没有做集合覆盖或消融，因而不能推出“必须聚合全部 42 个”或“十类已经覆盖视觉空间”。</p></div>
+        <div class="evidence-item"><span class="badge open">缺失基线</span><p><strong>没有人类准确率、耗时和歧义率。</strong>题目被人工验证为可回答，不等于人类接近满分。早期 BLINK 在 3,807 道视觉题上报告人类 95.70%、GPT-4V 51.26%，而 PerceptionBench 自己缺少同域的人类与专用视觉模型标尺。</p></div>
+        <div class="evidence-item"><span class="badge inference">分析判断</span><p><strong>近重复检查不能证明训练集无污染。</strong>论文仅举例说明对 LAION、Common Crawl 等库做图像描述子比对，未给出完整库版本和文本问题查重；它更无法覆盖闭源模型的私有训练数据。现在题目与答案已公开，未来模型的后训练污染风险会持续上升。</p></div>
+        <div class="evidence-item"><span class="badge open">尚无复现</span><p><strong>当前结果仍是发布方自评快照。</strong>公开仓库尚无实质 issue 或外部复现报告。K3 在官方模型说明中曾把它称为内部基准；公开发布后，最好由独立团队用锁定版本和同一预处理重新跑榜。</p></div>
+      </div>
+      <p>还需注意已有前作。2025 年的 Atomic Visual Skills Dataset 已在基础二维欧氏几何中系统定义不可再分的视觉技能；当前 PerceptionBench 论文参考文献未包含该工作。PerceptionBench 的优势在于覆盖更广、来源更贴近真实失败，AVSD 的优势则是定义更窄、更接近受控技能分解。两者说明“原子视觉”的价值已经形成研究脉络，创新点应放在具体归纳与构造方法，而不是词语本身。</p>
+    </section>
+
+    <section id="implications">
+      <h2>真正值得带走的研究与工程启发</h2>
+      <h3>一、把总分换成“能力 × 稳定性”矩阵</h3>
+      <p>部署侧不应只看整体准确率。更实用的报告至少同时展示十类能力分、从未做对／间歇做对／稳定做对三类占比，以及模型在缺失内容题上的假阳性率。前两项回答“会不会”，稳定性回答“靠不靠谱”，幻觉校准回答“看不见时敢不敢乱说”。</p>
+
+      <h3>二、让“原子性”接受干预，而不只接受标签</h3>
+      <p>单标签无法证明题目只依赖一种能力。可以给每题增加“所需操作”多标签，并做两类干预：其一，只改变目标视觉事实而保持问题文字与其他图像因素不变，检验答案是否按预期翻转；其二，把正确视觉事实直接提供给模型，观察最终错误是否消失。如果视觉事实被纠正后仍答错，瓶颈就不应只归为感知。这比仅由分析模型阅读轨迹更接近因果归因。</p>
+
+      <h3>三、把诊断剖面转成阶段化训练，而不是刷公开答案</h3>
+      <p>相关研究已经表明，把视觉感知、视觉推理和文本推理分阶段训练，可能比混合训练更有效。PerceptionBench 可以为课程采样提供能力权重，但训练题应来自独立生成或私有轮换池，公开 3,000 题只做评测。每个版本还应保留未参与模型选择的盲测集，避免“能力修复”退化成“基准记忆”。</p>
+
+      <h3>四、下一版应把榜单变成可审计实验</h3>
+      <ul>
+        <li>发布逐题输出、裁判结果、多次运行和模型请求配置，给出配对自举区间；</li>
+        <li>加入人类、专用 OCR／检测／深度模型和随机或多数类基线；</li>
+        <li>对十类标签报告多标注者一致率、混淆矩阵和干预后的归因稳定性；</li>
+        <li>做 leave-one-benchmark-out 测试，判断分类法是否被个别源基准主导；</li>
+        <li>分别报告自然采样集与困难挖掘集，避免把“尾部诊断难度”误读为“日常视觉能力”。</li>
+      </ul>
+      <div class="callout info">
+        <b>最终 insight</b>
+        <p>PerceptionBench 的真正研究对象不是“视觉能力有十分之几”，而是<strong>测量仪器如何从失败中长出来</strong>。它把任务选择、错误归因和题目重写连成了一个闭环；下一步的关键不是再加更多题，而是分别校准这三段的选择偏差、标签因果性和评分可复现性。</p>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语速查</h2>
+      <div class="def-list">
+        <div><b>最早错误归因</b><span>沿模型推理轨迹寻找第一处可识别错误，并以它决定主类别，避免后续连锁错误覆盖根因。</span></div>
+        <div><b>困难样本挖掘</b><span>用强模型筛掉稳定做对的题，保留更能区分系统的失败尾部；它提高诊断密度，也改变了总体难度分布。</span></div>
+        <div><b>pass@4 / pass4</b><span>四次运行中至少一次做对／四次全部做对。两者之差代表同一道题在多次采样间的间歇成功比例。</span></div>
+        <div><b>加权 Jaccard</b><span>比较两个基准错误类型分布的重叠度；低值表示错误构成不同，但不自动等价于能力空间覆盖充分。</span></div>
+        <div><b>LLM 裁判</b><span>让另一个模型根据参考答案判断自由文本回答是否正确。它降低人工成本，但需要审核格式偏差、随机性和模型偏置。</span></div>
+        <div><b>评测污染</b><span>公开题目或答案进入后续训练、调参或模型选择流程，导致分数不再代表对未见问题的泛化。</span></div>
+      </div>
+    </section>
+
+    <section id="evidence" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>原始 X 内容、官方博客、论文、公开数据与评测代码可以相互核对；模型成绩、内部题池和训练未接触声明仍属于发布方报告，并非独立复现。发布时点很新，尚未发现实质性的外部复跑、公开争议或完整作者回复串，因此本文对榜单只做方法与统计审计，不把名次当成已被第三方确认的事实。</p>
+      <ul class="source-list">
+        <li><a href="https://x.com/Kimi_Moonshot/status/2081813202514681878">Kimi.ai：PerceptionBench 发布帖</a></li>
+        <li><a href="https://www.kimi.com/blog/perception-bench">Kimi Team：Introducing PerceptionBench</a></li>
+        <li><a href="https://github.com/MoonshotAI/PerceptionBench">PerceptionBench 官方仓库、论文与评测代码</a></li>
+        <li><a href="https://huggingface.co/datasets/moonshotai/PerceptionBench">PerceptionBench 公开数据集与数据卡</a></li>
+        <li><a href="https://github.com/MoonshotAI/Kimi-K3">Kimi K3 官方模型说明与评测配置</a></li>
+        <li><a href="https://arxiv.org/abs/2404.12390">BLINK：Multimodal Large Language Models Can See but Not Perceive</a></li>
+        <li><a href="https://arxiv.org/abs/2505.20021">Atomic Visual Skills Dataset：Decomposing Complex Visual Comprehension</a></li>
+        <li><a href="https://arxiv.org/abs/2605.20177">From Seeing to Thinking：解耦感知与推理的阶段化后训练</a></li>
+      </ul>
+      <p class="micro">统计复算均基于论文表格与公开 3,000 行数据；Wilson 区间和 Fisher 相关区间仅用来判断数量级，不替代配对实验、自然总体抽样或独立复现。许可证讨论是材料口径审计，不构成法律意见。</p>
+    </section>
+  </main>
+</body>
+</html>

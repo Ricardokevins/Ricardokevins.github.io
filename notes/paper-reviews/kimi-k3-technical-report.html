@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Kimi K3 技术报告、官方博客、公开权重、部署文档与独立安全评测的深度解读和证据审计。">
+  <title>Kimi K3 技术报告深读：2.8T 只是表层，核心是三维信息流与系统协同</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root{color-scheme:light;--paper:#f1f3ed;--surface:#fbfcf7;--ink:#1d2828;--muted:#5d6967;--line:#d5ddd6;--accent:#176b68;--accent-soft:#e2f0eb;--blue:#345d8c;--blue-soft:#e8eef6;--warn:#a45d17;--warn-soft:#f8eddd;--red:#9b4444;--red-soft:#f6e6e3;--good:#3f7255;--good-soft:#e5f0e8;--shadow:0 16px 44px rgba(29,45,42,.08);--radius:12px;--max:1120px;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;--serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif;--mono:"SFMono-Regular","Menlo","Consolas",monospace}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--paper)}body{margin:0;background:radial-gradient(circle at 90% 5%,rgba(23,107,104,.09),transparent 28rem),var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.78}a{color:var(--accent);text-underline-offset:3px}header,main{width:min(var(--max),calc(100% - 32px));margin:0 auto}header{padding:clamp(40px,7vw,82px) 0 30px}.kicker{margin-bottom:12px;color:var(--accent);font-weight:850;letter-spacing:.045em}h1{max-width:1030px;margin:0;font:760 clamp(32px,5vw,58px)/1.12 var(--serif)}.lede{max-width:960px;margin:20px 0 0;color:var(--muted);font-size:clamp(17px,2vw,20px)}main{display:grid;gap:32px;padding-bottom:72px}section{padding-top:32px;border-top:1px solid var(--line);scroll-margin-top:70px}h2,h3,h4{margin:0 0 12px;line-height:1.3}h2{font-size:clamp(24px,3.2vw,34px)}h3{margin-top:24px;color:var(--accent);font-size:21px}h4{margin-top:18px;font-size:17px}p{margin:12px 0}ul,ol{padding-left:1.35rem}li{margin:7px 0}code{padding:.08em .35em;border:1px solid var(--line);border-radius:5px;background:#f4f6f1;font-family:var(--mono);font-size:.9em}.grid-2,.grid-3,.grid-4{display:grid;gap:14px;margin:18px 0}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{min-width:0;padding:17px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.card h3,.card h4{margin:0 0 8px;color:var(--accent);font-size:17px}.card p{margin:0;color:var(--muted);font-size:14.5px}.metric{font:760 clamp(24px,3vw,34px)/1.1 var(--serif);color:var(--accent)}.metric-label{display:block;margin-top:6px;color:var(--muted);font-size:13.5px}.callout{margin:18px 0;padding:15px 18px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--radius);background:var(--accent-soft)}.callout>b{display:block;margin-bottom:6px;color:var(--accent)}.callout.info{border-left-color:var(--blue);background:var(--blue-soft)}.callout.info>b{color:var(--blue)}.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}.callout.warn>b{color:var(--warn)}.callout.red{border-left-color:var(--red);background:var(--red-soft)}.callout.red>b{color:var(--red)}.callout.good{border-left-color:var(--good);background:var(--good-soft)}.callout.good>b{color:var(--good)}.table-wrap{margin:17px 0;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}table{width:100%;min-width:820px;border-collapse:collapse;font-size:14.5px}th,td{padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--accent-soft);font-weight:750}tr:last-child td{border-bottom:0}tr:nth-child(even) td{background:rgba(0,0,0,.014)}.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0}.flow>div{position:relative;padding:15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);font-size:14px}.flow b{display:block;margin-bottom:4px;color:var(--accent)}.flow span{color:var(--muted)}.flow>div:not(:last-child)::after{content:"→";position:absolute;right:-10px;top:42%;z-index:2;color:var(--accent);font-weight:800}.def-list{display:grid;gap:10px;margin:18px 0}.def-list>div{display:grid;grid-template-columns:minmax(170px,.25fr) minmax(0,1fr);gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.def-list b{color:var(--accent)}.evidence-key{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:750;background:var(--surface);border:1px solid var(--line)}.badge.fact{color:var(--good);background:var(--good-soft)}.badge.publisher{color:var(--blue);background:var(--blue-soft)}.badge.external{color:var(--accent);background:var(--accent-soft)}.badge.inference{color:var(--warn);background:var(--warn-soft)}.compact{font-size:14px;color:var(--muted)}.toc{columns:2;column-gap:30px}.toc li{break-inside:avoid}.source-list li{margin:10px 0}.source-list span{color:var(--muted)}@media(max-width:860px){header,main{width:min(100% - 24px,var(--max))}.grid-2,.grid-3,.grid-4,.flow{grid-template-columns:1fr}.flow>div:not(:last-child)::after{content:"↓";right:auto;left:50%;top:auto;bottom:-16px}.def-list>div{grid-template-columns:1fr;gap:5px}.toc{columns:1}table{min-width:760px}}
+    .notes-shell-page .table-wrap table{min-width:820px}
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header id="top">
+    <div class="kicker">PAPER NOTE · FOUNDATION MODELS · SYSTEMS CO-DESIGN</div>
+    <h1>Kimi K3：2.8T 只是表层，核心是三维信息流与系统协同</h1>
+    <p class="lede">K3 不是把 K2 单纯放大到 2.78T 参数。它同时改写序列方向的记忆、深度方向的残差和宽度方向的专家计算，再让预训练、长程 RL、推理基础设施围绕这套结构共同适配。公开配置与权重让“模型是什么”高度可核验；但训练数据、总 token、预训练算力、缩放曲线原始点和组件级大模型消融仍未公开，因此“为什么强、每一项贡献多少”远没有同等可复现。</p>
+  </header>
+  <main>
+    <section id="thesis">
+      <h2>核心判断</h2>
+      <div class="evidence-key" role="group" aria-label="证据类型">
+        <span class="badge fact">发布物可核验</span>
+        <span class="badge publisher">发布方报告</span>
+        <span class="badge external">独立外部证据</span>
+        <span class="badge inference">分析推断</span>
+      </div>
+      <div class="grid-3">
+        <div class="card"><h3>架构主线成立</h3><p>KDA + 周期性 MLA、Block AttnRes、Stable LatentMoE 分别处理序列、深度、宽度的信息流。公开配置与 96 个权重分片支持这些结构事实。</p></div>
+        <div class="card"><h3>能力重心很明确</h3><p>相对同表模型，K3 在 agentic 与 coding 上最强，reasoning 是最清楚的短板。50 个子指标的逐项比较比挑几个 headline 更有解释力。</p></div>
+        <div class="card"><h3>开放仍有边界</h3><p>主权重已开放，但训练配方无法完整重建，EAGLE-3 草稿模型未随主仓库发布，自定义许可证也带有大规模商业使用条件。</p></div>
+      </div>
+      <div class="callout good"><b>一句话结论</b><p>K3 最值得重视的不是“又一个万亿参数 MoE”，而是它把<strong>有限状态注意力、深度路由、极稀疏专家、长程后训练和状态化推理系统</strong>连成了一个闭环；最需要保留怀疑的则是 2.5× 缩放效率的归因、训练可复现性和跨异构 harness 的横向榜单。</p></div>
+    </section>
+
+    <section id="release">
+      <h2>先把发布物对齐：博客、报告和权重不是同一时间切片</h2>
+      <p>官方博客是 2026-07-16 的首发叙事，技术报告在 2026-07-28 继续更新，公开主权重于 2026-07-27 落地。博客正文仍写着“完整权重将在 7 月 27 日发布、技术报告即将到来”，说明它没有随发布状态同步重写。技术判断应优先使用较晚的报告与模型仓库，并保留博客作为首发口径。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>材料</th><th>可核验内容</th><th>主要边界</th><th>本篇用法</th></tr></thead>
+        <tbody>
+          <tr><td>官方博客</td><td>产品定位、API 价格、案例与首发 benchmark 表</td><td>未来时态已过期；部分分数与后续报告不同</td><td>首发快照，不与报告数字混写</td></tr>
+          <tr><td>47 页技术报告</td><td>架构、训练、后训练、基础设施、评测协议与附录推导</td><td>大部分实验仍是发布方自报；缺少训练预算和完整大模型消融</td><td>机制与实验的主要来源</td></tr>
+          <tr><td>公开模型仓库</td><td>配置、代码、许可证、权重索引与精度格式</td><td>没有训练数据、训练日志和报告所述草稿模型</td><td>验证“发布了什么、结构到底是什么”</td></tr>
+          <tr><td>部署文档</td><td>当前硬件组合、服务参数、支持模态与待验证项</td><td>部分 recipe 标注仍在最终验证</td><td>约束实际可部署范围</td></tr>
+        </tbody>
+      </table></div>
+      <p>对博客和报告重叠的评测单元逐格比对，共发现 13 个数值差异；其中 K3 自身有三处：GDPval 从 1668 更新为 1686，Toolathlon 从 73.2 更新为 76.5，JobBench 从 52.9 更新为 54.3。其余差异还包含基线模型和小数舍入。它们不必然意味着错误，更可能是 rerun、harness 或版本更新；但足以说明任何比较都必须带上材料日期。</p>
+    </section>
+
+    <section id="numbers">
+      <h2>模型画像：真正稀疏的是计算，不是存储</h2>
+      <div class="grid-4">
+        <div class="card"><span class="metric">2.78T</span><span class="metric-label">总参数</span></div>
+        <div class="card"><span class="metric">104.2B</span><span class="metric-label">每 token 激活参数</span></div>
+        <div class="card"><span class="metric">93</span><span class="metric-label">Transformer 层</span></div>
+        <div class="card"><span class="metric">1,048,576</span><span class="metric-label">最大上下文长度</span></div>
+      </div>
+      <p>104.2B 只占 2.78T 的约 <strong>3.75%</strong>，总参数与激活参数之比约为 26.68×。与 K2 相比，总参数增长 2.67×、激活参数增长 3.20×、层数增长 1.52×。这意味着 K3 并不是只增加“冷专家”；单 token 的真实计算规模也大幅上升。</p>
+      <p>公开权重索引合计约 <strong>1.56 TB（1.42 TiB）</strong>。只把权重均摊，8 / 16 / 32 / 64 张卡分别约需 181.7 / 90.9 / 45.4 / 22.7 GiB 每卡，还没有计入运行时 buffer、KV cache、通信空间和视觉编码。因此“MoE 只激活 104B”不能推导出单机轻松部署；稀疏激活降低算力，并不消除全量权重的存储和通信成本。</p>
+    </section>
+
+    <section id="architecture">
+      <h2>架构总纲：在三个正交方向上学习“信息该去哪里”</h2>
+      <div class="grid-3">
+        <div class="card"><h3>序列方向</h3><p>69 层 KDA 用固定大小的递归状态压缩历史，24 层 Gated MLA 周期性提供全局回看，避免纯线性注意力把所有历史都挤进有限状态。</p></div>
+        <div class="card"><h3>深度方向</h3><p>Block AttnRes 不再让每层无差别累加全部前层输出，而是按输入内容选择早期 block 表征，缓解 PreNorm 的幅值增长和信号稀释。</p></div>
+        <div class="card"><h3>宽度方向</h3><p>Stable LatentMoE 先把 7168 维隐藏状态压到 3584 维，再在 896 个专家中选 16 个，以更低的专家计算宽度换取更大的专家池。</p></div>
+      </div>
+      <div class="callout info"><b>最有价值的统一视角</b><p>传统 Transformer 主要在 token 之间做注意力；K3 把“选择”扩展到三个轴：从哪些历史 token 取信息、从哪些前层取信息、由哪些专家变换信息。它不是三个孤立技巧的堆叠，而是在序列、深度、宽度上都用稀疏或可学习路由替代均匀流动。</p></div>
+      <h3>KDA + Gated MLA：固定状态与全局纠偏</h3>
+      <p>93 层按“三层 KDA、一层 MLA”的节奏排列，并在末层额外放置一层 MLA，最终得到 69 + 24。KDA 基于 delta rule 更新矩阵状态，带逐通道遗忘和输入依赖输出门；它的状态大小不随序列长度线性增长，因此长上下文解码不需要为每个历史 token 保留完整 KV。</p>
+      <p>K3 把衰减对数下界设为 <code>g_min = -5</code>。这看似是数值细节，实质是 kernel 设计条件：16-token tile 内的倒数尺度被约束在 BF16 可表达范围，原本依赖 token 对角矩阵的计算可重写为 Tensor Core 友好的稠密乘法。周期性 MLA 则保留全局、内容寻址的通道。两者组合承认了一个事实：固定状态高效，但有限记忆不可避免；全注意力昂贵，却适合纠正长期压缩误差。</p>
+      <h3>Block AttnRes：把残差流变成深度检索</h3>
+      <p>标准 PreNorm 残差以单位权重把各层输出持续累加，深度增加时隐藏幅值会增长，单层贡献被越来越大的累计流稀释。AttnRes 让当前层对更早的输出计算 softmax 权重。完整版本需保存全部层表征，内存与通信为 <code>O(Ld)</code>；block 版本只保留 block 级表示，降到 <code>O(Nd)</code>。</p>
+      <p>K3 以 12 层为一组，93 层形成 8 个 block（最后一组不满），再加 embedding，共 9 个可检索源。它获得的不是“更长 token 上下文”，而是<strong>更可控的深度上下文</strong>：后层能回取适合当前 token 的早期抽象，而不是被迫接受同一条混合残差流。</p>
+    </section>
+
+    <section id="moe">
+      <h2>Stable LatentMoE：极稀疏路由必须与稳定性机制一起看</h2>
+      <p>每层有 896 个 routed experts，每个 token 只选 16 个，专家选择率为 <strong>1.79%，即 1/56</strong>；另有两个全宽 shared experts。路由专家在 3584 维 latent space 工作，宽度正好是 7168 隐藏维的一半，随后再映射回全宽。这个设计借鉴了 NVIDIA LatentMoE 的“在低维空间增加专家数量”思想，但 K3 为更大专家池加入了三项稳定化。</p>
+      <div class="flow" role="group" aria-label="Stable LatentMoE 稳定化流程">
+        <div><b>压到 latent</b><span>降低每个 routed expert 的参数与 FLOP 成本</span></div>
+        <div><b>Quantile Balancing</b><span>按 router 分数分位数设置专家 bias，逼近目标负载</span></div>
+        <div><b>RMSNorm</b><span>路由结果聚合后、上投影前重新约束尺度</span></div>
+        <div><b>SiTU-GLU</b><span>对两支激活做软饱和，抑制极值放大</span></div>
+      </div>
+      <h3>Quantile Balancing 解决的不是“平均公平”，而是系统吞吐</h3>
+      <p>传统无辅助损失路由通过固定步长更新专家 bias：过热就减、过冷就加。896 个专家时，步长过小跟不上分布，过大又产生负载振荡。QB 把每个专家的 bias 设为能匹配目标负载的 router-score 分位数；下一步再用这个因果可用的估计路由。它不需要手调步长，且在训练结束后冻结 bias 用于推理。</p>
+      <p>大规模实现没有传输全部 margin，而是用 1000 个 histogram bins 估计分位数，每层每步只需一次整数 all-reduce。报告声称通信低于传原始 margin 的 1%，误差由 bin 宽约束。这项主张有清楚的算法与复杂度推导，但没有单独公开 K3 大模型上的负载曲线、吞吐差和消融误差条。</p>
+      <div class="callout warn"><b>创新归属要说准确</b><p>报告正文称“引入 QB”，但附录明确说推导 follow Jianlin Su 2026 年 2 月关于最优平衡分配的文章，并追溯到 BASE Layers 与 BIP。更稳妥的判断是：K3 的贡献在于把这一对偶 / 分位数思路做成适配 896 专家的可扩展直方图估计并集成到训练系统，而不是从零发明整个最优分配视角。</p></div>
+      <h3>SiTU-GLU 是软保险丝，不是表达力口号</h3>
+      <p>SiTU 对两条 GLU 分支分别用 sigmoid 与 tanh 软限制，报告设置 <code>β₁=4</code>、<code>β₂=25</code>，单坐标输出有不超过 100 的上界。与 hard clamp 相比，它保留连续导数；与无界 SwiGLU 相比，它牺牲部分极端幅值换取大规模 MoE 训练不爆炸。RMSNorm、SiTU 和 QB 分别管聚合尺度、单专家激活和专家负载，三者共同构成稳定性闭环，不能把收敛归因于其中一个。</p>
+    </section>
+
+    <section id="vision">
+      <h2>原生多模态：训练主张比公开服务接口走得更远</h2>
+      <p>MoonViT-V2 有 27 层、401M 参数、1024 隐藏维、14×14 patch，并用 2×2 pixel shuffle 压缩视觉 token。报告称视觉编码器不从 SigLIP 初始化，而是从随机权重开始，与语言模型的 next-token objective 联合训练；图片最高可到 3584×3584，图片与视频共享参数，视频增加时间注意力和池化。</p>
+      <p>这里需要区分三层事实：</p>
+      <ol>
+        <li><strong>架构与训练层：</strong>报告明确描述 image + video 的原生联合训练。</li>
+        <li><strong>公开主仓库层：</strong>模型卡列出的公开模态是 Text、Image，配置和视觉代码可核验。</li>
+        <li><strong>当前服务实现层：</strong>官方集成文档的 processor 明确拒绝 video / audio 输入，当前可直接部署的公共 contract 是图片，而非完整视频通路。</li>
+      </ol>
+      <p>报告用视觉梯度范数曲线说明从零训练没有失稳，并称下游能力与 SigLIP 初始化相当；但没有给出两者的数值表、训练预算控制和置信区间。因此，“从零联合训练可行”有运行证据，“等价或更好”仍是缺少公开消融的发布方判断。</p>
+    </section>
+
+    <section id="scaling">
+      <h2>“2.5× scaling efficiency”到底说了什么，又没说什么</h2>
+      <p>报告 Figure 7 把若干缩放实验的 OOD validation loss 对训练 FLOPs 拟合成曲线，并称 K3 架构与训练配方相对 K2 产生约 2.5× 的横向效率迁移。最合理的读法是：在这套拟合下，达到相同验证损失所需的训练计算约缩小到 1/2.5。</p>
+      <div class="grid-2">
+        <div class="card"><h3>可以支持</h3><p>组合方案在发布方缩放实验中表现出更好的 loss–compute 前沿；K3 不是只靠最终大模型一次跑分来主张架构改进。</p></div>
+        <div class="card"><h3>不能支持</h3><p>不能说推理吞吐快 2.5×、API 便宜 2.5×、训练总成本少 2.5×，也不能说所有 benchmark 一致提高 2.5×。</p></div>
+      </div>
+      <p>图中没有公开拟合系数、模型尺寸、训练 token、原始数值点、置信区间和各组件的独立曲线。KDA、AttnRes、LatentMoE、Per-Head Muon、数据变化与训练稳定化同时进入新配方，因果贡献无法拆开。这个数字可以视为<strong>组合系统的内部 scaling signal</strong>，不能视为可独立复现的单组件因果效应。</p>
+    </section>
+
+    <section id="pretrain">
+      <h2>预训练：公开了结构性选择，隐藏了预算性选择</h2>
+      <p>数据覆盖 Web、Code、Math、Knowledge 与视觉；流程包含过滤、质量评分、去重，以及对知识和数学内容的重述。文本和视觉从训练开始就联合进入，而非先训纯文本再做后置对齐。上下文课程从 8K 扩到 64K，cooldown 再扩到 256K 与 1M；模型不使用显式位置编码，以 NoPE 支持长度外推。</p>
+      <p>优化上使用 Per-Head Muon：不把整个 Q/K/V 投影作为一个大矩阵正交化，而是按 attention head 分开处理。报告称这样更稳定、开销略低，但没有给出隔离的数字消融。训练还沿用 K2 的 weight clipping、cosine learning rate、1% warmup、0.1 weight decay，并把 QB 纳入路由。</p>
+      <div class="callout red"><b>复现缺口集中在“预算”</b><p>报告没有给出总训练 token、各数据域比例、明确数据源与许可证、训练 FLOPs、集群规模、GPU days、失败 run 或碳 / 能源口径。公开权重足以复现推理和微调，却不足以复现从零预训练，也不足以独立验证 2.5× scaling efficiency。</p></div>
+    </section>
+
+    <section id="posttrain">
+      <h2>后训练：不是让一个策略学会全部，而是先分化再合并</h2>
+      <div class="flow" role="group" aria-label="K3 后训练流程">
+        <div><b>SFT</b><span>建立通用、工具、编码与多模态行为基础</span></div>
+        <div><b>Domain RL</b><span>General Tasks / General Agents / Coding Agents 三类环境</span></div>
+        <div><b>Effort 专家</b><span>low / high / max 三档 token budget，共 3×3 个策略</span></div>
+        <div><b>MOPD 合并</b><span>学生在自己的 on-policy 轨迹上吸收九个教师</span></div>
+      </div>
+      <p>Multi-Teacher On-Policy Distillation 不要求学生模仿教师的离线完整答案，而是在学生自己访问到的 token 状态上，用裁剪后的 teacher / student 概率比形成逐 token 奖励。报告称只看 teacher top-k 概率没有明确收益。这样做更贴近部署分布，也降低传统 sequence distillation 的 exposure mismatch；代价是训练仍需在多个教师上计算概率，且报告没有披露教师数量之外的完整预算。</p>
+      <h3>长程 RL 的关键对象是“可恢复状态”</h3>
+      <p>长任务不必每次从头 rollout。训练只完成比例为 λ 的轨迹，把中间状态留到下一轮恢复；逐 token regularization 处理这些略微 stale、off-policy 的片段。Reasoning effort 本质是每题 token budget，超过预算给 -1，并分阶段退火预算阈值。Agentic GRM 则先读答案、生成 rubric、打分并写 scorepad，还给 verbosity 设置预算，以减少“写得更长就更像正确”的奖励投机。</p>
+      <p>报告搭建统一白盒 harness，把 tools、system、context、skills、memory、subagents 做成可组合模块，并实例化 Kimi Code、Claude Code、Codex、OpenClaw、Hermes 等环境。任务覆盖知识图谱驱动的数据合成、检索、kernel 优化、mock Gmail / Notion / Slack / Canvas、跨日持久任务和网页开发。这里的训练对象不只是语言模型，而是“模型 + 上下文协议 + 工具状态 + verifier”。</p>
+      <div class="callout info"><b>一个容易被忽略的部署契约</b><p>K3 的模型卡要求在多轮对话中保留完整 assistant message，包括 reasoning content 与 tool calls。对使用者来说，这相当于隐藏状态 ABI：如果框架只回传最终文本，模型下一轮看到的状态已不是训练时状态。harness 兼容性本身会成为能力的一部分。</p></div>
+    </section>
+
+    <section id="systems">
+      <h2>系统协同：架构没有消灭复杂度，而是把复杂度重新分配</h2>
+      <div class="grid-2">
+        <div class="card"><h3>FlashKDA / KCP</h3><p>KDA 序列状态可写成 transition 与 zero-state fragment，再用 prefix scan 做 context parallel。长序列不需要所有卡按 token 串行传递完整状态。</p></div>
+        <div class="card"><h3>MoonEP</h3><p>通过动态冗余专家和静态 shape 做接近完美的 expert load balance，并给出每 rank 最多需要约 E/R 个冗余专家的上界。</p></div>
+        <div class="card"><h3>Activation Manager</h3><p>联合选择重算、量化与 offload；配合 pipeline ZeRO-2、点对点 Muon，把 ViT 计算塞进 pipeline bubble。</p></div>
+        <div class="card"><h3>AgentENV</h3><p>Firecracker microVM 支持暂停、分叉、快照与恢复；发布方报告 checkpoint 133 ms、resume 49 ms，并以 6.5× memory overcommit 承载海量环境。</p></div>
+      </div>
+      <p>1M agentic RL 被描述为在“几百张 GPU”内协同运行，但这是后训练系统规模，不是 K3 预训练算力。推理侧用 CPU DRAM 作为外部 KV / 状态池、NVMe offload 训练状态，并根据资源预算做 admission control。KDA prefix cache 又把物理块和 hash 块解耦：可以稀疏保存 KDA checkpoint，同时复用 MLA KV 与 KDA 状态。</p>
+      <p>这揭示了线性注意力的真实交换：它减少了随历史 token 线性增长的 KV，但每个请求仍有不可忽略的递归状态，且 MoE 增加了专家通信。复杂度从“为每个 token 存 KV”迁移到“管理状态、前缀、专家和环境生命周期”。K3 的优势来自把这笔复杂度系统化，而不是让它凭空消失。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>评测审计：把 45 个 benchmark 拆成 50 个子指标后，能力形状更清楚</h2>
+      <p>报告表格混合了无工具 / 有工具结果、第三方公布数字、官方 rerun、不同 agent harness 与内部 benchmark。将分拆列计为独立单元，共得到 50 个可比子指标。逐项、不加权地比较 K3 与各基线，结果如下：</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>对手</th><th>K3 胜</th><th>平</th><th>负</th><th>有效比较数</th><th>应如何读</th></tr></thead>
+        <tbody>
+          <tr><td>Fable</td><td>16</td><td>1</td><td>29</td><td>46</td><td>Fable 在 reasoning、部分 coding / vision 与高强度 agentic 项仍占优</td></tr>
+          <tr><td>GPT-5.6</td><td>32</td><td>1</td><td>16</td><td>49</td><td>K3 的 agentic 广度明显，基础推理并非全面领先</td></tr>
+          <tr><td>Claude Opus 4.8</td><td>47</td><td>0</td><td>3</td><td>50</td><td>按此表口径 K3 广泛领先，但 harness 与 effort 并不统一</td></tr>
+          <tr><td>GPT-5.5</td><td>46</td><td>2</td><td>1</td><td>49</td><td>大多数项目占优，不应外推到表外任务</td></tr>
+          <tr><td>GLM-5.2</td><td>28</td><td>0</td><td>0</td><td>28</td><td>只有 28 个共同报告单元，缺失项不能算胜利</td></tr>
+        </tbody>
+      </table></div>
+      <p class="compact">说明：这是用于审计“能力形状”的逐项胜负计数，不是聚合能力分。不同 benchmark 的难度、方差、样本量和实际价值不相等。</p>
+      <div class="grid-4">
+        <div class="card"><span class="metric">18 / 22</span><span class="metric-label">Agentic 项进入前二</span></div>
+        <div class="card"><span class="metric">8 / 9</span><span class="metric-label">Coding 项进入前二</span></div>
+        <div class="card"><span class="metric">2 / 5</span><span class="metric-label">Reasoning 项进入前二</span></div>
+        <div class="card"><span class="metric">11 / 14</span><span class="metric-label">Vision 项进入前二</span></div>
+      </div>
+      <p>Reasoning 是最稳定的反例：K3 在 CritPt 与 HLE（有无工具）落后 Fable，在 GPQA、CritPt、HLE 上也落后 GPT-5.6。相反，DeepSWE 67.5、Program 77.8、Terminal 88.3、Frontier 81.2、BrowseComp 91.2 等结果更符合它的训练重心。</p>
+      <h3>1M context 的最佳反例来自 K3 自己</h3>
+      <p>BrowseComp 使用 300K 上下文并做 compaction 得 91.2；允许 1M、但不做 context management 得 90.4，低 0.8 分。差距很小，不能证明压缩普遍更优；却足以否定“上下文越大、原样塞入越好”。长程 agent 的实际能力依赖检索、摘要、前缀复用和状态管理，而不是只看模型卡的最大长度。</p>
+      <h3>横向比较的实验单位不是裸模型</h3>
+      <p>K3 以 max effort、temperature 1 运行；单步任务通常 top-p 0.95，agentic 项多为一次轨迹。SWE-Marathon 使用特定日期分支与 H20 校准，Fable 还有 35% fallback；WorldVQA 通过 ForceAnswer prompt 降低拒答；部分 coding 项运行 Kimi、Claude 或 Codex harness。更准确的比较单位是：</p>
+      <div class="callout"><b>模型 × reasoning budget × harness × toolset × context policy × verifier</b><p>如果只把表格标题当作“模型 A 对模型 B”，会把大量系统差异错误归因给权重本身。</p></div>
+    </section>
+
+    <section id="security">
+      <h2>安全与案例：内部 showcase 和独立能力评估要分开</h2>
+      <p>报告的内部 cyber 流程称约 70% 经审查候选漏洞为 genuine、发现 16 个 zero-days，并在 36 个 exploit 任务中完成 14 个，GLM-5.2 为 8 个。这些数字来自发布方环境，适合说明系统能做什么，不构成独立验证。GPU kernel、MiniTriton、nano-KPU 芯片、研究、知识工作和视频编辑案例也应按 showcase 阅读，而非统一 benchmark。</p>
+      <p>UK AISI 与美国 CAISI 的独立初步评测提供了更好的外部锚点：</p>
+      <ul>
+        <li>ExploitBench：K3 为 32%，GLM-5.2 为 24%，说明它在当时开放权重模型中更强。</li>
+        <li>任意代码执行：K3 为 0/41，而最强受测闭源模型平均 20/41，说明最高危阶段仍有显著差距。</li>
+        <li>The Last Ones 企业网络靶场：K3 平均走到 32 步中的第 17 步，领先 GLM-5.2 的 11 步，落后领先模型的 28.5 步；10 次中完整攻破 1 次。</li>
+      </ul>
+      <p>这组结果同时反驳两种极端叙事：K3 既不是“只会 benchmark、没有真实 agent 能力”，也不是“已经追平最强闭源模型”。它已经具备需要严肃治理的自主网络攻击能力，但在高难 exploit chain 和稳定性上仍有明显 frontier gap。</p>
+    </section>
+
+    <section id="deployment">
+      <h2>公开权重、量化与部署：可获得不等于完整可复现</h2>
+      <p>公开配置与报告高度一致：93 层、7168 隐藏维、96 attention heads、69 个 KDA layer indices、24 个 full-attention layers、896 选 16、两个 shared experts、3584 latent width，以及 1M 上下文。权重采用 compressed-tensors：routed expert weights 以 MXFP4 group-32 表示，激活为 MXFP8；attention、shared experts、latent 投影、lm head、视觉与 projector 等被排除在低精度专家规则之外。</p>
+      <p>报告说，预训练 MTP layer 在后训练中变成 EAGLE-3 风格 draft model，并用七步 unroll 与 acceptance-oriented loss 训练。但主配置写着 <code>num_nextn_predict_layers: 0</code>，权重索引中没有匹配 MTP、nextn、EAGLE 或 draft 的 tensor，模型卡也没有草稿 checkpoint。最严谨的结论是：<strong>报告描述了这项部署组件，但它没有包含在公开主权重仓库中</strong>；不能据此断言内部组件不存在，也不能假定开源部署自动获得相同 speculative decoding 收益。</p>
+      <p>官方部署 recipe 显示，8 卡只适用于 B300 或 MI350X / MI355X 这类大显存设备；H100 80GB 方案使用 4×8，即 32 卡。报告建议 64+ accelerators 以获得更好效率，但这不是绝对最小卡数。文档同时标注部分 recipe 仍在最终验证，部署者应重新测吞吐、精度和峰值内存。</p>
+      <h3>许可证：open-weight，但不是无条件宽松开源</h3>
+      <p>官方自定义许可证授予查看、修改、分发和商业使用等广泛权利，但对大规模 Model-as-a-Service 和超大商业产品附加条件：特定 12 个月累计收入超过 2000 万美元的 MaaS 业务需另行取得书面协议；超过 1 亿 MAU 或月收入超过 2000 万美元的商业产品需显著展示 “Kimi K3”。内部使用和官方 / 认证伙伴有相应豁免。它适合称为开放权重，不宜直接等同 Apache-2.0 / MIT 式无限制许可证；具体商业适用性仍应由法律团队核对原文。</p>
+    </section>
+
+    <section id="economics">
+      <h2>成本叙事：缓存命中率比标价更决定长程 Agent 经济性</h2>
+      <p>2026-07-16 的官方 API 快照为：缓存命中输入 0.30 美元 / 百万 token，未命中输入 3 美元，输出 15 美元。博客称 coding 场景 cache hit 超过 90%。如果恰好按 90% 命中粗算，平均输入单价约为 <code>0.9×0.30 + 0.1×3 = 0.57</code> 美元 / 百万 token；但长推理的输出仍以 15 美元计价，不能只拿命中输入价代表整个任务成本。</p>
+      <p>报告的 cost frontier 图混合了内部测量成本与外部模型公开 API list price。硬件、吞吐、延迟、批处理、缓存策略和输出质量并未统一，因此它适合展示“公开价格下的位置”，不构成同一基础设施上的受控系统比较。对 coding agent 来说，真正的工程问题是让 400K 级稳定前缀可复用，把每轮 4K 左右新增内容与环境状态隔离，而不是只追求最低 nominal token price。</p>
+    </section>
+
+    <section id="insights">
+      <h2>六个可迁移的 insight</h2>
+      <ol>
+        <li><strong>下一阶段的架构竞争是信息流治理。</strong> K3 不只增加容量，而是让 token 历史、层历史和专家集合都可被选择。比“线性注意力 vs 全注意力”更重要的问题，是哪些信息必须精确保留、哪些可以压缩、多久需要一次全局纠偏。</li>
+        <li><strong>极稀疏 MoE 的瓶颈会从 FLOP 转向协调。</strong> 1/56 的专家选择率看似便宜，但 896 个专家放大了负载漂移、通信尾延迟和权重存储。QB 与 MoonEP 不是附属优化，而是让架构成立的必要条件。</li>
+        <li><strong>长上下文是系统属性，不是单一长度参数。</strong> 模型能接收 1M token，不代表产品应把所有历史原样保留。K3 自身的 BrowseComp 结果已经表明 compaction、prefix cache 与状态恢复可以比“更大窗口”更关键。</li>
+        <li><strong>思维链保留正在变成协议兼容问题。</strong> 多轮工具 Agent 若丢弃 reasoning state，就改变了后续策略条件分布。未来评估应把消息序列化格式、工具调用回传和 memory policy 视为模型 ABI，而不是 SDK 细节。</li>
+        <li><strong>开放权重提高了结构透明度，却没有自动提高训练透明度。</strong> 1.56 TB 权重和配置能验证层数、专家、精度与推理行为；缺失的 token、数据配比、算力与 scaling 原始点决定了研究者仍无法回答“同预算能否复现”。</li>
+        <li><strong>榜单的自然单位正在从模型变成完整执行栈。</strong> 当 effort、harness、工具、context policy、verifier 都改变结果时，单一 leaderboard 数字会把系统工程收益错误压缩成模型能力。真正可比较的报告需要固定或分层公布这些变量。</li>
+      </ol>
+    </section>
+
+    <section id="research">
+      <h2>如果继续研究，最值得做的验证</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>问题</th><th>最小可信实验</th><th>会改变什么判断</th></tr></thead>
+        <tbody>
+          <tr><td>2.5× 来自哪里</td><td>同数据、同 token、同激活 FLOPs，逐步加入 KDA、AttnRes、LatentMoE、Muon 与稳定化；公开拟合点、多 seed 和区间</td><td>从组合相关性提升为组件因果归因</td></tr>
+          <tr><td>QB 是否优于步长 bias</td><td>896 专家规模对照 load CV、tail latency、dead expert、loss 与通信；扫 histogram bins</td><td>验证理论上的无步长优势能否转成端到端吞吐</td></tr>
+          <tr><td>AttnRes 检索了什么</td><td>按 token 类型、任务、深度可视化 9 个 source 权重，并做 block size / fixed mixing 对照</td><td>判断它在保存早层信息还是只做尺度校准</td></tr>
+          <tr><td>原生视觉从零训练是否值得</td><td>等 FLOPs、等数据对照 SigLIP init 与 random init，报告梯度、收敛速度、OCR、视频和视觉推理</td><td>区分稳定可行与样本效率 / 最终能力优势</td></tr>
+          <tr><td>1M 上下文何时有用</td><td>固定总 token budget，比 raw 1M、检索、层级摘要、300K compaction 和 cache-aware memory</td><td>把最大窗口转成 context policy 的条件结论</td></tr>
+          <tr><td>公开部署是否复现报告效率</td><td>发布 draft checkpoint；在 8/16/32/64 卡上统一测 prefill、decode、acceptance、功耗和精度</td><td>闭合报告中的 EAGLE-3 与公开服务栈之间的缺口</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="terms">
+      <h2>术语对齐</h2>
+      <div class="def-list">
+        <div><b>KDA</b><span>Kimi Delta Attention，以 delta rule 更新固定大小状态，并用逐通道遗忘与输出门增强有限状态表达力。</span></div>
+        <div><b>Gated MLA</b><span>带输出门的 Multi-Head Latent Attention；在 K3 中作为周期性全局注意力通道，并使用 NoPE。</span></div>
+        <div><b>AttnRes</b><span>Attention Residuals，让当前层按输入内容从早期层 / block 选择表征，而非固定单位权重累加。</span></div>
+        <div><b>LatentMoE</b><span>先把隐藏状态投影到更低维 latent space，再运行大量 routed experts，以改善每参数、每 FLOP 的精度。</span></div>
+        <div><b>QB</b><span>Quantile Balancing，根据 router score 的目标分位数更新专家 bias，使 Top-k 路由接近精确目标负载。</span></div>
+        <div><b>MOPD</b><span>Multi-Teacher On-Policy Distillation，在学生自己的访问状态上吸收多个领域 / effort 教师。</span></div>
+        <div><b>KCP</b><span>KDA Context Parallelism，把递归状态分解为可并行组合的 transition 与 fragment，再做 prefix scan。</span></div>
+        <div><b>Reasoning effort</b><span>low / high / max 三档每题推理 token budget；它既是产品控制项，也是评测与训练条件。</span></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完成了技术报告全部 47 页（含图表、脚注与附录）的逐页核对，并交叉检查博客、模型仓库、权重索引、配置、许可证、部署说明和会改变核心判断的上游方法资料。结构、文件规模、配置和许可证条款属于可直接核验的发布物事实；训练稳定性、2.5× scaling、benchmark、成本、环境规模与案例若无独立复现，均按发布方报告处理；AISI / CAISI 结果属于外部初步评估。胜负计数、比例、权重均摊和版本差异为本文复算，不是官方聚合指标。</p>
+      <ol class="source-list">
+        <li><a href="https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf">Kimi K3 Technical Report</a> <span>— 架构、预训练、后训练、系统、评测、附录与引用；本文以 2026-07-28 更新版本为主要口径。</span></li>
+        <li><a href="https://www.kimi.com/blog/kimi-k3">Kimi K3 官方博客</a> <span>— 2026-07-16 首发叙事、案例、API 价格与早期 benchmark 快照。</span></li>
+        <li><a href="https://github.com/MoonshotAI/Kimi-K3">MoonshotAI/Kimi-K3</a> <span>— 官方报告仓库与更新历史。</span></li>
+        <li><a href="https://huggingface.co/moonshotai/Kimi-K3">moonshotai/Kimi-K3 模型仓库</a> <span>— 模型卡、公开权重、配置、模型代码与文件索引。</span></li>
+        <li><a href="https://huggingface.co/moonshotai/Kimi-K3/blob/main/LICENSE">Kimi K3 License</a> <span>— 官方自定义许可证及大规模商业使用条件。</span></li>
+        <li><a href="https://docs.sglang.io/cookbook/autoregressive/Moonshotai/Kimi-K3">SGLang Kimi K3 部署文档</a> <span>— 公共服务模态、硬件 recipe、精度参数与草稿模型状态。</span></li>
+        <li><a href="https://arxiv.org/abs/2510.26692">Kimi Linear: An Expressive, Efficient Attention Architecture</a> <span>— KDA、混合线性 / 全注意力与长上下文效率的上游论文。</span></li>
+        <li><a href="https://arxiv.org/abs/2603.15031">Attention Residuals</a> <span>— Full / Block AttnRes、深度信号稀释、缩放实验和系统实现。</span></li>
+        <li><a href="https://github.com/MoonshotAI/Attention-Residuals">MoonshotAI/Attention-Residuals</a> <span>— AttnRes 官方仓库与结构说明。</span></li>
+        <li><a href="https://arxiv.org/abs/2601.18089">LatentMoE: Toward Optimal Accuracy per FLOP and Parameter in Mixture of Experts</a> <span>— 低维 routed experts 的原始设计与硬件—软件协同动机。</span></li>
+        <li><a href="https://spaces.ac.cn/archives/11619">游走在 MoE 王国：基于最优分配促进负载均衡</a> <span>— K3 报告 QB 推导明确跟随的 Jianlin Su 文章；若页面临时限制访问，可从报告引用 [112] 核对标题与日期。</span></li>
+        <li><a href="https://www.aisi.gov.uk/blog/preliminary-assessment-of-kimi-k3s-cyber-capabilities">UK AISI / CAISI Preliminary Assessment of Kimi K3's Cyber Capabilities</a> <span>— ExploitBench、ACE 与 The Last Ones 的独立初步结果和限制。</span></li>
+        <li><a href="https://arxiv.org/abs/2507.20534">Kimi K2: Open Agentic Intelligence</a> <span>— K2 架构、训练与 agentic 基线，用于理解 K3 的扩展幅度。</span></li>
+      </ol>
+      <div class="callout warn"><b>截至 2026-07-28 仍未闭环</b><p>总训练 token、数据混合、预训练 FLOPs / GPU days、2.5× 曲线原始点与置信区间、完整组件消融、MOPD / RL 预算、EAGLE-3 draft checkpoint、视频公共服务路径和第三方全榜复测均未公开或未完成。后续版本若补齐这些材料，应重新评估本文对可复现性与因果归因的判断。</p></div>
+    </section>
+  </main>
+</body>
+</html>
