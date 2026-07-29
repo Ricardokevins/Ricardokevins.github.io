@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Graph Engineering 深读：图不是比循环更强，而是把控制权收回来</title>
+  <title>Graph Engineering：先看懂 Agent 工作流为什么从循环走向图，再谈它的工程缺口</title>
   <link rel="stylesheet" href="../assets/notes-shell.css">
   <style>
     :root {
@@ -247,11 +247,15 @@
 
   <header id="top">
     <div class="kicker">Tech Analysis · Agent Workflow · 2026-07-28</div>
-    <h1>Graph Engineering 深读：图不是比循环更强，而是把控制权收回来</h1>
-    <p class="lede">leanxbt 的核心直觉是对的：当分支、并发、人工审批与异构执行者增多时，不应继续把控制流藏在一个提示词里。但文章把“画出拓扑”写成了“已经拥有运行时”。逐段核对与代码复现表明，它解释好了节点、边与业务状态，却没有真正实现调度、合并和恢复。</p>
+    <h1>Graph Engineering：先看懂 Agent 工作流为什么从循环走向图，再谈它的工程缺口</h1>
+    <p class="lede">这篇 X Article 讨论的不是一种让模型“更聪明”的新算法，而是怎样把一个会反复尝试的 AI Agent，改造成步骤明确、可以分支、可以并行、能等待人工批准的工程工作流。下面先完整讲清作者的思路和贯穿全文的 bug 修复案例；读懂之后，再审计它的代码和生产化边界。</p>
     <nav class="toc" aria-label="文章目录">
-      <a href="#takeaway">核心判断</a>
-      <a href="#problem">问题与语境</a>
+      <a href="#overview">先看懂主题</a>
+      <a href="#walkthrough">原文怎么展开</a>
+      <a href="#example">完整案例</a>
+      <a href="#terms">术语准备</a>
+      <a href="#takeaway">分析结论</a>
+      <a href="#problem">问题是否成立</a>
       <a href="#mechanism">机制拆解</a>
       <a href="#runtime">三层运行时</a>
       <a href="#audit">代码审计</a>
@@ -265,8 +269,78 @@
   </header>
 
   <main>
+    <section id="overview">
+      <h2>先看懂这篇文章在讲什么</h2>
+      <p><strong>最简单的理解是：作者想把“让一个 AI 自己不断想下一步”，改造成“先把允许发生的步骤画成路线图，再让 AI 只在路线图允许的范围内工作”。</strong></p>
+      <p>普通 agent loop 很像把任务交给一个人，然后不断问他：“现在情况怎样？下一步你准备做什么？做完了吗？”这个人可以读代码、运行命令、修改文件、查看结果，再决定继续还是停止。它的优点是灵活，缺点是整个过程藏在模型每一轮的临时判断里：你很难提前知道它会走哪条路，也很难对不同步骤设置不同权限。</p>
+      <p>作者提出的 graph workflow 更像一张预先画好的办事流程图。每个方框是一项工作，例如“判断 bug 类型”或“运行测试”；箭头规定工作可以流向哪里；一份共享状态记录已经知道的事实。AI 仍然可以参与判断和修复，但它不能凭空发明一个未经允许的新步骤。</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Loop / 循环</h3>
+          <p>同一个 agent 反复观察、行动、检查，由它动态决定下一步，适合开放式探索。</p>
+        </div>
+        <div class="card">
+          <h3>Graph / 图工作流</h3>
+          <p>系统预先声明有哪些步骤和允许的转移，适合分支、审批、并行和可审计流程。</p>
+        </div>
+        <div class="card">
+          <h3>作者的主张</h3>
+          <p>任务一旦不再是单一循环，而出现不同角色和路径，就应该把隐式控制流提升为显式图。</p>
+        </div>
+      </div>
+      <div class="callout">
+        <b>先澄清材料性质</b>
+        这不是一篇带实验、基线和统计检验的学术论文，而是一篇工程概念文章。它用 Python 风格代码逐步搭出一个迷你图执行器，重点是解释设计直觉，不是证明某个新算法在 benchmark 上更强。
+      </div>
+    </section>
+
+    <section id="walkthrough">
+      <h2>原文的推理路线：从一个循环，逐步长成一张图</h2>
+      <p>作者不是一开始就抛出完整框架，而是沿着“现有循环哪里不够用”逐层加能力。理解下面六步，就理解了原文主体。</p>
+      <ol>
+        <li><strong>先有 agent loop。</strong>系统把 bug 交给 agent；agent 查看问题、尝试修复、运行验证。如果验证失败，就带着新反馈再来一轮，直到成功或达到步数上限。</li>
+        <li><strong>再把一次循环拆成节点。</strong>“分诊”“复现”“修代码”“补测试”“最终验证”不再混在一个大提示词里，而是成为职责不同的 node。每个节点读取状态，完成一项工作，再写回结果。</li>
+        <li><strong>用边规定下一步。</strong>普通 edge 表示固定顺序；conditional edge 会查看当前状态再选择路线。例如网络故障走重试，代码逻辑错误走修复，数据缺失走补数据。</li>
+        <li><strong>允许局部回环。</strong>如果最终验证失败，流程可以回到修复节点继续迭代。因此 graph 并不排斥 loop；loop 只是图里的一条回边。</li>
+        <li><strong>把独立工作并行化。</strong>作者设想“修改实现”和“更新测试”可以同时执行，然后在 join 节点汇合。若两支都更新状态，就用 reducer 规定如何合并字段。</li>
+        <li><strong>加入人工审批和恢复。</strong>高风险步骤到来时保存 state、暂停执行，等人类批准后再继续。作者据此认为，显式状态让 checkpoint 和 resume 变得自然。</li>
+      </ol>
+      <p>所以，原文标题所说的“一个循环不够时，循环会长成什么”，答案不是“换掉循环”，而是：<strong>把多个局部循环、条件分支、并行任务和人工关卡，组织到一张可见的控制流图里。</strong></p>
+    </section>
+
+    <section id="example">
+      <h2>把全文案例完整跑一遍：一个 bug 怎样经过这张图</h2>
+      <p>假设系统收到一个问题：“用户付款后订单仍显示未支付。”工作流不是立刻让同一个 agent 从头查到尾，而是按下面的路线推进。</p>
+      <div class="flow" aria-label="bug 修复工作流的五个阶段">
+        <div class="flow-step"><b>1. 分诊</b><span>读取问题描述，判断影响范围、风险和大致故障类型</span></div>
+        <div class="flow-step"><b>2. 复现</b><span>在受控环境重现现象，把日志与失败条件写入状态</span></div>
+        <div class="flow-step"><b>3. 路由</b><span>网络问题重试；数据问题补数据；逻辑问题进入代码修复</span></div>
+        <div class="flow-step"><b>4. 修复与测试</b><span>修改实现和补充测试可分支执行，随后合并并做集成验证</span></div>
+        <div class="flow-step"><b>5. 结束或等待</b><span>验证通过则结束；涉及计费等高风险动作时先暂停等待人工批准</span></div>
+      </div>
+      <p>贯穿这些步骤的是一份 state。开始时它只有 bug 描述；复现后多了日志；分诊后多了故障类型；修复后多了 patch；验证后多了测试结果。节点不需要重新阅读全部对话来猜测进度，只需读取自己关心的字段。</p>
+      <p>如果最终测试失败，边会把流程送回修复节点；如果判断为短暂网络故障，则进入重试节点；如果触及计费逻辑，则进入等待审批状态。图的价值就在这里：<strong>不同情况可以走不同路线，但所有合法路线都提前登记在系统里。</strong></p>
+      <div class="callout good">
+        <b>读到这里应建立的心智模型</b>
+        节点是“谁来做一件事”，边是“做完后允许去哪里”，状态是“流程目前知道什么”，执行器则是“真正让这些节点按规则跑起来的调度系统”。原文把前三者讲得很直观，后面的分析将重点检查第四者是否真的实现。
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>继续阅读前，只需要认识这些术语</h2>
+      <div class="def-list">
+        <div><b>Agent loop</b><span>模型根据环境反馈反复观察、行动、验证；下一步通常由模型动态决定。</span></div>
+        <div><b>Node / 节点</b><span>一项独立工作，例如分诊、修复或验证。节点可以调用模型、程序，也可以等待人类。</span></div>
+        <div><b>Edge / 边</b><span>节点之间允许的转移。条件边会根据 state 选择不同目标。</span></div>
+        <div><b>State / 状态</b><span>流程共享的结构化记录，例如 bug 类型、补丁、测试结果和审批状态。</span></div>
+        <div><b>Fan-out / fan-in</b><span>把一项工作拆成多支同时执行，再在汇合点等待所需分支完成。</span></div>
+        <div><b>Reducer</b><span>多个分支同时更新状态时，用来规定“这些更新怎样合成一个结果”的函数。</span></div>
+        <div><b>Checkpoint / resume</b><span>保存某次执行走到哪里，并在中断、崩溃或等待人工后从正确位置继续。</span></div>
+      </div>
+    </section>
+
     <section id="takeaway">
-      <h2>核心判断</h2>
+      <h2>现在再分析：方向正确，但示例还不是完整运行时</h2>
       <p><strong>这是一篇有价值的架构启蒙文，不是一份可直接采用的图执行引擎设计。</strong>它最值得保留的不是“loop 会进化成 graph”这个比喻，而是更精确的一句话：把哪些步骤可以发生、谁有权执行、何时必须停下，从模型的自由裁量移回程序契约。</p>
       <div class="grid-3">
         <div class="card">
@@ -445,18 +519,6 @@ join API       → 未实现
         <li>审批是可恢复 interrupt，不是 END；受保护副作用放在审批后，并带幂等键。</li>
         <li>终态至少区分 succeeded、failed、cancelled、timed_out 与 waiting，不能把“停止”都当“完成”。</li>
       </ol>
-    </section>
-
-    <section id="terms">
-      <h2>术语对齐</h2>
-      <div class="def-list">
-        <div><b>Agent loop</b><span>模型根据环境反馈反复观察、行动、验证，下一步通常由模型动态决定。</span></div>
-        <div><b>Workflow graph</b><span>由预定义节点、边和状态契约约束允许执行路径；节点内部仍可调用模型或 agent。</span></div>
-        <div><b>Fan-out / fan-in</b><span>把一次激活拆成多支并行任务，再在明确 barrier 上汇合；不是简单返回一个字符串列表。</span></div>
-        <div><b>Reducer</b><span>把多个状态更新合成一个值的函数；其顺序、批次与重试语义必须显式定义。</span></div>
-        <div><b>Checkpoint</b><span>能让某次执行继续的持久记录，通常包含业务状态、执行 cursor、任务元数据与版本信息。</span></div>
-        <div><b>Idempotency</b><span>同一操作重复执行不会产生额外效果；是重试与恢复面对外部副作用时的核心要求。</span></div>
-      </div>
     </section>
 
     <section id="insight">
