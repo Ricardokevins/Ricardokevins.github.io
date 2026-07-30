@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自进化与 RSI 深读：三个循环，不等于递归自我改进</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7e9df;
+      --accent-2: #8a5a2b;
+      --accent-2-soft: #f4eadc;
+      --good: #456653;
+      --good-soft: #e8efe9;
+      --warn: #9b4a39;
+      --warn-soft: #f6e6e1;
+      --shadow: 0 16px 42px rgba(31, 37, 40, .08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { font-weight: 760; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .91em; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 7vw, 82px) 0 30px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font-size: 13px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(34px, 5vw, 60px)/1.13 var(--serif); }
+    .lede { max-width: 920px; margin: 20px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 21px); }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .toc a { display: inline-flex; align-items: center; min-height: 34px; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,253,248,.84); color: var(--muted); font-size: 13px; font-weight: 740; text-decoration: none; }
+    main { display: grid; gap: 30px; padding-bottom: 70px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(25px, 3.2vw, 36px)/1.22 var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; color: var(--accent); font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+    .callout.good > b { color: var(--good); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn > b { color: var(--warn); }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .flow-step { position: relative; min-width: 0; padding: 14px; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -9px; top: 42%; z-index: 2; color: var(--accent-2); font-weight: 900; }
+    .flow-step b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .flow-step span { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+    .table-wrap { margin: 18px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 760; }
+    tr:last-child td { border-bottom: 0; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .math-display { margin: 16px 0; padding: 12px 14px; max-width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .label { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border-radius: 999px; background: var(--accent-2-soft); color: var(--accent-2); font-size: 12px; font-weight: 760; white-space: nowrap; }
+    .label.fact { background: var(--good-soft); color: var(--good); }
+    .label.inference { background: var(--accent-soft); color: var(--accent); }
+    @media (max-width: 900px) {
+      .flow { grid-template-columns: 1fr; }
+      .flow-step:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -18px; }
+    }
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · Self-Evolving Agents</div>
+    <h1>自进化与 RSI 深读：三个循环，不等于递归自我改进</h1>
+    <p class="lede">周星星的文章试图给 rapidly expanding 的“自进化”概念画一张地图：先盘点机构，再按 Artifacts、Harness、Model 三个被优化对象分类，最后从自动研究、脚手架更新、权重学习与可解释性一路推到 RSI。下面先完整还原这条论证路线，再审计哪些案例是真正的“系统改自己”，哪些仍只是“系统反复改产物”。</p>
+    <nav class="toc" aria-label="文章目录">
+      <a href="#map">阅读地图</a><a href="#landscape">机构现状</a><a href="#taxonomy">三层分类</a><a href="#artifacts">Artifacts</a><a href="#harness">Harness</a><a href="#model">Model</a><a href="#author-conclusion">作者结论</a><a href="#audit">证据审计</a><a href="#insight">独立判断</a><a href="#terms">术语</a><a href="#sources">资料索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="map">
+      <h2>第一遍：原文到底讲了什么</h2>
+      <p>文章不是一篇提出新算法的论文，而是一篇面向从业者的路线综述。它的核心问题是：self-evolving、self-improving 与 recursive self-improvement 到底各指什么；眼下产业与研究界有哪些真实系统；这些系统究竟在改模型、改 Agent，还是只改当前任务的产出。</p>
+      <div class="flow" aria-label="原文论证路线">
+        <div class="flow-step"><b>1. 机构扫描</b><span>用 OpenAI、Anthropic、MiniMax、Sakana、Weco 等案例说明话题正在升温。</span></div>
+        <div class="flow-step"><b>2. 对象分类</b><span>按被改写对象分成 Artifacts、Harness 与 Model。</span></div>
+        <div class="flow-step"><b>3. 路线展开</b><span>分别介绍自动研究、脚手架演化与权重更新系统。</span></div>
+        <div class="flow-step"><b>4. 交叉闭环</b><span>说明经验、脚手架、训练数据和模型能力会相互反哺。</span></div>
+        <div class="flow-step"><b>5. 推向 RSI</b><span>区分一般自进化与“改进能力本身也变强”的递归改进。</span></div>
+      </div>
+      <div class="callout good"><b>覆盖审计</b><p>原文的机构盘点、三层定义、全部主要案例、两条公式、联合优化、可解释性延伸与结尾限定均纳入下文；重复的图注和同义宣传语被合并，不影响论证理解。</p></div>
+    </section>
+
+    <section id="landscape">
+      <h2>作者为什么认为“自进化”已经从口号变成路线</h2>
+      <p>文章先用一组 2026 年案例建立现实感。OpenAI 在 GPT‑5.6 发布中给出内部 RSI Index，把研究系统调试、kernel 优化、训练配方实验和改进另一模型放进同一组内部评测，并报告 Sol 相对 GPT‑5.5 提升 16.2 分。Anthropic 则把递归改进描述成一个逐步自动化的研发过程：模型先写代码、审代码、跑清晰目标下的实验，再逐渐承担开放式研究。其公开材料称，2026 年 5 月 Claude 已贡献 Anthropic 超过 80% 的合入代码，但也明确提醒“代码行数”会夸大真实生产率。</p>
+      <p>文章随后扩展到 MiniMax 的内部 harness 自修改、Sakana 的 RSI Lab、Apodex 的大规模多 Agent 验证、Weco 的双层 autoresearch，以及以 latent-space 改进为目标的创业公司。作者借此强调：行业实际押注的并不是同一种机制；有人优化研究产物，有人让部署后的 Agent 写回技能，有人尝试联动 harness 与权重，还有人研究潜在空间里的推理结构。</p>
+      <div class="callout warn"><b>作者自己保留的限定</b><p>这部分数字多来自发布机构自己的博客、内部评测或尚未公开完整复现材料的实验。文章把它们当作“路线正在形成”的迹象，而不是已经证明自主智能会指数爆发。</p></div>
+    </section>
+
+    <section id="taxonomy">
+      <h2>三层分类：关键不是谁在循环，而是循环改写了什么</h2>
+      <p>作者采用 Shilong Liu 的分类，把系统拆成 Model、Harness 与 Artifacts。Model 是产生动作或文本的基础模型；Harness 是把模型变成 Agent 的外部运行结构，包括 prompt、memory、tool、skill、hook、路由、工作流与评测；Artifacts 是 Agent 产生的代码、论文、算法、模型配置或其他任务结果。</p>
+      <div class="grid-3">
+        <div class="card"><h3>Artifacts</h3><p>循环修改当前任务的产物。成功会让这一次的代码、算法或实验配置更好，但不必改变下一次运行时的 Agent。</p></div>
+        <div class="card"><h3>Harness</h3><p>把失败经验写回可复用的 prompt、memory、skill、tool 或工作流。一次变更会影响后续任务。</p></div>
+        <div class="card"><h3>Model</h3><p>通过自训练、可验证奖励、自对弈、测试时训练或联合优化改变模型参数或模型内部能力。</p></div>
+      </div>
+      <p>三层不是互斥箱子。Harness 的执行轨迹可以成为训练数据；模型变强后能设计更好的 harness；更好的模型与 harness 又能搜索出更强 artifacts；成功 artifacts 还可能被包装为新工具。原文把这个相互反哺关系画成闭环，并把它视为未来系统的主要形态。</p>
+    </section>
+
+    <section id="artifacts">
+      <h2>Artifacts 路线：让 Agent 成为“候选生成器 + 实验员”</h2>
+      <h3>Autoresearch</h3>
+      <p>Karpathy 的项目把问题压缩到一个可严格比较的小环境：Agent 只能修改 <code>train.py</code>，每个候选固定训练 5 分钟，再用验证集 bits-per-byte（<code>val_bpb</code>，越低越好）决定保留还是丢弃。固定墙钟预算让系统必须同时权衡模型质量与硬件效率；大约每小时可跑 12 次实验，一夜约 100 次。这里真正被优化的是训练代码和配置，而不是执行搜索的 Agent 自身。</p>
+      <h3>AlphaEvolve</h3>
+      <p>Google DeepMind 的 AlphaEvolve 用 Gemini 生成候选程序、自动评估器验证候选、演化框架保留高分个体。它已经用于数据中心、芯片设计、矩阵乘法与 AI 训练；其中一些算法反过来服务于底层模型训练。作者把这看成“改产物逐渐接到改自身生产基础设施”的过渡案例。</p>
+      <p>这一路线的必要条件很朴素：目标必须可运行、结果必须可比较、错误候选要能廉价回退。它首先是一种扩大搜索空间的工程方法；LLM 的贡献是把以往人工设计的变异算子，升级为能读代码、解释失败、提出新候选的通用搜索启发式。</p>
+    </section>
+
+    <section id="harness">
+      <h2>Harness 路线：把一次失败变成以后都能复用的状态</h2>
+      <p>原文认为近期最现实的自我改进发生在 Harness 层，因为它不需要重训模型，修改轻、可回滚、部署反馈快。Hermes Agent 会把复杂任务经验沉淀成技能并持续维护；MiniMax 报告内部 M2.7 在 100 多轮中执行“分析失败 → 改 scaffold → 跑评测 → 保留或回退”，使内部评测提高 30%；Apodex 则把验证从单个 Agent 的继续推理中拆出，用并行子 Agent、共享报告池和专门验证角色处理冲突。</p>
+      <h3>RHI 如何形式化“哪个 harness 更好”</h3>
+      <p>Recursive Harness Self-Improvement（RHI）把 harness 写成 Agent loop 的 prompt 级规格，并通过自身历史中的成对偏好反馈迭代。对任务 \(x\)，其目标可以概括为寻找成对胜率最高的 harness：</p>
+      <div class="math-display">\[
+      H_x^* \in \arg\max_{H\in\mathcal{H}} f_x(H)
+      \]</div>
+      <div class="math-display">\[
+      f_x(H)=\mathbb{E}_{H'\sim\mu,\;y\sim\mathcal{A}(H,x),\;y'\sim\mathcal{A}(H',x)}
+      \left[\mathbf{1}\left\{\mathcal{L}_{\mathrm{eval}}(y,y';x_{\mathrm{eval}})=y\succ y'\right\}\right].
+      \]</div>
+      <p>\(\mathcal{H}\) 是候选 harness 空间，\(\mu\) 是竞争 harness 的参照分布，\(\mathcal{A}(H,x)\) 表示用 harness \(H\) 解任务 \(x\) 的 Agent，指示函数在评估器偏好 \(y\) 时取 1。直观地说，它优化的不是一次回答分数，而是“当前 harness 对其他候选的期望胜率”。论文报告在 30 个合成机器学习研究任务中，少数几轮更新即可让低推理强度 Agent 超过同模型最高推理强度设置，推理成本最多降低 60%；作者将主要机制归因于更好的跨 Agent 信息流和上下文管理。</p>
+      <h3>Ai2 的反证为什么重要</h3>
+      <p>同一时期的 Ai2 研究指出，Harness evolution 本身也是反复采样、评估、改写的搜索过程。如果不给简单 parallel sampling、sequential refinement 或 test-time scaling 相同的反馈与推理预算，就无法判断收益来自“harness 学到了可迁移结构”，还是来自“搜索次数更多”。他们在 Terminal-Bench 2.1 上做预算匹配与 held-out 测试，发现自动 harness evolution 没有稳定胜过简单 test-time scaling，泛化也有限。</p>
+    </section>
+
+    <section id="model">
+      <h2>Model 路线：从“自己提供训练信号”到 harness—权重协同</h2>
+      <p>原文把不依赖人工 gold answer 的训练都放进广义模型自进化：self-training 用高置信或一致性样本反哺训练；RLVR 用可验证奖励更新策略；self-play 让不同版本相互出题或对抗；test-time training 则在推理现场更新模型。更狭义、更接近 RSI 的版本，是 AI 自己发现训练瓶颈、提出实验、修改代码或数据、训练下一代，再让下一代继续接管研发循环。</p>
+      <h3>SIA：两个旋钮由同一个反馈 Agent 调度</h3>
+      <p>SIA 让 Feedback-Agent 根据执行轨迹决定改 scaffold 还是触发 LoRA 权重更新。论文报告联合更新在中文法律分类、GPU kernel 和单细胞 RNA 去噪三个任务上都优于只改 harness，并分别给出相对既有最好结果 +25.1%、kernel 延迟 1,161 → 1,017 微秒、去噪指标 +20.4% 的发布方结果。它说明 prompt 不能替代全部领域学习，但还没有证明系统会改进“如何改进”的元能力。</p>
+      <h3>Continual Harness：内层高频改流程，外层低频蒸馏模型</h3>
+      <p>Continual Harness 在不重置的长程游戏中，让内层 Refiner 持续修改 prompt、子 Agent、技能和记忆，外层则用过程奖励模型挑出低质量片段，再由更强教师重标并更新策略。论文的重要负面结果是能力依赖：强模型档位能降低按钮成本、逼近人工工程 harness；较弱模型有时反而比极简基线完成度更低、成本更高。Harness 不是免费外挂，模型必须具备读取、选择和执行新规则的能力。</p>
+      <h3>为什么原文最后转向可解释性</h3>
+      <p>作者认为，如果系统始终不知道“训练如何塑造推理”，权重自我更新仍是黑箱调参。因此文章把 on-policy distillation 的 forking token、Anthropic J-space 和连续潜在推理的 superposition 纳入版图：它们不直接构成 RSI，却试图找到模型内部的决策点、评估意识和并行搜索表示，为未来更可控的自我修改提供观测面。</p>
+    </section>
+
+    <section id="author-conclusion">
+      <h2>作者最终结论：自进化是大伞，RSI 是更严格的子集</h2>
+      <p>原文最后收紧了开头较宽的用词。只要 Model、Harness 或 Artifacts 在循环里变好，都可以归入广义 self-evolving / self-improving；但 RSI 还要求“变好的能力本身也在变好”。换句话说，系统不仅要交付更好的第 \(n+1\) 个产物，还要成为更好的改进者，使后续改进更快、更广或更可靠。</p>
+      <p>因此，作者判断眼下多数案例仍属于一般自进化：目标、评测器、预算和问题方向通常由人给定；真正达到递归层、让改进算子本身获得可证明提升的案例很少。文章对未来速度保持乐观，但没有把“半年后出现稳定自进化 AGI”写成事实结论。</p>
+    </section>
+
+    <section id="audit">
+      <h2>第二遍：证据审计——哪些说法站得稳</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>证据状态</th><th>审计结论</th></tr></thead>
+          <tbody>
+            <tr><td>GPT‑5.6 的 RSI Index 相对 GPT‑5.5 提升 16.2 分</td><td><span class="label fact">官方报告</span></td><td>OpenAI 页面直接支持，但这是内部复合评测；任务明细、权重、统计不确定性与独立复现尚不足，不能等同“已实现 RSI”。</td></tr>
+            <tr><td>Claude 贡献 Anthropic 80% 以上合入代码</td><td><span class="label fact">官方报告</span></td><td>Anthropic 公开材料支持，并主动提醒代码行数夸大生产率；这证明研发自动化加速，不证明模型独立决定研究方向。</td></tr>
+            <tr><td>RHI 最高降本 60%，低 reasoning 超过高 reasoning</td><td><span class="label fact">论文报告</span></td><td>arXiv v1 摘要支持，范围是 30 个合成机器学习研究任务；外部有效性与预算匹配仍需独立复现。</td></tr>
+            <tr><td>MiniMax M2.7 自主改 scaffold，内部评测 +30%</td><td><span class="label fact">发布方报告</span></td><td>MiniMax 官方博客支持 100 多轮和 30%，但内部任务、评测集与完整轨迹未公开，无法排除分布内过拟合。</td></tr>
+            <tr><td>AIDE² 已达到“点火”或智能爆炸</td><td><span class="label inference">不成立</span></td><td>Weco 只主张 Level 1 net positive；把 AIDE47 放到外层虽更快到达相似上限，但差异不显著，也没有渐近更优。发布方明确否认已经达到 ignition。</td></tr>
+            <tr><td>自动 harness evolution 普遍优于简单搜索</td><td><span class="label inference">被反例削弱</span></td><td>Ai2 的预算对等实验未发现稳定优势，并发现 held-out 泛化有限。有效结论应是“在特定表示、评测器和任务分布上可能有用”。</td></tr>
+            <tr><td>Artifacts、Harness、Model 三层都等同 RSI</td><td><span class="label inference">概念过宽</span></td><td>来源 taxonomy 把三者组织为 self-evolving systems，但明确区分 artifact optimization 与 agent self-modification；原文结尾也承认 RSI 是更严格子集。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>文章最强的部分是把近期散乱材料组织成可理解的对象图，并且纳入 Ai2 的反面证据、弱模型用不好 harness 的失败案例，以及 AIDE² 尚未 ignition 的边界。最弱的部分是开头把若干层级都宽泛称为 RSI，容易让读者把“有循环”“能回退”“产物变好”误读成“系统改进自身的能力正在递归增强”。</p>
+    </section>
+
+    <section id="insight">
+      <h2>独立判断：分类要用两条轴，而不是一棵三层树</h2>
+      <p>Artifacts / Harness / Model 只回答<strong>更新写到哪里</strong>，没有回答<strong>更新是否真的构成自我改进</strong>。更可靠的判断需要第二条独立轴：更新能否跨任务持久化、是否在 held-out 任务上泛化、是否在固定预算下优于简单搜索，以及改进后的系统能否成为更强的改进者。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>改进层级</th><th>最低证据</th><th>典型系统</th><th>不能推出什么</th></tr></thead>
+          <tbody>
+            <tr><td>结果优化</td><td>同一目标下 best-so-far 变好</td><td>Autoresearch、AlphaEvolve</td><td>不能推出 Agent 本身学习了</td></tr>
+            <tr><td>持久适应</td><td>更新写回后续任务可复用</td><td>skill / memory / harness 更新</td><td>不能推出分布外有效或总体净收益</td></tr>
+            <tr><td>可泛化自我改进</td><td>固定预算、私有评测、held-out 任务仍胜</td><td>AIDE² Level 1 的目标</td><td>不能推出改进速度会继续加速</td></tr>
+            <tr><td>递归改进</td><td>新系统作为 improver 时渐近优于旧系统</td><td>尚缺强证据</td><td>不能仅凭一次更快到顶就宣称 ignition</td></tr>
+            <tr><td>加速递归</td><td>固定物理预算下改进斜率持续上升</td><td>当前无可信示例</td><td>不能从短期 benchmark 曲线外推智能爆炸</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><b>核心 insight：验证器才是递归系统的“隐形父代”</b><p>只要目标、评分器、任务分布和准入门槛仍由人固定，系统就在一个人类预先画好的适应度地形上搜索。它可能非常自主地改代码，却没有自主决定什么值得改。真正的递归改进不只要求 proposer 变强，还要求 evaluator 的覆盖、抗利用性与治理同步升级；否则生成器越强，越可能只是更快地过拟合或利用固定评测。</p></div>
+      <p>这也解释了为什么预算匹配是核心而非评测细节。Harness evolution、best-of-\(N\)、并行采样与顺序 refinement 都在消费更多候选、反馈和推理。只有在相同总成本、相同信息访问和相同 held-out 协议下，才能把收益归因于“学到了更好的更新结构”。否则，“进化”可能只是 test-time search 的重新命名。</p>
+      <h3>工程上应该怎么做</h3>
+      <ol>
+        <li><strong>先从 Harness 开始。</strong>它比权重更新轻、可审计、可回滚，最适合建立真实闭环；但每个写回都要有版本、来源、作用域和失效条件。</li>
+        <li><strong>把搜索预算列入基线。</strong>与同成本的多采样、顺序改写和人工规则比较，避免把额外推理包装成方法增益。</li>
+        <li><strong>分离 public signal 与 promotion gate。</strong>Agent 可以看到训练反馈，但最终准入应依赖私有任务、回归集和无法直接针对优化的检查。</li>
+        <li><strong>测 improver transfer。</strong>不要只看新 Agent 解题更强，还要把它放到“改另一个 Agent”的位置，测试是否更快、更稳、更能跨域地产生有效更新。</li>
+        <li><strong>保护治理状态。</strong>权限、评测器、回滚策略和安全边界不应与普通 prompt、skill 一样被无条件自修改。</li>
+      </ol>
+    </section>
+
+    <section id="terms">
+      <h2>术语与容易混淆的边界</h2>
+      <div class="def-list">
+        <div><b>Self-evolving</b><span>最宽泛的伞形词：系统在反馈循环中让某个组成部分或产物发生适应性变化。</span></div>
+        <div><b>Self-improving</b><span>比“发生变化”更强，隐含更新后目标表现确实提升；必须说明指标、预算和任务分布。</span></div>
+        <div><b>RSI</b><span>Recursive Self-Improvement。严格含义不是“循环很多次”，而是系统改进自己的改进能力。</span></div>
+        <div><b>Harness</b><span>模型之外、决定 Agent 如何观察、计划、调用工具、记忆、验证与恢复的运行结构。</span></div>
+        <div><b>Artifact</b><span>Agent 的任务产出，如代码、算法、论文、配置。Artifact 变好不自动意味着 Agent 自身变好。</span></div>
+        <div><b>Promotion gate</b><span>决定候选更新能否进入持久系统的准入机制，通常应包含私有评测、回归检查、成本约束与回滚条件。</span></div>
+        <div><b>Ignition</b><span>改进后的系统作为新的改进者时，能比上一代更强地继续改进；一次短期样本效率优势不足以证明。</span></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>主材料为周星星于 2026-07-30 编辑的知乎文章。机构内部结果均按发布方报告处理；本页核对公开正文、官方博客、论文摘要与明确实验说明，没有独立复现训练、长程 Agent 运行或内部 benchmark。RHI、SIA、Continual Harness 与 Ai2 工作均为 2026 年公开预印本，其结论可能随版本、代码发布和独立复现更新。</p>
+      <ul>
+        <li><a href="https://zhuanlan.zhihu.com/p/2065227313973825752">周星星：《自进化（Self-evolving／RSI），一篇就够了》</a></li>
+        <li><a href="https://lsl.zone/blog/2026/a-taxonomy-of-self-evolving-agents/">Shilong Liu：A Taxonomy of Self-evolving Agents</a></li>
+        <li><a href="https://openai.com/index/gpt-5-6/">OpenAI：GPT‑5.6</a></li>
+        <li><a href="https://www.anthropic.com/institute/recursive-self-improvement">Anthropic：When AI builds itself</a></li>
+        <li><a href="https://github.com/karpathy/autoresearch">Karpathy：autoresearch</a></li>
+        <li><a href="https://deepmind.google/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/">Google DeepMind：AlphaEvolve</a></li>
+        <li><a href="https://www.minimax.io/news/minimax-m27-en">MiniMax：M2.7 — Early Echoes of Self-Evolution</a></li>
+        <li><a href="https://arxiv.org/abs/2607.15524">Recursive Harness Self-Improvement</a></li>
+        <li><a href="https://arxiv.org/abs/2607.12227">Rethinking the Evaluation of Harness Evolution for Agents</a></li>
+        <li><a href="https://www.weco.ai/blog/first-evidence-of-recursive-self-improvement">Weco AI：AIDE²</a></li>
+        <li><a href="https://arxiv.org/abs/2605.27276">SIA: Self Improving AI with Harness &amp; Weight Updates</a></li>
+        <li><a href="https://arxiv.org/abs/2605.09998">Continual Harness: Online Adaptation for Self-Improving Foundation Agents</a></li>
+        <li><a href="https://github.com/NousResearch/hermes-agent">Nous Research：Hermes Agent</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
