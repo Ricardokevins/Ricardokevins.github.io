@@ -1,5 +1,31 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-30 多模态推理 OPD 七篇论文梳理
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定知乎想法 `2061099284146165409`；本轮完整还原原帖正文与七张论文首页，并核对 Vision-OPD、Imagine-OPD、ViCuR、Dense Supervision Sparse Updates、GNDPO、PTD-PO、HyperEyes 的 arXiv 正文、附录与官方项目。
+- 原帖是研究速览而非长文；本轮先按其四组结构重建内容，再把七篇放到“学生输入、教师 privilege、训练信号、失败条件、证据强度”统一坐标中分析。
+- 当前工作区已有 deep Skill 两个文件、`Progress.md` 的其他任务改动和未跟踪 `span.log`；本轮保留不动，只选择性提交本任务页面、索引与本节 hunk。
+
+### 关键判断
+
+- 原帖“从蒸馏答案转向可恢复证据、稳定信号和推理过程”的方向判断成立，但七篇并非同一种机制：前三篇改 teacher privilege，GNDPO 改信号尺度，参数论文分析静态 task vector，PTD-PO 做失败路由，HyperEyes 首先改动作空间和成本目标。
+- HyperEyes 30B 的可归因消融为 SFT 58.8/2.9 轮 → TRACE 62.7/2.2 → TRACE+OPD 64.0/2.2，OPD 增量约 1.3 点；整套 +9.9 点与 5.3× 轮次优势不能归因于 OPD 单项。
+- 参数几何论文的 OPD mask 由完整训练后的 checkpoint delta 定义，虽能重训恢复 35.10% vs 全量 35.52%，但含事后未来信息，不是现成的预训练前选参算法。
+- “证据来自原图”不等于学生可恢复：Vision-OPD 给显式框、Imagine-OPD 依赖 GT 框/答案、ViCuR 增加 cross-attention 模块。真正统一的设计对象是教师优势来源及其部署可达性。
+- 公开状态不齐：Vision-OPD 等已有实现；Imagine-OPD 项目地址当前不可公开访问；PTD-PO hint 数据、HyperEyes 完整 IMEB 与权重仍未形成公开闭环。
+
+### 变更与验证
+
+- [x] 新增 `notes/tech-analysis/multimodal-opd-seven-paper-map.html`，完成原帖重建、OPD 前置解释、七篇逐项讲解、证据审计、独立 insight、工程建议与公开状态表。
+- [x] 更新 `_data/notes.yml`，登记新页面标题、摘要、标签与材料边界。
+- [x] 完成 Notes 索引与定向结构检查：175 个索引入口对应 175 个顶层 HTML；唯一 `main` / H1、6 个正文 section、24 个 h2/h3、2 张宽表、2 个公式块、唯一 evidence appendix，正文约 7,436 个非空白可见字符；无重复 ID、断锚、占位符、替换字符或公开过程噪声。
+- [x] 隔离 Jekyll 全量构建成功；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证 / API 限流提示，不影响页面生成。
+- [x] 独立无头 Chromium 在 1440×1100 与 390×844 视口均返回 HTTP 200；页面级横向溢出、console / runtime error、失败请求、4xx/5xx 资源与断锚均为 0。手机端两张表保持 820px 内容宽度并由 364px 容器局部滚动，桌面/手机截图目检无重叠、裁切或不可读区域。
+- [x] 隔离提交本任务改动；提交范围仅含目标页面、Notes 索引与本节 Progress hunk，无关 Skill、其他研究页面和 `span.log` 未纳入。推送完成后复核本地与远端同步状态。
+
+
 ## 2026-07-29 Notes 读者优先重构：leanxbt《Graph Engineering》
 
 ### 问题与写作判断
