@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>代码优化 RL 深读：真正被训练的不是“更短耗时”，而是一整条测量—奖励—更新链</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #176b66;
+      --accent-soft: #e9f3f0;
+      --accent-2: #a85432;
+      --accent-2-soft: #f8ece5;
+      --info-soft: #edf3f8;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(23,107,102,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 70px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { margin: 0 0 12px; line-height: 1.28; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 24px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { background: var(--info-soft); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    .math-display { margin: 16px 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .flow > div { position: relative; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .flow > div:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; transform: translate(50%, -50%); color: var(--accent-2); font-weight: 800; }
+    .flow b { display: block; color: var(--accent); margin-bottom: 4px; }
+    .small { color: var(--muted); font-size: 14px; }
+    @media (max-width: 760px) {
+      main, header { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      .flow > div:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -14px; transform: translate(50%, 50%); }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Reinforcement Learning · Code Optimization</div>
+    <h1>代码优化 RL 深读：真正被训练的不是“更短耗时”，而是一整条测量—奖励—更新链</h1>
+    <p class="lede">Pierre Chambon 等人的 125 页论文试图回答一个比“怎样奖励更快代码”更基础的问题：当运行时间本身有噪声、任务间不可比、正确性又不能牺牲时，怎样把速度变成模型能够稳定学习的信号？作者的答案是同时重建测试数据、执行沙箱、问题内相对奖励、GRPO 更新与评测协议。</p>
+  </header>
+
+  <main>
+    <section id="author-thesis">
+      <h2>第一遍：先完整重建论文在讲什么</h2>
+      <p>论文从一个已经成熟的范式出发：代码正确性可以通过隐藏测试验证，程序全对就奖励、否则不奖励。看起来，代码优化只需再测一次运行时间，把“正确且更快”的样本奖励得更高。但作者发现，速度进入奖励后，原来被二值正确性掩盖的系统误差会全部显形：几十毫秒的调度抖动可能大于程序差异；某题天然要跑 5 秒，另一题只需 0.05 秒，绝对耗时不可横向比较；错误程序可能因为提前退出而异常快；严格速度门槛让整组 rollout 都失败，GRPO 没有 advantage；本地执行器还会随训练负载改变计时。</p>
+      <p>因此论文的主张不是“找到一个神奇奖励函数”，而是：<strong>可学习的运行时间是一条端到端信号链的属性</strong>。测试必须制造可测差异，执行器必须稳定，奖励必须先守住正确性再比较效率，优化器必须适应更稀疏、更嘈杂的回报，评测还必须与训练时的计时口径对齐。</p>
+      <div class="flow" aria-label="论文提出的优化强化学习信号链">
+        <div><b>1. 测试数据</b><span>扩大输入、增强正确性测试，并筛出有运行时跨度的问题。</span></div>
+        <div><b>2. 计时系统</b><span>隔离执行负载，校准历史人类耗时与当前服务状态。</span></div>
+        <div><b>3. 环境与奖励</b><span>在执行前、执行中或执行后加入效率约束，并以正确性为门。</span></div>
+        <div><b>4. GRPO 与评测</b><span>稳定稀疏回报更新，用问题内人类速度分位衡量结果。</span></div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>1. 研究问题：为什么“正确代码 RL”不会自然学会高效代码</h2>
+      <p>标准 RLVR（reinforcement learning with verifiable rewards，可验证奖励强化学习）只问程序是否通过测试。只要两个程序都正确，\(O(n^2)\) 与 \(O(n\log n)\)、高开销 I/O 与批量读取、反复分配内存与原地更新，在奖励里完全相同。于是 RL 可以不断提高解题率，却没有理由偏向更好的算法或实现。</p>
+      <p>论文把这个缺口量化为速度分位约束 \(p_\tau\)。对每道题，把生成程序放进该题人类正确提交的速度排行榜；只有程序严格正确，而且进入最快的 \(\tau\%\)，才算成功。\(p_{100}\) 不要求速度名次，等价于纯正确性；\(p_{50}\)、\(p_{30}\)、\(p_{10}\) 依次更严格。作者报告，Qwen 2.5 7B 的标准 RLVR 在 \(p_{100}\) 上是 43.5%，到了 \(p_{50}\) 只剩 18.0%，\(p_{30}\) 只剩 7.7%。这说明“会解”与“解得快”不是同一个训练目标。</p>
+      <div class="math-display">\[
+      m_\tau(x)=\sum_{i=1}^{n}\mathbb{I}\!\left[
+      \text{strict-correct}(x,y_i)=1\ \wedge\
+      q_{\mathrm{lead}}(x,y_i)\le \frac{\tau}{100}
+      \right]
+      \]</div>
+      <div class="math-display">\[
+      \operatorname{pass@}k(p_\tau)=\frac{1}{|\mathcal X|}
+      \sum_{x\in\mathcal X}\left(1-\frac{\binom{n-m_\tau(x)}{k}}{\binom{n}{k}}\right)
+      \]</div>
+      <p class="small">这里 \(q_{\mathrm{lead}}\) 越小越快；strict-correct 除了通过基础与新增正确性测试，也要求优化测试没有硬失败。超时是否被容忍，由具体环境另行规定。</p>
+    </section>
+
+    <section id="dataset">
+      <h2>2. 数据：DMC-Optim 怎样把“计时”变成可测对象</h2>
+      <p>原始 DeepMind Code Contests（DMC）包含题面、测试和正确/错误人类提交，但测试主要为功能正确性服务。论文在最终训练分片上测得，原始测试的平均人类执行时间仅 0.088 秒，\(p_{95}=0.145\) 秒、\(p_{99}=0.463\) 秒。这个尺度上，固定调度和派发开销足以改变程序名次。</p>
+      <p>DMC-Optim 将测试拆成两个角色。<strong>正确性测试</strong>负责尽量拒绝错误程序；<strong>优化测试</strong>用更大输入制造同一题内部的运行时跨度。作者让 CWM 32B SFT 模型生成 <code>InputGenerator</code>，而不是直接生成答案：生成器提供输入，至少两个人类参考程序对输出达成一致后才接受。正确性生成调用 edge、small、sample；优化生成把 small 换成 large。之后再用正确/错误提交做正负控制，逐测试、逐解答、逐题过滤。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>阶段</th><th>处理</th><th>保留题数</th><th>它建立的证据</th></tr></thead>
+          <tbody>
+            <tr><td>原始</td><td>DMC 原始数据</td><td>12,275</td><td>题面、测试、多人类提交</td></tr>
+            <tr><td>去重与质量</td><td>对评测集去重、清理坏题面</td><td>11,468</td><td>降低直接泄漏</td></tr>
+            <tr><td>控制样本</td><td>要求同时有正确与错误 Python 解</td><td>6,706</td><td>为新测试提供正负控制</td></tr>
+            <tr><td>重执行</td><td>重新验证解答标签</td><td>3,928</td><td>减少陈旧标签</td></tr>
+            <tr><td>生成与过滤</td><td>新增正确性/优化测试，过滤歧义</td><td>2,723</td><td>得到清洗后的双测试集</td></tr>
+            <tr><td>可计时筛选</td><td>要求优化测试 robust CV 至少 0.3</td><td>1,302</td><td>确保题内测试负载有足够跨度</td></tr>
+            <tr><td>RL 切分</td><td>重新划分训练与测试</td><td>1,000 / 302</td><td>形成论文主实验池</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>“duration-filterable”不是看不同人类解答之间是否差很多，而是看同一题不同优化测试的参考耗时是否覆盖足够宽的工作负载。作者采用 robust coefficient of variation：</p>
+      <div class="math-display">\[
+      \operatorname{robustCV}=\frac{\operatorname{IQR}(d_t)}{\operatorname{median}(d_t)}
+      \]</div>
+      <p>只有该值至少 0.3 的题进入最终池。优化测试使可筛题比例从原始测试的至多 3.8% 升到 48.2%；最终训练池的优化测试达到平均 0.334 秒、\(p_{95}=1.296\) 秒、\(p_{99}=3.710\) 秒。关键不是让所有测试都超过一秒，而是扩宽每题可测的负载范围。</p>
+    </section>
+
+    <section id="measurement">
+      <h2>3. 计时：为什么本地沙箱会把优化奖励污染掉</h2>
+      <p>作者最初在训练 worker 上本地执行代码，但 worker 同时承担模型推理、rollout 编排、日志与其他 CPU/内存负载。对正确性奖励，这类抖动通常只在超时边界附近有影响；对速度奖励，它直接改变回报。</p>
+      <p>附录给出几组非常强的诊断：同一代码在本地重复执行时，相对人类排行榜的平均分位峰谷范围平均移动 41.2 个百分点；36,660 个本地/远端配对耗时无论用乘法、幂律、仿射或多项式都得到负的留一题交叉验证 \(R^2\)；本地环境还把 81.1% 的题判为“可计时”，而隔离远端服务只有 48.2%，说明本地噪声被误当成了有效跨度。</p>
+      <p>论文最终使用独立的远端代码执行服务 CES：每个 code-test pair 在固定资源下运行，内存 1GB、硬上限 10 秒。短期重复计时仍有噪声——耗时 CV 中位数 8.2%，绝对标准差中位数 9.9ms——但转成每题平均速度分位后，重复运行标准差约 2.1 个百分点，远小于训练 worker 上的执行方式。</p>
+      <p>长期服务状态漂移则通过人类参考程序的重执行校准。论文选择的仿射映射为：</p>
+      <div class="math-display">\[
+      d_{\mathrm{current}}=0.6306\,d_{\mathrm{stored}}+0.0529,\qquad
+      R^2_{\mathrm{CV}}=0.9933
+      \]</div>
+      <p>53ms 截距尤其重要：对 100ms 的快测试，它已占一半量级；只做乘法缩放会严重错排。校准将历史与新鲜人类排名的 Spearman 相关从 0.54 提升到 0.96。作者同时提醒，评测的绝对 \(p_{10}\) 分数对校准非常敏感，因此正确做法不是假装运行时间恒定，而是在同一执行活动中重放模型、混排任务并重新拟合参考尺度。</p>
+    </section>
+
+    <section id="environment">
+      <h2>4. 环境：速度约束可以在执行前、执行中、执行后进入</h2>
+      <p>论文没有把“奖励函数”与“执行环境”混为一谈。环境先决定测哪些测试、给多少时间、怎样把执行记录汇总；奖励再把这些输出变成 \([-1,1]\) 标量。作者将环境归为三类：</p>
+      <div class="grid-3">
+        <div class="card"><h3>执行前过滤</h3><p>依据人类参考耗时、相对慢测试比例或输入输出字符数，先选出要执行的优化测试。优点是能去掉不稳尾部；风险是删掉真正携带算法差异的重负载。</p></div>
+        <div class="card"><h3>执行中约束</h3><p>采用统一 timeout、每测试参考分位 timeout，或从优秀人类解答推导的 ranked-worst timeout。它直观，但门槛过紧会让整组样本都失败。</p></div>
+        <div class="card"><h3>执行后排名</h3><p>完整执行后，把候选耗时插入每题人类参考分布，先算逐测试分位，再汇总。它最灵活，也最依赖参考池与校准。</p></div>
+      </div>
+      <p>不论环境多复杂，最终都压成三个量：\(c\) 是正确性门，\(g\) 是是否满足硬优化约束，\(q\in[0,1]\) 是连续速度质量，且 0 最好。作者比较了 17 种时长汇总方式，最终保留“逐测试分位的均值”：它在重复计时下移动 \(3.0\pm1.0\) 个百分点，同时强弱解答平均相差 47 点；相比总耗时、斜率、median、win rate 或裁剪变体，它在稳定性与动态范围间更均衡。</p>
+      <div class="math-display">\[
+      p_t(y)=100\cdot\frac{\bar r_t(y)-1}{n_t-1},
+      \qquad
+      M_{\mathrm{mean}}(y)=\frac{1}{|\mathcal T|}\sum_{t\in\mathcal T}p_t(y)
+      \]</div>
+      <p>这里 \(\bar r_t(y)\) 是候选程序在测试 \(t\) 的人类参考耗时集合中插入后的并列平均名次，0 表示最快，100 表示最慢。对每题先归一化，再跨测试聚合，避免简单绝对秒数把问题难度与程序质量纠缠在一起。</p>
+    </section>
+
+    <section id="reward">
+      <h2>5. 奖励：为什么“正确性外门 + 二值速度门”胜过连续加权</h2>
+      <p>作者系统比较 correctness-only、optimization-only、multitask、additive blend、collapsed 与 two-gate。结果最清楚的失败是 optimization-only：Qwen 2.5 7B 在两类环境里所有分位都降到 0，策略完全崩溃。加权和也允许“很快但错误”的代码拿到部分信用，导致正确率大幅下降。多任务把正确性与优化拆成不同 rollout 流，也未突破两目标的 Pareto 前沿。</p>
+      <p>最有效的是 collapsed binary：把“严格正确”和“通过速度门”合成一个二值事件。用签名后的 \(\tilde c,g\in\{-1,+1\}\) 表示，它写成：</p>
+      <div class="math-display">\[
+      R_{\mathrm{collapsed}}=
+      \frac{(1+\tilde c)(1+g)}{2}-1
+      \]</div>
+      <p>它只在两个条件同时满足时给 \(+1\)，其他情况都给 \(-1\)。two-gate 则先让错误程序固定为 \(-1\)，正确程序再按速度得到 0 到 1 的区分。直觉上连续信号信息更多，但论文发现二值或分桶信号更可靠：细粒度时间差里混入了测量噪声，直接把它送进梯度反而有害。</p>
+      <div class="callout info"><b>这不是“奖励越稀疏越好”</b><p>二值门有效的前提是前面的数据、计时与门槛已把事件调到可学习密度。若门槛过严，整组 rollout 都是 \(-1\)；若过松，整组都是 \(+1\)。论文先用离线模拟器排除这两类退化环境，再在线训练。</p></div>
+    </section>
+
+    <section id="optimizer">
+      <h2>6. 离线模拟与 GRPO：怎样让稀疏、嘈杂回报真正更新模型</h2>
+      <p>一次在线实验需要 8–32 个 GPU 节点运行数小时到数天，作者先构建离线筛选器：用不同质量分位的人类解答替代模型生成，用已存耗时替代实时执行，但保留测试过滤、timeout、排名与奖励逻辑。它不模拟模型怎样学习，只问一个更有限的问题：当输入解答质量提高时，这个环境是否更可能给出好回报，而且既不饱和也不过度稀疏。</p>
+      <p>离线指标中，严格 \(p_{30}\) 的在线结果与“偏离理想对角线”呈 \(r_s=-0.832\)，与原始质量单调性呈 \(r_s=0.787\)，与曲线陡峭度呈 \(r_s=0.723\)；曲线局部噪声却几乎没有预测力。作者因此把模拟器定位为<strong>排除明显坏配置</strong>，而不是精确预测学习曲线或最终名次。</p>
+      <p>在线阶段仍需修改 GRPO。每个 prompt 采 16 个 rollout；开局时二值优化奖励可有约 40–50% 的零 advantage 组。作者采用更大同题采样组、更大训练 batch、只中心化而不按组标准差归一化、token 加权的 prompt baseline、固定 32,768 token 的 loss 归一化，并丢弃超过 30 个优化步的陈旧 context，不使用旧计时状态的 replay buffer。</p>
+      <div class="math-display">\[
+      \hat A_i=R_i-\mu_x,\qquad
+      \mu_x=\frac{\sum_{j=1}^{G}L_jR_j}{\sum_{j=1}^{G}L_j}
+      \]</div>
+      <p>token 加权 baseline 让一个 prompt 的正负梯度按实际 token 质量保持中性；固定 horizon 则避免“每条轨迹按自身长度归一化”导致长而错误的推理惩罚过轻、长而成功的推理奖励过弱。作者报告，扩大 batch 单独就能让不同环境的 \(p_{50}\) 提升最多 35%、\(p_{30}\) 最多 60%；过滤过旧 context 另带来约 5% 增益。</p>
+    </section>
+
+    <section id="results">
+      <h2>7. 结果：模型更快了多少，又学会了什么</h2>
+      <p>主实验在 1,000 道 DMC-Optim 训练题上跑 10,000 optimizer steps，约等于 30 次遍历。Qwen 2.5 7B/32B 先做一轮 52.1B packed-token reasoning SFT；CWM 32B 直接从公开 SFT checkpoint 起步。每次 RL 训练约使用 8 个 H100 节点一天（7B）或 32 个 H100 节点一天半（32B），worker 与 trainer 各占一半节点。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型与训练</th><th>\(p_{100}\)</th><th>\(p_{50}\)</th><th>\(p_{30}\)</th><th>\(p_{10}\)</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen 2.5 7B · 标准 RLVR</td><td>43.5</td><td>18.0</td><td>7.7</td><td>1.9</td></tr>
+            <tr><td>Qwen 2.5 7B · top-30% 执行后排名</td><td>46.2</td><td>31.3</td><td>19.1</td><td>6.0</td></tr>
+            <tr><td>Qwen 2.5 32B · 标准 RLVR</td><td>54.8</td><td>21.1</td><td>9.4</td><td>2.4</td></tr>
+            <tr><td>Qwen 2.5 32B · top-30% 执行后排名</td><td>55.7</td><td>39.6</td><td>24.2</td><td>8.5</td></tr>
+            <tr><td>CWM 32B · 标准 RLVR</td><td>69.8</td><td>30.7</td><td>13.7</td><td>3.3</td></tr>
+            <tr><td>CWM 32B · top-30% 执行后排名</td><td>70.2</td><td>50.4</td><td>30.9</td><td>9.8</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这些数值支持作者的核心主张：严格速度约束下的大幅增长没有靠牺牲 in-domain \(p_{100}\) 正确性换来。独立复算得到，Qwen 7B 的 \(p_{50}\) 相对增益是 73.9%，\(p_{30}\) 是 148.1%；CWM 32B 分别是 64.2% 与 125.5%。论文将后者写作 125%，数值一致。</p>
+      <p>在域外 LiveCodeBench 上，由于测试太短，作者不信任 timeout/分位绝对分数，改为与同模型标准 RLVR 做共享执行的成对速度胜率。CWM 32B 的最佳中位样本胜率达到 83.0%；top-30% 排名训练为 82.9%。不过同一设置下 pure pass@1 从 56.4 降到 53.9，下降 2.5 个点；Hard 子集的 top-30/50 训练则从 29.8 降到约 25.7–25.8。作者强调 pass@10 基本保留，说明多样本解题能力仍在，但单样本正确性迁移并非完全无损。</p>
+      <h3>模型学到的是 I/O 小技巧，还是算法？</h3>
+      <p>作者对 302 道测试题比较 optimization-RL、标准 RLVR 与数据集中最快正确人类解答。模型侧各取 20 个样本中最快的正确程序，再用 GPT-OSS 120B 对盲化代码对做 10 次分类。optimization-RL 与 RLVR 的 224 个非平局可比较对中，前者赢 200 个，即 89.3%。在可分类的胜例里，47% 归因于 I/O 优化，34% 是常数因子，6% 是算法改进，6% 是数学捷径，2% 是数据结构，1% 是完整算法更换。</p>
+      <p>附录给出的案例说明“算法改进”不只是标签：AtCoder ARC085 的通用记忆化 minimax 被化成只看最后两张牌的闭式解；Codeforces 1466F 的通用 GF(2) 消元被换成并查集；Codeforces 571A 的 \(O(\ell)\) 求和被化为闭式 \(O(1)\)。但人类仍更强：在人类与 optimization-RL 的速度胜对中，人类赢 67%；难题上人类赢 70%。</p>
+    </section>
+
+    <section id="limits">
+      <h2>8. 作者自己承认的限制与开放问题</h2>
+      <ul>
+        <li><strong>范围窄：</strong>单文件 Python 竞赛题不等于仓库级软件优化；论文没有覆盖内存、能耗、多语言、系统调用、长期 edit loop 或真实 profiler。</li>
+        <li><strong>成本高：</strong>需要大量生成测试、人类参考执行、隔离 CPU 服务和 8–32 节点 GPU 训练。离线模拟只能减少坏实验，不能消除端到端成本。</li>
+        <li><strong>依赖固定人类参考池：</strong>执行后排名奖励需要每题的参考耗时分布，部署到新任务时未必存在。作者提出用生成或学习到的分布替代，但没有实证。</li>
+        <li><strong>接口遵循可能退化：</strong>优化训练会主动删除 benchmark harness 中较慢的 class wrapper、method dispatch 或未使用结构。论文因此对 LCB 改用 I/O 评测；真实产品需要额外 rehearsal 或接口保持约束。</li>
+        <li><strong>反馈仍不懂算法：</strong>运行时间只说“更快”，不知道来自 I/O、常数、数学还是复杂度。作者认为若目标是算法发现，需要 algorithm-aware value model 或结构化反馈。</li>
+      </ul>
+    </section>
+
+    <section id="audit">
+      <h2>第二遍：证据审计与独立判断</h2>
+      <h3>证据最强的部分：这是一篇优秀的“失败链路工程”论文</h3>
+      <p>论文最有说服力的不是 headline 分数，而是把常被当作实现细节的测量问题变成一系列可证伪假设：本地计时若只是线性偏差，应该可以拟合到远端；结果四类映射交叉验证 \(R^2\) 都为负。本地若只是稍微更噪，重复排序不应平均移动 41.2 点。仿射校准若只是过拟合，留一整题交叉验证不应仍有 \(R^2=0.9933\)。这些诊断把“沙箱不稳定”从经验抱怨提升为可量化的系统结论。</p>
+      <p>奖励消融也很干净：optimization-only 直接归零，加权和大幅伤害正确性，二值 collapsed 在两个模型尺度上总体最平衡；duration-filterable pool 换成 non-filterable 后，ranked \(p_{30}\) 从 16.1 降到 9.1，而纯正确性门只从 9.3 降到 8.3。这组对照支持“不是题变坏了，而是问题内时长排名失去可识别信号”。</p>
+
+      <h3>证据较弱的部分：外部有效性、数据开放性与算法发现叙事</h3>
+      <p>截至 arXiv v1，论文页面没有作者代码或 DMC-Optim 数据链接。公开 TeX 足以核对公式、表格、附录与引用，但无法独立复现数据过滤、CES、训练或 judge 原始标注。尤其 CES 是核心贡献之一，却是不可获得的内部系统；读者能复用的是设计原则，不是同一实验栈。</p>
+      <p>302 道测试题带来的 test-set 置信区间并不小：CWM 32B 在 10k 时 \(p_{50}\) 的 test-time 95% CI half-width 是 ±4.3 点。主增益 19.7 点仍明显大于它，但较小差异不应过读。训练时各配置并非全部同等次数独立重复，表格称“可用时取组平均”，因此细粒度环境名次不如“最佳方法远胜标准 RLVR”稳固。</p>
+      <p>“算法发现”也需要降温。judge 先判断谁更快的准确率只有 68%，在人类对模型的差距较小时降到 59%；optimization-RL vs RLVR 的速度胜例中 22% 无法分类。作者人工复核的是可分类条目的 complexity label，得到 94.8% 准确率，这能支持已保留子集的标签，却不能修复选择偏差。模型确实产出若干真实复杂度改进，但主要质量仍来自 I/O 与常数优化。</p>
+      <div class="callout warn"><b>版本内数值口径不一致</b><p>摘要说模型相对最快人类达到约一半的复杂度改进率（14% vs 28%）；正文与结论对 optimization-RL、human 分别相对 RLVR 的同类描述却是 13% vs 22%。两组比例可能来自不同过滤或分母，但 v1 没有清楚解释。应引用具体表述与分母，不把“半个人类水平”当成稳定结论。</p></div>
+
+      <h3>独立 insight 1：这篇论文训练的是“可识别的偏序”，不是运行时间本身</h3>
+      <p>绝对秒数不是稳定标签：它同时由题目、测试、硬件、负载与程序决定。论文成功的关键，是把它改造成同题、同测试、同服务状态下的相对偏序，再用二值门压掉边界噪声。换句话说，模型学的不是“0.3 秒比 0.5 秒好”这种跨题标量，而是“在这个问题的可行解集合里，这个程序进入了更优速度层”。</p>
+      <p>这解释了为什么三类改动缺一不可：更大测试提高偏序的可观测性；人类参考池提供局部坐标系；collapsed binary 把高方差的细粒度距离变成较低方差的排序事件；GRPO 只需在同一 prompt 组内利用这个事件。它也给出更一般的设计原则：当 reward metric 不可跨任务比较时，不要急着做全局 scalarization，先构造任务内可识别顺序。</p>
+
+      <h3>独立 insight 2：所谓“reward engineering”，本质是测量科学与实验设计</h3>
+      <p>论文的贡献可重述为四个经典测量问题：构念效度——测到的是算法速度还是调度噪声；量尺校准——历史参考与当前执行是否同尺度；判别度——测试能否区分快慢正确解；可靠性——重复计时与不同服务状态是否保持排序。奖励函数只是最后一层编码。这个视角比“多试几种 reward shape”更可迁移，也适用于 agent latency、工具调用成本、数据库查询计划、机器人控制耗时等真实系统 RL。</p>
+
+      <h3>独立 insight 3：二值奖励胜出不是反对 dense reward，而是说明 dense signal 尚未达到可用信噪比</h3>
+      <p>连续 \(q\) 理论上包含更多信息，但只有在局部差值可靠时才更有价值。论文的 2–3 个百分点重复排名噪声、约 10ms 的计时抖动、服务状态截距漂移，会把相邻质量差变成错误梯度。二值门相当于一种鲁棒统计：牺牲分辨率，换取更低标签方差。未来若能给每个 test/reference duration 保存方差、做置信区间排名或选择性重执行，连续奖励可能重新占优；论文自己也把标准差存储列为未来工作。</p>
+
+      <h3>什么证据会改变当前判断</h3>
+      <ul>
+        <li>公开 DMC-Optim、训练配置与可替代 CES 的复现实现在独立硬件上保留环境排序和主要增益。</li>
+        <li>在 C++、仓库级 patch、内存/能耗多目标上，任务内排名 + 正确性外门仍优于标准 RLVR 与 inference-time search。</li>
+        <li>用可执行静态/动态分析器替代 LLM judge 后，复杂度改进比例仍接近当前结论，并解释 14/28 与 13/22 的分母差异。</li>
+        <li>在无固定人类参考池的新题上，生成参考分布或自博弈参考池仍能稳定训练，而不是只对 DMC 人类 leaderboard 有效。</li>
+      </ul>
+    </section>
+
+    <section id="implications">
+      <h2>对研究与工程实践的具体含义</h2>
+      <div class="grid-2">
+        <div class="card"><h3>先做 reward audit，再做 RL</h3><p>画出“真实质量 → 测量 → 聚合 → 奖励 → advantage”的完整链路；分别测重复性、排序稳定性、饱和率与零 advantage 率。没有这些诊断，调优化器只是把测量误差训练进模型。</p></div>
+        <div class="card"><h3>基线要覆盖数据、环境、奖励三层</h3><p>至少比较原数据 RLVR、增强数据 RLVR、原始连续成本奖励、局部归一化奖励。否则无法判断增益来自更强 verifier、更多执行，还是目标设计。</p></div>
+        <div class="card"><h3>共享执行比事后校正更可信</h3><p>候选模型与参考程序应在同一活动中混排、并发重执行。跨日、跨机器、跨服务状态拼接 wall-clock 数据，即使做线性校正也可能掩盖排序翻转。</p></div>
+        <div class="card"><h3>将“算法优化”与“运行时优化”分开评测</h3><p>一个总速度分数会被 I/O 和常数因子主导。若产品真正关心复杂度、内存或可维护性，需要独立 verifier、分层奖励或多目标报告，而不是让 wall-clock 代替全部质量。</p></div>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语速查</h2>
+      <div class="def-list">
+        <div><b>RLVR</b><span>用可自动验证结果的规则奖励强化学习；代码任务常以测试是否全部通过作为二值奖励。</span></div>
+        <div><b>GRPO</b><span>Group Relative Policy Optimization；同一 prompt 采样一组输出，用组内相对回报计算 advantage，不需要单独训练 critic。</span></div>
+        <div><b>DMC-Optim</b><span>由 DeepMind Code Contests 清洗并扩展的论文数据集，分离正确性测试与更大输入的优化测试。</span></div>
+        <div><b>CES</b><span>论文使用的隔离远端代码执行服务；它不是一个公开 benchmark 名，而是作者实验中的计时基础设施。</span></div>
+        <div><b>\(p_\tau\) pass@k</b><span>候选不仅要正确，还必须进入同题人类速度排行榜最快的 \(\tau\%\)；\(\tau\) 越小越严格。</span></div>
+        <div><b>zero-advantage group</b><span>同一 prompt 的所有 rollout 得到相同奖励，组内没有相对差异，GRPO 无法从该组得到有效更新。</span></div>
+        <div><b>collapsed reward</b><span>把严格正确与通过优化门合成一个二值事件；任一条件失败都得负奖励。</span></div>
+        <div><b>duration filterability</b><span>一组测试是否制造足够的题内运行时跨度，让速度排序超过计时噪声地板。</span></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对 arXiv v1 的 125 页正文、全部附录、TeX 表格与公式，并交叉核对 CodeContests、LiveCodeBench、GRPO 与 CodeContests+ 的一手来源。论文中的训练结果、CES 统计与 judge 标注属于作者报告；本次只对公开表格进行了算术复算，未独立运行训练或远端执行服务。arXiv v1 页面未列出作者代码或 DMC-Optim 数据发布地址，因此数据构建、训练与 CES 无法端到端独立复现。论文后续版本可能修正摘要与正文的复杂度比例口径。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2607.25970">Reinforcement Learning for Code Optimization（arXiv v1）</a></li>
+        <li><a href="https://github.com/google-deepmind/code_contests">Google DeepMind CodeContests 官方仓库</a></li>
+        <li><a href="https://github.com/LiveCodeBench/LiveCodeBench">LiveCodeBench 官方仓库</a></li>
+        <li><a href="https://arxiv.org/abs/2402.03300">DeepSeekMath：GRPO 原始论文</a></li>
+        <li><a href="https://arxiv.org/abs/2506.05817">CodeContests+：高质量竞赛测试生成</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

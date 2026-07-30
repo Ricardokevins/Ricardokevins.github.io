@@ -6838,3 +6838,26 @@ bundle exec jekyll build               # done in 7.6s, 仅 NOTE_TEMPLATE.md 模�
 - 隔离 Playwright 浏览器完成 1440×1000 桌面与 390×844 手机验收：页面均为 HTTP 200，桌面与手机 `scrollWidth == innerWidth`，127 个 MathJax 容器正常渲染，5 张宽表在手机上均只在各自容器内滚动，无断锚、失败请求、console error 或 runtime error。
 - 首轮移动端视觉检查发现全局窄屏样式会把宽表强行压缩成逐字竖排；已在目标页明确设置 760px 表格最小宽度并复查，桌面保持自适应满宽，手机表头、行高和公式恢复正常。
 - 最终提交只包含本任务新笔记、索引条目与本节 Progress 记录；原工作区的 DeepSeek-V4、UniVR、LOTUS 等并行任务改动保持原样，不纳入本任务。
+
+## 2026-07-30 Reinforcement Learning for Code Optimization 深读
+
+### 目标与材料边界
+
+- 完整阅读 arXiv:2607.25970 v1 的 125 页正文、全部附录与 TeX 表格，追踪 CodeContests、LiveCodeBench、DeepSeekMath/GRPO 和 CodeContests+ 等会影响核心判断的一手来源。
+- 本轮核对的是公开论文所描述的实验，而不是独立复现：arXiv v1 未列出 DMC-Optim、训练代码或论文专用 CES 的公开地址，因此可以审计方法、表格和论证链，但无法重放数据过滤、计时服务与完整训练。
+
+### 核心判断与完成变更
+
+- 将论文的真正贡献归纳为“测量—奖励—更新”闭环，而不是单一奖励公式：DMC 经过去重、重验证、测试生成和时长可筛选性过滤，最终形成 1,000/302 的训练/测试划分；隔离 CES、仿射校准和同题内百分位排序共同把高噪声绝对耗时转成相对稳定的监督。
+- 复核三类速度约束、17 种候选指标、collapsed binary reward、离线模拟器和稳定化 GRPO。最值得迁移的结论是：先验证测量链的可靠性、区分度和排序稳定性，再谈 RL；二值奖励胜出说明当前连续计时信号的信噪比不足，不等于连续奖励原则上无效。
+- 核对主要结果：top-30% 执行后排名使 Qwen 2.5 7B 的 DMC-Optim \(p_{50}\) 从 18.0 升至 31.3、CWM 32B 从 30.7 升至 50.4；CWM 32B 在 LiveCodeBench 的中位样本胜率最高约 83%，但对应 pass@1 从 56.4 降至 53.9，说明域外正确性并非完全无损。
+- 审计算法发现证据：在 224 个可比较速度胜例中，optimization-RL 赢 200 个；可分类案例主要是 I/O 与常数因子优化，算法/数学捷径占比较小。论文证明模型学会了可迁移的效率偏好，但尚未证明稳定获得接近人类的复杂度改进能力。
+- 标记公开版本的数字口径不一致：摘要写复杂度改进约 14% 对人类 28%，正文和结论则写 13% 对 22%，v1 未解释分母或样本范围差异，不能将其中任一组当作无条件定论。
+- 新增 `notes/paper-reviews/reinforcement-learning-code-optimization-audit.html`，按“两遍讲解”先完整重建论文，再进行证据审计、独立 insight、实践含义和术语速查；同步更新 `_data/notes.yml`。
+
+### 验证
+
+- `ruby scripts/validate_notes_index.rb` 通过：173 条索引与 173 个顶层 HTML 页面一一对应；`git diff --check`、公开生成痕迹、本地路径、替换字符、占位文本扫描均无异常。
+- 隔离 Jekyll 构建成功，耗时约 10 秒；仅有仓库既有的 Faraday retry 可选依赖与 GitHub Metadata 未认证提示，不影响静态产物。
+- 独立 headless 浏览器完成 1440×1000 桌面与 390×844 手机验收：两种视口均为 HTTP 200、唯一 `main`、唯一文末 evidence appendix、61 个 MathJax 容器；无页面级横向溢出、坏图、重复 ID、断锚、失败请求、console error 或 runtime error，截图目检未见重叠与截断。
+- 官方 Playwright CLI 包装器在本机缺少 `playwright-cli` 可执行文件，因此改用工作区已提供的 Playwright 库与独立 headless 系统浏览器完成同等检查；未绑定、聚焦或操作用户前台 Chrome。
