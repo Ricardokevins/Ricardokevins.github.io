@@ -1,5 +1,29 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 Zhang Xiaojun Podcast #147–#149 增量深读
+
+### 任务与材料边界
+
+- 用户确认继续推进频道梳理；本轮盘点到 YouTube 编号 #149，选择最新三期补齐具身原生、开源推理基础设施和 AI for AI 三个缺口。
+- #147 使用公开转录与公开视频/音频，重点核验 LingBot 的视觉、深度、VLA、视频/世界模型、VA、数据规模化与具身原生判断；#148/#149 的 YouTube 页面没有可用官方字幕，使用音轨机器转写作为阅读基线，不伪造逐句说话人归属。
+- 发现并固定一个版本边界：#148 YouTube 版为 2:06:37，小宇宙版本约 3:00:26；本页以 YouTube 为主，长版多出的“Token VS 电力”和“技术预测”等内容不并入视频版结论。
+
+### 关键判断
+
+- #147：具身原生不是简单去掉语言，而是让时间因果、空间表征、动作空间、数据和评价服从物理闭环；约 6 万小时和 20 种配置是公开训练范围，不等于跨本体长期泛化已经被证明，下一道门槛是数据诊断学。
+- #148：vLLM 的长期价值已经从 PagedAttention 算法扩展到跨模型/硬件运行时、开源治理和维护组织；模型—Infra 共设计的核心是运行时反馈能否反过来扩大模型研究空间，而不是单个 kernel 的峰值。
+- #149：AI for AI 的可验证近端目标不是“模型自我进化”，而是 O-P-H-I-S 研究结构、模型—训练曲线数据和可校准的实验排序器；融资、产品和时间表仍按嘉宾口述处理。
+
+### 变更与验证状态
+
+- [x] 完成频道增量盘点、三期章节映射、完整音轨阅读和关键术语校正；已核对 LingBot 官方论文/仓库、vLLM/PagedAttention/Inferact 官方材料、清华刘子鸣主页与 KAN 论文。
+- [x] 新增 `notes/tech-analysis/shen-yujun-lingbot-embodied-native-interview.html`、`notes/tech-analysis/you-kaichao-vllm-inferact-interview.html`、`notes/tech-analysis/liu-ziming-ai-for-ai-physics-of-ai-interview.html`。
+- [x] 原地更新 `notes/tech-analysis/zhang-xiaojun-podcast-ai-robotics-series.html`：覆盖从 34 期到 37 期，加入 #147–#149 节目地图、最新增量批次、版本边界和证据索引；更新 `_data/notes.yml` 三条个案与系列摘要。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：181 个入口对应 181 个顶层 HTML；`git diff --check` 通过；定向扫描未发现本地路径、临时目录、工具痕迹或证据边界泄露。
+- [x] 隔离 Jekyll build 成功；仅出现仓库一贯的 Faraday 可选依赖与 GitHub Metadata 未认证 / API 限流提示，不影响生成。
+- [x] 使用独立 headless Chromium 完成 1440×1100 与 390×844 验收：三篇个案和系列页均 HTTP 200，唯一 `main` / H1、唯一 evidence appendix、锚点完整、宽表均在 `.table-wrap` 内；页面级横向溢出、console/page error、失败请求和 4xx/5xx 资源均为 0，手机端宽表保持容器内滚动。
+- [x] 选择性提交/推送本任务改动；保留其他 Skill 改动和 `span.log` 不纳入本任务。
+
 ## 2026-07-31 CoRT：Counterfactual Replay for Token-Level Rubric-Guided Policy Optimization 深读
 
 ### 任务与材料边界
