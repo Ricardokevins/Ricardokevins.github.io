@@ -32,8 +32,8 @@
 - [x] 运行 notes 索引校验：199 个索引入口对应 199 个顶层 HTML；对四篇新笔记、六篇修复笔记、目录和系列页完成 HTML 结构检查，唯一 H1/main/evidence appendix，无重复 ID。
 - [x] `git diff --check` 通过；隔离 Jekyll build 通过，仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 限流提示。
 - [x] 使用独立 headless Chrome + CDP 完成真实 390×844 CSS 视口和桌面截图验收：新笔记、系列页和两篇旧笔记页面级横向溢出为 0，宽表保持容器内滚动，目检无重叠或截断。
-- [ ] 只暂存本轮四篇新笔记、六篇旧笔记、目录、系列总览、索引与本节 Progress；保留已有的 deep skill 配置、OpenMLE 页面、`scripts/__pycache__/`、`span.log` 及其他不属于本轮的工作区改动。
-- [ ] 验证通过后创建本轮文档提交并推送；提交前检查目录中所有已深读链接确实有对应文件，避免把状态更新与缺页混在一起。
+- [x] 已只暂存本轮四篇新笔记、六篇旧笔记、目录、系列总览、索引与本节 Progress；已有的 deep skill 配置、Progress 其他历史段落、`scripts/__pycache__/`、`span.log` 及其他不属于本轮的工作区改动均未纳入。
+- [x] 已创建提交 `8213004`（`docs(podcast): deepen episodes 97 100 101 103 and repair old notes`）并推送到 `origin/main`；提交前已检查目录中所有新增已深读链接均有对应文件。
 
 ## 2026-07-31 OpenMLE / Frontis-MA1 深读（完成）
 
