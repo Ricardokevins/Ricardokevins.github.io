@@ -230,10 +230,24 @@
   <header id="top">
     <div class="kicker">{{NOTE_KIND}} · {{TOPIC_TAG}}</div>
     <h1>{{NOTE_TITLE}}</h1>
-    <p class="lede">{{ONE_PARAGRAPH_THESIS}}</p>
+    <p class="lede">{{MATERIAL_ORIENTATION_WITHOUT_YOUR_OWN_VERDICT}}</p>
   </header>
 
   <main>
+    <section id="source-reconstruction">
+      <h2>原文讲解：先把材料本身讲清楚</h2>
+      <p>{{WHO_OR_WHAT_IS_SPEAKING_AND_WHY_THIS_MATERIAL_EXISTS}}</p>
+      <h3>问题与语境</h3>
+      <p>{{BACKGROUND_AND_THE_QUESTION_THE_SOURCE_IS_TRYING_TO_ANSWER}}</p>
+      <h3>原文如何展开</h3>
+      <p>{{SOURCE_ORDER_OR_EXPLICIT_THEMATIC_ORDER_WITH_TRANSITIONS}}</p>
+      <h3>案例、证据与关键数字</h3>
+      <p>{{EXAMPLES_FAILURES_NUMBERS_TERMS_AND_LIMITING_CONDITIONS_AS_PRESENTED_BY_SOURCE}}</p>
+      <h3>作者 / 嘉宾最后落到哪里</h3>
+      <p>{{SOURCE_CONCLUSION_ADVICE_AND_RESERVATIONS}}</p>
+      <p class="small">以上是原文讲解。下面才进入本文自己的结构化抽象、证据审计与独立判断。</p>
+    </section>
+
     <section id="takeaway">
       <h2>核心判断</h2>
       <p>{{START_WITH_THE_ACTUAL_POINT}}</p>
@@ -384,7 +398,9 @@
 
 ## 4. 内容规则（面向读者，不是执行日志）
 
-- 标题与开头直接进入主题判断，不写“我抓取了什么”“报告生成于哪里”。
+- 标题与开头先交代材料是什么、谁在说话、问题从哪里来；不要把读者尚未见过的原文压缩成一句判断后直接列结论。
+- 独立笔记必须先完成 `#source-reconstruction`：按原文顺序或明确的主题线，连续讲清问题、概念、问答/论证推进、案例、证据、数字、转折、作者/嘉宾结论与保留意见；之后才写 `#takeaway`、机制、证据审计和 insight。
+- 长访谈的原文讲解应是主体篇幅，章节表、四列表格、结论卡片不能替代连续叙述；主持人问题、嘉宾回答和本文推断要有清晰边界。
 - 每个专有名词第一次出现给一句解释；复杂方法用“输入 → 处理 → 输出 → 失败条件”讲清楚。
 - 正文与页脚不出现：工具名、抓取命令、shell 命令、本地路径、临时目录、`results/`、`Downloads`、生成时间、文件位置、`OpenCLI/opencli` 等痕迹。
 - 文末必须保留 `data-note-role="evidence-appendix"` 的“证据边界与资料索引”，只放公开 URL、证据边界与未确认事项；不要写“本地证据/截图保存在 xxx-assets/”这类生成痕迹。

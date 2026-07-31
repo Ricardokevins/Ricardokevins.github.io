@@ -7,7 +7,7 @@ description: Repo-local workflow for creating or editing public Notes pages in R
 
 ## Core Rule
 
-Public notes are reader-facing articles, not execution logs. Start with thesis, mechanism, evidence, limits, and insight. Put source scope at the end. Do not expose how the agent fetched, rendered, saved, or generated the page.
+Public notes are reader-facing articles, not execution logs. Assume the reader has not seen the source. First reconstruct the source in plain language—its background, people or concepts, question flow, argument, examples, evidence, conclusion, and limitations—then switch explicitly to thesis, mechanism, evidence audit, limits, and independent insight. A structured conclusion list cannot replace the explanatory first pass. Put source scope at the end. Do not expose how the agent fetched, rendered, saved, or generated the page.
 
 ## Required Inputs
 
@@ -31,27 +31,31 @@ The page must include:
 5. `<body class="notes-shell-page">`
 6. top `notes-sitebar` with `Notes / All Notes / Home`
 7. semantic `<main>` wrapper
-8. a direct thesis section near the top
-9. a mechanism / method explanation section
-10. explicit term or concept explanations
-11. limits / risk / evidence-boundary section
-12. final section marked `data-note-role="evidence-appendix"`
-13. non-empty `alt` on every image
-14. MathJax only when TeX/math markup is present
+8. a source-reconstruction section near the top, before independent thesis
+9. a direct thesis / takeaway section after the source reconstruction
+10. a mechanism / method explanation section
+11. explicit term or concept explanations
+12. limits / risk / evidence-boundary section
+13. final section marked `data-note-role="evidence-appendix"`
+14. non-empty `alt` on every image
+15. MathJax only when TeX/math markup is present
 
 ## Content Shape
 
 Use this order unless the existing page has a strong reason not to:
 
-1. Header: title + one-paragraph thesis
-2. `#takeaway`: core judgment in plain language
-3. `#problem`: why the topic matters
-4. `#mechanism`: what actually happens, preferably as input -> process -> output -> failure conditions
-5. `#evidence`: key experiments, tables, screenshots, or claims with interpretation
-6. `#terms`: first-use explanations for non-obvious terms
-7. `#limits`: what the material does not prove
-8. `#insight`: engineering/research implication
-9. `#sources` with `data-note-role="evidence-appendix"`: public source URLs and evidence boundaries only
+1. Header: title + short material orientation, not a conclusion dump
+2. `#source-reconstruction`: a self-contained explanation of what the source says, in source order or a clearly explained thematic order
+3. `#takeaway`: core judgment, now grounded in the first pass
+4. `#problem`: why the topic matters and what question the source is trying to answer
+5. `#mechanism`: what actually happens, preferably as input -> process -> output -> failure conditions
+6. `#evidence`: key experiments, tables, screenshots, or claims with interpretation
+7. `#terms`: first-use explanations for non-obvious terms
+8. `#limits`: what the material does not prove
+9. `#insight`: engineering/research implication
+10. `#sources` with `data-note-role="evidence-appendix"`: public source URLs and evidence boundaries only
+
+For interviews and transcripts, `#source-reconstruction` must normally include: who is speaking and why the conversation matters; the host's major questions; the guest's background and chronology; the main claims and examples; the transitions or disagreements between topics; the meaning of unfamiliar terms; the evidence and numbers as the guest presents them; and the guest's own final advice or reservations. A chapter list, evidence table, or later analysis does not satisfy this requirement by itself.
 
 Quality floor for long-form notes:
 
@@ -60,6 +64,7 @@ Quality floor for long-form notes:
 - include at least one explicit judgment beyond summary
 - include at least one boundary/negative case
 - explain why the result matters, not just what the source says
+- for long interviews, the source-reconstruction pass should be the largest body section and should read as continuous explanation rather than a list of conclusions
 
 ## Forbidden in Public Notes
 
