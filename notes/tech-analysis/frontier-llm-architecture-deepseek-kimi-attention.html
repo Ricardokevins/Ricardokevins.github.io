@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>前沿大模型架构深读：从 DeepSeek‑V3/V4 到 Kimi K2.5/K3</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #d9d2c4;
+      --accent: #a84f35;
+      --accent-soft: #f7eae2;
+      --blue: #315f78;
+      --blue-soft: #eaf1f4;
+      --green: #476b55;
+      --green-soft: #edf3ed;
+      --warn: #94621e;
+      --warn-soft: #faf0dc;
+      --shadow: 0 14px 36px rgba(31, 37, 40, .07);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(168,79,53,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(90,80,65,.025) 1px, transparent 1px),
+        var(--paper);
+      background-size: 46px 46px;
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 76px) 0 28px; }
+    .kicker { color: var(--blue); font-size: 13px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 12px 0 0; font: 760 clamp(34px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 930px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3, h4 { line-height: 1.3; }
+    h2 { margin: 0 0 13px; font-size: clamp(25px, 3.2vw, 35px); }
+    h3 { margin: 25px 0 10px; color: var(--accent); font-size: 21px; }
+    h4 { margin: 18px 0 8px; color: var(--blue); font-size: 17px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); }
+    .toc, .grid-2, .grid-3, .grid-4 { display: grid; gap: 14px; margin: 18px 0; }
+    .toc { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card, .toc a {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .toc a { color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; }
+    .toc a:hover { border-color: var(--accent); color: var(--accent); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric { display: block; margin-bottom: 7px; color: var(--blue); font: 760 22px/1.1 var(--serif); }
+    .callout {
+      margin: 18px 0;
+      padding: 15px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.info { border-left-color: var(--blue); background: var(--blue-soft); }
+    .callout.info > b { color: var(--blue); }
+    .callout.good { border-left-color: var(--green); background: var(--green-soft); }
+    .callout.good > b { color: var(--green); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn > b { color: var(--warn); }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .flow > div {
+      position: relative;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .flow > div:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      z-index: 2;
+      color: var(--accent);
+      transform: translate(50%, -50%);
+      font-weight: 800;
+    }
+    .flow b, .flow span { display: block; }
+    .flow b { color: var(--blue); }
+    .flow span { margin-top: 5px; color: var(--muted); font-size: 13.5px; }
+    .table-wrap {
+      margin: 18px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .notes-shell-page .table-wrap table { width: 100%; min-width: 780px; border-collapse: collapse; font-size: 14.25px; line-height: 1.58; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 750; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.012); }
+    .math-display {
+      max-width: 100%;
+      margin: 16px 0;
+      padding: 13px 15px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .defs { display: grid; gap: 10px; margin: 18px 0; }
+    .defs > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .2fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .defs b { color: var(--accent); }
+    .small { color: var(--muted); font-size: 14px; }
+    @media (max-width: 900px) {
+      .toc, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: 1fr; }
+      .flow > div:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -11px; transform: translate(50%, 50%); }
+    }
+    @media (max-width: 680px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      .toc, .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .defs > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Architecture Survey · 2024–2026</div>
+    <h1>前沿大模型架构深读：从 DeepSeek‑V3/V4 到 Kimi K2.5/K3</h1>
+    <p class="lede">这四代模型展示的不是一条“全注意力被线性注意力替代”的直线，而是四种不同的信息预算：DeepSeek‑V3 用 MLA 压缩每个 token 的 KV；DeepSeek‑V4 进一步压缩时间轴并做稀疏选择；Kimi K2.5 保留 K2 的 MLA 主干，把创新集中到原生多模态与并行 Agent；Kimi K3 则用 KDA 固定状态承担大部分序列混合，再周期性插入全局 MLA 纠偏。</p>
+    <nav class="toc" aria-label="文章目录">
+      <a href="#takeaway">核心判断</a>
+      <a href="#attention-map">注意力机制地图</a>
+      <a href="#deepseek-v3">DeepSeek‑V3</a>
+      <a href="#deepseek-v4">DeepSeek‑V4</a>
+      <a href="#kimi-k25">Kimi K2.5</a>
+      <a href="#kimi-k3">Kimi K3</a>
+      <a href="#comparison">统一比较</a>
+      <a href="#audit">证据审计</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>先给结论：架构竞争已经从“堆参数”转向“治理信息流”</h2>
+      <p>参数规模仍然重要，但 2024–2026 年最值得关注的变化，是模型开始显式决定三件事：<strong>哪些历史要逐 token 精确保留，哪些可以压缩；哪些层的信息值得跨深度回看；哪些参数只在当前 token 上激活。</strong>Attention、残差连接和 MoE 分别控制序列、深度和宽度三个方向的信息流。</p>
+      <div class="grid-4">
+        <div class="card"><span class="metric">V3</span><h3>压缩表示</h3><p>MLA 把多头 K/V 联合压成低维 latent，仍对全部历史做全局 attention。</p></div>
+        <div class="card"><span class="metric">V4</span><h3>压缩时间轴</h3><p>CSA/HCA 把多个 token 合成一个条目，CSA 再用 DSA 只选 top‑k。</p></div>
+        <div class="card"><span class="metric">K2.5</span><h3>扩展模态与执行</h3><p>语言主干基本继承 K2；新增重点是 MoonViT‑3D、联合训练和 Agent Swarm。</p></div>
+        <div class="card"><span class="metric">K3</span><h3>固定递归状态</h3><p>69 层 KDA 用固定矩阵状态压缩历史，24 层 MLA 周期性恢复任意位置访问。</p></div>
+      </div>
+      <div class="callout info"><b>型号校准</b>这里的规范名称是 <strong>Kimi K2.5</strong> 与 <strong>Kimi K3</strong>，不是 “Kimi‑2.5 / Kimi‑3”。DeepSeek‑V4 已于 2026 年 4 月发布 preview，并在 2026 年 6 月公开 58 页技术报告；Kimi K3 于 2026 年 7 月发布。本文按 2026‑07‑31 的公开材料整理。</div>
+    </section>
+
+    <section id="problem">
+      <h2>为什么经典 Transformer 到长上下文和高并发时会撞墙</h2>
+      <p>标准自回归 Transformer 在生成第 \(t\) 个 token 时，要让 query 与此前所有 key 做匹配。为避免重复计算，每层会缓存历史 token 的 K/V。若序列长度为 \(L\)、query heads 数为 \(H\)、每头维度为 \(d_h\)，标准 MHA 的每层 KV cache 元素数约为：</p>
+      <div class="math-display">\[
+        \mathrm{KV}_{\mathrm{MHA}} = 2L H d_h
+      \]</div>
+      <p>前面的 2 表示 K 和 V 各一份。它同时带来两个问题：prefill 的核心 attention 计算近似 \(O(L^2)\)，decode 时每一步还要从显存读取不断增长的 KV。长上下文、并发请求和显存带宽一叠加，瓶颈往往不再是矩阵乘法峰值，而是<strong>状态容量、内存读写和跨卡通信</strong>。</p>
+      <div class="flow" role="group" aria-label="长上下文架构的四种降本方向">
+        <div><b>减少 KV heads</b><span>MQA / GQA 让多个 query head 共享 K/V。</span></div>
+        <div><b>压缩每个 token</b><span>MLA 缓存低维 latent，不缓存完整多头 K/V。</span></div>
+        <div><b>减少可见 token</b><span>DSA 用便宜索引器选 top‑k 历史。</span></div>
+        <div><b>压缩时间轴</b><span>CSA / HCA 把 4 或 128 个 token 合成条目。</span></div>
+        <div><b>消除逐 token cache</b><span>KDA 把历史写进固定大小递归矩阵状态。</span></div>
+      </div>
+    </section>
+
+    <section id="attention-map">
+      <h2>MHA、MQA、GQA、MLA、DSA、KDA 到底是什么关系</h2>
+
+      <h3>MHA：每个 head 都有自己的“地址”和“内容”</h3>
+      <p>Multi‑Head Attention 先把同一隐藏状态投影成多组 query、key、value。每个 head 可以学习不同关系，例如局部语法、实体指代或远程依赖：</p>
+      <div class="math-display">\[
+        \mathrm{head}_i=\operatorname{Softmax}\!\left(\frac{Q_iK_i^\top}{\sqrt{d_h}}\right)V_i,\qquad
+        \mathrm{MHA}=\operatorname{Concat}(\mathrm{head}_1,\dots,\mathrm{head}_H)W^O
+      \]</div>
+      <p>它的优点是表达自由度高；缺点是 \(H\) 组 K/V 都要缓存。这里要记住：<strong>Q 只服务当前计算，真正长期占显存的是历史 K/V。</strong></p>
+
+      <h3>MQA / GQA：少存几份 K/V，但不改变“逐 token 全局读取”</h3>
+      <p>Multi‑Query Attention 保留多组 query heads，却让所有 heads 共享一组 K/V。KV cache 从 \(2LHd_h\) 降到 \(2Ld_h\)，理论上按 head 数缩小。代价是多个 query 只能读取同一套地址和内容表示，可能损失质量，也会影响 tensor parallel 的切分方式。Grouped‑Query Attention 是折中：\(H\) 个 query heads 分成 \(G\) 组，每组共享一组 K/V，缓存变为 \(2LGd_h\)。</p>
+      <div class="callout"><b>容易误解的点</b>MQA/GQA 优化的是 <strong>head 维度的冗余</strong>，不是序列长度。它们仍然保存每一个历史 token，也仍然做 token‑to‑token attention。</div>
+
+      <h3>MLA：不是“更极端的 MQA”，而是先学习一份可展开的 latent</h3>
+      <p>Multi‑Head Latent Attention 对每个 token 的 K/V 做联合低秩压缩：</p>
+      <div class="math-display">\[
+        c_t^{KV}=W^{DKV}h_t,\qquad
+        k_t^C=W^{UK}c_t^{KV},\qquad
+        v_t^C=W^{UV}c_t^{KV}
+      \]</div>
+      <p>生成时只需缓存 \(c_t^{KV}\) 和承载位置的 decoupled RoPE key。以 DeepSeek‑V3 为例，标准 128 heads × 128 维的 MHA 若按完整 K/V 计，每 token 每层需 32,768 个元素；MLA 缓存 512 维 latent + 64 维 RoPE key，按元素数粗算约小 <strong>56.9×</strong>。这不是端到端显存加速比，但说明它为何能显著降低 KV 带宽。</p>
+      <p>MLA 仍可恢复不同 head 的 K/V 表示，因此表达上比纯 MQA 更灵活；而在 NoPE 或经过权重吸收的实现中，它也可以用 MQA‑like kernel 执行。也就是说，<strong>MLA 是表示参数化，MQA/MHA 也可以是它的执行模式。</strong></p>
+
+      <h3>DSA：用一个便宜索引器决定“这次只读哪些历史”</h3>
+      <p>DeepSeek Sparse Attention 为当前 query 计算低成本索引分数 \(I_{t,s}\)，只把 top‑\(k\) 历史 KV 送入昂贵的主 attention：</p>
+      <div class="math-display">\[
+        I_{t,s}=\sum_j w_{t,j}^{I}\operatorname{ReLU}\!\left(q_{t,j}^{I}\cdot k_s^{I}\right),\qquad
+        u_t=\operatorname{Attn}\!\left(h_t,\{c_s\mid s\in \operatorname{TopK}(I_{t,:})\}\right)
+      \]</div>
+      <p>主 attention 从 \(O(L^2)\) 变成 \(O(Lk)\)，但原始 V3.2 的 lightning indexer 仍扫描全部历史，所以自身仍是 \(O(L^2)\)，只是维度更小、heads 更少、可用 FP8。DSA 的核心风险是<strong>检索漏选</strong>：未进入 top‑k 的 token，主路径再强也看不到。</p>
+
+      <h3>KDA：把历史写进固定矩阵状态，而不是保留 token 列表</h3>
+      <p>Kimi Delta Attention 属于 linear attention / fast‑weight memory。每个 head 维护固定大小矩阵 \(S_t\)，新 token 用 delta rule 修正其中与当前 key 对应的记忆，并用逐通道 forget gate 控制遗忘：</p>
+      <div class="math-display">\[
+        S_t=\left(I-\beta_t k_tk_t^\top\right)\operatorname{Diag}(\alpha_t)S_{t-1}
+        +\beta_t k_tv_t^\top,\qquad
+        \tilde o_t=S_t^\top q_t
+      \]</div>
+      <p>\(\alpha_t\) 是每个 key channel 的保留率，\(\beta_t\) 是写入强度。状态大小与 \(L\) 无关，decode 不再反复读取一条越来越长的 KV 列表；但所有历史都被压入同一个有限状态，精确复制、任意位置检索和多个相似 key 的分离会更困难。因此 Kimi Linear/K3 不采用纯 KDA，而是按 3:1 插入全局 MLA。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>机制</th><th>保存的历史状态</th><th>长序列主计算</th><th>最强项</th><th>主要失败模式</th></tr></thead>
+          <tbody>
+            <tr><td>MHA</td><td>每 token、每 head 的完整 K/V</td><td>\(O(L^2)\)</td><td>精细、任意 token‑to‑token 读取</td><td>KV 和带宽随 heads、长度线性增长</td></tr>
+            <tr><td>MQA / GQA</td><td>每 token 的 1 组或 G 组 K/V</td><td>\(O(L^2)\)</td><td>低 KV cache、高 decode 吞吐</td><td>K/V 表达共享；并行切分受约束</td></tr>
+            <tr><td>MLA</td><td>每 token 的低维 latent + 位置分量</td><td>\(O(L^2)\)</td><td>在较低 KV 成本下保留多头表达</td><td>低秩瓶颈；实现依赖权重吸收与专用 kernel</td></tr>
+            <tr><td>DSA</td><td>逐 token KV + 轻量索引状态</td><td>主路径 \(O(Lk)\)；索引仍扫描历史</td><td>细粒度远程检索</td><td>top‑k 漏选；索引器仍有成本</td></tr>
+            <tr><td>CSA / HCA</td><td>每 4 / 128 token 一个压缩条目 + 局部窗</td><td>稀疏或压缩后 dense</td><td>百万 token 的分层记忆</td><td>压缩丢信息；边界与地址/内容耦合</td></tr>
+            <tr><td>KDA</td><td>每 head 固定矩阵状态</td><td>理论上对长度线性；decode 状态固定</td><td>低带宽解码、长程状态跟踪</td><td>有限状态碰撞、精确回忆与复制较弱</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="deepseek-v3">
+      <h2>DeepSeek‑V3：真正的贡献是“低成本大 MoE”整套协同</h2>
+      <p>DeepSeek‑V3 发布于 2024 年 12 月。它不是从 Transformer 跳到新范式，而是在 DeepSeek‑V2 的 MLA + DeepSeekMoE 基础上，把训练稳定性、负载均衡、低精度和多 token 预测推到 671B 规模。</p>
+      <div class="grid-3">
+        <div class="card"><span class="metric">671B / 37B</span><h3>总参数 / 激活参数</h3><p>61 层、hidden 7168；除前三层外均为 MoE。</p></div>
+        <div class="card"><span class="metric">256 → 8</span><h3>路由专家</h3><p>每层 256 routed + 1 shared，每 token 选 8 个 routed。</p></div>
+        <div class="card"><span class="metric">14.8T</span><h3>预训练 Token</h3><p>基础训练 4K，之后分两阶段扩到 32K、128K。</p></div>
+      </div>
+      <h3>1. MLA：让 128 个 query heads 不再对应 128 份完整 KV cache</h3>
+      <p>V3 使用 128 attention heads，每头 128 维；KV latent 为 512 维，query latent 为 1536 维，RoPE 位置分量为 64 维。其目标不是降低全 attention 的 \(L^2\) 计算，而是先打掉 decode 的 KV 容量和带宽瓶颈。</p>
+      <h3>2. DeepSeekMoE：把共享知识与专家知识分开</h3>
+      <p>每个 token 始终经过 shared expert，再经过 8 个 routed experts。细粒度专家让同等激活计算对应更大专家组合空间；代价是 token dispatch、跨节点 all‑to‑all 和负载尾延迟更难处理。V3 限制每个 token 最多发往 4 个节点，并用 DualPipe 把前向、反向和通信重叠。</p>
+      <h3>3. 无辅助损失负载均衡：让“均衡”少干扰语言建模</h3>
+      <p>传统 MoE 用 auxiliary loss 强迫专家均衡，但权重过大时会牺牲任务最优路由。V3 给每个专家增加只影响 top‑k 选择、不影响最终 gating 权重的 bias：过载专家 bias 下调，欠载专家 bias 上调。它仍保留极小的 sequence‑wise balance loss 防止单序列极端失衡，所以“auxiliary‑loss‑free”更准确地说是<strong>主要负载控制不靠辅助损失</strong>。</p>
+      <h3>4. MTP、FP8 与 DualPipe：训练信号、数值格式、流水线同时改</h3>
+      <p>Multi‑Token Prediction depth 为 1：除了下一个 token，再预测一个更远 token。报告中的小规模消融支持它改善验证指标；推理时可丢弃 MTP 模块，也可用作 speculative decoding 的草稿信号。V3 还把主要 GEMM 放到细粒度 FP8 训练框架，并通过 DualPipe、跨节点通信 kernel 和重计算避免 tensor parallel。发布方报告正式训练消耗 2.788M H800 GPU 小时；这个数字不包括此前架构、数据与消融研究成本。</p>
+      <div class="callout good"><b>如何评价 V3</b>MLA 和 DeepSeekMoE 都不是 V3 首次提出；V3 的关键价值是证明它们与无辅助损失均衡、FP8、DualPipe、MTP 能在 671B/14.8T 规模稳定协同。它首先是一项算法—系统共同设计成果。</div>
+    </section>
+
+    <section id="deepseek-v4">
+      <h2>DeepSeek‑V4：从“压缩每个 token”走向“压缩整条时间轴”</h2>
+      <p>V4 有 Pro 与 Flash 两条线。Pro 维持 V3 的 61 层、7168 hidden，但总参数扩到 1.6T、激活 49B；Flash 为 43 层、4096 hidden、284B/13B。两者都支持 1,048,576 token，并用 CSA/HCA 替换 V3 的逐 token MLA。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>设计项</th><th>V4‑Flash</th><th>V4‑Pro</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>规模</td><td>284B total / 13B active</td><td>1.6T total / 49B active</td><td>Flash 更偏吞吐；Pro 用更大知识容量和激活计算冲上限</td></tr>
+            <tr><td>层数 / hidden</td><td>43 / 4096</td><td>61 / 7168</td><td>Pro 延续 V3 主体尺度</td></tr>
+            <tr><td>CSA</td><td>4× 压缩，top‑512</td><td>4× 压缩，top‑1024</td><td>中分辨率历史 + 稀疏选择</td></tr>
+            <tr><td>HCA</td><td colspan="2">128× 压缩，压缩后 dense attention</td><td>粗分辨率全局目录</td></tr>
+            <tr><td>局部路径</td><td colspan="2">最近 128 token 未压缩滑窗</td><td>为语法、当前工具输出和块内细节保底</td></tr>
+            <tr><td>MoE</td><td>256 routed + 1 shared，选 6</td><td>384 routed + 1 shared，选 6</td><td>前三个 MoE 层用 token‑ID hash routing</td></tr>
+            <tr><td>残差</td><td colspan="2">mHC 4 路状态，Sinkhorn 20 次</td><td>扩展跨层信息路径而不把 block hidden 直接放大 4×</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>CSA：先 4× 压缩，再做 DSA</h3>
+      <p>Compressed Sparse Attention 每 4 个位置产生一个压缩 KV；相邻两块有重叠感受野，缓和硬块边界。独立 lightning indexer 也扫描压缩后的历史，再为每个 query 选 top‑k。相对于 V3.2 的 DSA，它同时减少了“候选 token 数”和“主 attention 读取数”。但 indexer 仍需扫描约 \(L/4\) 个低维条目，所以不是严格常数成本。</p>
+      <h3>HCA：每 128 token 压成一项，但保留全局可见性</h3>
+      <p>Heavily Compressed Attention 不做 top‑k，而是让 query 读取全部 \(L/128\) 个压缩条目。到 1M token 时约 8192 项，仍能提供全局拓扑；代价是 128 个 token 的实体、顺序和局部关系被挤进一个 512 维 shared K=V 表示。V4 交替使用 CSA/HCA，相当于在<strong>局部原文、中分辨率精选历史、低分辨率全局目录</strong>三种记忆之间反复融合。</p>
+      <h3>为什么 V4 的 DSA 和 V3.2 的 DSA 不能画等号</h3>
+      <p>DSA 是“轻量索引器 + top‑k token/KV 选择”的机制族。V3.2 在 MLA latent token 上直接选 2048 项；V4 的 CSA 先把时间轴 4× 压缩，再选 512/1024 项，并与 HCA、局部滑窗混合。官方发布页把 V4 简写为“token‑wise compression + DSA”，而技术报告里的具体架构名是 CSA/HCA。</p>
+      <h3>mHC、Muon 与低精度不是旁支</h3>
+      <p>Manifold‑Constrained Hyper‑Connections 把单一路 residual stream 扩成四路状态，并用受约束的动态 mixing 矩阵读写，试图缓解深层网络中信号被连续残差累加稀释。多数矩阵参数改用 Muon：先对动量梯度做近似正交化，再按形状重标度；少量 embedding、norm、静态 gate 等仍用 AdamW。配合 FP4/FP8 QAT、确定性 kernel、异构 KV cache 和磁盘 prefix cache，V4 才能把 1M 从训练配置变成服务协议。</p>
+      <div class="callout warn"><b>1M context 不等于 1M 无损记忆</b>V4‑Pro Max 在报告 MRCR 8‑needle 的 1,024K 点约为 0.59，且 128K 后明显下降。V4 证明的是百万 token 可以用较低成本进入模型，不是任意细节都能可靠找回。</div>
+    </section>
+
+    <section id="kimi-k25">
+      <h2>Kimi K2.5：底层架构变化不大，真正跨越发生在模态与 Agent 层</h2>
+      <p>K2.5 建在 Kimi K2 Base 之上。其语言主干仍是 1.04T total / 32B active、61 层、384 routed experts 选 8、1 shared expert、MLA 和 MuonClip。换言之，K2.5 不是 KDA 模型；把 K2.5 与 K3 的注意力创新混在一起，会误读两代产品。</p>
+      <div class="flow" role="group" aria-label="Kimi K2.5 多模态架构流程">
+        <div><b>图片 / 视频</b><span>原分辨率图片；视频按最多四帧组成时空块。</span></div>
+        <div><b>MoonViT‑3D</b><span>NaViT patch packing；图像与视频完全共享参数。</span></div>
+        <div><b>时间池化</b><span>四帧 patch 聚合，视频 token 约压缩 4×。</span></div>
+        <div><b>MLP projector</b><span>把视觉特征映射到语言 token embedding 空间。</span></div>
+        <div><b>K2 MoE + MLA</b><span>统一处理文字、图片、视频与工具轨迹。</span></div>
+      </div>
+      <h3>早融合：视觉不是预训练末期才贴上去的插件</h3>
+      <p>报告的等 token 预算消融显示：从训练一开始用约 10% 视觉 / 90% 文本，比中期 20% 或后期 50% 注入在视觉、文本和代码指标上都更好。K2.5 从接近完成的 K2 checkpoint 继续进行约 15T 图文 token 的联合预训练，并在后段用 YaRN 把序列从 32K 扩到 262,144。</p>
+      <h3>Zero‑Vision SFT：用高质量文本轨迹激活视觉工具行为</h3>
+      <p>联合预训练已把视觉与文本对齐后，K2.5 的 SFT 冷启动反而只用文本轨迹；发布方报告人工设计的视觉轨迹质量不足，会伤害泛化。之后再用必须看图才能答对的 grounding、计数、图表、OCR、视觉 STEM 任务做 outcome‑based RL。报告中的 before/after 对比显示，视觉 RL 后 MMLU‑Pro +1.7、GPQA‑Diamond +2.1、LongBench v2 +2.2；但这是同一训练流水线内的发布方结果，尚不能证明视觉 RL 是唯一原因。</p>
+      <h3>Agent Swarm 是系统/策略架构，不是 Transformer attention</h3>
+      <p>Parallel‑Agent RL 训练一个 orchestrator 动态创建子 Agent、分解任务和并行调度；子 Agent 冻结，其轨迹作为环境观察，不反向更新。奖励由任务结果、创建并行分支、子任务完成率组成，后两项权重逐步退火到 0，以避免“完全串行”和“疯狂创建无用 Agent”两个局部最优。</p>
+      <p>它用 critical steps 而不是总步骤衡量延迟：</p>
+      <div class="math-display">\[
+        \mathrm{CriticalSteps}=\sum_t\left(S_{\mathrm{main}}^{(t)}+\max_i S_{\mathrm{sub},i}^{(t)}\right)
+      \]</div>
+      <p>这相当于计算并行执行图的关键路径。WideSearch 中，发布方报告 item‑F1 从单 Agent 72.8 提升到 79.0，并在目标难度增加时获得 3–4.5× 延迟缩短。它说明测试时计算可以沿“并发宽度”扩展，但会增加总 token、工具调用、错误聚合和资源调度成本。</p>
+    </section>
+
+    <section id="kimi-k3">
+      <h2>Kimi K3：同时改写序列、深度和宽度三条信息流</h2>
+      <p>K3 是四个模型中结构变化最大的一代：2.78T total / 104.2B active、93 层、7168 hidden、1M context。它没有简单把 K2 放大，而是把注意力、残差连接、MoE 和优化器一起重构。</p>
+      <div class="grid-4">
+        <div class="card"><span class="metric">69 + 24</span><h3>KDA / MLA</h3><p>每 3 层 KDA 后插 1 层 Gated MLA，末层额外保证全局 attention。</p></div>
+        <div class="card"><span class="metric">896 → 16</span><h3>Routed Experts</h3><p>另有 2 个 shared experts；选择率仅 1.79%。</p></div>
+        <div class="card"><span class="metric">3584</span><h3>LatentMoE 宽度</h3><p>路由专家在 hidden 一半宽度的 latent space 计算。</p></div>
+        <div class="card"><span class="metric">93 层</span><h3>Block AttnRes</h3><p>当前 block 可按内容检索 embedding 与前面 block 表示。</p></div>
+      </div>
+      <h3>1. KDA + 周期性 MLA：有限状态负责吞吐，全局 attention 负责纠偏</h3>
+      <p>KDA 的状态不随序列增长，适合长 decode；Gated MLA 仍保留任意 token‑to‑token 的高容量读取。Kimi Linear 的等 FLOPs 小模型消融中，3:1 的 validation PPL 为 5.65，优于 1:1 的 5.66、7:1 的 5.70、15:1 的 5.82；这支持 3:1 是其测试范围内的质量—吞吐折中，但差距很小，且不能自动外推到 2.78T。</p>
+      <p>K3 的 MLA 使用 NoPE：全局层不再显式承担位置编码，位置与近因性主要由 KDA 的短卷积、递归更新和 forget gate 承载。好处是长上下文扩展不必重新调 RoPE frequency；风险是位置能力更依赖 KDA 状态是否学会稳定编码顺序。</p>
+      <h3>2. AttnRes：attention 不只发生在 token 维，也发生在层深维</h3>
+      <p>普通 residual connection 把所有过去层以固定系数 1 累加，早层特征经过几十层后可能被稀释。Block AttnRes 为每个 block 保存一份代表状态，用可学习 pseudo‑query 根据当前内容选择 embedding、当前 block 与此前 blocks，再送入下一模块。它像是把“在时间上检索 token”旋转 90 度，变成“在深度上检索表征”。报告没有公开同规模 K3 去掉 AttnRes 的受控结果，因此其独立贡献仍不能从最终跑分拆出。</p>
+      <h3>3. Stable LatentMoE：极稀疏之后，协调成本比 FLOPs 更危险</h3>
+      <p>896 选 16 看似只激活 1/56 专家，但每个 token 的 dispatch 数翻倍，专家权重存储、跨卡 all‑to‑all 和尾部过载更难。K3 先把 hidden 7168 投影到 3584 latent，再运行 routed experts；Quantile Balancing 用 router score 分位数估计专家 bias，避免固定步长调 bias 的震荡；MoonEP 用冗余专家和静态 shape 保证 expert parallel 负载。这里的关键不是“更多专家一定更聪明”，而是低维专家、路由统计和通信计划共同让 896 专家可运行。</p>
+      <h3>4. Per‑Head Muon 与原生多模态</h3>
+      <p>K3 对 Q/K/V 不再把整个投影矩阵一起做 Muon 正交化，而是按 attention head 分块，避免大动量 head 主导共同更新。MoonViT‑V2 则从随机权重与语言主干联合训练，支持图片/视频；报告结构已公开，但当前开放 serving 的视频接口与训练能力仍有边界。</p>
+      <div class="callout warn"><b>“2.5× scaling efficiency”应怎样读</b>它表示发布方拟合的 loss–compute 曲线相对 K2 约横移 2.5×，不是推理快 2.5×、总训练成本低 2.5×或所有 benchmark 提升 2.5×。公开报告没有给出拟合原始点、置信区间，也没有逐项拆分 KDA、AttnRes、LatentMoE、数据和优化器的贡献。</div>
+    </section>
+
+    <section id="comparison">
+      <h2>统一比较：四代模型到底把预算花在哪里</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型</th><th>主干规模</th><th>序列信息流</th><th>宽度 / MoE</th><th>深度与优化</th><th>真正的新重心</th></tr></thead>
+          <tbody>
+            <tr><td>DeepSeek‑V3</td><td>671B / 37B；61 层</td><td>逐 token MLA；128K</td><td>256 routed 选 8 + 1 shared</td><td>标准 residual；AdamW；MTP</td><td>低 KV 大 MoE、无辅助损失均衡、FP8/DualPipe 协同</td></tr>
+            <tr><td>DeepSeek‑V4 Pro</td><td>1.6T / 49B；61 层</td><td>CSA 4× + DSA top‑1024；HCA 128×；局部窗 128；1M</td><td>384 routed 选 6 + 1 shared</td><td>4 路 mHC；Muon；MTP</td><td>多分辨率压缩记忆与百万 token 系统契约</td></tr>
+            <tr><td>Kimi K2.5</td><td>1.04T / 32B；61 层</td><td>K2 MLA；256K</td><td>384 routed 选 8 + 1 shared</td><td>MuonClip / QK‑Clip</td><td>MoonViT‑3D、早期联合多模态、视觉 RL、Agent Swarm</td></tr>
+            <tr><td>Kimi K3</td><td>2.78T / 104.2B；93 层</td><td>69 KDA + 24 Gated MLA；1M</td><td>896 routed 选 16 + 2 shared；3584 latent</td><td>Block AttnRes；Per‑Head Muon；MTP</td><td>序列—深度—宽度三维信息流与系统协同</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>DeepSeek 与 Kimi 的路线差别</h3>
+      <div class="grid-2">
+        <div class="card"><h3>DeepSeek：可寻址的压缩记忆</h3><p>V3 保留所有 token 的 latent；V3.2 用索引器选 token；V4 再把 token 压成多分辨率条目。它仍偏向“先保存一个可寻址外部记忆，再决定读什么”。</p></div>
+        <div class="card"><h3>Kimi：递归状态 + 周期性全局记忆</h3><p>K3 大部分层把历史折叠进固定状态，少数 MLA 层保留精确全局通道。它更像“持续更新内部工作记忆，再定期回看原始档案”。</p></div>
+      </div>
+      <p>两条路线并非互斥。Kimi Linear 报告也明确指出，linear attention 的压缩/泛化能力与 sparse attention 的细粒度检索可以继续混合。未来模型很可能同时拥有局部原文、递归状态、压缩目录、稀疏外部检索和少量全局层，而不是押注单一 attention。</p>
+    </section>
+
+    <section id="audit">
+      <h2>证据审计：哪些结论扎实，哪些仍是发布方主张</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>证据强度</th><th>当前可说什么</th><th>还缺什么</th></tr></thead>
+          <tbody>
+            <tr><td>V3 的 MLA 显著降低 KV cache</td><td>强：公式、配置、公开权重与实现可核对</td><td>低秩缓存结构和元素数优势成立</td><td>不同 serving stack 的同硬件端到端对照</td></tr>
+            <tr><td>V3 无辅助损失均衡优于纯 auxiliary loss</td><td>中强：两个小规模消融</td><td>在报告设置下 loss 与专家分化更好</td><td>671B 同预算 on/off 结果和长期负载尾延迟</td></tr>
+            <tr><td>V4 用 27% FLOPs、10% KV 达到 1M</td><td>中：发布方等效成本估算</td><td>压缩率与 top‑k 明确，趋势可信</td><td>多硬件、多并发、含索引/cache miss 的端到端数据</td></tr>
+            <tr><td>K2.5 视觉 RL 反向提升文本能力</td><td>中：同流水线 before/after 三项指标</td><td>没有观察到模态冲突，存在正迁移信号</td><td>多 seed、等 token 文本 RL 对照与数据泄漏审计</td></tr>
+            <tr><td>Agent Swarm 最高 4.5× 更快</td><td>中：关键路径口径下发布方实验</td><td>宽搜索可用并行换 wall‑clock</td><td>总 token、美元成本、失败相关性与真实负载复现</td></tr>
+            <tr><td>K3 相对 K2 scaling efficiency 2.5×</td><td>偏弱：只有拟合曲线和组合结果</td><td>组合配方呈现更好内部 scaling signal</td><td>原始点、拟合系数、置信区间、逐组件消融</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><b>参数量不能直接横比能力</b>总参数决定可容纳的专家知识，激活参数更接近单 token 计算，但 attention、视觉编码器、shared expert、routing、上下文长度和后训练预算都会改变真实 FLOPs。K3 的 104.2B active 也不是 V4‑Pro 49B active 的“纯 2.13× 计算”，因为二者 attention 与 expert 形状完全不同。</div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 insight：这轮架构演进真正改变了什么</h2>
+      <ol>
+        <li><strong>“上下文”已从一个 token 数字变成状态类型集合。</strong> V4 需要局部 KV、CSA 主 KV、CSA 索引 KV、HCA KV 和未完成压缩块；K3 同时有 MLA KV、KDA state 与 checkpoint。模型能接收 1M，只说明这些状态能被维护，不说明它们保留同样的信息。</li>
+        <li><strong>高效 attention 的本质是选择性遗忘。</strong> MQA 忘掉 head 间的 K/V 差异，MLA 忘掉高秩细节，DSA 忘掉未选 token，CSA/HCA 忘掉块内细节，KDA 把整段历史压进有限状态。评价新架构的核心问题不只是“省多少”，而是<strong>它选择忘什么、错误能否被后续全局通道修复</strong>。</li>
+        <li><strong>混合架构不是临时妥协，而是当前 Pareto 前沿。</strong> K3 的 KDA/MLA、V4 的 CSA/HCA/SWA 都在承认：局部精确、全局可见、低成本三者无法由单一路径同时最大化。多分辨率、多机制协作比“线性 vs 全注意力”二选一更现实。</li>
+        <li><strong>MoE 越稀疏，系统越不像一个单纯神经网络。</strong> 896 选 16 的数学 FLOPs 很诱人，但真正决定 goodput 的是分位数路由、冗余专家、静态 shape、all‑to‑all 和 admission control。算法结构如果没有通信结构配套，只是纸面节省。</li>
+        <li><strong>Agent 架构与模型架构是两条正交轴。</strong> K2.5 的 Agent Swarm 不改变 attention，却改变测试时计算图；K3 的 KDA/AttnRes 改变单模型信息流。未来能力提升既可能来自更强 base model，也可能来自更宽的并行 Agent、更好的 context compaction 和 verifier，比较时必须把“裸模型”与“模型 + harness”分开。</li>
+        <li><strong>残差连接正在成为下一个 attention。</strong> AttnRes 和 mHC 都把传统固定 residual add 变成可学习的信息路由。前者像从历史层做内容检索，后者像维护多路受约束状态。它们提示：模型深度不必只是一条串行链，也可以是一块可寻址、可混合的记忆。</li>
+      </ol>
+    </section>
+
+    <section id="study">
+      <h2>如果要继续深入，最值得按这个顺序学</h2>
+      <ol>
+        <li>先手推 MHA 的 Q/K/V 张量形状、causal mask、KV cache 元素数与 decode 带宽。</li>
+        <li>再实现 MQA/GQA，观察只改变 KV heads 后，cache 和 tensor parallel 如何变化。</li>
+        <li>读 DeepSeek‑V2/V3 的 MLA，理解低秩 latent、decoupled RoPE 与权重吸收。</li>
+        <li>读 DeepSeek‑V3.2 的 DSA，重点看 indexer distillation、top‑k 漏选和 \(O(Lk)\) 主路径不等于全系统 \(O(Lk)\)。</li>
+        <li>实现一个最小 delta‑rule recurrence，再读 KDA 的 channel‑wise decay、chunkwise parallel form 与 3:1 hybrid 消融。</li>
+        <li>最后看 V4/K3 的系统章节：异构 cache、prefix checkpoint、speculative decoding 回滚、expert parallel 和确定性 rollout。这里才能看懂架构是否真的可部署。</li>
+      </ol>
+    </section>
+
+    <section id="terms">
+      <h2>术语对齐</h2>
+      <div class="defs">
+        <div><b>MHA</b><span>Multi‑Head Attention；每个 query head 有独立 K/V head，表达强但 KV cache 大。</span></div>
+        <div><b>MQA</b><span>Multi‑Query Attention；多个 query heads 共享一组 K/V，主要节省 decode cache 与带宽。</span></div>
+        <div><b>GQA</b><span>Grouped‑Query Attention；把 query heads 分组共享 K/V，是 MHA 与 MQA 的折中。</span></div>
+        <div><b>MLA</b><span>Multi‑Head Latent Attention；每个 token 先生成低维 KV latent，需要时再恢复多头表示。</span></div>
+        <div><b>DSA</b><span>DeepSeek Sparse Attention；用 lightning indexer 选 top‑k 历史条目，再运行主 attention。</span></div>
+        <div><b>CSA / HCA</b><span>V4 的 Compressed Sparse Attention / Heavily Compressed Attention；分别是中分辨率稀疏记忆与低分辨率全局记忆。</span></div>
+        <div><b>KDA</b><span>Kimi Delta Attention；用 delta rule、逐通道遗忘和固定矩阵状态压缩历史。</span></div>
+        <div><b>AttnRes / mHC</b><span>两种深度信息流改造：前者按内容读取早期层，后者在受约束流形上混合多路 residual state。</span></div>
+        <div><b>MoE</b><span>Mixture of Experts；每个 token 只激活部分专家，以较低激活计算访问更大参数容量。</span></div>
+        <div><b>MTP</b><span>Multi‑Token Prediction；训练时除 next token 外再预测更远 token，增加训练信号，也可支持 speculative decoding。</span></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对四份模型技术报告及关键 attention 前置论文，并用公开模型配置与官方发布页校准型号、时间与结构。性能数字除明确复算项外均属于发布方报告；未独立重训万亿参数模型。DeepSeek‑V4 与 Kimi K3 均为 2026 年新发布模型，服务接口、权重版本和部署支持仍可能继续变化。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2412.19437">DeepSeek‑V3 Technical Report</a> — MLA、DeepSeekMoE、无辅助损失均衡、MTP、FP8、DualPipe 与训练设置。</li>
+        <li><a href="https://arxiv.org/abs/2512.02556">DeepSeek‑V3.2: Pushing the Frontier of Open Large Language Models</a> — DSA、indexer 训练、top‑k 与 MLA 的 MQA 执行模式。</li>
+        <li><a href="https://arxiv.org/abs/2606.19348">DeepSeek‑V4: Towards Highly Efficient Million‑Token Context Intelligence</a> — CSA/HCA、mHC、Muon、低精度、异构 KV cache 与 1M 训练。</li>
+        <li><a href="https://www.deepseek.com/en/transparency/">DeepSeek Transparency Center</a> — 官方型号与发布日期。</li>
+        <li><a href="https://arxiv.org/abs/2602.02276">Kimi K2.5: Visual Agentic Intelligence</a> — MoonViT‑3D、联合多模态训练、Zero‑Vision SFT、视觉 RL 与 Agent Swarm。</li>
+        <li><a href="https://github.com/MoonshotAI/Kimi-K2.5">MoonshotAI/Kimi‑K2.5</a> — 官方报告、权重与部署材料。</li>
+        <li><a href="https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf">Kimi K3 Technical Report</a> — KDA/MLA、AttnRes、Stable LatentMoE、Per‑Head Muon 与系统协同。</li>
+        <li><a href="https://www.kimi.com/blog/kimi-k3">Kimi K3 官方博客</a> — 发布状态、产品边界与架构概览。</li>
+        <li><a href="https://arxiv.org/abs/2510.26692">Kimi Linear: An Expressive, Efficient Attention Architecture</a> — KDA、3:1 hybrid、NoPE 与效率/质量消融。</li>
+        <li><a href="https://arxiv.org/abs/1911.02150">Fast Transformer Decoding: One Write‑Head is All You Need</a> — MQA 原始论文。</li>
+        <li><a href="https://arxiv.org/abs/2305.13245">GQA: Training Generalized Multi‑Query Transformer Models from Multi‑Head Checkpoints</a> — GQA 定义与质量—速度折中。</li>
+        <li><a href="https://arxiv.org/abs/1706.03762">Attention Is All You Need</a> — scaled dot‑product attention 与 MHA 原始定义。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

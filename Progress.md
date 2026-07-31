@@ -1,5 +1,31 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 DeepSeek / Kimi 前沿大模型架构调研
+
+### 任务与材料边界
+
+- 用户希望系统调研最近一两年的大模型架构，并重点深讲 DeepSeek‑V3、DeepSeek‑V4、Kimi K2.5、Kimi K3，以及 MHA、MQA、KDA、DSA。本轮先校准规范型号与发布日期，再把不同 attention 放进统一的状态、计算、表达与系统成本框架。
+- 完整读取 DeepSeek‑V3 53 页、DeepSeek‑V4 58 页、Kimi K2.5 30 页、Kimi K3 47 页、Kimi Linear 28 页技术报告，并核对 DeepSeek‑V3.2/DSA、MQA、GQA、Transformer/MHA 原始论文、官方发布页、公开配置与现有站内 K3/V4 深读。
+- 当前工作区已有 deep Skill 两个文件、`Progress.md` 的其他任务改动和未跟踪 `span.log`；本轮保留不动，最终只选择性提交本任务新页面、Notes 索引与本节 Progress hunk。
+
+### 关键判断
+
+- 2024–2026 的主线不是单一 attention 替代 MHA，而是不同形式的选择性遗忘：MQA/GQA 压 head 维，MLA 压每 token 表示，DSA 压可见集合，CSA/HCA 压时间轴，KDA 把历史压入固定递归状态；实际前沿是局部、压缩、稀疏、递归和少量全局 attention 的混合。
+- DeepSeek‑V3 的价值主要是把 MLA、细粒度 MoE、无辅助损失负载均衡、MTP、FP8 与 DualPipe 做成 671B/14.8T 的稳定系统；DeepSeek‑V4 则用 CSA/HCA 把逐 token latent 进一步改成三分辨率记忆，并以 mHC、Muon、低精度和异构 KV cache 支撑 1M。
+- Kimi K2.5 的语言主干仍继承 K2 的 MLA + 1.04T MoE，真正新增重点是 MoonViT‑3D、早期图文联合训练、Zero‑Vision SFT、视觉 RL 与 Agent Swarm；Kimi K3 才把主干改成 69 KDA + 24 Gated MLA，并同时引入 Block AttnRes 与 896 选 16 Stable LatentMoE。
+- 1M context 是可维护状态与成本契约，不是无损记忆；K3 的 2.5× scaling efficiency、K2.5 视觉 RL 正迁移、Agent Swarm 4.5× 加速都存在发布方证据，但分别缺逐组件消融、多 seed / 等预算对照或总 token / 美元成本审计。
+
+### 变更与验证
+
+- [x] 新增 `notes/tech-analysis/frontier-llm-architecture-deepseek-kimi-attention.html`，完成注意力统一地图、四代模型逐项重建、架构对比、证据审计、独立 insight 与学习路线。
+- [x] 更新 `_data/notes.yml`，登记新页面及材料边界。
+- [x] 运行 Notes 索引、HTML 结构、生成痕迹与格式检查；176 个入口对应 176 个顶层 HTML，目标页唯一 `main` / H1、13 个 section、47 个 h2/h3、无重复 ID、断锚或公开过程噪声。
+- [x] 首轮手机渲染发现全局 shell 的高优先级 `min-width: 0` 使宽表被压缩到 364px；已用目标页作用域选择器恢复 780px 表格宽度，使其只在容器内局部滚动。
+- [x] 第二轮桌面 / 手机渲染确认页面级横向溢出、断锚、失败请求与 runtime error 均为 0，36 个 MathJax 容器正常生成；进一步简化 MathJax loader 配置，消除两条无害组件版本 warning。
+- [x] 隔离 Jekyll 全量构建成功；仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证 / API 限流提示，不影响页面生成。
+- [x] 最终无头 Chromium 在 1440×1100 与 390×844 均返回 HTTP 200；console warning / error、runtime error、失败请求、断锚和页面级横向溢出均为 0，手机端四张表均保持容器内局部滚动。
+- [x] 只提交并推送本任务页面、索引入口与本节 Progress 增量。
+
 ## 2026-07-30 多模态推理 OPD 七篇论文梳理
 
 ### 任务与材料边界
