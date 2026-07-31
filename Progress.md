@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 RSIBench-Data 数据中心递归自我改进 benchmark 深读
+
+### 任务与材料边界
+
+- 用户要求深度讨论 arXiv:2607.25886；按 repo-local `deep` 流程完整重建论文，而不是只给摘要式结论。
+- 完整阅读 21 页论文正文、公式、图表、附录与参考文献，核对官方公开仓库、runner、Tinker 预算估算、Harbor/E2B 评估链路和 SWE-bench Verified benchmark spec，并比较 DataEnvGym、Curation-Bench、PostTrainBench、Agent² RL-Bench 的定位。
+- 当前工作区仍有本轮之前的 `.agents/skills/deep/` 改动、`Progress.md` 既有任务改动和未跟踪 `span.log`；本任务只新增目标笔记、Notes 索引与本节 Progress 增量。
+
+### 关键判断
+
+- 论文真正测到的是固定目标模型 (M_0) 上的 data-factory search：每轮从同一基础模型训练新的 LoRA 候选，研究者 agent 本身、harness 和改进机制没有递归更新，因此不应直接等同于严格 RSI。
+- 14/24 个主设置的后续候选超过首次有效候选，说明失败诊断、行为对齐监督和数据策略搜索有真实发现能力；但 23 个越过历史峰值后仍继续搜索的设置中，18 个最终回落，暴露了 discovery 与 reliability 的断层。
+- 最重要的机制线索是“监督要对齐环境中真正决定成功的行为”，以及 best-so-far、停止和 rollback 本身就是研究能力；论文明确这些是过程观察而不是组件级因果消融。
+- 官方代码将 selection 与 official evaluation 都绑定到同一 benchmark 任务集合；E2B 重新创建的是执行沙箱，不是 held-out 任务。污染边界主要靠规则约束，尚不能把结果解释为自适应泛化。
+- 四套 researcher system 捆绑底层 LLM、harness、reasoning effort、Opus rollout teacher、固定学生模型与任务族；主实验适合做系统级协议比较，不适合直接做通用 researcher model 排行榜。
+
+### 变更与验证状态
+
+- [x] 新增 `notes/paper-reviews/rsibench-data-data-centric-rsi-benchmark.html`，按“作者原文重建 → 结果与机制 → 作者限制 → 独立协议审计 → RSI 定义边界 → 后续实验建议”组织，正文包含公式、24 设置结果表、迭代轨迹与证据边界。
+- [x] 更新 `_data/notes.yml`，登记页面标题、摘要、标签与材料边界。
+- [x] 运行 Notes 索引、HTML 结构、断锚、公开过程噪声与格式检查；索引为 178/178，目标页唯一 `main`/H1、11 个 section、25 个 MathJax 容器、5 张表均有 `.table-wrap`，无重复 ID、占位符、公开执行痕迹或 `git diff --check` 错误。
+- [x] 运行隔离 Jekyll build，并用无头浏览器检查桌面/手机布局、MathJax、表格局部滚动、console/runtime error 与资源请求；1440×1100 和 390×844 均无页面级横向溢出，手机端表格局部滚动，断锚/console/runtime/request error 均为 0。构建仅有既有 Faraday 可选依赖和 GitHub Metadata 未认证/限流 warning。
+- [x] 只暂存本任务页面、索引和本节 Progress hunk，提交并推送；保留工作区其他改动与 `span.log`。
+
+
 ## 2026-07-31 DeepSeek / Kimi 前沿大模型架构调研
 
 ### 任务与材料边界

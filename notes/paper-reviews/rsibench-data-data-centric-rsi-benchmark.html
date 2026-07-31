@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RSIBench-Data 深读：数据研究 agent 已能发现改进，却还不会可靠递归改进</title>
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #b45309;
+      --accent-2-soft: #fdf3e7;
+      --info: #46749a;
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    main, header, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font: 800 13px/1.3 var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 60px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(140px, .24fr) minmax(0, 1fr); gap: 14px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+    .math-display { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 14.5px; }
+    table.wide { min-width: 860px; }
+    .notes-shell-page .table-wrap table { min-width: 620px; }
+    .notes-shell-page .table-wrap table.wide { min-width: 860px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Recursive Self-Improvement</div>
+    <h1>RSIBench-Data 深读：数据研究 agent 已能发现改进，却还不会可靠递归改进</h1>
+    <p class="lede">这篇论文把“让一个 LLM 研究者根据失败证据设计训练数据，再训练固定目标模型并从反馈中继续搜索”做成了可审计 benchmark。它最有价值的结论不是某个模型赢了，而是把 discovery、selection 与 reliability 分开测了出来：候选模型经常能找到有效改进，但搜索过程并不单调，且现有协议还不足以证明严格意义上的递归自我改进。</p>
+  </header>
+
+  <main>
+    <section id="takeaway">
+      <h2>先把作者的主张讲清楚</h2>
+      <p>RSIBench-Data 的全名是 <em>Benchmarking Data-Centric Research for Recursive Self-Improvement</em>。作者没有提出一个新的 LoRA、RL 或合成数据算法，而是提出一个受控问题：如果训练器、服务、环境和评分器都固定，只把“研究数据和训练策略”交给 LLM agent，它能否把模型的失败轨迹转化成下一轮更好的训练经验？论文报告了“能发现，但还不会稳定转化”的结果。</p>
+      <div class="grid-3">
+        <div class="card"><h3>研究对象</h3><p>不是单次提示词优化，而是 data-centric research：诊断能力缺口、构造样本、过滤验证、训练和选择 checkpoint。</p></div>
+        <div class="card"><h3>受控边界</h3><p>固定基础模型、训练后端、推理服务、Harbor/E2B 执行环境、评估规则和预算，agent 只能提交数据与白名单配置。</p></div>
+        <div class="card"><h3>主结论</h3><p>24 个设置中 14 个由后续候选超过首次有效候选；但在已经见到历史峰值后继续搜索的 23 个设置中，有 18 个最终回落。</p></div>
+      </div>
+      <div class="callout info"><b>先记住一个定义边界</b><p>论文标题使用了 recursive self-improvement，但主实验每轮都从同一个固定基础模型 \(M_0\) 训练新的 LoRA checkpoint。被改进的是“数据研究过程对目标模型的适配”，不是研究者模型本身，也不是把上一轮模型继续训练成下一轮模型。下面会把这个差异单独审计。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：失败轨迹为什么还不是训练经验</h2>
+      <p>传统 post-training 往往把数据集、训练超参、评估集和训练脚本预先固定。这样的 benchmark 能测“给定配方能否训练好”，却测不到另一种越来越重要的能力：模型看到自己或另一个模型在环境中失败后，能不能解释失败原因，并把解释变成可执行的监督数据。</p>
+      <p>一个 coding agent 的一次失败通常不只是“答案错了”。轨迹里可能包含错误计划、工具调用、观察结果、恢复动作、测试输出、环境状态和 verifier 反馈。真正的数据研究问题是：哪些片段值得保留？应该模仿成功动作还是修复失败动作？监督应该覆盖整条对话、最终动作，还是带验证器的局部行为？下一轮是否应换任务、换难度、换数据比例或停止搜索？</p>
+      <p>作者把现有工作分成三条线：数据合成研究、反馈闭环进化、受控训练基础设施。<a href="https://arxiv.org/abs/2410.06215">DataEnvGym</a> 已经展示了教师环境依据学生反馈连续生成数据的路线；<a href="https://arxiv.org/abs/2606.04261">Curation-Bench</a> 固定模型、训练和评估后让 agent 迭代数据选择；<a href="https://arxiv.org/abs/2603.08640">PostTrainBench</a> 和 <a href="https://arxiv.org/abs/2604.10547">Agent² RL-Bench</a> 则把更完整的 post-training 或在线 RL 交互放进统一预算。RSIBench-Data 的定位，是把这些维度组合成一个专门检查“可执行的数据研究闭环”的协议。</p>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>基准方向</th><th>可执行数据合成</th><th>能力缺口诊断</th><th>反馈驱动修订</th><th>训练/评估隔离</th><th>服务隔离</th></tr></thead>
+          <tbody>
+            <tr><td>DataComp、DataComp-LM</td><td>有限</td><td>有限</td><td>有限</td><td>不完整</td><td>不完整</td></tr>
+            <tr><td>DataEnvGym、Curation-Bench</td><td>部分覆盖</td><td>覆盖</td><td>覆盖</td><td>不完全一致</td><td>不完全一致</td></tr>
+            <tr><td>PostTrainBench</td><td>有限</td><td>覆盖</td><td>覆盖</td><td>覆盖</td><td>部分覆盖</td></tr>
+            <tr><td>Agent² RL-Bench</td><td>覆盖</td><td>弱</td><td>弱</td><td>弱</td><td>部分覆盖</td></tr>
+            <tr><td><strong>RSIBench-Data</strong></td><td><strong>覆盖</strong></td><td><strong>覆盖</strong></td><td><strong>覆盖</strong></td><td><strong>覆盖</strong></td><td><strong>覆盖</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="callout info"><b>作者真正想隔离的变量</b><br>不是“哪个研究者会写更好的训练代码”，而是“哪个研究者更会从受控失败证据中制造有效训练数据”。训练、服务和评估的实现细节被移到 benchmark 边界之外。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：一个固定目标上的闭环搜索</h2>
+      <p>设固定基础模型为 \(M_0\)，benchmark 提供任务说明、成功标准和失败证据 \(S\)，预算为 \(C\)。第 \(t\) 轮研究者 agent 读取此前历史 \(H_{\lt t}\)，提出训练数据 \(D_t\) 和白名单训练配置 \(c_t\)：</p>
+      <div class="math-display">\[
+        (D_t,c_t)=\pi(S,H_{\lt t}),\qquad M_t=\operatorname{Train}(M_0,D_t;c_t)
+      \]</div>
+      <p>训练完成后，固定的 selection evaluator 在同一套环境上运行 \(M_t\)，返回分数、agent 轨迹、verifier 结果和执行诊断。历史变成 \(H_t=H_{t-1}\cup\{D_t,c_t,M_t,\operatorname{Eval}_{\mathrm{sel}}(M_t)\}\)。在预算耗尽前，研究者只能依赖这段历史选一个 checkpoint \(M_t^*\)，再接受 official evaluator 的最终评估：</p>
+      <div class="math-display">\[
+        s_{\mathrm{off}}(\pi)=\operatorname{Eval}_{\mathrm{off}}(M_t^*),\qquad
+        \Delta=s_{\mathrm{off}}(\pi)-s_{\mathrm{off}}(M_0)
+      \]</div>
+      <p>这里最容易误读的地方是：\(M_t\) 不是由 \(M_{t-1}\) 继续训练得到的。每轮都从 \(M_0\) 开一条新的候选分支，因此这是“研究策略在数据与配置空间中搜索”，而不是普通意义上的 sequential fine-tuning。</p>
+      <h3>agent 可以决定什么</h3>
+      <ul>
+        <li>从失败轨迹、成功轨迹、恢复行为或合成任务中构造训练样本。</li>
+        <li>决定对话表示、过滤、去重、验证、难度课程、数据混合和训练暴露方式。</li>
+        <li>根据反馈诊断缺口，修改下一轮策略，或者保留历史最佳并停止。</li>
+      </ul>
+      <h3>agent 不可以决定什么</h3>
+      <ul>
+        <li>不能改训练代码、optimizer、服务 sampler、评估器、verifier、评分规则和执行沙箱。</li>
+        <li>不能把评估任务、标签、受保护材料直接拿来当监督；仓库通过规则要求 agent 做污染审计。</li>
+        <li>不能把上一轮适配后的模型当成下一轮基础模型；所有候选要回到固定 \(M_0\)。</li>
+      </ul>
+      <div class="callout"><b>这个设计的好处</b><p>如果结果改变，至少可以把变化归因到“数据研究决策”和有限配置空间，而不是某个 agent 临时改了训练脚本或评估器。它把研究活动变成可以记录、比较和复盘的 artifact pipeline。</p></div>
+    </section>
+
+    <section id="setup">
+      <h2>实验设置：四个研究者、一个学生、六类任务</h2>
+      <p>主实验使用四套 frontier researcher system：Claude Code Opus-4.8、Claude Code Sonnet-5、Codex gpt-5.6-sol、Codex gpt-5.6-terra。它们不是只换一个 API 名称，而是完整的 agent 系统；其中还单独比较了 Sonnet 的 high 与 max reasoning effort。外部 rollout model 固定为 Claude Opus 4.8，用来生成研究者要求的推理轨迹、工具序列和完整环境轨迹。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>组件</th><th>固定选择</th><th>它控制的变量</th></tr></thead>
+          <tbody>
+            <tr><td>目标模型</td><td>Qwen/Qwen3.5-35B-A3B-Base</td><td>所有候选的学生模型能力起点</td></tr>
+            <tr><td>训练</td><td>Tinker-backed LoRA SFT</td><td>训练接口、可用配置与 checkpoint 形态</td></tr>
+            <tr><td>执行评估</td><td>Harbor on E2B sandbox</td><td>工具调用、文件系统、测试与 verifier 反馈</td></tr>
+            <tr><td>主预算</td><td>每项 nominal 16 小时、500 美元 Tinker 预算</td><td>研究者可搜索的时间与训练/采样花费</td></tr>
+            <tr><td>研究变量</td><td>数据、过滤、验证、混合、配置、诊断、修订、停止、选择</td><td>data-centric research policy \(\pi\)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>六个 benchmark 包含三种 SWE-bench、Terminal-Bench 2.0、GPQA Diamond 和 AIME 2026。SWE-bench 每项使用固定 100 题子集，Terminal-Bench 使用完整 89 题，GPQA 使用固定 100 题，AIME 使用完整 30 题并对每题做四次 decoding，报告 \(\mathrm{avg}@4\)。主矩阵是 \(4\times6=24\) 个设置。</p>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Benchmark</th><th>基础模型</th><th>Opus-4.8</th><th>Sonnet-5</th><th>Codex sol</th><th>Codex terra</th></tr></thead>
+          <tbody>
+            <tr><td>SWE-bench Verified</td><td>12%</td><td>46%<br><small>10.21h / 195.90 美元</small></td><td>35%<br><small>14.91h / 181.70 美元</small></td><td>33%<br><small>4.41h / 55.61 美元</small></td><td>42%<br><small>2.80h / 59.79 美元</small></td></tr>
+            <tr><td>SWE-bench Multilingual</td><td>7%</td><td>5%<br><small>12.68h / 195.70 美元</small></td><td>22%<br><small>14.20h / 363.77 美元</small></td><td>15%<br><small>5.99h / 78.64 美元</small></td><td>6%<br><small>5.18h / 56.87 美元</small></td></tr>
+            <tr><td>SWE-bench Pro</td><td>0%</td><td>2%<br><small>2.19h / 17.54 美元</small></td><td>4%<br><small>9.54h / 45.63 美元</small></td><td>9%<br><small>11.61h / 300.49 美元</small></td><td>1%<br><small>3.85h / 34.39 美元</small></td></tr>
+            <tr><td>GPQA Diamond</td><td>61%</td><td>56%<br><small>5.98h / 27.92 美元</small></td><td>52%<br><small>6.43h / 16.03 美元</small></td><td>65%<br><small>2.42h / 10.37 美元</small></td><td>64%<br><small>1.14h / 4.80 美元</small></td></tr>
+            <tr><td>AIME 2026 \(\mathrm{avg}@4\)</td><td>30%</td><td>40.83%<br><small>4.89h / 61.36 美元</small></td><td>49.17%<br><small>9.29h / 121.21 美元</small></td><td>53.33%<br><small>8.90h / 63.65 美元</small></td><td>33.33%<br><small>1.85h / 8.50 美元</small></td></tr>
+            <tr><td>Terminal-Bench 2.0</td><td>1.12%</td><td>10.11%<br><small>8.99h / 175.63 美元</small></td><td>5.62%<br><small>8.87h / 156.93 美元</small></td><td>20.22%<br><small>9.56h / 69.07 美元</small></td><td>12.36%<br><small>6.67h / 186.96 美元</small></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>表中的每个最终分数都是预先指定的 representative run，并不等于跨随机种子平均值。赢家也不统一：Opus 赢 Verified，Sonnet 赢 Multilingual，sol 赢 Pro、GPQA、AIME 和 Terminal。四套研究系统没有出现一个全面支配其他系统的“通用研究者”。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：发现能力存在，但搜索不是单调改进</h2>
+      <h3>1. 后续候选经常超过首次有效候选</h3>
+      <p>24 个主设置里，14 个最终选择的候选超过首次有效候选，即 \(14/24=58.33\%\)。这说明把失败反馈带回数据研究闭环确实有用：如果只允许一次尝试，很多设置会错过后来的提升。</p>
+      <h3>2. 看到峰值后继续搜，常常把自己搜坏</h3>
+      <p>有 23 个设置在第一次达到历史峰值后仍继续产生候选，其中 18 个最终低于此前的最好分数，5 个回到同一个峰值；论文将其报告为 \(18/23=78.26\%\) 的“继续搜索后回落”。这个数字最适合被读成 <strong>非单调搜索与 checkpoint selection 的压力测试</strong>，而不是“LLM agent 研究必然失败”。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>现象</th><th>论文中的例子</th><th>它揭示的研究问题</th></tr></thead>
+          <tbody>
+            <tr><td>AIME 晚期跳变</td><td>Sonnet 前 8 个有效 round 长期低于 15%，后面突然跳到约 55%</td><td>低分早期不一定代表方向错误；研究者需要保留探索耐心。</td></tr>
+            <tr><td>SWE Pro 行为对齐</td><td>sol 用真实 submit 行为形成监督后，从低分逐步走到峰值 9%</td><td>环境里真正决定成功的动作，比合成的“看起来完成”更值得模仿。</td></tr>
+            <tr><td>Terminal 聚焦与回退</td><td>聚焦候选 supervision 提升过，但随后更改监督范围出现回落</td><td>发现一个有效数据配方后，停止和 rollback 本身就是能力。</td></tr>
+            <tr><td>历史最佳</td><td>AIME、SWE Pro、Terminal 的峰值分别在中途出现，后续多次没有超过</td><td>研究循环需要显式的 best-so-far 记忆与选择策略。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>3. 资源差异很大，花钱不是简单的能力代理</h3>
+      <p>24 个设置的有效候选数量中位数为 4.5，时间中位数为 6.55 小时，候选循环 Tinker 成本中位数为 62.51 美元，范围分别是 2–15、1.14–14.91 小时和 4.80–363.77 美元。Codex sol 在 GPQA 上用 2.42 小时和 10.37 美元达到 65%，而 Sonnet 在 Terminal 上花 156.93 美元只到 5.62%。论文的资源结果支持“研究策略、停止规则和数据规模都会影响经济性”，但成本并不是单调的质量函数。</p>
+      <p>需要注意，表中 Tinker 成本包含训练和评估采样的估算费用，不包括研究者 LLM 调用、E2B 或其他外部服务成本。因此它更像候选模型循环的基础设施账单，不是完整的 agent research 总成本。</p>
+    </section>
+
+    <section id="mechanisms-in-paper">
+      <h2>作者如何解释这些结果</h2>
+      <p>论文没有把案例分析伪装成严格的因果消融，而是明确说这些是 process-level patterns。它观察到四个反复出现的模式：</p>
+      <div class="grid-2">
+        <div class="card"><h3>准确诊断能力缺口</h3><p>AIME 的后期跳变说明研究者如果把低分解释为“推理能力不足”，并构造更有针对性的数学监督，可能跨过一个学习阈值。</p></div>
+        <div class="card"><h3>让验证信号进入数据研究</h3><p>AIME 的答案一致性、SWE Pro 的环境成功轨迹、Terminal 的 sandbox 结果，都比单纯让 rollout model 自评更可操作。</p></div>
+        <div class="card"><h3>监督必须对齐真实行为</h3><p>SWE Pro 中真实 submit 行为优于只模仿安全或合成完成；Terminal 中集中于有效行为的候选有短期收益。</p></div>
+        <div class="card"><h3>保护历史最佳</h3><p>如果 selection score 只是噪声代理，best-so-far、停止、回滚和独立官方复评就不是附属工程，而是闭环的一部分。</p></div>
+      </div>
+      <p>另外，Sonnet Verified 的 reasoning-effort 对照很有启发：max 相比 high 提高了前四个 selection 平均分、首次有效候选和最好观察分数，official score 也从 35% 升到 52%；代价是更大的数据集、更长的训练和约 401.70 美元的候选循环成本，而 high 只花约 181.70 美元。这个结果提示研究者的 reasoning budget 可能改变“诊断—数据规模—搜索次数”的平衡，但它仍是单次对照，不足以做普遍因果结论。</p>
+      <div class="callout warn"><b>不要把观察模式叫成算法消融</b><p>比如“真实 submit supervision 有效”同时伴随数据来源、样本数量、训练步数或配置变化；没有只改变一个因素的对照，就不能把整个提升归因于 submit token 本身。</p></div>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释：读懂这篇论文只需抓住五个词</h2>
+      <div class="def-list">
+        <div><b>Data-centric research</b><span>把“如何构造、过滤、验证和混合训练数据”当成研究对象，而不是把数据集视为静态输入。</span></div>
+        <div><b>Researcher agent</b><span>负责诊断失败、提出数据与训练方案、读取反馈、决定继续还是停止的 LLM 系统；它不等同于被训练的学生模型。</span></div>
+        <div><b>Selection evaluator</b><span>每轮快速反馈用的评估器。研究者根据它决定哪个候选暂时最好，但它可能与 official score 存在噪声差异。</span></div>
+        <div><b>Official evaluator</b><span>预算结束后对最终选中 checkpoint 的正式复评。它在论文里是独立运行链路，但不等于任务集合一定是 held-out。</span></div>
+        <div><b>Behavior-aligned supervision</b><span>训练数据模仿环境中真正决定成功的行为，例如正确 submit、恢复失败状态或完成可验证的工具序列，而不是只模仿表面流畅的长对话。</span></div>
+        <div><b>Historical best</b><span>到当前为止 selection score 最高的 checkpoint。它是抗回归的选择记忆，不是让训练过程本身单调的魔法。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>作者自己承认的边界</h2>
+      <div class="callout warn"><b>论文没有证明自适应泛化</b><p>四个 SWE/知识类设置使用固定子集，选择和 official 评估面对同一批任务；Terminal 与 AIME 虽使用完整集合，也不是新的私有刷新任务。official 评估重新创建环境，但没有把任务换成研究者从未见过的 held-out split。</p></div>
+      <p>作者还列出三个限制：每个设置只有一个 representative run，无法估计跨随机种子方差；researcher identity 同时捆绑了底层 LLM、harness、reasoning effort 和 scaffold，主矩阵比较的是完整系统而不是纯模型；早期 Kimi 同家族实验只是探索性附录，不能替代主矩阵。</p>
+      <p>这意味着论文的结果适合支持“在这个固定协议里，数据研究闭环有发现能力、但非单调且选择困难”，不适合直接支持“某个 LLM 是更好的通用自我改进研究者”或“它已经可以自主递归提升自身能力”。</p>
+    </section>
+
+    <section id="audit">
+      <h2>独立审计：这篇论文最强与最弱的地方</h2>
+      <h3>第一层：代码确实把“新沙箱”和“新任务”分开了</h3>
+      <p>公开仓库的 benchmark spec 将 SWE-bench Verified 固定为 seed 23 的 100 题目录；selection pipeline 和 official evaluation 都读取同一套 Harbor dataset，只是通过新的 E2B 执行环境重新运行。仓库 README 也明确把 base diagnostic、trajectory 和 verifier 报告放在同一官方评测子集的上下文中，并用规则要求 agent 不得复制或蒸馏。这是一条重要的 protocol fact：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>隔离层</th><th>论文/代码提供了什么</th><th>仍然缺什么</th></tr></thead>
+          <tbody>
+            <tr><td>执行环境</td><td>每次在隔离 E2B/Harbor sandbox 中运行，减少文件系统和服务状态串扰。</td><td>环境刷新不改变题目、patch 分布或任务 ID。</td></tr>
+            <tr><td>训练/评估流程</td><td>固定 runner、Tinker、采样器、verifier 和预算审计，抑制工程实现差异。</td><td>数据污染主要靠 agent 遵守规则，未见到能证明“语义上没有复制评估信息”的自动 scanner。</td></tr>
+            <tr><td>统计泛化</td><td>固定任务、固定预算，便于复现协议内比较。</td><td>缺少多 seed、私有 held-out、任务刷新、跨任务族测试和 no-feedback baseline。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>因此“fresh sandbox”只能证明执行状态相对独立，不能被说成“held-out evaluation”。研究者可能在同一任务集合上逐步适应任务 ID、失败模式或 aggregate feedback，即便没有直接复制题目文本，也会产生 protocol-level adaptive overfitting 风险。</p>
+
+      <h3>第二层：它更像“数据工厂的元搜索”，还不是严格 RSI</h3>
+      <p>严格递归自我改进至少需要看到改进器 \(\pi\) 本身变强，或者下一轮的改进器能更有效地改进后续改进器。RSIBench-Data 的主实验中，researcher model 固定；学生 checkpoint 每轮从 \(M_0\) 重新训练；研究者的提示、harness 和推理能力没有写回自身。更准确的命名是：</p>
+      <div class="grid-3">
+        <div class="card"><h3>它测到了</h3><p>固定目标模型与固定基础设施上的 data-factory search、failure diagnosis、candidate selection 和预算管理。</p></div>
+        <div class="card"><h3>它部分触及</h3><p>由历史反馈驱动的研究过程进化，以及研究者是否能把模型行为变成下一轮监督。</p></div>
+        <div class="card"><h3>它尚未测到</h3><p>研究者模型自身更新、改进器的能力递归、跨任务迁移、长期能力保持和“越改越会改”的 ignition。</p></div>
+      </div>
+      <p>这不是贬低 benchmark。恰恰相反，先把低风险的固定目标搜索测清楚，才能在未来加入可更新 researcher、学生权重跨轮传递或 co-evolving evaluator；只是标题中的 RSI 不应让读者误以为主实验已经跨过了这一步。</p>
+
+      <h3>第三层：78.26% 是有效观察，但不是普适定律</h3>
+      <p>18/23 的分母只包含“已经继续超过首次峰值”的设置，排除了没有继续搜索或没有出现历史峰值后的场景。它没有 no-feedback 对照，也没有重复运行来区分搜索政策、训练随机性、评估随机性和 official 选择误差。因而最稳妥的表述是：<strong>在这个协议和这批搜索轨迹里，一旦过了峰值，继续探索的回归风险明显高于零</strong>；不能外推为所有 LLM research agent 或所有 data-centric post-training 都有 78.26% 的失败率。</p>
+      <p>同时，selection peak 与 official score 平均相差 3.89 个百分点，说明研究者面对的是 noisy proxy optimization。checkpoint selection 不是收尾动作，而是与数据合成同等重要的研究问题。</p>
+
+      <h3>第四层：最有说服力的机制证据是“行为对齐”，但还缺组件级消融</h3>
+      <p>论文的案例共同指向一个很强的工程经验：真实环境里能被 verifier 证明为成功的局部行为，通常比“看起来像成功”的完整长轨迹更适合作为监督。然而 Figure 7 和 Table 3 主要是过程观察，尚未分别锁定数据来源、样本数量、学习率、LoRA rank、训练步数和选择规则。因此它提出了很好的实验假说，却还没有把假说变成可归因的算法结论。</p>
+    </section>
+
+    <section id="insight">
+      <h2>我的独立判断：这篇论文真正的贡献是什么</h2>
+      <h3>1. 贡献在“把研究活动变成可审计对象”，不在于发明一个新训练算法</h3>
+      <p>已有 benchmark 常常把 agent 的长轨迹、训练服务和评估结果糊在一个黑箱里。RSIBench-Data 把提交物、预算、数据边界、服务调用、执行环境和 checkpoint 历史显式化，允许追问“这一轮究竟改了什么”。对于未来研究自动化，这种可审计性比再加一个复杂 loss 更基础。</p>
+      <h3>2. 论文揭示的瓶颈是“发现—可靠性”断层</h3>
+      <p>14/24 表明 agent 不是完全不会研究；18/23 表明它也不懂得稳定守住成果。二者并不矛盾：discovery 是提出一个可能有效的数据假说，reliability 是判断它是否真的有效、能否复现、是否值得继续投入、是否应该回滚。当前系统在第一件事上已经有亮点，在第二件事上仍然脆弱。</p>
+      <h3>3. Checkpoint selection 本身应该成为 benchmark 的一级指标</h3>
+      <p>如果只看最终官方分数，读者不知道 agent 是主动选对了 checkpoint，还是碰巧最后一轮较好。下一版应同时报告：best observed selection score、最终选择分数、official score、峰值到最终的回归、选择决策的 calibration，以及不同预算下的 regret。这样才能把“会发现”与“会交付”分开。</p>
+      <h3>4. “研究者身份”需要拆成模型能力、脚手架能力和教师能力</h3>
+      <p>主矩阵把底层 LLM、harness、reasoning effort、Opus rollout teacher、目标模型和任务族绑在了一起。结果是有用的系统级比较，但不适合做模型排行榜。更干净的实验应固定 researcher scaffold 只换 researcher model，固定 researcher model 只换 rollout teacher，再单独测 scaffold 是否改变数据研究搜索空间。</p>
+      <h3>5. 更严格的下一版协议</h3>
+      <ol>
+        <li>把同一任务集合拆成 research、selection、private official 和 refreshed transfer 四层，防止同任务适应被误读成泛化。</li>
+        <li>加入 no-feedback、fixed-data、random-search、one-shot 和 equal-number-of-candidates 对照，区分反馈价值、搜索次数和偶然命中。</li>
+        <li>每个设置运行多 seed，并对训练随机性、rollout 随机性和 evaluator 随机性分别记录。</li>
+        <li>保留候选级数据 lineage：样本来源、验证证据、过滤理由、训练配置和最终是否被选择。</li>
+        <li>对 researcher model、rollout teacher、target model 和 scaffold 做交叉矩阵，并增加跨任务族与跨目标模型迁移。</li>
+        <li>允许第二阶段研究者改进自己的研究 policy，但把“能否改进 improver”作为独立任务，不要与固定目标搜索混成一个分数。</li>
+      </ol>
+      <div class="callout"><b>一句话评价</b><p>RSIBench-Data 是一个很好的“受控数据研究闭环”起点，也是一面暴露搜索不稳定性的镜子；它已经证明 agent 能偶尔提出有效训练经验，但还没有证明 agent 能把这种偶然发现变成可迁移、可复现、会自我加速的递归能力。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以论文 arXiv v1、其公开 TeX/附录、作者公开代码与 benchmark spec 为主要证据；数字按论文表格和轨迹重新核对，独立判断部分明确标为审计或推断。没有把一次代表性运行当成统计平均，也没有把新 E2B 沙箱当成 held-out 任务。公开仓库的测试依赖并非在所有环境都能直接导入，本文因此不宣称完成付费端到端复现。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2607.25886">RSIBench-Data 论文主页与摘要（arXiv:2607.25886）</a></li>
+        <li><a href="https://github.com/evolvent-ai/RSIBench-Data">官方代码仓库：数据合成、Tinker 训练与 E2B/Harbor 评估框架</a></li>
+        <li><a href="https://github.com/evolvent-ai/RSIBench-Data/blob/main/runner/run_session.sh">官方 session runner：预算、候选循环与最终 checkpoint 提交流程</a></li>
+        <li><a href="https://github.com/evolvent-ai/RSIBench-Data/blob/main/runner/run_official_eval.sh">官方 official evaluation runner：对选中 checkpoint 的复评流程</a></li>
+        <li><a href="https://github.com/evolvent-ai/RSIBench-Data/blob/main/benchmarks/swe_bench_verified/spec.json">SWE-bench Verified benchmark spec：固定任务目录与评估配置</a></li>
+        <li><a href="https://arxiv.org/abs/2410.06215">DataEnvGym：带学生反馈的数据环境生成</a>、<a href="https://arxiv.org/abs/2606.04261">Curation-Bench：固定训练栈上的数据选择研究</a></li>
+        <li><a href="https://arxiv.org/abs/2603.08640">PostTrainBench：自主 post-training 与 reward hacking 边界</a>、<a href="https://arxiv.org/abs/2604.10547">Agent² RL-Bench：受预算约束的 agentic RL benchmark</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
