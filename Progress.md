@@ -47,7 +47,7 @@
 - [x] 结构抽样审计：49/49 有唯一原文区且位于独立判断之前；原文区可见长度约 1,434–8,958 字符，中位数约 3,374；未发现重复 ID、标签失衡、字面转义残留或断裂的 HTML 结尾。
 - [x] `ruby scripts/validate_notes_index.rb` 通过：194 个索引入口对应 194 个顶层 HTML；`git diff --check` 通过；隔离 Jekyll build 通过，仅保留既有 Faraday 可选依赖与 GitHub Metadata 未认证/限流 warning。
 - [x] 直接使用独立 Chromium 完成目录页、系列页、当前六篇和代表性旧笔记的 1440px / 390px 渲染检查：22 个视口全部 HTTP 200，页面级横向溢出、重复 ID、空 alt、console/page/request error 均为 0；桌面与手机截图目检通过，宽表保持容器内滚动。
-- [x] 已选择性暂存本任务的 49 篇个案页、系列/目录、索引、规范、模板和本节 Progress，排除既有 `deep/agents/openai.yaml`、`span.log`、`scripts/__pycache__/` 及其他无关改动，准备提交并推送。
+- [x] 已选择性暂存、提交并推送本任务的 49 篇个案页、系列/目录、索引、规范、模板和本节 Progress（`cc233a5`）；既有 `deep/agents/openai.yaml`、`span.log`、`scripts/__pycache__/` 及其他无关改动均未纳入。
 
 ## 2026-07-31 Zhang Xiaojun Podcast #147–#149 增量深读
 
