@@ -56,6 +56,21 @@
     <p class="lede">K3 不是把 K2 单纯放大到 2.78T 参数。它同时改写序列方向的记忆、深度方向的残差和宽度方向的专家计算，再让预训练、长程 RL、推理基础设施围绕这套结构共同适配。公开配置与权重让“模型是什么”高度可核验；但训练数据、总 token、预训练算力、缩放曲线原始点和组件级大模型消融仍未公开，因此“为什么强、每一项贡献多少”远没有同等可复现。</p>
   </header>
   <main>
+    <section id="source-reconstruction">
+      <h2>先把 K3 从头搭起来：它不是“注意力后面接一个 MoE”这么简单</h2>
+      <p>假设现在有一个新 token 进入 K3。文本 token 先查 embedding；图片则先经过 MoonViT-V2 和 projector，最终都变成一个 <strong>7168 维</strong>向量。这个向量随后穿过 93 个 decoder layer。每层都要解决两个不同的问题：先在<strong>序列方向</strong>决定“当前 token 应该从历史里取什么”，再在<strong>特征方向</strong>决定“取到信息以后做什么非线性变换”。前者由 KDA 或 Gated MLA 完成，后者由 Dense FFN 或 Stable LatentMoE 完成。</p>
+      <div class="flow" role="group" aria-label="Kimi K3 单个 token 的完整前向主线">
+        <div><b>输入到 7168 维</b><span>文本 embedding，或 MoonViT-V2 + projector</span></div>
+        <div><b>序列混合</b><span>69 层 KDA 保存固定状态；24 层 MLA 回看逐 token 历史</span></div>
+        <div><b>特征变换</b><span>第 1 层 Dense FFN；其余 92 层 Stable LatentMoE</span></div>
+        <div><b>输出下一个 token</b><span>93 层循环结束后，经 final norm 与 LM head 得到词表 logits</span></div>
+      </div>
+      <p>93 层并不是 69 层 KDA 做完再接 24 层 MLA，而是大体按 <strong>KDA、KDA、KDA、MLA</strong> 交错。KDA 把此前历史压进每层自己的固定大小矩阵状态，解码一步的历史相关成本不随上下文长度 \(n\) 增长；MLA 仍保留每个历史 token 可被直接寻址的表示，所以解码一步仍需扫描历史、是 \(O(n)\)，但它把每个 token 的多头 K/V 压缩到较小 latent。两者组合的逻辑不是重复优化，而是让 KDA 承担便宜的连续记忆、让 MLA 周期性找回被固定状态压缩时可能丢掉的精确信息。</p>
+      <p>每个注意力子层之后，token 才进入 FFN/MoE。这里的 “latent” 又是另一件事：LatentMoE 把当前 token 的 7168 维特征压到 3584 维，再送进 896 个 routed experts 中被选中的 16 个；两个 shared experts 则始终在 7168 维全宽路径工作。也就是说，<strong>KDA 压缩历史时间轴，MLA 压缩每个历史 token 的 K/V 表示，LatentMoE 压缩专家处理的特征宽度</strong>。三者都叫压缩，却压的是三个不同对象。</p>
+      <p>最后还有第三条轴：Block AttnRes 决定当前层应该从哪些较早 block 取回表征。于是 K3 的完整骨架可以记成一句话：<strong>KDA / MLA 管时间，Dense FFN / LatentMoE 管特征，AttnRes 管深度</strong>。后文先按报告完整说明模型与训练，再用参数复算和证据审计判断这些主张能支持到哪里。</p>
+      <div class="callout info"><b>建议的学习顺序</b><p>如果你主要想弄懂模型结构，依次阅读“<a href="#numbers">参数怎样算</a> → <a href="#architecture">一个 token 怎样穿过 93 层</a> → <a href="#moe">LatentMoE 怎样工作</a>”即可；其中 KDA、MLA、\(W_g/W_o\) 和 \(O(1)/O(n)\) 都在架构章节逐步展开。</p></div>
+    </section>
+
     <section id="thesis">
       <h2>核心判断</h2>
       <div class="evidence-key" role="group" aria-label="证据类型">
@@ -135,6 +150,43 @@
           <tr><td>视觉</td><td>无原生 ViT</td><td>401M MoonViT-V2</td><td>文本与视觉从训练起点联合优化，而不是后接视觉编码器</td></tr>
         </tbody>
       </table></div>
+      <h3>参数量到底怎样算：先认清“矩阵有多少格”</h3>
+      <p>一个不带 bias 的线性层 \(W:\mathbb{R}^{d_{\mathrm{in}}}\rightarrow\mathbb{R}^{d_{\mathrm{out}}}\)，参数量就是矩阵格数 \(d_{\mathrm{in}}\times d_{\mathrm{out}}\)。K3 的 2.78T 不是由一个公式直接得到，而是把 embedding、93 层中的序列混合器、FFN/MoE、AttnRes、视觉编码器和输出头全部加起来。真正占主导的是 92 层 MoE 中<strong>所有 896 个 routed expert 的权重</strong>，即使一个 token 每层只会用到其中 16 个。</p>
+      <h4>第一步：算一个 routed expert</h4>
+      <p>每个 routed expert 在 3584 维 latent space 中使用一个 GLU 型 MLP：gate projection、up projection 都是 \(3584\rightarrow3072\)，down projection 是 \(3072\rightarrow3584\)。因此一个专家有：</p>
+      <div class="math-display">\[
+      P_{\text{one routed expert}}
+      =3\times3584\times3072
+      =33{,}030{,}144
+      \approx33.03\text{M}
+      \]</div>
+      <p>一层放 896 个，得到约 \(33.03\text{M}\times896=29.595\text{B}\)；92 个 MoE 层合计约 <strong>2.723T</strong>。这一步已经解释了总参数的绝大部分。若 routed expert 不降到 3584 维而直接用 7168 维，每个专家会变成约 66.06M，整个 routed expert 池会膨胀到约 5.45T。虽然“只降了一半维”，它被 <code>896 个专家 × 92 层</code>重复，最终省下的是约 <strong>2.72T</strong> 权重，而不是一个小优化。</p>
+      <h4>第二步：区分每层“全部存在”与“这个 token 真正经过”</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>一层 Stable LatentMoE 的部分</th><th>参数复算</th><th>全部参数</th><th>单 token 是否激活</th></tr></thead>
+        <tbody>
+          <tr><td>896 个 routed experts</td><td>\(896\times3\times3584\times3072\)</td><td>约 29.595B</td><td>只选 16 个，约 528.48M</td></tr>
+          <tr><td>2 个 shared experts</td><td>代码合并成 \(3\times7168\times6144\)</td><td>约 132.12M</td><td>始终全宽激活</td></tr>
+          <tr><td>latent 下投影 + 上投影</td><td>\(2\times7168\times3584\)</td><td>约 51.38M</td><td>始终激活</td></tr>
+          <tr><td>router</td><td>\(7168\times896\) 加小量 bias</td><td>约 6.42M</td><td>始终计算路由分数</td></tr>
+          <tr><td><strong>一层合计</strong></td><td>以上相加</td><td><strong>约 29.785B</strong></td><td><strong>约 718.41M</strong></td></tr>
+        </tbody>
+      </table></div>
+      <p>因此两个 shared experts<strong>不是</strong>“也先降维再路由”：它们不参与 Top-16 选择，直接接收 7168 维输入，并且每个 token 都经过。代码把两个 shared experts 的中间宽度合并为 \(2\times3072=6144\)，所以看起来像一个更宽的全宽 MLP，但参数量和两个共享专家等价。</p>
+      <h4>第三步：别漏掉 KDA 和 MLA</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>模块</th><th>单层主要参数</th><th>层数</th><th>总量近似</th><th>为什么此前容易漏算</th></tr></thead>
+        <tbody>
+          <tr><td>Stable LatentMoE</td><td>约 29.785B</td><td>92</td><td>约 2.740T</td><td>它占总量约 98.5%，会遮住其他模块</td></tr>
+          <tr><td>KDA</td><td>约 443.74M</td><td>69</td><td>约 30.62B</td><td>递归状态常被误当参数；真正参数是 Q/K/V、门和输出投影</td></tr>
+          <tr><td>Gated MLA</td><td>约 232.2M</td><td>24</td><td>约 5.57B</td><td>KV latent 很省，但 full-rank gate 与输出投影仍各有 88.08M</td></tr>
+          <tr><td>第 1 层 Dense FFN</td><td>\(3\times7168\times33792\)</td><td>1</td><td>约 0.727B</td><td>只有第一层，不乘 92</td></tr>
+          <tr><td>输入 embedding + 非共享 LM head</td><td>\(2\times7168\times163840\)</td><td>—</td><td>约 2.349B</td><td>词表很大，但仍远小于专家池</td></tr>
+          <tr><td>MoonViT-V2</td><td>官方规格</td><td>—</td><td>约 0.401B</td><td>属于视觉入口，不在 decoder layer 公式里</td></tr>
+        </tbody>
+      </table></div>
+      <p>把这些大项相加约为 2.780T，再加 AttnRes、norm、bias、projector 等较小项，就与官方 2.78T 口径吻合。这个复算的目的不是追求逐个 bias 都精确到个位，而是看清数量级：<strong>2.74T 在 MoE，约 36B 在 KDA + MLA，其他部分只占尾数</strong>。所以只讲 FFN/MoE 可以解释总参数主体，却不能解释模型怎样处理序列，也不能解释 104.2B 的每 token 激活量。</p>
+      <div class="callout warn"><b>“激活参数”不等于 FLOPs，也不等于显存</b><p>激活参数统计的是一次前向中会用到哪些权重；不同矩阵的复用方式、序列长度、卷积、softmax 和状态更新会让 FLOPs 不同。部署时又必须存放或分布几乎全部 2.78T 权重。因此 104.2B 适合描述稀疏计算规模，不能直接当作模型文件大小或真实吞吐。</p></div>
       <div class="callout info"><b>“3T-class”与“2.8T”并不矛盾</b><p>报告使用 2.78T 的精确口径和 2.8T / 3T-class 的传播口径；104.2B 是激活参数近似值。讨论显存、FLOPs 或分片时应使用精确值，讨论产品级规模时可用近似值，但不要把三者互换。</p></div>
     </section>
 
@@ -154,6 +206,14 @@
         <div><b>Stable LatentMoE 混合通道</b><p>两个 shared experts 处理公共变换；routed path 压到 3584 维，在 896 个专家中选 16 个，再归一化并投回全宽。</p></div>
         <div><b>残差、归一化与下一层</b><p>Block AttnRes 更新当前 block 的部分和；93 层重复后，最终输出层再聚合所有 block 表征并生成 logits。</p></div>
       </div>
+      <h3>把一层拆开：KDA / MLA 与 FFN / MoE 是前后串联，不是二选一</h3>
+      <div class="flow" role="group" aria-label="Kimi K3 decoder layer 内部顺序">
+        <div><b>RMSNorm + 深度取源</b><span>AttnRes 先决定这一层从哪些较早表示开始</span></div>
+        <div><b>Token mixer</b><span>本层若是 KDA 就更新固定状态；若是 MLA 就扫描历史 token</span></div>
+        <div><b>RMSNorm + channel mixer</b><span>第 1 层走 Dense FFN，其余层走 Stable LatentMoE</span></div>
+        <div><b>写回残差流</b><span>序列信息和非线性特征变换都回到 7168 维，交给下一层</span></div>
+      </div>
+      <p>“注意力层”和“FFN 层”常被口语化地说成两类层，容易让人以为模型会在它们之间挑一个。实际上一个 decoder layer 内通常<strong>两者都有</strong>：KDA/MLA 横向混合不同 token 的信息，FFN/MoE 纵向重组当前 token 的通道。K3 的第一层是“<strong>KDA + Dense FFN</strong>”；后面 92 层大体是“<strong>KDA 或 MLA + Stable LatentMoE</strong>”。每个 KDA 层有自己的递归状态，每个 MLA 层有自己的 KV cache，每个 MoE 层也有自己的一组 896 个专家，它们不跨层共享。</p>
       <h3>KDA + Gated MLA：固定状态与全局纠偏</h3>
       <p>93 层按“三层 KDA、一层 MLA”的节奏排列，并在末层额外放置一层 MLA，最终得到 69 + 24。KDA 基于 delta rule 更新矩阵状态，带逐通道遗忘和输入依赖输出门；它的状态大小不随序列长度线性增长，因此长上下文解码不需要为每个历史 token 保留完整 KV。</p>
       <p>对单个 attention head，KDA 的核心状态更新可以写成：</p>
@@ -164,6 +224,16 @@
       \widetilde{o}_t=S_t^\top q_t
       \]</div>
       <p>\(S_t\in\mathbb{R}^{d_k\times d_v}\) 是固定大小状态；\(\alpha_t\) 是逐通道保留率，先决定旧状态各通道忘多少；\(\beta_t\) 决定本 token 写入多强；delta rule 中的 \(I-\beta_t k_tk_t^\top\) 会先抹去与当前 key 冲突的旧记忆，再写入 \(k_tv_t^\top\)。这比“把所有历史做加权和”更像一个可学习的有限容量键值记忆。</p>
+      <h4>把一行公式拆成五个动作</h4>
+      <div class="stage-list">
+        <div><b>选择性遗忘</b><p>\(\bar S_t=\operatorname{Diag}(\alpha_t)S_{t-1}\)。不是把整个记忆一起乘一个数，而是对 key 的 128 个通道分别保留或衰减。</p></div>
+        <div><b>先问旧记忆会回答什么</b><p>\(\widehat v_t=\bar S_t^\top k_t\)。用当前 key 去读一次旧状态，得到它对当前 value 的预测。</p></div>
+        <div><b>只计算预测误差</b><p>\(e_t=v_t-\widehat v_t\)。如果旧记忆已经能给出正确 value，就不必重复写；如果冲突，只修正差额。</p></div>
+        <div><b>按写入强度更新</b><p>\(S_t=\bar S_t+\beta_t k_te_t^\top\)。\(\beta_t\) 决定本 token 的纠错写入有多强，\(k_t\) 决定写到哪个地址。</p></div>
+        <div><b>用 query 读出</b><p>\(\widetilde o_t=S_t^\top q_t\)。\(q_t\) 是读取地址，最后取回与当前任务相关的内容。</p></div>
+      </div>
+      <p>可以把 \(q,k,v,\alpha,\beta,S\) 分别记作“读地址、写地址、内容、忘多少、写多重、记忆板”。例如把状态简化成一行两列：初始 \(S=[0,0]\)，地址 A 是 \(k_A=[1,0]\)，写入 5 后得到 \([5,0]\)；地址 B 是 \([0,1]\)，写入 8 后得到 \([5,8]\)。如果 A 后来应改成 7，delta rule 先读出旧值 5，只写误差 \(7-5=2\)，得到 \([7,8]\)，而不是朴素累加成 12。若此时 \(\alpha=[0.5,1]\)，A 通道先衰减为 3.5，B 仍保持 8。这就是“选择性遗忘 + 误差纠写”的直觉。</p>
+      <div class="callout info"><b>\(S_t\) 不是模型参数</b><p>每个 head 的 \(128\times128\) 状态是随请求和 token 变化的<strong>运行时记忆</strong>，类似 KV cache，不是训练后固定在权重文件里的参数。参数量计算应统计产生 \(q,k,v,\alpha,\beta\) 以及输出门和输出投影的矩阵；部署显存则还必须为每个并发请求保存各 KDA 层的状态。</p></div>
       <p>K3 把衰减对数下界设为 <code>g_min = -5</code>。这看似是数值细节，实质是 kernel 设计条件：16-token tile 内的倒数尺度被约束在 BF16 可表达范围，原本依赖 token 对角矩阵的计算可重写为 Tensor Core 友好的稠密乘法。周期性 MLA 则保留全局、内容寻址的通道。两者组合承认了一个事实：固定状态高效，但有限记忆不可避免；全注意力昂贵，却适合纠正长期压缩误差。</p>
       <div class="math-display">\[
       g_t=g_{\min}\operatorname{Sigmoid}\!\left(e^A z_t\right)\in(g_{\min},0)^{d_k},
@@ -172,15 +242,49 @@
       <p>这使每步保留率严格大于 \(e^{-5}\approx 6.7\times10^{-3}\)。在 16-token tile 内，累计 log-decay 落在 \((-80,0)\)，倒数缩放小于 \(e^{80}\)，仍在 BF16 动态范围内。于是对角 tile 也能走稠密 Tensor Core 路径，不再单独做昂贵的 position-pair 计算。这里是典型的算法—kernel 共设计：<strong>门函数的数学范围就是硬件执行路径的前置条件。</strong></p>
       <p>K3 还把 KDA 的输出门改成 full-rank、输入依赖投影：</p>
       <div class="math-display">\[
-      y_t=W_o\!\left[
-      \operatorname{Sigmoid}(W_gx_t)\odot
-      \operatorname{RMSNorm}(\widetilde{o}_t)
-      \right]
+      m_t=\operatorname{RMSNorm}(\widetilde{o}_t),\qquad
+      z_t=\operatorname{Sigmoid}(W_gx_t)\odot m_t,\qquad
+      y_t=W_oz_t
       \]</div>
-      <p>门不是判断“整层开或关”，而是逐通道决定当前 token 要读出多少递归状态。它控制的是有限记忆的<strong>读取</strong>，\(\alpha_t\) 与 \(\beta_t\) 则控制遗忘和写入。</p>
+      <p>门不是判断“整层开或关”，而是逐通道决定当前 token 要读出多少递归状态。它控制的是有限记忆的<strong>读取</strong>，\(\alpha_t\) 与 \(\beta_t\) 则控制遗忘和写入。K3 有 96 个 head、每个 head 输出 128 维，所以拼接后的 attention 表示是 \(96\times128=12288\) 维。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>矩阵</th><th>输入 → 输出</th><th>参数量</th><th>真正职责</th></tr></thead>
+        <tbody>
+          <tr><td>Full-rank 输出门 \(W_g\)</td><td>\(7168\rightarrow12288\)</td><td>\(7168\times12288=88.080\text{M}\)</td><td>看当前隐藏状态 \(x_t\)，为 12288 个 attention 通道生成 0–1 门值，决定哪些读出通过、通过多少</td></tr>
+          <tr><td>输出投影 \(W_o\)</td><td>\(12288\rightarrow7168\)</td><td>\(12288\times7168=88.080\text{M}\)</td><td>把已经门控的 96 个 head 内容混合起来，写回 7168 维 residual stream</td></tr>
+        </tbody>
+      </table></div>
+      <p>两者参数量相同，只因为矩阵尺寸恰好互为反向；它们不是同一个权重，也不是必须互为转置。最短的区别是：<strong>\(W_g\) 决定“放多少”，\(W_o\) 决定“怎样混回去”</strong>。KDA 一层还包括三套 \(7168\rightarrow12288\) 的 Q/K/V 投影约 264.24M、短卷积约 0.15M、生成逐通道 decay 的低秩投影约 2.49M、生成 \(\beta\) 的投影约 0.69M。全部相加约 <strong>443.74M/层</strong>，69 层约 30.62B。</p>
+      <h4>为什么说 KDA 新增一个 token 是 \(O(1)\)</h4>
+      <p>标准全注意力在增量解码时，历史 token 的 K/V 已缓存，新 token 只需新算自己的 Q/K/V；但它的新 query 仍要与 \(n\) 个历史 key 做相似度，再对 \(n\) 个 value 加权，所以每个全注意力层每新增一个 token 是 \(O(n)\)。历史 token 的 Q 不需要缓存或重算。KDA 则只读取和更新固定形状的 \(S_t\)，每步约为 \(O(d_kd_v)\)；在 \(d_k=d_v=128\) 固定时，它对上下文长度 \(n\) 是 \(O(1)\)。这里的 \(O(1)\) 不是“零成本”，而是无论上下文从 1K 变成 1M，状态矩阵的形状不变。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>单层序列模块</th><th>新增 1 token</th><th>整段 prefill</th><th>随长度保存什么</th><th>代价</th></tr></thead>
+        <tbody>
+          <tr><td>标准 attention / MLA</td><td>\(O(n)\)</td><td>朴素 \(O(n^2)\)</td><td>每个历史 token 的 KV 或 KV latent，\(O(n)\)</td><td>能精确寻址任意历史 token</td></tr>
+          <tr><td>KDA</td><td>对 \(n\) 为 \(O(1)\)</td><td>顺序看是 \(O(n)\)，训练用 chunkwise 并行</td><td>固定矩阵状态，对 \(n\) 为 \(O(1)\)</td><td>历史被有损压进有限状态，可能冲突或遗忘</td></tr>
+          <tr><td>K3 全模型</td><td>仍是 \(O(n)\)</td><td>仍含二次项</td><td>69 组固定 KDA state + 24 层随长度增长的 MLA cache</td><td>线性长度成本只留在 24/93 的序列层，而非完全消失</td></tr>
+        </tbody>
+      </table></div>
       <h3>为什么仍保留 Gated MLA</h3>
-      <p>MLA 把每个 token 的 K/V 压成低维 latent \(c_t=W_cx_t\)，缓存 latent，再在计算时还原各 head 的内容 key 和 value，因此仍可做任意 token-to-token 全局注意力，却比标准多头注意力节省 KV。K3 的 MLA 全部使用 NoPE，不再靠 RoPE 注入显式位置；位置与近因性主要由前面的 KDA 递归门提供，MLA 专注全局内容匹配。</p>
+      <p>MLA 的全称是 Multi-Head Latent Attention。它没有把所有历史 token 合成一个状态，而是把<strong>每个 token</strong>原本分散在多头中的 K/V 压成较小 latent \(c_t\)。K3 的 KV 路径先把 7168 维输入压成 512 维内容 latent，加上 64 维共享 key 成分；计算 attention 时再从 512 维 latent 还原 96 个 head 所需的 128 维 content key 和 128 维 value。Query 也走 \(7168\rightarrow1536\rightarrow96\times192\) 的低秩路径，主要降低投影参数和计算。</p>
+      <div class="flow" role="group" aria-label="Kimi K3 Gated MLA 数据流">
+        <div><b>压缩 Query</b><span>7168 → 1536 → 96×192，约 39.32M 参数</span></div>
+        <div><b>压缩每个 token 的 KV</b><span>7168 → 512+64，再从 512 还原多头 K/V，约 16.71M</span></div>
+        <div><b>全局 softmax attention</b><span>新 query 仍与所有历史 token 的 key 匹配，保留逐 token 寻址</span></div>
+        <div><b>门控并写回</b><span>\(W_g\) 逐通道门控，\(W_o\) 混回 7168 维，各约 88.08M</span></div>
+      </div>
+      <p>所以一层 Gated MLA 约为 \(39.32+16.71+88.08+88.08=232.2\)M，24 层约 5.57B。最容易漏掉的是后两个大矩阵：latent 让 Q/KV 投影很省，但 attention 输出仍是 12288 维，full-rank gate 和输出投影并没有降秩。MLA 里的 \(W_g/W_o\) 与 KDA 中职责相同，只是被门控的内容从“递归状态读出”换成“softmax attention 读出”。</p>
+      <p>K3 的 MLA 使用 NoPE，不靠 RoPE 注入显式位置；因果 mask 仍保证 token 不能看未来，前面交错的 KDA 则提供顺序和近因性信号。配置与参考实现仍保留带 <code>rope</code> 字样的历史字段名，但不能据此推断实际启用了旋转位置编码。</p>
+      <div class="callout warn"><b>“MLA 缓存 latent”要区分算法与具体运行时</b><p>算法允许通过 weight absorption 直接缓存和使用低维 KV latent，从而显著降低 cache；公开的通用参考实现为了兼容常规 attention/cache 接口，会先还原完整 K/V 再交给 cache。实际能省多少 KV，取决于 SGLang 等推理引擎是否采用专用 MLA kernel，不能只看模型类里的概念公式。</p></div>
       <p>这不是“线性注意力已经解决长上下文，所以偶尔加全注意力更保险”这么简单。固定状态对历史做有损压缩，适合保留反复有用的模式，却可能丢失很久以前的单个精确事实；MLA 能直接回看那个 token。反过来，纯 MLA 在 1M 上下文会把 KV 存储和 prefill 代价推得很高。3:1 混合就是在<strong>有限状态的常数级记忆成本</strong>与<strong>全局寻址的精确性</strong>之间取结构化折中。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>名字里的 “latent”</th><th>压缩对象</th><th>是否仍保留每个历史 token</th><th>主要收益</th></tr></thead>
+        <tbody>
+          <tr><td>KDA 固定状态</td><td>把整个时间历史压进每层每 head 的矩阵 \(S_t\)</td><td>否</td><td>解码步成本和状态大小对 \(n\) 为常数</td></tr>
+          <tr><td>MLA KV latent</td><td>压缩每一个 token 的多头 K/V 通道</td><td>是</td><td>比标准 MHA 减少每 token KV cache 与投影参数</td></tr>
+          <tr><td>LatentMoE</td><td>压缩当前 token 进入 routed expert 的特征宽度</td><td>不处理历史</td><td>让 896 个专家的总参数与 Top-16 计算可承受</td></tr>
+        </tbody>
+      </table></div>
       <h3>Block AttnRes：把残差流变成深度检索</h3>
       <p>标准 PreNorm 残差以单位权重把各层输出持续累加，深度增加时隐藏幅值会增长，单层贡献被越来越大的累计流稀释。AttnRes 让当前层对更早的输出计算 softmax 权重。完整版本需保存全部层表征，内存与通信为 <code>O(Ld)</code>；block 版本只保留 block 级表示，降到 <code>O(Nd)</code>。</p>
       <div class="math-display">\[
@@ -206,6 +310,7 @@
       W_{\uparrow}\operatorname{RMSNorm}(u)
       \]</div>
       <p>shared experts 始终在 7168 维全宽路径工作，承担通用变换；routed experts 在 3584 维 latent 中分工。这样可以在不让每个专家都吃满全宽输入的前提下增加专家数量和激活数。代价是 routed path 变成“下投影 → 门控专家 → 聚合 → 归一化 → 上投影”的长链，连续矩阵乘法更多，尺度、路由与通信问题一起放大。</p>
+      <div class="callout info"><b>LatentMoE 不等于“整个 MoE 都减半”</b><p>减半的是 routed path 的专家输入 / 输出维度：7168 → 3584 → 7168。router 仍读取 7168 维隐藏状态；两个 shared experts 也始终在 7168 维工作；下投影和上投影本身同样是全宽与 latent 之间的矩阵。真正被大幅削减的是那段会被 <code>896 个专家 × 92 层</code>重复的专家权重，因此只把维度降一半，却能把专家池从约 5.45T 压到约 2.72T。</p></div>
       <div class="grid-3">
         <div class="card"><h3>容量收益</h3><p>每个 token 可从 896 个专业变换中组合 16 个，比 K2 的 384 选 8 拥有更大的组合空间。</p></div>
         <div class="card"><h3>计算约束</h3><p>专家只在半宽 latent 上计算，避免激活 16 个全宽专家导致 FLOPs 与通信近似翻倍失控。</p></div>
@@ -669,6 +774,7 @@
         <li><a href="https://github.com/MoonshotAI/Kimi-K3/issues/3">报告 §5.2.3 引用修订 issue</a> <span>— Optimus prior art 提醒、2026-07-28 报告更新与版本边界。</span></li>
         <li><a href="https://huggingface.co/moonshotai/Kimi-K3">moonshotai/Kimi-K3 模型仓库</a> <span>— 模型卡、公开权重、配置、模型代码与文件索引。</span></li>
         <li><a href="https://huggingface.co/moonshotai/Kimi-K3/blob/main/config.json">Kimi K3 config.json</a> <span>— KDA / MLA layer indices、AttnRes block、MoE、视觉、上下文与 MTP 配置。</span></li>
+        <li><a href="https://huggingface.co/moonshotai/Kimi-K3/blob/main/modeling_kimi_linear.py">Kimi K3 公开参考实现</a> <span>— KDA / Gated MLA 投影形状、full-rank output gate、Stable LatentMoE 数据流与 shared expert 实现；本文参数复算以配置和这些矩阵形状为准。</span></li>
         <li><a href="https://huggingface.co/moonshotai/Kimi-K3/blob/main/LICENSE">Kimi K3 License</a> <span>— 官方自定义许可证及大规模商业使用条件。</span></li>
         <li><a href="https://docs.sglang.io/cookbook/autoregressive/Moonshotai/Kimi-K3">SGLang Kimi K3 部署文档</a> <span>— 公共服务模态、硬件 recipe、精度参数与草稿模型状态。</span></li>
         <li><a href="https://arxiv.org/abs/2510.26692">Kimi Linear: An Expressive, Efficient Attention Architecture</a> <span>— KDA、混合线性 / 全注意力与长上下文效率的上游论文。</span></li>

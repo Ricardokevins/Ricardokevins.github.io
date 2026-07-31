@@ -1,5 +1,26 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 Kimi K3 架构与参数量笔记深化（完成）
+
+### 任务与改造判断
+
+- 用户在逐步讨论 K3 参数量、KDA、MLA、LatentMoE、输出门与输出投影后，要求把整组内容梳理进现有技术报告笔记。
+- 原页面已经覆盖 K3 的完整技术报告和证据审计，但参数章节停留在 headline 规格，架构章节也缺少从单 token 前向过程出发的中间推导；读者容易看懂结论，却难以自行复算参数或把 KDA / MLA 与 FFN / MoE 串起来。
+
+### 本轮变更
+
+- [x] 在独立判断前新增原文架构重建入口：从 7168 维输入、93 层 decoder、69 KDA + 24 Gated MLA、首层 Dense FFN + 92 层 Stable LatentMoE，一直走到 LM head。
+- [x] 增加参数量逐项复算：一个 routed expert、单层 / 92 层 MoE、shared experts、latent 投影、router、KDA、MLA、Dense FFN、embedding / LM head 与视觉编码器。
+- [x] 将 KDA 状态更新拆成遗忘、旧值预测、误差、纠写、query 读出五步，并加入二维玩具例子；明确运行时状态不是模型参数。
+- [x] 解释标准 attention / MLA 的增量 \(O(n)\)、KDA 对上下文长度的 \(O(1)\)，以及混合模型整体仍为 \(O(n)\) 的边界。
+- [x] 补全 MLA 的 query / KV latent、NoPE、Gated MLA 与具体参考实现缓存边界；区分 KDA、MLA、LatentMoE 三种不同“压缩”。
+- [x] 明确 full-rank 输出门 \(W_g\) 与输出投影 \(W_o\) 都是 88.080M 但职责、方向和权重完全不同。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：194 个索引入口对应 194 个顶层 HTML；定向 `git diff --check` 通过。
+- [x] HTML 结构审计通过：唯一 H1 / main / evidence appendix，25 个章节、21 张宽表、12 个公式容器；无重复 ID、断锚、未包裹表格或公开页面生成痕迹，`source-reconstruction` 位于独立判断之前。
+- [x] 使用临时 bundle 与隔离输出目录完成 Jekyll build；仅出现既有 `faraday-retry` 建议与 GitHub Metadata 未认证 / 限流 warning，不影响静态页面生成。
+- [x] 独立 headless Chromium 完成 1440×1100 与 390×844 验收：均 HTTP 200、MathJax 正常、页面级横向溢出为 0、console / page / request error 为 0；手机端 21 张宽表均保持容器内横向滚动，截图目检无重叠或截断。
+- [x] 发布提交范围限定为 K3 页面与本节 Progress；工作区其他既有改动保持原样，不纳入本任务。
+
 ## 2026-07-31 Zhang Xiaojun Podcast 全频道抓取与深度梳理（进行中）
 
 ### 任务边界
