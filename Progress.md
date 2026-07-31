@@ -1,5 +1,29 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 自进化笔记 Harness / Model 路线深化
+
+### 任务与材料边界
+
+- 用户希望在上一轮《自进化与 RSI》深读基础上，深入理解并讨论 Harness 与 Model 两条路线；本轮原地深化现有笔记，不创建重复页面。
+- 重新逐节核对 RHI 88 页论文、Ai2 Harness Evolution 评测、SIA、Continual Harness、AIDE²、MiniMax M2.7 与 Hermes 一手材料，重点区分任务专用适应、跨任务能力、系统共同适应和严格模型自举。
+- 当前工作区已有 deep Skill 两个文件、`Progress.md` 的其他任务改动、共享 Notes 索引改动和未跟踪文件；本轮保留不动，最终只选择性提交目标笔记、Notes 索引本任务 hunk 与本节 Progress hunk。
+
+### 关键判断
+
+- RHI 与 Ai2 的结论可以同时成立：RHI 为每个开放式研究任务生成专用 Harness，Ai2 检验进化后的共享 Harness 能否在 held-out 任务上泛化；前者证明任务专用信息流有价值，后者否定“它已经学会一般 Harness 设计”的强外推。
+- RHI 的最高 60% 降本比较的是进化后单次执行与更高推理档位，不是包含旧版执行、成对评价和优化器调用的完整学习生命周期成本；是否真降本取决于 Harness 复用次数与摊销。
+- SIA 证明 Harness 与 LoRA 权重更新互补，但外部 Claude Sonnet 4.6 负责 Meta / Feedback Agent，动作选择策略未学习；Continual Harness 的 Gemma 权重更新也依赖 Gemini 3.1 Pro 教师重标。两者都是系统级共同适应，还不是单模型闭环自举。
+- 可落地架构应把 Harness 当高频、显式、可回滚的快变量，把 Model 当低频、昂贵、难回滚的慢变量：先在外部状态验证规律的稳定性与泛化，再周期性蒸馏进权重；每次权重更新后重新基准化 Harness。
+
+### 变更与验证
+
+- [x] 原地扩写 `notes/tech-analysis/self-evolving-rsi-taxonomy-audit.html`：新增 Harness 五类写回面、四级更新深度、完整准入循环、RHI 成本口径、RHI / Ai2 适用边界、Model 五类训练信号、SIA / Continual Harness 机制与局限，以及快慢双循环工程框架。
+- [x] 更新 `_data/notes.yml` 摘要，使索引准确反映深化后的主体内容。
+- [x] 完成 Notes 索引、结构和格式检查：当前共享工作区 178 个入口对应 178 个顶层 HTML；目标页唯一 `main` / H1、12 个 section、26 个 h2/h3、5 个展示公式，无重复 ID、断锚、公开过程噪声或 `git diff --check` 错误。
+- [x] 隔离 Jekyll 全量构建成功；仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证 / API 限流提示，不影响静态产物。
+- [x] 完成 1440×1100 与 390×844 浏览器复验：两种视口均无页面级横向溢出，27 个 MathJax 容器正常；手机端五张宽表在 349px 容器内保持 720px 局部横向滚动，桌面端表格自适应 1118px；目录锚点、唯一 evidence appendix 正常。
+- [x] 选择性提交并推送本任务改动；共享索引中其他已暂存内容与工作区其余改动保持原状。
+
 ## 2026-07-31 RSIBench-Data 数据中心递归自我改进 benchmark 深读
 
 ### 任务与材料边界
