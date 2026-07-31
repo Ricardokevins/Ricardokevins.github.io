@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenMLE 深读：把“AI 改进 AI”变成可执行的机器学习工程闭环</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #b45436;
+      --accent-soft: #f7e9df;
+      --accent-2: #8a5a2b;
+      --accent-2-soft: #f4eadc;
+      --good: #456653;
+      --good-soft: #e8efe9;
+      --warn: #9b4a39;
+      --warn-soft: #f6e6e1;
+      --shadow: 0 16px 42px rgba(31, 37, 40, .08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(180,84,54,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      font-family: var(--sans);
+      line-height: 1.76;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { font-weight: 760; }
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .91em; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 7vw, 82px) 0 30px; }
+    .kicker { margin-bottom: 12px; color: var(--accent-2); font-size: 13px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+    h1 { max-width: 980px; margin: 0; font: 760 clamp(34px, 5vw, 60px)/1.13 var(--serif); }
+    .lede { max-width: 940px; margin: 20px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 21px); }
+    .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .toc a { display: inline-flex; align-items: center; min-height: 34px; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,253,248,.84); color: var(--muted); font-size: 13px; font-weight: 740; text-decoration: none; }
+    main { display: grid; gap: 30px; padding-bottom: 70px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(25px, 3.2vw, 36px)/1.22 var(--serif); }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 8px; color: var(--accent); font-size: 16px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+    .callout.good > b { color: var(--good); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+    .callout.warn > b { color: var(--warn); }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+    .flow-step { position: relative; min-width: 0; padding: 14px; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -9px; top: 42%; z-index: 2; color: var(--accent-2); font-weight: 900; }
+    .flow-step b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .flow-step span { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+    .table-wrap { margin: 18px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    body.notes-shell-page .table-wrap table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 760; }
+    tr:last-child td { border-bottom: 0; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .label { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border-radius: 999px; background: var(--accent-2-soft); color: var(--accent-2); font-size: 12px; font-weight: 760; white-space: nowrap; }
+    .label.fact { background: var(--good-soft); color: var(--good); }
+    .label.inference { background: var(--accent-soft); color: var(--accent); }
+    @media (max-width: 900px) {
+      .flow { grid-template-columns: 1fr; }
+      .flow-step:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -18px; }
+    }
+    @media (max-width: 760px) {
+      header, main { width: min(calc(100% - 24px), var(--max)); }
+      h1, .lede { overflow-wrap: anywhere; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      body.notes-shell-page .table-wrap table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Analysis · OpenRSI / AI4AI</div>
+    <h1>OpenMLE 深读：把“AI 改进 AI”变成可执行的机器学习工程闭环</h1>
+    <p class="lede">X 原帖是 OpenRSI 的发布预告，真正需要读懂的是它后面的论文、代码、模型和任务数据。OpenMLE 不是一个单独的模型，而是一套把机器学习代码放进可执行环境、把运行结果变成训练信号、再把训练出的“改代码能力”放回长程搜索的全栈系统。本文先按作者路线重建这套系统，再审计它为什么能支持 AI4AI，以及为什么还不能直接叫作通用递归自我改进。</p>
+    <nav class="toc" aria-label="文章目录">
+      <a href="#map">先说结论</a><a href="#source">原帖与正式材料</a><a href="#gym">OpenMLE-Gym</a><a href="#erl">OpenMLE-ERL</a><a href="#evo">OpenMLE-Evo</a><a href="#loop">一次搜索如何发生</a><a href="#results">实验结果</a><a href="#audit">证据审计</a><a href="#insight">独立判断</a><a href="#terms">术语</a><a href="#sources">资料索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="map">
+      <h2>先把 OpenMLE 说成一句人话</h2>
+      <p><strong>OpenMLE 可以理解为“Open + MLE”：把机器学习工程（Machine Learning Engineering）变成一种可运行、可评分、可训练、可搜索的 AI4AI 环境。</strong> 给它一个任务，它不是只让大模型回答“应该用什么模型”，而是让模型写出训练程序，把程序放进沙箱运行，读取真实执行结果，再决定下一版如何改。</p>
+      <div class="flow" aria-label="OpenMLE 闭环">
+        <div class="flow-step"><b>1. 任务</b><span>把数据、目标、提交格式和隐藏评测器封装成任务包。</span></div>
+        <div class="flow-step"><b>2. 生成</b><span>模型 Draft 一个可执行的机器学习程序。</span></div>
+        <div class="flow-step"><b>3. 执行</b><span>沙箱运行程序，返回分数、日志、错误和资源消耗。</span></div>
+        <div class="flow-step"><b>4. 改写</b><span>模型 Improve、Debug 或 Crossover，产生下一代程序。</span></div>
+        <div class="flow-step"><b>5. 学习</b><span>把高质量执行轨迹用于 SFT/RL，并继续驱动下一轮搜索。</span></div>
+      </div>
+      <div class="callout good"><b>最重要的区别</b><p>普通 Agent 的“我觉得这段代码更好”只是语言判断；OpenMLE 的核心反馈是“代码真的跑了，验证器给了这个分数”。这使它从聊天式建议进入了可验证的工程循环。</p></div>
+    </section>
+
+    <section id="source">
+      <h2>原帖到底发布了什么</h2>
+      <p>原帖作者 Junlin Yang 发布的是 OpenRSI 的第一项公开工作：<a href="https://github.com/FrontisAI/OpenRSI">FrontisAI/OpenRSI</a> 仓库及其论文 <a href="https://arxiv.org/abs/2607.28568">Frontis-MA1: Training an AI4AI Model towards Recursive Self-Improvement in Machine Learning Engineering</a>。所以，帖子的重点不是“又出了一个 35B 模型”，而是公开了一套把模型训练和推理搜索对齐的系统。</p>
+      <p>原帖给出的三个组件是：</p>
+      <div class="grid-3">
+        <div class="card"><h3>OpenMLE-Gym</h3><p>5,758 个带执行环境和评测器的机器学习任务，以及构建、验证、质量检查这些任务包的工具。</p></div>
+        <div class="card"><h3>OpenMLE-ERL</h3><p>Execution-grounded SFT/RL：用程序真实运行后的反馈训练四类程序变换能力。</p></div>
+        <div class="card"><h3>OpenMLE-Evo</h3><p>把这些变换组合成有记忆、有父代选择、有预算约束的长程进化搜索。</p></div>
+      </div>
+      <p>在这套系统上训练出的模型叫 <strong>Frontis-MA1</strong>。MA1 不是 OpenMLE 的同义词：OpenMLE 是环境、训练和搜索栈，Frontis-MA1 是其中被后训练出来的“元进化 Agent”，负责提出下一版机器学习程序。</p>
+      <div class="callout"><b>“递归自我改进”在这里是什么意思</b><p>论文把 RSI 收窄为 AI 改进 AI 的过程：系统不只解决一个机器学习任务，还要改进产生下一代机器学习方案的过程。OpenMLE 的论文声称它提供了一个具体、可执行的研究台，而不是声称已经解决了通用 RSI。</p></div>
+    </section>
+
+    <section id="gym">
+      <h2>第一层：OpenMLE-Gym 把机器学习任务变成环境</h2>
+      <p>没有可执行的任务，就没有可靠的“进化”。OpenMLE-Gym 的作用类似强化学习里的环境，但对象不是走迷宫的动作，而是一个完整的机器学习程序。任务包包含自然语言说明、公开数据、提交契约、任务专属评测器、沙箱和资源预算。</p>
+      <div class="grid-2">
+        <div class="card"><h3>模型能看到什么</h3><p>任务说明、公开训练/测试数据、样例提交格式、当前程序的运行日志和可公开的验证反馈。</p></div>
+        <div class="card"><h3>模型不能直接看到什么</h3><p>隐藏评测答案和最终测试标签。搜索控制器使用任务指定的验证分数选父代，不能用隐藏测试分数挑选下一步。</p></div>
+      </div>
+      <h3>5,758 个任务是怎么来的</h3>
+      <p>论文给出的来源构成为 156 个人工整理的锚点任务、3,362 个 Kaggle Dataset 任务和 2,240 个 Kaggle Competition 任务。任务覆盖表格、图像、时间序列、多模态、文本、音频和视频，但分布并不均匀：分类和回归合计约 87%，因此它首先是一个以常见监督学习为主的 MLE 测试床，不是所有科学研究问题的均匀样本。</p>
+      <p>构建流程会生成 <code>prepare.py</code> 和 <code>metric.py</code>，先验证任务能否准备数据、指标能否执行，再经过任务有效性、数据充分性、原始数据使用、复杂度和数据质量等维度的质量门槛。执行时可用默认子进程，也可用 Docker/Podman 隔离，限制网络、文件系统、时间和硬件资源。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>任务包内容</th><th>它解决的问题</th><th>为什么对进化重要</th></tr></thead>
+          <tbody>
+            <tr><td>公开数据与任务说明</td><td>让模型知道要解决什么</td><td>为 Draft 提供统一输入</td></tr>
+            <tr><td>隐藏 evaluator / answer</td><td>防止模型直接记住答案</td><td>让最终分数具有独立验证意义</td></tr>
+            <tr><td><code>prepare.py</code></td><td>把任务数据准备成可运行形式</td><td>把环境准备错误纳入反馈</td></tr>
+            <tr><td><code>metric.py</code></td><td>按任务定义评分和方向</td><td>把“改得更好”变成数值信号</td></tr>
+            <tr><td>沙箱与资源预算</td><td>运行代码并控制副作用</td><td>让不同候选在可比预算下竞争</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><b>数据开放边界</b><p>5,758 是任务规模，不等于 5,758 个任务包都能直接下载复现。官方公开了 1,415 个 ready-to-use 包，另外 4,343 个以可重建 recipe 和脚本形式发布，因为上游数据许可不允许直接再分发。这是“代码开源”与“所有原始数据完整开源”的差别。</p></div>
+    </section>
+
+    <section id="erl">
+      <h2>第二层：OpenMLE-ERL 训练“如何改程序”</h2>
+      <p>只会从零写代码不够。机器学习工程的真实过程通常是：先有一个能跑的版本，再看报错修复，接着围绕指标改特征、模型和训练策略，最后把两条有效路线的部分设计合并起来。因此 OpenMLE 把动作空间固定成四个原子操作，并在训练和推理时使用同一套接口。</p>
+      <div class="grid-2">
+        <div class="card"><h3>Draft</h3><p>从任务说明和数据结构出发，生成第一个完整程序。</p></div>
+        <div class="card"><h3>Improve</h3><p>在已有父程序上根据执行反馈做有目标的改进。</p></div>
+        <div class="card"><h3>Debug</h3><p>面对运行时错误、缺失文件、提交格式或评分失败，修复到可执行。</p></div>
+        <div class="card"><h3>Crossover</h3><p>从两个父程序中重新组合互补的模型、特征、预处理或训练策略。</p></div>
+      </div>
+      <h3>监督微调：不是只看最终答案，而是保留有效转折</h3>
+      <p>官方公开的 SFT 轨迹数据有 26,259 条，包含 17,245 个完整响应和 9,014 个演化步骤。数据来自执行过的 Draft 和后续 Debug/Improve/Crossover 轨迹：如果一个中间改动最终帮助程序到达有效终点，它更可能被保留；纯粹的外观修改、盲目重试和失败路径会被剔除。公开数据集的构建源头是 26,574 条，另有 315 条因上游许可或权限审查未进入发布集。</p>
+      <p>这意味着 SFT 学到的不是“看一眼任务就背出标准答案”，而是从执行轨迹中模仿哪些修改动作曾经带来可验证进步。不过，公开数据集也明确提醒：轨迹可能包含错误推理和错误代码，不能把每一条样本当成权威答案。</p>
+      <h3>强化学习：让高分候选得到更强的更新信号</h3>
+      <p>RL 阶段在线生成候选并执行。不同任务的指标量纲不一样，准确率、RMSE、log loss 不能直接混在一起，所以系统先把分数方向统一，再用随历史前沿变化的 adaptive bounds 保留当前策略真正能分辨的差异，最后用 entropic weighting 把学习信号更多集中到同一组里最好的候选。</p>
+      <p>论文的辅助消融报告显示，熵式加权让组内最佳候选的处理后优势信号约放大到原来的 4 倍；但它使用的是较早期、更简单的 harness，不应直接理解成完整 OpenMLE-Evo 的独立性能证明。RL 还采用异步 rollout，避免一个慢任务让整批更新都等待。</p>
+      <div class="callout good"><b>真正的耦合点</b><p>同一组 Draft / Improve / Debug / Crossover 既是训练目标，也是推理时搜索调用的操作。这让“模型学会的动作接口”和“搜索系统需要的动作接口”对齐，而不是训练一个通用聊天模型，再靠外部 prompt 临时拼出进化能力。</p></div>
+    </section>
+
+    <section id="evo">
+      <h2>第三层：OpenMLE-Evo 让搜索能够记住经验</h2>
+      <p>OpenMLE-Evo 是测试时的进化搜索。它维护一棵或一组候选程序，反复选择父代、调用四种操作、执行子代、记录分数，然后继续扩展。它的关键贡献不是“多生成几个答案”，而是规定下一次该扩展谁、给模型看哪些历史、怎样避免搜索永远黏在当前最高分节点上。</p>
+      <h3>父代选择：分数、进步、新颖性三因素</h3>
+      <p>仓库中的 experience 模块会为每个节点写入 experience card，记录节点来源、操作类型、分数、相对父代的正向改变量、运行状态、错误签名、token 和沙箱耗时，并维护一个 task-global strategy board。搜索控制器的父代 utility 默认由三部分组成：</p>
+      <div class="grid-3">
+        <div class="card"><h3>质量</h3><p>当前验证分数高，说明这条路线已经有竞争力。</p></div>
+        <div class="card"><h3>进步</h3><p>相对最强父代有正向提升，说明这条修改仍产生了有效信号。</p></div>
+        <div class="card"><h3>新颖性</h3><p>方法族出现次数较少，给尚未充分探索的方向保留机会。</p></div>
+      </div>
+      <p>三者经过归一化后用 softmax 采样，而不是确定性地只选第一名。当前公开配置的默认权重是 quality 1.0、delta 0.4、novelty 0.25。这个设计有明确取舍：它牺牲一点纯贪心速度，换取保留潜在互补分支的机会。</p>
+      <h3>记忆不是整棵搜索树，而是按操作检索</h3>
+      <p>Improve 通常看到选中的父代、最多三个近期祖先和三个高价值兄弟节点；Crossover 为两个父代分别取较短的祖先与兄弟上下文；Debug 优先寻找具有相同错误签名的节点，再补充近期失败记录。选中的节点才会按需调用记忆摘要器，生成 <code>method_overview</code> 与 <code>parent_comparison_experience</code>，并缓存结果。</p>
+      <p>这种设计把“可查询的确定性状态”和“由语言模型抽取的自然语言经验”分开：所有节点先记录事实，只有被后续操作选中时才花 token 做总结。这样既降低长程搜索的上下文膨胀，也让记忆和当前操作相关。</p>
+      <h3>OpenMLE-Evo-Max 是什么</h3>
+      <p>Evo-Max 不是一个新的模型，也不是单独的代码目录，而是 OpenMLE-Evo 里的异步多 GPU 配置。它加入 benchmark-independent 的跨任务经验先验，并用 steady-state 异步搜索提高搜索系统的利用率。官方明确提醒：它改变的是模型—harness 系统，不应把 71.21% 全部归因于 Frontis-MA1 参数本身。</p>
+    </section>
+
+    <section id="loop">
+      <h2>把它放进一个具体任务：一次搜索如何发生</h2>
+      <p>可以用一个 Kaggle 风格的鸟类音频分类任务想象整个闭环。任务说明告诉模型数据目录、标签格式和评价指标，但隐藏测试答案留在 evaluator 里。</p>
+      <ol>
+        <li><strong>Draft：</strong>模型生成音频特征、分类器、交叉验证和提交文件。程序第一次可能跑不通，或者能跑但分数很低。</li>
+        <li><strong>执行：</strong>沙箱返回缺少提交文件、KeyError、超时，或者一个可用的验证 AUC。系统把日志、错误和资源耗时写入节点卡。</li>
+        <li><strong>Debug：</strong>如果是路径或提交格式错误，Debug 操作优先检索相同错误签名的历史节点，修复到可评估。</li>
+        <li><strong>Improve：</strong>有了可运行基线后，模型可能尝试谱图、分段统计、数据增强或更稳的交叉验证，只有真实验证分数能说明这次改动有没有用。</li>
+        <li><strong>Crossover：</strong>两个分支各自找到有效组件，系统把一条分支的安全解析和另一条分支的模型结构组合起来，再次执行。</li>
+        <li><strong>继续搜索：</strong>父代选择器不只看最高分，也看最近进步和方法族新颖性；因此一条暂时不是第一名、但可能互补的路线仍可能被扩展。</li>
+      </ol>
+      <div class="callout"><b>这和普通 best-of-N 的差别</b><p>best-of-N 主要是独立生成 N 个候选再取最好；OpenMLE-Evo 的候选之间有父子关系，后续候选会使用前面运行过的程序、错误和分数。它更像一个有实验记录的研究小组，而不是 N 次互不相干的回答。</p></div>
+    </section>
+
+    <section id="results">
+      <h2>实验结果：模型能力和搜索能力分别贡献了什么</h2>
+      <p>主实验是在 MLE-Bench Lite 的 22 个任务上进行，OpenMLE 配置每个任务运行 12 小时，使用单张显存上限 12 GB 的 RTX 4090；官方表格报告多次评测的均值和标准差。这里最关键的是控制变量，而不是只看一个最高数字。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模型</th><th>搜索系统</th><th>有效任务数（22）</th><th>Medal Average</th><th>它说明什么</th></tr></thead>
+          <tbody>
+            <tr><td>Qwen3.6-35B-A3B</td><td>OpenMLE-Evo</td><td>19.67</td><td>39.39%</td><td>基座模型在同一搜索栈下的起点</td></tr>
+            <tr><td>Frontis-MA1-35B</td><td>OpenMLE-Evo</td><td>21.67</td><td>60.61%</td><td>固定 harness，只换后训练模型，观察模型学习增益</td></tr>
+            <tr><td>Frontis-MA1-35B</td><td>OpenMLE-Evo-Max</td><td>22</td><td>71.21%</td><td>模型和增强搜索系统合用的端到端结果</td></tr>
+            <tr><td>Frontis-MA1-30B</td><td>OpenMLE-Evo-Max</td><td>22</td><td>66.67%</td><td>换一个 30B 基座仍呈现同方向增益</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>论文还报告了两个迁移对照。在 10 个 NatureBench Lite 任务上，固定 OpenMLE-Evo 的科学任务适配器，只把基座 Qwen3.6 换成 Frontis-MA1，Match-SOTA 从 50% 升到 70%；固定基座模型，只把原始 AIRA-Evo 换成 OpenMLE-Evo，Match-SOTA 从 20% 升到 50%。这支持“模型训练”和“搜索框架”都各有贡献，但 10 个任务意味着每个任务就会改变 10 个百分点，仍属于初步迁移证据。</p>
+      <p>长程案例显示，后半段的 Improve 和 Crossover 仍能带来明显增益：论文展示的 leaf-classification 和 mlsp-2013-birds 轨迹中，早期 Debug 先把程序修到可执行，后期组合和改进才把验证分数继续推高。这个现象比“首个 Draft 能不能跑”更接近 OpenMLE 想研究的元进化能力。</p>
+      <div class="callout warn"><b>比较时必须带上 harness</b><p>GPT-5.5 + Codex、GPT-5.6 Sol + Codex、Kimi K3 + Claude Code 等外部数字不是同一模型的 one-shot leaderboard。它们是模型、工具、提示、并行预算和搜索策略的联合结果。OpenMLE 官方 README 也明确要求把这些结果理解为 model–harness results。</p></div>
+    </section>
+
+    <section id="audit">
+      <h2>证据审计：它证明了什么，还没有证明什么</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>层级</th><th>目前可确认的事实</th><th>合理解释</th><th>不能直接推出</th></tr></thead>
+          <tbody>
+            <tr><td><span class="label fact">代码事实</span></td><td>仓库有任务构建、沙箱执行、experience card、父代选择、记忆检索和异步搜索实现。</td><td>它是可运行的全栈研究原型，不只是论文概念图。</td><td>不能推出任何人拿到仓库即可复现论文主结果；外部任务、模型服务、数据和沙箱仍是必要条件。</td></tr>
+            <tr><td><span class="label fact">训练事实</span></td><td>公开了 26,259 条 SFT 轨迹、Frontis-MA1 权重和 RL/SFT 配置。</td><td>模型确实接受过执行反馈驱动的后训练。</td><td>不能推出每个模型行为都来自执行反馈，也不能把公开轨迹当成全无错误的专家示范。</td></tr>
+            <tr><td><span class="label fact">评测事实</span></td><td>同一 harness 下，Frontis-MA1 明显高于 Qwen 基座；换 Evo 也有迁移增益。</td><td>模型学习和搜索控制器提供了互补收益。</td><td>不能把 71.21% 归因成纯模型能力，也不能外推到通用 AI 研发。</td></tr>
+            <tr><td><span class="label inference">研究判断</span></td><td>系统能用验证反馈选择下一代程序，并将轨迹回写训练。</td><td>这是“元进化”或 AI4AI 的一个具体实验闭环。</td><td>还不是“系统自动改进自身改进器并持续加速”的 RSI ignition 证据。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>为什么它仍然不是通用 RSI</h3>
+      <p>第一，改进对象主要是机器学习任务程序，不是语言模型自身的权重、训练配方、评测器和研究组织的全链路。第二，搜索的动作空间、评测器、父代选择权重和任务边界大多由人设计，系统仍在一个人类预先定义的适应度地形上寻找更好的代码。第三，奖励主要回答“这个候选在这个任务上跑得多好”，并不充分回答研究假设是否有解释力、方案是否跨任务泛化、代码是否可维护、是否值得继续花算力。</p>
+      <p>论文的限制章节自己也承认：未来需要把进化搜索和通用 coding agent 合起来，让进化系统本身成为可被改进的对象，并学习任务相关的经验权重，而不是长期固定使用质量、进步、新颖性三项手工因素。</p>
+    </section>
+
+    <section id="insight">
+      <h2>我的判断：OpenMLE 的真正价值是把“自我改进”拆成可测量接口</h2>
+      <p>OpenMLE 最有价值的地方不是宣称已经抵达 RSI，而是把一句很容易空泛化的“AI 改进 AI”拆成四个可以单独验证的接口：任务是否可执行，反馈是否可信，改写动作是否可学习，搜索是否能把经验带到下一次选择。这样一来，失败也能定位：可能是任务包不可靠，可能是 verifier 被利用，可能是 RL 奖励把所有非失败候选混成一类，也可能是搜索只追逐当前最高分。</p>
+      <div class="grid-2">
+        <div class="card"><h3>已经跨过的门槛</h3><p>模型不只生成答案，而是生成程序；程序不只被静态检查，而是进入沙箱；反馈不只留在上下文，而是进入后训练和父代选择；训练出的操作与推理时操作保持同一接口。</p></div>
+        <div class="card"><h3>还没跨过的门槛</h3><p>系统尚未证明能够改进自己的训练者、评测器和搜索器，并在新任务、固定物理预算和私有评测下持续提高“改进别的 AI 的能力”。</p></div>
+      </div>
+      <p>因此，我会把 OpenMLE 定义为：<strong>一个把 MLE 作为可执行试验场的 AI4AI / 元进化研究栈</strong>。它比“让 Agent 多试几次”更进一步，因为候选之间共享结构化经验；但它距离强 RSI 仍隔着三道墙：更开放的改进对象、更难被利用的评测器，以及能证明“下一代 improver 比上一代更会改进”的跨代验证。</p>
+      <div class="callout good"><b>看这类系统时最该问的三个问题</b><p>一是收益来自模型参数、推理时搜索，还是额外预算；二是分数来自公开验证集还是隐藏评测，是否存在选择泄漏；三是升级后的系统是否真的更擅长“改进一个新的系统”，而不只是把当前 benchmark 做得更好。</p></div>
+    </section>
+
+    <section id="terms">
+      <h2>术语表</h2>
+      <div class="def-list">
+        <div><b>MLE</b><span>Machine Learning Engineering，机器学习工程：数据处理、特征、模型、训练、评估和提交的完整工程过程。</span></div>
+        <div><b>AI4AI</b><span>AI for AI：AI 系统参与构建、训练、评估或改进另一个 AI 系统。</span></div>
+        <div><b>RSI</b><span>Recursive Self-Improvement，递归自我改进：系统改进的不只是当前产物，还包括产生后继系统的能力或过程。</span></div>
+        <div><b>Harness / Scaffold</b><span>包围基础模型的 prompt、工具、记忆、路由、执行器、搜索和评估代码；OpenMLE-Evo 就是这类搜索 harness。</span></div>
+        <div><b>Test-time scaling</b><span>在推理时增加采样、搜索、执行和验证预算换取更好结果；OpenMLE-Evo 属于带经验写回的 test-time search。</span></div>
+        <div><b>Meta-evolution</b><span>不只演化任务解，还训练或改进负责提出下一代任务解的模型与过程。</span></div>
+        <div><b>Medal Average</b><span>MLE-Bench 中按 Bronze、Silver、Gold 等级统计的平均结果；它是系统评测指标，不是模型的一次前向准确率。</span></div>
+      </div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以 X 原帖作为入口，以官方论文、官方代码仓库和官方 Hugging Face 发布作为主要证据。论文与仓库对系统结构、训练轨迹数量、评测协议和限制的表述存在个别版本化差异；本文优先采用当前官方仓库 README、论文正文和公开数据集/模型卡能够相互印证的数字。没有独立重跑 22 个任务的完整 12 小时实验，也没有把外部模型的 headline 结果当作可严格等价的对照。</p>
+      <ul>
+        <li><a href="https://x.com/junlin45300/status/2083062905449107925">X 原帖：OpenRSI / OpenMLE 发布预告</a></li>
+        <li><a href="https://github.com/FrontisAI/OpenRSI">FrontisAI/OpenRSI 官方仓库</a></li>
+        <li><a href="https://arxiv.org/abs/2607.28568">Frontis-MA1 技术报告（arXiv:2607.28568）</a></li>
+        <li><a href="https://huggingface.co/datasets/FrontisAI/OpenMLE-Tasks">OpenMLE Tasks 数据集与任务构建说明</a></li>
+        <li><a href="https://huggingface.co/datasets/FrontisAI/OpenMLE-SFT-Traces">OpenMLE SFT Traces 数据集</a></li>
+        <li><a href="https://huggingface.co/FrontisAI/Frontis-MA1-35B">Frontis-MA1-35B 模型卡</a></li>
+        <li><a href="https://huggingface.co/FrontisAI/Frontis-MA1-30B">Frontis-MA1-30B 模型卡</a></li>
+        <li><a href="https://arxiv.org/abs/2606.24530">NatureBench 论文</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

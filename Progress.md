@@ -1,5 +1,32 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 OpenMLE / Frontis-MA1 深读（完成）
+
+### 任务与材料边界
+
+- 用户给出 Junlin Yang 的 X 发布帖，要求具体理解 OpenMLE，而不是只转录帖文。
+- 主帖是 OpenRSI 的发布预告；已继续核对 Frontis-MA1 论文（arXiv:2607.28568）、FrontisAI/OpenRSI 官方仓库、OpenMLE Tasks / SFT Traces 数据集、Frontis-MA1-35B/30B 模型卡，以及 OpenMLE-Evo 的公开实现与 22-task validation split 说明。
+- 当前结论是：OpenMLE 是一个面向机器学习工程的 AI4AI 全栈研究栈，由可执行任务环境、执行反馈训练和经验引导长程搜索组成；Frontis-MA1 是在其中训练后再回到搜索环的元进化模型，不是 OpenMLE 本身。
+
+### 已完成的深读与核验
+
+- [x] 重建 OpenMLE-Gym：5,758 个任务来源、任务包结构、质量门槛、隐藏 evaluator、沙箱与资源预算；记录 1,415 个 ready-to-use 包与 4,343 个 recipe / rebuildable 任务的发布边界。
+- [x] 重建 OpenMLE-ERL：Draft / Improve / Debug / Crossover 四个共享操作；26,259 条公开 SFT 轨迹、adaptive reward bounds、entropic weighting、异步 rollout 与 RL 训练接口。
+- [x] 重建 OpenMLE-Evo：experience card / strategy board、质量—相对进步—方法族新颖性三因素父代选择、按操作检索祖先/兄弟/错误签名记忆，以及 Evo-Max 的异步多 GPU配置。
+- [x] 核对实现：仓库中的 `experience.py` 与 Evo solver 确实以模型最终验证分数作为搜索选择信号，不使用隐藏测试分数；默认配置权重为 score 1.0、delta 0.4、novelty 0.25。
+- [x] 审计实验归因：同一 OpenMLE-Evo 下 Qwen3.6-35B-A3B → Frontis-MA1-35B 为 39.39% → 60.61% Medal Average；Frontis-MA1-35B + Evo-Max 为 71.21%；NatureBench Lite 的模型/框架交换分别为 50% → 70% 与 20% → 50%。
+- [x] 保留证据边界：这些是 model–harness 联合结果，不是 one-shot 模型分数；论文明确承认系统仍主要改进外部 MLE 程序，并未证明通用 RSI 或“改进者本身持续加速”。
+
+### 本轮变更与待验证项
+
+- [x] 新增站内深读笔记：`notes/tech-analysis/openmle-frontis-ma1-executable-ai4ai.html`，按“原文重建 → 机制 → 实验 → 证据审计 → 独立判断”组织。
+- [x] 更新 `_data/notes.yml` 索引。
+- [x] 运行独立笔记索引校验：以当前任务文件构造干净审计副本后通过，195 个索引入口对应 195 个顶层 HTML；当前工作区全量校验被并行任务新产生但尚未登记的两个 HTML 阻塞，未擅自修改其索引。
+- [x] 临时补齐锁定 Ruby 依赖并完成隔离 Jekyll build；目标页面成功生成。构建仅出现仓库既有的 Faraday retry 建议与 GitHub Metadata 未认证 / API 限流 warning。
+- [x] HTML 结构检查通过：唯一 H1 / main / evidence appendix，无重复 ID、断锚、生成痕迹或本地路径；`git diff --check` 通过。
+- [x] 使用独立 headless Chrome + CDP 完成 1440×1100 与真实 390×844 CSS 视口验收：页面级横向溢出为 0，手机端三张宽表保持容器内滚动，运行时、资源加载和控制台事件为 0；截图目检无重叠、截断或导航问题。
+- [x] 只暂存本任务页面、索引与本节 Progress；保留工作区已有的 deep skill 配置、其他 Progress 改动、并行任务 HTML、`scripts/__pycache__/` 与 `span.log`。
+
 ## 2026-07-31 Kimi K3 架构与参数量笔记深化（完成）
 
 ### 任务与改造判断
