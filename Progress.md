@@ -1,5 +1,28 @@
 # Ricardokevins.github.io Progress
 
+## 2026-07-31 CoRT：Counterfactual Replay for Token-Level Rubric-Guided Policy Optimization 深读
+
+### 任务与材料边界
+
+- 用户提供 X 主帖 `2082723522875662491`，主帖介绍论文 CoRT；完整读取主帖、arXiv:2607.25659 v1 的 12 页正文、图表、附录和 TeX 源文件。
+- 交叉核对最近基线 RTT（arXiv:2604.02795）、训练数据来源 HiR/HIR-16k（arXiv:2512.23457）和 GRPO 原始方法；当前没有发现 CoRT arXiv 页面或源文件列出的官方 CoRT 代码仓库。
+- 当前工作区已有其他任务对 `.agents/skills/deep/`、`Progress.md` 的未提交改动和未跟踪 `span.log`；本任务只新增 CoRT 论文笔记、Notes 索引入口和本节 Progress 增量。
+
+### 关键判断
+
+- CoRT 的核心是固定同一条 response，分别在带 rubric 的 (x^+) 与 criteria-free 的 (x^-) 下重算 token log-probability，用 Δ=ℓ⁺−ℓ⁻ 作为 rubric dependence proxy，再将有界、response-normalized 权重乘到 signed GRPO advantage 上；它是 credit allocator，不是新的 reward model。
+- 主表 28 个 CoRT−GRPO 对比中 26 个为正，简单均值约 +2.96 个百分点；摘要声称的 +4.4 个百分点没有在正文说明聚合口径，因此不能直接当作主表可复算的平均值。
+- 附录证据显示局部、可见约束（bullet、highlight、section、固定关键词）有集中 contrast；全局/缺失式约束（英语、至少五句话）几乎不集中。这支持“上下文敏感性 shaping”，不等于完整的因果 token credit assignment。
+- 论文的主要证据边界是单轮、多约束 instruction following；主表基线多来自 RTT 的已报告结果，采用前 500 步最佳验证 checkpoint，未报告多 seed 方差、实际 wall-clock/GPU 增量或多轮 agent/工具调用实验。
+
+### 变更与验证状态
+
+- [x] 新增 `notes/paper-reviews/cort-counterfactual-replay-rubric-grpo.html`，按“原文重建 → 方法公式 → 实验结果 → 证据审计 → 独立 insight”组织，涵盖主表、14B/目标函数兼容性、一般能力、稳定性消融、replay case study 与失败边界。
+- [x] 更新 `_data/notes.yml`，登记页面标题、摘要、标签与材料边界。
+- [x] 运行 Notes 索引、HTML 结构、重复 ID、断锚、MathJax、公开过程噪声与格式检查；索引为 178/178，目标页公式渲染 47 个 MathJax 容器，无重复 ID、断锚、公开过程噪声或 `git diff --check` 错误。
+- [x] 运行隔离 Jekyll build，并用无头 Chromium 检查桌面/手机布局、公式、表格局部滚动、console/runtime error 与资源请求；1440×1000 和 390×844 均无页面级横向溢出，手机端宽表保持容器内局部滚动，console/runtime/失败请求均为 0。构建仅有既有 Faraday 可选依赖和 GitHub Metadata 未认证/限流 warning。
+- [x] 只暂存本任务页面、索引和本节 Progress hunk，提交并推送；保留工作区其他改动与 `span.log`。
+
 ## 2026-07-31 自进化笔记 Harness / Model 路线深化
 
 ### 任务与材料边界
