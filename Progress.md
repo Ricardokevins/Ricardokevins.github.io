@@ -52,24 +52,28 @@
 ### 任务与材料边界
 
 - 用户希望在上一轮《自进化与 RSI》深读基础上，深入理解并讨论 Harness 与 Model 两条路线；本轮原地深化现有笔记，不创建重复页面。
-- 重新逐节核对 RHI 88 页论文、Ai2 Harness Evolution 评测、SIA、Continual Harness、AIDE²、MiniMax M2.7 与 Hermes 一手材料，重点区分任务专用适应、跨任务能力、系统共同适应和严格模型自举。
+- 重新逐节核对 RHI 88 页论文、Ai2 Harness Evolution 评测、SIA 与 Continual Harness 的正文、附录、关键图表和官方仓库；RHI 当前没有找到作者官方实现，后三项公开仓库可访问。
+- 分析重点从路线概览下钻到四个工作的实际状态表示、控制循环、训练信号、基线、成本口径、归因与复现缺口，区分任务专用适应、跨任务能力、系统共同适应和严格模型自举。
 - 当前工作区已有 deep Skill 两个文件、`Progress.md` 的其他任务改动、共享 Notes 索引改动和未跟踪文件；本轮保留不动，最终只选择性提交目标笔记、Notes 索引本任务 hunk 与本节 Progress hunk。
 
 ### 关键判断
 
 - RHI 与 Ai2 的结论可以同时成立：RHI 为每个开放式研究任务生成专用 Harness，Ai2 检验进化后的共享 Harness 能否在 held-out 任务上泛化；前者证明任务专用信息流有价值，后者否定“它已经学会一般 Harness 设计”的强外推。
-- RHI 的最高 60% 降本比较的是进化后单次执行与更高推理档位，不是包含旧版执行、成对评价和优化器调用的完整学习生命周期成本；是否真降本取决于 Harness 复用次数与摊销。
-- SIA 证明 Harness 与 LoRA 权重更新互补，但外部 Claude Sonnet 4.6 负责 Meta / Feedback Agent，动作选择策略未学习；Continual Harness 的 Gemma 权重更新也依赖 Gemini 3.1 Pro 教师重标。两者都是系统级共同适应，还不是单模型闭环自举。
+- RHI 的第一轮主要把通用多 Agent 团队压缩成任务专用角色、结构化 contract、hop 和验收门；最高 60% 降本只比较改好 Harness 后一次执行与 ultracode，不包含旧版执行、评价与 optimizer 的生命周期成本。
+- Ai2 在 Terminal-Bench 统一 \(K=5\) 后，Evolution 低于 parallel / sequential search，held-out 只 +0.6；这有力反驳“多轮即学习”，但不构成 Harness 在专用工具和长程环境中普遍无效的证明。
+- SIA 证明 Harness 与 LoRA 权重更新在三个精选任务上互补，但外部 Claude Sonnet 4.6 负责 Meta / Feedback Agent，动作选择策略未学习；LawBench 还直接在所报告 test split 上 rollout 和评价，属于 test-time adaptation。
+- Continual Harness 的 Gemma 更新依赖 Gemini 3 Flash PRM 与 Gemini 3.1 Pro 教师，缺少冻结 Harness / Model 的等步数析因对照；附录对在线阶段从 26B 还是 31B 启动存在直接矛盾。它支持 reset-free 系统共同适应，不支持单模型闭环自举。
 - 可落地架构应把 Harness 当高频、显式、可回滚的快变量，把 Model 当低频、昂贵、难回滚的慢变量：先在外部状态验证规律的稳定性与泛化，再周期性蒸馏进权重；每次权重更新后重新基准化 Harness。
 
 ### 变更与验证
 
-- [x] 原地扩写 `notes/tech-analysis/self-evolving-rsi-taxonomy-audit.html`：新增 Harness 五类写回面、四级更新深度、完整准入循环、RHI 成本口径、RHI / Ai2 适用边界、Model 五类训练信号、SIA / Continual Harness 机制与局限，以及快慢双循环工程框架。
-- [x] 更新 `_data/notes.yml` 摘要，使索引准确反映深化后的主体内容。
-- [x] 完成 Notes 索引、结构和格式检查：当前共享工作区 178 个入口对应 178 个顶层 HTML；目标页唯一 `main` / H1、12 个 section、26 个 h2/h3、5 个展示公式，无重复 ID、断锚、公开过程噪声或 `git diff --check` 错误。
-- [x] 隔离 Jekyll 全量构建成功；仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证 / API 限流提示，不影响静态产物。
-- [x] 完成 1440×1100 与 390×844 浏览器复验：两种视口均无页面级横向溢出，27 个 MathJax 容器正常；手机端五张宽表在 349px 容器内保持 720px 局部横向滚动，桌面端表格自适应 1118px；目录锚点、唯一 evidence appendix 正常。
-- [x] 选择性提交并推送本任务改动；共享索引中其他已暂存内容与工作区其余改动保持原状。
+- [x] 原地扩写 `notes/tech-analysis/self-evolving-rsi-taxonomy-audit.html`：逐步重建 RHI 的状态表示、局部优化、SE(3) 附录案例、30 任务协议、成本和 embedding 消融；重建 Ai2 的四分支预算、主结果与个案归因。
+- [x] 逐步重建 SIA 的四组件控制器、三个任务和真实训练算法，补充 test-split adaptation 与无多 seed 边界；重建 Continual Harness 的内外双循环、能力底线、在线训练、归因缺口与 26B/31B 复现矛盾。
+- [x] 更新 `_data/notes.yml` 摘要、标签、材料边界和目标页官方代码索引，使列表准确反映本轮四项工作深拆。
+- [x] 重新运行 Notes 索引、HTML 结构、断锚、公开过程噪声和格式检查：共享工作区当前 188 个索引入口对应 188 个顶层 HTML；目标页唯一 `main` / H1 / evidence appendix，12 个 section、33 个 h2/h3/h4、14 张表全部包在 `.table-wrap`，无重复 ID、断锚、公开生成痕迹或 `git diff --check` 错误。Validator 的 6 条短正文 warning 均来自同期未提交的 Podcast 页面，不属于本任务。
+- [x] 隔离 Jekyll build 成功；仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证 / API 限流 warning，不影响静态生成。
+- [x] 完成 1440×1100 与 390×844 渲染复验：两端均 HTTP 200、页面级横向溢出为 0，73 个 MathJax 容器正常；手机端 14 张表均在 364px 容器内保持 720px 局部滚动。目录断锚、console warning/error、runtime error、失败请求和 4xx/5xx 资源均为 0，并人工抽查 RHI / SIA 手机端正文与表格排版。
+- [x] 选择性提交并推送本任务改动；共享索引与 Progress 中其他任务改动、deep Skill 改动和未跟踪文件保持不动。
 
 ## 2026-07-31 RSIBench-Data 数据中心递归自我改进 benchmark 深读
 

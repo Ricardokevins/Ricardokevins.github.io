@@ -208,8 +208,21 @@
         <li><strong>元适应。</strong>连“怎样诊断、怎样提出修改、怎样准入”也被优化；只有这一层才开始接近递归改进，而风险也最大。</li>
       </ol>
       <p>Hermes Agent 的技能与记忆属于前两层；MiniMax 报告内部 M2.7 在 100 多轮中执行“分析失败 → 改 scaffold → 跑评测 → 保留或回退”，涉及采样参数、工作流指南和 loop detection，覆盖程序性与结构性更新。AIDE² 更进一步，让外层研究 Agent 直接改写内层研究 Agent 的代码，已经触及元适应，但尚未证明新 Agent 作为外层 improver 时渐近更强。</p>
-      <h3>RHI：优化的核心不是多想，而是重新布置信息流</h3>
-      <p>Recursive Harness Self-Improvement（RHI）把多 Agent Harness 表示成 prompt 级规格：角色（谁负责什么）、instruction（怎样做）、contract（Agent 之间必须传什么）和 hop（控制流何时转移）。它避免一次生成大批候选，只让当前版本与上一个版本成对比较，再把胜负与历史反馈交给 Harness optimizer。对任务 \(x\)，理想目标是寻找成对胜率最高的 Harness：</p>
+      <h3>工作一｜RHI：把“Agent 团队怎么协作”本身变成可优化对象</h3>
+      <p>Recursive Harness Self-Improvement（RHI）研究一个很窄但很实用的问题：<strong>模型权重固定、目标任务固定时，能否只重写多 Agent 的组织方式，让同一个模型做出更好的开放式产物？</strong>因此它不是模型训练，也不是通用 Agent 架构搜索；它是在每个目标任务内部，搜索一份任务专用的 prompt 级 Harness。</p>
+      <p>论文把 Harness 的主体拆成两部分。第一部分是 <strong>agent design</strong>：有哪些角色、各自负责什么、具体 instruction 是什么；第二部分是 <strong>agent workflow</strong>：角色之间按什么顺序接力、每次交接必须提供哪些字段。附录里还自然出现验收门、失败回退、何时召回某个角色、全员共用规则等结构。最值得注意的是 <strong>contract</strong> 与 <strong>hop</strong>：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>结构</th><th>回答的问题</th><th>一个具体例子</th><th>它避免的浪费</th></tr></thead>
+          <tbody>
+            <tr><td>Role</td><td>谁对哪类决策负责？</td><td>数据工程 Agent 只负责 PDB 清洗与数据契约</td><td>十个“通才”重复研究同一问题</td></tr>
+            <tr><td>Instruction</td><td>这个角色应怎样做？</td><td>先验证等变性，再进入训练与 profiling</td><td>方向错误后才发现前置假设不成立</td></tr>
+            <tr><td>Contract</td><td>下游必须收到哪些信息？</td><td>交接 <code>DatasetRecord</code>、<code>ModelIO</code>、<code>MetricsJSON</code></td><td>上下游对张量、指标和文件格式各自猜测</td></tr>
+            <tr><td>Hop</td><td>控制权何时转移、失败后回到哪里？</td><td>数据审计通过后才进入建模；证据缺失则召回责任角色</td><td>并行工作无法汇合、错误一直传到最终报告</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>所以 RHI 的核心不是“再加几个 Agent”，而是把组织结构写成可修改状态。对任务 \(x\)，理想目标是寻找成对胜率最高的 Harness：</p>
       <div class="math-display">\[
       H_x^* \in \arg\max_{H\in\mathcal{H}} f_x(H)
       \]</div>
@@ -217,12 +230,72 @@
       f_x(H)=\mathbb{E}_{H'\sim\mu,\;y\sim\mathcal{A}(H,x),\;y'\sim\mathcal{A}(H',x)}
       \left[\mathbf{1}\left\{\mathcal{L}_{\mathrm{eval}}(y,y';x_{\mathrm{eval}})=y\succ y'\right\}\right].
       \]</div>
-      <p>\(\mathcal{H}\) 是候选空间，\(\mu\) 是竞争 Harness 的参照分布，\(\mathcal{A}(H,x)\) 表示用 \(H\) 解任务 \(x\)，指示函数在评估器偏好当前产物时取 1。RHI 用“只和直接前代比较”的局部目标近似它，每轮只需一次新执行和一次成对评价；历史用于降低单次 LLM 判断的噪声。</p>
-      <p>在 30 个合成机器学习研究任务中，论文报告 1–2 轮更新即可让 high-reasoning Agent 的产物胜过同系列 xhigh、max 或 ultracode 设置；对 Opus 4.8，改进后一次执行相对 ultracode 的报告成本最多低 60%。消融显示输出 token 基本不增加，变化主要集中在 contract 与 hop：需要传递的信息更明确，重复上下文更少。这里最重要的机制判断是：<strong>Harness 的价值常常不是让每个 Agent 想得更久，而是减少错误信息流和重复劳动。</strong></p>
+      <p>\(\mathcal{H}\) 是候选空间，\(\mu\) 是竞争 Harness 的参照分布，\(\mathcal{A}(H,x)\) 表示用 \(H\) 解任务 \(x\)，指示函数在评估器偏好当前产物时取 1。真正穷举这个目标很贵：若同时维护 \(m\) 个版本，全面成对比较需要 \(O(m^2)\) 次评价。RHI 改用局部爬山，每轮只新增一条执行轨迹和一次与直接前代的比较，增量成本是 \(O(1)\)：</p>
+      <ol>
+        <li>用当前 Harness \(H^{(i)}\) 在同一个任务上生成完整产物 \(y^{(i)}\)。</li>
+        <li>让 LLM evaluator 比较 \(y^{(i)}\) 与 \(y^{(i-1)}\)，得到偏好和改进理由。</li>
+        <li>把这次比较加入该任务累积的 self-comparison history \(D_x^{(i)}\)。</li>
+        <li>让 Harness optimizer 读取当前 Harness 与完整历史，生成 \(H^{(i+1)}\)，然后继续循环。</li>
+      </ol>
+      <p>这不是无偏估计全局最优 Harness，而是带噪声的局部上升。历史也不是数值梯度，更像“语义动量”：它告诉优化器哪些组织决策曾经造成遗漏、重复或证据不足，防止只围绕最后一次胜负做短视修改。评估 prompt 没有直接交给 optimizer，降低了最直白的 judge prompt 过拟合，但 evaluator 的稳定偏好仍会通过文字反馈进入下一版。</p>
+      <h4>附录中的真实变化：从“十个泛化专家”变成“一个有接口的流水线”</h4>
+      <p>论文给出的 SE(3) 等变网络案例很能说明 RHI 到底改了什么。任务要求从 PDB 预测侧链 \(\chi\) 角，同时交付可复现实验、代码、profiling 和消融。初始 \(H^{(0)}\) 像一个通用药物研发团队：结构数据、几何学习、扩散模型、训练、分子动力学、评测、科学传播等约十个宽泛角色都在场，但很多角色与当前交付不直接相关，交接格式也不清楚。</p>
+      <p>第一轮改写后的 \(H^{(1)}\) 反而更“瘦”：删掉无关角色，把流程拆成 R0–R6，明确数据、模型 I/O、指标和证据的结构化接口，并加上验收、召回与失败门控。也就是说，改进不是把 prompt 写得更长，而是<strong>减少不相关自由度，增加下游真正依赖的信息约束</strong>。这更接近软件架构中的接口重构，而不是传统的 chain-of-thought 加长。</p>
+      <h4>实验到底比较了什么</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>论文设置</th><th>解读时要注意什么</th></tr></thead>
+          <tbody>
+            <tr><td>任务</td><td>30 个由 LLM 生成的开放式 ML 研究任务；量化金融、机器人、制药各 10 个，源于岗位描述</td><td>接近复杂工作交付，但不是自然产生的真实项目分布</td></tr>
+            <tr><td>基础 Agent</td><td>Sonnet 4.6、Opus 4.7、Opus 4.8，统一从 high reasoning 起步</td><td>研究的是 Harness 能否替代一部分更高 reasoning 档位</td></tr>
+            <tr><td>强基线</td><td>同系列 xhigh、max 或 ultracode</td><td>并非与任意模型或人工专家比较</td></tr>
+            <tr><td>评价</td><td>GPT‑5.5 max 与 Opus 4.7/4.8 xhigh 做成对裁判，每个设置 3 个随机种子</td><td>仍是 LLM-as-judge；裁判只看指定 deliverables，超长文件可能被截断</td></tr>
+            <tr><td>成本</td><td>报告改好 Harness 后一次任务执行的美元成本与 cache 使用</td><td>没有把产生前几版 Harness 的全部生命周期成本摊入单次数字</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>结果不是“每一轮都神奇变强”，而是早期结构重写贡献最大。Sonnet 4.6 的 \(H^{(2)}\) 在 30 个任务中有 20 个胜过 max；Opus 4.7 一轮后即可胜过 xhigh/max；Opus 4.8 的 \(H^{(2)}\) 胜过 xhigh、ultracode 与 max。单次执行成本方面：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>基础模型与改进版</th><th>对照档位</th><th>报告成本</th><th>作者报告的差额</th></tr></thead>
+          <tbody>
+            <tr><td>Sonnet 4.6 high + \(H^{(2)}\)</td><td>Sonnet max</td><td>2.38 vs 2.56</td><td>约 −7%；cache 成本约 −33%</td></tr>
+            <tr><td>Opus 4.7 high + \(H^{(1)}\)</td><td>Opus max</td><td>2.11 vs 2.60</td><td>约 −18%；cache 成本约 −37%</td></tr>
+            <tr><td>Opus 4.8 high + \(H^{(2)}\)</td><td>Opus max / ultracode</td><td>1.69 vs 2.19 / 4.15</td><td>约 −23% / −60%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>两类机制分析支持“信息结构重排”这个解释。第一，连续版本的 embedding cosine 从约 0.82 很快升到 0.97、0.98、0.99，说明最大改写发生在第一步，后面趋于微调；但相对初版的累计漂移仍继续。第二，contract 与 hop 和任务的互信息上升，role 的任务相关性反而下降；给定任务后的组件总相关性也下降。直观上，角色名称变得没那么花哨，各组件却更有分工、少重复。作者明确把 embedding 指标称为相关性代理而非因果证明，因此不能据此断言“发现了 Harness 的潜在目标函数”。</p>
+      <p>还有一个容易忽略的负结果：Sonnet 经 RHI 后并没有稳定追平更强的 Opus。RHI 能补偿一部分推理预算，却不是基础模型能力的普遍替代品。论文自己的默认多 Agent 基线有时也比单 Agent 更差；显式设计 contract/hop 的 Harness 才超过默认多 Agent和“一个 Agent 扮演多人”的 multi-persona。真正有效的变量不是 Agent 数量，而是协调是否创造了净信息增益。</p>
       <div class="callout warn"><b>60% 不是完整学习生命周期成本</b><p>该数字比较的是改好 Harness 后的一次执行与更高推理档位的一次执行；得到 \(H^{(1)}\)、\(H^{(2)}\) 之前还支付了旧版执行、成对评估和优化器调用。只有 Harness 会被重复使用，或优化成本单独计入并仍占优时，才能把它解释为端到端降本。</p></div>
-      <h3>RHI 与 Ai2 为什么可以同时成立</h3>
-      <p>Ai2 把 Harness evolution、parallel sampling、sequential refinement 放到统一预算 \(K=5\) 下比较。在没有单测反馈时，Harness Evolution 平均 pass@1 为 67.4，低于初始 Harness 的 68.2 和并行采样的 72.3；有单测时，Harness Evolution 的平均 pass@1 为 75.8，仍低于并行采样的 86.0。更关键的是，在 45 个搜索任务、10 个验证任务、34 个 held-out 任务的拆分下，平均只提升 0.6 分。</p>
-      <p>这和 RHI 不是简单的正反结论：RHI 明确为<strong>每个目标任务</strong>生成专用 Harness，并用开放式产物的成对 LLM 评价；Ai2 追问的是一套在训练任务上进化的 Harness 能否成为<strong>跨任务可复用能力</strong>，并用可验证终端任务测泛化。前者证明“任务专用信息结构可能胜过多给推理”，后者提醒“专用提示学得好，不等于 Agent 获得了一般学习能力”。</p>
+      <h3>工作二｜Ai2：先问收益是不是只来自“多试了几次”</h3>
+      <p>Ai2 的《Rethinking the Evaluation of Harness Evolution for Agents》不是另一种 Harness 优化算法，而是一篇<strong>评测拆账论文</strong>。它指出，只要 Harness evolution 获得多次 rollout、错误反馈和修改机会，成绩变好至少有四种可能解释：找到了可复用 Harness、顺序修正了当前解、并行采样碰到了好运气，或把当前任务答案记进了 task-specific scaffold。若这些预算不对齐，“自我进化”的收益就无法归因。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>统一 \(K\) 次执行预算下的分支</th><th>Harness 是否变化</th><th>经验是否跨任务</th><th>真正测试什么</th></tr></thead>
+          <tbody>
+            <tr><td>Parallel sampling</td><td>不变</td><td>不共享</td><td>独立多采样的 pass@\(K\)</td></tr>
+            <tr><td>Sequential refinement</td><td>不变</td><td>不共享</td><td>同一答案沿错误反馈逐步修正</td></tr>
+            <tr><td>Harness evolution</td><td>共享 Harness 跨训练任务更新</td><td>共享</td><td>是否学到可迁移的 Agent 运行结构</td></tr>
+            <tr><td>Harness scaling</td><td>为当前任务逐次重写</td><td>不要求</td><td>任务内 scaffold 搜索/记忆</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>四个分支都从同一份极简 Harness 开始：只有一个 bash 工具，没有 skills、middleware 或 memory；经验都用同一模型的摘要映射 \(\Phi\) 压缩。实验使用 Terminal-Bench 2.1 的 89 个任务、三种模型、两次独立运行，统一 \(K=5\)。自动 Harness Evolution（AHE）关闭了会检索 benchmark 专用 Harness 的 Explore Agent，避免额外信息优势；每个任务、每版 Harness 只跑一个 rollout。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>设置</th><th>Initial</th><th>Parallel</th><th>Sequential</th><th>Evolution</th><th>Scaling</th></tr></thead>
+          <tbody>
+            <tr><td>不给单测反馈：pass@1</td><td>68.2</td><td><strong>72.3</strong></td><td>69.3</td><td>67.4</td><td>71.8</td></tr>
+            <tr><td>给单测反馈：pass@1</td><td>72.9</td><td><strong>86.0</strong></td><td>84.3</td><td>75.8</td><td>82.6</td></tr>
+            <tr><td>给单测反馈：pass@5</td><td>—</td><td>86.0</td><td><strong>91.8</strong></td><td>86.2</td><td>89.3</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>结果的含义不是“Harness 没用”，而是<strong>在这组可验证终端任务上，进化一套共享 Harness 并没有比把同样执行次数直接花在搜索答案上更划算</strong>。最有力的证据是 held-out 拆分：45 个任务用于搜索、10 个用于验证、34 个仅作最终测试，初始 Harness 得 67.7，进化版得 68.3，只提升 0.6；Claude 子集约 +1.2，GPT 基本没有收益。</p>
+      <p>论文的个案分析解释了为什么。Evolution 会学到看起来合理的通用规则：提前写明预算和 deliverables、保护脆弱状态、增加 turn budget tracker、截断超长工具输出、加 finalization gate 和恢复指引。但大量实际收益来自更细的任务记忆，例如固定文件路径、命令、版本 pin、某个 SQLite WAL 的保存方式、某个 Coq 版本或一个已定位的 bug。强 Agent 下一次本来就能重新发现这些信息；写进共享 prompt 后还会产生 prompt bloat，稀释其他任务的注意力。最难的剩余任务则需要领域推理，不会因为多一条通用行为规则而消失。</p>
+      <div class="callout good"><b>RHI 与 Ai2 并不矛盾</b><p>RHI 问的是“为这一个开放式任务定制信息流，能否胜过多给 reasoning”；Ai2 问的是“训练任务里发现的 Harness 修改，能否成为 held-out 任务上的可复用能力”。前者显示任务专用组织结构有价值，后者表明它未必已经学会一般的 Harness 设计。两篇合起来，恰好把 instance adaptation 与 transferable learning 分开了。</p></div>
+      <p>Ai2 的边界也应保留：Terminal-Bench 初始分数较高，且许多任务对 Harness 不敏感；在需要专用工具、领域工作流或长程状态管理的场景，Evolution 仍可能更有优势。论文统一了 rollout 数和反馈访问，但 meta-agent / debugger 的额外推理、墙钟和美元生命周期成本并不天然完全相等。因此它是当前更可信的“反过度归因”证据，不是 Harness evolution 的普遍不可能性定理。</p>
     </section>
 
     <section id="model">
@@ -246,13 +319,77 @@
       \theta_{k+1}=\operatorname{Update}\!\left(\theta_k,\mathcal{D}_k,V\right).
       \]</div>
       <p>这带来 Model 路线最根本的困难：系统一边学习，一边改变下一轮会看见的数据。Harness 改了，旧训练数据可能不再代表新行为；Model 改了，原来有效的 prompt、工具说明和 verifier 漏洞又可能变质。它不是两个独立优化器相加，而是一个耦合动力系统。</p>
-      <h3>SIA：Harness 决定怎么搜，权重决定什么容易被想到</h3>
-      <p>SIA 包含 Meta-Agent、Task-Specific Agent 和 Feedback-Agent。Meta-Agent 先生成 scaffold；任务 Agent 执行并产生轨迹与指标；Feedback-Agent 决定下一步是只改 scaffold，还是固定 scaffold、对 <code>gpt-oss-120b</code> 做 rank-32 LoRA 更新。两种动作可以交替，而不是先把 Harness 做完再统一训练。</p>
-      <p>它根据奖励形态选择 PPO、GRPO、REINFORCE + KL、DPO 或 best-of-\(N\) behavioral cloning：有密集、多步奖励时偏向低方差的 PPO；大量便宜、终局可验证样本适合 GRPO；几乎没有正例时先蒸馏最好样本冷启动；只有排序信号时用 DPO。这个选择体现了 Model 路线真正的工程难点——不是“会不会调权重”，而是<strong>当前反馈是否足以形成方向正确、方差可控且不会破坏通用能力的梯度</strong>。</p>
-      <p>论文报告在 LawBench 上 Harness 先从 13.5% 提升到 50.0%，权重更新再到 70.1%；三个领域的联合更新都超过 Harness-only。但证据边界也很重要：Meta-Agent 与 Feedback-Agent 使用 Claude Sonnet 4.6，受训模型是另一个较弱模型；选择“何时改 Harness、何时训练”的策略仍是冻结的外部 LLM 先验；系统还反复优化同一个 verifier。论文自己把由此产生的 coupled Goodhart 列为主要限制。因此 SIA 证明了两个旋钮互补，还没有证明模型能独立改善自己的学习算法。</p>
-      <h3>Continual Harness：快变量改工作记忆，慢变量吸收稳定规律</h3>
-      <p>Continual Harness 把两条路线明确放在不同时间尺度。游戏运行中，每隔 \(F\) 步，Refiner 读取最近轨迹，原地修改 prompt、子 Agent、skills 和 memory；这是高频、可见、可回滚的快循环。模型训练每轮运行 256 步，用 pairwise process reward model 找出低质量窗口，再由 Gemini 3.1 Pro 教师重标，最后通过 soft SFT 更新 Gemma 权重；这是低频、昂贵的慢循环。模拟器状态跨训练轮次保留，因此模型面对的是一条真正不重置的长程轨迹。</p>
-      <p>该实验给出两条很有价值的负面边界。第一，存在明显的能力底线：Pro 档能在成本—完成度上占优，Flash 高方差，Flash-Lite 的所有 Continual Harness 变体反而低于极简 Harness。第二，开放模型还不足以同时当教师和学生，论文实际依赖更强外部教师重标。所以这里的“自我改进”更准确地说是<strong>系统级共同适应</strong>，而不是单个模型闭环自举。</p>
+      <h3>工作三｜SIA：把“改外部脚手架”和“改模型权重”放进同一个控制器</h3>
+      <p>SIA（Self Improving AI with Harness &amp; Weight Updates）试图打通两个此前分开的研究方向：scaffold/harness 优化通常固定模型，test-time post-training 通常固定 scaffold。它的核心假设是，两类更新修复的瓶颈不同：Harness 适合迅速改变搜索程序、工具和显式规则；权重适合改变模型的先验，让原本很难采样到的行为变得常见。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>组件</th><th>使用的模型</th><th>看见什么</th><th>负责什么</th></tr></thead>
+          <tbody>
+            <tr><td>Meta-Agent \(M\)</td><td>Claude Sonnet 4.6</td><td>任务说明 \(U\)、参考材料 \(R\)</td><td>生成初始 scaffold \(A_1\)</td></tr>
+            <tr><td>Task-Specific Agent</td><td><code>gpt-oss-120b</code></td><td>当前 scaffold、任务输入、工具</td><td>执行任务并产生完整轨迹 \(\tau_g\)</td></tr>
+            <tr><td>Feedback-Agent \(F\)</td><td>Claude Sonnet 4.6</td><td>scaffold 源码、完整 prompt/response/tool 轨迹、指标 \(E_g\)</td><td>诊断失败并选择下一种更新</td></tr>
+            <tr><td>Weight updater</td><td>H100 上的训练流程</td><td>rollout、verifier 奖励与当前 LoRA</td><td>固定 scaffold，对目标模型做 rank‑32 LoRA 更新</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>每轮后，Feedback-Agent 只能在两种动作中选一个：<strong>Harness update</strong> 保持 \(\theta_g\) 不变、改 \(A_g\)；<strong>Weight update</strong> 固定 \(A_g\)、改 \(\theta_g\)。框架允许两者交替，但论文的三个实验实际上先连续改 Harness，观察到平台期后再切换到权重训练。因此当前证据更接近“先工程搜索、后参数优化”的阶段式流程，还没有证明一个频繁来回切换的 learned controller 更好。</p>
+      <h4>三个任务分别展示了什么</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>任务</th><th>初始</th><th>Harness 后</th><th>权重后</th><th>真正发生的变化</th></tr></thead>
+          <tbody>
+            <tr><td>LawBench，191 类法律分类</td><td>13.5%</td><td>50.0%</td><td>70.1%</td><td>Harness 自建 TF‑IDF + LinearSVC；PPO + GAE 再把任务模式压入 LoRA</td></tr>
+            <tr><td>TriMul H100 kernel</td><td>得分 0.105</td><td>0.120</td><td>1.475</td><td>运行时间从 12,483µs 降至 1,017µs；稀疏右偏奖励用 entropic advantage weighting</td></tr>
+            <tr><td>MAGIC 图像去噪</td><td>0.048</td><td>0.241</td><td>0.289</td><td>GRPO 后出现 Harness 版本未写过的 <code>np.clip</code> + <code>np.rint</code> 后处理</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>LawBench 很能说明两种介质的差异。Harness 阶段没有让 LLM “懂更多法律”，而是发现这其实可改写成一个经典监督分类问题，自动建立 TF‑IDF 特征和 LinearSVC，立刻获得大幅收益；权重阶段才用 PPO + GAE 调整模型，使相关分类模式更容易被直接生成。TriMul 的 reward 极稀疏且右偏，论文改用 entropic weighting 让少数高价值 kernel 对更新贡献更大；MAGIC 使用 GRPO，并观察到训练后模型自发加入量化后处理。后两个例子至少说明：权重更新能找到 scaffold 文本里没有显式列出的局部策略。</p>
+      <p>论文还概述了更广的算法选择经验：稀有正例可先用 best-of-\(N\) behavioral cloning 冷启动，只有排序信号可用 DPO，REINFORCE + KL 可用于更一般的终局奖励。但主实验真正落地的是 LawBench 的 PPO + GAE、TriMul 的 entropic advantage weighting 和 MAGIC 的 GRPO；不能把其余启发式都算成已在本文验证的贡献。</p>
+      <h4>SIA 最值得警惕的归因问题</h4>
+      <ol>
+        <li><strong>不是同一个模型改自己。</strong>更强且冻结的 Claude 负责设计、诊断和选择动作，<code>gpt-oss-120b</code> 是被优化对象；“如何学习”的能力仍主要来自外部模型。</li>
+        <li><strong>选择器没有被学习。</strong>论文没有训练一个能跨任务判断何时改 Harness、何时改权重的 policy，只是让外部 LLM 基于报告决策。</li>
+        <li><strong>Verifier 同时塑造两条路线。</strong>Harness 和权重都反复看同一指标，可能共同学会利用代理目标；作者把 coupled co-evolutionary Goodhart 作为主要限制。</li>
+        <li><strong>LawBench 不是传统 sealed-test 结果。</strong>论文明确把 rollout 与所有评价都放在所报告的 test split 上。这是带测试 verifier 的 test-time adaptation，不能和“训练时没看测试反馈”的 SOTA 数字直接并列。</li>
+        <li><strong>缺少统计稳定性。</strong>三个展示任务没有报告多 seed 方差、置信区间或 selector 的消融；“内部化知识”的说法也没有通过 OOD 数据或受控梯度归因检验。</li>
+      </ol>
+      <p>所以 SIA 最稳妥的结论是：<strong>Harness 与 LoRA 是互补旋钮，而且在三个精选任务上，先改 Harness 再改权重都继续提高了目标分数</strong>。它没有证明 autonomously learned self-training，也没有证明这种联合流程在未见任务上比等预算搜索更好。官方仓库当前加入 public/private 目录和 held-out evaluator，是更合理的实现方向，但这是当前代码协议，不能反向补足论文原实验的证据。</p>
+      <h3>工作四｜Continual Harness：在不重置的长程世界里，同时学习“笔记”和“习惯”</h3>
+      <p>Continual Harness 解决的不是普通 benchmark，而是长程、部分可观测、无法廉价 reset 的具身任务。实验环境是 Pokémon Red / Emerald：Agent 每步看到游戏画面和 ASCII 局部地图，只能按游戏按钮；探索、物品、队伍、剧情与地图状态会持续累积。传统 prompt optimizer 常把每个 episode 当成独立样本，这里却不能随便回到初始状态重跑，因此更新必须在“任务还进行到一半”时发生。</p>
+      <p>论文把 Harness 写成 \(H=(p,G,K,M)\)：prompt \(p\)、subagents \(G\)、skills \(K\)、memory \(M\)。系统暴露固定 meta-tools 让 Refiner 修改这些组件；环境和权限边界不随之任意变化。三种主条件用于区分增益来源：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>条件</th><th>起点</th><th>能否在线修改</th><th>它回答什么</th></tr></thead>
+          <tbody>
+            <tr><td>\(H_{\min}\)</td><td>极简接口；无子 Agent、记忆或作者技能</td><td>否</td><td>纯基础模型的长程能力</td></tr>
+            <tr><td>\(H_{\text{expert}}\)</td><td>人工 A* 寻路、属性表、伤害计算器、目标清单</td><td>否</td><td>强人工工程的上界参考</td></tr>
+            <tr><td>\(H_{\text{CH}}\)</td><td>从 \(H_{\min}\) 开始</td><td>是</td><td>能否在不中断游戏时自己长出有用结构</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h4>内层快循环：每隔一段时间重写 Harness</h4>
+      <p>经过 warmup \(W\) 后，系统每隔 \(F\) 步让同一个基础模型切换成 Refiner，读取最近一段轨迹窗口，再依次做四类修改：重写 prompt；新增、修改或删除 subagent；创建或修复 skill；新增、更新或降级 memory。它不是在回合结束后总结，而是在当前存档继续向前时原地换 Harness。</p>
+      <p>最有说服力的组件证据来自导航技能：系统逐渐写出路径规划逻辑，path-cost deficit 从接近 50% 降到个位数，并被后续行为调用数百次。这里“学会了”不只是 prompt 里出现一句建议，而是把重复的空间搜索压成可执行 skill，降低了后续每次决策的推理负担。</p>
+      <h4>能力底线：Harness 不能凭空补足模型能力</h4>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Emerald 设置</th><th>里程碑完成度</th><th>报告成本</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td>Gemini Pro + \(H_{\min}\)</td><td>98%</td><td>$215</td><td>强模型本来能做，但路线低效</td></tr>
+            <tr><td>Gemini Pro + \(H_{\text{CH}}\) from scratch</td><td>100%</td><td>$130</td><td>同等以上完成度，成本约低 40%</td></tr>
+            <tr><td>Gemini Flash + bootstrap updating</td><td>80%</td><td>$42</td><td>有收益但 seed 方差较大</td></tr>
+            <tr><td>Gemini Flash-Lite + \(H_{\min}\)</td><td>20%</td><td>$11</td><td>基础能力已经接近 Refiner 所需下限</td></tr>
+            <tr><td>Gemini Flash-Lite + 各种 \(H_{\text{CH}}\)</td><td>3–13%</td><td>相近或更高</td><td>弱模型既做不好任务，也改不好自己的 Harness</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这个负结果非常重要：Refiner 不是免费的优化器，它本身也需要诊断、抽象和编程能力。模型低于能力底线时，在线修改会把错误写回持久状态，形成“越学越差”。因此 Harness evolution 的安全默认值应该是候选修改、shadow evaluation 和可回滚版本，而不是直接覆盖生产状态。</p>
+      <h4>外层慢循环：用持续轨迹训练模型</h4>
+      <p>模型共同学习部分先用 Gemini 3.1 Pro 轨迹做 SFT warmup；论文报告的训练配置包括 rank‑256 LoRA、8K 上下文和 H200。离线阶段以 Gemini 3 Flash 作为 action/format oracle 做 GRPO；在线阶段每轮让当前模型在当前存档和当前 Harness 下继续运行 256 步，由 Gemini 3 Flash 的 process reward model 从进度、动作正确性、推理和格式四部分打分，再把低分窗口交给 Gemini 3.1 Pro 重标，最后做三轮 soft SFT。环境状态跨训练轮保留，因此下一批数据同时受新权重、新 Harness 和已推进游戏状态影响。</p>
+      <p>论文展示的五次在线 run 都继续推进，净里程碑增量分别为 +2、+4、+5、+3、+3；未训练基线为 0。这说明教师重标 + 在线数据至少能把一个停滞的开放模型推过若干局部障碍，但<strong>不能直接把全部进展归因于权重</strong>：实验没有提供同等步数下“冻结模型、只让 Harness/游戏状态继续”和“训练模型、冻结 Harness”的完整 factorial control。环境本身还持续向前，因此累计进度也不等于策略质量单独提高。</p>
+      <div class="callout warn"><b>论文 v1 有一个直接影响复现的内部矛盾</b><p>附录 D.2 说 26B Red SFT adapter 发生退化，31B SFT 才是可用并用于在线阶段的起点；附录 D.4 却又写在线流程从 26B Gemma‑4 SFT policy 启动。在作者澄清前，读者无法确定在线 co-learning 图究竟对应哪一个学生模型，也无法精确归因模型容量与训练收益。</p></div>
+      <p>Continual Harness 因而给出的是很有价值、但仍早期的<strong>系统共同适应</strong>证据：reset-free Harness 能长出可复用技能，强模型可以用它节省长程成本，外部教师也能推动学生模型沿持续状态继续学习。它还没有证明同一模型可以自举成自己的可靠教师，没有建立收敛点，也没有完成 reset-free 在线学习与同预算 reset batch training 的正面对照。此前 GPP 完整通关多个游戏还混合了人类与 Agent 操作，不能和这里的全自主受控实验合并为一个结论。</p>
       <h3>什么时候应该把经验写进权重</h3>
       <p>经验不应一产生就训练。适合进入权重的，是跨任务反复出现、能由独立 verifier 证明、未来调用频率足以摊薄训练成本，而且不需要用户随时删除的稳定规律。临时任务状态、个人偏好、仍在变化的工具接口和高风险权限规则，更适合留在 Harness。一个实用判断是：<strong>先让知识在可审计的外部状态里活一段时间，确认它稳定、可泛化，再蒸馏进模型。</strong></p>
       <h3>为什么原文最后转向可解释性</h3>
@@ -273,12 +410,12 @@
           <tbody>
             <tr><td>GPT‑5.6 的 RSI Index 相对 GPT‑5.5 提升 16.2 分</td><td><span class="label fact">官方报告</span></td><td>OpenAI 页面直接支持，但这是内部复合评测；任务明细、权重、统计不确定性与独立复现尚不足，不能等同“已实现 RSI”。</td></tr>
             <tr><td>Claude 贡献 Anthropic 80% 以上合入代码</td><td><span class="label fact">官方报告</span></td><td>Anthropic 公开材料支持，并主动提醒代码行数夸大生产率；这证明研发自动化加速，不证明模型独立决定研究方向。</td></tr>
-            <tr><td>RHI 最高降本 60%，低 reasoning 超过高 reasoning</td><td><span class="label fact">论文报告</span></td><td>arXiv v1 摘要支持，范围是 30 个合成机器学习研究任务；外部有效性与预算匹配仍需独立复现。</td></tr>
+            <tr><td>RHI 最高降本 60%，high reasoning + 专用 Harness 超过更高 reasoning</td><td><span class="label fact">论文报告</span></td><td>全文主表支持，但范围是 30 个 LLM 生成的开放式 ML 研究任务。裁判只看指定且可能截断的 deliverables；60% 是进化后单次 Opus 4.8 执行相对 ultracode，不含 Harness 搜索生命周期成本。当前未找到作者公开实现。</td></tr>
             <tr><td>MiniMax M2.7 自主改 scaffold，内部评测 +30%</td><td><span class="label fact">发布方报告</span></td><td>MiniMax 官方博客支持 100 多轮和 30%，但内部任务、评测集与完整轨迹未公开，无法排除分布内过拟合。</td></tr>
-            <tr><td>SIA 证明 Model 可以完全独立自我训练</td><td><span class="label inference">不成立</span></td><td>联合更新结果支持 Harness 与 LoRA 互补；但 Meta / Feedback Agent 使用外部 Claude Sonnet 4.6，动作选择策略未学习，且训练与 Harness 共同针对固定 verifier 优化。</td></tr>
-            <tr><td>Continual Harness 是单模型闭环自举</td><td><span class="label inference">不成立</span></td><td>权重循环由 PRM 选低分片段，再由 Gemini 3.1 Pro 教师重标 Gemma；实验证明系统共同适应和 reset-free 学习，不是同一模型同时充当教师与学生。</td></tr>
+            <tr><td>SIA 证明 Model 可以完全独立自我训练</td><td><span class="label inference">不成立</span></td><td>三个精选任务支持 Harness 与 LoRA 互补；但 Meta / Feedback Agent 使用外部 Claude Sonnet 4.6，动作选择策略未学习。LawBench 还在所报告 test split 上 rollout 和评价，属于 test-time adaptation，不能按 sealed-test SOTA 解读。</td></tr>
+            <tr><td>Continual Harness 是单模型闭环自举</td><td><span class="label inference">不成立</span></td><td>权重循环由 Gemini 3 Flash PRM 选低分片段，再由 Gemini 3.1 Pro 教师重标 Gemma；缺少冻结 Harness / 冻结 Model 的等步数析因对照，且附录对在线阶段从 26B 还是 31B 启动自相矛盾。</td></tr>
             <tr><td>AIDE² 已达到“点火”或智能爆炸</td><td><span class="label inference">不成立</span></td><td>Weco 只主张 Level 1 net positive；把 AIDE47 放到外层虽更快到达相似上限，但差异不显著，也没有渐近更优。发布方明确否认已经达到 ignition。</td></tr>
-            <tr><td>自动 harness evolution 普遍优于简单搜索</td><td><span class="label inference">被反例削弱</span></td><td>Ai2 的预算对等实验未发现稳定优势，并发现 held-out 泛化有限。有效结论应是“在特定表示、评测器和任务分布上可能有用”。</td></tr>
+            <tr><td>自动 harness evolution 普遍优于简单搜索</td><td><span class="label inference">被反例削弱</span></td><td>Ai2 在 Terminal-Bench 统一 \(K=5\) rollout 后，Evolution 低于并行/顺序搜索，held-out 只 +0.6。它有力反驳普遍优势，但该任务集基线较强、对专用工作流未必敏感，不能外推成普遍无效。</td></tr>
             <tr><td>Artifacts、Harness、Model 三层都等同 RSI</td><td><span class="label inference">概念过宽</span></td><td>来源 taxonomy 把三者组织为 self-evolving systems，但明确区分 artifact optimization 与 agent self-modification；原文结尾也承认 RSI 是更严格子集。</td></tr>
           </tbody>
         </table>
@@ -356,7 +493,7 @@
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>主材料为周星星于 2026-07-30 编辑的知乎文章。机构内部结果均按发布方报告处理；本页进一步核对 RHI 88 页论文的算法、实验、消融和附录，以及 Ai2、SIA、Continual Harness 全文中的设置、结果和限制，没有独立复现训练、长程 Agent 运行或内部 benchmark。四项工作均为 2026 年公开预印本，其结论可能随版本、代码发布和独立复现更新。</p>
+      <p>主材料为周星星于 2026-07-30 编辑的知乎文章。机构内部结果均按发布方报告处理；本页进一步核对 RHI 88 页论文的算法、实验、消融和附录，以及 Ai2、SIA、Continual Harness 全文中的设置、结果和限制，并检查后三者官方仓库。没有独立复现 LoRA 训练、长程游戏运行或内部 benchmark；当前未找到 RHI 作者提供的官方代码。四项工作均为 2026 年公开预印本，其结论可能随版本、代码发布和独立复现更新。</p>
       <ul>
         <li><a href="https://zhuanlan.zhihu.com/p/2065227313973825752">周星星：《自进化（Self-evolving／RSI），一篇就够了》</a></li>
         <li><a href="https://lsl.zone/blog/2026/a-taxonomy-of-self-evolving-agents/">Shilong Liu：A Taxonomy of Self-evolving Agents</a></li>
@@ -367,9 +504,12 @@
         <li><a href="https://www.minimax.io/news/minimax-m27-en">MiniMax：M2.7 — Early Echoes of Self-Evolution</a></li>
         <li><a href="https://arxiv.org/abs/2607.15524">Recursive Harness Self-Improvement</a></li>
         <li><a href="https://arxiv.org/abs/2607.12227">Rethinking the Evaluation of Harness Evolution for Agents</a></li>
+        <li><a href="https://github.com/rethinking-harness-evolution/code">Ai2 Harness Evolution 评测：官方代码</a></li>
         <li><a href="https://www.weco.ai/blog/first-evidence-of-recursive-self-improvement">Weco AI：AIDE²</a></li>
         <li><a href="https://arxiv.org/abs/2605.27276">SIA: Self Improving AI with Harness &amp; Weight Updates</a></li>
+        <li><a href="https://github.com/hexo-ai/sia">SIA：官方代码</a></li>
         <li><a href="https://arxiv.org/abs/2605.09998">Continual Harness: Online Adaptation for Self-Improving Foundation Agents</a></li>
+        <li><a href="https://github.com/sethkarten/continual-harness">Continual Harness：官方代码</a></li>
         <li><a href="https://github.com/NousResearch/hermes-agent">Nous Research：Hermes Agent</a></li>
       </ul>
     </section>
