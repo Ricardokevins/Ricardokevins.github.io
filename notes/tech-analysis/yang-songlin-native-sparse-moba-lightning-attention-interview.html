@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>#94 杨松琳：DeepSeek、Kimi、MiniMax 注意力机制新论文</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root{color-scheme:light;--paper:#f3f0e9;--surface:#fffdf8;--ink:#20262a;--muted:#5d676d;--line:#d8d4ca;--accent:#315f72;--soft:#e8f0f2;--gold:#936027;--gold-soft:#f7ecdf;--green:#47705c;--green-soft:#e8f1ea;--rose:#8b4e4a;--rose-soft:#f6e9e7;--shadow:0 15px 38px rgba(27,36,41,.07);--radius:10px;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;--serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif;--mono:"SFMono-Regular","Menlo","Consolas",monospace}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--paper)}body{margin:0;background:linear-gradient(90deg,rgba(49,95,114,.035) 1px,transparent 1px),linear-gradient(180deg,rgba(112,100,76,.025) 1px,transparent 1px),var(--paper);background-size:44px 44px;color:var(--ink);font-family:var(--sans);line-height:1.8}a{color:var(--accent);text-underline-offset:3px}header,main{width:min(1140px,calc(100% - 32px));margin:0 auto}header{padding:clamp(36px,6vw,76px) 0 28px}.kicker{margin-bottom:12px;color:var(--gold);font:800 13px/1.3 var(--sans);letter-spacing:.05em;text-transform:uppercase}h1{max-width:1080px;margin:0;font:760 clamp(32px,5vw,58px)/1.12 var(--serif)}.lede{max-width:1040px;margin:18px 0 0;color:var(--muted);font-size:clamp(17px,2vw,20px)}.meta{margin-top:14px;color:var(--green);font-size:14px;font-weight:700}main{display:grid;gap:32px;padding-bottom:70px}section{padding-top:32px;border-top:1px solid var(--line);scroll-margin-top:68px}h2,h3{margin:0 0 12px;line-height:1.3}h2{font-size:clamp(24px,3.2vw,35px)}h3{margin-top:24px;color:var(--accent);font-size:20px}p{margin:12px 0}ul,ol{padding-left:1.35rem}li{margin:7px 0}.table-wrap{max-width:100%;margin:18px 0;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}table{width:100%;min-width:850px;border-collapse:collapse;font-size:14px}th,td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--soft);white-space:nowrap}tr:last-child td{border-bottom:0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.card{min-width:0;padding:17px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.card h3{margin:0 0 8px;font-size:17px}.card p{margin:0;color:var(--muted);font-size:14.5px}.formula{margin:18px 0;padding:15px 18px;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);font-family:var(--mono)}.callout{margin:18px 0;padding:15px 18px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--radius);background:var(--soft)}.callout b{display:block;margin-bottom:6px;color:var(--accent)}.callout.warn{border-left-color:var(--gold);background:var(--gold-soft)}.callout.warn b{color:var(--gold)}.callout.info{border-left-color:var(--green);background:var(--green-soft)}.callout.info b{color:var(--green)}.small{color:var(--muted);font-size:14px}.backtop{text-align:right;font-size:13px}@media(max-width:760px){header,main{width:min(100% - 24px,1140px)}.grid{grid-template-columns:1fr}table{min-width:810px}}
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header id="top">
+    <div class="kicker">Podcast Interview · Long Context & Model Architecture</div>
+    <h1>#94 杨松琳：DeepSeek、Kimi、MiniMax 注意力机制新论文</h1>
+    <p class="lede">这期节目不是把三篇论文简单排成“谁更快”的榜单，而是从注意力的基本计算讲起，比较三种减少长上下文成本的路线：DeepSeek 的 Native Sparse Attention、Kimi 的 MoBA，以及 MiniMax 的 Lightning Attention。读懂这期的关键，是先理解模型到底在保存什么、跳过什么，以及算法为什么必须和 GPU 的执行方式一起设计。</p>
+    <p class="meta">节目 #94 · 杨松琳 / 张小珺 · 约 2:36:13 · 5 个大章节 · 论文主张、嘉宾解释与本文判断分层</p>
+  </header>
+  <main>
+    <section id="source-reconstruction">
+      <h2>第一遍：先把这期论文讲解还原出来</h2>
+      <p class="small">下面先按节目自身的推进解释三个问题：注意力在算什么，三篇工作分别怎样省成本，嘉宾为什么把硬件和训练放在论文机制旁边。后面的“证据审计”才会区分论文报告与独立判断。</p>
+      <div class="table-wrap"><table><thead><tr><th>节目时间</th><th>内容推进</th><th>听众需要先掌握的概念</th></tr></thead><tbody>
+        <tr><td>00:00–00:15</td><td>嘉宾背景、三篇新论文为何同时出现。</td><td>长上下文让注意力成为计算、显存和推理吞吐的瓶颈。</td></tr>
+        <tr><td>00:15–01:19</td><td>DeepSeek Native Sparse Attention。</td><td>动态选择、压缩摘要、局部窗口、硬件原生训练。</td></tr>
+        <tr><td>01:19–01:44</td><td>Kimi MoBA。</td><td>把注意力块当成可路由的专家，稀疏程度由 query 决定。</td></tr>
+        <tr><td>01:44–02:30</td><td>MiniMax-01 Lightning Attention。</td><td>线性状态与少量 softmax 精确检索的混合。</td></tr>
+        <tr><td>02:30–结束</td><td>强化学习、研究路线与未来模型的猜测。</td><td>长上下文不是单纯扩窗口，而是为推理时计算重新分配预算。</td></tr>
+      </tbody></table></div>
+
+      <h3>1. 先回答：注意力到底在做什么</h3>
+      <p>杨松琳先把听众拉回 Transformer 的基础。对一个 token 来说，模型会产生 Query、Key 和 Value 三种向量。Query 可以理解为“我现在要找什么”，Key 是每个历史 token 提供的“我是什么线索”，Value 则是被取回的内容。模型计算 Query 与各个 Key 的匹配分数，再用这些分数对 Value 做加权求和。因此，序列中每个位置都可能和其他位置建立关系，这正是注意力擅长处理长距离依赖的原因。</p>
+      <p>代价也从这里出现：如果长度是 <em>L</em>，所有 Query 和 Key 两两比较，训练阶段的主要计算量大致随 <em>L²</em> 增长；生成阶段还要把历史 Key/Value 留在 KV cache 里，缓存空间随上下文长度增长。这里的“二次复杂度”和“线性 KV cache”不是两个互不相关的数字：长上下文把算力、显存带宽和通信同时推高，最终影响训练、prefill、decode 和服务成本。</p>
+      <div class="formula">Full Attention：每个 query 访问全部历史；成本随 L² 增长。<br>Linear Attention：把历史写进固定状态；访问成本近似随 L 增长，但可能丢失精确检索。<br>Sparse Attention：只访问被选中的历史块；关键在选择成本与漏选风险。</div>
+      <p>主持人把问题连接到 AGI 和 test-time scaling：如果模型在推理时需要读更长的上下文、生成更长的思考过程，注意力就不再是论文里的一个层，而是决定模型能否把更多推理预算变成有效计算的基础设施。</p>
+
+      <h3>2. DeepSeek 的 NSA：动态稀疏，并且要能真正训练和部署</h3>
+      <p>节目先讲 DeepSeek 的 Native Sparse Attention。杨松琳把它放在“动态稀疏注意力”一类：与固定窗口、固定间隔等静态模式不同，每个 Query 可以根据当前内容决定关注哪些历史块。这样做的直觉是，长文本里并不是所有过去 token 对当前问题都同样重要；如果能保留全局粗粒度信息，再对少数相关区域做细粒度检索，就有机会同时保住远程信息和计算效率。</p>
+      <p>他解释的 NSA 结构包含三路信息：第一路把较大的历史区块压缩成粗粒度摘要，避免每个 Query 逐 token 扫描；第二路从候选块中选择少量重要块，并在这些块里保留更细的 token 信息；第三路保留滑动窗口，让当前位置附近的局部依赖不被稀疏选择漏掉。三路结果经过学习到的门控合并。对听众而言，这不是“随机少算一点”，而是一种分层记忆：压缩分支负责远处的轮廓，选择分支负责需要精确回看的内容，窗口分支负责局部连续性。</p>
+      <p>“Native”在节目中被反复解释为硬件原生和训练原生。很多稀疏注意力只在推理阶段看起来省计算，因为训练时的反向传播、稀疏索引和 GPU kernel 并不友好，最终还是要付出全注意力的成本。NSA 的目标是让稀疏模式从预训练开始就参与前向和反向，并让压缩、块选择和局部窗口都落到可高效执行的算子上。杨松琳尤其被论文声称在部分长上下文和推理任务上不弱于 Full Attention 所吸引，但节目没有逐表展开全部基线、数据和消融。</p>
+      <p>主持人问这是不是为下一代 DeepSeek 模型准备的。嘉宾给出“很可能服务于后续大模型”的判断，并把它和 R1 的 test-time scaling 连接起来。这是一个合理的研究路线推测，却不是论文已经证明的产品路线；这里必须把“论文提供了架构”和“嘉宾预测公司会怎样使用”分开。</p>
+
+      <h3>3. Kimi 的 MoBA：把历史块当成可以路由的注意力专家</h3>
+      <p>第二条路线是 Kimi 的 Mixture of Block Attention。杨松琳把它和 NSA 放在一起，因为两者都让 Query 动态决定看哪些历史区域，但它们的组织方式不完全相同。MoBA 先把长上下文切成块，再把每个块视作一个可以被选择的注意力分支；当前 Query 不需要对所有块做完整注意力，而是根据相关性挑选少数块参与计算。</p>
+      <p>“Mixture of Block”这个名字借用了 Mixture of Experts 的直觉：不是每个 token 都激活全部专家，而是路由到少量专家；这里的“专家”不是独立的前馈网络，而是历史上下文中的块。它的好处是结构直接、容易理解，并且可以在全注意力和稀疏注意力之间调节。杨松琳认为 MoBA 的方案相对简洁，工程风险可能与更复杂的动态稀疏结构不同，但这仍是嘉宾的比较，不是同一训练预算下的公开胜负。</p>
+      <p>这一段把一个重要问题说清楚：稀疏注意力的核心不只是少算，而是要有一个足够便宜、足够准确的“先验选择器”。如果选择器本身要扫描全部历史，省下来的主注意力计算可能被抵消；如果选择得太少，模型会漏掉关键前提。于是稀疏注意力的系统成本至少包括索引、主计算、内存访问、块大小和漏选后的能力损失。</p>
+
+      <h3>4. MiniMax 的 Lightning Attention：把大部分历史压成状态，保留少量精确检索</h3>
+      <p>第三条路线不是动态挑选历史块，而是把线性注意力和 softmax 注意力混合起来。线性注意力的想法是把历史逐步写入固定大小的状态，避免每个新 token 都与全部历史重新两两比较，因此更适合超长序列和流式生成。但固定状态也带来信息压缩：如果两个看似相似的事实需要在未来被区分，状态可能没有足够容量保留它们。</p>
+      <p>节目把 Lightning Attention 解释成一种折中：绝大多数计算使用线性状态，少量层或少量通路保留 softmax attention，用于精确读取历史。嘉宾提到过约七层线性、一路 softmax 这样的直观比例，但这是节目中的解释和经验数字，不能替代不同版本论文的具体配置。它的关键不是“线性一定赢”，而是把精确回看从全层预算改成稀缺资源，只在任务需要时使用。</p>
+      <p>这里还涉及一个容易混淆的概念：Lightning Attention 和 MoE 都能降低平均计算，但它们解决的是不同问题。MoE 主要把前馈层的总参数容量与每 token 激活计算分开；Lightning Attention 主要改变序列历史如何被存储和访问。MiniMax-01 把 Lightning Attention 与 MoE、并行策略和通信重叠放在一起，是因为真正的训练/推理成本取决于它们的乘积，而不是单一模块的复杂度。</p>
+      <p>节目也提到线性模型在多跳推理上可能出现回退：如果任务需要反复回到多个相距很远的证据，固定状态会发生冲突，团队可能重新增加全注意力层。这不是对线性注意力的否定，而是说明“上下文很长”和“需要精确检索”并不是同一个需求。</p>
+
+      <h3>5. 论文之后：硬件、FP8、MoE 和强化学习才是完整问题</h3>
+      <p>杨松琳最后把论文拉回研究方法。一个算法写成 O(L) 不代表 GPU 上就一定更快；递归状态可能暴露串行依赖，稀疏索引可能导致不规则内存访问，块太小又会增加 kernel launch 和通信开销。只有把数学更新改写成适合批量并行的 chunkwise 算法，再用 CUDA、Triton、低精度和框架集成把它跑起来，复杂度才会转化为吞吐和成本。</p>
+      <p>这也解释了为什么三家公司在注意力之外都谈 MoE、FP8、训练框架和 infra。模型总参数、每 token 激活参数、KV cache、带宽、通信和数值稳定性共同决定产品能否训练、能否服务。主持人进一步问到 DeepSeek 后续项目和 V4，嘉宾给出了一系列方向性预测；节目没有把这些预测当作确定路线，听众也不应把它们和已发表论文混为一谈。</p>
+      <p class="small">原文讲解到这里。下文把三条路线抽象成信息预算，再审计论文自报结果和节目判断的边界。</p>
+    </section>
+
+    <section id="thesis">
+      <h2>第二遍：三篇论文都在重新分配“历史访问预算”</h2>
+      <p>三篇工作的共同问题是：长上下文让“看全部历史”越来越贵，但模型又不能简单地忘掉历史。它们的差异在于把历史访问预算放在哪里。NSA 让模型动态选择少量块，并用压缩与局部窗口兜底；MoBA 把块路由成可调节的注意力专家；Lightning Attention 让大部分历史进入固定状态，只保留少量精确通路。</p>
+      <div class="grid">
+        <article class="card"><h3>动态稀疏</h3><p>保存可选择的历史块，强项是精确检索；风险是索引器成本和漏选。</p></article>
+        <article class="card"><h3>线性状态</h3><p>把历史压进固定状态，强项是长序列和低缓存；风险是状态碰撞与不可逆丢失。</p></article>
+        <article class="card"><h3>混合路线</h3><p>让多数层便宜运行，少数层精确回看；风险是层级配方、训练和评测复杂。</p></article>
+      </div>
+      <div class="callout info"><b>独立抽象</b>注意力机制的竞争单位已经从“每个 token 看多少 token”转成“系统允许模型以什么形式保存过去、在什么时刻重新访问过去，以及错误是否有机会回退”。</div>
+    </section>
+
+    <section id="mechanism">
+      <h2>把机制讲成一个系统：选择、压缩、回看与执行</h2>
+      <div class="table-wrap"><table><thead><tr><th>步骤</th><th>NSA / MoBA 的做法</th><th>Lightning Attention 的做法</th><th>关键失败模式</th></tr></thead><tbody>
+        <tr><td>候选形成</td><td>把历史切成块，形成可选择的候选。</td><td>历史持续写入递归状态，少数路径保留原始访问。</td><td>块边界或状态摘要丢掉跨段关系。</td></tr>
+        <tr><td>预算分配</td><td>由当前 Query 动态选块或选 token。</td><td>按层/通路分配线性与 softmax 的比例。</td><td>选择成本吃掉收益，或精确通路太少。</td></tr>
+        <tr><td>内容读取</td><td>对选中的块做较细注意力，局部窗口补近邻。</td><td>从固定状态读取压缩历史，softmax 通路精确检索。</td><td>多跳推理需要同时读取多个远处证据。</td></tr>
+        <tr><td>硬件执行</td><td>需要高效稀疏、块访问和门控 kernel。</td><td>需要并行化递归、chunking 和低精度稳定。</td><td>理论复杂度与真实 GPU 吞吐不一致。</td></tr>
+      </tbody></table></div>
+      <p>因此对这类论文最重要的评测不是只报一个长上下文 benchmark 分数，而是同时问四个问题：第一，选择器或状态是否真的减少了端到端算力；第二，在相同参数、数据、训练 token 和硬件下，能力损失是多少；第三，长程检索、多跳推理和冲突信息任务是否覆盖；第四，漏选或压缩错误是否可检测、可回退、可修复。</p>
+    </section>
+
+    <section id="evidence-audit">
+      <h2>证据审计：论文结果不能直接变成跨模型结论</h2>
+      <div class="table-wrap"><table><thead><tr><th>节目中的说法</th><th>证据层级</th><th>保守写法</th></tr></thead><tbody>
+        <tr><td>NSA 在部分长上下文、迁移和推理任务上可达到或超过 Full Attention。</td><td>NSA 论文摘要和作者实验报告。</td><td>“论文在其设置下报告”，不外推成所有任务的普遍超越。</td></tr>
+        <tr><td>MoBA 可在全注意力与稀疏注意力之间转换，并服务 Kimi 长上下文。</td><td>MoBA 论文摘要/官方公开说明。</td><td>记录为公开工作和部署方向，仍需等预算对齐的独立复现。</td></tr>
+        <tr><td>MiniMax-01 可训练到百万 token 上下文，并与 GPT-4o 等比较。</td><td>MiniMax-01 论文自报。</td><td>保留模型、上下文和 benchmark 条件，不能写成普遍质量等价。</td></tr>
+        <tr><td>DeepSeek NSA 是为 V4 或后续产品准备的。</td><td>嘉宾预测。</td><td>明确标为路线推断，不能当作公司已确认计划。</td></tr>
+        <tr><td>线性注意力在多跳推理上会退化并触发回退。</td><td>嘉宾研发经验，未提供完整日志。</td><td>作为值得验证的失败假设，而不是线性路线的定理。</td></tr>
+      </tbody></table></div>
+      <div class="callout warn"><b>最容易被忽略的比较陷阱</b>如果一个模型拥有更多训练 token、更大的总参数、更多状态、不同 KV 精度或更有利的 batch，那么“注意力更好”可能其实是数据、容量或 kernel 的收益。论文之间的 headline 数字只有在训练配方、序列长度、硬件、吞吐口径和能力评测同时对齐时才具有可比性。</div>
+    </section>
+
+    <section id="insights">
+      <h2>我的独立判断：长上下文的下一步不是无限窗口，而是可验证的记忆分工</h2>
+      <ol>
+        <li><b>状态大小会成为模型账本中的第四个数字。</b> 参数量表示容量，激活参数表示每 token 计算，KV cache 表示服务成本，而线性状态/稀疏索引的大小表示模型如何保存工作记忆。只报上下文窗口，会掩盖真正的记忆预算。</li>
+        <li><b>稀疏选择器和 Agent 规划器有同一类风险。</b> 两者都先决定“后续要看什么/做什么”，一旦漏掉关键证据或动作，错误会被后续链条放大。因此需要覆盖率、回退、重试和反事实评测，而不只是最终平均分。</li>
+        <li><b>硬件友好不是实现细节，而是研究问题的一部分。</b> 如果稀疏模式无法稳定地映射到 GPU，或线性递归不能并行，数学上的复杂度优势就不会进入产品。未来架构论文必须把 kernel、带宽、batch、序列长度和能耗写进主结论。</li>
+        <li><b>混合架构更像风险管理。</b> 少量 Full Attention 层并非对理论不够纯粹，而是给系统留一条精确回看的保险通道。真正的问题是这条通道是否足以覆盖关键任务，以及它的成本是否可接受。</li>
+      </ol>
+    </section>
+
+    <section id="falsifiers">
+      <h2>什么证据会推翻或修正这篇判断</h2>
+      <ul>
+        <li>如果在相同数据、参数、状态预算和硬件下，纯线性注意力稳定超过动态稀疏和混合路线的多跳推理与精确检索，本文对精确回看通路的强调需要下降。</li>
+        <li>如果动态选择器在真实服务中总是比全注意力更贵，或漏选错误无法被训练和回退机制修复，稀疏路线的经济性就不足。</li>
+        <li>如果百万 token 的窗口能在真实 Agent 任务中稳定替代状态摘要、检索和回退，本文对上下文治理的担忧需要收缩。</li>
+        <li>如果后续公开结果显示三篇论文的优势主要来自数据、训练 recipe 或硬件，而不是注意力机制，本文对“信息预算重分配”的归纳应改写为工程组合。</li>
+      </ul>
+    </section>
+
+    <section id="evidence" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文主材料是 Zhang Xiaojun Podcast #94 的完整节目与公开转录。节目中对论文的解释已经按原文顺序重建，但嘉宾对论文优劣、研究团队动机、MiniMax 研发经验和 DeepSeek 后续路线的判断不等于独立复现。下面列出的论文链接用于核对标题、方法和作者自报范围；本文没有把它们的 benchmark 结果重新跑一遍。</p>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=42CveqxzU5M">YouTube：#94 逐篇讲解 DeepSeek、Kimi、MiniMax 注意力机制新论文</a>。</li>
+        <li><a href="https://podcasts.apple.com/us/podcast/94-%E9%80%90%E7%AF%87%E8%AE%B2%E8%A7%A3deepseek-kimi-minimax%E6%B3%A8%E6%84%8F%E5%8A%9B%E6%9C%BA%E5%88%B6%E6%96%B0%E8%AE%BA%E6%96%87-%E7%A1%AC%E4%BB%B6%E4%B8%8A%E7%9A%84%E6%9A%B4%E5%8A%9B%E7%BE%8E%E5%AD%A6/id1634356920?i=1000695371246&l=pt-BR">Apple Podcasts：节目页与章节</a>。</li>
+        <li><a href="https://arxiv.org/abs/2502.11089">Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention</a>：NSA 的动态层级稀疏、训练与硬件目标。</li>
+        <li><a href="https://arxiv.org/abs/2502.13189">MoBA: Mixture of Block Attention for Long-Context LLMs</a>：Kimi 的块级动态路由与全/稀疏切换。</li>
+        <li><a href="https://arxiv.org/abs/2501.08313">MiniMax-01: Scaling Foundation Models with Lightning Attention</a>：Lightning Attention、MoE 与超长上下文的作者报告。</li>
+        <li><a href="https://www.bilibili.com/video/BV1ZmAQekEMc/?vd_source=aa7c66a3d015be4b5bfcd520784f2790#reply255498135873">Bilibili：节目画面版</a>，作为章节和幻灯片语境的辅助入口。</li>
+      </ul>
+      <p class="small">注意力机制的性能和成本高度依赖实现、硬件、序列长度、batch、精度与任务；任何论文摘要中的“更快”“更强”都必须带着这些条件一起阅读。</p>
+    </section>
+    <p class="backtop"><a href="#top">返回顶部 ↑</a></p>
+  </main>
+</body>
+</html>

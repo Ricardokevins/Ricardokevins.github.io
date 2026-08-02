@@ -1,5 +1,37 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-02 Zhang Xiaojun Podcast 五期 source-first 深读（完成；#92待材料）
+
+### 本轮目标与材料边界
+
+- 用户要求继续推进全频道抓取与深度梳理，并明确要求：读者没有看过原文时，笔记第一步必须把原文背景、人物、问题、论证推进、案例、数字和结论讲清楚，之后才允许进入结构化结论和独立 insight。
+- 本轮继续使用 repo-local deep 与 notes-authoring 的 source-first 契约；公开页面不复刻逐字稿，不把章节说明冒充完整访谈，不把嘉宾口述或论文自报结果写成独立核验事实。
+- 已通过 Scripod 的公开频道索引和 RSS 核对到 152 个音频条目；#96、#94、#91、#98、#99 均取得可访问的句级转录，#92 的节目元数据和章节存在，但逐句转录接口仍返回错误，因此 #92 继续保留在待处理队列。
+
+### 本轮已完成的五期
+
+- [x] #96 郎咸朋：从高精地图、多激光雷达，到 BEV+Transformer、特斯拉纯视觉、端到端和 L3/L4 责任；独立判断聚焦“表示空间换代”和可修复闭环，成本与等级定义保留嘉宾边界。
+- [x] #94 杨松琳：先解释 Q/K/V、二次复杂度和 KV cache，再按原文讲 NSA、MoBA、Lightning Attention；独立判断聚焦状态预算、索引成本、硬件执行和等预算评测。
+- [x] #91 何俊贤：完整重建 DeepSeek LLM、MoE、V2、V3、Coder、Prover、R1 的论文链；独立判断把“低成本”和“涌现”拆成系统组合、验证器和论文自报边界。
+- [x] #98 陈建宇：从传统机器人三段式架构、SayCan、RT-1/RT-2 到 OpenVLA、Pi0、HiRT 和在线 RL；独立判断聚焦跨本体数据、层级动作和更便宜的可验证试错。
+- [x] #99 杨钊：从核裂变、托卡马克、Q 值和高温超导讲到洪荒 70/170/380 与商业化；独立判断聚焦装置代际学习率、等性能成本比较和电站验证门。
+
+### 资料核验与关键判断
+
+- [x] 为 #94 核对 NSA、MoBA、MiniMax-01 Lightning Attention 的 arXiv 一手页面；为 #91 核对 DeepSeek LLM、DeepSeekMoE、V2、V3、Coder、Coder-V2、Prover、Prover-V1.5 和 R1；为 #98 核对 RT-1、RT-2、OpenVLA、π0；为 #99 核对能量奇点洪荒 70/170 资料与 ITER 官方项目说明。
+- [x] #99 的公司资料支持“洪荒 70 是全高温超导托卡马克、完成首次等离子体放电”等工程节点，但没有把这升级成净发电或商业度电成本；#94 的论文 headline 性能保留为作者报告；#91 的参数、GPU hours、benchmark 和“涌现”保留为论文/嘉宾口径；#96 的 L3/L4 解释保留为嘉宾工作语境。
+- [x] 已新增五篇个案页，并把 source reconstruction 独立放在 thesis、机制、证据审计和独立分析之前；每篇均包含连续叙述、章节地图、证据边界、独立 insight、证伪条件和文末 evidence appendix。
+- [x] 已把全频道目录从 53 期 / 128:34:13 更新为 58 期 / 141:35:55；待处理从 95 期 / 128:17:33 更新为 90 期 / 115:15:51；#92 标注逐句转录暂不可用。
+- [x] 已把系列总览更新为五十八期，并新增“DeepSeek、VLA、注意力、自动驾驶、聚变工程”横向批次；#92 和 #93 仍列为下一批优先对象。
+
+### 待验证与下一步
+
+- [x] 运行 ruby scripts/validate_notes_index.rb、git diff --check、隔离 Jekyll build；索引校验通过：204 个索引入口对应 204 个顶层 HTML，质量警告为 0。隔离构建通过，仅保留仓库既有的 Faraday retry 建议与 GitHub Metadata 未认证提示。
+- [x] 对五篇新页面、目录和系列页完成 HTML 结构审计：唯一 title/H1/main/evidence appendix、无重复 ID、无断锚、无坏图、无公开生成痕迹或本地路径。
+- [x] 用独立 headless Chromium/CDP 完成 390×844 与 1440×1000 CSS 视口验收：7 个页面均加载完成，手机与桌面均无页面级横向溢出，main/evidence appendix 唯一，锚点完整；未绑定或操作用户前台 Chrome。repo-local Playwright wrapper 因缺少 playwright-cli 未使用，已记录实际 fallback。
+- [x] 完成最终 diff 与 staged 文件审计；已创建本轮 scoped commit（docs(podcast): deepen episodes 91 94 96 98 99），只包含本轮五篇页面、索引、目录、系列页和本节 Progress，保留 .agents/skills/deep/agents/openai.yaml、scripts/__pycache__/、span.log 等无关工作区改动。
+- [ ] #92 继续寻找可靠逐句转录；在取得完整材料前只保留章节级边界，不写成“已深读”。
+
 ## 2026-07-31 Zhang Xiaojun Podcast 新批次与旧笔记源文重构（进行中）
 
 ### 本轮目标与执行判断
