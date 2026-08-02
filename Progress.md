@@ -1,5 +1,41 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-02 Zhang Xiaojun Podcast #88–#90 source-first 深读（完成；#93/#92待材料）
+
+### 本轮目标与材料边界
+
+- 用户要求继续推进张小珺 YouTube 播客的完整抓取与深度梳理，并再次强调：读者没有看过原文时，必须先把节目背景、人物、问题、论证推进、案例、数字、结论和限制连续讲清楚，再进入结构化结论与独立 insight。
+- 本轮继续遵循 repo-local deep 与 notes-authoring 的 source-first 契约；不把章节摘要冒充逐句阅读，不把嘉宾推测写成外部事实，不把论文自报 benchmark 或成本数字写成独立核验结果。
+- #90、#89、#88 均取得公开句级转录并完成全文阅读；#93、#92 继续保留材料边界，其中 #92 的元数据与章节可访问，但公开逐句转录接口仍返回错误。
+
+### 本轮已完成的三期
+
+- [x] #90 朱啸虎：先还原一年后 DeepSeek 如何改变他对 AGI、开放模型、数据瓶颈、应用、Agent、Stargate、芯片和海外机会的判断，再分析“Android 底座”“数据飞轮”“意识”和投资稀缺性重排；用户增长、成本、国产芯片和意识均保留嘉宾口径/推测。
+- [x] #89 潘家怡：完整重建 o1、DeepSeek-R1-Zero、R1、Kimi K1.5 的论文共读，解释预训练/后训练/测试时计算、GRPO、规则奖励、PRM/MCTS、Aha Moment、冷启动、蒸馏、长度惩罚、课程学习与 partial rollout；明确“减少示范”不等于“不需要数据”。
+- [x] #88 吴翼：完整重建 Operator 的网页 demo、O1/O3 与 Agent 的差异、CUA 的截图—推理—动作闭环、2016 Web Agent 失败故事、OpenAI 五级路线、人机确认、多 Agent、用户数据和物理世界；明确官方机制与嘉宾内部模型推断的边界。
+
+### 资料核验与关键判断
+
+- [x] 对 #89 核对 DeepSeek-R1 arXiv 论文、DeepSeek-R1 官方仓库、Kimi K1.5 arXiv 论文、OpenAI o1 官方说明和 TinyZero 官方仓库；一手材料支持 RL/推理时计算/蒸馏/长转短的公开边界，不支持节目内所有成本、意识、内部模型和卡数猜测。
+- [x] 对 #88 核对 OpenAI Operator 与 Computer-Using Agent 官方页面；官方公开 CUA 的视觉能力、RL、截图—推理—动作循环、OSWorld/WebArena/WebVoyager 结果和安全/限制，节目关于 O2/内部版本、2016 项目细节和未来路线的内容按嘉宾推断处理。
+- [x] 对 #90 使用 DeepSeek-R1 一手资料把“可验证推理”的窄事实与朱啸虎对用户增长、数据瓶颈、开放生态、芯片和投资的外推分开；没有用节目中的 DAU、意识或成本口述替代独立统计。
+- [x] 三篇页面均采用“内容地图 → 原文连续讲解 → 核心判断 → 证据审计 → 独立分析/证伪项 → 文末资料索引”的顺序；原文区先解释节目发生了什么，再给读者结构化抽象。
+
+### 本轮变更
+
+- [x] 新增 notes/tech-analysis/zhu-xiaohu-deepseek-aigc-realism-investment-interview.html、notes/tech-analysis/pan-jiayi-deepseek-r1-kimi-k15-reasoning-interview.html、notes/tech-analysis/wu-yi-openai-operator-computer-using-agent-interview.html。
+- [x] 更新 _data/notes.yml 三条索引；更新全频道目录 #88–#90 为已深读，完成数从 58 增至 61，覆盖时长从 141:35:55 增至 146:40:40，待补从 90 降至 87。
+- [x] 更新系列总览：新增“推理训练 → Agent 闭环 → 投资判断”批次，补齐三期之间从模型训练到产品环境、再到资本稀缺性排序的横向关系。
+
+### 验证与待推进
+
+- [x] ruby scripts/validate_notes_index.rb 通过：207 个索引入口对应 207 个顶层 HTML。
+- [x] 新增三篇页面 git diff --check 通过；页面均具备唯一 H1、唯一 notes-shell.css、唯一 evidence appendix，且原文重建位于独立判断之前。
+- [x] 隔离 Jekyll build 通过，生成目标页面成功；仅保留仓库既有的 Faraday 重试建议与 GitHub Metadata 未认证/限流提示。
+- [x] HTML/锚点/生成痕迹审计通过：5 个目标页面均唯一 H1、main、notes-shell.css 与 evidence appendix，无重复 ID、断锚或本地过程路径。
+- [x] 独立无头 Chromium 完成 1440×1100 与 390×844 验收：5 个页面均 HTTP 200，console/page/request error 为 0，页面级横向溢出为 0；手机端个案页与系列页的宽表均保持在容器内局部滚动，截图目检通过。
+- [ ] #93、#92 仍不能用章节说明替代完整转录；下一批优先处理 #93/#92 的材料可得性，再回到 #87/#86。
+
 ## 2026-08-02 Zhang Xiaojun Podcast 五期 source-first 深读（完成；#92待材料）
 
 ### 本轮目标与材料边界
