@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>语音 OPD 四篇工作深读：学生听错之后，教师究竟怎么教</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true },
+      chtml: { matchFontHeight: false, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme: light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#60676d; --line:#ddd5c7; --accent:#a84f35; --soft:#f8ebe4; --max:1080px; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; color:var(--ink); background:var(--paper); font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; line-height:1.78; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header, main { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:54px 0 28px; }
+    .kicker { color:var(--accent); font-weight:800; font-size:13px; letter-spacing:.06em; text-transform:uppercase; }
+    h1 { max-width:930px; margin:10px 0 0; font-family:"Iowan Old Style","Songti SC",serif; font-size:clamp(34px,5vw,58px); line-height:1.14; }
+    .lede { max-width:880px; color:var(--muted); font-size:18px; }
+    main { display:grid; gap:28px; padding-bottom:70px; }
+    section { padding-top:30px; border-top:1px solid var(--line); }
+    h2 { margin:0 0 12px; font-size:clamp(25px,3vw,34px); line-height:1.25; }
+    h3 { margin:26px 0 8px; color:var(--accent); font-size:21px; line-height:1.3; }
+    p { margin:11px 0; }
+    ul, ol { padding-left:1.35rem; }
+    li { margin:7px 0; }
+    .callout { margin:18px 0; padding:15px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:10px; background:var(--soft); }
+    .callout b { display:block; margin-bottom:5px; color:var(--accent); }
+    .flow { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:9px; margin:18px 0; }
+    .flow div { position:relative; padding:13px; border:1px solid var(--line); border-radius:9px; background:var(--surface); font-size:14px; }
+    .flow strong { display:block; color:var(--accent); }
+    .table-wrap { max-width:100%; margin:16px 0; overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+    .table-wrap table { width:100%; min-width:760px !important; border-collapse:collapse; font-size:14.5px; }
+    th, td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:var(--soft); }
+    .math-display { max-width:100%; margin:16px 0; padding:14px; overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+    .terms { display:grid; gap:10px; }
+    .terms div { display:grid; grid-template-columns:180px minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:9px; background:var(--surface); }
+    .terms b { color:var(--accent); }
+    .small { color:var(--muted); font-size:14px; }
+    @media (max-width:760px) { header,main { width:calc(100% - 24px); } .flow { grid-template-columns:1fr; } .terms div { grid-template-columns:1fr; gap:4px; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header>
+    <div class="kicker">Tech Analysis · Speech / Audio On-Policy Distillation</div>
+    <h1>语音 OPD 四篇工作深读：学生听错之后，教师究竟怎么教</h1>
+    <p class="lede">CORD、X-OPD、Ark-ASR OPD 与 X³-OPD 都让学生在自己的生成轨迹上接受教师反馈，但它们的输入、教师、训练目标与“错误”含义并不相同。本文从一条具体音频样本出发，还原四篇工作的完整训练过程。</p>
+  </header>
+
+  <main>
+    <section id="source-reconstruction">
+      <h2>第一遍：四篇论文到底依次解决了什么</h2>
+      <h3>共同起点：同一个问题，文字会答，语音却不会答</h3>
+      <p>设想用户用语音问：“一个商店先把价格提高 20%，再降低 20%，最终是否回到原价？”文本 LLM 很容易得到“没有，最终是原价的 96%”。端到端语音模型却可能先把百分数听错，也可能听对了但推理能力弱，生成“先增后减，所以回到原价”。这不是单纯的 ASR 错误：模型可能准确转写每个字，却在音频条件下无法调用文本骨干已有的推理能力。</p>
+      <p>传统 SFT 会让文本教师写出一条正确答案，再要求语音学生逐 token 模仿。可是学生部署时不是沿着教师的正确前缀生成。假设学生已经输出“先增加 20% 得到 120”，下一步又错误地准备输出“再减 20 得到 100”，它访问的是一个教师示范里不存在的前缀。固定教师答案无法专门告诉学生：在你自己的这个错误状态上，下一步应该重新计算 (120\times0.8)。这就是四篇论文共同针对的 exposure bias。</p>
+
+      <h3>CORD：先让同一个模型的“文字脑”纠正“语音脑”</h3>
+      <p>CORD 选择最克制的设置：不引入外部大教师。同一个音频语言模型既可以输入语音，也可以输入文字。训练时先让它在语音输入下生成自己的回答；然后固定这条回答已经出现的 prefix，把同一句问题换成文字输入，再问同一个模型“此时下一个 token 的概率应该是什么”。文本条件分支就是内部教师，音频条件分支就是学生。</p>
+      <p>CORD 发现所有 token 的跨模态差异高度不均匀。诸如“the”“is”之类连接词，两种输入下往往已经一致；真正的分歧集中在少数决定推理方向的 token，且较早出现。于是它把一条回答中 reverse-KL 最大的 20 个位置权重提高到两倍，并让位置权重从开头的两倍线性衰减到结尾的一倍。局部 token 对齐仍可能产生整体错误答案，因此它另外采样四条语音轨迹，让 judge 判断每条是否与文本答案语义一致，再通过 GRPO 提高组内较好轨迹的概率。</p>
+      <p>作者在 8 万条 NuminaMath 文本题上合成语音训练。Qwen2-Audio 的平均音频—文本差距从 15.25 降到 8.90，Step-Audio2-mini 从 10.86 降到 6.00。消融还显示单独 GRPO 在 1000 步发生明显崩塌，而加入 OPD 后训练到 3000 步仍稳定。因此论文的作者结论不是“KL 比 RL 好”，而是 token 级教师锚点同时承担了跨模态纠错和稳定 RL 的作用。</p>
+
+      <h3>X-OPD：内部教师不够强，就引入独立文本教师</h3>
+      <p>X-OPD 使用 Qwen3-Omni-A3B 作为语音学生，用 Qwen3-A3B 文本模型作为教师。它仍让学生从语音输入产生自己的轨迹，但教师在配对文本输入下给这些轨迹逐 token 评分。和 CORD 不同的是，它还让学生从文本输入产生轨迹，并在文本模态内接受同一教师评分。最终损失是“文本学生追教师”和“语音学生追文本教师”的加权和，默认各占一半。</p>
+      <p>这个双目标在解决两件不同的事：跨模态目标把语音推理拉向文本教师；模态内目标阻止共享语言骨干为了适应语音数据而整体漂移。作者用约 2.7 万条由 Tulu 3 和 NaturalReasoning 改写、TTS 合成并经 ASR 过滤的配对样本训练。Qwen3-Omni 的语音平均能力落差从 11.29% 降到 3.43%，文本落差从 5.51% 降到 0.97%。MMAR 保留实验中，SFT、离线 KD 和 forward-KL GKD 把 71.3 降到约 60，而 X-OPD 仍在 69 分以上。</p>
+      <p>论文还有一个反直觉结果：更强的 A22B 教师不如规模更接近学生的 A3B 教师。作者把它解释为 teacher–student knowledge gap；直观上，如果教师在学生访问的错误 prefix 上给出一个学生几乎无法表示的分布，“更聪明”不会自动变成“更可教”。</p>
+
+      <h3>Ark-ASR：把问题缩窄到“学生已经写错转写，接下来怎么纠正”</h3>
+      <p>Ark-ASR 不做开放式问答，只做语音识别。输入是一段音频，输出是 transcript。0.6B 学生先自行生成转写；冻结的 Qwen-ASR 教师读取同一段音频，并在学生已经生成的文本 prefix 上做 teacher forcing。然后学生再次对自己的那条转写前向计算，教师与学生在每个实际访问位置上对齐分布。</p>
+      <p>这里最麻烦的不是推理答案，而是 tokenizer 和局部候选集合。教师可能把一个词切成一种 token，学生切成另一种；只取教师 top-k 会漏掉学生正在考虑的错误候选，只取学生 top-k 又可能看不到教师建议。论文把教师 top-k 映射到学生词表，再与学生 top-k 取并集，在这个 union support 上计算温度缩放 KL。</p>
+      <p>纯 OPD 已让 Ark-Base 在五个集合上全部改善，例如 LibriSpeech test-other WER 从 7.17 降到 5.50。更强的方案先加入 2000 小时 teacher-data 适配，再做 OPD，得到 4.56，并在同为 0.6B 的比较中胜过 Qwen3-ASR-0.6B 的四个集合。但 1.7B Qwen3-ASR 仍然全面更强。作者因此把结论限定为：OPD 可以在较小数据预算下缩小紧凑 ASR 与更强模型的差距，没有消除模型规模优势。</p>
+
+      <h3>X³-OPD：转写正确并不等于理解声音</h3>
+      <p>前三类设置的教师输入几乎都可以被干净文字表示。可是“说话人停顿后用讽刺语气回答”“先有玻璃破裂声，再有警报”“音乐从小调转为大调”不能由普通 transcript 完整表达。X³-OPD 因此构造三层对称数据：第一层是文本逻辑题的 TTS 语音；第二层是真实声音和经过重构、核验的事件 caption；第三层是真实对话和包含停顿、重音、情绪、轮次的 meta-caption。</p>
+      <p>学生 Qwen3-Omni-30B-A3B-Thinking 只看原始音频；冻结的 Qwen3-235B-A22B-Thinking 教师看对应文字描述、问题和正确答案。学生采样四条轨迹，教师在学生的精确 prefix 上逐 token 评分。训练先用 1.2 万条样本做一次很短的离线 warm-start，让学生进入教师可教区域，再进入 OPD。完整数据约 7.18 万条，训练使用 32 张 H20。</p>
+      <p>BIG Bench Audio 从基础模型的 87.9 提升到 93.6，MMAU-Sound 提升 2.6；跨域的 WorldSense 与 DailyOmni 只下降 1.2 和 2.3，明显小于 SFT/GKD 的约 5.3–6.6。但 MMSU 音系、风格和 MMAU 音乐仍略低于基础模型。作者明确承认原因：文本教师只能通过 caption 或 meta-caption“间接听见”声音，未被文字编码的音色、音乐结构和细微韵律没有可靠监督。</p>
+      <p class="small">以上是论文内容重建。下面进入跨论文的机制抽象、证据审计和独立判断。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>一条样本在 OPD 中究竟走了哪五步</h2>
+      <div class="flow" aria-label="语音 OPD 通用训练流程">
+        <div><strong>1. 配对输入</strong>学生拿音频；教师拿文字、caption，或同一音频。</div>
+        <div><strong>2. 学生 rollout</strong>学生按当前策略生成真实会走到的答案或转写。</div>
+        <div><strong>3. 教师重评分</strong>不改学生 prefix，只询问教师在该状态下偏好哪些下一个 token。</div>
+        <div><strong>4. 稠密损失</strong>在每个 token 上算 KL、log-ratio 或 advantage；可叠加整序列 reward。</div>
+        <div><strong>5. 更新学生</strong>提高教师认为合理的局部动作概率，降低学生自己的错误偏好。</div>
+      </div>
+      <p>关键不是“教师重新写一份答案”，而是教师进入学生已经走到的状态。例如学生 prefix 已经是“120 再减 20 得到”，教师仍在这个 prefix 后比较“96”“100”等候选。这使监督命中部署时会真实出现的错误状态。</p>
+      <div class="math-display">\[
+        y\sim\pi_S(\cdot\mid x_a),\qquad
+        D_t=\mathrm{KL}\!\left(\pi_S(\cdot\mid x_a,y_{&lt;t})\;\Vert\;\pi_T(\cdot\mid x_t,y_{&lt;t})\right)
+      \]</div>
+      <p>(x_a) 是学生看到的音频，(x_t) 是教师看到的文字或 caption，(y_{&lt;t}) 是学生自己生成到第 (t) 步之前的 prefix。四篇论文主要就在“教师是谁、(x_t) 包含什么、哪些 (D_t) 应该加权、是否再加序列奖励”上分叉。</p>
+    </section>
+
+    <section id="comparison">
+      <h2>四篇工作不要混在一起：它们的监督关系不同</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>工作</th><th>学生输入 / 输出</th><th>教师看到什么</th><th>核心训练信号</th><th>真正新增的东西</th></tr></thead>
+        <tbody>
+          <tr><td><strong>CORD</strong></td><td>语音问题 → 推理答案</td><td>同一模型看到等价文字</td><td>加权 reverse KL + judge GRPO</td><td>内部自蒸馏；关键 token 与早期 token 加权；OPD 稳定 GRPO</td></tr>
+          <tr><td><strong>X-OPD</strong></td><td>语音/文字问题 → 开放式回答</td><td>独立文本教师看到等价文字</td><td>模态内 advantage + 跨模态 advantage</td><td>同时修复语音差距与共享语言骨干漂移</td></tr>
+          <tr><td><strong>Ark-ASR</strong></td><td>原始语音 → transcript</td><td>同一音频 + 学生 transcript prefix</td><td>union top-k 上的温度 KL</td><td>不同 tokenizer/support 下的 ASR 局部纠错与可教性 warm-up</td></tr>
+          <tr><td><strong>X³-OPD</strong></td><td>语音、声音、对话 → 推理答案</td><td>文字/caption/meta-caption + 正确答案</td><td>短 SFT warm-start + 跨模态 token advantage</td><td>把监督分布扩到声音事件和韵律对话，但教师仍是文本盲听者</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="evidence">
+      <h2>实验到底证明了什么</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>论文自报结果</th><th>最合理的解读</th><th>不能推出的结论</th></tr></thead>
+        <tbody>
+          <tr><td>CORD 两个 backbone 的平均模态差距分别减少 41.6% 与 44.8%</td><td>同模型文本分支可以在音频学生实际轨迹上提供有效锚点；OPD 对 GRPO 有稳定作用</td><td>不等于获得原生声音推理；训练主要是数学题 TTS</td></tr>
+          <tr><td>X-OPD 将语音平均落差 11.29% 降到 3.43%，MMAR 仅小幅遗忘</td><td>双目标比同数据上的 SFT、离线 KD、forward-KL 更适合保持共享能力</td><td>不证明所有更大教师都更好；该实验反而显示容量匹配很重要</td></tr>
+          <tr><td>Ark-Base+TD+OPD 在同规模比较中胜过 Qwen3-ASR-0.6B 的 4/5</td><td>学生 prefix 上的密集教师反馈能显著提高数据效率</td><td>“100k 对 20M 小时”不是严格训练成本对照；公开配置与总算力不完整</td></tr>
+          <tr><td>X³-OPD 的 BIG Bench Audio +5.7，跨域遗忘小于 SFT/GKD</td><td>数据覆盖和 on-policy 目标能共同提高音频条件推理并约束共享骨干漂移</td><td>不证明文本教师能教会其无法观测的音乐/音色；论文自己的失败轴已否定强版本主张</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout"><b>一个常见误读</b>这些工作多数提升的是“音频条件下调用语言推理能力”，而不是从零发现声音世界规律。只有 X³-OPD 开始系统覆盖非语言声音与韵律，且它的教师仍通过文字代理观察这些现象。</div>
+    </section>
+
+    <section id="terms">
+      <h2>把最容易卡住的术语说成人话</h2>
+      <div class="terms">
+        <div><b>On-policy</b><span>训练数据中的回答轨迹来自学生当前版本，而不是提前冻结的教师答案。模型变了，下一轮看到的错误状态也会跟着变。</span></div>
+        <div><b>Prefix / state</b><span>已经生成的前半段文本。自回归模型下一步做什么，取决于输入和这个前半段；prefix 一旦不同，就是不同训练状态。</span></div>
+        <div><b>KL divergence</b><span>衡量两个 next-token 概率分布有多不同。它提供的是每个位置的密集信号，不只告诉模型最终答对或答错。</span></div>
+        <div><b>Reverse KL</b><span>通常更偏向让学生集中到教师支持的高概率模式，但方向、采样分布与具体估计方式必须一起看，不能只凭“reverse”判断效果。</span></div>
+        <div><b>Support overlap</b><span>教师和学生在某个 prefix 上认为“可能成为下一个 token”的候选是否重合。几乎不重合时，教师虽强，却未必能提供学生可吸收的局部更新。</span></div>
+        <div><b>Privileged information</b><span>教师训练时能看见、学生部署时看不见的信息，例如干净 transcript、细粒度 caption 或正确答案。它能提高监督质量，也会制造不可复制的信息优势。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立判断：语音 OPD 的真正设计对象是“教师优势能否恢复”</h2>
+      <p>四篇工作的共同公式容易让人以为差别只是 KL 写法。更深的分界其实是：教师为什么比学生强，以及这种优势在学生部署信息下是否可恢复。</p>
+      <ol>
+        <li><strong>可恢复的能力优势：</strong>文本教师只是更会计算、更会组织推理。学生已经听懂问题，只是不会调用能力。这最适合 OPD。</li>
+        <li><strong>可部分恢复的感知优势：</strong>教师看见干净 transcript，学生面对口音或噪声。OPD 能教学生在常见错误 prefix 上纠偏，但无法凭空补回被音频编码器丢失的信息。</li>
+        <li><strong>不可恢复的信息优势：</strong>教师看到正确答案或人工 meta-caption，学生音频里并没有足够线索，或教师 caption 忽略了关键音色。强行对齐可能教会学生模仿教师的语言风格，却不能获得真实声学依据。</li>
+      </ol>
+      <p>因此下一代方案的关键不应只是扩大文本教师，而应为每个 token 判断监督来源：语义/逻辑 token 交给文本教师，声学事件交给 audio-native teacher 或 verifier，最终答案交给规则或环境 reward；当教师—学生 support 不重合时，先 warm-start、缩短 horizon 或放弃该 token，而不是把巨大 KL 当作更强监督。</p>
+      <p>这也解释了为什么 X-OPD 的更大教师反而较差、Ark-ASR 需要 TD warm-up、X³-OPD 在音乐轴仍退化：它们都指向同一个条件——OPD 只有在教师优势既真实、又能落到学生访问状态时才有效。</p>
+    </section>
+
+    <section id="limits">
+      <h2>证据限制与复现风险</h2>
+      <ul>
+        <li>除 CORD 已进入 ACL 2026 Findings 外，其余工作非常新；跨团队、跨 backbone 的独立复现仍不足。</li>
+        <li>CORD 的 judge 来自对专有前沿模型评测输出的蒸馏，公开信息不足以独立核验其“超过 99%”自评准确率。</li>
+        <li>X-OPD 与 X³-OPD 的训练依赖完整教师 logits、较大 rollout/教师前向成本；X³-OPD 还使用 32 张 H20 与 235B 教师，不能把样本量少直接等同于总训练便宜。</li>
+        <li>Ark-ASR 的 100k 小时与 Qwen3 报告的 20M 小时来自不同训练系统，适合说明数据规模差异，不构成严格等算力、等数据质量对照。</li>
+        <li>TTS 语音适合控制语义，却低估了真实口音、重叠说话、噪声、情绪和设备差异；在 TTS 上学会的跨模态对齐未必等价于真实语音鲁棒性。</li>
+      </ul>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <ul>
+        <li><a href="https://aclanthology.org/2026.findings-acl.1581/">CORD：ACL 2026 Findings 页面</a>；<a href="https://arxiv.org/abs/2601.16547">arXiv 版本</a></li>
+        <li><a href="https://arxiv.org/abs/2603.24596">X-OPD：Cross-Modal On-Policy Distillation for Capability Alignment in Speech LLMs</a></li>
+        <li><a href="https://arxiv.org/abs/2605.28139">Data-Efficient On-Policy Distillation for Automatic Speech Recognition</a></li>
+        <li><a href="https://arxiv.org/abs/2607.21550">X³-OPD：Distilling Reasoning into Large Audio-Language Models via On-Policy Alignment</a></li>
+        <li><a href="https://arxiv.org/abs/2306.13649">On-Policy Distillation of Language Models: Learning from Self-Generated Mistakes</a>，通用 OPD/GKD 前置工作。</li>
+      </ul>
+      <p class="small">本文核对公开全文、方法公式、实验主表、消融和作者限制；所有训练结果均属于论文发布方报告，未进行完整训练复现。模型、论文版本与公开资产状态可能继续变化。</p>
+    </section>
+  </main>
+</body>
+</html>

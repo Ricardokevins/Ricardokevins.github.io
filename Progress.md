@@ -1,5 +1,28 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-02 语音 / 音频 OPD 四篇工作深读（完成）
+
+### 任务与材料边界
+
+- 用户要求把前一轮提到的 CORD、X-OPD、Ark-ASR OPD 与 X³-OPD 具体讲清楚，重点不是继续列论文，而是让未读原文的读者能理解一条训练样本如何经过学生 rollout、教师评分、token/sequence loss 与参数更新。
+- 已完整核对四篇公开全文、方法公式、主表、消融与作者限制；CORD 已收录 ACL 2026 Findings，其余三篇按当前公开版本属于 2026 年新论文/预印本，实验数字均按作者报告处理，本轮没有独立训练复现。
+- 材料按问题递进而非标题顺序组织：先解释 off-policy exposure bias，再讲同模型跨模态自蒸馏、外部教师双目标对齐、ASR prefix 纠错，最后讲声音事件与韵律条件下的 privileged teacher 边界。
+
+### 当前关键判断
+
+- [x] CORD 的教师不是另一台大模型，而是同一个 LALM 在文本条件下的分支；它在音频学生自己的轨迹上计算跨模态 reverse KL，对 top-20 高分歧 token 和早期 token 加权，并用 judge + GRPO补完整序列结果。
+- [x] X-OPD 使用独立文本教师，同时保留 text→text 的模态内目标与 text→speech 的跨模态目标；其主要价值是把语音能力落差与灾难性遗忘同时纳入目标，而不是简单增加一个 KL。
+- [x] Ark-ASR 将 OPD 缩窄成音频条件转写纠错：教师和学生都读取音频，教师在学生实际生成的错误 transcript prefix 上评分；union top-k 主要解决 tokenizer/support 不一致，TD warm-up 主要提高局部可教性。
+- [x] X³-OPD 的核心增量主要来自监督覆盖扩展：TTS 逻辑题、真实声音事件 caption、带韵律 meta-caption 的对话三层数据，再用带正确答案的文本教师评分音频学生轨迹；它仍无法让文本教师直接感知未被 caption 表达的音乐、音色和细微韵律。
+
+### 变更与验证
+
+- [x] 新增合并式站内深读笔记 `notes/tech-analysis/speech-opd-cord-xopd-ark-x3.html` 并更新 Notes 索引；未为四篇论文分别制造重复页面。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：208 个索引入口对应 208 个顶层 HTML；`git diff --check` 通过；定向生成痕迹、本地路径、重复 ID、唯一 H1/main、MathJax 与 evidence appendix 检查通过。
+- [x] 隔离 Jekyll build 成功生成目标页面；仅保留仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证/限流提示。
+- [x] 独立无头 Chromium 完成 1440×1100 与 390×844 验收：两种视口均 HTTP 200，console/page/request error 为 0，页面级横向溢出为 0，MathJax 正常；首次手机验收发现宽表被压缩后已修复为容器内 760px 局部滚动，复验通过。
+- 提交范围限定为本任务页面、索引与本节 Progress；工作区既有 deep 配置、缓存与日志保持不动。
+
 ## 2026-08-02 Zhang Xiaojun Podcast #88–#90 source-first 深读（完成；#93/#92待材料）
 
 ### 本轮目标与材料边界
