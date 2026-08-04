@@ -1,5 +1,17 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-04 简历文件路径更新（完成）
+
+### 变更
+
+- [x] 将 `_pages/cv.md` 中的简历嵌入路径从 `files/shesj_CV_2025_0821.pdf` 更新为最新文件 `files/sheshuaijie_CV_260804.pdf`。
+- [x] 确认最新 PDF 已存在于仓库且可被 PDF 工具正常读取（2 页、A4、未加密）。
+
+### 验证
+
+- [x] `git diff --check` 通过；页面源码已无旧简历路径，最新 PDF 文件存在且可读取。
+- [ ] Jekyll 构建未能在当前环境启动：Bundler 报告 `Gemfile.lock` 中的 Jekyll 依赖未安装（`bundle exec jekyll build` 退出码 127）；未改动仓库依赖或既有 `_site` 产物。
+
 ## 2026-08-02 语音 / 音频 OPD 四篇工作深读（完成）
 
 ### 任务与材料边界
