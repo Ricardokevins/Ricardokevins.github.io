@@ -1,5 +1,35 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-08 Lilian Weng（翁荔）大模型思想地图深化（完成）
+
+### 任务边界
+
+- 用户要求深度梳理翁荔（Lilian Weng）做大模型相关的公开笔记，先完整介绍原文，再展示独立的深度思考，并沉淀为站内笔记。
+- 本轮材料边界为 Lil’Log 当前公开主线：2025-05-01《Why We Think》、2026-06-24《Scaling Laws, Carefully》、2026-07-04《Harness Engineering for Self-Improvement》，并复核归档中的 2017–2026 年 52 篇技术正文及仓库已有 Lilian Weng 笔记。
+- 目标是原地深化 `notes/tech-analysis/lilianweng-why-we-think-blog-map.html`，把最新两篇文章纳入既有 reasoning / blog map，不重复创建同主题页面；不写入 Obsidian。
+
+### 当前阶段
+
+- [x] 定位 canonical 原文、归档、已有站内笔记、`deep` 与 `notes-authoring` 规范。
+- [x] 初步建立内容地图：scaling law 负责训练资源分配，reasoning 负责测试时计算，harness 负责部署系统与自我改进闭环。
+- [x] 完成关键主张的来源核对：Kaplan、Chinchilla、数据受限 scaling、Chinchilla replication、Self-Harness、AHE、Meta-Harness；独立代入 \(\alpha=0.3478,\beta=0.3658\) 得到 \(N\) 指数 0.5126、\(D\) 指数 0.4874。
+- [x] 原地深化站内页面与 _data/notes.yml：先新增三篇 canonical 原文的连续讲解，再进入三层机制图、证据审计、边界和独立 insight。
+- [x] 完成 Notes 索引、隔离 Jekyll 构建、桌面/手机渲染与最终工作区隔离检查。
+
+### 最终验证与交付
+
+- [x] `ruby scripts/validate_notes_index.rb`：211 个入口与 211 个顶层 HTML 对应。
+- [x] `git diff --check`：目标页面、索引与本节 Progress 无空白错误；页面正文无工具痕迹、本地路径或生成过程泄漏。
+- [x] 隔离 Jekyll build 成功；仅出现仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示，无构建错误。
+- [x] 独立 headless Chromium 完成 1440×1000 桌面与 390×844 手机验收：均 HTTP 200、唯一 `h1` / `main`、47 个 MathJax 容器、无页面级横向溢出、断锚、坏图、失败请求、console error 或 page error；截图目检未见重叠与截断。
+- [x] 发布范围限定为本次笔记页面、`_data/notes.yml` 条目和本节 Progress；工作区其他既有修改与未跟踪文件保持原样，不纳入本任务。
+
+### 当前关键判断
+
+- Scaling Laws 的核心不是背下 Kaplan 或 Chinchilla 的固定指数，而是把拟合范围、参数口径、unique data、损失统计、训练同质性和外推不确定性当成同一个实验协议。
+- Test-time compute 把计算预算变成可搜索的思考轨迹，但没有可靠 verifier 时，更多 token 只会更贵地放大候选错误；CoT 更适合作为半可信遥测，不是天然忠实解释。
+- Harness RSI 更准确地说是“可评估软件系统的经验积累”：它可以沉淀工具、状态和流程经验，但尚未证明 base model 获得了跨任务的通用新智能。
+
 ## 2026-08-04 简历文件路径更新（完成）
 
 ### 变更

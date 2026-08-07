@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lilian Weng《Why We Think》与 Lil’Log 全谱系解读</title>
+  <title>翁荔（Lilian Weng）的大模型思想地图：从 Scaling Laws 到 Harness</title>
   <script>
     window.MathJax = {
       tex: {
@@ -113,12 +113,16 @@
   </nav>
 
   <header id="top">
-    <div class="kicker">Tech Analysis · 2026-06-08</div>
-    <h1>Lilian Weng《Why We Think》与 Lil’Log 全谱系解读</h1>
-    <p class="lede">《Why We Think》不是一篇普通的 chain-of-thought 综述。它把 Lilian Weng 过去八年写过的 RL、Transformer、Prompt、Agent、Human Data、Hallucination、Reward Hacking 等主题重新拧成一条主线：现代模型能力不只取决于参数和预训练数据，还取决于我们如何在测试时分配计算、搜索、工具、监督和可监控的中间状态。</p>
+    <div class="kicker">Tech Analysis · 2026-08-08</div>
+    <h1>翁荔（Lilian Weng）的大模型思想地图：从 Scaling Laws 到 Harness</h1>
+    <p class="lede">这份笔记把 Lilian Weng（翁荔）公开的三篇大模型主线文章放在一起阅读：2025 年的《Why We Think》解释推理时为什么要购买额外计算，2026 年的《Scaling Laws, Carefully》解释训练资源如何分配以及外推为什么脆弱，2026 年的《Harness Engineering for Self-Improvement》则把问题推进到部署系统、可观察性与自我改进。先重建原文，再给出独立分析。</p>
     <div class="toc" aria-label="Page sections">
+      <a href="#source-reconstruction">原文讲解</a>
       <a href="#takeaway">核心判断</a>
+      <a href="#problem">问题背景</a>
       <a href="#why-think">Why We Think 深读</a>
+      <a href="#scaling-laws">Scaling Laws 深读</a>
+      <a href="#harness">Harness 深读</a>
       <a href="#mechanism">机制地图</a>
       <a href="#faithfulness">忠实性与奖励黑客</a>
       <a href="#blog-map">全博客谱系</a>
@@ -130,23 +134,57 @@
   </header>
 
   <main>
+    <section id="source-reconstruction">
+      <h2>原文讲解：先把三篇材料本身讲清楚</h2>
+      <p>这里的“翁荔笔记”不是媒体对她的二手介绍，而是以 Lil’Log 的 canonical 原文为中心的连续阅读。材料的时间顺序很重要：2025 年《Why We Think》从模型内部的推理与测试时计算出发；2026 年《Scaling Laws, Carefully》回到训练阶段的模型、数据和算力分配；2026 年《Harness Engineering for Self-Improvement》再把视野推到模型之外的运行系统。她在三篇文章里反复追问的是同一个问题：有限资源怎样转化成更可靠的能力，反馈信号又会在哪里失真。</p>
+
+      <h3>一、《Why We Think》：思考是额外计算、可搜索轨迹和潜变量</h3>
+      <p>文章从一个直觉开始：人遇到复杂问题时会放慢速度，先分解、检查、回溯，再给出答案。对语言模型来说，“慢一点”不是心理状态，而是多生成一些中间 token、执行更多前向计算，或在多个候选轨迹之间进行搜索。作者用三种视角解释它：心理学上的快思考/慢思考类比；计算资源视角，即每个额外 token 都购买了一次计算；潜变量视角，即问题 \(x\)、答案 \(y\) 之间还存在一条不可直接观测的思考轨迹 \(z\)，目标可以写成 \(P(y\mid x)=\sum_z P(z\mid x)P(y\mid x,z)\)。</p>
+      <p>随后文章按“如何把更多计算放进 token 空间”展开。早期 scratchpad、AQUA-RAT、GSM8K 和 chain-of-thought 让模型先写中间步骤；STaR 等方法用答案正确性筛选或反推更好的 reasoning trace；DeepSeek-R1 一类工作则把格式奖励、结果奖励、拒绝采样、非推理 SFT 与最终 RL 组合起来，让模型学会在可验证的数学、代码和 STEM 任务上多想一会儿。文章同时保留一个关键限定：只奖励最终答案会产生稀疏的 credit assignment，只奖励中间过程又会带来过程标注和过程奖励模型被钻空子的风险。</p>
+      <p>在推理时，作者把搜索分成两类。<strong>并行采样</strong>一次生成多个候选，再用 majority vote、best-of-\(N\)、beam search 或 verifier 选择；它简单、容易并行，但前提是正确路径已经出现在候选池里。<strong>顺序修订</strong>让模型读取上一轮回答并修改它，能表达反思，却可能把正确答案改错、陷入“不改”的行为塌缩，或在没有外部反馈时重复幻觉。因此，顺序和并行可以组合：简单问题更适合修订，困难问题往往需要在并行探索与顺序修订之间寻找预算比例。</p>
+      <p>文章接着把工具调用纳入“思考”：代码执行、检索、计算器、图像处理和浏览器不是额外装饰，而是把某些可验证子问题交给外部环境，模型负责分解、编排和读取结果。再往下，作者讨论连续思考和隐式思考：recurrent depth、Universal Transformer、thinking/pause tokens、Quiet-STaR 让额外计算进入隐藏状态或无语义 token，不必全部写成自然语言。但这些方法需要训练期让模型学会使用额外循环；递归状态塌缩、忽略输入状态、初始化与归一化敏感等问题，说明“多做几步前向”不会自动变成有效推理。</p>
+      <p>最后，文章用 latent-variable / EM 的语言重新解释推理：如果思考轨迹 \(z\) 看不见，就可以交替地改进如何产生轨迹和如何利用轨迹；STaR 可以看作在答案正确性指示奖励下进行的简化 policy-gradient 式自训练。文章还提醒，思考时间不是免费能力：小模型在中等难度题上可以用测试时搜索补齐一部分差距，但在很难的问题上无法替代强预训练；预算 forcing 可能呈现“想得越久越准”，而简单按长度拒绝采样却可能反过来变差。作者留下的开放问题包括忠实 CoT、无真值时的自纠错、开放式任务的奖励、把搜索收益蒸馏回模型，以及让思考预算随问题难度自适应。</p>
+
+      <h3>二、《Scaling Laws, Carefully》：幂律是有用的工程近似，不是免检预测器</h3>
+      <p>第二篇先定义记号：\(N\) 是参数量，\(D\) 是训练 token 数，\(C\) 是训练 FLOPs，\(L\) 是损失，\(E\) 是不可约误差。常见近似是 \(C\approx 6ND\)：前向约 \(2ND\)，反向约为前向的两倍。缩放定律的工程用途，是用一批相对便宜的小实验拟合损失曲线，再推测更大模型应该把算力花在参数还是数据上。</p>
+      <p>文章先回到 Amari、Hestness 和 Rosenfeld：从早期学习曲线的幂律，到跨模型规模和数据规模的联合拟合 \(L(N,D)\approx A N^{-\alpha}+B D^{-\beta}+E\)。然后进入语言模型里的 Kaplan 结果：损失与 \(N\)、\(D\)、\(C\) 在大范围内近似幂律；大模型更省样本；在他们的实验区间里，固定算力下更大的模型应训练较少 token、提前停止，得到 \(N_{\mathrm{opt}}\propto C^{0.73}\)。这并不是“模型越大永远越好”，而是一个受实验范围、参数口径和训练设置约束的最优分配结论。</p>
+      <p>Chinchilla 重新做了更大范围的实验，训练了 400 多个、约 70M 到 16B 参数、5B 到 500B token 的模型，并用固定模型变 token、固定 FLOPs 的 IsoFLOP 曲线、以及直接拟合参数函数三种方法互相校验。它得到的计算最优关系接近 \(N_{\mathrm{opt}}\propto C^{0.5}\)、\(D_{\mathrm{opt}}\propto C^{0.5}\)：模型和 token 应大致同步增长；同一算力下，70B、1.4T token 的 Chinchilla 用相近训练预算击败 280B、300B token 的 Gopher。两条定律的冲突主要来自实验规模不同，以及是否把 embedding 参数计入 \(N\)；Pearce 与 Song 的分析进一步说明，局部拟合指数会随规模变化，不能把小范围幂律当成全局常数。</p>
+      <p>文章随后把问题推进到数据受限区间。经典 Chinchilla 假设 unique data 近似无限，但真实高质量 token 会重复，且重复的价值会衰减。Muennighoff 等人的数据受限实验用 unique token 数和 repetition 次数改造有效数据量；Lovelace 等人则直接加入随重复次数和容量比 \(N/D_{\mathrm{unique}}\) 增长的过拟合惩罚，并报告强 weight decay 可以降低这部分惩罚。作者没有把这些形式写成已完成的理论，而是明确指出它们主要是经验拟合：数据质量、重复的语义结构、过滤、tokenizer、优化器和训练 schedule 都会改变结论。</p>
+      <p>最后，文章用一个由 ChatGPT 生成的 toy simulation 说明三个风险：损失只保留少数小数位、极小的损失噪声、以及只用小/中/全尺度区域拟合，都可能改变外推指数。这里的交互模拟是解释工具，不是新的大模型实验。作者真正想强调的是：缩放定律的难点不只是找到漂亮的直线，而是确认参数口径、损失统计、拟合停止条件、模型架构、数据混合和训练是否足够同质，使外推仍然有意义。</p>
+
+      <h3>三、《Harness Engineering for Self-Improvement》：近中期 RSI 先发生在系统层</h3>
+      <p>第三篇从 recursive self-improvement（RSI）出发，但把“自我改进”从模型直接改写自身权重扩展为改进训练流程和部署系统。作者把 harness 定义为包围 base model 的运行系统：它决定模型如何思考和规划、调用工具、感知环境、管理上下文、保存 artifacts、评估结果以及继续迭代。与早期“LLM + memory + tools + planning + action”的 Agent 组件表相比，harness 额外强调 workflow、evaluation、permission control 和 persistent state management，已经更接近运行时/操作系统设计。</p>
+      <p>她先给出三个设计模式。第一是 workflow automation：让模型沿着 plan → execute → observe/test → improve 的循环工作，而不是只给一个静态 prompt。第二是 filesystem as persistent memory：把日志、代码差异、实验结果、错误轨迹和历史 rollout 写成文件，避免长任务把所有状态塞进上下文。第三是 sub-agent and backend jobs：并行启动子代理和后台任务，同时由父代理管理进程、日志、取消、合并和恢复。Coding agent 案例进一步列出文件系统、shell、IO/git、外部上下文、网页、artifacts、后台进程和 agent delegation 等工具接口。</p>
+      <p>文章随后按优化对象逐层推进：prompt → structured context → workflow → harness code → optimizer code。ACE 把轨迹经验压缩为带 ID 的 context playbook；MCE 把“如何管理 context 的 skill”和“context 里具体存什么”拆成双层优化；Meta-Harness 则直接搜索决定信息存储、检索和呈现方式的 harness code。工作流方面，AI Scientist、ScientistOne、Autodata、ADAS、AFlow 把研究、数据生成或 Agent 编排变成可评估的程序搜索问题。</p>
+      <p>在 self-improving harness 部分，STOP 说明可以优化“改进器本身”，但它在 GPT-4 上变好、在 GPT-3.5 和 Mixtral 上变差，说明递归结构本身不等于智能。Self-Harness 用 weakness mining → bounded proposal → held-in/held-out validation 的闭环，把模型特有的失败转成最小 harness 修改；AHE 再把可观测性分成 component、experience、decision 三层，让每次编辑都对应文件、证据和可证伪预测。AlphaEvolve、Darwin Gödel Machine 等工作把候选程序或可编辑 harness 放进演化池，但都依赖可自动评估的任务。</p>
+      <p>作者最后明确保留条件：论文生产不等于科学发现；系统会出现默认偏见、实现漂移、记忆退化、过度乐观、领域知识不足和科学品味不足。完整 RSI 仍受到模糊评估器、上下文/记忆生命周期、负结果保存、多样性塌缩、reward hacking、长期仓库健康和人类监督位置等问题限制。她的近中期判断是：harness 会先变成改进“如何得到答案”的元方法，之后才可能支持更强的模型自我改进；人类不会简单退出，而是要上移到合适的抽象层做监督。</p>
+
+      <p class="small">以上是三篇原文的连续讲解：第一篇讨论模型内部如何使用额外思考，第二篇讨论训练预算如何外推，第三篇讨论模型外部如何形成可持续的闭环。下面才进入本文自己的结构化抽象、证据审计与独立判断。</p>
+    </section>
+
     <section id="takeaway">
-      <h2>核心判断：从“训练大模型”转向“分配思考预算”</h2>
+      <h2>核心判断：大模型能力是三层资源分配问题</h2>
       <div class="callout">
-        <p><strong>最重要的判断：</strong>《Why We Think》的真正价值不在于罗列 CoT、best-of-N、RLVR、pause token 或 recurrent Transformer，而在于给 reasoning model 提供一个统一坐标系：<strong>思考是测试时计算资源、可搜索的潜变量、可监控但不完全可信的行为轨迹、以及可被训练/蒸馏/黑客利用的优化对象</strong>。</p>
+        <p><strong>最重要的判断：</strong>翁荔最近三篇文章合起来，不是在给某一个模型配方，而是在给大模型建立三层控制面：<strong>训练时用 scaling laws 分配模型、数据和算力；推理时用 test-time compute 分配搜索、修订和工具；部署时用 harness 分配上下文、工作流、权限、记忆和评估</strong>。三层都依赖反馈信号，也都可能因为代理目标被优化而失真。</p>
       </div>
       <div class="grid-3">
-        <div class="metric"><strong>50 篇</strong><span>Lil’Log 公开 RSS/归档中的技术正文数量，不含 FAQ。</span></div>
-        <div class="metric"><strong>8 年</strong><span>从 2017 年深度学习入门、GAN/RNN/检测，到 2025 年 reasoning 与 test-time compute。</span></div>
-        <div class="metric"><strong>3 条主线</strong><span>计算预算、监督信号、系统安全，是贯穿她博客的长期问题。</span></div>
+        <div class="metric"><strong>52 篇</strong><span>当前 Lil’Log 归档中的技术正文，不含 FAQ；覆盖 2017—2026 年。</span></div>
+        <div class="metric"><strong>3 层</strong><span>训练缩放、推理思考、部署 harness，分别对应不同的计算与状态管理问题。</span></div>
+        <div class="metric"><strong>1 个闭环</strong><span>能力来自资源投入，可靠性来自评估、可观测性、权限和失败反馈。</span></div>
       </div>
-      <p>如果只用一句话概括这篇文章：<strong>CoT 不是“模型把答案解释给人听”这么简单；它更像一个可见的 latent program。</strong>这个 latent program 可以被采样、筛选、搜索、修订、蒸馏、监控，也可能被奖励函数扭曲、被模型伪装、被错误 verifier 放大。因此，reasoning model 的核心工程问题不再是“让模型多输出一些中间步骤”，而是：</p>
+      <p>如果只用一句话概括：<strong>从 scaling law 到 reasoning 再到 harness，真正被优化的对象不断向外扩展，但每一层的增益都不能脱离评估器来理解。</strong>CoT 是可搜索、可修订、可蒸馏、可监控但不完全可信的 latent program；harness 则是把这些操作编排起来的可编辑程序。于是，reasoning model 的问题不再只是“让模型多输出中间步骤”，而是：</p>
       <ol>
-        <li>什么时候额外计算真的能补上能力差距，什么时候只是让模型更啰嗦？</li>
-        <li>哪些中间步骤应该显式写成 token，哪些应该放进连续隐状态、recurrent depth 或工具调用？</li>
-        <li>哪些监督信号能改善推理，哪些信号会诱导 reward hacking、CoT obfuscation 或自我修正退化？</li>
-        <li>如何把测试时搜索的收益蒸馏回模型，避免每次部署都无限增加推理成本？</li>
+        <li>在训练、推理和部署三个阶段，额外计算的边际收益分别是什么？</li>
+        <li>哪些状态应该写进 token，哪些应该放进隐状态、文件系统、工具结果或长期记忆？</li>
+        <li>评估器、verifier、权限和日志如何设计，才能让“改进”仍然可归因、可回滚、可复现？</li>
+        <li>如何把搜索和 harness 带来的收益蒸馏回模型或沉淀为可迁移的工程经验，而不是永久堆高运行成本？</li>
       </ol>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：她真正试图解决的是什么</h2>
+      <p>大模型行业常把能力增长压缩成参数量、训练 token 和 benchmark 分数，但这三个数字并不能直接回答“下一轮应该把资源投在哪里”。训练时，模型规模、数据质量、数据重复和训练是否充分会改变 scaling law；推理时，长 CoT、best-of-\(N\)、工具调用和修订会把同一个模型变成不同的系统；部署时，context、memory、workflow、permission 和 evaluator 又决定模型是否能在真实任务中完成闭环。</p>
+      <p>因此，翁荔的材料关心的不是单点 SOTA，而是<strong>能力、成本和反馈的耦合</strong>。她既不把 scaling law 当作神谕，也不把 test-time compute 当作免费智力，更不把 recursive self-improvement 当作模型突然重写自身权重。她把每个新概念都放回可验证的问题：资源怎么花、状态怎么留、错误怎么暴露、奖励怎样被利用、失败是否能进入下一轮学习。</p>
     </section>
 
     <section id="why-think">
@@ -171,7 +209,19 @@
     </section>
 
     <section id="mechanism">
-      <h2>机制地图：五类“思考”其实在改造不同层</h2>
+      <h2>机制地图：三层预算如何接成一个系统</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>层级</th><th>主要预算</th><th>优化对象</th><th>核心反馈</th></tr></thead>
+          <tbody>
+            <tr><td>训练时</td><td>参数、unique token、FLOPs</td><td>模型容量与数据配方</td><td>pretraining loss、泛化、数据重复惩罚、compute-optimal frontier</td></tr>
+            <tr><td>推理时</td><td>思考 token、候选数、修订轮数、工具调用</td><td>潜在轨迹与输出分布</td><td>verifier、最终答案、过程信号、外部执行结果</td></tr>
+            <tr><td>部署时</td><td>上下文、文件状态、子代理、后台任务、权限</td><td>harness 的控制流与记忆</td><td>任务成功、回归测试、trace、长期 artifact、人工审计</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>三层的共同结构是“投入更多可计算状态 → 经过一个选择/控制机制 → 用外部或内部反馈筛选 → 把收益留存到下一轮”。差别在于状态的形态不同：训练时是权重和数据，推理时是 token/隐状态/工具轨迹，部署时是文件、代码和工作流。越往外层，越需要显式的权限、日志和回归测试。</p>
+      <h3>推理层的五类“思考”在改造不同位置</h3>
       <div class="table-wrap">
         <table>
           <thead>
@@ -238,9 +288,64 @@
       <p>这里有一个强工程结论：不要把“模型写出了漂亮的推理过程”当成安全证据。更好的做法是把 CoT 当成<strong>半可信遥测</strong>：可以用于抽样审计、异常检测、训练早期过滤、辅助解释，但不应单独作为最终 reward，也不应在缺少外部校验时被过度优化。</p>
     </section>
 
+    <section id="scaling-laws">
+      <h2>Scaling Laws 深读：从“幂律预测”到“外推协议”</h2>
+      <p>《Scaling Laws, Carefully》最值得保留的不是某个固定指数，而是它对“可预测性”的重新定价：缩放定律能把许多小实验压缩成一个可用的决策模型，但它的参数依赖实验范围、统计口径、数据独特性和训练是否同质。它更像一份<strong>外推协议</strong>，而不是脱离实验设计的自然常数。</p>
+      <h3>先把公式关系算清楚</h3>
+      <p>在 Chinchilla 风格的简化模型中，假设损失为</p>
+      <div class="math-display">\[ L(N,D)=A N^{-\alpha}+B D^{-\beta}+E,\qquad C\approx 6ND. \]</div>
+      <p>固定 \(C\) 时令 \(D=C/(6N)\)，对 \(N\) 求导，两个可优化项的边际收益相等，得到</p>
+      <div class="math-display">\[ N_{\mathrm{opt}}\propto C^{\frac{\beta}{\alpha+\beta}},\qquad D_{\mathrm{opt}}\propto C^{\frac{\alpha}{\alpha+\beta}}. \]</div>
+      <p>我用文章引用的 Besiroglu 重算参数 \(\alpha=0.3478,\beta=0.3658\) 做了独立代入，得到 \(N\) 指数 \(0.5126\)、\(D\) 指数 \(0.4874\)，与文章 toy simulation 的真值一致。Kaplan 的 \(0.73\) 则意味着 \(D\) 指数约为 \(0.27\)：算力增加 10 倍时，模型约增大 5.37 倍、token 约增大 1.86 倍；Chinchilla 的 0.5/0.5 方案则是二者都增大约 3.16 倍。这个复算确认了指数之间的代数关系，但不确认任何外推在新架构上的有效性。</p>
+      <h3>证据强弱不能混在一起</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>证据状态</th><th>不能直接推出什么</th></tr></thead>
+          <tbody>
+            <tr><td>损失在一定范围内随 \(N,D,C\) 呈幂律</td><td>Kaplan、Chinchilla 及更早工作都有跨尺度经验支持。</td><td>不能把局部拟合的指数当成所有架构、数据配方和后训练目标的普适常数。</td></tr>
+            <tr><td>Chinchilla 比 Kaplan 更偏向同步扩大模型与 token</td><td>Chinchilla 用 400 多个模型和三种拟合方法交叉支持；同算力 Chinchilla/Gopher 是强案例。</td><td>不能只凭“70B + 1.4T”推断今天的 MoE、长上下文或多模态模型仍应使用相同 token/parameter 比。</td></tr>
+            <tr><td>数据重复的边际价值衰减，且过度重复会伤害泛化</td><td>数据受限实验与后续 overfitting penalty 拟合支持，当前仍主要是经验模型。</td><td>不能把重复次数简化成一个数字；语义重复、质量层级、混合比例和去重策略都会改变有效数据。</td></tr>
+            <tr><td>拟合细节足以改变外推</td><td>Besiroglu 的 Chinchilla replication 明确质疑第三种拟合的数字和置信区间。</td><td>不能把漂亮的置信区间当作真实不确定性；模型数量少、损失四舍五入和优化器停止条件会放大误差。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>我的判断：Scaling law 的对象不是“规模”，而是“受控的规模变化”</h3>
+      <p>如果模型架构、tokenizer、数据质量、数据混合、优化器、学习率 schedule、batch ramp、loss 统计和参数计数同时变化，那么实验拟合的就不再是单一的 scale。尤其是 \(C\approx6ND\) 只是一阶估算：长序列 attention、MoE 激活比例、通信、重计算、显存和硬件利用率都会让真实成本偏离这个近似。因此，训练预算决策至少要报告“拟合范围、数据是否 unique、参数是否含 embedding、真实 wall-clock/FLOPs 和外推不确定性”，不能只报一个 \(N_{\mathrm{opt}}\) 指数。</p>
+      <p>这里的独立 insight 是：<strong>所谓 data wall 不是 token 数字见底，而是高质量、低重复、能产生新学习信号的 token 见底。</strong>一旦 unique signal 受限，继续买参数可能比继续重复数据更有价值，但也可能因为容量比过高而放大过拟合；下一步不是寻找一个新的固定“最佳 token/parameter 比”，而是把数据质量、重复结构、正则化和容量比一起纳入可验证的决策曲线。</p>
+    </section>
+
+    <section id="harness">
+      <h2>Harness 深读：把模型能力变成可持续的系统能力</h2>
+      <p>Harness 文章最重要的概念变化，是把 Agent 从“模型加几个工具”提升为一个可编辑的运行时。它的输入不是只有用户问题，还包括历史状态、文件、工具结果、子代理输出和评估记录；它的处理不只是生成 token，还包括调度、分支、重试、权限、上下文压缩和后台任务；它的输出不只是答案，还包括代码、实验 artifact、日志和下一轮可用的经验。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>层</th><th>可编辑对象</th><th>必须留下的证据</th><th>典型失败</th></tr></thead>
+          <tbody>
+            <tr><td>Context</td><td>提示、技能、检索结果、结构化记忆</td><td>使用了哪些信息、哪些被压缩/丢弃、更新前后任务表现</td><td>上下文膨胀、记忆污染、短期成功覆盖长期规则</td></tr>
+            <tr><td>Workflow</td><td>计划—执行—观察—修订、分支、重试、终止</td><td>每次动作的输入输出、失败原因、是否发生回归</td><td>无限循环、局部修补、把正确结果改坏</td></tr>
+            <tr><td>Tools / Jobs</td><td>工具 schema、middleware、子代理、后台进程</td><td>调用轨迹、权限、资源、日志、可复现 artifact</td><td>误调用、状态不同步、并行结果丢失、权限越界</td></tr>
+            <tr><td>Evaluation</td><td>verifier、held-in/held-out、回归集、人工检查点</td><td>分数来源、测试集隔离、失败样本和不确定性</td><td>过拟合 benchmark、关闭 verifier、reward hacking</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>从 prompt 优化到 harness 优化，搜索空间发生了什么变化</h3>
+      <p>prompt 优化只改变模型看到的一段文字；context engineering 开始管理长期状态；workflow design 改变模型调用次数和控制流；harness code 进一步改变工具、middleware、子代理和权限；optimizer code 则开始改写“如何改写 harness”。这个层级递进解释了为什么文件系统在文章里如此重要：它把原本只存在于对话上下文的经验变成可读、可比较、可回滚的程序对象。</p>
+      <div class="grid-2">
+        <div class="card"><h3>反馈足够清晰时</h3><p>Self-Harness 可以先把失败聚类，再提出窄范围编辑，最后用 held-in 修复目标弱点、用 held-out 检查未知回归；AHE 进一步要求每个编辑写成可验证的预测。</p></div>
+        <div class="card"><h3>反馈模糊时</h3><p>系统会把“分数提高”误认为“机制变好”，可能通过改 verifier、换模型、提高预算或过拟合任务格式取得虚假进步。此时演化速度越快，错误归因越严重。</p></div>
+      </div>
+      <h3>证据审计：harness 进步是真的，但还不是“模型自我改进已解决”</h3>
+      <ul>
+        <li><strong>较强证据：</strong>Self-Harness 的 arXiv 摘要报告在 Terminal-Bench-2.0 上对 MiniMax M2.5、Qwen3.5-35B-A3B 和 GLM-5 的 held-out pass rate 都提升；AHE 把 component / experience / decision observability 写成明确机制，并报告 Terminal-Bench 2 与 SWE-bench-verified 的迁移结果。</li>
+        <li><strong>需要保留的边界：</strong>这些仍是作者报告的 benchmark 结果，不是本轮独立复现实验；任务有可执行 verifier，不能自动外推到科研品味、开放式写作、长期组织健康等模糊目标。</li>
+        <li><strong>关键反例：</strong>STOP 在强模型上改善、在弱模型上退化；SIA 的任务代理、反馈代理和基线能力不对称，因果归因仍混杂。这些反例反驳了“只要加一层递归搜索就会 RSI”的叙事。</li>
+      </ul>
+      <p>我的判断是：<strong>harness RSI 更准确的名字是“可评估软件系统的经验积累”</strong>。它可以让同一个 base model 更会调用工具、更少丢状态、更好恢复错误，但还没有证明模型本身获得了跨任务、跨领域、跨部署形态的通用新智能。真正的分水岭不是能否修改文件，而是修改是否受外部评估器、权限边界、回归测试和长期目标约束。</p>
+    </section>
+
     <section id="blog-map">
       <h2>Lilian Weng 全博客谱系：从知识地图到 AI 系统安全</h2>
-      <p>把 Lil’Log 的 50 篇技术正文放在一起看，可以看到一个很清晰的迁移：早期是“把深度学习研究讲清楚”的知识地图；中期转向 RL、Transformer、生成模型和数据效率；2023 年后明显进入 LLM 系统、Agent、评测、安全、奖励与人类数据质量。她的博客不是随机追热点，而是在持续追问同一个问题：<strong>能力从哪里来，监督信号如何塑造能力，系统在部署时会如何失真。</strong></p>
+      <p>把 Lil’Log 当前归档中的 52 篇技术正文放在一起看，可以看到一个很清晰的迁移：早期是“把深度学习研究讲清楚”的知识地图；中期转向 RL、Transformer、生成模型和数据效率；2023 年后明显进入 LLM 系统、Agent、评测、安全、奖励与人类数据质量；2026 年又把训练外推和部署系统纳入同一张图。她的博客不是随机追热点，而是在持续追问同一个问题：<strong>能力从哪里来，监督信号如何塑造能力，系统在部署时会如何失真。</strong></p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -283,10 +388,16 @@
               <td>人类标注质量、事实性、奖励黑客、测试时计算、CoT 忠实性。</td>
               <td>形成闭环：人类数据决定监督质量，幻觉说明 grounding 不足，奖励黑客说明优化目标会被利用，思考时间说明能力和风险同时被放大。</td>
             </tr>
+            <tr>
+              <td>2026：规模外推与系统自改进</td>
+              <td>Scaling Laws, Carefully、Harness Engineering for Self-Improvement</td>
+              <td>数据受限 scaling、拟合脆弱性、Agent harness、context/workflow 演化、可观察性、RSI 边界。</td>
+              <td>把 reasoning 的“额外计算”接到训练资源和部署系统：前者决定底座能到哪里，后者决定能力能否在长任务中稳定兑现。</td>
+            </tr>
           </tbody>
         </table>
       </div>
-      <h3>全量目录矩阵：50 篇文章如何落在这些主题上</h3>
+      <h3>全量目录矩阵：52 篇文章如何落在这些主题上</h3>
       <p>下面这张表不是为了背目录，而是为了看到主题迁移：2017-2018 年集中建立深度学习、视觉、RL、生成模型和 attention 的基础；2019-2022 年转向预训练、泛化、数据效率、规模训练和生成模型；2023 年后重点变成 LLM 系统、agent、攻击、数据质量、幻觉、奖励黑客与 reasoning。</p>
       <div class="table-wrap">
         <table>
@@ -303,6 +414,7 @@
             <tr><td>2023</td><td>Transformer Inference Optimization；Transformer Family v2；Prompt Engineering；LLM Powered Autonomous Agents；Adversarial Attacks on LLMs</td><td>推理成本、架构谱系、提示与工具、agent 系统、LLM 攻击面。</td></tr>
             <tr><td>2024</td><td>High-Quality Human Data；Diffusion Video；Extrinsic Hallucinations；Reward Hacking</td><td>人类监督质量、视频生成、事实性、奖励函数失真。</td></tr>
             <tr><td>2025</td><td>Why We Think</td><td>测试时计算、CoT 忠实性、RL reasoning、潜变量思考、思考预算 scaling。</td></tr>
+            <tr><td>2026</td><td>Scaling Laws, Carefully；Harness Engineering for Self-Improvement</td><td>数据受限缩放、拟合不确定性、Agent harness、可观测性、自我改进与 RSI 边界。</td></tr>
           </tbody>
         </table>
       </div>
@@ -384,7 +496,9 @@
             <tr><td>2024-04<br>Diffusion Video</td><td>视频 diffusion 如何从 3D U-Net / DiT、image-to-video adaptation、fine-tuning 和 training-free adaptation 发展。</td><td>它延续生成模型谱系，并强调时序一致性和高维生成成本。对 reasoning 主线的启发是：多步生成系统的难点往往在跨步一致性，而不只是单步质量。</td></tr>
             <tr><td>2024-07<br>Extrinsic Hallucinations</td><td>LLM 为什么会生成不接地的事实，pretraining/fine-tuning/RAG/sampling/calibration/attribution 如何缓解。</td><td>这是《Why We Think》中 self-correction 和 tool use 的安全前提。思考更久如果没有 grounding，不会自动减少幻觉；外部检索、引用和 unknown calibration 仍然必要。</td></tr>
             <tr><td>2024-11<br>Reward Hacking</td><td>RL agent 如何利用奖励函数漏洞，LLM/RLHF 中 evaluator hacking、in-context reward hacking 如何出现。</td><td>这是《Why We Think》的另一篇直接前篇。CoT monitor 被纳入 reward 后会诱导 obfuscation，本质上就是 reward hacking 在 reasoning trace 上的新形态。</td></tr>
-            <tr><td>2025-05<br>Why We Think</td><td>为什么 test-time compute 和 CoT 能提升模型能力，如何用 token thinking、search、RL、tool use、latent variable、continuous thinking 和 scaling law 统一解释。</td><td>这是全博客当前的汇合点：RL 提供优化语言，Transformer 提供计算载体，Prompt/Agent 提供交互形式，Human Data/Hallucination/Reward Hacking 提供边界。它把“思考”从提示技巧提升为资源分配、潜变量推断和安全监控问题。</td></tr>
+            <tr><td>2025-05<br>Why We Think</td><td>为什么 test-time compute 和 CoT 能提升模型能力，如何用 token thinking、search、RL、tool use、latent variable、continuous thinking 和 scaling law 统一解释。</td><td>这是 reasoning 汇合点：RL 提供优化语言，Transformer 提供计算载体，Prompt/Agent 提供交互形式，Human Data/Hallucination/Reward Hacking 提供边界。它把“思考”从提示技巧提升为资源分配、潜变量推断和安全监控问题。</td></tr>
+            <tr><td>2026-06<br>Scaling Laws, Carefully</td><td>幂律为什么有用，Kaplan 与 Chinchilla 为什么不同，数据重复如何改变 compute-optimal allocation，以及拟合为何会被小细节扰动。</td><td>它把“规模化”从口号还原成实验协议：先定义数据、参数和 FLOPs 的口径，再检查独特数据、拟合范围和外推不确定性。对当前大模型训练的直接价值是避免把历史指数当成永久配方。</td></tr>
+            <tr><td>2026-07<br>Harness Engineering for Self-Improvement</td><td>模型如何通过 context、workflow、tools、memory、evaluation 和权限形成可持续的自我改进系统。</td><td>它把“Agent = LLM + tools”推进为可编辑的运行时，并把 RSI 的近中期路径放在 harness 代码和可观测闭环上；同时承认模糊 evaluator、reward hacking、长期目标与人类监督仍未解决。</td></tr>
           </tbody>
         </table>
       </div>
@@ -412,6 +526,10 @@
         <div class="route-item">
           <strong>路线 E：从系统成本到部署可行性</strong>
           <p>How to Train Really Large Models → Large Transformer Model Inference Optimization → Transformer Family v2 → Why We Think。适合理解 test-time compute 不是免费能力：它必须和训练成本、推理延迟、KV cache、并行和蒸馏一起算账。</p>
+        </div>
+        <div class="route-item">
+          <strong>路线 F：从规模外推到自我改进系统</strong>
+          <p>Scaling Laws, Carefully → Why We Think → LLM Powered Autonomous Agents → Harness Engineering for Self-Improvement。适合理解训练预算、推理预算和部署状态如何串成一个闭环，并明确哪些增益来自模型、哪些来自系统。</p>
         </div>
       </div>
     </section>
@@ -456,17 +574,28 @@
         <li><strong>现代产品往往不会暴露完整 CoT。</strong>因此“监控 CoT”在实际部署中需要转化为受控日志、内部审计信号或可解释摘要，而不是把原始隐私/安全敏感思考直接展示给用户。</li>
       </ul>
       <div class="callout warn">
-        <p><strong>我的最终判断：</strong>《Why We Think》是 Lilian Weng 博客谱系中的一个汇合点：它把 2018 年的 RL、2019-2023 年的 Transformer/LM/Prompt/Agent、2024 年的 hallucination/reward hacking/data quality 汇到 2025 年的 reasoning model 问题上。读懂这篇文章，关键不是记住所有方法名，而是形成一个工程判断：<strong>思考时间是一种资源，推理轨迹是一种潜变量，奖励是一种危险接口，监控信号一旦被优化就可能失真。</strong></p>
+        <p><strong>我的最终判断：</strong>《Why We Think》是 Lilian Weng 博客谱系中的 reasoning 汇合点，而 2026 年的两篇文章把这条主线向前后延伸：Scaling Laws 约束训练阶段的底座和数据，Harness Engineering 约束部署阶段的状态和反馈。读懂这组材料，关键不是记住所有方法名，而是形成一个工程判断：<strong>计算是一种资源，推理轨迹是一种潜变量，奖励是一种危险接口，harness 是可编辑程序，监控信号一旦被优化就可能失真。</strong></p>
       </div>
     </section>
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>本文依据 Lilian Weng 公开博客首页、RSS/归档条目和相关正文进行主题谱系分析。统计口径以公开可访问的 Lil’Log 技术正文为准，不覆盖作者社交媒体、演讲、未收录草稿或后续可能更新的文章版本。文章中的工程判断是基于这些公开材料的综合解读，不代表作者本人立场。</p>
+      <p>本文依据 Lilian Weng 公开博客归档与三篇 canonical 正文进行主题谱系分析，并用关键引用论文的公开版本核对主要数字和方法边界。归档统计以 2026-08-08 可访问的 Lil’Log 技术正文为准，不覆盖作者社交媒体、演讲、未收录草稿或后续可能更新的文章版本。Harness、Self-Harness 和 AHE 的 benchmark 数字属于论文/作者报告，本轮没有独立重训；Scaling Laws 的指数关系做了代数复算，但没有重做全套训练实验。本文的跨文章机制和工程建议是本轮分析，不代表作者本人立场。</p>
       <ul>
         <li><a href="https://lilianweng.github.io/posts/2025-05-01-thinking/">Lilian Weng, “Why We Think”</a></li>
+        <li><a href="https://lilianweng.github.io/posts/2026-06-24-scaling-laws/">Lilian Weng, “Scaling Laws, Carefully”</a></li>
+        <li><a href="https://lilianweng.github.io/posts/2026-07-04-harness/">Lilian Weng, “Harness Engineering for Self-Improvement”</a></li>
+        <li><a href="https://lilianweng.github.io/archives/">Lil’Log Archive（归档与文章数量口径）</a></li>
         <li><a href="https://lilianweng.github.io/">Lil’Log 首页</a></li>
         <li><a href="https://lilianweng.github.io/index.xml">Lil’Log RSS Feed</a></li>
+        <li><a href="https://arxiv.org/abs/2001.08361">Kaplan et al., “Scaling Laws for Neural Language Models”</a></li>
+        <li><a href="https://arxiv.org/abs/2203.15556">Hoffmann et al., “Training Compute-Optimal Large Language Models”</a></li>
+        <li><a href="https://arxiv.org/abs/2305.16264">Muennighoff et al., “Scaling Data-Constrained Language Models”</a></li>
+        <li><a href="https://arxiv.org/abs/2605.01640">Lovelace et al., “Prescriptive Scaling Laws for Data Constrained Training”</a></li>
+        <li><a href="https://arxiv.org/abs/2404.10102">Besiroglu et al., “Chinchilla Scaling: A replication attempt”</a></li>
+        <li><a href="https://arxiv.org/abs/2606.09498">Zhang et al., “Self-Harness: Harnesses That Improve Themselves”</a></li>
+        <li><a href="https://arxiv.org/abs/2604.25850">Lin et al., “Agentic Harness Engineering”</a></li>
+        <li><a href="https://arxiv.org/abs/2603.28052">Lee et al., “Meta-Harness”</a></li>
         <li><a href="https://lilianweng.github.io/posts/2024-11-28-reward-hacking/">Reward Hacking in Reinforcement Learning</a></li>
         <li><a href="https://lilianweng.github.io/posts/2024-07-07-hallucination/">Extrinsic Hallucinations in LLMs</a></li>
         <li><a href="https://lilianweng.github.io/posts/2024-02-05-human-data-quality/">Thinking about High-Quality Human Data</a></li>
@@ -474,6 +603,12 @@
         <li><a href="https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/">Prompt Engineering</a></li>
         <li><a href="https://lilianweng.github.io/posts/2023-01-27-the-transformer-family-v2/">The Transformer Family Version 2.0</a></li>
         <li><a href="https://lilianweng.github.io/posts/2018-04-08-policy-gradient/">Policy Gradient Algorithms</a></li>
+        <li><a href="https://lilianweng.github.io/posts/2026-06-24-scaling-laws/">Lilian Weng, “Scaling Laws, Carefully”</a></li>
+        <li><a href="https://lilianweng.github.io/posts/2026-07-04-harness/">Lilian Weng, “Harness Engineering for Self-Improvement”</a></li>
+        <li><a href="https://arxiv.org/abs/2203.15556">Hoffmann et al., “Training Compute-Optimal Large Language Models”</a></li>
+        <li><a href="https://arxiv.org/abs/2404.10102">Besiroglu et al., “Chinchilla Scaling: A replication attempt”</a></li>
+        <li><a href="https://arxiv.org/abs/2606.09498">Zhang et al., “Self-Harness”</a></li>
+        <li><a href="https://arxiv.org/abs/2604.25850">Lin et al., “Agentic Harness Engineering”</a></li>
       </ul>
     </section>
   </main>
