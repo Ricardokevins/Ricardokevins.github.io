@@ -1,6 +1,6 @@
 # Ricardokevins.github.io Progress
 
-## 2026-08-09 Zhang Xiaojun Podcast #43、#42、#41 source-first 深读（正文已写入；验证与发布进行中）
+## 2026-08-09 Zhang Xiaojun Podcast #43、#42、#41 source-first 深读（已完成；已推送）
 
 ### 本批材料与证据边界
 
@@ -17,12 +17,12 @@
 
 ### 验证与下一步
 
-- [ ] 运行 `ruby scripts/validate_notes_index.rb`、`git diff --check` 和 HTML 结构/重复 ID/禁止痕迹/相对链接审计。
-- [ ] 隔离 Jekyll build，并用 headless Chromium 对三篇个案、全频道目录和系列总览做桌面/手机 HTTP、横向溢出、404、console/page error 与目检验收。
-- [ ] 只选择性提交本批三篇个案页、`_data/notes.yml`、全频道目录、系列总览和本节 Progress，保留用户其他未提交修改；验证通过后推送。
+- [x] 运行 `ruby scripts/validate_notes_index.rb`、`git diff --check` 和 HTML 结构/重复 ID/禁止痕迹/相对链接审计：252 个索引入口/顶层 HTML 对应，目标页和入口结构通过。
+- [x] 隔离 Jekyll build，并用 headless Chromium 对三篇个案、全频道目录和系列总览做桌面/手机 HTTP、横向溢出、404、console/page error 与目检验收：10 个页面均 200，无坏请求、浏览器错误或页面级横向溢出，截图目检通过。
+- [x] 只选择性提交本批三篇个案页、`_data/notes.yml`、全频道目录、系列总览和本节 Progress，保留用户其他未提交修改；提交 `56729bb` 已推送到 `origin/main`。
 - [ ] 下一批继续处理 #40、#39、#38 等有可靠公开音频/逐句材料的节目，仍不以章节摘要冒充无法取得可靠全文的节目。
 
-## 2026-08-09 Zhang Xiaojun Podcast #46、#45、#44 source-first 深读（正文已写入；验证与发布进行中）
+## 2026-08-09 Zhang Xiaojun Podcast #46、#45、#44 source-first 深读（已完成；已推送）
 
 ### 本批材料与证据边界
 
