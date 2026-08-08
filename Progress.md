@@ -19,7 +19,7 @@
 
 - [x] 运行 `ruby scripts/validate_notes_index.rb`、`git diff --check`、HTML 结构/重复 ID/禁止痕迹/相对链接审计：249 个索引入口/顶层 HTML 对应，五个目标页面均唯一 H1/main/evidence、无重复 ID、无禁止生成痕迹和坏相对链接。
 - [x] 隔离 Jekyll build，并用 headless Chromium 对三篇个案、全频道目录和系列总览做桌面/手机 HTTP、横向溢出、404、console/page error 与目检验收：10 个页面状态均 200，桌面/手机均无页面级横向溢出、坏请求或浏览器错误，截图目检通过。
-- [ ] 只选择性提交本批三篇个案页、`_data/notes.yml`、全频道目录、系列总览、skill/AGENTS 规则变更和本节 Progress，不混入其他用户修改；推送后核对剩余 46 期与公开转录边界。
+- [x] 只选择性提交本批三篇个案页、`_data/notes.yml`、全频道目录、系列总览、skill/AGENTS 规则变更和本节 Progress，未混入其他用户修改；提交 `9f5809f` 已推送到 `origin/main`。
 - [ ] 下一批继续处理 #43、#42、#41 等有可靠公开音频/逐句材料的节目，仍不以章节摘要冒充无法取得可靠全文的节目。
 
 ## 2026-08-09 Zhang Xiaojun Podcast #49、#48、#47 source-first 深读（已完成；已推送）
