@@ -48,14 +48,15 @@
 ## Material Analysis Notes
 
 - 不再默认写入 Obsidian。
-- 当任务是阅读、解读、调研或分析外部材料，并且需要沉淀成文件时，在当前仓库目录内新建或更新合适的本地文档。
-- 普通问答、轻量解释、临时结论和不需要沉淀的分析，直接在终端对用户回答，不新建文档。
-- 保持仓库目录简洁；只有材料分析确有沉淀价值或用户明确要求时，才新建文档。
+- 本仓库内发起的聊天默认只在对话中交付结果，不因任务属于阅读、解读、调研或外部材料分析而自动新建笔记。
+- 只有用户明确调用 **Deep Read to Note** skill（对应 `$deep`），或者明确说要“写笔记”时，才执行笔记沉淀；“帮我读一下”“深度解读”“梳理这篇”等自然语言本身不视为写笔记授权。
+- 若用户在未调用 **Deep Read to Note** 时明确要求创建或修改某个非笔记文件，则按该次文件要求执行，但不额外创建笔记。
+- 保持仓库目录简洁；普通问答、阅读、分析、研究和临时结论直接在对话中回答，不新建文档。
 
 ## Deep Reading Trigger
 
-- 当用户给出论文、推文或 X thread、博客、技术报告、访谈等材料，并说“帮我读一下”“好好读一下”“深度解读”“梳理这篇”或同义表达时，默认读取并遵循 repo-local skill：`.agents/skills/deep/SKILL.md`。
-- `$deep` 是该流程的显式调用名。保持 skill 目录为 `.agents/skills/deep/` 且 frontmatter 为 `name: deep`；Codex 只扫描 `.agents/skills`（复数 `agents`），不要放回 `.agent/skills`。
+- 仅当用户明确选择或调用 **Deep Read to Note**（显式调用名 `$deep`）时，读取并遵循 repo-local skill：`.agents/skills/deep/SKILL.md`。不要根据材料类型、任务深度或“帮我读一下”等措辞隐式触发。
+- 保持 skill 目录为 `.agents/skills/deep/` 且 frontmatter 为 `name: deep`；Codex 只扫描 `.agents/skills`（复数 `agents`），不要放回 `.agent/skills`。
 - 除非用户明确缩小范围，上述触发默认授权完整流程：读取原文、追踪会影响核心判断的关键内链与参考资料、交叉核验、深度分析、在对话中用中文直接讲解、沉淀站内笔记、更新索引与 `Progress.md`、验证、只提交本任务改动并 push。
 - 用户明确要求只做摘要、暂不写笔记、不提交或不推送时，以本次限制为准。
 
