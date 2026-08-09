@@ -1,5 +1,24 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-10 Zhang Xiaojun Podcast #86、#85、#83 source-first 深读（已完成；已验证，已清理，已推送）
+
+### 材料边界与原文重建
+
+- [x] 通过公开 RSS/小宇宙取得三期完整音频并与频道目录核对：#86 目录/RSS `1:32:14`、媒体实际 `5534.250` 秒；#85 目录 `0:52:11`、RSS `0:52:10`、媒体实际 `3130.854` 秒；#83 目录 `1:44:06`、RSS `1:44:22`、媒体实际 `6262.992` 秒。三期目录合计 `4:08:31`，是频道总时长从待补转入完成统计的最后一批。
+- [x] 完成本地中文全长转写并逐段阅读：#86 `3337` 行/约 `86661` 字节，正常节目在两次“拜拜”后收束；#85 `1638` 行/约 `50072` 字节，嘉宾论证在约 `51:38` 收束，随后是订阅口播、重复告别和短暂幻听；#83 `3346` 行/约 `104670` 字节，正常讨论在约 `1:43:24` 收束，片尾含订阅口播和外部电视剧水印。所有尾部噪声均未写入论点。
+- [x] 完整重建 #86：广密从 Yahoo/Google、搜索/推荐和 token 最小单元讲起，推进到“下一个 Google”、任务引擎、ChatGPT 商业模式、Context 基础设施、Chatbot/Reasoner/Agent/Innovator/Organizer 五级演化、OpenAI/Google/Anthropic/xAI/Perplexity/Cursor/Devin、数据墙、能力数据和 AI for Science；周活、付费率、收入、数据规模和 2025/2026 时间表均保留为 2024 年末节目估算或预测。
+- [x] 完整重建 #85：凯文旭从奥巴马竞选基层、商务部和白宫新闻办公室讲到硅谷科技业与投资，随后解释候选人作为产品、竞选地推与数据循环、2008/2024 叙事、播客分发、特朗普与硅谷、AI 政治化和执政承接；2008/2024 的因果解释、候选人动机和政策预测均分层处理。
+- [x] 完整重建 #83：董世明、周康林和王亚军从黄仁勋童年、三位创始人、NV1/NV2、Riva 128、GPU/CUDA、NV30、Mellanox、白板/Top 5/pilot 和 Priem 离开推进到组织学习；NVIDIA 官方公司节点与传记/嘉宾的内部因果、人物动机、合同细节分开。
+
+### 已完成变更与验证
+
+- [x] 新增 `notes/tech-analysis/guangmi-llm-product-next-google-agent-interview.html`、`kevin-xu-us-election-candidate-product-pmf-interview.html`、`nvidia-way-jensen-huang-strategy-organization-interview.html`；三篇均按“原文连续讲解 → 核心判断 → 问题重述 → 机制 → 证据审计 → 术语 → 边界 → 独立 insight → 资料索引”组织。
+- [x] 更新 `_data/notes.yml`、全频道目录和精选系列总览；统计更新为 `148` 期完成、`0` 期待补，完成材料按目录合计 `256:51:46`，待补 `0:00:00`。系列总览同步加入 #86/#85/#83 的交叉主题，并将后续维护改为新上传与证据增补，不再保留旧的“待补 3 期”表述。
+- [x] 运行 `ruby scripts/validate_notes_index.rb`、YAML、DOM、相对链接、表格结构、证据附录、公开噪声与 `git diff --check`：`295` 条索引与 `295` 个顶层 HTML 对应；三篇新稿均有唯一 H1/main、连续原文层、术语解释和最后的 evidence appendix。
+- [x] 运行隔离 Jekyll build，并用桌面/手机 Chromium 检查三篇个案、全频道目录和系列总览：`10` 个视图均 HTTP 200，无控制台/页面错误、坏图、失败请求或页面级横向溢出；表格只在容器内滚动。构建仅出现仓库既有的 Faraday 可选依赖和 GitHub Metadata 未认证提示；截图目检未见重叠、截断或不可读结构。
+- [x] 验收后把本批数据集整体移入可恢复废纸篓：音频约 `278M` → `/Users/bytedance/.Trash/zhang-podcast-audio-r30-20260810`，ASR 约 `4.9M` → `/Users/bytedance/.Trash/zhang-asr-r30-20260810`，隔离构建约 `157M` → `/Users/bytedance/.Trash/zhang-jekyll-r30-20260810`，截图约 `73M` → `/Users/bytedance/.Trash/zhang-r30-shots-20260810`；四个原临时路径均已确认不存在，共用 RSS、UV、Whisper 模型缓存和其他用户文件未触碰。
+- [x] 选择性提交并推送本批 6 个内容目标文件：内容提交 `68f9166` 已推送到 `origin/main`；`Progress.md` 随后单独记录本批状态。其他用户修改与未跟踪文件未纳入。
+
 ## 2026-08-10 Zhang Xiaojun Podcast #93、#92 source-first 深读（已完成；已验证，已清理，已推送）
 
 ### 材料边界与执行计划
