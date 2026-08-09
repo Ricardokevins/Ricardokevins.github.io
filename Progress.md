@@ -30,7 +30,7 @@
 - [x] 对 `#feedback` 目录锚点做桌面/手机跳转验收：目标标题均位于 sticky 导航底部下方约 18–19px，未被遮挡；截图目检通过。
 - [x] 发布范围限定为本次翁荔笔记、`_data/notes.yml` 条目和本节 Progress；其他并行修改与未跟踪文件保持原样，不纳入本任务。
 
-## 2026-08-09 Zhang Xiaojun Podcast #40、#39、#38 source-first 深读（已完成；待推送）
+## 2026-08-09 Zhang Xiaojun Podcast #40、#39、#38 source-first 深读（已完成；已推送）
 
 ### 本批材料与证据边界
 
@@ -49,7 +49,7 @@
 
 - [x] 已通过 `ruby scripts/validate_notes_index.rb`：255 个索引入口对应 255 个顶层 note HTML；`git diff --check` 通过；三篇个案、全频道目录和系列页均唯一 H1/main/evidence、无重复 ID、无坏相对链接和生成路径痕迹。
 - [x] 隔离 Jekyll build 成功；`ruby scripts/validate_notes_index.rb`、`git diff --check`、五个目标页面的结构/重复 ID/禁止痕迹/相对链接审计和生成产物存在性检查均通过。当前环境没有可用的本地 Chromium 调试端口，因此本批记录静态构建验证边界，不伪称完成浏览器目检。
-- [ ] 只选择性提交本批三篇个案、`_data/notes.yml`、全频道目录、系列总览和本节 Progress，保留其他用户修改。
+- [x] 只选择性提交本批三篇个案、`_data/notes.yml`、全频道目录、系列总览和本节 Progress，保留其他用户修改；提交 `012efc0` 已推送到 `origin/main`。
 - [ ] 下一批继续 #37、#36、#34；三期完整公开音频已经准备好，仍按可靠音频、章节和连续时间轴先重建原文。
 
 ## 2026-08-09 Zhang Xiaojun Podcast #43、#42、#41 source-first 深读（已完成；已推送）
