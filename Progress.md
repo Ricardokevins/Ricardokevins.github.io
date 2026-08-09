@@ -30,7 +30,7 @@
 - [x] 对 `#feedback` 目录锚点做桌面/手机跳转验收：目标标题均位于 sticky 导航底部下方约 18–19px，未被遮挡；截图目检通过。
 - [x] 发布范围限定为本次翁荔笔记、`_data/notes.yml` 条目和本节 Progress；其他并行修改与未跟踪文件保持原样，不纳入本任务。
 
-## 2026-08-09 Zhang Xiaojun Podcast #37、#36、#34 source-first 深读（内容完成；待最终验证与提交）
+## 2026-08-09 Zhang Xiaojun Podcast #37、#36、#34 source-first 深读（已完成；已推送）
 
 ### 本批材料与证据边界
 
@@ -51,7 +51,8 @@
 - [x] `ruby scripts/validate_notes_index.rb` 通过：258 个索引入口对应 258 个顶层 note HTML；`git diff --check` 通过；三篇个案、全频道目录和系列总览的唯一 H1/main/evidence、重复 ID、空 alt、禁止过程痕迹和相对链接审计通过。
 - [x] 隔离 Jekyll build 成功；只有仓库既有 Faraday retry 与 GitHub Metadata 未认证/不可用提示，没有构建错误。
 - [x] 用本地 Playwright Chromium 完成三篇个案、全频道目录和系列总览的桌面截图，并对 #36、#34 和目录做手机宽度截图目检：页面结构、导航、标题层级、表格容器和移动端换行正常；当前没有本地调试端口，未触碰用户前台浏览器。
-- [ ] 只选择性提交本批三篇个案页、`_data/notes.yml`、全频道目录、系列总览和本节 Progress，保留其他用户修改；推送后继续 #33、#32、#31 等剩余节目。
+- [x] 只选择性提交本批三篇个案页、`_data/notes.yml`、全频道目录、系列总览和本节 Progress，保留其他用户修改；提交 `9d28d85` 已推送到 `origin/main`。
+- [ ] 下一批继续 #33、#32、#31 等剩余节目；优先沿用完整公开音频/可靠时间轴，再向 #1 逐批收口。
 
 ## 2026-08-09 Zhang Xiaojun Podcast #40、#39、#38 source-first 深读（已完成；已推送）
 
