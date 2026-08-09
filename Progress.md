@@ -1,6 +1,6 @@
 # Ricardokevins.github.io Progress
 
-## 2026-08-09 Zhang Xiaojun Podcast #30、#29、#27 source-first 深读（内容完成；待验证与推送）
+## 2026-08-09 Zhang Xiaojun Podcast #30、#29、#27 source-first 深读（已完成；已验证，已推送）
 
 ### 本批材料与原文重建
 
@@ -17,9 +17,9 @@
 
 ### 待验证与后续
 
-- [ ] 运行 notes 索引、HTML 结构、禁止过程痕迹、相对链接和 git diff --check 审计，特别检查三篇新稿的表格闭合、唯一 H1/main/ID、文末 evidence appendix 和英文页的编码。
-- [ ] 运行隔离 Jekyll build，并用桌面/手机 Chromium 验收三篇个案、全频道目录和系列总览；检查移动端宽表是否只在容器内滚动。
-- [ ] 选择性提交本批改动并推送，保留其他用户修改与未跟踪文件。
+- [x] 运行 notes 索引、HTML 结构、禁止过程痕迹、相对链接和 git diff --check 审计：264 条索引与 264 个顶层 HTML 对应；三篇新稿表格闭合、唯一 H1/main/ID、文末 evidence appendix、相对链接和英文页编码均通过。
+- [x] 运行隔离 Jekyll build，并用桌面/手机 Chromium 验收三篇个案、全频道目录和系列总览：10 个视图均 HTTP 200，无页面错误、坏图或页面级横向溢出；系列宽表仅在容器内滚动。
+- [x] 选择性提交本批改动并推送：提交 de638f6（docs(podcast): deepen episodes 30 29 27），其他用户修改与未跟踪文件未纳入。
 - [ ] 推送后继续抓取和梳理剩余 31 期待补节目，优先取得完整公开音频；#86、#85、#83 仍需保留公开逐句接口不可用的证据边界。
 
 ## 2026-08-09 Zhang Xiaojun Podcast #33、#32、#31 source-first 深读（已完成；已验证，待推送）
