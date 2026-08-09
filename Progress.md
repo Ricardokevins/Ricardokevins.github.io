@@ -1,5 +1,35 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-09 Lilian Weng（翁荔）监督信号前史深化（完成）
+
+### 任务边界与材料
+
+- 用户要求在上一轮翁荔/Lil’Log 思想地图基础上继续抓取和梳理；归档复核到 2026-08-09 仍为 52 篇技术正文，没有新增 2026 文章。
+- 本轮不重复抓取已经完整重建的《Why We Think》《Scaling Laws, Carefully》《Harness Engineering for Self-Improvement》，而是深读 2024 年的三篇关键前置文章：《Thinking about High-Quality Human Data》《Extrinsic Hallucinations in LLMs》《Reward Hacking in Reinforcement Learning》。
+- 三篇材料共同补足“监督信号为何失真”这条主线：人类标注决定数据输入，事实性决定知识反馈，奖励黑客决定优化后的代理目标是否仍代表真实目标。
+
+### 已完成内容
+
+- [x] 读取三篇 canonical 正文全文，建立章节级内容地图；没有把文章摘要或引用论文摘要当作全文讲解。
+- [x] 原地扩展 `notes/tech-analysis/lilianweng-why-we-think-blog-map.html`：新增三篇连续原文重建、监督信号比较表、独立 insight 和三道工程校验门，并将核心材料从三篇扩展为六篇。
+- [x] 核对关键引用边界：Gekhman 的新知识微调与幻觉、LongFact/SAFE、Self-Harness 之前的 ICRH / iterative self-refinement / reward-tampering 证据；将论文数字明确标为作者/论文报告，未声称独立复现。
+- [x] 更新 `_data/notes.yml` 的标题、日期、摘要、标签和六篇 canonical 材料口径；已补 canonical URL 与关键 arXiv 资料索引。
+
+### 当前独立判断
+
+- 数据分歧、幻觉和奖励黑客不是三个孤立问题，而是同一类“代理信号被优化后偏离真实目标”的不同层级表现。
+- 优化压力会沿反馈通道向外扩散：模型越强、推理预算越高、Harness 权限越大，评估器就越接近攻击面；因此 scaling、test-time compute 和 harness 必须同步增加验证、隔离和回滚能力。
+- 可落地的三道门是：训练前保留分歧与数据 provenance，生成时按 atomic claim 做外部验证，部署时把 reward/权限/外部反馈与策略解耦并用 held-out、反事实环境和审计日志复核。
+
+### 最终验证与交付
+
+- [x] `ruby scripts/validate_notes_index.rb`：252 个索引入口与 252 个顶层 note HTML 对应；`git diff --check` 通过。
+- [x] 目标页结构审计通过：唯一 `h1` / `main`、15 个 section、16 个唯一 ID、唯一 evidence appendix、无空图片 alt、无断锚和公开过程痕迹。
+- [x] 隔离 Jekyll build 成功；仅出现仓库既有 Faraday 可选依赖与 GitHub Metadata 未认证提示，无构建错误。
+- [x] 独立 headless Chromium 完成 1440×1000 桌面与 390×844 手机验收：均 HTTP 200、MathJax 47 个、页面级横向溢出为 0、坏图/失败请求/console error/page error 均为 0；手机端 8 张宽表保持容器内横向滚动。
+- [x] 对 `#feedback` 目录锚点做桌面/手机跳转验收：目标标题均位于 sticky 导航底部下方约 18–19px，未被遮挡；截图目检通过。
+- [x] 发布范围限定为本次翁荔笔记、`_data/notes.yml` 条目和本节 Progress；其他并行修改与未跟踪文件保持原样，不纳入本任务。
+
 ## 2026-08-09 Zhang Xiaojun Podcast #43、#42、#41 source-first 深读（已完成；已推送）
 
 ### 本批材料与证据边界
