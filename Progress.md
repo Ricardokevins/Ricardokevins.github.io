@@ -17,6 +17,25 @@
 - [x] 隔离 Jekyll build 成功，耗时约 6.8 秒；仅出现仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning。独立无头浏览器完成 1440×1000 桌面与 390×844 手机验收：均 HTTP 200、页面宽度严格等于视口宽度，公式正常渲染，无重复 ID、断锚、失败请求、console error、runtime error 或页面级横向溢出；两种视口截图目检未见重叠、截断或不可读表格。
 - [x] 仅提交本任务笔记、索引条目和本节 Progress hunk；提交 `d57ca9c` 已推送至 `origin/main`。原工作区其他并行改动保持未纳入本任务提交。
 
+## 2026-08-20 SPADE 自适应可执行环境论文深读（已完成；已验证，待提交）
+
+### 材料覆盖与关键判断
+
+- [x] 完整读取 `SPADE: Self-Play in Adaptive Synthetic Executable Environments`（arXiv:2608.19197 v1）73 页正文、图表、理论、完整生成提示、训练/复现附录、环境质量与定性案例，并核对官方项目页、代码主分支、训练 launcher、Hugging Face 模型与数据发布。
+- [x] 按原文顺序重建固定环境池瓶颈、Gym-style code-as-environment、共享模型双角色、hint-based regret、实际 `0.6 difficulty plateau + 0.4 floored regret`、语料 grounding、200 条环境记忆、游戏/工具设置、主结果、消融、规模实验、理论与作者限制。
+- [x] 独立复算 30B 游戏八项平均：Base `50.20`、Fixed GPT-5.5 `51.38`、RLVE `53.01`、SPADE `58.28`；确认 SPADE 相对 Base `+8.075`、相对 RLVE `+5.2625`，对 RLVE 八项中七胜一负。
+- [x] 代码与论文配置大体一致；当前公开仓库 `105 passed, 2 skipped`。模型组织公开 4B/8B/30B-A3B 的 Games/ToolUse 六个 checkpoint，并发布 grounding corpora、生成环境与静态 GPT-5.5 环境池。
+- [x] 识别并直接执行复现 verifier 反例：附录 `CustomerSupportTicketWorkflowEnv` 第一条判据在 `reset()` 后已经为真，任意无关工具调用都可跳到第二条指令；说明“代码可执行”不等于“奖励语义正确”。
+- [x] 证据审计确认：多样性主要由外部语料驱动；理论定理依赖完美提示与全环境可内化性强假设；主训练结果缺多 seed、置信区间与 token/FLOP/wall-clock 等预算；当前仓库未见论文所称评测输出 JSON 与全图生成脚本。
+
+### 站内变更与待验证
+
+- [x] 新增 `notes/paper-reviews/spade-adaptive-synthetic-executable-environments.html`，严格采用“原文连续重建 → 证据审计 → 理论/代码核对 → 独立 insight → 下一步实验”两遍结构；公开正文不包含抓取命令、本地路径或生成痕迹。
+- [x] 更新 `_data/notes.yml`，新增 Paper Note 入口；保留其他并行笔记、语音手册、题库、脚本、PDF 与用户未提交改动。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：当前快照为 `301 entries, 301 top-level note html files`；目标页约 18,515 个可见非空白字符、13 个主体 section、唯一 H1/main/末节 evidence appendix、无重复 ID、断锚、空 alt、占位符、公开过程噪声或 whitespace 错误，3 张宽表均由局部滚动容器包裹。
+- [x] 隔离 Jekyll 全站构建成功，仅有仓库既有 Faraday 可选依赖与 GitHub Metadata 未认证提示；1440×1000 桌面与 390×844 手机无头浏览器均 HTTP 200、页面宽度等于视口、5 个 MathJax 容器正常，无 console/page error、失败请求、坏图、断锚或页面级横向溢出。手机端三张 800px 表格在 364px 容器内局部滚动；桌面全页与手机末两节截图目检无重叠、截断或不可读区域。
+- [ ] 只选择性提交本任务笔记、索引 hunk 与本节 Progress 增量，推送并核对远端同步。
+
 ## 2026-08-20 Recirculation × Full-bandwidth Transformer 深读（已完成；已验证；已推送）
 
 ### 任务与材料边界

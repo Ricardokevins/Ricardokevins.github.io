@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SPADE 深读：让模型设计自己的训练环境，真正学到的是什么</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true, packages: { '[+]': ['ams', 'noerrors', 'noundefined'] } },
+      chtml: { matchFontHeight: false, mtextInheritFont: true, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme:light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#5f686f; --line:#dcd6c8; --accent:#c15f3c; --accent-soft:#f7ece4; --accent-2:#986023; --accent-2-soft:#f8eee2; --info:#50668f; --info-soft:#edf1f8; --risk:#9c4545; --risk-soft:#f8eaea; --good:#25675f; --shadow:0 16px 44px rgba(31,37,40,.08); --radius:10px; --max:1120px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif; --mono:"SFMono-Regular","Menlo","Consolas",monospace; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; background:linear-gradient(90deg,rgba(193,95,60,.045) 1px,transparent 1px),linear-gradient(180deg,rgba(120,105,85,.03) 1px,transparent 1px),var(--paper); background-size:44px 44px; color:var(--ink); font-family:var(--sans); line-height:1.75; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header,main { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(36px,6vw,76px) 0 26px; }
+    .kicker { margin-bottom:12px; color:var(--accent-2); font:800 13px/1.3 var(--sans); letter-spacing:.07em; text-transform:uppercase; }
+    h1 { max-width:1040px; margin:0; font:760 clamp(32px,5vw,58px)/1.12 var(--serif); }
+    .lede { max-width:930px; margin:18px 0 0; color:var(--muted); font-size:clamp(17px,2vw,20px); }
+    main { display:grid; gap:30px; padding-bottom:64px; }
+    section { padding-top:30px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3 { margin:0 0 12px; line-height:1.25; }
+    h2 { font:740 clamp(24px,3.2vw,34px)/1.25 var(--serif); }
+    h3 { margin-top:24px; font-size:20px; color:var(--accent); }
+    p { margin:12px 0; } ul,ol { padding-left:1.25rem; } li { margin:7px 0; }
+    code { padding:2px 6px; border-radius:5px; background:#ece5d7; color:#7c2d12; font-family:var(--mono); font-size:.92em; }
+    .small { color:var(--muted); font-size:14px; }
+    .toc { padding:14px 18px; border:1px solid var(--line); border-radius:var(--radius); background:rgba(255,253,248,.92); box-shadow:var(--shadow); }
+    .toc b { display:block; margin-bottom:8px; color:var(--accent-2); }
+    .toc-links { display:flex; flex-wrap:wrap; gap:8px 14px; } .toc a { font-size:14px; text-decoration:none; }
+    .grid-2,.grid-3,.grid-4 { display:grid; gap:14px; margin:18px 0; } .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card { min-width:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3 { margin:0 0 8px; font-size:16px; color:var(--accent); } .card p { margin:0; color:var(--muted); font-size:14.5px; } .metric { display:block; margin-bottom:5px; color:var(--ink); font:760 24px/1.15 var(--serif); }
+    .callout { margin:18px 0; padding:14px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); background:var(--accent-soft); } .callout>b { display:block; margin-bottom:6px; color:var(--accent); }
+    .callout.info { border-left-color:var(--info); background:var(--info-soft); } .callout.info>b { color:var(--info); } .callout.warn { border-left-color:var(--accent-2); background:var(--accent-2-soft); } .callout.warn>b { color:var(--accent-2); } .callout.risk { border-left-color:var(--risk); background:var(--risk-soft); } .callout.risk>b { color:var(--risk); }
+    .flow { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin:18px 0; }
+    .flow-step { position:relative; min-width:0; padding:14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .flow-step:not(:last-child)::after { content:"→"; position:absolute; top:50%; right:-11px; z-index:2; transform:translateY(-50%); color:var(--accent); font-weight:800; }
+    .flow-step b { display:block; color:var(--accent); } .flow-step span { display:block; margin-top:5px; color:var(--muted); font-size:13.5px; line-height:1.55; }
+    .def-list { display:grid; gap:10px; margin:18px 0; } .def-list>div { display:grid; grid-template-columns:minmax(190px,.27fr) minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); } .def-list b { color:var(--accent); }
+    .table-wrap { margin:16px 0; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .table-wrap table { width:100%; min-width:800px; max-width:none; border-collapse:collapse; font-size:14.2px; } caption { padding:12px 14px 8px; color:var(--muted); text-align:left; font-size:13.5px; } th,td { padding:10px 13px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; } th { background:var(--accent-soft); } tr:nth-child(even) td { background:rgba(0,0,0,.015); }
+    .good { color:var(--good); font-weight:700; } .bad { color:var(--risk); font-weight:700; }
+    .math-display { margin:16px 0; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); max-width:100%; overflow-x:auto; overflow-y:hidden; } mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    @media(max-width:920px){.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.flow{grid-template-columns:1fr}.flow-step:not(:last-child)::after{content:"↓";top:auto;right:50%;bottom:-15px;transform:translateX(50%)}}
+    @media(max-width:760px){header,main{width:min(100% - 24px,var(--max))}.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.def-list>div{grid-template-columns:1fr;gap:6px}.toc-links{display:grid;grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+  <header id="top">
+    <div class="kicker">Paper Review · Self-Play / Agentic RL / Environment Design</div>
+    <h1>SPADE 深读：让模型设计自己的训练环境，真正学到的是什么</h1>
+    <p class="lede">SPADE 研究一个很具体的问题：当固定题库终会被模型学完，能否让同一个语言模型一边编写可执行的多轮训练环境，一边在这些环境里学习，并让环境难度随能力共同变化？论文把这种循环扩展到认知游戏与工具调用，并报告了跨数学、科学、代码和多轮工具 benchmark 的提升。</p>
+  </header>
+  <main>
+    <nav class="toc" aria-label="本文目录"><b>阅读地图</b><div class="toc-links"><a href="#source-reconstruction">原文讲解</a><a href="#takeaway">核心判断</a><a href="#problem">真实问题</a><a href="#mechanism">机制</a><a href="#setup">实验设置</a><a href="#evidence">关键证据</a><a href="#theory">理论边界</a><a href="#code-audit">代码核对</a><a href="#terms">术语</a><a href="#limits">局限</a><a href="#insight">独立 Insight</a><a href="#practice">下一步实验</a><a href="#sources">资料索引</a></div></nav>
+
+    <section id="source-reconstruction">
+      <h2>第一遍：按论文顺序把 SPADE 讲清楚</h2>
+      <h3>1. 为什么论文从“环境供给”而不是“更强优化器”讲起</h3>
+      <p>作者把 agent 后训练的瓶颈定义为<strong>可交互、可验证的训练环境不够多</strong>。人工环境质量高，但昂贵且扩展慢；静态合成环境能扩大数量，却仍是一池固定数据，模型学会后就会饱和；只在推理时改 harness 能改善某个系统，却不把能力写回模型。传统 self-play 能让对手随玩家一起变强，但语言模型如果只从自己的已有知识自由出题，容易重复熟悉模式、放大错误，也很难产生真正超出当前分布的新信息。</p>
+      <p>因此 SPADE 同时提出三个要求：环境必须是完整的可执行程序，而不只是一道题；环境生成器必须在线学习，而不只是在训练前批量合成；生成过程还要接入外部语料，避免两个自我角色困在同一个知识闭环里。作者把这三点称为从固定环境池迈向 open-ended self-improvement 的一步。</p>
+
+      <h3>2. 用一段 Python 程序表示一个完整世界</h3>
+      <p>SPADE 的 Environment Designer（ED）输出一个 Python 类，接口仿照 Gym：<code>reset()</code> 产生初始观察，<code>step(action)</code> 根据动作改变内部状态，返回新观察、奖励与终止标记。对单轮推理题，它可以只执行一次 <code>step(answer)</code>；对多轮游戏或工具任务，同一接口可以连续执行移动、测量、查询、修改等动作。转移逻辑、奖励函数和 verifier 都写在程序里。</p>
+      <p>论文给出的最小例子类似 Wordle：环境隐藏目标词，模型每轮猜一个词，程序返回逐字母反馈，猜中给 1 分，六轮耗尽给 0 分。更复杂的游戏包含隐藏物理参数、资源约束和部分奖励；工具环境则模拟银行、客服、零售等 API，用后台状态和逐步成功判据决定用户的当前指令是否完成。</p>
+
+      <h3>3. 同一个模型交替扮演设计者和解题者</h3>
+      <p>一套共享参数 πθ 通过不同 system prompt 切换两种角色。ED 根据技能类别、外部语料片段与历史环境记忆生成代码，并另写一段“特权提示”；Reasoning Agent（RA）看不到环境源码，只能读取观察、采取动作。候选代码要经过语法和执行 smoke test；工具环境还增加重置判据与 LLM 可解性检查。有效环境随后被 RA 重复游玩。</p>
+      <p>RA 的训练奖励直接来自环境程序。ED 的核心信号则来自同一环境的两组实验：一组 RA 不看提示，一组 RA 看提示。如果提示能让 RA 从不会做变成会做，说明这个环境不是纯粹无解，而是正卡在当前能力边缘；如果两边都成功，环境已经太容易；如果两边都失败，环境可能太难或有缺陷。</p>
+
+      <h3>4. Hint-based regret 不是实际训练奖励的全部</h3>
+      <p>论文先定义提示 regret：</p>
+      <div class="math-display">\[r_D(e)=\bar r_A(e\mid h)-\bar r_A(e).\]</div>
+      <p>其中 \(\bar r_A(e\mid h)\) 和 \(\bar r_A(e)\) 分别是带提示与不带提示的多次平均回报。实际训练并非只最大化这一个差值：代码和附录显示，负 regret 被截到 0，再按固定尺度归一化；它占 ED 奖励的 0.4，另有 0.6 来自难度平台奖励——当 RA 在一个环境上的窗口胜率位于 0.4 到 0.6 时得满分，离开该区间后线性衰减。也就是说，<strong>难度带负责把任务留在“五五开”附近，提示差负责在同等难度里挑更可教的任务</strong>。</p>
+
+      <h3>5. 外部语料提供“题材”，环境记忆提供“难度历史”</h3>
+      <p>游戏设置每轮从 15,000 篇材料中抽取一篇：10,000 篇数学材料和 5,000 篇科学材料；工具设置从 Nemotron 代码预训练语料抽取约 15,000 个文档。语料片段被放进生成 prompt，要求 ED 把其中概念变成可交互环境，而不是照抄成问答。环境记忆最多保留 200 条历史记录，记录技能、胜率和 regret：高 regret 环境作为正例，过易或过难的环境作为反例。</p>
+      <p>作者的解释是：语料决定“还能生成什么主题”，记忆决定“哪些难度已过时”。这一区分得到消融支持：去掉语料后多样性几乎坍缩，而只去掉记忆仍能保持题材多样，但下游平均分明显下降。</p>
+
+      <h3>6. 训练与评测如何展开</h3>
+      <p>作者训练 Qwen3 4B、8B 和 30B-A3B 三个骨干，每个主运行 400 个 rollout。游戏环境每四个 rollout 更新一次，每次 24 个环境，六类认知技能轮换三类；工具环境生成更贵，每八个 rollout 更新一次。每个环境有 16 次无提示游玩，并在生成时配 16 次带提示游玩；ED 更新延迟到一个环境窗口结束，再用截断重要性采样校正 off-policy 偏差。两种角色分别做组内优势归一化，最后共同用 GRPO 更新共享参数。</p>
+      <p>游戏设置与两个固定环境基线比较：一是 RLVE 的 16 类人工环境，二是 GPT-5.5 预生成的静态游戏池。评测包括 AIME 2025/2026、GPQA-Diamond、LiveCodeBench-v6，以及 Reasoning-Gym 的数学、算法、认知、逻辑四类 hard 难度。工具设置在 BFCL v4 multi-turn、τ²-bench 和 ACEBench-Agent 上评测，但与其他合成系统的表格是跨论文对照，基础模型、训练预算和 harness 并不统一。</p>
+
+      <h3>7. 作者看到的结果与训练过程</h3>
+      <p>30B-A3B 游戏模型的八项平均分从基座 50.2 升至 58.3，静态 GPT-5.5 环境为 51.4，RLVE 为 53.0。增益主要来自 Reasoning-Gym 与 GPQA/代码，AIME 基本保持；相对最强固定基线，SPADE 在八项中赢七项，只在 RG-Logic 低 0.9 分。工具模型在 30B-A3B 上，BFCL 多轮平均提升 5.7，τ²-bench 提升 3.6，ACEBench-Agent 提升 13.9。</p>
+      <p>定性与代理指标显示：完整配置中“胜率位于 0.2 到 0.8”的可学习环境占比由 0.16 升到 0.31；程序长度、隐藏状态数量和交互轮数大致不变，而奖励层级从 3.7 增至 5.8。3,310 个生成程序的 hash 全部不同，使用了 1,513 篇不同种子文档。语料存在时 Vendi/n 为 0.68，去掉语料后只有 0.04；无语料运行在后期连续生成 41 个旋转迷宫变体。</p>
+      <p>消融中，去掉记忆平均分为 53.2，去掉语料为 53.5；冻结 ED 且去掉记忆跌到 40.5；固定 GPT-5.5 设计者加语料与记忆达到 53.0。把提示 regret 换成 EMA learning-potential 后为 55.9，低于完整配置 58.3。模型规模越大，SPADE 相对各自基座的平均增益从 4B 的 5.2、8B 的 5.7 增到 30B-A3B 的 8.1；不过 4B 和 8B 的估计 regret 曾长时间为负，说明提示信号在小模型上并不稳定。</p>
+
+      <h3>8. 论文最后保留了哪些条件</h3>
+      <p>作者承认环境复杂度仍受基础模型表达能力和上下文预算限制；学习算法 GRPO 仍由人设计，系统不会改写自己的优化规则；评测仍是固定 benchmark，不能直接证明开放式能力会无限增长。理论附录只在理想化假设下证明纯 Nash 均衡对应全环境最优；未来方向包括用纯上下文记忆替代 ED 权重更新，以及把环境设计与数据策展、优化器改进连接成更完整的自动后训练流水线。</p>
+      <p class="small">以上是论文原文与附录的连续重建。下面才进入本文自己的证据审计与独立判断。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>第二遍：核心判断</h2>
+      <p><strong>SPADE 最可信的贡献，是把“训练环境”从固定数据资产改成了在线控制变量，并给出了跨游戏和工具调用的可运行工程闭环。</strong>它不是已经实现开放式自我改进：外部语料承担了主要的新颖性供给，奖励仍含人工设定的 40%–60% 难度带，评测仍靠固定 benchmark，理论结论依赖现实明显不满足的强假设。但在“让环境难度随模型一起动”这件事上，主结果、消融和公开代码形成了相当完整的证据链。</p>
+      <div class="grid-4">
+        <div class="card"><span class="metric">50.2 → 58.3</span><h3>30B 游戏平均分</h3><p>八项未加权平均 +8.1；相对最强固定环境基线 +5.3。</p></div>
+        <div class="card"><span class="metric">0.16 → 0.31</span><h3>可学习环境占比</h3><p>训练后期更多生成预算落在 20%–80% 胜率带，但仍只有约三分之一。</p></div>
+        <div class="card"><span class="metric">0.68 vs 0.04</span><h3>多样性来源</h3><p>有/无外部语料的 Vendi/n；新颖性主要由语料注入，不是自我循环凭空创造。</p></div>
+        <div class="card"><span class="metric">105 tests</span><h3>公开实现</h3><p>当前公开仓库单元测试通过；训练、评测、模型和环境数据均有发布。</p></div>
+      </div>
+      <div class="callout"><b>最值得记住</b><p>SPADE 不是“一个模型凭空发明无限新知识”，而是“模型把外部知识改造成适合自己当前能力的可执行课程”。真正新增的是<strong>课程的适应性与环境的可执行性</strong>，不是信息来源的自足性。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>真实问题：固定题库为什么会成为 agent RL 的上限</h2>
+      <p>普通 RLVR 把问题与 verifier 当成预先存在的数据。模型能力提升后，容易题不再产生组内方差，难到不可解的题也不产生有效梯度；固定池的有效训练密度不断下降。经典 curriculum 可以重新采样难度，却仍只能在既有题型内移动。SPADE 的关键变化是让“题目、状态机、反馈、奖励与 verifier”一起成为模型输出，理论上可以改变任务结构，而不只调一个数字难度。</p>
+      <div class="grid-3">
+        <div class="card"><h3>固定人工环境</h3><p>质量可控，但建设成本随任务数量线性上升，更新速度跟不上模型。</p></div>
+        <div class="card"><h3>固定合成环境</h3><p>数量更大，但生成器和题库都冻结；模型会逐渐拟合并耗尽它们。</p></div>
+        <div class="card"><h3>自适应可执行环境</h3><p>依据当前策略的回报重新生成任务结构；代价是 verifier 也由模型写，质量控制成为新瓶颈。</p></div>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：输入、控制流、训练信号与失败条件</h2>
+      <div class="flow" aria-label="SPADE 六阶段训练流程">
+        <div class="flow-step"><b>1. 取材</b><span>抽技能、语料文档和环境记忆。</span></div>
+        <div class="flow-step"><b>2. 写环境</b><span>ED 生成 reset/step、奖励和 verifier。</span></div>
+        <div class="flow-step"><b>3. 验证</b><span>语法、执行；工具任务再做可解性过滤。</span></div>
+        <div class="flow-step"><b>4. 双臂游玩</b><span>RA 分别在无提示与有提示条件下行动。</span></div>
+        <div class="flow-step"><b>5. 分账奖励</b><span>任务回报训练 RA；难度带 + regret 训练 ED。</span></div>
+        <div class="flow-step"><b>6. 共享更新</b><span>角色内归一化后共同更新同一策略。</span></div>
+      </div>
+      <p>实际 ED 原始奖励可概括为：</p>
+      <div class="math-display">\[r_{ED}=0.6\,P(\bar r_A)+0.4\,\operatorname{clip}\!\left(\frac{\bar r_A(e\mid h)-\bar r_A(e)}{0.15},0,1\right),\]</div>
+      <p>其中 \(P(\bar r_A)\) 在胜率 0.4–0.6 内为 1，向两侧衰减。随后同技能环境之间做均值中心化，决定哪些 ED 生成轨迹获得正优势。这个细节很重要：论文标题强调 hint-based regret，但<strong>完整系统更像“难度带 curriculum + 提示可教性排序”</strong>，不是纯 regret self-play。</p>
+      <div class="callout warn"><b>主要失败条件</b><p>环境代码崩溃、奖励判据可被绕过、提示误导、语料题材泄漏 benchmark、共享参数造成角色干扰、难度代理被 reward hacking，以及生成/游玩成本远高于静态环境，都会使循环偏离“可学习前沿”。</p></div>
+    </section>
+
+    <section id="setup">
+      <h2>实验设置与比较口径</h2>
+      <div class="table-wrap"><table><caption>论文 v1 的主要实验协议。</caption><thead><tr><th>维度</th><th>设置</th><th>解释边界</th></tr></thead><tbody>
+        <tr><td>骨干模型</td><td>Qwen3-4B-Instruct-2507、Qwen3-8B、Qwen3-30B-A3B-Instruct-2507；另有 Nemotron-30B-A3B 的 Reasoning-Gym 检查</td><td>跨规模且有一次跨家族验证，但主表仍是 Qwen 单一模型族。</td></tr>
+        <tr><td>训练长度</td><td>400 rollout；游戏每 4 步换环境，工具每 8 步</td><td>迭代数相同不等于总 token、生成调用、训练 FLOPs 或 wall-clock 相同。</td></tr>
+        <tr><td>游戏基线</td><td>Base、静态 GPT-5.5 环境 GRPO、RLVE</td><td>同基座重训，但 RLVE launcher 使用 16 环境 rollout，SPADE/GPT-5.5 使用 24；未给完整算力等预算表。</td></tr>
+        <tr><td>工具对照</td><td>AgentScaler、Agent-World、AWM、EnvScaler 的论文数字</td><td>模型、数据、预算、BFCL/τ² 版本和 user simulator 均可能不同，不能当严格 SOTA 排名。</td></tr>
+        <tr><td>checkpoint</td><td>消融表明确选择各变体 suite average 的最佳 checkpoint</td><td>没有独立选择集与最终一次性测试的说明，会引入 checkpoint selection 乐观偏差。</td></tr>
+        <tr><td>不确定性</td><td>AIME 使用 Avg@32；多样性 AUC 给交叉验证波动</td><td>主训练结果未报告多 seed、置信区间或逐任务统计显著性。</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="evidence">
+      <h2>关键证据：哪些结果最强，哪些只是发布方报告</h2>
+      <h3>主表复算</h3>
+      <div class="table-wrap"><table><caption>30B-A3B 游戏设置；平均分均按八列独立复算。</caption><thead><tr><th>系统</th><th>AIME 25/26</th><th>GPQA-D</th><th>LCB-v6</th><th>RG Math/Algo/Cog/Logic</th><th>八项平均</th></tr></thead><tbody>
+        <tr><td>Base</td><td>61.5 / 73.5</td><td>70.4</td><td>43.2</td><td>45.0 / 18.0 / 23.0 / 67.0</td><td>50.20</td></tr>
+        <tr><td>Fixed-env GPT-5.5</td><td>61.2 / 73.8</td><td>70.9</td><td>43.7</td><td>48.1 / 20.3 / 24.6 / 68.4</td><td>51.38</td></tr>
+        <tr><td>Fixed-env RLVE</td><td>56.9 / 69.8</td><td>69.8</td><td>42.5</td><td>55.8 / 24.7 / 30.9 / 73.7</td><td>53.01</td></tr>
+        <tr><td><strong>SPADE</strong></td><td><strong>62.8 / 74.4</strong></td><td><strong>75.8</strong></td><td><strong>47.3</strong></td><td><strong>63.3 / 32.1 / 37.7 / 72.8</strong></td><td class="good">58.28</td></tr>
+      </tbody></table></div>
+      <p>复算确认：SPADE 相对基座为 +8.075 分，按一位小数写作 +8.1；相对 RLVE 为 +5.2625，写作 +5.3。它相对 RLVE 在七项上胜出，差值依次为 +5.9、+4.6、+6.0、+4.8、+7.5、+7.4、+6.8、−0.9。最强证据不是单个 headline，而是科学、代码和三类 procedural reasoning 同方向提升；AIME 保持，RG-Logic 略低。</p>
+      <h3>因果归因没有标题那么干净</h3>
+      <p>完整配置明显优于去语料、去记忆和冻结设计者，但部分对照一次改变了多个变量：例如“无 ED 训练”同时去掉环境记忆，固定 GPT-5.5 又换了设计模型。论文自己承认这些对照不能把梯度更新单独隔离。奖励消融更干净：同样训练 ED，只将完整 regret blend 换成 learning-potential，平均分从 58.3 降到 55.9，支持当前 reward 设计更好；但它仍不能说明 0.4 regret 和 0.6 难度平台各自贡献多少，因为缺少纯 regret 对照。</p>
+      <h3>多样性证据支持 grounding，不支持“自足开放性”</h3>
+      <p>有语料的不同配置都接近多样性上限，无语料才坍缩；冻结 ED、去掉记忆但保留语料时 Vendi/n 甚至为 0.70，略高于完整配置 0.68。最稳妥的因果结论是：<strong>语料是题材多样性的主因，ED 训练和记忆主要负责难度适配</strong>。这恰好削弱了“系统靠自我博弈产生无限新颖性”的强叙事，却强化了一个更实用的工程结论：外部数据与自适应 curriculum 是互补关系。</p>
+    </section>
+
+    <section id="theory">
+      <h2>理论审计：定理为什么不能替代经验验证</h2>
+      <p>理论附录把 ED 看成可在所有数学有效环境上任意分配概率的玩家，把 RA 看成有限策略集合中的玩家。核心定理说，在纯 Nash 均衡上，所有环境的 hint regret 都为零，RA 在无提示条件下达到逐环境最优。证明本身成立，但依赖两个极强假设：</p>
+      <ol>
+        <li><strong>Articulated hints：</strong>对每个环境、每个当前策略，只要加上 ED 写的提示，回报就等于策略集合中的最优无提示值。</li>
+        <li><strong>Internalizability：</strong>任意策略在所有环境上的带提示行为，都存在另一个无提示策略同时复现。</li>
+      </ol>
+      <p>第一个假设几乎把“提示是完美老师”直接写进前提；第二个假设要求有限微调预算内存在一个统一吸收所有提示的策略。论文实测 4B/8B 的 regret 长时间为负，已经说明当前策略可能被提示误导。因此定理更适合解释奖励设计的理想动机，不能证明实际训练收敛、课程最优或开放式进步。</p>
+      <div class="callout risk"><b>独立判断</b><p>这段理论本质上是“若提示等于最优答案信息，而且这种行为都能被无提示模型内化，那么剩余提示差就是剩余最优性差距”。它没有覆盖提示质量、生成器可达环境、共享参数非平稳性、有限采样、reward clipping 与 0.6 难度平台这些真实系统核心因素。</p></div>
+    </section>
+
+    <section id="code-audit">
+      <h2>公开代码与数据核对：可运行性强，但复现实验资产仍有缺口</h2>
+      <div class="grid-3">
+        <div class="card"><h3>已直接核验</h3><p>奖励 blend、16 对 16 matched-timing regret、200 条环境记忆、4/8 步更新间隔、模型 launcher 和 benchmark runner 与论文大体一致。</p></div>
+        <div class="card"><h3>发布状态</h3><p>6 个 4B/8B/30B 游戏/工具 checkpoint，以及 grounding corpus、生成环境和静态 GPT-5.5 环境池均已公开。</p></div>
+        <div class="card"><h3>测试状态</h3><p>当前仓库 105 项单元测试通过、2 项跳过；这证明核心工具代码自洽，不等于重跑了论文的大规模训练。</p></div>
+      </div>
+      <h3>一个可执行的 verifier 反例</h3>
+      <p>论文附录把 <code>CustomerSupportTicketWorkflowEnv</code> 作为晚期工具环境范例。第一条用户指令是“找出所有 high-priority 且 new 的工单”，但第一条判据只计算后台里这类工单的数量是否等于 2；它在 <code>reset()</code> 后已经为真，并没有检查搜索工具是否被调用。由于每个工具结束都会运行 <code>_advance_if_done()</code>，调用一个无关的“列出某代理工单”工具，也会直接跳到第二条用户指令。本文实际执行了该环境并复现这一状态跃迁。</p>
+      <p>这不是挑代码风格：它说明“程序可运行”和“奖励语义正确”是两回事。论文的 tool prompt 明确要求判据 reset 时必须为假，附录也承认某些指令限定词没有被绑定；当前验证器仍可能把无关动作判为成功。外部 BFCL/τ²/ACEBench 的提升因此仍有价值，因为它们使用独立任务与评分，但生成环境的 verifier hacking 风险没有解决。</p>
+      <h3>复现声明与当前仓库快照不完全一致</h3>
+      <p>论文写道每个已报告运行的配置、评测输出 JSON 和生成全部图表的脚本都随代码发布。当前仓库确实包含训练/评测配置与 benchmark runner，但没有找到论文评测输出 JSON、训练日志或生成全部论文图表的脚本；模型与数据仓也未见这些结果资产。因此目前可以复用训练配方、加载 checkpoint 和环境数据，却不能只靠公开结果文件逐表重建论文数字。另有一处附录把环境变量写成 <code>SPARE_MULTITURN_ENV_GEN</code>，代码实际使用 <code>SPADE_MULTITURN_ENV_GEN</code>，属于文档拼写错误。</p>
+    </section>
+
+    <section id="terms"><h2>术语解释</h2><div class="def-list">
+      <div><b>Environment Designer（ED）</b><span>同一 LLM 的环境生成角色，输出环境代码与特权提示；它的生成 token 也参与策略梯度更新。</span></div>
+      <div><b>Reasoning Agent（RA）</b><span>同一 LLM 的执行角色，只看观察并采取动作；环境程序返回的任务奖励训练这一角色。</span></div>
+      <div><b>Code-as-environment</b><span>用程序实现状态转移、奖励和 verifier。它扩大表达空间，但程序语义也可能出错或被策略钻空子。</span></div>
+      <div><b>Hint-based regret</b><span>同一策略带提示与不带提示的平均回报差；被用作“当前任务可教但尚未掌握”的代理。</span></div>
+      <div><b>Difficulty plateau</b><span>对中等胜率区间给固定高奖励的 curriculum anchor；完整 SPADE 中它的权重高于 regret。</span></div>
+      <div><b>Corpus grounding</b><span>每轮从外部语料抽取文档，给生成器提供新主题与技术材料，缓解自生成模式坍缩。</span></div>
+      <div><b>Environment memory</b><span>保存过去环境、技能、胜率和 regret 的小型缓存，用正反例提示生成器不要重复过易或过难课程。</span></div>
+      <div><b>Vendi Score</b><span>基于样本相似度矩阵特征值熵的有效多样性数量；论文同时用 SBERT 与 TF-IDF/LSA 检查结论。</span></div>
+    </div></section>
+
+    <section id="limits">
+      <h2>证据边界：当前能说到哪里</h2>
+      <div class="table-wrap"><table><caption>把作者报告、直接核验与仍未知分开。</caption><thead><tr><th>主张</th><th>当前证据</th><th>关键缺口</th><th>判断</th></tr></thead><tbody>
+        <tr><td>自适应环境优于固定环境</td><td>三种 Qwen 规模均领先两个固定基线；30B 八项中赢 RLVE 七项</td><td>多 seed、CI、token/FLOP/wall-clock 等预算</td><td class="good">较强但非最终</td></tr>
+        <tr><td>提示 regret 是关键创新</td><td>完整 blend 58.3，learning-potential 55.9</td><td>纯 regret、纯 plateau、等额 rollout 成本消融</td><td>中等</td></tr>
+        <tr><td>环境会变复杂</td><td>公式泄漏下降、奖励层级增加、可学习占比上升</td><td>程序长度和题材分布基本稳定；代理指标不等于语义难度</td><td>中等</td></tr>
+        <tr><td>工具环境 verifier 可靠</td><td>语法/执行/LLM 可解性过滤，外部 benchmark 提升</td><td>公开范例存在 reset 即为真的判据与无关动作跳步</td><td class="bad">不足</td></tr>
+        <tr><td>系统具备开放式自我改进</td><td>环境在线生成并随 RA 难度适配</td><td>外部语料供给新颖性、固定优化器、固定 benchmark、仅 400 步</td><td class="bad">尚未证明</td></tr>
+        <tr><td>结果可完全复现</td><td>代码、launcher、模型、语料、环境数据公开；单测通过</td><td>论文所称评测 JSON、全图脚本、训练日志当前未见</td><td>部分可复现</td></tr>
+      </tbody></table></div>
+      <p>还应警惕数据污染：游戏 grounding corpus 来自 web/数学/科学材料，发布卡片没有提供与 AIME、GPQA、LiveCodeBench 或 Reasoning-Gym 的去重报告。作者说 benchmark 任务没有直接展示给 ED，但这不等同于外部语料绝无相同问题或近重复。没有逐样本去重审计，OOD 应理解为“未显式作为训练环境”，不是已证明无内容重叠。</p>
+    </section>
+
+    <section id="insight">
+      <h2>独立 Insight：SPADE 把后训练变成了“在线课程编译器”</h2>
+      <p>普通数据合成输出静态样本；SPADE 输出的是带状态机、反馈和 verifier 的程序，再根据学生的实时表现更新编译策略。它更像一个<strong>在线课程编译器</strong>：外部语料是源代码，环境程序是中间表示，RA rollout 是运行时 profile，regret 与胜率带是 profile-guided optimization，下一轮 ED 再生成更合适的可执行课程。</p>
+      <div class="grid-3">
+        <div class="card"><h3>真正稀缺的是反馈语义</h3><p>程序数量可以快速增长，最难的是保证奖励代表任务，而不是代表一个可绕过的状态字段。</p></div>
+        <div class="card"><h3>外部数据不是妥协</h3><p>语料 grounding 恰好提供信息不对称；完全封闭的自我循环反而更容易同质化和自证正确。</p></div>
+        <div class="card"><h3>部署边界是控制面</h3><p>生产化需要环境沙箱、判据反事实测试、预算调度、去重、回滚和独立 benchmark，而不只是更大模型。</p></div>
+      </div>
+      <p>这个视角也解释了论文最反直觉的结果：冻结 ED 但保留语料仍然多样，训练 ED 才让难度适配；因此“内容新颖性”和“课程可学习性”应作为两条控制轴分别度量。把二者混成一个“open-endedness”指标，会掩盖究竟是外部知识在起作用，还是自我博弈真的扩大了能力边界。</p>
+    </section>
+
+    <section id="practice">
+      <h2>下一步最有价值的实验</h2>
+      <ol>
+        <li><strong>做严格等预算矩阵。</strong>对 SPADE、静态 GPT-5.5、RLVE 统一有效训练 token、RA 轨迹数、ED 生成成本、GPU 小时和 checkpoint 选择协议。</li>
+        <li><strong>拆开 0.6 plateau 与 0.4 regret。</strong>比较纯 plateau、纯 regret、不同配比与相同额外 hint rollout 成本，确认 headline 创新到底贡献多少。</li>
+        <li><strong>对 verifier 做 mutation testing。</strong>自动改动无关状态、换工具、跳步骤、重放旧动作，要求成功判据只对语义正确轨迹翻转；reset 已真必须硬拒绝。</li>
+        <li><strong>加入独立 oracle 审计。</strong>从每轮环境中抽样，让不同模型与程序分析器检查 specification–transition–reward 一致性，并报告假阳性、假阴性和可绕过率。</li>
+        <li><strong>报告多 seed 与学习曲线面积。</strong>不要只报 suite-best checkpoint；给末段均值、AUC、方差和预注册选择步，区分稳定进步与偶然峰值。</li>
+        <li><strong>做语料去重与反事实 grounding。</strong>删除 benchmark 近邻，交换无关语料、保留主题但打乱事实，判断增益来自知识迁移、题材多样性还是格式相似。</li>
+        <li><strong>直接测 open-endedness。</strong>不断推出训练时未见的新环境族，观察可学习前沿是否持续外移，而不是只在同一批固定 benchmark 上找最佳点。</li>
+      </ol>
+      <div class="callout info"><b>工程结论</b><p>如果要复用 SPADE 思路，先投入 verifier QA 和预算审计，再投入更强 ED。环境生成器越强，错误奖励被规模化的速度也越快；“能写出程序”从来不是“程序代表了正确任务”的充分条件。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文核验了 arXiv v1 的 73 页正文、图表、理论、完整提示、实现与定性/定量附录，交叉检查官方项目页、当前主分支代码、训练 launcher、模型与数据发布。本文没有重跑 4B–30B 的大规模训练或 benchmark；所有性能、训练动态与环境统计均为发布方报告，表格平均值与差值为独立算术复算。代码单元测试与附录工具环境的判据反例已直接执行。论文刚发布，仓库和数据资产可能继续更新；复现资产判断以本次核验时的公开快照为边界。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments（arXiv v1）</a></li>
+        <li><a href="https://spade-rl.github.io/">SPADE 官方项目页</a></li>
+        <li><a href="https://github.com/spade-rl/spade">SPADE 官方代码仓库</a></li>
+        <li><a href="https://huggingface.co/spade-rl">SPADE 官方 Hugging Face 组织：模型与数据</a></li>
+        <li><a href="https://huggingface.co/datasets/spade-rl/SPADE-Grounding-Corpus-Games-15K">游戏 grounding corpus</a></li>
+        <li><a href="https://huggingface.co/datasets/spade-rl/SPADE-Grounding-Corpus-ToolUse-15K">工具调用 grounding corpus</a></li>
+        <li><a href="https://huggingface.co/datasets/spade-rl/SPADE-Environments-Qwen3-30B-Games">30B 游戏环境发布集</a></li>
+        <li><a href="https://huggingface.co/datasets/spade-rl/SPADE-Environments-ToolUse">工具调用环境发布集</a></li>
+        <li><a href="https://proceedings.mlr.press/v139/dennis21a.html">PAIRED：minimax regret 环境设计前置工作（ICML 2021）</a></li>
+        <li><a href="https://arxiv.org/abs/2506.10490">SPICE：corpus-grounded self-play 前置工作</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
