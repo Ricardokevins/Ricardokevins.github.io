@@ -1,6 +1,6 @@
 # Ricardokevins.github.io Progress
 
-## 2026-08-20 Debate Training / RLAIF 奖励黑客深读（已完成；已验证，待提交）
+## 2026-08-20 Debate Training / RLAIF 奖励黑客深读（已完成；已验证，已推送）
 
 ### 目标、材料边界与关键判断
 
@@ -15,7 +15,7 @@
 - [x] 新增 `notes/paper-reviews/debate-training-reduces-reward-hacking-rlaif.html`，按“原文重建 → 核心判断 → 机制 → 独立复算 → 证据审计 → 术语 → insight → 可证伪条件 → 资料索引”组织；同步新增 `_data/notes.yml` 索引条目。
 - [x] `ruby scripts/validate_notes_index.rb` 通过：301 条索引与 301 个顶层 HTML 一一对应；目标页约 5,490 个可见非空白字符、18 个二/三级标题，唯一 `main`、唯一文末 evidence appendix、2 个展示公式，`git diff --check` 与公开过程噪声扫描无异常。
 - [x] 隔离 Jekyll build 成功，耗时约 6.8 秒；仅出现仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning。独立无头浏览器完成 1440×1000 桌面与 390×844 手机验收：均 HTTP 200、页面宽度严格等于视口宽度，公式正常渲染，无重复 ID、断锚、失败请求、console error、runtime error 或页面级横向溢出；两种视口截图目检未见重叠、截断或不可读表格。
-- [ ] 仅提交本任务笔记、索引条目和本节 Progress hunk，并推送当前分支；保留原工作区其他并行改动。
+- [x] 仅提交本任务笔记、索引条目和本节 Progress hunk；提交 `d57ca9c` 已推送至 `origin/main`。原工作区其他并行改动保持未纳入本任务提交。
 
 ## 2026-08-20 Recirculation × Full-bandwidth Transformer 深读（已完成；已验证；已推送）
 
