@@ -17,7 +17,7 @@
 - [x] 隔离 Jekyll build 成功，耗时约 6.8 秒；仅出现仓库既有的 Faraday 可选依赖提示与 GitHub Metadata 未认证 warning。独立无头浏览器完成 1440×1000 桌面与 390×844 手机验收：均 HTTP 200、页面宽度严格等于视口宽度，公式正常渲染，无重复 ID、断锚、失败请求、console error、runtime error 或页面级横向溢出；两种视口截图目检未见重叠、截断或不可读表格。
 - [x] 仅提交本任务笔记、索引条目和本节 Progress hunk；提交 `d57ca9c` 已推送至 `origin/main`。原工作区其他并行改动保持未纳入本任务提交。
 
-## 2026-08-20 SPADE 自适应可执行环境论文深读（已完成；已验证，待提交）
+## 2026-08-20 SPADE 自适应可执行环境论文深读（已完成；已验证，已推送）
 
 ### 材料覆盖与关键判断
 
@@ -34,7 +34,7 @@
 - [x] 更新 `_data/notes.yml`，新增 Paper Note 入口；保留其他并行笔记、语音手册、题库、脚本、PDF 与用户未提交改动。
 - [x] `ruby scripts/validate_notes_index.rb` 通过：当前快照为 `301 entries, 301 top-level note html files`；目标页约 18,515 个可见非空白字符、13 个主体 section、唯一 H1/main/末节 evidence appendix、无重复 ID、断锚、空 alt、占位符、公开过程噪声或 whitespace 错误，3 张宽表均由局部滚动容器包裹。
 - [x] 隔离 Jekyll 全站构建成功，仅有仓库既有 Faraday 可选依赖与 GitHub Metadata 未认证提示；1440×1000 桌面与 390×844 手机无头浏览器均 HTTP 200、页面宽度等于视口、5 个 MathJax 容器正常，无 console/page error、失败请求、坏图、断锚或页面级横向溢出。手机端三张 800px 表格在 364px 容器内局部滚动；桌面全页与手机末两节截图目检无重叠、截断或不可读区域。
-- [ ] 只选择性提交本任务笔记、索引 hunk 与本节 Progress 增量，推送并核对远端同步。
+- [x] 内容提交 `b13738a` 仅包含本任务笔记、索引 hunk 与本节 Progress 增量，已推送至 `origin/main`；其他并行笔记、语音手册、题库、脚本、PDF、缓存和日志改动均未纳入。
 
 ## 2026-08-20 Recirculation × Full-bandwidth Transformer 深读（已完成；已验证；已推送）
 
