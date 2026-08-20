@@ -1,5 +1,30 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-20 Open-MOPD 多教师能力整合深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Xiuyu Li 的 X 发布帖 `2090320049370439680`；主帖只承担发布导航，实质材料是 arXiv:2608.19098、项目页、官方代码仓库以及 Hugging Face 五个模型与训练/评测数据。
+- 本轮完整读取论文 22 页正文、附录与 TeX 源文件，核对公开实现中多教师硬路由、token-share loss 权重、gap 方向、reward refresh 与定向测试，并复算主表 integration gap 和 RouteRL headroom recovery。
+- 论文训练结果仍属于发布方报告；本轮没有 8×A100 环境做端到端重训。本地 Python 缺少 PyTorch，定向测试在收集阶段因依赖缺失停止，因此静态实现核对与动态复现严格分开。
+
+### 关键判断与完成变更
+
+- 论文最重要的贡献是把“多教师互相干扰”改写成可观测的优化预算问题：数学 / 代码 / IF prompt 约占 39.8% / 39.8% / 20.3%，但有效 token 约占 49.7% / 49.3% / 0.99%；prompt 平衡并不等于更新平衡。
+- 三项机制逐项对应三种失衡：token-share balancing 修复长度偏差；gap-following allocation 让预算追随尚未蒸馏完的 teacher-student gap，并避免倒数权重在第 74 步形成正反馈崩溃；reward refresh 复用 actor forward 更新当前学生项，但不声称修复旧 trajectory 的 state staleness。
+- 独立复算确认 Naive M-OPD 的 headroom recovery 为 `(28.05-25.67)/(32.35-25.67)=35.63%`，Open-MOPD 为 `83.38%`；对 RouteOPD 的整合缺口由 `31.55-28.05=3.50` 降到 `31.55-31.24=0.31`。
+- 对消融口径做了修正：最终 `+3.19` 包含从 `K=1` 切到 `K=4` 的同设置收益；相对匹配的 `K=4` control，share+gap 为 `+1.15`，refresh 再为 `+0.81`，三项机制合计约 `+1.96`。
+- 公开资产确实包括五个可访问模型、数据和实现，但“完全可复现”仍有文档缺口：当前 `scripts/local/mt_opd.sh` 示例默认未打开 target share、gap multiply/alpha 与 reward refresh；公开 eval README 的 AIME/LCB repeats 与论文主表不一致，并引用部分当前仓库不存在的构建入口。
+- 新增 `notes/paper-reviews/open-mopd-capability-budget-balance.html`，按两遍讲解先完整重建论文，再给出证据审计、代码/发布边界、四条独立 insight 与工程建议；同步在 `_data/notes.yml` 增加入口。
+
+### 验证结果与发布边界
+
+- [x] `ruby scripts/validate_notes_index.rb` 通过：297 条索引与 297 个顶层 HTML 一一对应；目标页约 14,234 个可见非空白字符，唯一 `main`、唯一文末 evidence appendix、无公开生成痕迹、本地路径、替换字符、空图片 alt 或占位文本；`git diff --check` 通过。
+- [x] 隔离 Jekyll 构建成功，耗时约 13.1 秒；仅出现仓库既有的 Faraday 可选组件提示与 GitHub Metadata 未认证 warning，不影响静态产物。
+- [x] Playwright CLI wrapper 在本机缺少 `playwright-cli` 可执行文件，改用同一套工作区 Playwright 库与独立 headless 系统 Chrome 完成等价检查，未绑定或操作前台浏览器。
+- [x] 1440×1000 桌面与 390×844 手机均返回 HTTP 200，`scrollWidth == innerWidth`，30 个 MathJax 容器正常渲染；两张宽表在手机端只在各自容器内滚动，无断锚、重复 ID、失败请求、console error 或 runtime error，整页截图目检未见重叠、裁切或竖排压缩。
+- [x] 最终提交仅包含本任务笔记、索引 hunk 和本节 Progress 记录；其他并行任务、题库、PDF、脚本、缓存与日志改动不纳入本任务提交。
+
 ## 2026-08-10 Zhang Xiaojun Podcast #86、#85、#83 source-first 深读（已完成；已验证，已清理，已推送）
 
 ### 材料边界与原文重建
