@@ -1,5 +1,22 @@
 # Ricardokevins.github.io Progress
 
+## 2026-08-20 Recirculation × Full-bandwidth Transformer 深读（已完成；已验证；已推送）
+
+### 任务与材料边界
+
+- [x] 完整核对 arXiv:2608.17981 v1《Recirculation》与 arXiv:2608.08888 v1《Full-bandwidth transformer》的正文、公式、图表、附录和 TeX 源，追踪 Racing Thoughts、residual-stream 框架与相关反馈 Transformer；首版均未给出可直接复现实验的官方代码仓库链接。
+- [x] 纠正核心概念混淆：严格的“上一 token 顶层状态经 GLU 替换下一 token 底层输入”属于 Full-bandwidth Transformer，论文明确要求 multi-pass 训练；training-free 结论属于 Recirculation 的同 token、小系数、范数匹配、保留原目标表示的 residual 混合。
+- [x] 建立内容地图与证据账本：覆盖状态跟踪问题、两种反馈拓扑、Recirculation 层对/系数/归一化扫描、十数据集 perplexity、下游与 adaptive 版本、Full-bandwidth temporal parallelism、prefix mixin、稳定器、训练规模、生成评测、probe、限制与附录。
+
+### 完成变更与当前判断
+
+- [x] 新增 `notes/paper-reviews/recirculation-full-bandwidth-transformer.html` 并更新 `_data/notes.yml`。笔记先按论文顺序完整重建两篇材料，再从共同 residual 坐标系、局部扰动、输入分布偏移与自组合稳定性回答“为什么无需训练”。
+- [x] 核心判断：Recirculation 能免训练不是因为任意高层激活都能当底层输入，而是因为 residual stream 跨层近似共享语义基底，并把干预限制为经范数匹配的小幅 residual correction；Full-bandwidth 把反馈变成强制的新 layer-0 输入接口，因此必须训练新增 gate、状态可复用性和长程稳定性。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：301 条索引与 301 个顶层 HTML 一一对应；目标页约 11,164 个可见非空白字符，唯一 `title` / `H1` / `main` / evidence appendix，无重复 ID、公式裸标签、占位文本、公开过程噪声或未包裹表格；`git diff --check` 通过。
+- [x] 使用隔离输出目录完成 Jekyll build；仅出现仓库既有的 Faraday 可选组件与 GitHub Metadata 未认证提示，静态产物成功生成。
+- [x] 使用独立 headless 系统 Chrome 完成 1440×1000 桌面和 390×844 手机整页渲染。两种视口均等待 MathJax 成功，HAR 各 7 个请求且无 4xx/5xx，截图目检无标题、公式、表格、卡片错位或页面级横向溢出。
+- [x] 最终提交仅包含本任务笔记、共享索引与 Progress 中的本任务 hunk；保留所有并行任务、题库、语音手册、PDF、脚本、缓存和日志改动。
+
 ## 2026-08-20 Open-MOPD 多教师能力整合深读
 
 ### 任务与材料边界

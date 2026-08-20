@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recirculation × Full-bandwidth Transformer：高层激活回灌为何能工作</title>
+  <script>
+    window.MathJax={loader:{load:['[tex]/ams','[tex]/noerrors','[tex]/noundefined']},tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEscapes:true,packages:{'[+]':['ams','noerrors','noundefined']}},chtml:{matchFontHeight:false,mtextInheritFont:true,linebreaks:{automatic:true,width:'container'}},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root{color-scheme:light;--paper:#f4f0e8;--surface:#fffdf8;--ink:#20242a;--muted:#5f686f;--line:#dcd6c8;--accent:#236b63;--soft:#e9f4f1;--warn:#a4512b;--warn-soft:#fbefe6;--shadow:0 16px 44px rgba(31,37,40,.08);--radius:10px;--max:1100px;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;--serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--paper)}body{margin:0;color:var(--ink);background:linear-gradient(90deg,rgba(35,107,99,.035) 1px,transparent 1px),var(--paper);background-size:44px 44px;font-family:var(--sans);line-height:1.78}a{color:var(--accent);text-underline-offset:3px}header,main{width:min(var(--max),calc(100% - 32px));margin:0 auto}header{padding:clamp(36px,6vw,76px) 0 26px}.kicker{margin-bottom:12px;color:var(--accent);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase}h1{max-width:980px;margin:0;font:760 clamp(32px,5vw,58px)/1.12 var(--serif)}.lede{max-width:900px;margin:18px 0 0;color:var(--muted);font-size:clamp(17px,2vw,20px)}main{display:grid;gap:30px;padding-bottom:70px}section{padding-top:30px;border-top:1px solid var(--line)}h2,h3{margin:0 0 12px;line-height:1.28}h2{font-size:clamp(24px,3.2vw,34px)}h3{margin-top:24px;color:var(--accent);font-size:20px}p{margin:12px 0}ul,ol{padding-left:1.35rem}li{margin:7px 0}.grid-2,.grid-3{display:grid;gap:14px;margin:18px 0}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{min-width:0;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.card h3{margin:0 0 8px;font-size:17px}.card p{margin:0;color:var(--muted);font-size:14.5px}.callout{margin:18px 0;padding:14px 18px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--radius);background:var(--soft)}.callout>b{display:block;margin-bottom:6px;color:var(--accent)}.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}.callout.warn>b{color:var(--warn)}.math-display{margin:16px 0;padding:12px 14px;max-width:100%;overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}.table-wrap{margin:16px 0;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}table{width:100%;min-width:700px;border-collapse:collapse;font-size:14.5px}th,td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--soft)}tr:nth-child(even) td{background:rgba(0,0,0,.015)}.def-list{display:grid;gap:10px;margin:18px 0}.def-list>div{display:grid;grid-template-columns:minmax(150px,.26fr) minmax(0,1fr);gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}.def-list b{color:var(--accent)}.small{color:var(--muted);font-size:14px}@media(max-width:760px){header,main{width:min(100% - 24px,var(--max))}.grid-2,.grid-3{grid-template-columns:1fr}.def-list>div{grid-template-columns:1fr;gap:6px}}
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+  <header id="top">
+    <div class="kicker">Paper Review · Recurrent Transformer · Activation Feedback</div>
+    <h1>高层激活回灌为什么能工作，真的不需要训练吗？</h1>
+    <p class="lede">对读 Recirculation（arXiv:2608.17981）与 Full-bandwidth Transformer（arXiv:2608.08888）：两者都把深层状态送回浅层，但一个是在既有 residual stream 上做小幅、保守的同 token 混合，另一个为下一 token 建立新的门控输入接口。相似的箭头，意味着不同的分布偏移与训练要求。</p>
+  </header>
+  <main>
+    <section id="source-reconstruction">
+      <h2>第一遍：先把两篇论文完整讲清楚</h2>
+      <h3>共同起点：过去的计算“还在”，但深度被冻结了</h3>
+      <p>两篇论文都从同一个计算拓扑问题出发。标准 decoder Transformer 在 token 轴上有很宽的访问能力：新 token 的每一层都能通过 KV cache 读取过去位置同层以下已经缓存的表示。但它不能把过去位置的高层结论送回当前 token 的底层。假设一个 24 层模型在第 20 层才把 <em>bank</em> 判断为“河岸”，后续 token 的第 1 层不能直接读取这个第 20 层结论，只能重新从较浅的历史特征开始加工。最顶层输出甚至不进入标准 KV cache；它通常只经过 LM head 压成离散 token，再由 token embedding 回到底层。</p>
+      <p>Full-bandwidth Transformer 特别强调：反馈不会增加信息论意义上的新信息，因为高层状态仍是过去 token 的确定函数。它增加的是<strong>计算可达性</strong>：已经经过整栈加工的摘要可以重新获得从底层到顶层的完整深度预算。Recirculation 则把同一问题表述为状态跟踪：如果关键语义只在深层才稳定，后续浅层不能及时使用它，就可能出现语义翻转、对话不一致与工作记忆失败。</p>
+
+      <h3>2608.17981：Recirculation 如何在现成模型上做“小泄漏”</h3>
+      <p>Recirculation 的动机来自 Racing Thoughts 的 activation patching 实验。那项工作先定位需要上下文消歧的关键 token，再把该 token 深层的、已经消歧的表示替换到较浅层，报告 contextualization error 下降约 60%。新论文问：如果不知道哪个 token 最关键，也不做强替换，而是在每个位置只把一小部分深层激活泄漏到浅层，会不会让现成模型普遍受益？</p>
+      <p>它选择源层 (s) 与较浅的目标层 (d)，对同一 token 的 residual stream 做混合。为避免深层向量范数更大而淹没目标表示，先把源向量缩放到目标向量的 (L_2) 范数，再用小系数加入：</p>
+      <div class="math-display">\[
+        z'_{t,d}=\alpha\frac{\lVert z_{t,d}\rVert_2}{\lVert z_{t,s}\rVert_2}z_{t,s}+\beta z_{t,d}.
+      \]</div>
+      <p>基础版本常用 (alpha) 约 0.07–0.15；1B 模型多用凸组合 (eta=1-alpha)，4B/12B 的最佳设置却常为非凸残差式 (eta=1)。这已经提示它不是一条普适定律，而是受架构、层归一化与训练过程影响的干预。</p>
+      <p>Recirculation 也不同于普通“把一段层再跑一遍”的 looped Transformer。looping 只沿深度增加计算；Recirculation 把深度循环与 token 步推进交错起来：正常分支给出当前输出，另一个并行分支把当前 token 的深层状态混回浅层，形成供下一步继续使用的状态轨迹。论文只实验每个位置一次额外 recirculation。代价是 prefill 必须按 token 顺序传播状态；自回归生成本来就是串行的，两份 stack 可以在硬件上并行，因此作者称生成阶段几乎不增加延迟。</p>
+      <p>作者先在 Gemma3 1B 的 arXiv、PG19、C4 子集上扫 (alpha)、源层和目标层，再固定层对评测十个语言建模数据集。Gemma3 1B/4B/12B 在九个数据集上大多降低 perplexity，Lambada 是例外；较长文档收益更明显。跨 Ministral3、Pythia、Qwen3 与 Phi2 时，热图仍出现可改善区域，但幅度通常不到 0.5%，远小于 Gemma 的约 5% 调参集收益。作者因此把“可接受小回灌”称为较普遍现象，却承认大幅收益可能是 Gemma/Peri-LN 特性。</p>
+      <p>温度消融排除了一个简单解释：对 PG19，单独调温降低约 8.48% perplexity，基础 recirculation 降低约 14.21%，两者合用约 19.55%，近似可加。逐 token 分析发现早期位置在 1B 上可能受损，动词、形容词和副词的收益大于数字、限定词和代词，影响随距离呈长尾衰减。这些结果与“传播上下文化状态”相容，但还不是对内部 belief state 的直接因果证明。</p>
+      <p>下游结果并不整齐。简单 instruction following 的错误率下降，Racing Thoughts 在 1B/4B 多数子任务改善，但 12B 的两个子任务反而变差；八个单 token benchmark 只有很小的正负变化。GSM8K 的生成式推理更明显：基础 recirculation 同时改善 pass@1 与 pass@128。随后作者训练一个小 MLP，根据每个 token 的源/目标激活生成逐维 (oldsymbol\alpha,oldsymbol\beta)，冻结 Gemma 权重；这个 adaptive recirculation 用很小训练集将九数据集平均 perplexity 降幅从 8.5% 提到 23.0%。但它已经不是严格“无训练”：原模型权重不训练，新增混合器仍以 BPTT 学了 100 steps，而且下游效果依赖训练数据。</p>
+
+      <h3>2608.08888：Full-bandwidth Transformer 为什么必须训练</h3>
+      <p>Full-bandwidth Transformer 做得更激进。生成 token (t) 后，它拿上一位置顶层状态 (h^L_{t-1}) 与当前 token embedding (e_t) 进入 gated linear unit：</p>
+      <div class="math-display">\[
+        u_t=(W_Uh^L_{t-1})\odot\sigma(W_Ge_t),\qquad h^L_t=f_\theta(u_t;\mathrm{KV}_{\lt t}).
+      \]</div>
+      <p>这里不是把深层状态小幅加到模型熟悉的浅层 residual 上，而是用 (u_t) <strong>替换当前 token 的底层输入</strong>。顶层状态走 value path，token embedding 只当门。作者刻意不用 (e_t+Wh^L_{t-1})，因为模型可能关闭状态支路、退回普通 token 输入；现在若丢弃状态，连输入本身也没有了，模型被迫使用反馈通道。</p>
+      <p>这正是为什么它不能直接套到任意 checkpoint。标准预训练的 layer 0 只见过 embedding 分布，从未见过 (u_t)；(W_U,W_G) 也是新增参数。论文原文明确说，预训练模型没有在输入槽见过隐藏状态，latent feedback 不能在推理时直接打开。作者为此设计 multi-pass teacher forcing：第一遍正常并行处理整段 token；第二遍把第一遍每个位置的顶层状态右移一位，与真实 token embedding 融合，再并行跑整段；第 (k) 遍继续使用第 (k-1) 遍状态。每遍都做 next-token loss，后续 pass 的梯度不 detach，因此高层状态被训练成可复用输入。</p>
+      <p>训练还需要 prefix mixin、范数稳定和噪声正则。prefix mixin 随机保留普通 embedding 前缀，只在后缀使用融合输入，模拟“prompt 普通 prefill、生成开启反馈”的边界。深度缩放、RMSNorm、embedding/head 权重绑定让输入基底和状态尺度更相容；给反馈状态加噪声，使重复自组合对局部偏移更稳。只用 1/2-pass 训练时，继续多 pass 会发散；在 1B、200B-token 实验里加入仅 3% 的 3-pass batch 后，验证损失到 30 pass 保持平稳，附录报告到 1000 pass 仍稳定。它支持“少量三次自组合监督诱导稳定映射”的解释，但不是数学收缩证明。</p>
+      <p>作者训练 1B 模型到 400B tokens。普通 prefill、生成反馈的 soft decoding，以及额外一次融合 prefill 的 fused decoding 分别承担不同成本。反馈每 token 只多两个 (D\times D) 矩阵乘，作者报告小于 1%；fused 模式把 prefill 约翻倍。基础模型上，soft decoding 在 GSM8K、MATH-500、HumanEval、MBPP 都优于同一权重的 standard decoding；指令微调后多数收益保留。线性 probe 还显示，一次反馈后，synthetic completion/memory 的全局状态在 layer 0 可达 99.6%/100% 可解码；不过可线性读出只证明信息存在，不证明模型因果使用了它。</p>
+      <p>局限也很直接：实验只到 1B 参数，feedback schedule 依赖启发式；推理更简短的现象在 instruction tuning 后消失。公开首版未给出可直接复现整套训练的官方代码仓库链接，因此 vLLM 兼容性和完整成本目前主要是作者报告。</p>
+      <p class="small">以上是两篇论文的原文重建。下面才进入针对“为什么能免训练”的机制判断与证据审计。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>第二遍：一句话回答你的问题</h2>
+      <div class="callout"><b>严格答案</b><p><strong>“上一 token 顶层状态作为下一 token 底层输入”的 Full-bandwidth Transformer 并不能免训练；能在现成模型上工作的是 Recirculation 那个更保守的变体。</strong>它成功的条件是：同一 token 的不同 residual 层大致共享特征坐标系，只注入一个经过范数匹配的小扰动，同时保留模型原本熟悉的目标层表示。它更像 self-steering / residual correction，不是把顶层状态硬当 token embedding。</p></div>
+      <div class="grid-3">
+        <div class="card"><h3>坐标系近似共用</h3><p>Residual stream 是各层共同读写的黑板。深层发现的语义方向，浅层往往仍能读懂。</p></div>
+        <div class="card"><h3>扰动足够小</h3><p>范数匹配、(alpha\ll1) 与保留 (z_d) 把输入留在局部邻域；模型主要走原电路。</p></div>
+        <div class="card"><h3>层对由模型选择</h3><p>作者不是声称任意回灌有效，而是扫描 checkpoint 已经“接受”的连接与强度。</p></div>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>从一个两维小例子理解“无需训练”</h2>
+      <p>假设 residual stream 的两个方向粗略对应“金融机构”和“河岸”。浅层读到 <em>bank</em> 时是歧义向量 (z_d=(0.5,0.5))；深层结合 fishing context 后变成 (z_s=(0.1,0.9))。若强行把 (z_s) 当下一 token embedding，底层会遇到从没见过的输入；但只做 10% 混合：</p>
+      <div class="math-display">\[z'=0.9z_d+0.1z_s=(0.46,0.54).\]</div>
+      <p>模型仍看到非常接近原浅层表示的向量，只是“河岸”方向略被放大。后续 attention/MLP 本来就学会响应这些 residual 方向，所以不必重训所有权重。真实模型当然不是两个可解释神经元，特征也可能 superposition；这个例子只说明局部扰动逻辑。</p>
+      <p>关键不是“高层和底层 shape 都是 (D)，所以可以相加”。shape 相同只是必要条件。真正需要的是<strong>语义基底兼容 + 幅度兼容 + 局部扰动</strong>。Recirculation 用实验扫描和归一化满足后两项，并借 residual 架构押注第一项；Full-bandwidth 不押注现成兼容性，而是显式学习 gate 与整个模型如何消费新输入。</p>
+    </section>
+
+    <section id="why-alignment">
+      <h2>为什么 residual stream 会跨层近似对齐</h2>
+      <p>Pre-norm Transformer 的 block 大致做 (x_{\ell+1}=x_\ell+F_\ell(x_\ell))。原状态沿 identity path 保留，各层把新特征写回同一个 (D) 维通道；最终 unembedding 又直接读取这条通道。于是“某方向对输出意味着什么”不会在每层都任意旋转一次，否则下一层必须不断学习逆旋转，残差相加也失去稳定语义。</p>
+      <ol>
+        <li><strong>架构理由：</strong>恒等残差路径让所有层在可相加的共同空间通信。</li>
+        <li><strong>优化理由：</strong>输入 embedding 到 output head 的近似共享基底与逐层小更新，鼓励渐进变换而非任意换坐标。</li>
+        <li><strong>经验理由：</strong>Patchscopes、activation steering 与平滑的 source–destination 热图说明，某些跨层表示可直接解释或干预行为。</li>
+      </ol>
+      <div class="callout warn"><b>共同 residual stream 不等于所有层完全同义</b><p>LayerNorm 会改变尺度，功能在深度上分工，方向也会被重编码。论文观察到回灌到 layer 0 效果差、许多层对会伤害 perplexity、Gemma 外模型收益很小。这些负例说明跨层对齐只是局部、统计性的 affordance，不是严格不变量。</p></div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据审计：哪些结果真的支持这个解释</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>证据</th><th>支持什么</th><th>不能推出什么</th></tr></thead>
+        <tbody>
+          <tr><td>Recirculation 层对热图平滑</td><td>不是单个 lucky pair；某些小幅跨层混合有结构性容忍</td><td>不能证明特征逐维完全对齐或形成显式 belief state</td></tr>
+          <tr><td>五个模型族出现改善区域</td><td>现象并非 Gemma 独有</td><td>其他家族幅度常不到 0.5%，大收益未普适</td></tr>
+          <tr><td>调温与回灌收益近似可加</td><td>改善不只是统一锐化/平滑 logits</td><td>仍可能有别的校准式替代解释</td></tr>
+          <tr><td>token 位置、词性与 lag 有系统差异</td><td>与传播上下文状态的故事相容</td><td>相关模式不等于可解释状态变量</td></tr>
+          <tr><td>Full-bandwidth layer-0 probe 近 100%</td><td>反馈确实把全局状态送到浅层</td><td>probe 可读不代表自然任务中因果使用</td></tr>
+          <tr><td>2-pass 外推发散，加入 3% 三 pass 后稳定</td><td>强反馈接口需要学习自组合稳定性</td><td>有限实验不是收缩映射或任意长稳定的证明</td></tr>
+        </tbody>
+      </table></div>
+      <p>Recirculation 的最强证据是语言建模规模：十个数据集包含数百万到上亿 token，九个数据集跨三个 Gemma 尺寸大多改善。但 headline 的“23% perplexity / 21% GSM8K”来自 adaptive 版本；后者训练了新增 MLP，而且 MMLU 直接用部分 test split 训练时存在分布重叠，不能与纯 training-free 结果混报。</p>
+    </section>
+
+    <section id="limits">
+      <h2>边界、失败案例与替代解释</h2>
+      <ul>
+        <li><strong>这是调参后的 training-free，不是零选择成本。</strong>基础版本不更新权重，但需要 tuning tokens 选择层对、系数、归一化和 early-token ramp。</li>
+        <li><strong>生成“几乎无延迟”不等于端到端免费。</strong>两份 stack 是否并行取决于 batch、显存与服务利用率；长 prompt 的顺序 prefill 是明确瓶颈。</li>
+        <li><strong>Perplexity 下降不必等价于长期状态机。</strong>收益随 lag 衰减，也可解释为上下文相关 residual correction。</li>
+        <li><strong>更强模型不一定更需要回灌。</strong>12B 在 Racing Thoughts 上有倒退；基线已稳定时，额外 steering 可能过度修正。</li>
+        <li><strong>Full-bandwidth 还不是完整等算力比较。</strong>pass mixture、tokens 与 batch 不同；数据效率结论应视为发布方报告，而非 scaling law。</li>
+        <li><strong>公开代码证据不足。</strong>两篇 arXiv v1 均未给官方完整仓库链接，本轮无法独立重跑；性能数字属于作者报告。</li>
+      </ul>
+    </section>
+
+    <section id="terms">
+      <h2>术语与容易混淆的边界</h2>
+      <div class="def-list">
+        <div><b>Residual stream</b><span>贯穿各层、由 attention/MLP block 读写并残差相加的共享通道；“黑板”不代表每维都有单一语义。</span></div>
+        <div><b>Activation patching</b><span>替换或注入某层/位置激活并观察输出变化的因果干预；结果依赖 patch 位置与强度。</span></div>
+        <div><b>Recirculation</b><span>把同一 token 的深层 residual 小幅混回浅层，让状态跨 token 步更新；基础版本不更新参数。</span></div>
+        <div><b>Looped Transformer</b><span>重复执行一层或一段层以增加有效深度；额外循环通常意味着额外 Transformer FLOPs。</span></div>
+        <div><b>Latent feedback</b><span>把上一 token 顶层状态与当前 embedding 门控融合成 layer-0 输入；需要专门训练。</span></div>
+        <div><b>Depth-frozen</b><span>历史激活虽在 KV cache，却只能被更高层读取，无法回到底层再获完整深度预算。</span></div>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 insight：真正的新 scaling axis 是“跨 token 复用深度”</h2>
+      <p>普通 Transformer 消耗完一次前向的深度后，几乎只把一个 token 带到下一步；CoT 用更多可见 token 购买串行深度；looped Transformer 多跑几遍 stack；这两篇工作则尝试把已经支付过的深层计算变成下一步可继续加工的状态。它们探索的是：<strong>不是增加参数或唯一训练 token，而是提高每份深层表示被后续计算复用的次数。</strong></p>
+      <p>两篇论文组合给出一个设计原则：反馈强度决定训练要求。若只在共同 residual 坐标系里做小幅、保留原路径的修正，可以先做 training-free architecture search，让 checkpoint 暴露它能容忍的连接；若反馈成为强制的新输入接口，就必须训练输入适配、状态可复用性与长期自组合稳定性。<strong>training-free 不是因为 recurrence 天生兼容 Transformer，而是因为干预被限制在模型局部线性化仍有效的区域。</strong></p>
+      <p>最值得补的四类实验是：比较 identity、小旋转与随机正交旋转以直接检验跨层基底；分别回灌任务状态子空间、正交补和随机方向做因果 mediation；画 (alpha) 从 0 到失效点的剂量反应与分布距离；报告同预算 wall-clock/显存/吞吐，并测试 blockwise recirculation 的长 prefill 权衡。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>两篇 arXiv v1 的正文、公式、图表与附录均已核对，并追踪 Racing Thoughts 与 residual-stream 框架。论文发布于 2026-08，仍是首版，结论和代码状态可能更新。性能、延迟与训练稳定性按作者报告处理；本笔记未重训模型，也未发现首版提供可直接复现实验的官方代码仓库。独立分析明确标为推断或建议。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2608.17981">Mozer et al. (2026): Recirculation</a></li>
+        <li><a href="https://arxiv.org/abs/2608.08888">Wang et al. (2026): Full-bandwidth Transformer</a></li>
+        <li><a href="https://aclanthology.org/2025.naacl-long.155/">Lepori et al. (NAACL 2025): Racing Thoughts</a></li>
+        <li><a href="https://transformer-circuits.pub/2021/framework/index.html">Elhage et al. (2021): A Mathematical Framework for Transformer Circuits</a></li>
+        <li><a href="https://arxiv.org/abs/2604.17121">Mozer et al. (2026): The Topological Trouble With Transformers</a></li>
+        <li><a href="https://arxiv.org/abs/2002.09402">Fan et al. (2020): Feedback Memory</a></li>
+        <li><a href="https://arxiv.org/abs/2605.26797">Huang et al. (2026): Latent Recurrent Transformer</a></li>
+        <li><a href="https://arxiv.org/abs/2607.15178">Cai et al. (2026): T²MLR</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
