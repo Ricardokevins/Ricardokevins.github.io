@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Internalized Visual Thinking：把视觉 CoT 从推理时像素生成搬到训练时</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f0e8;
+      --surface: #fffdf8;
+      --ink: #20262a;
+      --muted: #5f696d;
+      --line: #d9d5ca;
+      --accent: #087a67;
+      --accent-soft: #e8f5f1;
+      --orange: #c65e22;
+      --orange-soft: #fff1e7;
+      --blue-soft: #edf3f8;
+      --shadow: 0 14px 38px rgba(31, 42, 43, .08);
+      --radius: 12px;
+      --max: 1080px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(8, 122, 103, .035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120, 105, 85, .025) 1px, transparent 1px),
+        var(--paper);
+      background-size: 48px 48px;
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main, footer { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 7vw, 76px) 0 28px; }
+    .kicker { color: var(--accent); font-weight: 800; font-size: 13px; letter-spacing: .045em; text-transform: uppercase; }
+    h1 { max-width: 950px; margin: 12px 0 0; font: 760 clamp(34px, 5vw, 60px)/1.12 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    .meta { margin-top: 16px; color: var(--muted); font-size: 14px; }
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); }
+    h2, h3 { line-height: 1.28; }
+    h2 { margin: 0 0 14px; font-size: clamp(25px, 3vw, 35px); }
+    h3 { margin: 26px 0 10px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #e9e5dc; color: #7c2d12; font-family: var(--mono); }
+    .toc { padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 253, 248, .82); }
+    .toc b { display: block; margin-bottom: 8px; }
+    .toc-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+    .toc a { font-size: 14px; }
+    .callout { margin: 20px 0; padding: 16px 18px; border: 1px solid #b9ddd5; border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout.warn { border-color: #efd2bc; border-left-color: var(--orange); background: var(--orange-soft); }
+    .callout.info { border-color: #cad9e5; border-left-color: #527a98; background: var(--blue-soft); }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.warn > b { color: var(--orange); }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3 { margin: 0 0 8px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .pipeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+    .step { position: relative; min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .step b { display: block; color: var(--accent); }
+    .step:not(:last-child)::after { content: "→"; position: absolute; right: -12px; top: 42%; z-index: 2; color: var(--orange); font-weight: 800; }
+    figure { margin: 24px 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    img { display: block; max-width: 100%; height: auto; border-radius: 7px; }
+    figcaption { margin-top: 9px; color: var(--muted); font-size: 14px; }
+    .math-display { max-width: 100%; margin: 17px 0; padding: 12px 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-wrap { max-width: 100%; margin: 18px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); }
+    tr:last-child td { border-bottom: 0; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .small { color: var(--muted); font-size: 14px; }
+    @media (max-width: 780px) {
+      header, main, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3, .pipeline { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -18px; }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Review · Proactive Video Reasoning · arXiv:2608.15869</div>
+    <h1>Internalized Visual Thinking：把视觉 CoT 从推理时像素生成搬到训练时</h1>
+    <p class="lede">Arnab Mondal 分享的这项 Apple 研究追问：视频模型若要预判下一秒，是否必须先“画出未来”再作答？作者提出 IVT，在训练时让模型预测未来帧的潜表示，推理时则直接输出文字答案。</p>
+    <p class="meta">Xiaoyu Zhu、Xinke Deng、Suresh Taddewadikar、Arnab Kumar Mondal、Zhongyu Jiang、Ian Fasel、Joerg Liebelt · 2026</p>
+  </header>
+
+  <main>
+    <nav class="toc" aria-label="页面目录">
+      <b>阅读路线</b>
+      <div class="toc-links">
+        <a href="#source-reconstruction">原文完整讲解</a>
+        <a href="#takeaway">核心判断</a>
+        <a href="#mechanism">机制与公式</a>
+        <a href="#experiments">实验与消融</a>
+        <a href="#evidence">证据审计</a>
+        <a href="#insight">独立 insight</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </nav>
+
+    <section id="source-reconstruction">
+      <h2>第一遍：先把帖子、博客与论文讲完整</h2>
+      <p>Arnab Mondal 是这篇论文的共同作者。他在 2026 年 8 月 18 日的帖子里把工作概括为一种比显式视觉思维链更强、更快的主动视频推理方案，并链接到第一作者 Xiaoyu Zhu 的技术博客。Xiaoyu 的发布帖把问题说得更直接：模型能不能在训练时学会“视觉地思考”，却在推理时不生成这些视觉思考？这不是一般的视频问答，而是要求模型在证据还没有完全出现时提前判断。</p>
+
+      <h3>主动视频推理：答案必须在事件结束前到达</h3>
+      <p>论文区分两类任务。<strong>Early-event prediction（EEP）</strong> 是动作已经开始，但只看到动作进度的 10%、30%、50% 或 70%，模型要提前认出“正在发生什么”。例如一只手刚拿起杯子、尚未完成倾倒，模型就要识别动作。<strong>Next-event prediction（NEP）</strong> 更难：目标动作还没开始，观察至少在下一事件前一秒结束，模型必须根据物体、运动、手与物体关系以及场景意图猜“接下来会发生什么”。</p>
+      <p>因此，延迟不是附属指标。如果一个模型花六秒生成中间图像，而要预判的动作两秒后就发生，再准确的答案也失去主动价值。作者真正要优化的是<strong>质量—时延前沿</strong>，不是单独追求文本分数。</p>
+
+      <h3>为什么显式 Visual CoT 既有用又昂贵</h3>
+      <p>作者采用 Zebra-CoT 风格的预测式视觉思维链作为对照：先根据已观察视频生成一张未来帧，再用视觉编码器把这张图重新编码成 token，最后生成文字答案。它的直觉很合理——位置、接触、朝向和物体状态很难用短文本完整表达，一张未来图可以同时保存这些信息。但它把一个密集图像生成任务塞进每次请求，还会把错误的“想象图”重新喂给答案分支。</p>
+      <p>论文用一个 oracle 实验把“未来视觉信息是否有价值”和“模型能否把未来画对”拆开：不让模型生成未来帧，直接把真实未来帧送给相同 checkpoint。结果真实未来帧在 EEP 与 NEP 的所有指标上都明显更好；自生成未来帧只在 EEP 稳定有益，在 NEP 的 ROUGE-L、BERTScore、CIDEr 上反而略差于直接回答。作者由此判断：问题不在于未来视觉上下文无用，而在于把它外化为像素既慢又不够可靠。</p>
+
+      <figure>
+        <img src="internalized-visual-thinking-proactive-video-reasoning-assets/fig1-paradigms.png" alt="Answer-Only SFT、显式 Visual CoT 与 Internalized Visual Thinking 的训练和推理路径对比">
+        <figcaption>论文方法总览：Visual CoT 在训练和推理时都生成像素未来；IVT 只在训练时预测未来 embedding，推理路径退化为直接回答。</figcaption>
+      </figure>
+
+      <h3>IVT 的转向：不画未来，只让答案表征必须包含未来</h3>
+      <p>Internalized Visual Thinking（IVT）的输入仍是部分视频和文字提示。训练时，同一个模型同时做两件事：一条分支预测文本答案；另一条分支预测观测边界之后若干未来帧的潜表示。未来帧经过固定或可适配的目标编码器变成 latent tokens，预测分支只需逼近这些 token，不必真的解码出图片。两类损失共同更新共享模型，使“用于回答的内部状态”也承受预测视觉变化的约束。</p>
+      <p>推理时，未来预测位置、目标编码器和图像解码步骤全部移除，模型只执行“部分视频 → 文字答案”。所以 IVT 的价值不是在测试时做了一个更便宜的 latent rollout；它根本不 rollout，而是把 world-modeling 当成训练时表征约束。这一点与仍在测试时迭代 latent state 的方法不同。</p>
+
+      <h3>作者逐项寻找真正有效的训练配方</h3>
+      <p>第一，目标表示很重要。作者比较 Flux-VAE、DINOv2、可适配 SigLIP2 和冻结 SigLIP2。最稳定的不是最“语义化”的特征，而是保留外观与空间细节、面向重建的 Flux-VAE latent；DINOv2 也有帮助，但弱一些。作者博客还报告 V-JEPA 2.1 特征没有得到清晰提升，不过这项负结果尚未写入当前 arXiv v1。</p>
+      <p>第二，预测任务不能只当偶尔出现的 regularizer。理解样本与预测样本按 3:1、5:1 混合时，文本任务早期进步更快，却在 12k–18k 步附近停滞；1:1 的平衡配比起步较慢，20k 步时四项指标最好。这说明下游答案监督会覆盖预测信号，必须持续给后者足够更新。</p>
+      <p>第三，目标表示与损失要一起选。DINOv2 用直接回归显著优于 rectified flow；Flux-VAE 上两者差距较小。虽然 BAGEL 原本在 VAE 空间用 flow 做图像生成，但“原生成模型怎样训练”并不自动等于“怎样把未来信息迁移给 reasoner 最好”。</p>
+      <p>第四，先学预测、再只做文本微调的两阶段课程失败了。它在四项指标上甚至低于从未学习预测的 Answer-Only SFT；持续联合训练则全部领先。作者据此强调，收益不是一次性预训练带来的初始化红利，而是两个目标在整个后训练阶段保持耦合。</p>
+      <p>第五，共享程度与预测跨度互相作用。Dense 让理解 token 与预测 token 共用 decoder，短跨度 (H=1,2) 时转移最强；MoE 为两类 token 使用不同 FFN expert，短跨度峰值较低，但随着未来帧数量增加更稳定。作者的解释是：近未来较确定，共享梯度直接塑造语言表征有利；未来越远、分支越多，不确定的预测信号越可能污染答案路径，部分隔离反而更稳。</p>
+
+      <h3>主结果、迁移结果与作者自己的限制</h3>
+      <p>主实验在 Ego-Exo4D、Ego4D 和 EPIC-KITCHENS-100 上分别做 EEP 与 NEP，共六个设置。模型从 BAGEL 系列初始化，训练 20k 步；EEP 用 top-1，NEP 用 top-5，评价 ROUGE-L、BERTScore、METEOR 与 CIDEr。相对于 matched Answer-Only SFT，IVT 在六个设置的四项指标上全部提高；相对于 Visual CoT，IVT 在四个设置领先，尤其赢下全部三个 NEP 设置。Visual CoT 仍在 Ego4D 和 EPIC-KITCHENS-100 的 EEP 上更强，说明显式生成在已经开始、近未来较可预测的动作上没有被完全取代。</p>
+      <p>延迟测试使用单张 NVIDIA B200、bf16、batch size 1，每个设置 200 个样本。六个设置平均下来，Answer-Only SFT 为 1.20 秒，IVT 为 1.22 秒，Visual CoT 为 6.56 秒；P95 分别约 1.92、1.77 和 7.92 秒。附录还把在 Ego-Exo4D 上训练的模型零微调迁移到 Charades：Dense IVT 得到 73.2% accuracy，高于 Answer-Only 的 71.7%、MoE IVT 的 71.9% 和 Visual CoT 的 58.2%，提供了一条有限但有价值的分布外证据。</p>
+      <p>作者没有把结论扩展到所有视觉推理。博客明确承认：一个确定 latent 很难覆盖多个合理未来；更远的未来依赖目标、程序、记忆和世界知识；三跳未来实验没有看到 IVT 相对 answer-only 的清晰收益。论文也只在 BAGEL 系列做受控主比较，并承认更强基座是否仍受益尚待验证。作者最后提出一个连续谱：简单样本完全不 rollout，困难样本只做少量压缩 latent rollout，而不是每次都生成完整像素图。</p>
+      <p class="small">以上是材料自身的论证顺序与作者结论。下面开始本文的证据审计和独立判断。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>第二遍：核心判断</h2>
+      <div class="callout">
+        <b>一句话判断</b>
+        <p>IVT 最可信的新意不是“模型学会了像人一样在脑中看图”，而是证明了一条实用的 amortization 路线：把每次请求都要支付的像素级未来生成，改成训练阶段一次性支付的预测表征约束；在短时域视频预判上，这能保住未来信息的大部分收益，同时消除约 5.4 倍的推理时延。</p>
+      </div>
+      <div class="grid-3">
+        <div class="card"><h3>真正贡献</h3><p>对 Visual CoT 做 oracle 诊断，并系统搜索 target、loss、配比、课程、架构与 horizon 的耦合条件。</p></div>
+        <div class="card"><h3>不是新发明的部分</h3><p>next-embedding prediction、JEPA、VAE latent、联合辅助损失、Dense/MoE 都有前史；新意在主动视频推理中的组合和受控比较。</p></div>
+        <div class="card"><h3>最大未决问题</h3><p>没有公开代码、训练成本和多 seed 方差；长时域失败，强基座、真实流式系统与多未来校准尚未验证。</p></div>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制与公式：梯度如何把“未来”压进回答路径</h2>
+      <p>设 (X_{\le t}=(I_1,\ldots,I_t)) 为看到的部分视频，(q) 为提示，(y=(y_1,\ldots,y_T)) 为文字答案。普通 SFT 只优化答案 token 的负对数似然：</p>
+      <div class="math-display">\[
+        \mathcal{L}_{\text{text}}
+        =-\frac{1}{T}\sum_{j=1}^{T}\log p_\theta(y_j\mid y_{\lt j},X_{\le t},q).
+      \]</div>
+      <p>IVT 额外选取未来偏移集合 (\mathcal H\)。目标编码器把未来帧 (I_{t+h}) 编成 (Z_h\in\mathbb{R}^{M\times d})，模型从当前上下文预测 (\widehat Z_h)。最直观的直接回归损失是：</p>
+      <div class="math-display">\[
+        \mathcal{L}_{\text{reg}}
+        =\frac{1}{|\mathcal H|Md}\sum_{h\in\mathcal H}
+        \left\|\widehat Z_h-\operatorname{sg}(Z_h)\right\|_F^2,
+        \qquad
+        \mathcal{L}_{\text{IVT}}=\mathcal{L}_{\text{text}}+\lambda_{\text{pred}}\mathcal{L}_{\text{pred}},
+      \]</div>
+      <p>其中 (\operatorname{sg}) 表示 stop-gradient，论文固定 (\lambda_{\text{pred}}=1)。关键不是多了一个 head，而是预测 hidden states 来自同一个 MLLM；在 Dense 方案中，两类损失直接改写同一 decoder。若模型只靠语言先验猜动作，却没有保留手—物体状态与近未来动力学，预测 latent 的误差会迫使它修正内部表示。</p>
+      <div class="pipeline" aria-label="IVT 的训练和推理流程">
+        <div class="step"><b>输入</b>部分视频前缀 + 问题</div>
+        <div class="step"><b>共享表征</b>编码当前物体、运动和交互</div>
+        <div class="step"><b>训练双目标</b>文字答案 + 未来帧 latent</div>
+        <div class="step"><b>推理单路径</b>删除预测分支，直接生成答案</div>
+      </div>
+      <div class="callout warn"><b>“Internalized” 不等于可观察思维链</b><p>训练损失只能证明内部状态更适合同时预测答案和未来表征，不能证明模型拥有忠实、可解释或人类式的视觉想象。这里的“思考”应读成任务有用的表示学习约束，而不是心智机制声明。</p></div>
+    </section>
+
+    <section id="experiments">
+      <h2>关键实验：哪些数字最能改变判断</h2>
+      <h3>1. Oracle 实验先证明问题在生成器，不在未来信息</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>任务</th><th>方案</th><th>平均延迟</th><th>ROUGE-L</th><th>METEOR</th><th>CIDEr</th></tr></thead>
+          <tbody>
+            <tr><td>EEP</td><td>Answer-Only</td><td>1.07 s</td><td>34.4</td><td>24.3</td><td>1.43</td></tr>
+            <tr><td>EEP</td><td>生成 Visual CoT</td><td>6.56 s</td><td>36.4</td><td>29.8</td><td>1.69</td></tr>
+            <tr><td>EEP</td><td>真实未来帧 oracle</td><td>不适用</td><td>41.9</td><td>34.2</td><td>2.05</td></tr>
+            <tr><td>NEP</td><td>Answer-Only</td><td>1.32 s</td><td>47.2</td><td>35.3</td><td>2.14</td></tr>
+            <tr><td>NEP</td><td>生成 Visual CoT</td><td>6.55 s</td><td>46.8</td><td>36.9</td><td>2.13</td></tr>
+            <tr><td>NEP</td><td>真实未来帧 oracle</td><td>不适用</td><td>50.4</td><td>40.4</td><td>2.38</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这是论文最强的因果诊断。若 oracle 也无效，就没有理由做 future-state supervision；但 oracle 显著领先，说明未来视觉状态确实包含任务信息。生成 Visual CoT 与 oracle 之间的差距则把改进空间定位到“未来帧 fidelity + 推理成本”。</p>
+
+      <h3>2. 六个主设置的 ROUGE-L</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>数据集 / 任务</th><th>Answer-Only</th><th>Visual CoT</th><th>最佳 IVT</th><th>谁领先</th></tr></thead>
+          <tbody>
+            <tr><td>Ego-Exo4D / EEP</td><td>28.8</td><td>32.7</td><td>33.3</td><td>IVT</td></tr>
+            <tr><td>Ego4D / EEP</td><td>33.3</td><td>36.1</td><td>34.8</td><td>Visual CoT</td></tr>
+            <tr><td>EPIC-KITCHENS-100 / EEP</td><td>36.5</td><td>40.2</td><td>39.0</td><td>Visual CoT</td></tr>
+            <tr><td>Ego-Exo4D / NEP</td><td>46.3</td><td>42.6</td><td>48.5</td><td>IVT</td></tr>
+            <tr><td>Ego4D / NEP</td><td>51.9</td><td>52.2</td><td>52.7</td><td>IVT</td></tr>
+            <tr><td>EPIC-KITCHENS-100 / NEP</td><td>45.5</td><td>42.8</td><td>49.1</td><td>IVT</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>论文正文给出的“NEP 平均 ROUGE-L 从 45.9 升到 49.7”使用 Dense IVT 的三项平均；若每个数据集都选 Dense/MoE 中较高者，则是约 50.1。两种算法都合理，但不能混成同一个口径：前者是固定架构平均，后者是 per-dataset best-of-two。</p>
+
+      <h3>3. 独立复算延迟</h3>
+      <p>附录六行延迟的算术平均为 Answer-Only 1.195 秒、Visual CoT 6.560 秒、IVT 1.223 秒。因此 Visual CoT 相对 IVT 是约 (6.560/1.223=5.36\times)，相对 Answer-Only 是约 (5.49\times)。这支持“超过五倍”的 headline claim；IVT 相对 Answer-Only 只慢约 2.4%，在该硬件与协议下可视为同一量级。</p>
+
+      <h3>4. 失败消融比最好结果更有工程价值</h3>
+      <div class="grid-2">
+        <div class="card"><h3>两阶段会遗忘</h3><p>先预测 10k、再文本 20k：ROUGE-L 28.6，低于 Answer-Only 的 30.6；联合训练达到 34.5。预测能力必须与回答持续共适配。</p></div>
+        <div class="card"><h3>更语义不一定更可用</h3><p>Flux-VAE latent 胜过 DINOv2/SigLIP2；博客称 V-JEPA 2.1 也未清晰改善。任务需要的可能是局部状态变化，而非全局语义不变性。</p></div>
+        <div class="card"><h3>预测太少会被覆盖</h3><p>3:1 与 5:1 早期领先却后期停滞，1:1 最终最好。辅助目标的有效权重由 loss 系数和数据频率共同决定。</p></div>
+        <div class="card"><h3>未来越远越多模态</h3><p>Dense 在短跨度更强，MoE 随跨度增加更平；three-hop 没有清晰收益。局部动力学和长期意图不是同一种预测问题。</p></div>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>术语对齐</h2>
+      <div class="def-list">
+        <div><b>Visual CoT</b><span>把中间推理外化为图像、草图、框、视频或视觉 token，再用它继续作答；本文主要对比“先生成未来帧，再重编码回答”。</span></div>
+        <div><b>Next-embedding prediction</b><span>不预测像素本身，而是预测未来帧经目标编码器得到的 latent tokens；目标可以偏重重建细节或语义不变性。</span></div>
+        <div><b>Proactive reasoning</b><span>在动作未完成或尚未开始时给出预测；要求答案既正确又及时。</span></div>
+        <div><b>Prediction horizon (H)</b><span>未来监督覆盖的秒数/帧数。论文以 1 fps 采样，(H=3) 表示监督观测边界后 +1、+2、+3 秒的状态。</span></div>
+        <div><b>Dense / MoE</b><span>Dense 让文本与预测 token 共享 decoder；MoE 仅把 FFN expert 按 token 类型分开，其他 transformer 组件仍共享，也没有学习式 router。</span></div>
+        <div><b>Oracle frame</b><span>把真实未来帧当输入的不可部署诊断。它不是可用系统，而是用来估计“如果未来视觉状态足够准确，最多能帮助多少”。</span></div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>证据审计：结论有多强</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>主张</th><th>证据状态</th><th>限制</th></tr></thead>
+          <tbody>
+            <tr><td>IVT 在六个设置都优于 matched Answer-Only</td><td>论文完整验证集表格直接支持，四项指标方向一致。</td><td>作者报告；未见多 seed 方差、显著性检验或独立复现。</td></tr>
+            <tr><td>IVT 推理比 Visual CoT 快 5 倍以上</td><td>附录逐数据集延迟可独立复算为约 5.36 倍。</td><td>单张 B200、batch 1；视频帧加载、模型加载、编译和首个 warm-up 不计时，不能直接外推到所有部署栈。</td></tr>
+            <tr><td>IVT 是通用 SOTA 视频推理方案</td><td>证据不足。</td><td>外部基线不是严格受控；更大的 Qwen3-VL-8B 多数设置更强。论文也只声称在 7B 级有竞争力。</td></tr>
+            <tr><td>可以从无标签视频免费获得收益</td><td>机制上预测未来帧不需要文本标签。</td><td>主实验仍在有原生标注的数据集上联合训练，没有展示额外海量无标签视频带来的 scaling 曲线。“无标签”描述不应读成已证明的 web-scale 免费增益。</td></tr>
+            <tr><td>V-JEPA 2.1 target 和 three-hop 失败</td><td>作者博客补充。</td><td>当前 arXiv v1 正文/附录没有对应表格或协议细节，应视为发布方报告，不是论文内完整实验。</td></tr>
+            <tr><td>方法已可复现</td><td>尚不成立。</td><td>论文给出算法和超参数，但公开页面当前没有 IVT 代码、checkpoint、训练日志或关联模型/数据集。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info"><b>统计不确定性</b><p>主表使用完整验证集，样本量可观；但若干关键消融只在随机抽取的 200 个 Ego-Exo4D EEP 样本上评估，而且论文没有报告重复采样、置信区间或 seed 方差。因此“方向一致”可以信，“某个配置高 0.5–1 分”则不宜过度解释。</p></div>
+      <div class="callout warn"><b>训练成本被移走，不是消失</b><p>IVT 在训练时增加目标编码、预测 token 与一半预测样本配额，但论文没有报告训练 FLOPs、吞吐或能耗。对高调用量服务，把成本从每次推理搬到一次训练通常很划算；对小数据、小流量或频繁重训场景，是否划算还需要算完整生命周期账。</p></div>
+    </section>
+
+    <section id="insight">
+      <h2>独立 insight：这其实是一种“训练时编译”</h2>
+      <p>这项工作的最佳类比不是“模型在脑中看见未来”，而是<strong>把一个昂贵运行时程序编译进参数</strong>。Visual CoT 每次请求都执行：生成未来 → 解码像素 → 重编码 → 回答。IVT 在训练时用真实未来状态监督，把反复出现的局部动力学压进共享表征，部署时只执行已经编译过的直接路径。这与蒸馏、amortized inference 和 privileged-information training 属于同一个更大设计族：训练可以访问更丰富、更昂贵或未来才知道的信号，推理只保留便宜策略。</p>
+      <p>这个视角解释了为什么两阶段训练失败：若“编译”完成后又只用文本目标覆盖 20k 步，参数会回到更便宜的语言捷径。它也解释了为何 Dense 在短时域强、长时域变差：共享参数是强制编译的通道，但当未来分布分叉，单一真实未来提供的梯度会把多种合理可能性压成一次偶然轨迹，强耦合就从归纳偏置变成噪声。</p>
+      <p>由此可以推出一个比原文更具体的后续方向：<strong>预测目标应由决策充分性而不是重建或语义标签来选择</strong>。Flux-VAE 胜出说明局部几何和物体状态很重要，但它仍包含大量与动作无关的纹理。更好的 target 可能是手—物体接触图、对象状态、光流、动作可供性或多假设 latent set；评价也应从文本相似度转向“预测是否足以提前采取正确动作”。</p>
+      <div class="grid-3">
+        <div class="card"><h3>适合使用</h3><p>近未来动作、机器人安全预警、驾驶风险、流式助手等高频、低延迟且局部动力学强的场景。</p></div>
+        <div class="card"><h3>谨慎使用</h3><p>长时规划、多人意图、开放世界事件；当前画面不足以决定未来，单目标回归会奖励偶然 continuation。</p></div>
+        <div class="card"><h3>下一项关键实验</h3><p>相同推理预算下比较：无 rollout、按不确定性触发的短 latent rollout、完整 Visual CoT，并同时报告训练总成本与校准误差。</p></div>
+      </div>
+      <p>这也与站内此前分析的<a href="visual-generation-world-models.html">显式视觉 world model</a>形成互补：那项工作说明在复杂空间/物理任务里，生成中间视觉状态有时比语言更自然；IVT 则说明在<strong>短时域、重复模式、延迟敏感</strong>的任务上，中间视觉状态未必需要在每次推理时显式出现。两者不是互相否定，而是在划定何时外化、何时内化的边界。</p>
+    </section>
+
+    <section id="falsification">
+      <h2>什么证据会推翻当前判断</h2>
+      <ol>
+        <li>在公开代码的多 seed 复现中，IVT 相对 Answer-Only 的提升消失，或关键消融对随机 200 样本极度敏感。</li>
+        <li>把 Visual CoT 换成更快、更高 fidelity 的生成器后，在相同端到端时延预算内稳定超过 IVT，说明当前优势主要来自基线生成器不足。</li>
+        <li>更强基座已经自发编码近未来动力学，加入 IVT 后收益趋近于零或损害通用能力，说明它更像弱基座的后训练补丁。</li>
+        <li>真实流式系统中，视频采集、编码和网络延迟主导总时延，使 1.22 秒与 6.56 秒的模型差异不再决定产品响应。</li>
+        <li>多标注者、多合理未来和决策效用指标显示，词面指标提升并未改善校准、可用性或提前行动成功率。</li>
+      </ol>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文完整核对主帖、第一作者发布帖、作者技术博客、arXiv v1 正文与附录，并沿核心方法核对 V-JEPA 2、Zebra-CoT 与 BAGEL 的原始论文页面。X 回复串可能随平台访问状态变化；当前可稳定核验的是发布首帖与其公开外链。论文数字属于作者报告，本文只做了表格口径和算术复算，没有完成训练复现。博客中未进入 arXiv v1 的补充实验已单独降级标注。</p>
+      <ul>
+        <li><a href="https://x.com/ArnabMondal96/status/2089822086110068904">Arnab Mondal 的分享帖</a></li>
+        <li><a href="https://x.com/XiaoyuZhu10/status/2089812554357096904">Xiaoyu Zhu 的论文发布帖</a></li>
+        <li><a href="https://zgzxy001.github.io/blog/internalized-visual-thinking.html">作者技术博客：Beyond Visual CoT</a></li>
+        <li><a href="https://arxiv.org/abs/2608.15869">论文：Beyond Visual CoT: Internalized Visual Thinking for Proactive Video Reasoning</a></li>
+        <li><a href="https://huggingface.co/papers/2608.15869">Hugging Face 论文元数据页</a></li>
+        <li><a href="https://arxiv.org/abs/2506.09985">V-JEPA 2</a></li>
+        <li><a href="https://arxiv.org/abs/2507.16746">Zebra-CoT</a></li>
+        <li><a href="https://arxiv.org/abs/2505.14683">BAGEL / Emerging Properties in Unified Multimodal Pretraining</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

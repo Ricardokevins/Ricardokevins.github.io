@@ -34,6 +34,23 @@
 - [x] 使用独立 headless 系统 Chrome 完成 1440×1000 桌面和 390×844 手机整页渲染。两种视口均等待 MathJax 成功，HAR 各 7 个请求且无 4xx/5xx，截图目检无标题、公式、表格、卡片错位或页面级横向溢出。
 - [x] 最终提交仅包含本任务笔记、共享索引与 Progress 中的本任务 hunk；保留所有并行任务、题库、语音手册、PDF、脚本、缓存和日志改动。
 
+## 2026-08-20 Internalized Visual Thinking / Proactive Video Reasoning 深读（已完成；已验证，待提交）
+
+### 任务边界与材料覆盖
+
+- [x] 核对 Arnab Mondal 2026-08-18 主帖、Xiaoyu Zhu 首帖、作者技术博客、arXiv:2608.15869 v1 正文与附录；主帖链接指向同一篇 Apple 论文，博客补充训练失败案例和开放问题。
+- [x] 沿核心论证核对 V-JEPA 2、Zebra-CoT 与 BAGEL 的一手论文页面；确认 IVT 的 headline 数字来自作者受控实验，而当前公开页面未提供 IVT 代码、权重或关联数据条目，尚不能独立复现。
+- [x] 建立内容地图：主动视频推理任务 → Visual CoT 像素 rollout 的成本/误差 → 训练时 next-embedding prediction → 目标空间、数据配比、损失、课程、Dense/MoE 与预测跨度消融 → 六个主设置、迁移与延迟 → 长时域和多未来边界。
+- [x] 建立证据边界：论文 v1 直接支持六个主设置、延迟、Charades 迁移及主消融；博客中的 V-JEPA 2.1 负结果和 three-hop 失败未出现在当前 arXiv v1，应标为作者后续补充。
+
+### 写作、验证与发布
+
+- [x] 新增 `notes/paper-reviews/internalized-visual-thinking-proactive-video-reasoning.html` 及本地方法图；正文约 8,081 个可见非空白字符，先按帖子/博客/论文顺序重建主动视频推理、Visual CoT、IVT、消融、主结果和限制，再进入证据审计、独立复算、“训练时编译” insight 与可证伪条件。
+- [x] 更新 `_data/notes.yml`；`ruby scripts/validate_notes_index.rb` 通过，当前 301 条索引与 301 个顶层 HTML 一一对应。目标页有唯一 title/H1/main、9 个主体章节、1 张非空 alt 本地图片、2 个展示公式、无重复 ID，唯一 evidence appendix 位于文末。
+- [x] 运行 `git diff --check`、公开过程噪声、替换字符、占位文本、锚点、图片与页面级溢出检查；无新错误。独立 Jekyll build 成功，仅有仓库既有的 Faraday 可选依赖与 GitHub Metadata 未认证提示。
+- [x] 使用隔离无头 Chromium 检查 1440px 桌面与 390px 手机页面：两者均 HTTP 200，页面宽度严格等于视口宽度，图片和 MathJax 正常，无坏锚点、控制台错误、页面异常或失败请求；手机宽表与公式只在局部容器内滚动，截图目检无重叠、截断或不可读结构。
+- [ ] 只提交本任务笔记、资产及共享文件中的本任务 hunk，并推送当前分支；保留现有语音手册、其他论文笔记、题库、脚本、PDF、缓存和日志改动不动。
+
 ## 2026-08-20 Open-MOPD 多教师能力整合深读
 
 ### 任务与材料边界
