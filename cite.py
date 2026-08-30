@@ -16,7 +16,7 @@ CITATION_COUNT = re.compile(r"(citation-)\d+")
 
 def update_citation_badges():
     sch = SemanticScholar()
-    author = sch.get_author(AUTHOR_ID)
+    author = sch.get_author(AUTHOR_ID, fields=["papers.paperId", "papers.citationCount"])
     citation_counts = {paper.paperId: paper.citationCount for paper in author.papers}
 
     lines = ABOUT_PAGE.read_text(encoding="utf-8").splitlines(keepends=True)

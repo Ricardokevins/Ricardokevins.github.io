@@ -26,23 +26,23 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ICLR 2026&nbsp;</span> 🔥  DuPO: Enabling Reliable LLM Self-Verification via Dual Preference Optimization</div>
 **Shuaijie She**, Yu Bao, Yu Lu, Lu Xu, Tao Li, Wenhao Zhu, Shujian Huang, Shanbo Cheng, Lu Lu, Yuxuan Wang
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2508.14460)
-[![citation](https://img.shields.io/badge/citation-2-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/DuPO%3A-Enabling-Reliable-LLM-Self-Verification-via-She-Bao/72cd4ae987f0f6c7a0406d9912dd232002159272)
+[![citation](https://img.shields.io/badge/citation-5-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/DuPO%3A-Enabling-Reliable-LLM-Self-Verification-via-She-Bao/72cd4ae987f0f6c7a0406d9912dd232002159272)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;Tech Report&nbsp;</span> 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters</div>
 **ByteDance Seed Team**
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2507.13618)
-[![citation](https://img.shields.io/badge/citation-16-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
+[![citation](https://img.shields.io/badge/citation-20-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;EMNLP 2025&nbsp;</span> R-PRM: Reasoning-Driven Process Reward Modeling</div>
 **Shuaijie She**\*, Junxiao Liu\*, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2503.21295)
-[![citation](https://img.shields.io/badge/citation-32-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
+[![citation](https://img.shields.io/badge/citation-48-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2024&nbsp;</span> MAPO: Advancing Multilingual Reasoning through Multilingual-Alignment-as-Preference Optimization </div>
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.06838)
-[![citation](https://img.shields.io/badge/citation-79-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
+[![citation](https://img.shields.io/badge/citation-99-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
 
 # Published Papers
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2026&nbsp;</span> Improving Long-Context Translation via Self-Supervised Dual Learning</div>
@@ -54,12 +54,12 @@ Hao Zhou, Tianhao Li, Zhijun Wang, **Shuaijie She**, Linjuan Wu, Hao-Ran Wei, Ba
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;AAAI 2026&nbsp;</span> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>
 Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
-[![citation](https://img.shields.io/badge/citation-4-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
+[![citation](https://img.shields.io/badge/citation-5-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2024&nbsp;</span> Question Translation Training for Better Multilingual Reasoning</div>
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.07817)
-[![citation](https://img.shields.io/badge/citation-58-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
+[![citation](https://img.shields.io/badge/citation-64-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;NAACL 2024&nbsp;</span> Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models</div>
 **Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen
