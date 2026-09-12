@@ -154,7 +154,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
 }
 // 验证：Corr(x,y) 依概率收敛到 rho，复杂度 O(n)</code></pre>
           <p>多资产推广：对目标协方差 \(\Sigma\) 做 Cholesky 得 \(L\)，对独立标准正态向量左乘 \(L\) 即得目标相关的样本；\(\Sigma\) 非正定（高度共线的收益序列）时需先加微小对角垫（岭收缩，见 <a href="027.html">027 章</a>）再分解。</p>
-          <p><b>相关性的时间尺度依赖（源题 F24 的地基）。</b>相关系数是对某个采样频率定义的：日收益的相关与年收益的相关可以完全不同，因为聚合时间越长，低频成分（漂移、趋势）权重越大，高频噪声被平均掉。「日度正相关、年度负相关」因此并不矛盾——机制与数值构造在例题 3 给出。</p>
+          <p><b>相关性的时间尺度依赖（源题 F24 的地基）。</b>相关系数是对某个采样频率定义的：日收益的相关与年收益的相关可以完全不同，因为聚合时间越长，低频随机趋势的权重越大（方差随 \(T\) 线性累积），高频平稳噪声被平均掉（方差封顶）。「日度正相关、年度负相关」因此并不矛盾——机制与数值构造在例题 3 给出。</p>
 
           <h3 id="s-040-4"><a class="anchor-link" href="#s-040-4" aria-label="跳转到本节">#</a>例题详解一：配权、降暴露与再平衡</h3>
 
@@ -163,7 +163,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
             <div class="solution">
               <p><b>建模。</b>通用方案：估计 \(\Sigma\) 后取 \(w^{*}=\Sigma^{-1}\mathbf{1}/(\mathbf{1}^{\top}\Sigma^{-1}\mathbf{1})\)；S26 是两资产数值实例（期望收益相同——最小方差与期望无关，正好印证 F27 的通用解）。</p>
               <p><b>推导。</b>两资产权重公式 \(w_A=(\sigma_B^2-\rho\sigma_A\sigma_B)/(\sigma_A^2+\sigma_B^2-2\rho\sigma_A\sigma_B)\)。代入 \(\sigma_A=20\%\)、\(\sigma_B=30\%\)、\(\rho=0.5\)（分子分母单位约去）：\(w_A=(900-300)/(400+900-600)=600/700=6/7\approx 85.7\%\)，\(w_B=1/7\approx 14.3\%\)。</p>
-              <p><b>检验。</b>组合方差（%² 单位）：\(\sigma_p^2=(36/49)\cdot 400+(1/49)\cdot 900+2\cdot 0.5\cdot(6/49)\cdot 600=18900/49\approx 385.7\)，\(\sigma_p\approx 19.6\%\lt 20\%=\min(\sigma_A,\sigma_B)\)——加入一只更高波的股票反而降了波动，分散化的直接证据。边界自查：\(\rho\to 1\) 时 \(w_A\to\sigma_B/(\sigma_A+\sigma_B)\) 比例反比于波动；\(\rho\to 0\) 时 \(w_A\to\sigma_B^2/(\sigma_A^2+\sigma_B^2)\)（逆方差加权，inverse-variance weighting），两个极端都对。</p>
+              <p><b>检验。</b>组合方差（%² 单位）：\(\sigma_p^2=(36/49)\cdot 400+(1/49)\cdot 900+2\cdot 0.5\cdot(6/49)\cdot 600=18900/49\approx 385.7\)，\(\sigma_p\approx 19.6\%\lt 20\%=\min(\sigma_A,\sigma_B)\)——加入一只更高波的股票反而降了波动，分散化的直接证据。边界自查：\(\rho\to-1\) 时 \(w_A\to\sigma_B/(\sigma_A+\sigma_B)\)（零方差组合，权重反比于波动）；\(\rho\to 0\) 时 \(w_A\to\sigma_B^2/(\sigma_A^2+\sigma_B^2)\)（逆方差加权，inverse-variance weighting），两个极端都对。</p>
               <p><b>面试怎么讲。</b>「最小方差只看协方差：通用解 \(w\propto\Sigma^{-1}\mathbf{1}\)，两资产时代入公式得 6/7 与 1/7，组合波动 19.6%，低于两者各自。注意它对 \(\Sigma\) 的估计误差极其敏感，实务要加收缩或正则。」</p>
             </div>
           </div>
@@ -183,12 +183,12 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
           <div class="worked-example">
             <p><b>例题 3（源题 F24）：两只股票可能日度正相关、而年度负相关吗？</b></p>
             <div class="solution">
-              <p><b>建模。</b>可能。相关系数依赖于采样频率：日相关由「共同高频噪声」主导，年相关由「低频漂移」主导，两者的符号可以相反。</p>
-              <p><b>推导。</b>构造日收益：\(\Delta A=a+\varepsilon+\eta_A\)，\(\Delta B=-a+\varepsilon+\eta_B\)，其中 \(\varepsilon\) 为共同日噪声（方差 \(v_\varepsilon^2\)），\(\eta\) 为各自特有噪声（方差 \(v^2\)），\(a\) 为方向相反的日漂移。日相关：</p>
-              <div class="math-display">\[ \rho_{\text{日}}=\frac{v_\varepsilon^2-a^2}{v_\varepsilon^2+a^2+v^2},\qquad \rho_{\text{年}}\;\text{由}\;\mathrm{Cov}_{\text{年}}=T\,v_\varepsilon^2-T^2 a^2\;\text{的符号决定}. \]</div>
-              <p>（\(T=252\)，年方差相应聚合。）数值例：\(a=0.5\%\)（反向漂移）、\(\varepsilon\) 波动 1%、特有波动 0.5%（单位%）：\(\rho_{\text{日}}=(1-0.25)/(1+0.25+0.25)=0.5\gt 0\)；而 \(\mathrm{Cov}_{\text{年}}=252\times 1-252^2\times 0.25\lt 0\)——年相关为负。</p>
+              <p><b>建模。</b>可能。相关系数依赖于采样频率：日相关由「共同高频噪声」主导，年相关由「低频随机趋势」主导，两者的符号可以相反。</p>
+              <p><b>推导。</b>给一个可逐步核算的构造。设对数价格（单位 %）：\(A_t=G_t+F_t\)，\(B_t=-G_t+F_t\)。\(F_t\) 是「当天即回吐的共同噪声」——各日独立重抽、方差 \(\sigma_F^2\)，像共同的情绪/资金面跳动，长期不累积；\(G_t\) 是「缓慢反向分化的趋势」——日方差 \(\sigma_G^2\ll\sigma_F^2\) 的随机游走，日度看不出来，一年累积成方向。日收益 \(\Delta A=\Delta G+\Delta F\)、\(\Delta B=-\Delta G+\Delta F\)；年收益只取首尾差 \(A_T-A_0=(G_T-G_0)+(F_T-F_0)\)，共同噪声的方差封顶在 \(2\sigma_F^2\)，反向趋势按 \(T\sigma_G^2\) 线性累积：</p>
+              <div class="math-display">\[ \rho_{\text{日}}=\frac{2\sigma_F^2-\sigma_G^2}{2\sigma_F^2+\sigma_G^2}\in(0,1),\qquad \rho_{\text{年}}=\frac{2\sigma_F^2-T\sigma_G^2}{2\sigma_F^2+T\sigma_G^2}\lt0\quad\Bigl(T\gt\frac{2\sigma_F^2}{\sigma_G^2}\Bigr). \]</div>
+              <p>数值例：\(\sigma_F=1\%\)（每日重抽）、\(\sigma_G=0.1\%\)（日度趋势步长）、\(T=252\)：\(\rho_{\text{日}}=(2-0.01)/(2+0.01)\approx0.99\)，而 \(\rho_{\text{年}}=(2-2.52)/(2+2.52)\approx-0.12\)——日度几乎同涨同跌，年度反向。顺带指出常见错误：若把反向趋势写成固定的日漂移 \(\pm a\)，相关系数会先减去各自均值，确定性漂移根本不进入协方差；要让符号随窗口翻转，反向成分必须是<b>随机的</b>（随机游走），正向共同成分必须是<b>不累积的</b>（平稳）。</p>
               <p><b>检验。</b>直觉复核：两家公司每天被同一个市场/板块噪声推着同涨同跌（日正相关），但一家在缓慢赢得份额、另一家在缓慢失去份额，一年下来股价反向（年负相关）——趋势与噪声分离的典型形态。另一机制是 lead-lag 与均值回复：B 对 A 的滞后反向跟随，短期看是同向跟随、长期看是回归。</p>
-              <p><b>面试怎么讲。</b>「相关性是频率依赖的统计量。日度窗口里共同噪声说了算，年度窗口里漂移说了算——构造『共同高频噪声 + 反向低频漂移』就能同时得到日正、年负。提醒：这在实务里意味着用日度相关矩阵去管年度风险是错配的。」</p>
+              <p><b>面试怎么讲。</b>「相关性是频率依赖的统计量。日度窗口里共同噪声说了算，年度窗口里缓慢分化的随机趋势说了算——构造『当天回吐的共同噪声 + 缓慢反向的随机趋势』就能同时得到日正、年负。提醒：这在实务里意味着用日度相关矩阵去管年度风险是错配的。」</p>
             </div>
           </div>
 
@@ -198,7 +198,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>建模。</b>每期期初持有市值恰为 100 的股票（涨了卖回 100、跌了用现金补到 100），第 \(t\) 期的盈亏即 \(100\,r_t\)（\(r_t\) 为该期收益率）。终端总盈亏 \(=100\sum_t r_t\)，而买入持有是 \(100\bigl(\prod_t(1+r_t)-1\bigr)=0\)。</p>
               <p><b>推导。</b>关键是恒等式：对一切 \(x\gt -1\)，\(x-\ln(1+x)\ge 0\)（等号仅当 \(x=0\)）。求和：</p>
               <div class="math-display">\[ \sum_t r_t=\underbrace{\sum_t\ln(1+r_t)}_{=\ln(S_n/S_1)=0}+\sum_t\bigl(r_t-\ln(1+r_t)\bigr)\;\ge\;0,\qquad\approx\tfrac{1}{2}\sum_t r_t^2\gt 0. \]</div>
-              <p><b>答案：是正的</b>（只要中途有任何波动），近似等于 \(50\sum_t r_t^2\)。数值例：100 → 120 → 100：第一期赚 20，第二期持有 100 市值亏 \(100\times(-1/6)\approx 16.7\)，净赚 \(3.33\)；公式复核 \(100\times\frac{1}{2}(0.2^2+(1/6)^2)\approx 3.33\)。</p>
+              <p><b>答案：是正的</b>（只要中途有任何波动），近似等于 \(50\sum_t r_t^2\)。数值例：100 → 120 → 100：第一期赚 20，第二期持有 100 市值亏 \(100\times(-1/6)\approx 16.7\)，净赚 \(3.33\)；公式复核 \(100\times\frac{1}{2}(0.2^2+(1/6)^2)\approx 3.39\)（精确值 \(3.33\)，差为三阶小量）。</p>
               <p><b>检验。</b>两个视角互证：① AM-GM：\(\frac1n\sum(1+r_t)\ge\bigl(\prod(1+r_t)\bigr)^{1/n}=1\)，算术平均不小于几何平均，策略把「算术路径」变现；② 波动率拖累（volatility drag）的对偶：买入持有的对数收益 \(\sum\ln(1+r_t)\approx\sum r_t-\frac12\sum r_t^2\)，拖累项正是策略的利润来源。这个策略就是恒定比例组合（constant mix）的波动率收割（volatility harvesting），与 Shannon 的恶魔、<a href="038.html">038 章</a>对冲组合的 gamma 损益 \(\tfrac12\Gamma S^2\sigma_r^2\) 同构——都是赚已实现方差。</p>
               <p><b>面试怎么讲。</b>「正收益，近似 \(50\sum r_t^2\)：恒定敞口等价于机械地高抛低吸，把波动率拖累反向兑现。但要补风险边界：下跌期需要不断追加现金、股票趋零时摊低无底（需止损/融资约束），它不是免费午餐，是路径风险的补偿。」</p>
             </div>
@@ -217,7 +217,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
                 <p><b>Garman-Klass：</b>\(\hat{\sigma}^2_{GK}=\frac1n\sum_t\bigl[\tfrac12\ln^2(H_t/L_t)-(2\ln 2-1)\ln^2(C_t/O_t)\bigr]\)。用满 OHLC，效率约 7–8 倍；偏差来源与 Parkinson 同。</p>
                 <p><b>已实现波动率（realized volatility）：</b>\(RV_t=\sum_i r_{t,i}^2\)（日内收益平方和）。采样无限加密时收敛于当日积分方差；过高频率受买卖价差反弹（bid-ask bounce）污染而偏高——signature plot（不同频率下的 RV 曲线）是诊断工具。</p>
               </div>
-              <p>样本外检验口径：把「估计器在 t 日的输出」当作对 t+1（或未来 k 日）已实现波动的预测，做 Mincer-Zarnowski 回归 \(\sigma^2_{t+1}=a+b\,\hat{\sigma}^2_t+\varepsilon\)，检验 \(a=0,b=1\)（检验工具见 <a href="019.html">019 章</a>）；比较用 MSE 或对数尺度更稳的 QLIKE 损失，多估计器两两比较用 Diebold-Mariano 检验。</p>
+              <p>样本外检验口径：把「估计器在 t 日的输出」当作对 t+1（或未来 k 日）已实现波动的预测，做 Mincer–Zarnowitz 回归 \(\sigma^2_{t+1}=a+b\,\hat{\sigma}^2_t+\varepsilon\)，检验 \(a=0,b=1\)（检验工具见 <a href="019.html">019 章</a>）；比较用 MSE 或对数尺度更稳的 QLIKE 损失，多估计器两两比较用 Diebold-Mariano 检验。</p>
               <p><b>子问（回归与正则化）。</b>OLS 闭式解 \(\hat{\beta}=(X^{\top}X)^{-1}X^{\top}y\)；不可逆出现在 \(X^{\top}X\) 奇异时——特征数超过样本数（\(p\gt n\)）或特征共线。岭回归闭式解 \(\hat{\beta}_{ridge}=(X^{\top}X+\lambda I)^{-1}X^{\top}y\)：谱的视角，\(X^{\top}X\) 的特征值 \(\lambda_i\) 整体右移为 \(\lambda_i+\lambda\)，全部严格为正，条件数 \((\lambda_{\max}+\lambda)/(\lambda_{\min}+\lambda)\) 变小——求逆从病态变良态；Lasso 的 \(\ell_1\) 惩罚使目标不可微、无闭式解，用坐标下降或次梯度法求解，其条件数讨论与收敛细节见 <a href="027.html">027 章</a>。</p>
               <p><b>面试怎么讲。</b>「先按信息量排估计器：收盘-收盘无偏但低效，Parkinson、Garman-Klass 用高低开收效率翻倍但怕隔夜跳空，realized vol 一致但怕微观结构噪声。检验永远是样本外预测问题：MZ 回归加 QLIKE。回归子问一句话：\(X^{\top}X\) 奇异时 OLS 无解，岭把谱整体右移 \(\lambda\) 恢复可逆。」</p>
             </div>
@@ -253,7 +253,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
 
           <h3 id="s-040-6"><a class="anchor-link" href="#s-040-6" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>常见误区</b><p>① 「市场中性 = 没有风险」——beta 归零只是搬走了一个因子，残差波动、行业暴露与拥挤风险都还在；② 最小方差解对 \(\Sigma\) 的估计误差极度敏感——样本协方差在维度高时近乎噪声，实务必须收缩（与 <a href="027.html">027 章</a>岭回归同一逻辑）；③ beta 用哪个窗口都对/都不对——它是时变量，报告 beta 必须带窗口与置信区间；④ 例题 4 的再平衡收益不是套利——它需要承担路径风险并提供下跌期的追加资金；⑤ 回测里最大的偏差往往不是漏了成本，而是多重检验：试了一百个信号后留下的最好者，样本外衰减是必然（检验口径见 <a href="019.html">019 章</a>）；⑥ 日度相关矩阵不能直接回答年度风险问题（例题 3）。</p></div>
-          <div class="intuition-box"><b>考官追问的变式</b><p>常见变式：把 F11 的成本函数改成平方根律（答案在 L1 与 L2 解之间，需数值求解）；把 F27 加上「不能做空」约束（闭式解失效，退化为带界二次规划，边界上多只票权重为零）；把 F24 反过来问「年度正相关、日度负相关可能吗」（同样可能，换成反向共同噪声与同向漂移即可）；把 F35 的恒定市值改成恒定份额（恒定份额 = 买入持有，不再有再平衡收益）。准备这些问题时始终回到两块硬通货：因子分解与协方差矩阵。</p></div>
+          <div class="intuition-box"><b>考官追问的变式</b><p>常见变式：把 F11 的成本函数改成平方根律（答案在 L1 与 L2 解之间，需数值求解）；把 F27 加上「不能做空」约束（闭式解失效，退化为带界二次规划，边界上多只票权重为零）；把 F24 反过来问「年度正相关、日度负相关可能吗」（同样可能，把构造整体反号：当天回吐的反向共同噪声 + 缓慢同向的随机趋势）；把 F35 的恒定市值改成恒定份额（恒定份额 = 买入持有，不再有再平衡收益）。准备这些问题时始终回到两块硬通货：因子分解与协方差矩阵。</p></div>
 
           <h3 id="s-040-7"><a class="anchor-link" href="#s-040-7" aria-label="跳转到本节">#</a>检查清单</h3>
           <ul class="checkpoint-list">

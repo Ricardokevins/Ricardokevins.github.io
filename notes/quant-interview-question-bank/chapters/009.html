@@ -188,7 +188,7 @@ void backtrackPerm(vector&lt;int&gt;&amp; a) {          // 模板一：全排列
           <p>怎么读：<code>1 &lt;&lt; n</code> 是 \(2^n\)，mask 遍历的次序恰是「按数值递增」，也就是「按字典序枚举选择向量」。注意两个坑：n 达到 31 时 <code>1 &lt;&lt; 31</code> 在有符号 int 上溢出（见 s-009-5），应写 <code>1u &lt;&lt; n</code> 或改用 64 位；循环变量与 mask 同为无符号或同为有符号，避免混用比较（<code>-1 &lt; 1u</code> 为 false 的陷阱同源）。</p>
           <p><b>枚举 x 的所有子集。</b>更进阶的套路：不枚举全集，只枚举某个给定掩码 x 的子集（状态压缩 DP 优化里的高频操作）：</p>
           <pre><code>for (int s = x; ; s = (s - 1) &amp; x) {  // 依数值递减访问 x 的每个子集
-    visit(s);                          // 含 x 自身与空集 0
+    handle(s);                        // 处理当前子集 s（含 x 自身与空集 0）
     if (s == 0) break;                 // 空集是最后一站，漏判即死循环
 }</code></pre>
           <p>怎么读：<code>s - 1</code> 把 s 最低位的 1 借位减掉、其后的 0 全变 1；<code>&amp; x</code> 把不属于 x 的位重新抹掉。两个动作合起来等价于「把 s 限制在 x 的位上做二进制减一」，所以循环严格递减、恰有 \(2^{\mathrm{popcount}(x)}\) 圈（x 的每个 1 位有「在 s 中」与「不在 s 中」两种状态）。把所有 x 的子集枚举量加总还有一个漂亮的封闭形式：</p>
@@ -265,7 +265,9 @@ void backtrackPerm(vector&lt;int&gt;&amp; a) {          // 模板一：全排列
             <p><b>例题 2：给定可含重复数字的数组（如 [1,1,2]），返回所有不重复的全排列。要求回溯实现，解释剪枝条件为什么成立，并与 next_permutation 方案对照（对应 LeetCode 47「全排列 II」）。</b></p>
             <div class="solution">
               <p><b>建模。</b>重复的根源是决策树里存在「同一层、等价选择」的分支：前缀相同、本轮分别选第 1 个 1 或第 2 个 1，产生的子树完全一样。剪枝策略：排序使相同元素相邻，并规定<b>同值元素必须按索引顺序进入路径</b>——在某层若 \(a_i = a_{i-1}\) 而 \(a_{i-1}\) 尚未进入路径（used[i-1] 为 false），说明正在尝试「跳过前一个、选当前这个」，这与「选前一个、跳过当前」等价，剪掉当前分支。</p>
-              <pre><code>vector&lt;vector&lt;int&gt;&gt; permuteUnique(vector&lt;int&gt;&amp; a) {
+              <pre><code>void backtrackDup(vector&lt;int&gt;&amp; a);      // 前向声明：主函数先调用、后定义
+
+vector&lt;vector&lt;int&gt;&gt; permuteUnique(vector&lt;int&gt;&amp; a) {
     sort(a.begin(), a.end());            // 去重前提：同值元素相邻
     res.clear(); path.clear();
     used.assign(a.size(), false);
@@ -308,9 +310,11 @@ int popcount(uint32_t x) {              // (b) 每消一个 1 循环一次
     return c;
 }
 
+void handle(uint32_t s);                 // 占位：对子集 s 的处理逻辑
+
 void enumerateSubmasks(uint32_t x) {    // (c) x 的全部子集（含 0 与 x）
     for (uint32_t s = x; ; s = (s - 1) &amp; x) {
-        visit(s);                       // 依数值递减次序出现
+        handle(s);                       // 依数值递减次序出现
         if (s == 0) break;              // 空集是终点，漏判即死循环
     }
 }</code></pre>
