@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>018. 概率五：贝叶斯判别偏币 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 018</div>
+        <div class="brand-title">概率五：贝叶斯判别偏币</div>
+        <div class="brand-meta">后验赔率等于先验赔率乘似然比：双头币、两硬币判别、Beta 共轭与专家信息价值。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-018-1">学习目标：看到数据之后，该信哪枚硬币</a><a class="toc-link" href="#s-018-2">工具一：贝叶斯更新与共轭先验</a><a class="toc-link" href="#s-018-3">工具二：似然比与证据强度</a><a class="toc-link" href="#s-018-4">例题详解 I：一千枚硬币里的一枚双头币</a><a class="toc-link" href="#s-018-5">例题详解 II：两硬币判别一族</a><a class="toc-link" href="#s-018-6">例题详解 III：连续参数与后验比较</a><a class="toc-link" href="#s-018-7">例题详解 IV：专家的信息价值</a><a class="toc-link" href="#s-018-8">误区与边界</a><a class="toc-link" href="#s-018-9">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link current" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="概率五：贝叶斯判别偏币">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>018. 概率五：贝叶斯判别偏币</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章用贝叶斯更新回答「看到一串抛掷结果后，这枚硬币有多可能是偏的」：一千枚里混着一枚双头币、公平币对 \(\tfrac23\) 偏币、HH 币对 HT 币、连续参数的 Beta 后验，最后用神秘盒子题把「信息值多少钱」算成现金。与 <a href="017.html">017 章</a>的似然比判别、<a href="019.html">019 章</a>的假设检验互为镜像。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-core.svg" alt="概率核心工具地图：期望递推、序列等待、贝叶斯更新与假设检验四大板块"></figure>
+
+          <h3 id="s-018-1"><a class="anchor-link" href="#s-018-1" aria-label="跳转到本节">#</a>学习目标：看到数据之后，该信哪枚硬币</h3>
+          <p>频率派的检验问「假设硬币公平，数据有多反常」（<a href="019.html">019 章</a>）；贝叶斯派把问题反过来：「看到这串数据之后，我对手里硬币的信念应该更新到多少」。更新规则只有一条——<b>后验 ∝ 似然 × 先验</b>。当假设只有两枚硬币（公平 vs 某种偏法）时，这条规则化成最方便的赔率形式：</p>
+          <div class="math-display">\[\underbrace{\frac{P(B\mid D)}{P(F\mid D)}}_{\text{后验赔率}}=\underbrace{\frac{P(B)}{P(F)}}_{\text{先验赔率}}\times\underbrace{\frac{P(D\mid B)}{P(D\mid F)}}_{\text{似然比（LR）}}.\]</div>
+          <p>怎么读：数据不直接告诉你谁是谁，它只把先验赔率<b>乘上</b>一个似然比。一连串抛掷的似然比是每一掷证据的连乘，正面把赔率往「偏」的方向推、反面往回拉。这一条公式足够解决本章前半的全部离散判别题；后半处理「偏多少未知」的连续参数——用 Beta 共轭先验，后验仍是 Beta，参数按数出来的正反面相加即可。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>赔率更新</b><p>离散假设（公平/偏币/双头币）用后验赔率 = 先验赔率 × 似然比，一步到位。</p></div>
+            <div class="concept-card"><b>Beta 共轭</b><p>先验 \(\mathrm{Beta}(\alpha,\beta)\) 加 \(h\) 正 \(t\) 反的数据得后验 \(\mathrm{Beta}(\alpha+h,\beta+t)\)，后验均值 \(\frac{\alpha+h}{\alpha+\beta+h+t}\)。</p></div>
+            <div class="concept-card"><b>信息价值</b><p>有信号与无信号的最优决策期望收益之差，就是这位「专家」的定价上限——信息是可以用期望收益计价的商品。</p></div>
+          </div>
+
+          <h3 id="s-018-2"><a class="anchor-link" href="#s-018-2" aria-label="跳转到本节">#</a>工具一：贝叶斯更新与共轭先验</h3>
+          <p>离散情形按上面的赔率公式操作，全部计算浓缩在似然比里。对「正面率本身是未知数 \(\theta\)」的连续情形，贝叶斯定理写成密度版本：\(f(\theta\mid D)\propto P(D\mid\theta)\,f(\theta)\)。取先验为均匀分布（即 \(\mathrm{Beta}(1,1)\)，对 \([0,1]\) 上的 \(\theta\) 不偏不倚），掷出 \(h\) 正 \(t\) 反后：</p>
+          <div class="math-display">\[f(\theta\mid D)\propto \theta^{h}(1-\theta)^{t}\ \Longrightarrow\ \theta\mid D\sim\mathrm{Beta}(1+h,\,1+t).\]</div>
+          <p>怎么读：数据只是把先验的两个参数各加上数出来的正、反面数——这就是<b>共轭</b>（conjugacy）的便利。后验均值是 \(\frac{1+h}{2+h+t}\)，比最大似然估计 \(\frac{h}{h+t}\) 略向 \(\tfrac12\) 收缩，样本越大收缩越不明显。特别地，先验均匀、只掷一次且是正面：\(\theta\mid H\sim\mathrm{Beta}(2,1)\)，密度 \(f(\theta\mid H)=2\theta\)——看到正面后我们相信「偏正」更可能，信念的重心从 0.5 移到 \(\tfrac23\)。</p>
+          <div class="intuition-box"><b>先验从哪来</b><p>面试里先验通常由题面直接给（「999 枚公平、1 枚双头」就是 1:999 的先验赔率），没给时用均匀先验并<b>声明</b>。要敏感的是结论对先验的依赖：稀有的异常（万分之一的双头币）需要非常强的数据才能翻身；相反先验五五开时，一点数据就足以压倒性地改变信念。答贝叶斯题先报先验，是这个领域的礼貌。</p></div>
+
+          <h3 id="s-018-3"><a class="anchor-link" href="#s-018-3" aria-label="跳转到本节">#</a>工具二：似然比与证据强度</h3>
+          <p>对固定的偏币假设 \(p\)，一段含 \(h\) 正 \(t\) 反的序列相对公平币的似然比是：</p>
+          <div class="math-display">\[\mathrm{LR}=(2p)^{h}\,\big(2(1-p)\big)^{t}.\]</div>
+          <p>怎么读：每个正面把赔率乘 \(2p\)、每个反面乘 \(2(1-p)\)，顺序无关、只数个数——这就是「证据可加（对数上）」。由此立刻得到两个有用的判断。其一，对偏向正面的偏币（\(p\gt\tfrac12\)），反面是<b>反向证据</b>：它把赔率乘一个小于 1 的数。其二，比较「一次 H」与「三次 HTH」哪个更像偏币，就是比较 \(2p\) 与 \(8p^2(1-p)\)，而</p>
+          <div class="math-display">\[2p-8p^2(1-p)=2p\,(2p-1)^2\ \ge\ 0,\]</div>
+          <p>等号只在 \(p=\tfrac12\) 成立——<b>对任何偏向正面的偏币，单独一个正面比 HTH 更强的证据</b>（例题 3 展开）。另外要区分两种「更偏」：统计显著性（证据多硬，用 z 值度量）与效应量（偏得多少，用偏离幅度度量），两者可以指向相反的答案（例题 6）。</p>
+
+          <h3 id="s-018-4"><a class="anchor-link" href="#s-018-4" aria-label="跳转到本节">#</a>例题详解 I：一千枚硬币里的一枚双头币</h3>
+          <div class="worked-example">
+            <p><b>例题 1：1000 枚硬币里有 999 枚公平币和 1 枚双头币（两面都是正面）。任取一枚连掷 10 次，全是正面。这枚是双头币的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两个假设：\(U\)（双头币，先验 \(\tfrac1{1000}\)）与 \(F\)（公平币，先验 \(\tfrac{999}{1000}\)）。数据 \(D\)=10 连正。用赔率形式：先验赔率 \(\tfrac{1}{999}\)，似然比 \(\tfrac{P(10H\mid U)}{P(10H\mid F)}=\tfrac{1}{2^{-10}}=1024\)。</p>
+              <p><b>推导。</b></p>
+              <div class="math-display">\[P(U\mid D)=\frac{1\cdot\tfrac1{1000}}{1\cdot\tfrac1{1000}+\big(\tfrac1{2}\big)^{10}\cdot\tfrac{999}{1000}}=\frac{1}{1+\tfrac{999}{1024}}=\frac{1024}{2023}\approx 0.506.\]</div>
+              <p><b>检验。</b>直觉核对：先验说双头币比公平币罕见 999 倍，但 10 连正在公平币下只有 \(\tfrac1{1024}\) 的概率，两个力量几乎精确抵消（999 对 1024），后验刚好越过一半。敏感性：若掷 11 次，LR 翻倍到 2048，后验跳到 \(\tfrac{2048}{2048+999}\approx 0.672\)；掷 20 次已几乎确凿。反之掷 3 次时 LR=8，后验仅 \(\tfrac8{1007}\lt1\%\)——罕见的异常需要惊人的数据才能翻案。</p>
+              <p><b>面试怎么讲。</b>写出「先验赔率 1:999 × 似然比 1024 = 后验赔率 1024:999」，报 \(\tfrac{1024}{2023}\approx 50.6\%\)；主动点出「证据强度与稀有度的赛跑」这个框架，并给出 11 连正时后验大幅跳升的敏感性分析。</p>
+            </div>
+          </div>
+
+          <h3 id="s-018-5"><a class="anchor-link" href="#s-018-5" aria-label="跳转到本节">#</a>例题详解 II：两硬币判别一族</h3>
+          <div class="worked-example">
+            <p><b>例题 2：只掷一次得到正面（H）的硬币，和掷三次得到 HTH 的硬币，哪个更可能是偏向正面的偏币？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设偏币假设为正面率 \(p\gt\tfrac12\)。比较两组数据相对公平币的似然比：单个 H 给 \(\mathrm{LR}_1=2p\)；HTH 给 \(\mathrm{LR}_2=(2p)^2\cdot 2(1-p)=8p^2(1-p)\)。</p>
+              <p><b>推导。</b>作差：</p>
+              <div class="math-display">\[2p-8p^2(1-p)=2p\big(1-4p(1-p)\big)=2p\,(2p-1)^2\ \ge\ 0,\]</div>
+              <p>等号仅当 \(p=\tfrac12\)。对任何 \(p\gt\tfrac12\)，\(\mathrm{LR}_1\gt\mathrm{LR}_2\)：一次 H 是更强的偏币证据。代入 \(p=\tfrac23\)：\(\mathrm{LR}_1=\tfrac43\approx1.333\)，\(\mathrm{LR}_2=\tfrac{32}{27}\approx1.185\)。</p>
+              <p><b>检验。</b>直觉核对：HTH 里那个 T 是反向证据（因子 \(2(1-p)\lt1\)），它抵消掉一部分正面的推力；一次 H 虽短但全是同向证据。特例验证：\(p\to1\) 时 \(\mathrm{LR}_2=8p^2(1-p)\to0\)——几乎双头的币掷出 T 几乎不可能，HTH 反而强烈否定它。</p>
+              <p><b>面试怎么讲。</b>反直觉题，答案要抢在推导前给出：「一次 H 更可疑」。理由一句话：「证据看乘积不看长度，T 是反向证据」；然后把 \(2p(2p-1)^2\) 这一步亮出来。若被追问「偏的方向未知呢」：那 HTH 含正反各半、方向信息更弱，结论只会更强。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 3：一枚公平币与一枚正面率 \(\tfrac23\) 的偏币。先任取一枚掷一次得正面；再取<b>另一枚</b>掷三次得两个正面（如 HHT）。问第一枚（掷一次出正面的那枚）是偏币的概率？哪一枚更可能是偏币？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>源题库里这一族题反复出现（措辞略有差异：三次具体顺序 HHT 或「恰好两个正面」，答案相同），统一模型：硬币 A 掷 1 次得 H；硬币 B（另一枚）掷 3 次得 2 正 1 反。假设 \(H_A\)：A 是偏币（B 公平）；\(H_F\)：A 是公平币（B 是偏币）。先验各 \(\tfrac12\)。</p>
+              <p><b>推导。</b>两个似然：</p>
+              <div class="math-display">\[P(D\mid H_A)=\underbrace{\tfrac23}_{A:1H}\times\underbrace{\tfrac{3}{8}}_{B:2/3正}=\tfrac14,\qquad P(D\mid H_F)=\tfrac12\times 3\cdot\big(\tfrac23\big)^2\tfrac13=\tfrac29.\]</div>
+              <p>（B 掷三次恰两个正面：\(\binom32(\tfrac23)^2(\tfrac13)=\tfrac{12}{27}=\tfrac49\)，公平币乘 \(\tfrac12\)、偏币情形 A 的一个正面乘 \(\tfrac23\)。特定顺序 HHT 的组合数 \(\binom32=3\) 在两个假设下同乘同除，后验不变。）后验：</p>
+              <div class="math-display">\[P(H_A\mid D)=\frac{\tfrac14}{\tfrac14+\tfrac29}=\frac{9}{17}\approx 0.529.\]</div>
+              <p><b>检验。</b>结论：掷一次得正面的那枚更可能是偏币（9:8 的后验赔率）。这与例题 2 一脉相承——单次正面（似然比 \(\tfrac43\)）胜过「三次两正」的证据（\(\tfrac49\) 对 \(\tfrac12\)，似然比 \(\tfrac89\lt1\)，它其实是偏向「公平」的证据）。量级合理：两组证据都不强，后验只温和地偏离 \(\tfrac12\)。</p>
+              <p><b>面试怎么讲。</b>先声明「两枚硬币各掷各的、假设是联动的（A 偏则 B 公平）」，避免把自己绕晕；然后按假设分别算联合似然 \(\tfrac14\) 与 \(\tfrac29\)，报 \(\tfrac9{17}\)；最后用例题 2 的「单次正面更强」解释为什么赢家是只掷一次的那枚。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4：一枚双面都是正面的 HH 币和一枚一面正一面反的 HT 币。任取一枚连掷 4 次全是正面。它是 HH 币的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>先验各 \(\tfrac12\)；HH 币掷出 4 连正的概率是 1，HT 币是 \(\big(\tfrac12\big)^4=\tfrac1{16}\)。</p>
+              <p><b>推导。</b>似然比 16，后验赔率 16:1：</p>
+              <div class="math-display">\[P(HH\mid 4H)=\frac{1\cdot\tfrac12}{1\cdot\tfrac12+\tfrac1{16}\cdot\tfrac12}=\frac{16}{17}\approx 0.941.\]</div>
+              <p><b>检验。</b>敏感性：k 连正的后验是 \(\tfrac{2^k}{2^k+1}\)，k=1 时 \(\tfrac23\)、k=4 时 \(\tfrac{16}{17}\)、k=7 时超过 99%。与例题 1 的差别只在先验（这里 1:1，那里 1:999），似然结构完全一样——同一台机器换个先验而已。</p>
+              <p><b>面试怎么讲。</b>「先验对半开、似然比 16，所以 16/17」十秒讲完；把通用公式 \(\tfrac{2^k}{2^k+1}\) 报出来，并指出它就是例题 1 把先验改成对半开的版本——展示题型收敛能力。</p>
+            </div>
+          </div>
+
+          <h3 id="s-018-6"><a class="anchor-link" href="#s-018-6" aria-label="跳转到本节">#</a>例题详解 III：连续参数与后验比较</h3>
+          <div class="worked-example">
+            <p><b>例题 5：硬币的正面率 \(b\) 未知，先验取 \([0,1]\) 上的均匀分布。掷一次得到正面。此时 \(b\) 的分布是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>连续参数的贝叶斯更新：\(b\sim U[0,1]\)，数据是一次正面，似然 \(P(H\mid b)=b\)。</p>
+              <p><b>推导。</b>贝叶斯定理的密度形式：\(f(b\mid H)\propto b\cdot 1\)，归一化（\(\int_0^1 b\,\mathrm{d}b=\tfrac12\)）：</p>
+              <div class="math-display">\[f(b\mid H)=2b,\qquad 0\le b\le 1,\qquad b\mid H\sim\mathrm{Beta}(2,1).\]</div>
+              <p><b>检验。</b>密度在 1 处取最大值 2、在 0 处为 0：看到正面后，高正面率从「先验中被平等对待」变为「被数据支持」，信念重心移到后验均值 \(\tfrac{2}{3}\)。一般化：均匀先验下 \(h\) 正 \(t\) 反给 \(\mathrm{Beta}(1+h,1+t)\)，与工具一的共轭结论一致。</p>
+              <p><b>面试怎么讲。</b>写出 \(f(b\mid H)\propto b\) 后立刻识别「这是 \(\mathrm{Beta}(2,1)\)」，报密度 \(2b\) 与均值 \(\tfrac23\)；补一句「再掷一次反面就更新为 \(\mathrm{Beta}(2,2)\)、回到均值 \(\tfrac12\)」，展示共轭体系的滚动更新能力。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 6：两枚硬币：甲掷 10 次出 4 个正面，乙掷 1000 次出 450 个正面。接下来你要选一枚抛，抛出正面资金翻倍。选哪枚？另一问：甲掷 100 次出 60 个正面、乙掷 1000 次出 550 个正面，哪枚更可能是偏的？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>第一问要选「下一次出正面概率更高」的硬币——用 Beta 后验比较 \(P(\text{正})\) 的后验均值。第二问问的是「偏」的证据强度——用显著性（z 值）与效应量两个镜头分别看。</p>
+              <p><b>推导。</b>第一问：均匀先验下甲的后验是 \(\mathrm{Beta}(5,7)\)，均值 \(\tfrac{5}{12}\approx0.417\)；乙的后验 \(\mathrm{Beta}(451,551)\)，均值 \(\tfrac{451}{1002}\approx0.450\)。乙的后验均值更高且集中（1000 次数据把不确定性压得很窄），选<b>乙</b>：期望翻倍收益 \(\approx0.900\) 对 \(\approx0.833\)。</p>
+              <p>第二问：在「硬币公平」的原假设下，\(z=\dfrac{\hat p-1/2}{1/(2\sqrt n)}\)：</p>
+              <div class="math-display">\[z_{\text{甲}}=\frac{0.10}{1/(2\sqrt{100})}=2.0,\qquad z_{\text{乙}}=\frac{0.05}{1/(2\sqrt{1000})}\approx 3.16.\]</div>
+              <p><b>检验。</b>两个镜头结论相反：论<b>效应量</b>（偏离幅度）甲偏得更狠（10 个百分点对 5 个）；论<b>证据硬度</b>（显著性）乙强得多（z=3.16 对 2.0，p 值约 0.0016 对 0.046）。「哪枚更可能偏」通常指后者——乙；但完整的回答是把两个镜头都摆出来。回到第一问的选币：那是「哪枚更值得押」的决策问题，答案同样由乙的后验优势胜出，但理由是后验均值高而不是「更可能偏」。</p>
+              <p><b>面试怎么讲。</b>第一问报两个后验均值 0.417 与 0.450，选乙并强调「大样本的 45% 比 40% 更可信」；第二问先问清「更偏」的定义，再给 z=2 对 z=3.16 的对比，一句话总结「显著性回答信不信、效应量回答偏多少，别混用」——并链接 <a href="019.html">019 章</a>的检验细节。</p>
+            </div>
+          </div>
+
+          <h3 id="s-018-7"><a class="anchor-link" href="#s-018-7" aria-label="跳转到本节">#</a>例题详解 IV：专家的信息价值</h3>
+          <div class="worked-example">
+            <p><b>例题 7：神秘盒子 30 欧元一个，转手能卖 12、24 或 60 欧，三者等概率。(a) 有位专家能告诉你盒子是否值 60 欧，他说真话的概率 75%、说假 25%。你最多愿意付他多少钱？(b) 若你还被允许做空盒子，这个价码会怎么变？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>无信息时的期望价值 \(=\tfrac{12+24+60}{3}=32\) 欧元，买入净期望 \(32-30=+2\)。专家信号 S（「值 60」/「不值 60」）需要先做贝叶斯反转得到后验，再按信号决定买不买；信息价值 = 有信号时的最优期望利润 − 无信号的 \({+2}\)。</p>
+              <p><b>推导。</b>(a) 信号为「是」（值 60）：\(P(\text{是})=\tfrac34\cdot\tfrac13+\tfrac14\cdot\tfrac23=\tfrac{5}{12}\)，</p>
+              <div class="math-display">\[P(60\mid\text{是})=\frac{\tfrac34\cdot\tfrac13}{\tfrac5{12}}=\frac35,\qquad E[\text{价值}\mid\text{是}]=\tfrac35\cdot60+\tfrac25\cdot18=43.2\ \text{欧元}.\]</div>
+              <p>（不值 60 时 12 与 24 仍等概率，条件均值 18。）43.2 &gt; 30，买入，利润 13.2。信号为「否」：\(P(\text{否})=\tfrac7{12}\)，\(P(60\mid\text{否})=\tfrac17\)，\(E[\text{价值}\mid\text{否}]=\tfrac17\cdot60+\tfrac67\cdot18=24\lt30\)，不买，利润 0。有专家的期望利润：</p>
+              <div class="math-display">\[\tfrac{5}{12}\times13.2+\tfrac{7}{12}\times0=5.5\ \text{欧元},\qquad \text{信息价值}=5.5-2=3.5\ \text{欧元}.\]</div>
+              <p>(b) 允许做空后，无信息基线仍是 +2（做空期望 \(30-32=-2\)，不做）。有专家时「否」分支从「不买赚 0」变成「做空赚 \(30-24=6\)」：</p>
+              <div class="math-display">\[\tfrac{5}{12}\times13.2+\tfrac{7}{12}\times6=9\ \text{欧元},\qquad \text{信息价值}=9-2=7\ \text{欧元}.\]</div>
+              <p><b>检验。</b>信息价值恰好翻倍，机制清晰：只能做多时，「否」信号只帮你躲开亏损（省下 −6 的坑，期望贡献 \(\tfrac7{12}\times6=3.5\)）；能做空后同一个信号直接变成正收益来源。数值上 \(5.5=3.5+2\)、\(9=5.5+3.5\)，两个分支的分解账目闭合。上限直觉：即使专家全知全能（75% 换成 100%），信息价值也有限（「是」必买赚 30、「否」不买，期望 \(\tfrac13\times30=10\)，减 2 得 8 欧元），3.5 与 7 都被压在 8 之下，合理。</p>
+              <p><b>面试怎么讲。</b>先立框架：「信息价值 = 有信号与无信号的最优期望利润之差，定价不超过它」；(a) 依次给后验 \(P(60\mid\text{是})=\tfrac35\)、条件均值 43.2 与 24、期望利润 5.5、价值 3.5；(b) 一句话点题「做空让看空信号也能赚钱，信息价值从 3.5 翻到 7——行动空间越宽，信息越值钱」，这句就是交易台愿意为数据付费的微缩模型。</p>
+            </div>
+          </div>
+
+          <h3 id="s-018-8"><a class="anchor-link" href="#s-018-8" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>五个高频错误</b><p>一，丢先验：例题 1 里跳过 1:999 直接报「10 连正几乎必是双头」，会被追问「如果双头币只有万分之一呢」当场击穿。二，似然用错顺序信息：对固定 \(p\) 的偏币假设，似然只数正反个数、与顺序无关；但「另一枚硬币是谁」会随假设联动（例题 3），联合似然要整体重算。三，把「更可能是偏币」与「更值得押」混同：前者是证据硬度（z 值），后者是后验均值与赔付结构（例题 6 两问答得不同）。四，专家题忘了信号要贝叶斯反转：75% 说真话不等于「说是就 75% 值 60」，先验 \(\tfrac13\) 会把它拉到 \(\tfrac35\)。五，信息价值算成「有专家的总利润」而不是「利润差」，漏掉无信息基线 +2。</p></div>
+          <div class="intuition-box"><b>考官追问的变式</b><p>一，先验改为 Beta 而非两点：用后验均值决策即可（例题 6 第一问的套路）。二，专家部分可靠且可以问多次：多次独立信号等于对数似然比累加，信念逐步收敛。三，「多少个正面才足以确认偏币」：把后验赔率写成 \(\big(\tfrac{p}{1/2}\big)^h\big(\tfrac{1-p}{1/2}\big)^t\times\)先验赔率，解不等式即得最小 \(h\)。四，做空、加倍、止损等更丰富的行动如何改变信息价值：方向一致——行动集合越大、信号可执行的方向越多，信息越贵；这正是例题 7(b) 的推广。</p></div>
+
+          <h3 id="s-018-9"><a class="anchor-link" href="#s-018-9" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能把贝叶斯判别统一写成「后验赔率 = 先验赔率 × 似然比」，并现场算出双头币题的 \(\tfrac{1024}{2023}\approx 50.6\%\)。</li>
+            <li>我能解释为什么单独一个正面比 HTH 更像偏币证据（\(2p(2p-1)^2\ge0\)），并说出「反面是反向证据」。</li>
+            <li>我能对「一枚掷一次出正、另一枚掷三次出两正」算出第一枚是偏币的后验 \(\tfrac9{17}\)，并说明组合数为何不影响结果。</li>
+            <li>我能用先验对半开 + 似然比 16 秒出 HH 币的 \(\tfrac{16}{17}\)，并给通用式 \(\tfrac{2^k}{2^k+1}\)。</li>
+            <li>我能在均匀先验下把「掷出正面后的 \(b\)」更新为 \(\mathrm{Beta}(2,1)\)（密度 \(2b\)、均值 \(\tfrac23\)），并滚动更新。</li>
+            <li>我能用 Beta 后验均值比较 4/10 与 450/1000 两枚硬币并给出选币理由，同时用 z=2 对 z=3.16 区分显著性与效应量。</li>
+            <li>我能把专家信息定价为「有/无信号最优期望利润之差」，算出神秘盒子的 3.5 欧元，并解释做空后翻倍到 7 欧元的机制。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="017.html">← 017. 概率四：硬币公平性与偏币检验</a><a href="019.html">019. 概率六：假设检验与置信区间 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

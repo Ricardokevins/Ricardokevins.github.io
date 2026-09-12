@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>029. 统计四：多元高斯与相关系数 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 029</div>
+        <div class="brand-title">统计四：多元高斯与相关系数</div>
+        <div class="brand-meta">条件高斯公式、旋转对称算楔形概率、相关矩阵的正定性约束与等效策略数。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-029-1">学习目标：把「相关」变成可计算的代数</a><a class="toc-link" href="#s-029-2">知识点一：联合高斯与条件高斯</a><a class="toc-link" href="#s-029-3">知识点二：旋转对称与半平面概率</a><a class="toc-link" href="#s-029-4">知识点三：相关结构代数：和的方差与有效个数</a><a class="toc-link" href="#s-029-5">例题详解 I：联合、条件、合成与几何概率</a><a class="toc-link" href="#s-029-6">例题详解 II：相关的界、等效策略与误差累积</a><a class="toc-link" href="#s-029-7">例题详解 III：过程、间隔与最小方差组合</a><a class="toc-link" href="#s-029-8">误区与边界</a><a class="toc-link" href="#s-029-9">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link current" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="statistics" data-title="统计四：多元高斯与相关系数">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>029. 统计四：多元高斯与相关系数</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>多元高斯的条件分布公式、旋转对称带来的「楔形概率」技巧、相关矩阵的正定性边界，以及它们在策略分散与组合最小方差上的应用。覆盖源题 S9、S4、S29、S8、S31、S37、S44、S36、S11、S26。</p></aside>
+          <figure class="visual-lead"><img src="../assets/statistics-core.svg" alt="统计分册核心知识地图：多元高斯与相关系数主题的位置"></figure>
+
+          <h3 id="s-029-1"><a class="anchor-link" href="#s-029-1" aria-label="跳转到本节">#</a>学习目标：把「相关」变成可计算的代数</h3>
+          <p>前两章的回归与估计都在「给定独立性/相关性」的设定下工作，本章把设定本身当作研究对象。三件工具贯穿始终：<b>条件高斯公式</b>——联合高斯下，知道 \(X\) 之后 \(Y\) 的分布怎么改写（这是卡尔曼滤波、高斯过程与统计套利里配对交易模型的公共内核）；<b>旋转对称</b>——iid 标准正态向量的分布在任意旋转下不变，于是「过原点的半平面与楔形」的概率退化为圆心角除以 \(2\pi\)，一大批几何概率题变成量角问题；<b>相关矩阵的正定性</b>——协方差矩阵必须半正定，这个约束直接给出等相关系数的下界、三变量相关的允许区间、以及「1000 条策略只剩 10 条等效」这类分散度计算。</p>
+          <p>本章例题密度大，但只有三个套路：条件公式代入（例题 1、2）、楔形量角（例题 3、4）、特征值与方差展开（例题 5–7），最后三道（例题 8–10）把泊松过程与组合方差接进来，作为前面工具在随机过程与资产配置上的落点。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>条件高斯</b><p>\(Y\mid X\sim N\bigl(\mu_Y+\Sigma_{YX}\Sigma_{XX}^{-1}(X-\mu_X),\ \Sigma_{YY}-\Sigma_{YX}\Sigma_{XX}^{-1}\Sigma_{XY}\bigr)\)，条件方差与观测值无关。</p></div>
+            <div class="concept-card"><b>楔形概率</b><p>iid 标准正态旋转对称，过原点半平面概率 \(\tfrac12\)，楔形 \(=\) 圆心角 \(/2\pi\)；\(P(X\gt0,Y\gt0)=\tfrac14+\tfrac{\arcsin\rho}{2\pi}\)。</p></div>
+            <div class="concept-card"><b>正定性约束</b><p>等相关矩阵特征值 \(1-\rho\)（\(n-1\) 重）与 \(1+(n-1)\rho\)，故 \(\rho\ge-\tfrac{1}{n-1}\)；平均方差 \(\sigma^2\frac{1+(n-1)\rho}{n}\) 定义有效个数。</p></div>
+          </div>
+
+          <h3 id="s-029-2"><a class="anchor-link" href="#s-029-2" aria-label="跳转到本节">#</a>知识点一：联合高斯与条件高斯</h3>
+          <p>随机向量 \(Z\) 服从多元高斯 \(N(\mu,\Sigma)\)，当且仅当它能写成独立标准正态的线性组合 \(Z=\mu+AZ\)（\(\Sigma=AA^T\)）。这一定义立刻给出三条结构性质：线性变换保持高斯性、边缘分布是高斯、<b>条件分布也是高斯</b>。密度（\(\Sigma\) 正定时）为：</p>
+          <div class="math-display">\[f(z) = \frac{1}{(2\pi)^{n/2}|\Sigma|^{1/2}}\exp\Bigl(-\tfrac12(z-\mu)^T\Sigma^{-1}(z-\mu)\Bigr).\]</div>
+          <h4>条件分布公式的推导轮廓（源题 S9 的核心）</h4>
+          <p>把 \(Z=(X,Y)\) 分块：\(\mu=\binom{\mu_X}{\mu_Y}\)、\(\Sigma=\begin{pmatrix}\Sigma_{XX} & \Sigma_{XY}\\ \Sigma_{YX} & \Sigma_{YY}\end{pmatrix}\)。把指数里的二次型按 \(y\) 配平方（等价于做分块 Cholesky／Schur 补分解 \(\Sigma_{YY}-\Sigma_{YX}\Sigma_{XX}^{-1}\Sigma_{XY}\)），读出二次项系数与一次项系数，即得：</p>
+          <div class="math-display">\[Y\mid X=x \sim N\bigl(\mu_{Y\mid x},\ \Sigma_{Y\mid X}\bigr),\qquad \mu_{Y\mid x} = \mu_Y+\Sigma_{YX}\Sigma_{XX}^{-1}(x-\mu_X),\qquad \Sigma_{Y\mid X}=\Sigma_{YY}-\Sigma_{YX}\Sigma_{XX}^{-1}\Sigma_{XY}.\]</div>
+          <p>三个读法：(1) 条件均值是 \(x\) 的<b>仿射函数</b>，斜率 \(\Sigma_{YX}\Sigma_{XX}^{-1}\) 正是 <a href="026.html">026 章</a>的总体回归系数（单变量时 \(\rho\sigma_y/\sigma_x\)）；(2) 条件方差<b>不依赖观测值</b> \(x\)——同方差是联合高斯的特产，一般分布不成立；(3) 条件方差严格小于边缘方差 \(\Sigma_{YY}\)（差一个半正定矩阵），「知道 \(X\)」不可能让你对 \(Y\) 更不确定。单变量情形写成教科书形式：</p>
+          <div class="math-display">\[\mathbb{E}[Y\mid X=x] = \mu_Y+\rho\frac{\sigma_y}{\sigma_x}(x-\mu_X),\qquad \mathrm{Var}(Y\mid X) = \sigma_y^2(1-\rho^2).\]</div>
+          <div class="intuition-box"><b>联合高斯不是「每个边缘都高斯」</b><p>边缘都是高斯、联合不是高斯的反例存在（如 \(Y=X\) 与 \(-X\) 各以一半概率取值，两边缘标准正态，联合集中在两条直线上）。条件公式成立的门槛是<b>联合</b>高斯——线性条件期望、常数条件方差这两条「赠品」只在这扇门内有效。</p></div>
+
+          <h3 id="s-029-3"><a class="anchor-link" href="#s-029-3" aria-label="跳转到本节">#</a>知识点二：旋转对称与半平面概率</h3>
+          <p>若 \(X,Y\) iid \(N(0,1)\)，联合密度 \(\frac{1}{2\pi}e^{-(x^2+y^2)/2}\) 只依赖到原点的距离——分布在任意旋转下不变。于是任何「由过原点的直线围成的区域」的概率只由圆心角决定：</p>
+          <div class="math-display">\[P\bigl(\text{楔形圆心角 }\alpha\bigr) = \frac{\alpha}{2\pi},\qquad P(a^TZ\gt0)=\tfrac12\ \ \text{（任意非零向量 }a\text{）}.\]</div>
+          <p>推论一：任意线性组合 \(aX+bY\sim N(0,a^2+b^2)\) 关于零对称，过零半平面概率 \(\tfrac12\)——不用算卷积。推论二（相交楔形）：\(P(X\gt0,\ X+Y\gt0)\) 这类「两个半平面的交集」先在 \((x,y)\) 平面上画出边界线、量出交角，再除以 \(2\pi\) 即得。推论三（相关版本）：对相关系数 \(\rho\) 的标准二维高斯，有经典公式</p>
+          <div class="math-display">\[P(X\gt0,\ Y\gt0) = \frac14+\frac{1}{2\pi}\arcsin\rho \ \Longrightarrow\ P(X\gt0,\ Y\lt0)=\frac14-\frac{1}{2\pi}\arcsin\rho,\]</div>
+          <p>后者已在 <a href="028.html">028 章</a>例题 6 用端点核对过。\(\arcsin\rho\) 项的来源同样是对称性：标准化相关高斯可以写成 \(Y=\rho X+\sqrt{1-\rho^2}\,\varepsilon\)，两半平面边界的夹角由 \(\rho\) 通过 \(\arcsin\) 进入。</p>
+          <div class="intuition-box"><b>量角三步法</b><p>遇到 iid 标准正态的符号/半平面题：(1) 把每个事件写成过原点直线的某一侧；(2) 在纸上画出这些直线，标出交集楔形；(3) 概率 = 楔形圆心角 \(/2\pi\)。条件概率则再除以单个半平面的 \(\tfrac12\)。整个流程不需要一次积分。</p></div>
+
+          <h3 id="s-029-4"><a class="anchor-link" href="#s-029-4" aria-label="跳转到本节">#</a>知识点三：相关结构代数：和的方差与有效个数</h3>
+          <p>一切从和的方差展开式出发（本章的「万能第一行」）：</p>
+          <div class="math-display">\[\mathrm{Var}\Bigl(\sum_{i=1}^n X_i\Bigr) = \sum_{i}\sigma_i^2 + 2\sum_{i\lt j}\mathrm{Cov}(X_i,X_j).\]</div>
+          <p>独立时只有第一项（\(n\sigma^2\)，标准差 \(\sqrt n\sigma\)）；等相关 \(\mathrm{Cov}=\rho\sigma^2\) 时代入得 \(n\sigma^2\bigl(1+(n-1)\rho\bigr)\)。把 \(n\) 个资产等权平均，方差为：</p>
+          <div class="math-display">\[\mathrm{Var}(\bar X) = \frac{\sigma^2}{n}\bigl(1+(n-1)\rho\bigr) = \frac{\sigma^2}{N_{\text{eff}}},\qquad N_{\text{eff}} \coloneqq \frac{n}{1+(n-1)\rho}.\]</div>
+          <p>\(N_{\text{eff}}\) 就是<b>有效策略数 / 有效独立样本数</b>：\(\rho=0\) 时等于 \(n\)；\(\rho\gt0\) 时被压小，且 \(n\to\infty\) 时饱和于 \(1/\rho\)——加再多同源策略，分散收益封顶。这个量在风险管理里叫分散度比率，是源题 S44 的主角。</p>
+          <h4>相关矩阵必须半正定</h4>
+          <p>协方差矩阵 \(\Sigma\) 满足 \(\mathrm{Var}(a^TZ)=a^T\Sigma a\ge0\) 对一切 \(a\) 成立——半正定是「方差非负」的矩阵化。等相关矩阵可分解为 \(R=(1-\rho)I+\rho\,\mathbf{1}\mathbf{1}^T\)：在 \(\mathbf{1}=(1,\dots,1)^T\) 方向上特征值为 \(1+(n-1)\rho\)，在与 \(\mathbf{1}\) 正交的 \(n-1\) 维空间上特征值为 \(1-\rho\)。半正定要求两者皆非负：</p>
+          <div class="math-display">\[-\frac{1}{n-1}\ \le\ \rho\ \le\ 1,\qquad\text{三变量即}\ \rho\ge-\tfrac12.\]</div>
+          <p>读法：「全员两两负相关」不能太负——变量越多，可容忍的平均负相关越弱；\(n=2\) 时退回熟悉的相关系数域 \([-1,1]\)。同族技巧（\(3\times3\) 相关系数矩阵行列式非负）还给出「已知两条相关求第三条的范围」，见例题 6(b)。</p>
+          <div class="intuition-box"><b>为什么负相关有下界</b><p>直觉：\(n\) 个变量两两相关 \(-1/(n-1)\) 恰好对应「和恒为零」的构造——例如 \(n\) 只基金各配 \(1/n\) 权重做空它们的等权组合，残差间相关恰为 \(-1/(n-1)\)；想更负就必须让某个线性组合的方差为负，几何与代数都不允许。这正是例题 7 里「完全对冲掉误差」的临界相关。</p></div>
+
+          <h3 id="s-029-5"><a class="anchor-link" href="#s-029-5" aria-label="跳转到本节">#</a>例题详解 I：联合、条件、合成与几何概率</h3>
+          <div class="worked-example">
+            <p><b>例题 1（源题 S9）：解释联合高斯与条件高斯的区别，并计算：\((X,Y)\) 服从 \(\mu=(0,0)\)、\(\sigma_x=0.5\)、\(\sigma_y=1\)、\(\rho=0.5\) 的双变量高斯，求 \(Y\mid X=x\) 的分布。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>区别先讲清：联合高斯描述「整体」——等密度线是椭圆、任意线性组合服从一维高斯；条件高斯描述「知道 \(X\) 之后 \(Y\) 剩下的不确定性」——它是从联合里切出的纵截面分布。两者由知识点一的公式连接。</p>
+              <p><b>推导。</b>代入 \(\mu_Y+\rho\frac{\sigma_y}{\sigma_x}(x-\mu_X)\) 与 \(\sigma_y^2(1-\rho^2)\)：</p>
+              <div class="math-display">\[Y\mid X=x \sim N\bigl(0.5\times\tfrac{1}{0.5}\,x,\ 1^2\times(1-0.25)\bigr) = N(x,\ 0.75).\]</div>
+              <p>条件均值斜率 \(1\) 与 <a href="026.html">026 章</a>例题 4 的回归斜率一致——总体回归线就是条件均值的轨迹；条件方差 \(0.75\) 与 \(x\) 无关。</p>
+              <p><b>检验。</b>边缘核对：条件均值对 \(X\) 的分布取期望给 \(\mathbb{E}[Y]=0=\mu_Y\)；全方差公式 \(\mathrm{Var}(Y)=\mathrm{Var}(\mathbb{E}[Y\mid X])+\mathbb{E}[\mathrm{Var}(Y\mid X)]=0.25\times1+0.75=1=\sigma_y^2\)，两条边缘都对上。</p>
+              <p><b>面试怎么讲。</b>先各用一句话定义联合与条件（椭圆云／切出的截面），再背条件公式代入数值，最后用全方差公式自检——三步都有输出，这题就答满了。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2（源题 S4）：两条均值 1、标准差 1 的高斯「合并」，结果的参数是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>「合并」有两种读法，必须先澄清再算——这本身就是考点。读法一：两个<b>独立随机变量相加</b>（把两杯水倒在一起求总量的分布）。读法二：把两组观测<b>混在一起</b>（或每次随机选用其中一条高斯生成一个样本），即混合分布。</p>
+              <p><b>推导。</b>读法一（卷积）：独立高斯相加仍是高斯，均值相加、方差相加：</p>
+              <div class="math-display">\[X_1+X_2 \sim N(1+1,\ 1^2+1^2) = N(2,\ \sqrt2),\qquad\text{均值 }2\text{、标准差 }\sqrt2\approx1.414.\]</div>
+              <p>读法二（混合）：以概率各半取 \(N(1,1)\)，密度是 \(\tfrac12\phi_{(1,1)}+\tfrac12\phi_{(1,1)}=\phi_{(1,1)}\)——两个<b>相同</b>组件的混合就是原分布，参数不变，仍为均值 1、标准差 1。若两组件不同（如 \(N(0,1)\) 与 \(N(3,1)\) 各半），混合是双峰、不是任何高斯——「混合不保型、卷积保型」是本题的教学点。</p>
+              <p><b>检验。</b>读法一的方差 \(2\gt1\)：相加会放大不确定性，合理；读法二的均值 \(=\tfrac12(1)+\tfrac12(1)=1\)、方差 \(=\tfrac12(1)+\tfrac12(1)+0=1\)（组件相同时组间方差为零），与直接读密度一致。</p>
+              <p><b>面试怎么讲。</b>第一句反问「合并是指相加还是混合？」——澄清歧义本身就是得分；然后两条路各给一行结论，附「卷积保高斯、混合一般不保」的总结。若被追问「两台独立秤读数平均」：那是相加除二，\(N(1,\tfrac{1}{\sqrt2})\)，方差反而变小，与 <a href="028.html">028 章</a>例题 4 的融合公式同源。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 3（源题 S29）：\(X,Y\) iid 标准正态。求 (i) \(P(X\gt0)\)；(ii) \(P(X+2Y\gt0)\)；(iii) \(P(X\gt0\ \text{且}\ X+Y\gt0)\)。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>三个事件都是「过原点直线的某一侧」，用知识点二的量角三步法。</p>
+              <p><b>推导。</b>(i) 对称性直接给 \(\tfrac12\)。(ii) \(X+2Y\sim N(0,1+4)=N(0,5)\)，关于零对称给 \(\tfrac12\)——方差 5 不影响对称事件的概率。(iii) 两条边界线：\(x=0\)（纵轴）与 \(x+y=0\)（斜率 \(-1\) 直线）。\(X\gt0\) 是纵轴右侧半平面，\(X+Y\gt0\) 是直线 \(x+y=0\) 的右上侧；两半平面的交集是圆心角为 \(\tfrac34\pi\) 的楔形（从角 \(-\tfrac\pi4\) 的边界扫到角 \(\tfrac\pi2\) 的边界）：</p>
+              <div class="math-display">\[P\bigl(X\gt0,\ X+Y\gt0\bigr) = \frac{3\pi/4}{2\pi} = \frac38.\]</div>
+              <p><b>检验。</b>数值 sanity：\(X\) 与 \(X+Y\) 的相关系数 \(\mathrm{Cov}(X,X+Y)/\sqrt{1\cdot2}=1/\sqrt2\approx0.707\)，代入 \(\arcsin\) 公式 \(\tfrac14+\tfrac{\arcsin(0.707)}{2\pi}=\tfrac14+\tfrac{\pi/4}{2\pi}=\tfrac38\)——两条路线互证，稳。</p>
+              <p><b>面试怎么讲。</b>(i)(ii) 各一句对称性；(iii) 画图量角给 \(3/8\)，再主动用 \(\arcsin\) 公式复核（相关系数 \(1/\sqrt2\)），展示两条独立路径。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4（源题 S8，与例题 3 同族）：\(X,Y\) iid 零均值正态。求 \(P(X\ge0 \mid X+Y\ge0)\)。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>条件概率 = 交集除以条件事件；两者都是半平面，直接复用例题 3 的楔形。</p>
+              <p><b>推导。</b>分母 \(P(X+Y\ge0)=\tfrac12\)（对称性），分子为例题 3(iii) 的 \(\tfrac38\)：</p>
+              <div class="math-display">\[P(X\ge0\mid X+Y\ge0) = \frac{3/8}{1/2} = \frac34.\]</div>
+              <p><b>检验。</b>直觉核对：已知和为正，\(X\) 更可能为正（正相关 \(1/\sqrt2\) 传递信息），\(\tfrac34\gt\tfrac12\) 方向正确；用 \(\arcsin\) 公式交叉验证 \(P(X\ge0,X+Y\ge0)/P(X+Y\ge0)=\tfrac38/\tfrac12=\tfrac34\) 一致。量级核对：相关 \(0.707\) 时后验从 0.5 挪到 0.75，介于独立（0.5）与完全相关（1）之间，落点合理。</p>
+              <p><b>面试怎么讲。</b>一句话点名「与 S29(iii) 同一块楔形，只多除了一个 \(\tfrac12\)」，先把 \(\tfrac34\) 报出来，再补量角图；能指出「条件事件把质量重新归一化到半平面」即到位。</p>
+            </div>
+          </div>
+
+          <h3 id="s-029-6"><a class="anchor-link" href="#s-029-6" aria-label="跳转到本节">#</a>例题详解 II：相关的界、等效策略与误差累积</h3>
+          <div class="worked-example">
+            <p><b>例题 5（源题 S37）：三个随机变量 \(X,Y,Z\)，两两相关都等于 \(p\)。\(p\) 的可能范围是什么？推广到 \(n\) 个变量呢？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>相关矩阵 \(R\) 必须半正定；等相关结构下 \(R\) 的特征值有显式表达。</p>
+              <p><b>推导。</b>写成 \(R=(1-p)I+p\,\mathbf{1}\mathbf{1}^T\)：沿 \(\mathbf{1}\) 方向特征值 \(1+2p\)，正交补上（二维）特征值 \(1-p\)。半正定要求二者非负：</p>
+              <div class="math-display">\[1+2p\ge0 \text{ 且 } 1-p\ge0 \quad\Longrightarrow\quad -\tfrac12\le p\le1.\]</div>
+              <p>推广到 \(n\) 个等相关变量：特征值 \(1+(n-1)p\) 与 \(1-p\)（\(n-1\) 重），给出 \(-\tfrac{1}{n-1}\le p\le1\)——变量越多，负相关的一端越靠近 0。</p>
+              <p><b>检验。</b>构造核对：三变量取 \(Z_1,Z_2\) iid，令 \(X=Z_1,\ Y=Z_2,\ Z=-\tfrac{X+Y}{\sqrt2}\)，标准化后两两相关恰为 \(-\tfrac12\)——下界可达；上界 1 由完全共线实现。\(n=2\) 时公式退回 \([-1,1]\)，与一维相关系数域吻合。</p>
+              <p><b>面试怎么讲。</b>一句话点破「相关矩阵半正定」，写出特征值分解（\(I\) 与 \(\mathbf{1}\mathbf{1}^T\) 的凸组合），端点随口给构造。易错点预告：别答 \([-1,1]\)——那是两个变量的答案。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 6（源题 S44）：对冲基金有 1000 条策略，两两相关都是 10%。(a) 等效（独立）策略有多少条？继续加策略会怎样？(b) 若 \(\mathrm{corr}(A,B)=\mathrm{corr}(B,C)=0.9\)，\(\mathrm{corr}(A,C)\) 的范围是？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>(a) 用「等权组合的方差」定义分散度：设每条策略收益方差 \(\sigma^2\)，等权平均的方差为 \(\frac{\sigma^2}{n}\bigl(1+(n-1)\rho\bigr)\)，把它写成 \(\sigma^2/N_{\text{eff}}\) 读出有效个数。(b) 用 \(3\times3\) 相关系数矩阵半正定（行列式非负）。</p>
+              <p><b>推导。</b>(a) 代入 \(n=1000\)、\(\rho=0.1\)：</p>
+              <div class="math-display">\[N_{\text{eff}} = \frac{n}{1+(n-1)\rho} = \frac{1000}{1+0.1\times999} = \frac{1000}{100.9}\approx9.91\ \text{条}.\]</div>
+              <p>继续加策略：\(n\to\infty\) 时 \(N_{\text{eff}}\to1/\rho=10\)——饱和。特征值视角同样清晰：等相关矩阵的最大特征值 \(1+(n-1)\rho\approx100.9\) 承载了几乎全部方差，其余 \(999\) 个方向只有 \(1-\rho=0.9\)，组合风险被「市场公共因子」这一根轴锁死。(b) 记 \(\mathrm{corr}(A,C)=x\)，相关矩阵行列式非负：</p>
+              <div class="math-display">\[1+2\rho^2 x - 2\rho^2 - x^2 \ge 0 \ \Longrightarrow\ x^2-2\rho^2x+(2\rho^2-1)\le0 \ \Longrightarrow\ x\in\bigl[2\rho^2-1,\ 1\bigr]=[0.62,\ 1].\]</div>
+              <p><b>检验。</b>(a) 端点核对：\(\rho=0\) 给 \(N_{\text{eff}}=n\)，\(\rho=1\) 给 1；(b) 端点核对：\(x=1\)（三者共线）与 \(x=2(0.9)^2-1=0.62\)（对应「\(B\) 恰为 \(A\)、\(C\) 的等权平均型构造」）都让行列式为零，可行。直觉核对：\(A\)、\(C\) 都与 \(B\) 高度相关，二者不可能不相关——下界 0.62 为正与此相符，且严格小于 \(\rho^2=0.81\)（「相关不能简单平方传递」）。</p>
+              <p><b>面试怎么讲。</b>(a) 先报 9.91，强调「千条策略约等于十条独立的，再加也只往 10 靠」；(b) 报 [0.62, 1]，一句「相关矩阵半正定、行列式非负」交代来源。主动把 (a) 连到风险预算：真实基金的相关结构不等相关，但 \(N_{\text{eff}}\) 公式给出的量级直觉依然有效。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 7（源题 S31）：机器造 1 米长的杆，误差（标准差）10%。把 10 根接成一根，总误差是多少？若两两误差有相关系数 \(r\) 呢？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>每根杆长 \(L_i=1+e_i\)，\(e_i\) 标准差 \(\sigma=0.1\) 米；总长 \(\sum L_i = 10+\sum e_i\)，问总误差的标准差相对 10 米的百分比。</p>
+              <p><b>推导。</b>独立情形：\(\mathrm{Var}(\sum e_i)=10\sigma^2\)，总误差 \(=\sqrt{10}\times0.1\approx0.316\) 米，相对误差 \(0.316/10\approx3.16\%=\sqrt{10}\,\%\)。相关情形（两两相关 \(r\)）：</p>
+              <div class="math-display">\[\mathrm{Var}\Bigl(\sum_{i=1}^{10} e_i\Bigr) = 10\sigma^2 + 2\binom{10}{2}r\sigma^2 = (10+90r)\sigma^2 \ \Longrightarrow\ \text{相对误差} = \sqrt{10+90r}\,\%.\]</div>
+              <p>读数：\(r=0\) 给 \(\sqrt{10}\%\approx3.16\%\)；\(r=1\) 给 \(\sqrt{100}\%=10\%\)（完全同涨同跌，无分散）；临界 \(r=-\tfrac19\)（即 \(-1/(n-1)\)，例题 5 的下界）给 0——总方差恰好抵消。源题答案里「\(r=-1\) 误差为零」对应的是 \(n=2\) 的特例（两根杆完全负相关恰相抵消）；十根杆两两 \(-1\) 代数上不允许，可容许的最强对冲就停在 \(-1/9\)。</p>
+              <p><b>检验。</b>量纲与单调性：误差随 \(r\) 单调上升，两端 \(3.16\%\to10\%\)；\(\sqrt n\) 法则（\(3.16=\sqrt{10}\)）与独立和的教科书结论一致；PSD 界 \(-\tfrac19\) 与例题 5 完全对齐。</p>
+              <p><b>面试怎么讲。</b>先答独立情形的 \(\sqrt{10}\%\approx3.2\%\)（强调「百分比下降不是 1%，因为 \(\sqrt n\)」），再给 \(\sqrt{10+90r}\%\) 一般式，最后主动指出负端的代数边界 \(-1/9\)——把例题 5 的相关知识用在这，形成连环得分。</p>
+            </div>
+          </div>
+
+          <h3 id="s-029-7"><a class="anchor-link" href="#s-029-7" aria-label="跳转到本节">#</a>例题详解 III：过程、间隔与最小方差组合</h3>
+          <div class="worked-example">
+            <p><b>例题 8（源题 S36）：一个细菌每秒分裂成个数服从泊松分布（参数 \(\lambda\)）的若干个（分裂成 0 个即死亡、1 个即不变），各次分裂独立。从 1 个细菌开始，\(t\) 秒后细菌数目的分布是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>这是分支过程（Galton–Watson process）：每代每个个体独立产生 \(\mathrm{Pois}(\lambda)\) 个后代。分布用概率母函数（pgf）迭代最干净：单代后代 pgf 为 \(G_1(s)=\mathbb{E}[s^{N}]=e^{\lambda(s-1)}\)。</p>
+              <p><b>推导。</b>从 1 个个体出发，\(t\) 代后的 pgf 满足迭代：</p>
+              <div class="math-display">\[G_{t}(s) = G_1\bigl(G_{t-1}(s)\bigr) = \exp\Bigl(\lambda\bigl(G_{t-1}(s)-1\bigr)\Bigr),\qquad G_0(s)=s.\]</div>
+              <p>\(t=1\)：\(G_1=e^{\lambda(s-1)}\) 即泊松\((\lambda)\)；\(t=2\)：\(G_2(s)=\exp\bigl(\lambda(e^{\lambda(s-1)}-1)\bigr)\)——泊松随机个泊松的复合（Neyman A 型分布），已经不是泊松。均值走分支性质：\(\mathbb{E}[Z_t]=\lambda^t\)（每代乘一次均值 \(\lambda\)）。灭绝概率 \(q=P(Z_t\to0)\) 是 pgf 的最小不动点：</p>
+              <div class="math-display">\[q = e^{-\lambda(1-q)}.\]</div>
+              <p>\(\lambda\le1\) 时唯一解 \(q=1\)（必然灭绝）；\(\lambda\gt1\) 时另有 \(q\lt1\) 的解（永久存活概率 \(1-q\gt0\)）。</p>
+              <p><b>检验。</b>小情形核对：\(t=1\) 退化回泊松；均值 \(\lambda^t\) 对 \(t=0,1\) 给 1、\(\lambda\) 正确；\(\lambda=0\) 时每步归零，\(q=1\)。数值例：\(\lambda=2\) 时解 \(q\approx0.203\)（存活率约 80%）。</p>
+              <p><b>面试怎么讲。</b>先点名「分支过程、母函数迭代」，写出 \(G_t=G_1\circ G_{t-1}\)；说明除了 \(t=1\) 都不是泊松（复合结构）；灭绝概率方程 \(q=e^{-\lambda(1-q)}\) 与临界条件 \(\lambda\le1\) 收尾。完整的分支过程与灭绝讨论在 <a href="022.html">022 章</a>。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 9（源题 S11）：泊松过程中两个相邻事件之间的时间服从什么分布？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>泊松过程 \(\{N(t)\}\)（率 \(\lambda\)）有独立平稳增量；间隔 \(T\) 是「下一个事件等待时间」。</p>
+              <p><b>推导。</b>「间隔大于 \(t\)」等价于「\((0,t]\) 内没有事件」：</p>
+              <div class="math-display">\[P(T\gt t) = P\bigl(N(t)=0\bigr) = e^{-\lambda t} \ \Longrightarrow\ T\sim\mathrm{Exp}(\lambda),\ f_T(t)=\lambda e^{-\lambda t}\ (t\ge0).\]</div>
+              <p>由此立得无记忆性：\(P(T\gt s+t\mid T\gt s)=P(T\gt s+t)/P(T\gt s)=e^{-\lambda(s+t)}/e^{-\lambda s}=e^{-\lambda t}\)——等了 \(s\) 久不改变再等 \(t\) 的分布，这是指数分布的签名。第 \(k\) 个事件的到达时间是 \(k\) 个 iid 指数之和，服从 Gamma（Erlang）\((k,\lambda)\)。</p>
+              <p><b>检验。</b>量纲核对：\(\lambda\) 单位是「每秒事件数」，\(\lambda t\) 无量纲；均值 \(1/\lambda\) 与「每 \(1/\lambda\) 秒一个事件」的直觉一致；方差 \(1/\lambda^2\)（变异系数 1，指数族特征）。</p>
+              <p><b>面试怎么讲。</b>一句「间隔是参数 \(\lambda\) 的指数分布」加两行推导（存活函数 = 零事件概率），再主动送出两条延伸：无记忆性、第 \(k\) 次到达是 Erlang——大概率正是追问的下一问。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 10（源题 S26）：组合两条股票 A、B，期望收益相同，\(\sigma_A=20\%\)、\(\sigma_B=30\%\)、相关系数 0.5。如何配置最小化方差？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>权重 \(w\) 放 A、\(1-w\) 放 B；期望收益相同意味着任何配置期望相同，最优化目标只剩方差：</p>
+              <div class="math-display">\[\sigma_p^2(w) = w^2\sigma_A^2 + (1-w)^2\sigma_B^2 + 2w(1-w)\rho\sigma_A\sigma_B.\]</div>
+              <p><b>推导。</b>对 \(w\) 求导令零，解得最小方差权重：</p>
+              <div class="math-display">\[w_A^{*} = \frac{\sigma_B^2-\rho\sigma_A\sigma_B}{\sigma_A^2+\sigma_B^2-2\rho\sigma_A\sigma_B} = \frac{0.09-0.5\times0.06}{0.04+0.09-0.5\times0.12} = \frac{0.06}{0.07} = \frac67\approx85.7\%,\qquad w_B^{*}=\frac17\approx14.3\%.\]</div>
+              <p>代入得最小方差：</p>
+              <div class="math-display">\[\sigma_{p,\min}^2 = \frac{(1-\rho^2)\,\sigma_A^2\sigma_B^2}{\sigma_A^2+\sigma_B^2-2\rho\sigma_A\sigma_B} = \frac{0.75\times0.0036}{0.07} \approx0.0386 \ \Longrightarrow\ \sigma_{p,\min}\approx19.6\%.\]</div>
+              <p><b>检验。</b>结果低于 \(\sigma_A=20\%\)：哪怕 B 又差又吵，只要 \(\rho\lt1\) 就有分散收益；\(\rho=1\) 时代入公式给 \(\sigma_{p,\min}=\min(\sigma_A,\sigma_B)=20\%\)（退化为全仓 A），\(\rho\lt\sigma_A/\sigma_B\approx0.667\) 时甚至存在零方差组合（本题 0.5 未达到，故最小值非零）——端点行为全对。</p>
+              <p><b>面试怎么讲。</b>先指出「同期望 ⇒ 最小方差即最优」这一步简化，再报 \(6/7\) 对 \(1/7\) 与 19.6%；主动提 \(\rho=1\) 与零方差临界 \(\rho=\sigma_A/\sigma_B\) 两个端点，展示公式而不是背数字。</p>
+            </div>
+          </div>
+
+          <h3 id="s-029-8"><a class="anchor-link" href="#s-029-8" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>误区一：把「边缘都是高斯」当「联合高斯」</b><p>条件公式、线性条件期望、常数条件方差三件套全部要求<b>联合</b>高斯。反例（两边缘标准正态、联合集中在两条直线）说明边缘信息不足以断定联合结构。</p></div>
+          <div class="intuition-box"><b>误区二：相关系数范围记成 \([-1,1]\) 不看维度</b><p>三个及以上变量的等相关有下界 \(-1/(n-1)\)；已知两条相关第三条被夹在 \([2\rho^2-1,1]\)。见到「三变量都等于 \(-0.6\)」这类配置，第一反应应当是「相关矩阵不正定、不存在」。</p></div>
+          <div class="intuition-box"><b>误区三：相关 0 等于独立</b><p>联合高斯时二者等价；一般分布只保证「线性无关」。\(\chi^2\) 自由度平方、金融里的波动率与收益（杠杆效应）都是零相关但强非线性依赖的例子；<a href="026.html">026 章</a>例题 6 则是反向警示：\(X\) 与 \(Y\) 独立，可 \(XY\) 与 \(X\) 的协方差是 \(1/24\)——对变量做非线性加工会凭空长出相关性。</p></div>
+          <div class="intuition-box"><b>边界：条件公式在 \(\Sigma_{XX}\) 奇异时失效</b><p>\(X\) 内部完全相关（如同一信号的两份拷贝）时 \(\Sigma_{XX}\) 不可逆，条件分布不唯一——先用 <a href="027.html">027 章</a>的岭/伪逆语言降维或正则化再谈条件。</p></div>
+          <div class="intuition-box"><b>边界：\(N_{\text{eff}}\) 公式只在等相关下精确</b><p>真实策略的相关结构参差，\(n/(1+(n-1)\rho)\) 只在「平均相关」意义上近似；严格做法是用特征值谱定义有效秩 \((\sum\lambda_i)^2/\sum\lambda_i^2\)。把 9.91 当「九条独立策略」陈述时，务必声明假设。</p></div>
+
+          <h3 id="s-029-9"><a class="anchor-link" href="#s-029-9" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出分块条件高斯公式 \(\mu_{Y\mid x}\) 与 \(\Sigma_{Y\mid X}\)，并用配方法说出推导轮廓。</li>
+            <li>我知道联合高斯的三个「赠品」：线性条件期望、常数条件方差、相关零即独立——以及它们在一般分布上全部失效。</li>
+            <li>我能量角解决 iid 标准正态的半平面/楔形概率（如 \(3/8\)、\(3/4\)），并用 \(\arcsin\) 公式交叉验证。</li>
+            <li>我能区分「两条高斯相加（\(N(2,\sqrt2)\)）」与「混合（仍是 \(N(1,1)\)）」，并说明卷积保型、混合不保型。</li>
+            <li>我能用特征值分解推出等相关界 \(-1/(n-1)\le\rho\le1\)，并用构造验证下界可达。</li>
+            <li>我能推导等效策略数 \(N_{\text{eff}}=n/(1+(n-1)\rho)\)，算出 1000 条 \(\rho=0.1\) 时约 9.91、饱和于 \(1/\rho=10\)。</li>
+            <li>我能用行列式非负推出 \(\mathrm{corr}(A,C)\in[2\rho^2-1,1]=[0.62,1]\)（\(\rho=0.9\)）。</li>
+            <li>我能用 \(\mathrm{Var}=\sigma^2(n+n(n-1)r)\) 处理误差累积：十根杆 \(\sqrt{10}\%\) 起、\(r=1\) 时 10%、对冲临界 \(-1/(n-1)\)。</li>
+            <li>我能用母函数迭代描述泊松分裂的分支过程（均值 \(\lambda^t\)、灭绝方程 \(q=e^{-\lambda(1-q)}\)），并说出泊松过程间隔是指数分布及其无记忆性。</li>
+            <li>我能推导两资产最小方差权重并代入算出 \(w_A=6/7\)、\(\sigma_{\min}\approx19.6\%\)，说明端点行为。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="028.html">← 028. 统计三：MLE 与贝叶斯估计</a><a href="030.html">030. 统计五：杂题与费米估算 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

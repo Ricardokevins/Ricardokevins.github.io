@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>016. 概率三：骰子重掷、协方差与最大值 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 016</div>
+        <div class="brand-title">概率三：骰子重掷、协方差与最大值</div>
+        <div class="brand-meta">逆向归纳定重掷阈值、指示变量拆协方差、次序统计量求最大值，骰子三大主流家族。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-016-1">学习目标：骰子题的三个家族</a><a class="toc-link" href="#s-016-2">工具一：逆向归纳与阈值策略</a><a class="toc-link" href="#s-016-3">工具二：指示变量分解协方差</a><a class="toc-link" href="#s-016-4">工具三：最大值的分布与期望</a><a class="toc-link" href="#s-016-5">例题详解 I：重掷与停止策略</a><a class="toc-link" href="#s-016-6">例题详解 II：计数之间的协方差</a><a class="toc-link" href="#s-016-7">例题详解 III：最大值与比大小</a><a class="toc-link" href="#s-016-8">误区与边界</a><a class="toc-link" href="#s-016-9">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link current" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="概率三：骰子重掷、协方差与最大值">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>016. 概率三：骰子重掷、协方差与最大值</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章收拢骰子与均匀变量上的三大题型：可以重掷时的最优停止策略（逆向归纳）、两个计数的协方差（指示变量分解）、以及最大值的期望（次序统计量）。覆盖取消首掷、限次重掷、按规则强制续掷、计数 2 与计数 3 的一族协方差、两个均匀变量最大值、大小面数骰子比小等源题。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-core.svg" alt="概率核心工具地图：期望递推、序列等待、贝叶斯更新与假设检验四大板块"></figure>
+
+          <h3 id="s-016-1"><a class="anchor-link" href="#s-016-1" aria-label="跳转到本节">#</a>学习目标：骰子题的三个家族</h3>
+          <p>骰子题在量化面试里出现的形态看似繁多，实际收敛到三个家族。<b>第一族：可重掷的最优策略</b>——你掷出一个数，可以选择保留或重掷、甚至连续重掷若干次，分数取最后一次，问策略与期望分数。这类题的万能钥匙是逆向归纳（backward induction）：从最后一掷往前推，每一阶段都有一个「继续掷的期望价值」，保留当且仅当当前值超过它，于是策略自动成为阈值型。</p>
+          <p><b>第二族：计数之间的协方差</b>——掷 N 次骰子，X 计 2 的个数、Y 计 3 的个数，求 \(\mathrm{Cov}(X,Y)\)。X 与 Y 显然不独立（一次掷掷不能同时是 2 和 3，且总数被 N 封顶），直接用联合分布会陷入组合地狱；正确做法是把计数拆成一掷一掷的指示变量（indicator），协方差逐项算，几乎所有交叉项自动消失。</p>
+          <p><b>第三族：最大值与比大小</b>——两个独立均匀变量的最大值期望、大小面数骰子比小谁占优。核心是「最大值 ≤ t」等价于「每个变量都 ≤ t」，分布函数立刻写出，期望用尾部积分一行算完。三个家族各自两三行公式，但覆盖了源题库骰子题的绝大部分。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>逆向归纳</b><p>从最后一掷倒推：\(V_r=\) 还剩 \(r\) 次掷权时的价值；阈值就是 \(V_{r-1}\)，策略自动最优。</p></div>
+            <div class="concept-card"><b>指示变量</b><p>\(X=\sum_i \mathbf{1}_i\)：和的协方差化为指示变量两两协方差的和，不同掷独立为零，只剩同掷项。</p></div>
+            <div class="concept-card"><b>次序统计量</b><p>\(P(\max\le t)=\prod_i P(X_i\le t)=t^n\)（均匀情形），期望用 \(\int (1-F)\) 直接积出 \(\tfrac{n}{n+1}\)。</p></div>
+          </div>
+
+          <h3 id="s-016-2"><a class="anchor-link" href="#s-016-2" aria-label="跳转到本节">#</a>工具一：逆向归纳与阈值策略</h3>
+          <p>设你还有 \(r\) 次掷骰机会（当前这次算一次），掷完可以「保留当前点数并结束」或「放弃当前点数继续掷」，分数取最终保留的那次。以 \(V_r\) 记这一阶段的价值（最优策略下的期望得分），\(V_0=0\)（没机会了得零分）。掷出 \(x\) 后：保留得 \(x\)，放弃得 \(V_{r-1}\)，最优取两者较大值。对 \(x\) 取期望：</p>
+          <div class="math-display">\[V_r=E\big[\max(x,\,V_{r-1})\big]=\frac16\Big(\sum_{x\lt V_{r-1}}V_{r-1}+\sum_{x\ge V_{r-1}}x\Big).\]</div>
+          <p>怎么读：点数低于「继续掷的价值」就放弃重来，高于就保留——最优策略天然是阈值策略，阈值正是继续掷的价值 \(V_{r-1}\)。逐层计算骰子情形：\(V_1=3.5\)；\(V_2=\tfrac16(3\times 3.5+4+5+6)=4.25\)（阈值 3.5，即掷出 1、2、3 重掷）；\(V_3=\tfrac16(4\times 4.25+5+6)=\tfrac{28}{6}\approx 4.67\)（阈值 4.25，第一掷只保 5、6）。机会越多阈值越高、价值递增但增速递减——这是最优停止问题的普遍形态。</p>
+          <div class="intuition-box"><b>为什么阈值是 \(V_{r-1}\) 而不是 3.5</b><p>「放弃当前点数」换来的不是一次普通掷骰（价值 3.5），而是「还有 \(r-1\) 次机会的最优游戏」（价值 \(V_{r-1}\gt 3.5\)）。很多候选人到第二层还用 3.5 当阈值，漏掉了嵌套期权价值。只要记住「拿当前值和整个剩余游戏的价值比」，阈值自然一层层抬高。</p></div>
+
+          <h3 id="s-016-3"><a class="anchor-link" href="#s-016-3" aria-label="跳转到本节">#</a>工具二：指示变量分解协方差</h3>
+          <p>掷 N 次骰子，\(X\) 为 2 出现的次数、\(Y\) 为 3 出现的次数。把计数写成指示变量之和：\(X=\sum_{i=1}^{N}\mathbf{1}_i^{(2)}\)，\(Y=\sum_{j=1}^{N}\mathbf{1}_j^{(3)}\)，其中 \(\mathbf{1}_i^{(a)}=1\) 当且仅当第 \(i\) 掷出 \(a\)。由双线性：</p>
+          <div class="math-display">\[\mathrm{Cov}(X,Y)=\sum_{i=1}^{N}\sum_{j=1}^{N}\mathrm{Cov}\big(\mathbf{1}_i^{(2)},\mathbf{1}_j^{(3)}\big).\]</div>
+          <p>怎么读：\(N^2\) 个交叉项里，\(i\ne j\) 的项涉及<b>两次不同的掷</b>，独立，协方差为零；只剩 \(N\) 个同掷项。同一掷不能既是 2 又是 3，故 \(E[\mathbf{1}_i^{(2)}\mathbf{1}_i^{(3)}]=0\)，而 \(E[\mathbf{1}_i^{(2)}]E[\mathbf{1}_i^{(3)}]=\tfrac16\cdot\tfrac16\)：</p>
+          <div class="math-display">\[\mathrm{Cov}\big(\mathbf{1}_i^{(2)},\mathbf{1}_i^{(3)}\big)=0-\frac1{36}=-\frac1{36}\quad\Longrightarrow\quad \mathrm{Cov}(X,Y)=-\frac{N}{36}.\]</div>
+          <p>进一步，\(X\) 是二项计数 \(\mathrm{Bin}(N,\tfrac16)\)，\(\mathrm{Var}(X)=N\cdot\tfrac16\cdot\tfrac56=\tfrac{5N}{36}\)，于是相关系数</p>
+          <div class="math-display">\[\rho_{X,Y}=\frac{-N/36}{5N/36}=-\frac15,\]</div>
+          <p>与 N 无关：更多的掷数让协方差和方差同比例增长，相关强度不变。负相关的来源只有一个——同一次掷出 2 就排除了 3；不同掷之间毫无牵连。</p>
+
+          <h3 id="s-016-4"><a class="anchor-link" href="#s-016-4" aria-label="跳转到本节">#</a>工具三：最大值的分布与期望</h3>
+          <p>对独立同分布变量，最大值「不超过 t」要求每一个都不超过 t，分布函数直接连乘。以两个独立 \(U[0,1]\) 变量 \(X,Y\) 为例：</p>
+          <div class="math-display">\[P\big(\max(X,Y)\le t\big)=P(X\le t)\,P(Y\le t)=t^2,\qquad 0\le t\le 1.\]</div>
+          <p>期望用「尾部积分」\(E[Z]=\int_0^1 P(Z\gt t)\,\mathrm{d}t\)（对非负变量成立，怎么读：把期望拆成每一层高度超过 t 的厚度）：</p>
+          <div class="math-display">\[E[\max(X,Y)]=\int_0^1\big(1-t^2\big)\,\mathrm{d}t=1-\frac13=\frac23.\]</div>
+          <p>推广到 n 个：\(P(\max\le t)=t^n\)，\(E[\max]=\tfrac{n}{n+1}\)；再由 \(\max+\min=X+Y\)（两个变量时恒成立），\(E[\min]=1-\tfrac23=\tfrac13\)，而 n 个的最小值期望是 \(\tfrac{1}{n+1}\)。离散骰子版本同理：两次骰子的最大值期望恰为 4.25（本章例题 1 会再次遇到它，两条路线互为印证）。</p>
+
+          <h3 id="s-016-5"><a class="anchor-link" href="#s-016-5" aria-label="跳转到本节">#</a>例题详解 I：重掷与停止策略</h3>
+          <div class="worked-example">
+            <p><b>例题 1：掷一枚公平骰子得点数对应的美元。(a) 掷一次后允许你取消这一掷并重掷一次，以重掷值为准，最优策略与期望收益？(b) 最多可掷三次（可重掷至多两次），以最后一次为准，期望收益？(c) 只掷一次的期望收益？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>(a) 是两阶段决策：看到 \(x\) 后比较「保留 \(x\)」与「重掷（期望 3.5）」。(b) 是逆向归纳标准题，用工具一的 \(V_r\)。(c) 直接 \(\tfrac{1+2+\cdots+6}{6}=3.5\)。</p>
+              <p><b>推导。</b>(a) 取消当且仅当 \(x\lt 3.5\)，即掷出 1、2、3 时重掷：</p>
+              <div class="math-display">\[V=\frac{3\times 3.5+4+5+6}{6}=\frac{10.5+15}{6}=4.25.\]</div>
+              <p>(b) 逆向归纳：最后一掷价值 \(V_1=3.5\)；倒数第二掷阈值 \(V_1\)（保 4、5、6），价值 \(V_2=\tfrac16(3\times3.5+15)=4.25\)；第一掷阈值 \(V_2=4.25\)（只保 5、6）：</p>
+              <div class="math-display">\[V_3=\frac{4\times 4.25+5+6}{6}=\frac{17+11}{6}=\frac{28}{6}=\frac{14}{3}\approx 4.67.\]</div>
+              <p>策略表述：第一掷保留 5、6；第二掷保留 4、5、6；第三掷必须接受任何结果。</p>
+              <p><b>检验。</b>单调性：\(3.5\lt 4.25\lt 4.67\lt 6\)，机会越多价值越高且增量递减（+0.75、+0.42）。交叉印证：(a) 的 4.25 恰等于「两次骰子最大值的期望」——因为「低于 3.5 重掷」等价于取 \(\max(x,\text{新掷})\) 的期望，与工具三的结论一致；源题库中「最多掷三次取最后一次」的多个问法（可掷至多三次、可重掷至多两次、三次内最优停止）与本题完全同型，仅叙述不同。</p>
+              <p><b>面试怎么讲。</b>(a) 一句话点破「重掷的价值是 3.5，不是 6，所以只放弃 1—3」；(b) 写出三层逆向归纳、强调阈值逐层抬高（3.5 → 4.25）这一「嵌套期权」直觉；最后主动报出「无限次重掷的极限是 6」收尾。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2：掷骰子游戏：掷出 1、2、3 时你获得 1 美元并必须继续掷；掷出 4、5 时游戏停止、你保留已积累的钱；掷出 6 时游戏停止、你一分钱也拿不到。求期望收益。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设 \(f(k)\) 为当前已积累 \(k\) 美元时的期望最终收益。每掷：概率 \(\tfrac12\)（1—3）加 1 元续掷，转移 \(f(k+1)\)；概率 \(\tfrac13\)（4—5）锁定 \(k\)；概率 \(\tfrac16\)（6）清零。</p>
+              <p><b>推导。</b>首步方程：</p>
+              <div class="math-display">\[f(k)=\tfrac12 f(k+1)+\tfrac13 k+\tfrac16\cdot 0.\]</div>
+              <p>猜线性解 \(f(k)=ak+b\)：代入得 \(ak+b=\tfrac12(ak+a+b)+\tfrac13k\)，比较系数 \(a=\tfrac a2+\tfrac13\Rightarrow a=\tfrac23\)，\(b=\tfrac a2+\tfrac b2\Rightarrow b=a=\tfrac23\)。故 \(f(k)=\tfrac{2k+2}{3}\)，从零开始：</p>
+              <div class="math-display">\[f(0)=\frac23\approx 0.67\ \text{美元}.\]</div>
+              <p><b>检验。</b>用分布直接验证：恰好在积累 \(n\) 元后因 4—5 停止的概率是 \(\big(\tfrac12\big)^n\tfrac13\)，收益 \(n\)；因 6 停止收益 0。期望 \(=\sum_{n\ge 0}n\big(\tfrac12\big)^n\tfrac13=\tfrac13\cdot\frac{1/2}{(1/2)^2}=\tfrac23\)，与递推一致。量级直觉：一半的掷让你赚 1 元续命、六分之一的掷全部没收，正负拉锯后期望只剩个零头。</p>
+              <p><b>面试怎么讲。</b>关键句：「清零风险让期望收益与已积累金额挂钩，所以要设带状态的 \(f(k)\) 而不是单一 E」；然后猜线性解两行解出 \(f(0)=\tfrac23\)；最后用几何级数分布复核一遍，展示两种方法互证。</p>
+            </div>
+          </div>
+
+          <h3 id="s-016-6"><a class="anchor-link" href="#s-016-6" aria-label="跳转到本节">#</a>例题详解 II：计数之间的协方差</h3>
+          <div class="worked-example">
+            <p><b>例题 3：掷一枚公平骰子 5 次。X 记 2 出现的次数，Y 记 3 出现的次数，求 \(\mathrm{Cov}(X,Y)\) 与相关系数。换成掷 N 次、或改成 X 记 1 的次数与 Y 记 2 的次数，答案如何变化？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>指示变量分解（工具二）：\(X=\sum_i\mathbf{1}_i^{(2)}\)，\(Y=\sum_i\mathbf{1}_i^{(3)}\)。这是源题库里反复出现的一族题——掷 5 次问 2 与 3 的计数、掷 N 次问 2 与 3、掷 5 次问 1 与 2——全部同型，只是 N 和数对在换。</p>
+              <p><b>推导。</b>不同掷之间独立，交叉项为零；同掷项 \(\mathrm{Cov}(\mathbf{1}^{(2)}_i,\mathbf{1}^{(3)}_i)=0-\tfrac16\cdot\tfrac16=-\tfrac1{36}\)。共 N 项：</p>
+              <div class="math-display">\[\mathrm{Cov}(X,Y)=-\frac{N}{36};\qquad N=5\ \Rightarrow\ \mathrm{Cov}(X,Y)=-\frac{5}{36}.\]</div>
+              <p>方差 \(\mathrm{Var}(X)=N\cdot\tfrac16\cdot\tfrac56=\tfrac{5N}{36}\)（N=5 时 \(\tfrac{25}{36}\)），相关系数</p>
+              <div class="math-display">\[\rho=\frac{-N/36}{\sqrt{(5N/36)(5N/36)}}=-\frac15.\]</div>
+              <p><b>检验。</b>量纲与量级：协方差必须随 N 线性放大（两次掷贡献两个同掷负项），而相关系数是无量纲的，不该依赖 N，\(-\tfrac15\) 合理。方向：必为负（一次掷出 2 就排除了 3），大小温和（不同掷之间没有牵制）。换成 X 计 1、Y 计 2 完全对称，答案不变，仍是 \(-\tfrac{N}{36}\)、\(-\tfrac15\)。</p>
+              <p><b>面试怎么讲。</b>先说「同一次掷是互斥事件、不同次掷独立，所以只有 N 个同掷项活着」，一步写出 \(-\tfrac{N}{36}\)；再主动补相关系数 \(-\tfrac15\) 且与 N 无关——多数对手只会算协方差，这一步就是区分度。</p>
+            </div>
+          </div>
+
+          <h3 id="s-016-7"><a class="anchor-link" href="#s-016-7" aria-label="跳转到本节">#</a>例题详解 III：最大值与比大小</h3>
+          <div class="worked-example">
+            <p><b>例题 4：两个独立且均在 \([0,1]\) 上均匀的随机变量，其最大值的期望是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>记 \(M=\max(X,Y)\)。用分布函数连乘加尾部积分（工具三），也可用密度直接积分。</p>
+              <p><b>推导。</b>分布函数：\(P(M\le t)=t^2\)，密度 \(f_M(t)=2t\)，故</p>
+              <div class="math-display">\[E[M]=\int_0^1 t\cdot 2t\,\mathrm{d}t=\frac23.\]</div>
+              <p>或尾部积分 \(E[M]=\int_0^1(1-t^2)\,\mathrm{d}t=\tfrac23\)。</p>
+              <p><b>检验。</b>上下界：\(M\ge X\) 故 \(E[M]\ge E[X]=\tfrac12\)；\(M\le 1\)。对称恒等式 \(\min+\max=X+Y\) 给出 \(E[\min]=1-\tfrac23=\tfrac13\)，两者关于 \(\tfrac12\) 对称、和为 1，自洽。推广 n 个变量 \(E[\max]=\tfrac{n}{n+1}\)，随 n 增大逼近 1。</p>
+              <p><b>面试怎么讲。</b>一句「最大值不超过 t 要两个都不超过 t，所以是 \(t^2\)」，再积分报 \(\tfrac23\)；主动给 min 的 \(\tfrac13\) 和 n 个变量的 \(\tfrac{n}{n+1}\)，用 30 秒把单题升级成一个家族。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5：Alice 与 Bob 各掷一枚骰子比小，点数低者胜。局面一：Alice 掷 5 面骰（1—5），Bob 掷 10 面骰（1—10）；局面二：Alice 掷 50 面骰（1—50），Bob 掷 100 面骰（1—100）。两个局面中 Alice 该选哪一个才能提高获胜概率？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设 Alice 骰子为 \(\{1,\dots,a\}\)、Bob 为 \(\{1,\dots,2a\}\)，双方独立均匀。Alice 胜即 \(A\lt B\)。对 Alice 的每个点数 \(a_0\) 求 Bob 更大的概率再平均：</p>
+              <div class="math-display">\[P(A\lt B)=\frac1a\sum_{a_0=1}^{a}\frac{2a-a_0}{2a}.\]</div>
+              <p><b>推导。</b>局面一（a=5）：\(\sum_{a_0=1}^{5}(10-a_0)=50-15=35\)，\(P=\tfrac{35}{50}=0.70\)。局面二（a=50）：\(\sum_{a_0=1}^{50}(100-a_0)=5000-1275=3725\)，</p>
+              <div class="math-display">\[P=\frac{3725}{5000}=0.745.\]</div>
+              <p><b>检验。</b>连续极限：面数趋于无穷时 Alice、Bob 分别趋于 \(U[0,1]\) 与 \(U[0,2]\)，\(P(A\lt B)=1-\tfrac{1/2\cdot1\cdot1}{2}=\tfrac34=0.75\)；局面二 0.745 已贴近 0.75，数值自洽。交叉核对：局面一平局概率 \(\tfrac5{50}=0.1\)、Bob 胜 \(0.2\)，三者相加为 1。结论：面数越多，离散性修正越小，Alice 胜率越接近 75%，故选局面二。</p>
+              <p><b>面试怎么讲。</b>先指出「面数比例同为 1:2，差别全在离散颗粒度」；写出求和、算出 0.70 与 0.745；用连续极限 0.75 收口，说明细颗粒骰子让 Alice 的「以小吃大」更接近理论最优。</p>
+            </div>
+          </div>
+
+          <h3 id="s-016-8"><a class="anchor-link" href="#s-016-8" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>重掷题的三个坑</b><p>一，第二层之后仍拿 3.5 当阈值：重掷换来的是「剩余游戏」的价值 \(V_{r-1}\)，阈值必须逐层抬高（3.5 → 4.25 → …）。二，混淆「取最后一次」与「取最大值」：限次重掷取最后一次时策略恰好等价于取最大值，但如果规则是「取所有掷的最大值」则无需策略、直接算 \(E[\max]\)，两者数值恰好相同（4.25）却路径不同，面试官爱在这里埋坑。三，例题 2 类「清零规则」题用单一 E 建模：清零使得收益与状态相关，必须引入 \(f(k)\)。</p></div>
+          <div class="intuition-box"><b>协方差与比大小的追问</b><p>协方差族最常见的追问：X 与 Y 是否独立（否，协方差非零即不独立）、\(\mathrm{Cov}(X,\,N-X)\) 是多少（\(X\) 与「非 2 次数」：\(-\mathrm{Var}(X)=-\tfrac{5N}{36}\)，更强，因为互斥得更彻底）、推广到 k 面骰（\(-\tfrac{N}{k^2}\)）。比大小族的追问：若规则改成「小于等于算 Alice 赢」，平局并入 Alice，胜率各加一个平局概率的一半左右；若两面数之比不是 1:2（设 Alice 范围 \(a\)、Bob 范围 \(b\)），只需改求和上限重算，连续极限为 \(P(A\lt B)=1-\tfrac{a}{2b}\)。</p></div>
+
+          <h3 id="s-016-9"><a class="anchor-link" href="#s-016-9" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能用逆向归纳算出可重掷骰子的价值序列 \(3.5\to 4.25\to\tfrac{14}{3}\)，并说出每层的保留阈值。</li>
+            <li>我能解释为什么重掷阈值是「剩余游戏价值 \(V_{r-1}\)」而不是单次期望 3.5。</li>
+            <li>我能对「赢钱续掷、清零没收」类游戏设 \(f(k)\) 并猜线性解，算出例题 2 的 \(\tfrac23\)。</li>
+            <li>我能用指示变量分解一步写出 \(\mathrm{Cov}=-\tfrac{N}{36}\)，并补出相关系数 \(-\tfrac15\) 及其与 N 无关的原因。</li>
+            <li>我能通过分布函数连乘 \(t^n\) 与尾部积分求 n 个均匀变量最大值的期望 \(\tfrac{n}{n+1}\)，并顺势给出最小值的 \(\tfrac{1}{n+1}\)。</li>
+            <li>我能算大小面数骰子比小的胜率（0.70 对 0.745），并用连续极限 0.75 解释「选细颗粒局」。</li>
+            <li>我能在面试官换数字（N、面数、点数对、停止规则）时指出哪些结论不变、哪些需要重算。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="015.html">← 015. 概率二：序列等待与 n 连正</a><a href="017.html">017. 概率四：硬币公平性与偏币检验 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

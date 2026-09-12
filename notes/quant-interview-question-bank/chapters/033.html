@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>033. 编程三：滑动窗口与前缀和 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 033</div>
+        <div class="brand-title">编程三：滑动窗口与前缀和</div>
+        <div class="brand-meta">前缀和、双指针、哈希与栈的经典组合，配两道统计口径的口头问答。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-033-1">学习目标：让区间和变成两点差</a><a class="toc-link" href="#s-033-2">知识讲解：前缀和——区间问题的万能预处理</a><a class="toc-link" href="#s-033-3">知识讲解：双指针与窗口的单调性</a><a class="toc-link" href="#s-033-4">例题详解：数对与模式计数</a><a class="toc-link" href="#s-033-5">例题详解：括号、退格与接雨水</a><a class="toc-link" href="#s-033-6">例题详解：口头问答——显著性、模型比较与概念题</a><a class="toc-link" href="#s-033-7">误区与边界</a><a class="toc-link" href="#s-033-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link current" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="coding" data-title="编程三：滑动窗口与前缀和">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>033. 编程三：滑动窗口与前缀和</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>编程实战第三站：前缀和、双指针、哈希与栈的经典组合拳——数对计数、子序列模式匹配、括号补全、退格字符串与接雨水；章末集中处理源题库里几道挂在编程部分的统计与概念口头问答。</p></aside>
+          <figure class="visual-lead"><img src="../assets/coding-patterns.svg" alt="滑动窗口与前缀和的编程模式示意图"></figure>
+
+          <h3 id="s-033-1"><a class="anchor-link" href="#s-033-1" aria-label="跳转到本节">#</a>学习目标：让区间和变成两点差</h3>
+          <p>很多编程题的长相是「在数组或字符串里找满足某种条件的一段」。这一族问题的通用解法只有三板斧：<strong>前缀和</strong>把「一段的和」变成「两个前缀之差」，再配哈希表就能在linear时间内找等值区间；<strong>双指针</strong>利用单调性让两个游标各走一遍数组，解决配对与匹配；<strong>栈</strong>处理「最近的未配对元素」这类后进先出的结构。本章的例题覆盖三件武器的典型用法：数对计数（哈希）、三字母模式在长串中的出现次数（子序列 DP 与双指针）、括号补全（计数器与栈）、退格字符串比较（栈）、接雨水（前后缀最值与双指针）。</p>
+          <p>本章末尾还收了两道「挂在编程题里的统计问答」：47% 的匹配率是否显著（单比例 z 检验）、两个变量 MSE 相近时如何比较优劣（交叉验证与 Diebold–Mariano 检验思路）。量化面试的编程轮常常这样收尾——代码写完后顺着数据口径聊统计，两道题的简答口径都给全。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>前缀和 + 哈希</b><p>区间和问题降维的标准路径：\(P_r = P_l\) 找零和区间，\(P_r - P_l = k\) 找和为 k 的区间。一旦出现负数，滑动窗口失效而它依然有效。</p></div>
+            <div class="concept-card"><b>双指针</b><p>两类用法：排序后的首尾配对（数对、排片）与按序贪心推进（子序列匹配、接雨水）。前提是移动指针的决策具有单调性。</p></div>
+            <div class="concept-card"><b>栈</b><p>「最近未配对」结构的代言人：括号匹配、退格模拟。能用计数器替代时（单种括号）就降级成 \(O(1)\) 空间。</p></div>
+          </div>
+
+          <h3 id="s-033-2"><a class="anchor-link" href="#s-033-2" aria-label="跳转到本节">#</a>知识讲解：前缀和——区间问题的万能预处理</h3>
+          <p>前缀和（prefix sum）数组 \(P\) 定义为 \(P_0 = 0\)、\(P_i = a_1 + \cdots + a_i\)。它的全部力量来自一个恒等式：任意连续子数组 \(a_{l+1..r}\) 的和等于 \(P_r - P_l\)。</p>
+          <div class="math-display">\[P_0 = 0, \qquad P_i = P_{i-1} + a_i, \qquad \sum_{j=l+1}^{r} a_j = P_r - P_l.\]</div>
+          <p>怎么读：前缀和是「从头加到这里」的累计值，减掉多加的开头部分就得到中间那段。一次 \(O(n)\) 预处理之后，任意区间和的查询都是 \(O(1)\)，这正是它被称为万能预处理的原因。</p>
+          <p>更重要的推论涉及<strong>等值</strong>：和为 0 的区间对应两个相等的前缀和；和为 k 的区间对应差为 k 的两个前缀和。于是「找一段和为定值」的问题，全部变成「在 \(P\) 里找两个满足关系的位置」——用哈希表记录每个前缀和值出现过的（最早或最晚）位置，就得到 <a href="031.html">031 章</a>零和子数组那样的线性解法。前缀和家族还有一个常被忽视的成员：前缀最值（前缀最大/最小），接雨水与水滴问题的水位公式 \(\min(L_i, R_i)\) 用的就是它。</p>
+          <div class="intuition-box"><b>前缀和什么时候比滑动窗口好用</b><p>滑动窗口要求「窗口右移时和单调增、左移时单调减」，这只在元素全部非负（或全部非正）时成立。一旦数组含正含负，扩窗可能不增、缩窗可能不减，窗口法失去不变量；而前缀和 + 哈希不依赖任何符号假设，照常线性。面试判断口径：题面出现负数，直接上前缀和。</p></div>
+
+          <h3 id="s-033-3"><a class="anchor-link" href="#s-033-3" aria-label="跳转到本节">#</a>知识讲解：双指针与窗口的单调性</h3>
+          <p>双指针（two pointers）不是一种算法，而是一类「让两个游标各自只前进、不后退」的技巧，成立前提是问题具有某种单调性。本章用到的三种形态值得分清：</p>
+          <div class="formula-list">
+            <p><b>首尾配对型：</b>数组排序后，一头一尾两个指针向中间靠拢，典型如「数对 \(a + k = b\)」「容量受限的配对」。单调性来自排序：若最长的与最短的都放不进同一天，则最长的与任何别的也放不进。</p>
+            <p><b>按序推进型：</b>模式与文本的子序列匹配，文本指针只前进，模式指针在匹配时前进；一遍下来判断模式能否被嵌进去。单调性来自「贪心匹配最早的字符给后面留最大空间」。</p>
+            <p><b>收缩窗口型：</b>右端扩张、左端按条件收缩，维护「恰好满足约束」的候选窗口，适合最短/最长满足条件子数组。元素全正时窗口和单调，是安全区。</p>
+          </div>
+          <div class="math-display">\[\text{双指针的正确性} = \text{每次移动都排除了不可能更优的候选}.\]</div>
+          <p>怎么读：两个指针合起来最多走 \(2n\) 步，所以是 \(O(n)\)；但前提是每次移动都要有「被排除的候选不可能出现在最优解里」的论证（交换论证或单调性），没有这层论证的双指针就是猜。</p>
+
+          <h3 id="s-033-4"><a class="anchor-link" href="#s-033-4" aria-label="跳转到本节">#</a>例题详解：数对与模式计数</h3>
+          <div class="worked-example">
+            <p><b>例题 1（数对计数）：实现函数 count(k, a)：输入整数 k 与长度 n 的随机整数列表，输出「一个数加 k 等于另一个数」的不同数对个数。注意：同一个数可以用两次（例如用 1 组出数对 (1,1)）；对列表 [1,2]、k=1，不同数对只有 (1,1)、(1,2)、(2,2) 三种，其中只有 (1,2) 满足条件，输出 1；[1,1,1,2] 的输出同样为 1。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>样例透露了关键口径：数对按<strong>值</strong>去重（三个 1 只算一个 1），且 (v, v) 在 \(k = 0\) 时是合法数对。于是把列表转成哈希集合，答案就是集合中满足「\(v + k\) 也在集合里」的值 \(v\) 的个数。每个合法值恰好对应一个数对 \((v, v+k)\)，不重不漏；k 为正时 \(v\) 与 \(v+k\) 地位不同，不会重复计数。</p>
+              <p><b>代码。</b></p>
+              <pre><code>long long countPairs(const vector&lt;int&gt;&amp; a, int k) {  // 值对 (v, v+k) 同时在数组中出现
+    unordered_set&lt;int&gt; s(a.begin(), a.end());
+    long long cnt = 0;
+    for (int v : s)
+        if (s.count(v + k)) ++cnt;             // 每个值只数一次，与「distinct 对」对齐
+    return cnt;
+}</code></pre>
+              <p>验证样例：[1,2]、k=1，集合 {1,2}，只有 1 满足 1+1=2 在集合中，输出 1 ✓；[1,1,1,2] 的集合仍为 {1,2}，输出 1 ✓；若 k=0，每个值 v 都满足 v+0=v，输出不同值的个数，与「(1,1)、(2,2)」的口径吻合。</p>
+              <p><b>复杂度。</b>时间 \(O(n)\)（哈希均摊），空间 \(O(n)\)。排序 + 双指针亦可（对每个 v 二分查 v+k），\(O(n \log n)\)，不依赖哈希。</p>
+              <p><b>边界。</b>k 为负数时（v + k 在集合中）等价于把 k 取绝对值后反向数，结果相同；若面试官改口径为「按下标配对、可重复使用同一元素」，答案变成 \(\sum_v \mathrm{cnt}(v) \cdot \mathrm{cnt}(v+k)\)，需要计数哈希表而非集合——口径变了实现跟着变。</p>
+              <p><b>面试怎么讲。</b>先复述样例确认口径（值去重、自身可配对），这是这道题真正的考点；然后一句话给出「哈希集合 + 检查后继」的方案，复杂度顺手报出。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2（三字母串的出现次数）：统计一个三字母字符串在更长的字符串中出现了多少次，匹配允许跳过中间字符——例如 SHL 在 SSQHUL 中出现 2 次。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>样例说明这是<strong>子序列式</strong>匹配：SSQHUL 里 S 可取第 1 或第 2 个字符、H 取第 4 个、L 取第 6 个，共 \(2 \times 1 \times 1 = 2\) 种嵌法，与「出现 2 次」吻合。两个层次分开答：<strong>存在性/找一次</strong>用双指针——文本指针扫描，等于模式当前字符就推进模式指针，模式指针走到头即匹配成功，\(O(n)\)；<strong>计数</strong>要数出所有嵌法，用 DP：设 \(dp_j\) 为「模式前 \(j\) 个字符的嵌法数」，每读入一个文本字符 c，从大到小更新 \(dp_j \mathrel{+}= dp_{j-1}\)（当 c 等于模式第 j 个字符时）。</p>
+              <div class="math-display">\[dp_j \leftarrow dp_j + dp_{j-1} \quad \text{当 } c = p_j; \qquad dp_0 = 1,\; \text{答案} = dp_m.\]</div>
+              <p>怎么读：每个文本字符只能充当模式中的一个位置，倒序更新保证它至多把每个 dp 状态推一步，与 0/1 背包倒序同理。手算 SSQHUL 对 SHL：读 S（第 1 个）后 dp=[1,1,0,0]；再读 S 后 dp=[1,2,0,0]；Q 不动；读 H 后 dp=[1,2,2,0]；读 U 不动；读 L 后 dp=[1,2,2,2]，答案 2 ✓。</p>
+              <p><b>代码。</b></p>
+              <pre><code>long long countSubsequence(const string&amp; t, const string&amp; p) {  // p 作为子序列在 t 中出现几次
+    int m = (int)p.size();
+    vector&lt;long long&gt; dp(m + 1, 0);
+    dp[0] = 1;                                 // 空模式恰有 1 种匹配方式
+    for (char c : t)
+        for (int j = m; j &gt;= 1; --j)           // 倒序：一个字符只推进一步
+            if (c == p[j - 1]) dp[j] += dp[j - 1];
+    return dp[m];
+}</code></pre>
+              <p><b>复杂度。</b>计数版 \(O(nm)\)（m=3 时即 \(O(3n)\)），空间 \(O(m)\)；双指针存在性版 \(O(n)\)、\(O(1)\) 空间。</p>
+              <p><b>边界。</b>模式比文本长时答案为 0；重复字母的计数可能很大（全 S 的文本对 SSS 是组合数级别），必要时取模；若面试官其实想要「连续子串出现次数」，退化为 KMP 或直接暴力滑窗 \(O(nm)\)，先确认是子序列还是子串。</p>
+              <p><b>面试怎么讲。</b>用样例算出 2 这个数（体现你读懂了「出现」的定义）是第一得分点；然后分「找一次」与「数全部」两个层次作答，双指针与 DP 各就各位。</p>
+            </div>
+          </div>
+
+          <h3 id="s-033-5"><a class="anchor-link" href="#s-033-5" aria-label="跳转到本节">#</a>例题详解：括号、退格与接雨水</h3>
+          <div class="worked-example">
+            <p><b>例题 3（括号补全计数）：一个由左括号组成的参数串（可能混入右括号），要求通过插入额外的括号把所有括号闭合。计算至少需要插入多少个括号。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>本题与 <a href="034.html">034 章</a>的括号匹配题是近亲，但口径不同：这里只问「最少补几个」，是<strong>计数版</strong>。单一括号类型时连栈都不需要——用一个计数器扫描：遇左括号加一，遇右括号时若有未配对的左括号则减一，否则答案加一（这个落单的右括号必须在它前面补一个左括号）。扫描结束后计数器剩下的数目，就是还需要补的右括号个数：</p>
+              <div class="math-display">\[\text{最少插入数} = \#\{\text{落单的右括号}\} + \#\{\text{未闭合的左括号}\}.\]</div>
+              <p>两种来源互不抵消：右括号的落单发生在扫描中、左括号的欠账发生在结尾，任何插入都无法一石二鸟，所以直接相加就是下界，且逐个补齐即可达到。</p>
+              <p><b>代码。</b></p>
+              <pre><code>int minAddToClose(const string&amp; s) {          // 单括号类型：最少补几个括号
+    int open = 0, add = 0;
+    for (char c : s) {
+        if (c == '(') ++open;                  // 多一个待闭合的左括号
+        else if (open &gt; 0) --open;             // 就地配对一个
+        else ++add;                            // 右括号落单：需要在其前面补 '('
+    }
+    return add + open;                         // 剩下的 open 每个补一个 ')'
+}</code></pre>
+              <p>例如 "(()(" 扫描后 open=2、add=0，需补 2 个；")(" 得 open=1、add=1，需补 2 个（前面补一个左、末尾补一个右）。</p>
+              <p><b>复杂度。</b>时间 \(O(n)\)，空间 \(O(1)\)。</p>
+              <p><b>边界。</b>空串返回 0；若括号有多种类型（如 ( [ {），计数器失效，必须用栈——左括号入栈，右括号与栈顶匹配则弹出、否则插入数加一；栈的最终大小也计入。多类型版本的完整实现与「使括号有效的最少添加」一并在 <a href="034.html">034. 编程四：字符串与栈</a>展开。</p>
+              <p><b>面试怎么讲。</b>先声明「单类型退化成计数器，多类型才需要栈」，这个降级判断本身就是考点；再解释两个计数为何直接相加（互不抵消的下界论证）。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4（退格字符串比较）：a = "abc#abc#"，b = "ababb#"，其中 # 表示键盘退格（删除前一个字符）。判断两串「真实键入结果」是否相同。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>用栈模拟真实键入：普通字符入栈，# 时弹栈（空栈则忽略或按题意处理）。两串的栈结果相等即相同。手算样例：a 依次压入 a,b,c，# 弹掉 c，再压 a,b,c，# 弹掉 c，得 "abab"；b 压 a,b,a,b,b，# 弹掉 b，得 "abab"。相同，返回 true。进阶做法是从右往左双指针（跳过被删字符、无额外空间），但 O(n) 空间的栈版本在面试里足够且不易写错。</p>
+              <p><b>代码。</b></p>
+              <pre><code>bool backspaceCompare(const string&amp; a, const string&amp; b) {
+    auto typed = [](const string&amp; s) {         // 栈模拟真实键入结果
+        string st;
+        for (char c : s) {
+            if (c == '#') { if (!st.empty()) st.pop_back(); }
+            else st.push_back(c);
+        }
+        return st;
+    };
+    return typed(a) == typed(b);
+}</code></pre>
+              <p><b>复杂度。</b>时间 \(O(n + m)\)，空间 \(O(n + m)\)；反向双指针可做到 \(O(1)\) 空间。</p>
+              <p><b>边界。</b>空串与 # 开头（"#a" 等价 "a"）；连续多个 #；栈空时的 # 不产生字符。字符串类的更多栈应用（去重、表达式求值等）在 <a href="034.html">034 章</a>统一展开。</p>
+              <p><b>面试怎么讲。</b>一句话建模：「# 的语义是删除最近未删除的字符，天然是栈」。写完主动提 \(O(1)\) 空间的反向双指针变体，说明你知道空间还能省。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5（接雨水）：给定非负整数数组表示的海拔图，求下雨后能困住多少单位的水。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>与 <a href="032.html">032 章</a>的硬币水滴是同一模型：位置 i 的水位为 \(\min(L_i, R_i)\)（左右最高海拔的较小者），存水 \(\min(L_i, R_i) - h_i\)。这里给空间最优的双指针实现：左右两个指针、以及两侧目前见过的最高海拔 lmax 与 rmax。矮的一侧可以先行结算——若 lmax 不超过 rmax，那么左指针处的水位由 lmax 决定（右边一定存在不低于 rmax 从而不低于 lmax 的挡板），与右侧尚未扫描的部分无关；反之结算右侧。每个位置恰好被结算一次。</p>
+              <div class="math-display">\[w_i = \min(L_i, R_i) - h_i, \qquad \text{总水量} = \sum_i w_i.\]</div>
+              <p>手算 \([4,2,0,3,2,5]\)：两侧最高夹出的水位依次为 \(4,4,4,4,4,5\)，各列存水 \(0,2,4,1,2,0\)，共 9 单位。</p>
+              <p><b>代码。</b></p>
+              <pre><code>long long trapWater(const vector&lt;int&gt;&amp; h) {   // 双指针：矮的一侧先结算
+    long long water = 0;
+    int l = 0, r = (int)h.size() - 1, lmax = 0, rmax = 0;
+    while (l &lt; r) {
+        lmax = max(lmax, h[l]);
+        rmax = max(rmax, h[r]);
+        if (lmax &lt;= rmax) water += lmax - h[l++];   // 左侧不更高：水位由 lmax 决定
+        else water += rmax - h[r--];
+    }
+    return water;
+}</code></pre>
+              <p><b>复杂度。</b>时间 \(O(n)\)，空间 \(O(1)\)；DP 预处理前后缀最值的版本（<a href="032.html">032 章</a>例题 2）是 \(O(n)\) 空间，还有栈解法按层横向结算，三解法能互相印证。</p>
+              <p><b>边界。</b>单调地形不存水；\(n \le 2\) 为 0；首尾两列自身不存水（它们是挡板）。溢出无忧（非负高度，量级有限），但建议仍用 long long 保存累加。</p>
+              <p><b>面试怎么讲。</b>先给逐列公式（这决定你有没有建模对），再讲双指针为什么「矮侧先结算」是安全的——这句单调性论证是本题的核心得分点，说不出它，代码就只是背出来的。</p>
+            </div>
+          </div>
+
+          <h3 id="s-033-6"><a class="anchor-link" href="#s-033-6" aria-label="跳转到本节">#</a>例题详解：口头问答——显著性、模型比较与概念题</h3>
+          <p>源题库的编程部分混着几道口头问答：两道统计口径的（47% 匹配率、MSE 相近），几道概念与概率的（排序复杂度、OOP、球面坐标、相邻异性对）。它们不需要写代码，但需要一句到位的答案。以下按简答口径给全。</p>
+          <div class="worked-example">
+            <p><b>例题 6（47% 匹配率显著吗）：某特征与数据匹配率为 47%，这显著吗？你会怎么检验？</b></p>
+            <div class="solution">
+              <p><b>简答。</b>先立原假设：若「匹配」是二分类且随机基准为 50%，这是单比例检验（one-proportion z-test）：</p>
+              <div class="math-display">\[z = \frac{\hat p - p_0}{\sqrt{p_0(1-p_0)/n}} = \frac{0.47 - 0.5}{\sqrt{0.25/n}} = -0.06\sqrt{n}.\]</div>
+              <p>显著性完全由样本量 n 决定：n = 100 时 z = −0.6，远未显著；n = 2500 时 z = −3，在 5% 水平下显著<strong>差于</strong>随机；n = 10000 时 z = −6，铁证显著地差。回答的关键结构是三句话：与什么基准比（50% 还是类别不平衡下的基线）、n 多大（没有 n 就没有显著性）、单侧还是双侧（想证明「有信号」是单侧，想证明「不同于随机」是双侧）。另要主动补一句：若类别不平衡，「随机也能蒙对」的比例不是 50%，先算基线再谈显著；统计显著也不等于经济显著。<a href="019.html">019. 概率六：假设检验与置信区间</a>有检验框架的完整展开。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 7（MSE 相近的两个变量）：两个变量的均方误差（MSE）很接近，如何检验它们是否准确、哪个更好？</b></p>
+            <div class="solution">
+              <p><b>简答。</b>第一层：MSE 相近是在同一样本上算的，直接比较会低估两者的真实差异——用交叉验证（cross-validation）或时序上的滚动窗口（rolling origin）得到多个折上的误差，再看两者差的分布。第二层：若两个变量是对同一目标的两组预测，对损失差 \(d_t = e_{1t}^2 - e_{2t}^2\) 做 Diebold–Mariano 检验，原假设 \(E[d_t] = 0\)，t 统计量用 Newey–West 修正自相关——这是预测比较的标准工具。第三层：相近的 MSE 可能来自完全不同的偏差—方差组合（一个高偏差低方差、一个低偏差高方差），按子区间、按状态分解残差能看出谁在什么场景崩。收尾一句：统计上分不出优劣时，选更稳健、更可解释的那个。检验细节链接 <a href="019.html">019 章</a>，偏差—方差分解见 <a href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 8（快排与归并）：你知道归并排序和快速排序吗？时间复杂度是多少？</b></p>
+            <div class="solution">
+              <p><b>简答。</b>归并排序：分治递归、稳定、任何输入都 \(O(n \log n)\)，代价是 \(O(n)\) 辅助数组。快速排序：原地、缓存友好，平均 \(O(n \log n)\)、最坏 \(O(n^2)\)（已排序输入配固定基准），随机化基准或三数取中把最坏情形变成小概率事件。稳定性与「快排为什么实践中更快」的讨论见 <a href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 9（什么是 OOP）：什么是面向对象编程？举一个你用过的项目例子。</b></p>
+            <div class="solution">
+              <p><b>简答。</b>面向对象编程（object-oriented programming, OOP）把数据与操作它的函数捆绑成对象，四大支柱：封装（encapsulation，隐藏内部状态、只暴露接口）、继承（inheritance，复用与特化）、多态（polymorphism，同一接口不同实现）与抽象（abstraction，只暴露必要行为）。项目例子的标准讲法是回测框架：Instrument 与 Position 封装各自的字段不变量，Strategy 作为抽象基类只规定 onBar 接口，均值回归、动量等具体策略派生实现多态；新增策略不需要改动回测引擎——「对扩展开放、对修改关闭」这句话说出来，比罗列定义有力得多。最小示意：</p>
+              <pre><code>class Strategy {                        // 抽象基类：接口即契约
+public:
+    virtual ~Strategy() = default;
+    virtual void onBar(double price) = 0;   // 多态入口：每根 K 线回调
+};
+
+class MeanReversion : public Strategy {    // 具体策略只关心自己的逻辑
+    double fair;
+public:
+    explicit MeanReversion(double f) : fair(f) {}
+    void onBar(double price) override { /* 偏离 fair 超阈值就调仓 */ }
+};</code></pre>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 10（球面坐标的期望与方差）：三维球面上均匀分布的点 (x, y, z)，求 E[x] 与 Var[x]。</b></p>
+            <div class="solution">
+              <p><b>简答。</b>由对称性 E[x] 等于球心横坐标。方差用球面方程：\(x, y, z\) 同分布，故 \(r^2 = x^2 + y^2 + z^2\) 取期望得 \(3\,E[x^2] = r^2\)，于是 \(\mathrm{Var}(x) = E[x^2] - (E[x])^2 = \tfrac{r^2}{3}\)；单位球上即 \(\tfrac13\)。这道题的完整对称性论证在 <a href="020.html">020. 概率七：条件概率与对称性</a>。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 11（相邻异性对的期望）：17 人（8 男 9 女）随机排成一排，求相邻两人性别不同的「对」的期望个数（对可以重叠计数）。</b></p>
+            <div class="solution">
+              <p><b>简答。</b>指示变量（indicator）加期望线性：16 个相邻位置，每个位置是异性对的概率为 \(2 \cdot \tfrac{8}{17} \cdot \tfrac{9}{16} = \tfrac{9}{17}\)，故期望为 \(16 \cdot \tfrac{9}{17} = \tfrac{144}{17} \approx 8.47\)。指示变量法的系统训练见 <a href="021.html">021. 概率八：期望计算进阶</a>。</p>
+            </div>
+          </div>
+
+          <h3 id="s-033-7"><a class="anchor-link" href="#s-033-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>四个高频翻车点</b><p>一、数对题不看口径：按值去重与按下标配对是两套答案（1 对 2），样例就是用来澄清口径的，先复述再写码。二、模式计数用双指针硬数：双指针只回答「有没有 / 找一次」，数出全部嵌法必须 DP，倒序更新防重复使用同一字符。三、括号补全在多括号类型时仍用计数器：((]) 这类输入会让单计数器直接失真，多类型必须上栈。四、接雨水讲不出单调性论证：矮侧先结算的安全性（另一侧必有更高挡板兜底）是双指针版本的灵魂，复述不出它等于没理解。</p></div>
+          <div class="intuition-box"><b>窗口、前缀和与哈希的选择树</b><p>找满足和条件的子数组：元素全正 → 滑动窗口（伸缩均摊 \(O(n)\)）；含负数 → 前缀和 + 哈希（等值或差值查找）。找满足计数条件的子串/子数组（如至多 k 种字符）→ 窗口加计数哈希。找「最近未配对」→ 栈。找区间最值相关的结构性问题 → 前后缀最值或单调栈。先把问题挂到这棵树上，再动手写代码。</p></div>
+          <p>与本章相邻的去向：字符串与栈的主战场（表达式求值、括号生成、去重等）在 <a href="034.html">034. 编程四：字符串与栈</a>；滑动窗口的中位数等带序结构变体在 <a href="036.html">036. 编程六：数据结构设计题</a>；区间和配二分与蒙特卡洛的组合在 <a href="035.html">035 章</a>。</p>
+
+          <h3 id="s-033-8"><a class="anchor-link" href="#s-033-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出前缀和定义与区间差公式，并解释为什么负数环境下要用前缀和 + 哈希而不用滑动窗口。</li>
+            <li>我能在数对计数题里先复述样例口径（值去重、自身可配对），再给哈希集合或排序双指针两版实现。</li>
+            <li>我能区分子序列匹配的两个层次——双指针判存在、DP 数全部——并用倒序更新讲清防重用。</li>
+            <li>我能实现单类型括号补全的计数器版本，并说明多类型为什么必须换栈。</li>
+            <li>我能用栈模拟退格字符串并比较，知道反向双指针的 \(O(1)\) 空间变体。</li>
+            <li>我能推导接雨水的逐列水位公式，并讲出双指针「矮侧先结算」的安全性论证。</li>
+            <li>对 47% 显著性问题，我能张口给出 z 统计量 \(-0.06\sqrt{n}\) 并强调 n 与基准的口径。</li>
+            <li>对 MSE 相近的两个变量，我能报出交叉验证与 Diebold–Mariano 检验两条路径及其适用前提。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="032.html">← 032. 编程二：花束、跳跃与拆分 DP</a><a href="034.html">034. 编程四：字符串与栈 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

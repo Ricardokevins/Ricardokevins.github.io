@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>017. 概率四：硬币公平性与偏币检验 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 017</div>
+        <div class="brand-title">概率四：硬币公平性与偏币检验</div>
+        <div class="brand-meta">从检验框架到 von Neumann 提取与拒绝采样：判公平、造公平事件、模拟三分之一。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-017-1">学习目标：公平的硬币与公平的事件</a><a class="toc-link" href="#s-017-2">工具一：公平性检验的统计框架</a><a class="toc-link" href="#s-017-3">工具二：von Neumann 提取与拒绝采样</a><a class="toc-link" href="#s-017-4">工具三：对称性配对与二项恒等式</a><a class="toc-link" href="#s-017-5">例题详解 I：判公平与造公平</a><a class="toc-link" href="#s-017-6">例题详解 II：偶数正面一族与 100 次抛掷</a><a class="toc-link" href="#s-017-7">例题详解 III：判别哪枚与模拟三分之一</a><a class="toc-link" href="#s-017-8">误区与边界</a><a class="toc-link" href="#s-017-9">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link current" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="概率四：硬币公平性与偏币检验">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>017. 概率四：硬币公平性与偏币检验</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章围绕「公平」二字展开：怎么统计地判断一枚硬币是否公平；拿到偏币时怎么照样造出等概率事件（von Neumann 提取、拒绝采样）；以及用公平或偏的硬币模拟三分之一。覆盖偶数正面一族、100 次抛掷的期望方差、掷几次判别哪枚是公平币等源题。检验的完整理论与区间估计在 <a href="019.html">019 章</a>，两硬币的贝叶斯判别在 <a href="018.html">018 章</a>。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-core.svg" alt="概率核心工具地图：期望递推、序列等待、贝叶斯更新与假设检验四大板块"></figure>
+
+          <h3 id="s-017-1"><a class="anchor-link" href="#s-017-1" aria-label="跳转到本节">#</a>学习目标：公平的硬币与公平的事件</h3>
+          <p>硬币是量化面试的第一道具，「公平」则是它牵出的第一组问题。第一问是<b>判公平</b>：一枚硬币掷了 100 次出现 60 个正面，它公平吗？这本质是假设检验——在「公平」这个原假设下，观测到的偏离有多反常。第二问反了过来：<b>造公平</b>。手里只有一枚不知道偏向的偏币，能否设计出等概率的随机事件？答案是可以，而且只要偏币每次抛掷独立、偏向恒定，von Neumann 的两两提取就能凭空造出完全公平的比特。</p>
+          <p>第三问是<b>模拟指定分布</b>：用公平硬币模拟三个等概率结果（期望 8/3 次抛掷），再用偏币做同样的事（期望 \(\tfrac{8}{3pq}\) 次）。三问共用一个底层机制——拒绝采样（rejection sampling）：把原始随机源映射到若干等可能结果，把多余的「格子」扔掉重来，代价是期望次数按接受率的倒数放大。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>检验框架</b><p>原假设 \(p=\tfrac12\) 下给正面计数建模：\(E=\tfrac n2\)、\(\sigma=\tfrac{\sqrt n}{2}\)，观测偏离换算成 z 值再下结论。</p></div>
+            <div class="concept-card"><b>von Neumann 提取</b><p>两掷一组：HT 记 0、TH 记 1、HH 与 TT 作废重掷。两事件概率都是 \(pq\)，与 \(p\) 无关地公平。</p></div>
+            <div class="concept-card"><b>对称配对</b><p>「恰偶数个正面」之类的问题不必硬算二项和：固定前 \(n-1\) 枚，最后一枚以一半对一半把奇偶各实现一次，概率必为 \(\tfrac12\)。</p></div>
+          </div>
+
+          <h3 id="s-017-2"><a class="anchor-link" href="#s-017-2" aria-label="跳转到本节">#</a>工具一：公平性检验的统计框架</h3>
+          <p>判断硬币是否公平，标准流程是假设检验（hypothesis testing）。设原假设 \(H_0\)：正面率 \(p=\tfrac12\)。掷 \(n\) 次得到 \(h\) 个正面，在 \(H_0\) 下正面计数 \(K\sim\mathrm{Bin}(n,\tfrac12)\)，于是</p>
+          <div class="math-display">\[E[K]=\frac n2,\qquad \mathrm{sd}(K)=\sqrt{n\cdot\tfrac12\cdot\tfrac12}=\frac{\sqrt n}{2},\qquad z=\frac{h-n/2}{\sqrt n/2}.\]</div>
+          <p>怎么读：z 值衡量观测正面数偏离期望多少个标准差。经验法则：\(|z|\gt 2\) 大约对应 5% 的双尾水平——在「硬币其实公平」的世界里，这么极端的结果一百次里只出现约五次，于是我们有相当的理由怀疑它不公平；\(|z|\gt 3\) 则证据强得多（约千分之三）。检验方向（单尾还是双尾）、p 值的精确口径与置信区间在 <a href="019.html">019 章</a>展开，这里先把「正面计数 − 期望，除以标准差」这个动作练成本能。</p>
+          <div class="intuition-box"><b>样本量的作用</b><p>同样的 60% 正面率，掷 10 次出现 6 个正面毫无奇怪（z = 0.63），掷 100 次出现 60 个（z = 2）已可警觉，掷 1000 次出现 600 个（z ≈ 6.3）则几乎宣判不公。偏离的「绝对大小」不说明问题，必须以标准差为单位度量——这就是为什么面试官喜欢追问「多少次观测才够」。</p></div>
+
+          <h3 id="s-017-3"><a class="anchor-link" href="#s-017-3" aria-label="跳转到本节">#</a>工具二：von Neumann 提取与拒绝采样</h3>
+          <p>偏币正面率 \(p\) 未知但恒定，每次抛掷独立。把抛掷<b>成对</b>处理：一对结果是 HT 的概率 \(pq\)，TH 的概率 \(qp\)——两者恒相等，与 \(p\) 的取值无关。于是规则「HT 输出 0，TH 输出 1，HH/TT 作废、再掷一对」产出一个完美公平的比特流，这就是 von Neumann 提取（von Neumann extractor）。代价几何？每对被接受的概率 \(2pq\)，接受所需的期望对数是 \(\tfrac{1}{2pq}\)，期望抛掷次数加倍：</p>
+          <div class="math-display">\[E[\text{对数}]=\frac{1}{2pq},\qquad E[\text{抛掷数}]=\frac{2}{2pq}=\frac1{pq}.\]</div>
+          <p>怎么读：硬币越偏，\(pq\) 越小，提取越贵。公平币 \(p=q=\tfrac12\) 时每比特 4 次抛掷（2 对）；\(p=\tfrac23\) 时每比特 4.5 次抛掷（平均 2.25 对）；\(p=0.9\) 时暴涨到 \(\tfrac1{0.09}\approx 11.1\) 次。两个细节值得主动说明：其一，输出比特不仅边际公平，而且相互独立（不同对的命运互不影响）；其二，作废的 HH、TT 并非全无信息，更精细的提取器（如 Elias 方案）能回收它们，面试不要求，知道即可。</p>
+          <p>拒绝采样是更广的原则：<b>只要能构造若干个等可能的基本事件，扔掉多余的，就能得到任何目标分布</b>。用公平硬币模拟三等分：连掷两次得 HH、HT、TH、TT 四个等可能格，前三个映射到三个结果，TT 作废重来。每轮接受率 \(\tfrac34\)，期望轮数 \(\tfrac43\)，期望抛掷数 \(2\times\tfrac43=\tfrac83\)。一般公式：期望代价 \(=\tfrac{\text{每轮消耗}}{\text{接受率}}\)。</p>
+
+          <h3 id="s-017-4"><a class="anchor-link" href="#s-017-4" aria-label="跳转到本节">#</a>工具三：对称性配对与二项恒等式</h3>
+          <p>「掷 n 枚公平硬币，正面数为偶数的概率」是典型的对称性问题，硬算是 \(\sum_{k\text{ 偶}}\binom nk 2^{-n}\)，但有两种一步到位的做法。<b>配对法</b>：固定前 \(n-1\) 枚的任何结果，最后一枚是正是反各以 \(\tfrac12\) 概率出现，而两种补法恰有一个使总数为偶、一个为奇——所以无论前面如何，偶的概率就是 \(\tfrac12\)。<b>恒等式法</b>：</p>
+          <div class="math-display">\[\sum_{k\text{ 偶}}\binom nk=\frac{(1+1)^n+(1-1)^n}{2}=2^{n-1}\quad(n\ge 1),\]</div>
+          <p>即二项式定理中 \((1+1)^n\) 与 \((1-1)^n\) 相加时奇次项相消、偶次项翻倍。两法都给出：对<b>任意</b> \(n\ge1\)，恰偶数正面的概率是 \(\tfrac12\)。注意边界 \(n=0\)：0 是偶数，概率是 1 而非 \(\tfrac12\)——「至少一枚」这个前提不可省。奇数同理也是 \(\tfrac12\)，两式相加为 1，自洽。</p>
+
+          <h3 id="s-017-5"><a class="anchor-link" href="#s-017-5" aria-label="跳转到本节">#</a>例题详解 I：判公平与造公平</h3>
+          <div class="worked-example">
+            <p><b>例题 1：(a) 你怀疑一枚硬币不公平，怎么检验？(b) 反过来，已知一枚硬币不公平（正面率 \(p\ne\tfrac12\) 但恒定），如何用它产生公平的随机事件？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>(a) 是假设检验：原假设 \(p=\tfrac12\)，用正面计数的 z 值衡量观测的反常程度。(b) 是 von Neumann 提取：把偏币成对抛掷，用「HT 对 TH」这对等概率事件造公平。</p>
+              <p><b>推导。</b>(a) 掷 \(n\) 次得 \(h\) 个正面，在 \(H_0\) 下 \(z=\dfrac{h-n/2}{\sqrt n/2}\)。约定显著性水平（如 5%，对应 \(|z|\gt 1.96\)）：超出就拒绝「公平」。样本量要事先定好或使用序贯方法，不要掷到「看起来够偏」为止。(b) 一次一对：HT 输出 0，TH 输出 1，HH/TT 作废重掷：</p>
+              <div class="math-display">\[P(HT)=pq=P(TH)\ \Longrightarrow\ P(0\mid\text{接受})=P(1\mid\text{接受})=\frac12,\ \text{与 }p\text{ 无关}.\]</div>
+              <p>期望成本：接受一对的概率 \(2pq\)，期望对数 \(\tfrac{1}{2pq}\)、期望抛掷数 \(\tfrac1{pq}\)。公平币（\(p=\tfrac12\)）恰为 2 对 4 掷；若 \(p=\tfrac23\)，则 \(\tfrac{1}{2pq}=\tfrac94=2.25\) 对、\(\tfrac1{pq}=4.5\) 次抛掷。</p>
+              <p><b>检验。</b>(b) 的正确性核对：给定「这轮被接受」，条件概率里分子分母同乘 \(pq\)，\(p\) 彻底消去——任何恒定偏向的硬币都被「洗」公平。成本核对：\(p\) 越极端 \(pq\) 越小、成本越高，符合直觉；\(p\to1\) 时代价发散，因为 HT/TH 几乎不出现。</p>
+              <p><b>面试怎么讲。</b>(a) 三句话：建原假设、算 z、对着显著性水平下结论，并补一句「精确口径见假设检验章节」。(b) 讲完规则立刻说「输出不仅公平还独立，代价 \(\tfrac1{pq}\) 次抛掷」，再补 \(p=\tfrac23\) 的 4.5 次这个具体数——规则 + 独立性 + 成本，三件事说完就是满分答案。</p>
+            </div>
+          </div>
+
+          <h3 id="s-017-6"><a class="anchor-link" href="#s-017-6" aria-label="跳转到本节">#</a>例题详解 II：偶数正面一族与 100 次抛掷</h3>
+          <div class="worked-example">
+            <p><b>例题 2：同时掷 10 枚公平硬币，正面数为偶数的概率是多少？掷 8 枚呢？9 枚呢？推广到任意 n 枚。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>源题库里这一问以 10 枚、8 枚、9 枚、任意 n 等多个面目反复出现，全是同一道题。正面数 \(K\sim\mathrm{Bin}(n,\tfrac12)\)，求 \(P(K\text{ 为偶})\)。</p>
+              <p><b>推导。</b>配对法：固定前 \(n-1\) 枚的任意结果，最后一枚以 \(\tfrac12\) 概率把总数补成偶、以 \(\tfrac12\) 补成奇，故</p>
+              <div class="math-display">\[P(K\text{ 偶})=\frac12\qquad\text{对一切 }n\ge 1.\]</div>
+              <p>恒等式法复核：\(\sum_{k\text{ 偶}}\binom nk=2^{n-1}\)，除以 \(2^n\) 得 \(\tfrac12\)。</p>
+              <p><b>检验。</b>最小情形手算：n=1 时 \(P(K\text{ 偶})=P(0\text{ 正})=\tfrac12\) ✓；n=2 时 \(P\in\{0,2\}=\tfrac14+\tfrac14=\tfrac12\) ✓。所以 10 枚、8 枚、9 枚全部是 \(\tfrac12\)。边界提醒：n=0 时 0 个正面算偶，概率为 1，公式不适用，因为「配对」需要至少一枚硬币。</p>
+              <p><b>面试怎么讲。</b>先给结论「任意 \(n\ge1\) 都是 \(\tfrac12\)」，再用配对论证一句话证明；若面试官是统计口味，补 \((1+1)^n\) 与 \((1-1)^n\) 相加的恒等式证法。两种证法各 15 秒，比逐项求和快十倍且不会算错。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 3：把一枚公平硬币连掷 100 次。正面数的期望与方差是多少？由此衍生几个赔付游戏，它们的期望与方差又是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>正面数 \(K\sim\mathrm{Bin}(100,\tfrac12)\)。两个基础游戏：按正面数付钱（每正面 1 元）；掷一次赢输 1 元的对赌（正面 +1、反面 −1）。第二个游戏的总额 \(S=\sum_{i=1}^{100}(2\mathbf{1}_i-1)=2K-100\)，是第一个游戏的线性变换。</p>
+              <p><b>推导。</b>计数游戏：</p>
+              <div class="math-display">\[E[K]=100\cdot\tfrac12=50,\qquad \mathrm{Var}(K)=100\cdot\tfrac12\cdot\tfrac12=25\ (\sigma=5).\]</div>
+              <p>对赌游戏：\(E[S]=2E[K]-100=0\)，\(\mathrm{Var}(S)=4\,\mathrm{Var}(K)=100\)（\(\sigma=10\)）。再衍生一个「平方赔付」：掷一次得 +1 或 −1、赔付取平方（恒为 1 元），100 次总赔付期望 100、方差 0——赔付函数把随机性完全吸收，说明<b>游戏结构可以改变风险的量级甚至存在性</b>。</p>
+              <p><b>检验。</b>量级：对赌 100 次的标准差 10 元，意味着终值大致落在 ±20 元（两个标准差）内，与「每局 ±1、方差逐局累加」的直觉一致。计数与对赌的换算 \(S=2K-100\) 把两个游戏对上账：\(K=55\) 对应 \(S=+10\)，恰好一个标准差。</p>
+              <p><b>面试怎么讲。</b>先报 50 与 25、σ=5；立刻指出「±1 游戏只是计数的线性变换，方差乘 4、标准差乘 2」；再主动给平方赔付这个退化例子，一句话点出「期望和方差是赔付结构的函数」——这句话直接通向 <a href="019.html">019 章</a>的检验与 <a href="037.html">037 章</a>的夏普比率。</p>
+            </div>
+          </div>
+
+          <h3 id="s-017-7"><a class="anchor-link" href="#s-017-7" aria-label="跳转到本节">#</a>例题详解 III：判别哪枚与模拟三分之一</h3>
+          <div class="worked-example">
+            <p><b>例题 4：两枚硬币，一枚公平、一枚正面率为 \(\tfrac23\) 的偏币，外观相同。任取一枚连掷若干次并记录结果，如何判断手里这枚是公平的那枚？大约要掷多少次？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>这是「两假设判别」：\(H_F\)（公平，\(p=\tfrac12\)）对 \(H_B\)（偏币，\(p=\tfrac23\)）。掷 \(n\) 次见 \(h\) 个正面，比较两假设下的似然，取更大者为判决——等价地跟踪对数似然比（LLR）。</p>
+              <p><b>推导。</b>似然比：</p>
+              <div class="math-display">\[\Lambda=\frac{P(\text{数据}\mid H_B)}{P(\text{数据}\mid H_F)}=\Big(\tfrac{2/3}{1/2}\Big)^{h}\Big(\tfrac{1/3}{1/2}\Big)^{n-h}=\Big(\tfrac43\Big)^{h}\Big(\tfrac23\Big)^{n-h}.\]</div>
+              <p>判决规则 \(\Lambda\gt1\) 等价于正面频率超过临界值。对数化：\(h\ln\tfrac43+(n-h)\ln\tfrac23\gt0\)，解出 \(\tfrac hn\gt\dfrac{\ln(3/2)}{\ln 2}\approx 0.585\)——<b>正面率超过 58.5% 判偏币，否则判公平</b>。序贯（sequential）做法：边掷边累计 LLR，一旦越过置信边界（如 \(\ln 20\)，对应后验优势 20:1）就停。LLR 每掷的漂移约 0.057 自然对数单位（在真实偏币下），因此达到 20:1 把握平均需要大约 \(\ln 20/0.057\approx 53\) 次；要 2:1 的初步判断，十几次即可。</p>
+              <p><b>检验。</b>临界值 58.5% 落在 \(\tfrac12\) 与 \(\tfrac23\) 之间且偏向 \(\tfrac12\)（因为 \(\tfrac12\) 与 \(\tfrac23\) 的对称点按对数距离计算，略高于中点），方向合理。小样本核对：n=1 掷出正面，\(\Lambda=\tfrac43\)，判「更像偏币」但优势仅 4:3，几乎不说明问题——与「一次观测不足以下结论」的常识一致。</p>
+              <p><b>面试怎么讲。</b>核心句：「正面率过 58.5% 判偏币，这是似然比判决的对数形式」；再补序贯版本「LLR 漂移每掷约 0.057，几十次可达高置信」，并链接贝叶斯视角（同样的计算在 <a href="018.html">018 章</a>以 posterior odds 的形式出现）。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5：(a) 用公平硬币模拟三个等概率事件，期望要抛多少次？(b) 若手里只有正面率 \(p\) 的偏币（\(p\) 未知），还能模拟吗？期望抛多少次？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>(a) 拒绝采样：两次抛掷产生 4 个等可能格，映射 3 个、作废 1 个。(b) 先用 von Neumann 提取把偏币洗成公平比特，每比特期望 \(\tfrac1{pq}\) 次抛掷；再对公平比特做 (a)。</p>
+              <p><b>推导。</b>(a) 每轮 2 次抛掷、接受率 \(\tfrac34\)：</p>
+              <div class="math-display">\[E[\text{轮数}]=\frac{1}{3/4}=\frac43,\qquad E[\text{抛掷数}]=2\times\frac43=\frac83\approx 2.67.\]</div>
+              <p>(b) 模拟一次三等分需要 2 个公平比特，其中 4 个两比特组合接受 3 个，期望比特数 \(2\times\tfrac43=\tfrac83\)；每个公平比特成本 \(\tfrac1{pq}\) 次抛掷，总计</p>
+              <div class="math-display">\[E[\text{抛掷数}]=\frac83\cdot\frac1{pq}.\]</div>
+              <p>若 \(p=\tfrac23\)：\(\tfrac83\cdot\tfrac{9}{2}=12\) 次。作为对照，公平币直接用 (a) 只要 \(\tfrac83\) 次——先「洗币」再采样会付出 \(\tfrac1{pq}\) 倍的代价，\(p\) 越偏越贵。</p>
+              <p><b>检验。</b>(a) 下界：三个结果至少要一次输出，两次抛掷（4 格）是最小构型，\(\tfrac83\) 只比 2 多三分之一，说明浪费可控。(b) 极限行为：\(p=\tfrac12\) 时公式给 \(\tfrac83\cdot4=\tfrac{32}3\approx10.7\) 次——比 \(\tfrac83\) 贵，因为「未知偏币协议」连公平的情形也走提取流程；若已知硬币公平就直接掷，这个对比正好说明「信息（知道 p）本身有价值」。</p>
+              <p><b>面试怎么讲。</b>(a) 画出 2×2 格子、划掉 TT，报 \(\tfrac83\)；(b) 分两层讲——「提取公平比特 \(\tfrac1{pq}\) 次/比特」乘「三等分需要 \(\tfrac83\) 比特」，给 \(p=\tfrac23\) 的 12 次作落点。分层计价的结构比死记公式更能打动面试官。</p>
+            </div>
+          </div>
+
+          <h3 id="s-017-8"><a class="anchor-link" href="#s-017-8" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>四个高频翻车点</b><p>一，把「HH/HT/TH 三格直接映射三个结果」当模拟三分之一：三格概率是 \(\tfrac14,\tfrac14,\tfrac12\)，根本不等概，必须四格丢一格。二，混淆对数与抛掷：von Neumann 提取在 \(p=\tfrac23\) 时平均 2.25 <b>对</b>（4.5 次抛掷）出一个公平比特，单位报错直接暴露概念不清。三，检验时「掷到显著为止」：不加边界地连续观察、见显著就停会大幅抬高假阳性（可选停止问题），样本量应预先设定或用序贯似然比的正式边界。四，偶数正面题忘掉 \(n\ge1\) 的前提，把结论推广到 \(n=0\)。</p></div>
+          <div class="intuition-box"><b>考官追问的变式</b><p>一，模拟五等分：三掷得 8 格取 5 格，期望 \(\tfrac3{5/8}=4.8\) 次——先找「不小于目标数的最小 2 的幂」再算接受率。二，偏币方向未知（可能偏正也可能偏反）：von Neumann 提取照常工作，因为它根本不需要知道 \(p\) 的大小与方向。三，把 (a) 的公平硬币换成「正面率 \(\tfrac13\)」的骰子型源：一次抛掷三态不够均匀，需回到等可能格构造——考的还是拒绝采型的迁移能力。四，100 次抛掷见 55 个正面算不算偏：z=1，5% 水平下不足以下结论，衔接 <a href="019.html">019 章</a>。</p></div>
+
+          <h3 id="s-017-9"><a class="anchor-link" href="#s-017-9" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能对 n 次抛掷 h 个正面写出 z 值 \(z=\frac{h-n/2}{\sqrt n/2}\)，并用 \(|z|\gt2\) 量级的经验法则下初步结论。</li>
+            <li>我能完整叙述 von Neumann 提取的规则，说明输出公平且独立，并算出成本 \(\tfrac{1}{2pq}\) 对 / \(\tfrac1{pq}\) 掷。</li>
+            <li>我能用配对法与二项恒等式两种方式证明「n 枚硬币恰偶数正面概率 \(\tfrac12\)（n ≥ 1）」。</li>
+            <li>我能给出 100 次抛掷的期望 50、方差 25，并把 ±1 对赌游戏作为线性变换导出方差 100。</li>
+            <li>我能用似然比推导「正面率超 58.5% 判 \(\tfrac23\) 偏币」的判决规则，并说明序贯版的平均样本量量级。</li>
+            <li>我能算出公平币模拟三分之一期望 \(\tfrac83\) 次、偏币版 \(\tfrac{8}{3pq}\) 次（\(p=\tfrac23\) 时 12 次），并解释两层定价。</li>
+            <li>我能指出「掷到显著为止」为什么作弊，以及 n=0 边界、三格映射不等概这些坑。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="016.html">← 016. 概率三：骰子重掷、协方差与最大值</a><a href="018.html">018. 概率五：贝叶斯判别偏币 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

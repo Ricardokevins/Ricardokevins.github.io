@@ -248,18 +248,18 @@ private:
             <div class="solution">
               <p><b>建模。</b>错误做法是「每个节点与左右孩子比较」——它只验证局部，放过深层违规（见知识点反例：5 的右子树里出现 3）。正确做法有二：(a) 中序遍历必须严格递增；(b) 递归传递祖先上下界，每个节点的键必须落在开区间 \((lo, hi)\) 内。</p>
               <p><b>代码（解法一：中序 + 前驱指针）。</b></p>
-              <pre><code>bool isValidBST(TreeNode* root) {
-    TreeNode* prev = nullptr;             // 中序里的前一个访问值
-    return inorder(root, prev);
-}
-
-bool inorder(TreeNode* node, TreeNode*&amp; prev) {
+              <pre><code>bool inorder(TreeNode* node, TreeNode*&amp; prev) {
     if (node == nullptr) return true;
     if (!inorder(node-&gt;left, prev)) return false;
     if (prev != nullptr &amp;&amp; prev-&gt;val &gt;= node-&gt;val)
         return false;                     // 中序必须严格递增
     prev = node;
     return inorder(node-&gt;right, prev);
+}
+
+bool isValidBST(TreeNode* root) {
+    TreeNode* prev = nullptr;             // 中序里的前一个访问值
+    return inorder(root, prev);
 }</code></pre>
               <p><b>代码（解法二：上下界递归）。</b></p>
               <pre><code>#include &lt;climits&gt;
@@ -318,21 +318,21 @@ std::vector&lt;int&gt; inorderTraversal(TreeNode* root) {
               <pre><code>#include &lt;vector&gt;
 #include &lt;unordered_map&gt;
 
-TreeNode* buildTree(const std::vector&lt;int&gt;&amp; pre, const std::vector&lt;int&gt;&amp; in) {
-    std::unordered_map&lt;int,int&gt; pos;          // 键 -&gt; 中序下标
-    for (int i = 0; i &lt; (int)in.size(); ++i) pos[in[i]] = i;
-    return build(pre, 0, (int)pre.size() - 1, 0, pos);
-}
-
-TreeNode* build(const std::vector&lt;int&gt;&amp; pre, int pl, int pr, int il,
+TreeNode* build(const std::vector&lt;int&gt;&amp; pre, int pl, int pr, int il, int ir,
                 std::unordered_map&lt;int,int&gt;&amp; pos) {
     if (pl &gt; pr) return nullptr;              // 空区间
     TreeNode* root = new TreeNode(pre[pl]);    // 前序首元素是根
     int k = pos[pre[pl]];                      // 根在中序中的切分点
     int leftLen = k - il;                      // 左子树元素个数
-    root-&gt;left  = build(pre, pl + 1, pl + leftLen, il, pos);
-    root-&gt;right = build(pre, pl + leftLen + 1, pr, k + 1, pos);
+    root-&gt;left  = build(pre, pl + 1, pl + leftLen, il, k - 1, pos);
+    root-&gt;right = build(pre, pl + leftLen + 1, pr, k + 1, ir, pos);
     return root;
+}
+
+TreeNode* buildTree(const std::vector&lt;int&gt;&amp; pre, const std::vector&lt;int&gt;&amp; in) {
+    std::unordered_map&lt;int,int&gt; pos;          // 键 -&gt; 中序下标
+    for (int i = 0; i &lt; (int)in.size(); ++i) pos[in[i]] = i;
+    return build(pre, 0, (int)pre.size() - 1, 0, (int)in.size() - 1, pos);
 }</code></pre>
               <p><b>数值演示。</b>pre = [3,9,20,15,7]，in = [9,3,15,20,7]：根 3 在中序下标 1，左子树长度 1。左子树：pre[9]、in[9] → 叶子 9；右子树 pre[20,15,7]、in[15,20,7]：根 20，切分出左 15、右 7。重建结果与原树一致。</p>
               <p><b>复杂度。</b>时间 \(O(n)\)：每个节点建一次，切分点查询是哈希 \(O(1)\)（若不用哈希而在中序里线性找根，总代价退化到 \(O(n^2)\) 链状最坏）。空间 \(O(n)\) 哈希 + \(O(h)\) 递归栈。</p>

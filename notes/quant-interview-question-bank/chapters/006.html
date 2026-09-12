@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>006. 图论 II：拓扑排序、环检测与连通性 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 006</div>
+        <div class="brand-title">图论 II：拓扑排序、环检测与连通性</div>
+        <div class="brand-meta">Kahn 与 DFS 拓扑序，三色判环，连通分量、SCC 与 Dijkstra 思想。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-006-1">学习目标</a><a class="toc-link" href="#s-006-2">拓扑排序：Kahn 与 DFS 双解</a><a class="toc-link" href="#s-006-3">有向图环检测：三色标记法</a><a class="toc-link" href="#s-006-4">无向图环检测：父节点判断与并查集</a><a class="toc-link" href="#s-006-5">连通分量、SCC 与 Dijkstra 思想</a><a class="toc-link" href="#s-006-6">例题详解</a><a class="toc-link" href="#s-006-7">误区与边界</a><a class="toc-link" href="#s-006-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link current" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="dsa" data-title="图论 II：拓扑排序、环检测与连通性">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>006. 图论 II：拓扑排序、环检测与连通性</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>本章覆盖源题提纲的 Topological Sort、Detect cycle in an undirected graph、Detect a cycle in a directed graph、Count connected components、Find strongly connected components 与 Dijkstra（只讲思想、不要求实现）五项，全部建立在 <a href="005.html">005 章</a>的 BFS/DFS 骨架之上。</p></aside>
+          <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法知识地图：线性结构、树与哈希、图算法、排序查找范式四大板块与面试口径"></figure>
+
+          <h3 id="s-006-1"><a class="anchor-link" href="#s-006-1" aria-label="跳转到本节">#</a>学习目标</h3>
+          <p>「依赖」与「连通」是图论在工程里最高频的两个词：课程有先修依赖、构建有模块依赖、任务有执行顺序——把依赖建成有向边后，能否排出一个合法顺序（拓扑排序）、排不出是不是因为互相依赖成环（环检测）；社交网络、通信网络关心的是「谁和谁连通」，有向图还要问「谁能互相到达」（连通分量与强连通分量）。这五个问题共享同一套基础设施：邻接表 + BFS/DFS（<a href="005.html">005 章</a>），本章只是给遍历加上不同的「记账」。</p>
+          <p>记账方式一览：拓扑排序的 Kahn 解记「入度」，DFS 解记「完成时间」；有向判环给节点染三色；无向判环记「来的那个父节点」；连通分量数「遍历启动次数」；强连通分量把「反图 + 完成时间逆序」组合起来（Kosaraju）。Dijkstra 单独放最后：提纲明确只要求思想（just learn the idea），本章照此口径讲透贪心直觉与失效条件，不展开实现。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>拓扑序 = 无环的证书</b><p>有向图存在拓扑序当且仅当它无环（DAG）。Kahn 排完的顶点数不足 \(\lvert V \rvert\) 就说明剩下的顶点都在环里。</p></div>
+            <div class="concept-card"><b>判环分有向无向</b><p>有向图用三色：遇到「灰色」（还在递归栈上）邻居即有环。无向图的每条边都双向可达，必须跳过父节点一次，否则人人成环。</p></div>
+            <div class="concept-card"><b>连通分量是遍历的余韵</b><p>对未访问点每启动一次 DFS/BFS 就多一个连通块；有向图的强连通分量用两遍 DFS（Kosaraju）刻画。</p></div>
+          </div>
+
+          <h3 id="s-006-2"><a class="anchor-link" href="#s-006-2" aria-label="跳转到本节">#</a>拓扑排序：Kahn 与 DFS 双解</h3>
+          <p>拓扑排序（topological sort）对<b>有向无环图（DAG）</b>输出一个顶点序列，使每条有向边 \(u \to v\) 都满足 \(u\) 排在 \(v\) 之前。它不一定唯一：多个「无依赖冲突」的顶点可以互换。存在拓扑序与无环互为充要——有环时环上任意两条边都不可能同时满足先后约束；反之无环图必有无入度的顶点可以起步（否则沿入度反向走 \(n\) 步必重复，即得环），逐步摘除即可排完。</p>
+          <div class="formula-list">
+            <p><b>Kahn 算法（BFS 思路）：</b>统计每个顶点的入度 \(\mathrm{indeg}(v)\)（有向图里 \(\sum_v \mathrm{indeg}(v) = \lvert E \rvert\)）；所有入度为 0 的顶点入队；每轮出队一个顶点输出，并把它的每条出边的终点入度减一，减到 0 就入队。</p>
+            <p><b>判环条件：</b>算法结束时输出顶点数小于 \(\lvert V \rvert\) ⇔ 剩余顶点入度恒正 ⇔ 它们都在环上或依赖环上的顶点 ⇔ 图有环。</p>
+            <p><b>DFS 解法：</b>对每个未访问顶点做 DFS，节点「完成」（所有后代处理完）时压入列表；全部结束后<b>反转列表</b>即拓扑序。依据：对任何边 \(u \to v\)，DFS 中 \(v\) 一定比 \(u\) 先完成（\(v\) 要么先被访问、要么是 \(u\) 的后代，两种情况都更早完成），反转后 \(u\) 便排在 \(v\) 前。</p>
+            <p><b>复杂度：</b>两解都是邻接表上 \(\Theta(V + E)\)：每个顶点、每条边各处理常数次。</p>
+          </div>
+          <div class="intuition-box"><b>怎么理解 DFS 的「完成序反转」</b><p>最先完成的顶点是「不依赖任何人的末端」（汇点），理应排在最后——所以完成序本身是拓扑序的倒序，反转即得正序。 Kahn 像「摘果子」（先摘没人挡着的），DFS 像「清空依赖树」（把依赖彻底清完才轮到自己），两条路殊途同归。面试先写 Kahn（更不易错），再口头给出 DFS 版证明。</p></div>
+
+          <h3 id="s-006-3"><a class="anchor-link" href="#s-006-3" aria-label="跳转到本节">#</a>有向图环检测：三色标记法</h3>
+          <p>有向图的环检测（detect a cycle in a directed graph）标准做法是 DFS 时给节点染三色：</p>
+          <div class="formula-list">
+            <p><b>白色（0）：</b>尚未访问。</p>
+            <p><b>灰色（1）：</b>已进入但还没完成——<b>仍在当前递归栈上</b>，即正处在一条正在探索的路径中。</p>
+            <p><b>黑色（2）：</b>已完成，该点出发的所有路径都已探明，确认不会通回在探路径。</p>
+            <p><b>判环规则：</b>DFS 扫邻居时遇到灰色顶点 ⇔ 找到一条指回「当前路径」的边（后向边）⇔ 有环。遇到黑色顶点则安全跳过。</p>
+          </div>
+          <p>正确性的核心在「灰色 = 在当前递归栈上」这个不变量：递归进入时染色、返回时洗黑，栈上任何时刻的灰色序列恰是起点到当前节点的一条路径。于是一条边 \(u \to v\) 指向灰色 \(v\)，就等于 \(v\) 是 \(u\) 的祖先，环随之拼出：\(v\) 到 \(u\) 的栈上路径加上这条边。反过来，若图有环，DFS 沿环走一圈时最先进入的那个环上顶点仍是灰色，必然触发规则。这也是 Kahn 判环的等价物：两法一个从「入度耗尽」角度看、一个从「路径回指」角度看，结论一致。</p>
+          <div class="intuition-box"><b>两色为什么不够</b><p>只分「访问过/没访问过」会把「曾经访问过且已完结」的顶点误判成环：DFS(A) 期间访问了 B 并完结，稍后另一个顶点 C 也指向 B，这不是环（B 不指向 C）。灰色与黑色的区分正是把「在探路径上」与「探完无害」分开——有向判环必须三色。</p></div>
+
+          <h3 id="s-006-4"><a class="anchor-link" href="#s-006-4" aria-label="跳转到本节">#</a>无向图环检测：父节点判断与并查集</h3>
+          <p>无向图的环检测（detect a cycle in an undirected graph）不能照搬三色法：邻接表里每条无向边 (u,v) 存了 u→v 与 v→u 两条，DFS 从孩子走回父亲时遇到的「已访问」并不是环。修正很简单：<b>递归时带上父节点，遍历邻居时跳过「来的那个父亲」一次</b>；若还遇到已访问顶点，就说明有另一条路径也到了它——两条不同路径连接同一对顶点，环成立。</p>
+          <p>另一个常用解法是<b>并查集（union-find）</b>：按任意顺序处理边，加边 (u,v) 前先查 u、v 是否已在同一集合；已同集合说明此前已有一条 u 到 v 的路径，这条新边一加就成环。并查集近乎 O(1) 均摊（路径压缩 + 按秩合并），适合动态加边的场景（如 Kruskal 最小生成树）。两个细节要主动交代：<b>自环</b>（(v,v)）直接是环；<b>平行边</b>（两点间两条一样的边）也是环，此时「跳过父节点」必须只跳一次——更稳妥的写法是跳过「边的编号」而不是「顶点值」，或直接声明输入无重边。</p>
+          <div class="intuition-box"><b>有向与无向判环的一句话对比</b><p>有向图问「有没有一条边指回祖先」，用三色，因为「访问过」分两种含义；无向图问「两点之间是否已有另一条路」，用父节点或并查集，因为每条边天然双向、回父亲不是环。把两套口径搞混（无向图跑三色不跳父亲 / 有向图跳「父节点」）是这类题最常见的翻车点。</p></div>
+
+          <h3 id="s-006-5"><a class="anchor-link" href="#s-006-5" aria-label="跳转到本节">#</a>连通分量、SCC 与 Dijkstra 思想</h3>
+          <p><b>连通分量计数（count connected components）</b>：无向图中「互相可达的极大顶点集」就是连通分量。算法平凡而优雅：遍历所有顶点，遇到未访问的就把连通块计数加一，并从它启动一次 DFS/BFS（<a href="005.html">005 章</a>的岛屿计数正是网格版同一题）；每次启动染尽一整块，启动次数即分量数，\(\Theta(V+E)\)。</p>
+          <p><b>强连通分量（strongly connected components，SCC）</b>是有向图版本：顶点集内<b>两两互相可达</b>的极大集合。Kosaraju 算法两遍 DFS：</p>
+          <div class="formula-list">
+            <p><b>第一遍（原图）：</b>对每个未访问顶点 DFS，节点完成时压栈——得到按完成时间排序的栈。</p>
+            <p><b>第二遍（反图）：</b>把所有边方向反转，按栈顶到栈底的顺序逐个取顶点，对未访问者启动 DFS——每次启动染尽的正是一个 SCC。</p>
+            <p><b>为什么成立（直觉）：</b>反转所有边不改变 SCC 内部的互相可达，但「跨分量的路」被反转后，从后面的分量出发就走不进前面的分量了；而完成时间最晚的顶点恰好在「源分量」（缩点后无入边的分量）里，从它出发在反图上只能扫到本分量。完整证明基于「分量图是 DAG」这一事实，面试讲直觉即可。</p>
+          </div>
+          <p>SCC 的用途是<b>缩点</b>：把每个 SCC 压成一个超级顶点，分量之间构成 DAG，接下来就可以拓扑排序、DP。若把 Kosaraju 讲透后仍有余力，可以点名 Tarjan（一遍 DFS 用栈与低链值，工程更常用），不展开。</p>
+          <p><b>Dijkstra 只讲思想</b>（提纲原话：just learn the idea）。问题：边权非负的图中求单源最短路。思想是贪心：维护「已确定最短距离」的集合 \(S\) 与「当前估计距离」\(\mathrm{dist}[v]\)，每轮从不在 \(S\) 的顶点里挑 \(\mathrm{dist}\) 最小者——由于所有边权非负，它的估计不可能再被任何未确定顶点改善，可以放心锁定；再由它松弛（relax）所有出边：</p>
+          <div class="math-display">\[\mathrm{dist}[v] \leftarrow \min\bigl(\mathrm{dist}[v],\; \mathrm{dist}[u] + w(u,v)\bigr).\]</div>
+          <p>怎么读：若经过 \(u\) 到 \(v\) 更近，就更新 \(v\) 的估计。重复直到所有顶点入 \(S\)。用优先队列（<a href="004.html">004 章</a>堆）实现「挑最小」，复杂度 \(O((V+E)\log V)\)。<b>为什么必须非负权</b>：贪心一旦锁定就不再改判，负权边可能在之后给出更短的路。数值反例：\(s \to b\) 权 2、\(s \to a\) 权 5、\(a \to b\) 权 −4。Dijkstra 先锁 \(b = 2\)，随后经 \(a\) 的路长 \(5 - 4 = 1\) 虽更短，但 \(b\) 已锁死，算法带着错误答案 2 结束。负权要换 Bellman-Ford（\(O(VE)\)，可检测负环）；无权图退化成 BFS（<a href="005.html">005 章</a>已证首达即最短）。</p>
+          <div class="algorithm-grid">
+            <div class="algorithm-card"><b>BFS：无权最短路</b><p>所有边权为 1，按层扩展，首达即最短，\(\Theta(V+E)\)。见<a href="005.html">005 章</a>。</p></div>
+            <div class="algorithm-card"><b>Dijkstra：非负权最短路</b><p>贪心锁定最小估计 + 堆加速，\(O((V+E)\log V)\)。负权失效。</p></div>
+            <div class="algorithm-card"><b>Bellman-Ford：可负权</b><p>对所有边松弛 \(V-1\) 轮，\(O(VE)\)；第 \(V\) 轮仍可松弛说明有负环。</p></div>
+          </div>
+
+          <h3 id="s-006-6"><a class="anchor-link" href="#s-006-6" aria-label="跳转到本节">#</a>例题详解</h3>
+
+          <div class="worked-example">
+            <p><b>例题 1：课程表。n 门课与先修关系数组 prereq（prereq[i] = [a, b] 表示修 a 前必须先修 b），判断能否全部修完。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>课程是顶点，b → a 是有向边（先修指向后修）。「能全部修完」⇔ 存在合法修课顺序 ⇔ 有向图无环。用 Kahn：入度为 0 的课是「随时可修」的，逐门修掉；修不完就是有环。</p>
+              <p><b>代码。</b></p>
+              <pre><code>#include &lt;vector&gt;
+#include &lt;queue&gt;
+
+bool canFinish(int numCourses,
+               const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; prereq) {
+    std::vector&lt;std::vector&lt;int&gt;&gt; adj(numCourses);
+    std::vector&lt;int&gt; indeg(numCourses, 0);
+    for (const auto&amp; e : prereq) {          // e = {后修课 a, 先修课 b}
+        adj[e[1]].push_back(e[0]);          // 先修 -&gt; 后修
+        ++indeg[e[0]];
+    }
+    std::queue&lt;int&gt; q;
+    for (int i = 0; i &lt; numCourses; ++i)
+        if (indeg[i] == 0) q.push(i);       // 无先修的课先行
+    int taken = 0;
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        ++taken;                            // 修掉一门
+        for (int v : adj[u])
+            if (--indeg[v] == 0) q.push(v); // 该课先修全部满足
+    }
+    return taken == numCourses;             // 全修完 &lt;=&gt; 无环
+}</code></pre>
+              <p><b>数值演示。</b>n = 4，prereq = [[1,0],[2,1],[3,2]]（0→1→2→3 一条链）：初始仅 0 入度为 0，依次修 0、1、2、3，taken = 4，返回 true。再补一条 [0,3]（成环 0→1→2→3→0）：四门课入度都为正，队列始终为空，taken = 0，返回 false。</p>
+              <p><b>复杂度。</b>建图 \(\Theta(E)\)，Kahn 每顶点入队出队各一次、每条边削一次入度，总 \(\Theta(V + E)\)。空间 \(\Theta(V + E)\)。</p>
+              <p><b>边界。</b>无先修（全部入度 0，恒真）；自环先修 [a,a]（a 入度含自环削不掉，正确判假）；n = 1。方向别建反：边的方向只影响「入度」记在谁头上，链路语义要一致。</p>
+              <p><b>面试怎么讲。</b>先把「能否修完 ⇔ 有向无环 ⇔ Kahn 能排满」这三个等价讲成一句话，再写代码；主动说明队列为空时的剩余顶点恰是「环上或依赖环」的顶点，判环原理就交代清楚了。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 2：课程表 II。同上题设，返回任意一个合法修课顺序；不可能则返回空数组。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>同一张图，这次要真的输出拓扑序，并且用 DFS 版：三色标记同时完成「判环」与「按完成时间倒序收集」两件事——一举覆盖提纲的两个考点。</p>
+              <p><b>代码。</b></p>
+              <pre><code>#include &lt;vector&gt;
+#include &lt;algorithm&gt;
+
+bool dfs(int u, const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; adj,
+         std::vector&lt;int&gt;&amp; color, std::vector&lt;int&gt;&amp; order) {
+    color[u] = 1;                            // 进栈：灰
+    for (int v : adj[u]) {
+        if (color[v] == 1) return false;     // 指回当前路径 -&gt; 环
+        if (color[v] == 0 &amp;&amp; !dfs(v, adj, color, order))
+            return false;
+    }
+    color[u] = 2;                            // 出栈：黑，探明
+    order.push_back(u);                      // 记录完成时间
+    return true;
+}
+
+std::vector&lt;int&gt; findOrder(int n,
+                           const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; prereq) {
+    std::vector&lt;std::vector&lt;int&gt;&gt; adj(n);
+    for (const auto&amp; e : prereq) adj[e[1]].push_back(e[0]);
+    std::vector&lt;int&gt; color(n, 0);           // 0 白 1 灰 2 黑
+    std::vector&lt;int&gt; order;                 // 完成序（逆序即拓扑序）
+    for (int i = 0; i &lt; n; ++i)
+        if (color[i] == 0 &amp;&amp; !dfs(i, adj, color, order))
+            return {};                       // 遇灰色，有环
+    std::reverse(order.begin(), order.end());
+    return order;
+}</code></pre>
+              <p><b>数值演示。</b>n = 4，prereq = [[1,0],[2,0],[3,1],[3,2]]：从 0 出发，adj[0] = {1, 2}。先深探 1 → 3（3 无出边，完成入序），1 完成；再探 2 →（3 已黑，跳过）2 完成；0 完成。order = [3,1,2,0]，反转为 [0,2,1,3]——验证每条边：0→1、0→2、1→3、2→3 全部前于终点，合法。</p>
+              <p><b>复杂度。</b>\(\Theta(V + E)\)，每顶点染两次、每条边看一次；空间 \(\Theta(V)\)（颜色、序、递归栈）。</p>
+              <p><b>边界。</b>有环时中途返回空数组，order 里残留的半成品必须丢弃；n 门课全部无先修时输出任意排列（如 [0,1,...,n-1]）都合法；递归深度最坏 \(\Theta(V)\)，深图可改 Kahn 或显式栈。与例题 1 的关系：把本例「返回空数组」改成「返回 false」就是课程表 I 的 DFS 解，两题同型、仅输出要求不同。</p>
+              <p><b>面试怎么讲。</b>讲清 DFS 解的关键不变量「灰色顶点都在当前递归路径上」，以及「最先完成的是汇点、所以完成序要反转」；能同时把 Kahn 与 DFS 两版口径说全，拓扑排序这一节就无懈可击。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 3：无向图判环。给定 n 个顶点与边列表，判断无向图是否含环。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>邻接表存边（每条无向边存两次），DFS 带父节点：遍历 u 的邻居 v 时，v 等于父节点的这一次是「来的路」要跳过；若还遇到已访问的 v，说明 u 与 v 之间存在第二条路径——环成立。图可能是森林，每个连通块都要起步检查。</p>
+              <p><b>代码。</b></p>
+              <pre><code>#include &lt;vector&gt;
+
+bool dfsCycle(int u, int parent,
+              const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; adj,
+              std::vector&lt;bool&gt;&amp; vis) {
+    vis[u] = true;
+    for (int v : adj[u]) {
+        if (v == parent) continue;          // 跳过来的那条边一次
+        if (vis[v]) return true;            // 另一条路也到了 v：环
+        if (dfsCycle(v, u, adj, vis)) return true;
+    }
+    return false;
+}
+
+bool hasCycleUndirected(int n,
+                        const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; edges) {
+    std::vector&lt;std::vector&lt;int&gt;&gt; adj(n);
+    for (const auto&amp; e : edges) {           // 无向边存两次
+        adj[e[0]].push_back(e[1]);
+        adj[e[1]].push_back(e[0]);
+    }
+    std::vector&lt;bool&gt; vis(n, false);
+    for (int s = 0; s &lt; n; ++s)             // 森林：逐块检查
+        if (!vis[s] &amp;&amp; dfsCycle(s, -1, adj, vis))
+            return true;
+    return false;
+}</code></pre>
+              <p><b>数值演示。</b>edges = [[0,1],[1,2],[2,0]]：DFS 从 0 出发（父 −1）→ 1（父 0）→ 2（父 1），2 的邻居 1 是父跳过，邻居 0 已访问且非父——环 0-1-2-0 成立，返回 true。去掉 [2,0] 后是一条链，2 的邻居只剩父 1，返回 false。</p>
+              <p><b>复杂度。</b>\(\Theta(V + E)\)：每顶点一次访问、每条边两次邻接扫描。空间 \(\Theta(V)\)。</p>
+              <p><b>边界。</b>自环 [v,v]：邻接表里 v 出现两次，其中一次会以非父身份命中已访问，正确判环；平行边 [[0,1],[0,1]]：第二条边让 0 在访问 1 后再遇到已访问的 1（父只跳一次），同样正确判环——若声明无重边可省心；空图与单顶点返回 false。并查集变式：逐边 union 前 find，若两端已同集合即环，动态加边场景更顺手。</p>
+              <p><b>面试怎么讲。</b>先讲为什么必须跳父节点（无向边天然双向），再给「已访问且非父 ⇔ 两点间已有另一条路 ⇔ 环」这条逻辑链；主动对比有向图三色法，说明「访问过」在两种图里含义不同。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 4：连通分量计数，并延伸到强连通分量（SCC）的求法。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>无向图连通分量：对每个未访问顶点启动一次 DFS，启动次数即分量数——与<a href="005.html">005 章</a>岛屿计数同型（那题是网格版）。有向图强连通分量：Kosaraju 两遍 DFS，第一遍在原图记录完成栈，第二遍在反图按栈序收割 SCC。</p>
+              <p><b>代码（无向连通分量计数）。</b></p>
+              <pre><code>#include &lt;vector&gt;
+
+void floodFill(int u, const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; adj,
+               std::vector&lt;bool&gt;&amp; vis) {
+    vis[u] = true;                          // BFS/DFS 均可
+    for (int v : adj[u])
+        if (!vis[v]) floodFill(v, adj, vis);
+}
+
+int countComponents(int n,
+                    const std::vector&lt;std::vector&lt;int&gt;&gt;&amp; edges) {
+    std::vector&lt;std::vector&lt;int&gt;&gt; adj(n);
+    for (const auto&amp; e : edges) {
+        adj[e[0]].push_back(e[1]);
+        adj[e[1]].push_back(e[0]);
+    }
+    std::vector&lt;bool&gt; vis(n, false);
+    int comps = 0;
+    for (int s = 0; s &lt; n; ++s)
+        if (!vis[s]) {
+            ++comps;                        // 新起点 = 新连通块
+            floodFill(s, adj, vis);          // 染尽整块
+        }
+    return comps;
+}</code></pre>
+              <p><b>数值演示（无向）。</b>n = 6，edges = [[0,1],[1,2],[3,4]]：块 {0,1,2}、{3,4}、孤点 {5}，答案 3 个分量。经典变体「省份数量」（输入直接是邻接矩阵 isConnected）与本例同型，仅建表方式不同：矩阵里 isConnected[i][j] = 1 就是一条边。</p>
+              <p><b>SCC 数值演示（Kosaraju 过程）。</b>有向边 0→1、1→2、2→0、2→3：第一遍 DFS（从 0 出发）：深探 0→1→2，2 的邻居 0 已访问、转 3；3 无出边先完成（栈底压 3），随后 2、1、0 依次完成，栈自底向上为 3, 2, 1, 0。反图边为 1→0、2→1、0→2、3→2。第二遍按「<b>后完成先处理</b>」从栈顶取 0：反图上 0→2→1→0 一趟染尽 {0,1,2}——它们在原图中互达（0→1→2→0），恰是一个 SCC。注意顺序不可反：若错误地从栈底取 3，反图上 3→2→1→0 会把 {3} 也一并染进来，得出错误结果。继续取 1、2 均已访问；取 3 未访问，反图上 3 只到已访问的 2，单节点 SCC {3}。最终两个 SCC：{0,1,2} 与 {3}，缩点后得到分量图 0' → 3'（DAG），可继续拓扑处理。</p>
+              <p><b>复杂度。</b>计数版 \(\Theta(V + E)\)。Kosaraju 是两遍完整 DFS 加一次建反图，仍 \(\Theta(V + E)\)、空间 \(\Theta(V + E)\)。</p>
+              <p><b>边界。</b>孤立顶点自身是一个连通分量（也是平凡的 SCC）；自环不影响分量划分；n = 0 返回 0。Kosaraju 的易错点在「栈顶先弹」的顺序与「反图上也要查 vis」两处。</p>
+              <p><b>面试怎么讲。</b>计数版先讲「启动次数 = 分量数」这一句；SCC 版按「正图记完成序、反图收割」的节奏讲，落点是「缩点后是 DAG，于是可以拓扑/DP」——把 SCC 的用途讲出来，比背算法步骤更能体现理解。</p>
+            </div>
+          </div>
+
+          <h3 id="s-006-7"><a class="anchor-link" href="#s-006-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>拓扑序不唯一</b><p>同一 DAG 通常有多个合法拓扑序（ Kahn 中队列里同时有多个零入度顶点时任选）。「拓扑序唯一」当且仅当任意时刻零入度顶点至多一个，等价于图中存在哈密顿路径。题目要「字典序最小拓扑序」时把队列换小顶堆（<a href="004.html">004 章</a>）即可。</p></div>
+          <div class="intuition-box"><b>有向判环 vs 无向判环混用</b><p>有向图用三色，「访问过且还在栈上」才是环；无向图跳父节点，「访问过且非父」才是环。有向图若也「跳父」会漏环（交叉边、前向边与后向边语义完全不同）；无向图不跳父会人人皆环。自环与平行边在无向情形要单独交代口径。</p></div>
+          <div class="intuition-box"><b>连通分量的两个口径</b><p>无向图说「连通分量」；有向图若把边当无向处理得到的是「弱连通分量」，两两互达的才是「强连通分量（SCC）」。回答前先确认面试官问的是哪个口径，一词之差算法完全不同（前者一遍遍历，后者 Kosaraju/Tarjan）。</p></div>
+          <p>高频追问清单：Kahn 与 DFS 拓扑的取舍（Kahn 易写易判环，DFS 顺带产出完成序、可复用做 SCC）；「课程表 III」带分数的贪心变式（按截止时间排序 + 堆退课，已超出图论，但常被连着问）；Dijkstra 为什么用堆、为什么不能有负权、负权换谁（Bellman-Ford，顺带负环检测）；拓扑排序在大规模任务调度里的意义（依赖图 DAG 化后分层并行执行）；SCC 缩点后 DP 是「有向图上传递信息」类题的通用套路。</p>
+
+          <h3 id="s-006-8"><a class="anchor-link" href="#s-006-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出 Kahn 算法并用「输出数小于 \(\lvert V \rvert\) ⇔ 有环」判环，复杂度 \(\Theta(V+E)\)。</li>
+            <li>我能写出 DFS 拓扑（完成序反转），并论证对任何边 \(u \to v\)，\(v\) 必先于 \(u\) 完成。</li>
+            <li>我能解释三色标记中「灰色 = 在当前递归栈上」的不变量，以及为什么两色不够。</li>
+            <li>我能写出无向图判环的父节点跳过法，并处理自环与平行边的口径。</li>
+            <li>我能用并查集判环：加边前两端已同集合 ⇔ 环，并说清它与 DFS 版的适用差异。</li>
+            <li>我能用「未访问启动次数」数无向连通分量，并说明省份数量类矩阵题与它同型。</li>
+            <li>我能描述 Kosaraju 两遍 DFS 的步骤、「分量图是 DAG」的落点，以及缩点后的用途。</li>
+            <li>我能讲出 Dijkstra 的贪心思想、松弛公式、非负权必要性的数值反例与堆实现复杂度。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="005.html">← 005. 图论 I：图的表示、BFS 与 DFS</a><a href="007.html">007. 排序算法：稳定性、归并、快排与堆排 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

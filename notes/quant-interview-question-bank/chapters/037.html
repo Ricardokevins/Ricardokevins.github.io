@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>037. 金融一：夏普比率专题 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 037</div>
+        <div class="brand-title">金融一：夏普比率专题</div>
+        <div class="brand-meta">夏普的定义、年化假设、概率换算与多策略最优配置。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-037-1">学习目标：把夏普当统计量审问</a><a class="toc-link" href="#s-037-2">夏普比率的定义、年化与统计结构</a><a class="toc-link" href="#s-037-3">从单一策略到多策略的最大夏普</a><a class="toc-link" href="#s-037-4">例题详解一：定义、年化与概率换算</a><a class="toc-link" href="#s-037-5">例题详解二：最优组合与策略比较</a><a class="toc-link" href="#s-037-6">误区与边界</a><a class="toc-link" href="#s-037-7">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link current" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="finance" data-title="金融一：夏普比率专题">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>037. 金融一：夏普比率专题</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>本章把夏普比率从「一个数字」还原成「一个统计量」：如何定义、如何年化、如何换算成亏损概率、如何把多个策略配出更高的组合夏普。覆盖源题 F5、F8、F20、F21、F22、F25、F26、F30、F34，并统一解答与之同源的概率源题 P48、编程源题 C38（删除零收益日）。</p></aside>
+          <figure class="visual-lead"><img src="../assets/finance-map.svg" alt="金融直觉板块知识地图：夏普比率、期权、微观结构与组合回测四个主题的关系"></figure>
+
+          <h3 id="s-037-1"><a class="anchor-link" href="#s-037-1" aria-label="跳转到本节">#</a>学习目标：把夏普当统计量审问</h3>
+          <p>金融直觉板块的第一站不是产品知识，而是一个统计量。夏普比率（Sharpe ratio）几乎是所有量化面试的第一个金融问题，因为它同时考察三件事：你能否写出一个干净的比值定义、你是否知道年化换算背后的假设、你能否把比值翻译成概率语言（「夏普 2 的策略四年亏钱的概率是多少」）。这三层恰好对应源题 F5/F20、F8、F30 三组题。</p>
+          <p>更深一层，夏普是连接「单策略评价」与「组合构建」的桥梁：给定几个不同夏普、彼此相关的策略，如何配出最高夏普的组合（F34、F26），答案就是马科维茨框架里的切点组合（tangency portfolio）。本章先建立夏普的统计结构，再逐一解掉这批题。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>夏普是统计量</b><p>\(\text{SR}=\mu/\sigma\) 的结构就是「均值除以标准误」，年化夏普乘以 \(\sqrt{\text{年数}}\) 近似于「平均收益为正」的 t 统计量。</p></div>
+            <div class="concept-card"><b>年化是假设，不是单位</b><p>\(\sqrt{252}\) 换算成立的前提是日收益独立同分布（无自相关）；对平滑收益或流动性差的资产，朴素年化会系统性高估夏普。</p></div>
+            <div class="concept-card"><b>组合出更高夏普</b><p>多个策略的相关矩阵决定「免费午餐」的大小：两个不相关的夏普 1 策略等权组合，夏普为 \(\sqrt{2}\)；完全相关则无红利可言。</p></div>
+          </div>
+
+          <h3 id="s-037-2"><a class="anchor-link" href="#s-037-2" aria-label="跳转到本节">#</a>夏普比率的定义、年化与统计结构</h3>
+          <p>夏普比率衡量每承担一单位波动换取多少超额收益。对收益率为 \(R_p\) 的策略或组合，其（总体）夏普比率为</p>
+          <div class="math-display">\[ \text{SR}_p=\frac{\mathbb{E}[R_p]-r_f}{\sigma(R_p)}, \]</div>
+          <p>怎么读：分子是超过无风险利率（risk-free rate）\(r_f\) 的期望超额收益，分母是收益的标准差。夏普 2 的意思是：长期看，每一份年化波动换来两份年化超额收益。</p>
+          <div class="formula-list">
+            <p><b>日度夏普：</b>实践中先用日收益算 \(\widehat{\text{SR}}_d=\bar{r}_d/\hat{\sigma}_d\)（或减去日无风险收益），它本身没有量纲信息，必须注明频率。</p>
+            <p><b>年化公式：</b>在独立同分布假设下，\(\text{SR}_{ann}=\sqrt{252}\cdot\text{SR}_d\)。推导见下方展示公式。</p>
+            <p><b>t 统计量视角：</b>\(\text{SR}_{ann}\cdot\sqrt{N_{\text{years}}}\) 近似等于「策略平均年收益为正」的 t 值——夏普天然是显著性语言，这解释了为什么它偏爱长样本。</p>
+            <p><b>假设清单：</b>日收益独立同分布（无自相关）；均值与方差平稳；无风险利率口径一致；高阶矩（偏度、峰度）不参与换算。</p>
+          </div>
+          <p>年化公式的推导只需要「独立求和」这一件事。设日收益 iid，日均值为 \(\mu_d\)、日标准差为 \(\sigma_d\)，一年 252 个交易日，则年收益的均值与方差为</p>
+          <div class="math-display">\[ \mu_{ann}=252\,\mu_d,\qquad \sigma^2_{ann}=252\,\sigma^2_d\;\Rightarrow\;\sigma_{ann}=\sqrt{252}\,\sigma_d, \]</div>
+          <div class="math-display">\[ \text{SR}_{ann}=\frac{252\mu_d}{\sqrt{252}\,\sigma_d}=\sqrt{252}\cdot\frac{\mu_d}{\sigma_d}=\sqrt{252}\,\text{SR}_d. \]</div>
+          <p>怎么读：均值按时间<b>线性</b>累积，标准差按<b>平方根</b>累积，所以比值按 \(\sqrt{T}\) 放大。同理，任何期限 \(T\)（以天计）的夏普换算都是乘 \(\sqrt{T}\)，期限越长的收益序列越「显著」。</p>
+          <div class="intuition-box"><b>什么时候 \(\sqrt{252}\) 会骗你</b><p>换算成立的关键词是「独立」。若日收益存在正自相关（动量型、平滑估值的流动性差资产、月度净值插值），真实年化波动大于 \(\sqrt{252}\,\sigma_d\)，朴素年化会高估夏普；负自相关（均值回复型策略）则相反。Andrew Lo 在 2002 年指出对冲基金指数普遍存在这种平滑偏差，正确的做法是先对收益做自相关调整再年化。此外，若均值或波动率本身随时间变化（regime 切换），单一年化数字会掩盖路径风险。</p></div>
+          <p>最后一块拼图是概率换算。设策略年化夏普为 \(\text{SR}\)，累计 \(T\) 年的收益 \(R_T\sim\mathcal{N}(T\mu,\,T\sigma^2)\)（正态近似），则</p>
+          <div class="math-display">\[ \mathbb{P}(R_T\lt 0)=\Phi\!\left(-\frac{T\mu}{\sqrt{T}\,\sigma}\right)=\Phi\bigl(-\text{SR}\cdot\sqrt{T}\bigr), \]</div>
+          <p>怎么读：亏损概率只取决于「夏普乘以期限的平方根」这一个组合——\(\text{SR}\sqrt{T}\) 是累计收益距离零的标准差倍数。这一条公式直接解掉本章 F8、F30 与 P48 三道题。</p>
+
+          <h3 id="s-037-3"><a class="anchor-link" href="#s-037-3" aria-label="跳转到本节">#</a>从单一策略到多策略的最大夏普</h3>
+          <p>面试官问「几个策略各有夏普、彼此相关，怎么配出最高夏普」时，考点是切点组合。设 \(n\) 个策略的超额收益均值向量为 \(\mu\)、协方差矩阵为 \(\Sigma\)，则最大夏普（对无风险资产）的组合权重满足</p>
+          <div class="math-display">\[ w^{*}\;\propto\;\Sigma^{-1}\mu,\qquad \text{再归一化使 }\textstyle\sum_i w_i=1. \]</div>
+          <p>怎么读：权重先看「均值高不高」（\(\mu\)），再看「彼此冲不冲」（\(\Sigma^{-1}\) 把相关性求逆，低相关的策略在求逆后获得放大）。这就是资本配置线（capital allocation line）逻辑：任何风险组合与无风险资产再组合，夏普不变；要最大夏普，就取从无风险利率出发、与有效前沿相切的那个切点组合。</p>
+          <p>两个特殊情形值得背下来。第一，两个等波动策略合成的夏普：</p>
+          <div class="math-display">\[ \text{SR}_{AB}=\frac{\text{SR}_A+\text{SR}_B}{\sqrt{2(1+\rho)}}\qquad(\sigma_A=\sigma_B,\;50/50). \]</div>
+          <p>两个不相关（\(\rho=0\)）的夏普 1 策略各投一半，组合夏普 \(\sqrt{2}\approx 1.41\)；\(\rho=1\) 时退化为两者的平均。第二，推广到 \(N\) 个互不相关、等波动的同夏普策略，组合夏普为 \(\text{SR}\sqrt{N}\)——这就是「有效策略数」直觉：分散化是唯一免费的午餐，而相关矩阵正是这份午餐的价格表。</p>
+          <div class="intuition-box"><b>相关矩阵的角色</b><p>夏普单看每个策略，配置赢在相关性。完全相关的两个策略，组合夏普不会超过其中较高者，配置无意义；相关性越低，\(\Sigma^{-1}\) 给出的对冲红利越大。危险在于相关性是估计出来的：危机时刻策略间相关性常飙升（趋同于 1），用平静期的相关矩阵算出的组合夏普会高估危机表现——这是 F34 面试口径里必须主动提的一句。</p></div>
+
+          <h3 id="s-037-4"><a class="anchor-link" href="#s-037-4" aria-label="跳转到本节">#</a>例题详解一：定义、年化与概率换算</h3>
+
+          <div class="worked-example">
+            <p><b>例题 1（源题 F5、F20）：什么是夏普比率？如何计算年化夏普？日夏普与年夏普是什么关系？你在换算时假设了什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>概念题，用「定义 → 计算 → 年化关系 → 假设」四段口径作答。</p>
+              <p><b>推导。</b>定义：\(\text{SR}=(\mathbb{E}[R_p]-r_f)/\sigma(R_p)\)，即每单位波动换取的超额收益。计算：用同一段日收益序列，样本均值减去日无风险收益得超额均值 \(\bar{r}\)，样本标准差 \(\hat{\sigma}\)（自由度 \(n-1\)），日夏普为 \(\bar{r}/\hat{\sigma}\)。年化关系：iid 假设下 \(\text{SR}_{ann}=\sqrt{252}\,\text{SR}_d\)，因为年化均值乘 252、年化标准差乘 \(\sqrt{252}\)。</p>
+              <p><b>检验。</b>量级自查：一个不错的日内中性策略日夏普约 0.05–0.1，乘 \(\sqrt{252}\approx 15.87\) 得年化 0.8–1.6，符合业界经验区间；若换算出年化夏普 5 以上，先怀疑口径而不是庆祝。</p>
+              <p><b>面试怎么讲。</b>先给定义与 \(\sqrt{252}\)，然后<b>主动</b>列出假设：日收益独立同分布、无自相关；均值方差平稳；无风险利率口径统一。再补一句「若收益有正自相关（平滑净值、流动性差资产），\(\sqrt{252}\) 年化会高估夏普，应先做自相关修正」——这一句是区分背书与理解的分水岭。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 2（源题 F8）：某资产夏普比率为 2，其在 4 年内亏钱的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>年化夏普 2 意味着年收益 \(R\sim\mathcal{N}(2\sigma,\sigma^2)\)（正态近似，\(\sigma\) 为年化波动）。4 年累计收益 \(R_4\sim\mathcal{N}(8\sigma,\,4\sigma^2)\)。</p>
+              <p><b>推导。</b>直接套用通用公式 \(\mathbb{P}(\text{亏})=\Phi(-\text{SR}\cdot\sqrt{T})\)：</p>
+              <div class="math-display">\[ \mathbb{P}(R_4\lt 0)=\Phi\!\left(-2\cdot\sqrt{4}\right)=\Phi(-4)\approx 3.2\times 10^{-5}. \]</div>
+              <p>约十万分之三。</p>
+              <p><b>检验。</b>量级自查：\(\Phi(-3)\approx 0.13\%\) 已经是「千分之一」级，\(\Phi(-4)\) 再小一个数量级以上，符合正态尾部的衰减速度。也可以从 t 统计量视角复核：\(\text{SR}\sqrt{T}=2\times 2=4\)，即累计收益离零有 4 个标准差。</p>
+              <p><b>面试怎么讲。</b>先写 \(\Phi(-\text{SR}\sqrt{T})\) 再代数字，然后主动加边界：「这是正态近似；真实收益厚尾，四年里崩一次 regime 的概率远大于 \(3\times 10^{-5}\)——夏普 2 的基金死掉不是因为 4 个西格玛，是因为尾部不是正态。」</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 3（源题 F30 与概率源题 P48）：夏普为 1 的策略，单期收益为正的概率是多少？交易 4 年后亏钱的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两问共用 \(\mathbb{P}(\text{正})=\Phi(\text{SR}\sqrt{T})\) 这一公式，只是期限一个取 1 年、一个取 4 年。</p>
+              <p><b>推导。</b>单期（\(T=1\)）：单年收益超过 0 的概率为 \(\Phi(1)\approx 84.1\%\)。四年累计（\(T=4\)，P48）：</p>
+              <div class="math-display">\[ \mathbb{P}(\text{4 年亏})=\Phi(-1\cdot\sqrt{4})=\Phi(-2)\approx 2.28\%. \]</div>
+              <p><b>检验。</b>两问互洽：单年为正 84%，四年累计为正升至 \(\Phi(2)\approx 97.7\%\)——期限拉长让「均值优势」更确定，这正是 \(\sqrt{T}\) 法则的含义。值得记住的锚点：\(\Phi(1)=0.841\)，\(\Phi(2)=0.977\)，\(\Phi(3)=0.9987\)。</p>
+              <p><b>面试怎么讲。</b>「夏普乘期限平方根就是离零的标准差数」一句话立住框架，然后 84% 与 2.28% 两个数脱口而出；追问厚尾时指出真实四年亏损概率会略高于 2.28%，因为亏钱事件往往聚集在波动放大的时段。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 4（概率源题 P80、编程源题 C38，同题统一解答）：一个策略共 \(2n\) 个交易日，其中一半的日收益恰为 0。若把这些 0 收益日删掉再算夏普，夏普会怎么变？正确与错误口径的比值界限是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设非零日收益为 \(x_1,\dots,x_n\)，其均值 \(\bar{x}\)、平方离差和 \(S=\sum_i (x_i-\bar{x})^2\)。正确口径用全部 \(2n\) 天，错误口径只用 \(n\) 个非零天（假设策略均值为正，总体矩计算，样本矩仅差自由度修正）。</p>
+              <p><b>推导。</b>正确口径：均值 \(\mu_c=\bar{x}/2\)（总收益不变、天数翻倍）；方差要把零收益日对均值的偏离也算进去：</p>
+              <div class="math-display">\[ \sigma_c^2=\frac{1}{2n}\Bigl(S+\tfrac{n\bar{x}^2}{4}+\tfrac{n\bar{x}^2}{4}\Bigr)=\frac{S+\tfrac{n\bar{x}^2}{2}}{2n}. \]</div>
+              <p>错误口径：均值 \(\bar{x}\)，方差 \(\sigma_i^2=S/n\)。于是错误与正确夏普之比为</p>
+              <div class="math-display">\[ M=\frac{\text{SR}_i}{\text{SR}_c}=\frac{\bar{x}/\sqrt{S/n}}{(\bar{x}/2)\big/\sqrt{(S+n\bar{x}^2/2)/(2n)}}=\sqrt{2\Bigl(1+\frac{n\bar{x}^2}{2S}\Bigr)}\;\in\;\bigl[\sqrt{2},\,+\infty\bigr). \]</div>
+              <p>读法：删掉零收益日使<b>均值恰好翻倍</b>，而标准差至多放大 \(\sqrt{2}\) 倍（因为 \(\sigma_i^2/\sigma_c^2=2S/(S+n\bar{x}^2/2)\le 2\)），所以夏普<b>至少虚增 \(\sqrt{2}\) 倍</b>。当日均值远小于日波动（真实策略的常态，\(\bar{x}^2\ll S/n\)）时，虚增倍数恰好约为 \(\sqrt{2}\)；若非零日收益几乎不分散（\(S\to 0\)），虚增倍数发散。</p>
+              <p><b>检验。</b>数值例：收益序列 \(1,3,0,0\)（\(n=2\)）。正确：均值 1、方差 \(1.5\)、夏普 \(1/\sqrt{1.5}\approx 0.82\)；错误：均值 2、方差 1、夏普 2。比值 \(M=\sqrt{6}\approx 2.45\ge\sqrt{2}\)，与公式一致（\(\bar{x}=2\)、\(S=2\) 代入得 \(\sqrt{2(1+1)}=\sqrt{6}\)）。</p>
+              <p><b>面试怎么讲。</b>结论三句话：「删零收益日 → 总收益不变但天数减半 → 均值翻倍；标准差至多放大 \(\sqrt{2}\)；所以夏普至少虚增 \(\sqrt{2}\)，典型情形恰为 \(\sqrt{2}\)。」若考官追问界：严格下界是 \(\sqrt{2}\) 而非 1——均值精确翻倍而标准差不可能同倍放大（那需要零收益日的偏离贡献为负）。面经里流传的「\([1,\sqrt{2}]\)」是记错了方向的下界。</p>
+            </div>
+          </div>
+
+          <h3 id="s-037-5"><a class="anchor-link" href="#s-037-5" aria-label="跳转到本节">#</a>例题详解二：最优组合与策略比较</h3>
+
+          <div class="worked-example">
+            <p><b>例题 5（源题 F26）：资产 A 期望收益 1%，资产 B 期望收益 2%，两者标准差同为 1%，相关系数 0.5。构造夏普比率最大的组合。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>无风险利率取 0（题未给出，按超额收益口径）。两资产切点组合权重 \(w\propto\Sigma^{-1}\mu\)，两资产有显式解：</p>
+              <div class="math-display">\[ w_B=\frac{\mu_B\sigma_A^2-\rho\sigma_A\sigma_B\,\mu_A}{\mu_B\sigma_A^2+\mu_A\sigma_B^2-\rho\sigma_A\sigma_B(\mu_A+\mu_B)}. \]</div>
+              <p><b>推导。</b>代入 \(\mu_A=1\)、\(\mu_B=2\)（单位 %）、\(\sigma_A=\sigma_B=1\)、\(\rho=0.5\)：分子 \(=2-0.5\times 1=1.5\)；分母 \(=2+1-0.5\times 3=1.5\)。故 \(w_B=1\)、\(w_A=0\)：最大夏普组合是 100% 持有 B，夏普 \(=2/1=2\)。</p>
+              <p>这个退化结果不是巧合：A 对 B 回归的 beta 为 \(\beta_{AB}=\rho\sigma_A/\sigma_B=0.5\)，A 的「残差 alpha」为 \(\mu_A-\beta_{AB}\mu_B=1-0.5\times 2=0\)——A 的期望收益恰好等于它通过 B 能解释的部分，对最大夏普组合没有任何增量，留在组合里只添方差。</p>
+              <p><b>检验。</b>用微分校验：设 \(w\) 为 B 的权重，组合夏普平方为 \(f(w)=(1+w)^2/(1-w+w^2)\)（均值 \(1+w\)，方差 \(1-w+w^2\)，单位约去），求导得一阶条件 \(3(1-w)=0\)，即 \(w=1\)，与公式一致。再抽查 50/50 组合：均值 1.5、方差 \(0.75\)、夏普 \(\approx 1.73\lt 2\)，确认不是内部最优。</p>
+              <p><b>面试怎么讲。</b>先写通式再代入，然后指出 \(1-0.5\times 2=0\) 这个关键量：「B 已经把 A 的信息包含完了，最优组合退化为单资产。」最后补一句一般情形（A、B 都有正残差 alpha 时权重会在两者间分散，甚至对低均值资产做空）展示你理解公式而非背公式。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 6（源题 F34）：有多个夏普不同的策略且彼此相关，如何配置得到最高夏普的组合？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>结构化概念题，考察切点组合与相关矩阵的角色，按「估计 → 公式 → 直觉 → 约束」四层作答。</p>
+              <p><b>推导（口径）。</b>第一步，用同一时段、同一频率的收益估计各策略超额收益均值向量 \(\mu\) 与协方差矩阵 \(\Sigma\)；第二步，无约束最大夏普权重 \(w^*\propto\Sigma^{-1}\mu\)，归一化后即切点组合；第三步，直觉校验：高夏普策略获得更高权重，但低相关策略因 \(\Sigma^{-1}\) 的放大获得分散化红利——两个不相关、等波动的夏普 1 策略等权组合夏普为 \(\sqrt{2}\)，\(N\) 个互不相关的同夏普策略组合夏普为 \(\text{SR}\sqrt{N}\)；第四步，现实约束（杠杆上限、单策略容量、风险预算、卖空限制）下改用数值二次规划求解。</p>
+              <p><b>检验。</b>两个极端自检：若所有策略完全相关，组合夏普不超过其中最高者，配置失去意义；若相关矩阵估计错误（尤其危机时相关性趋同于 1），样本内最优组合的夏普会被高估。低夏普策略也可能被保留甚至做反向（负权重），只要它与现有组合负相关。</p>
+              <p><b>面试怎么讲。</b>一句话框架：「把每个策略当成一个资产，做切点组合，权重正比于 \(\Sigma^{-1}\mu\)——这道题的答案藏在相关矩阵里。」然后主动给 \(\sqrt{N}\) 直觉和危机时相关性飙升的警告。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 7（源题 F21、F22）：两个回测跑完的策略如何比较？若两者收益分布完全相同，你还会考虑什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>F21 是一般比较框架，F22 是它的极端情形（边际分布相同，比较维度从分布参数转向路径与执行），合并作答。</p>
+              <p><b>推导（口径）。</b>F21 五个维度：① 样本外表现——留出期、滚动窗口、参数邻域的稳健性优先于全样本指标；② 换手与成本后收益——毛收益高但换手高的策略净夏普可能更差；③ 容量——信号规模上去后冲击成本吃掉多少收益；④ 与现有组合的相关性——增量信息比孤立夏普重要；⑤ 稳定性与可解释性——分年度、分 regime 表现，机制能否讲清楚。F22 在分布相同的前提下再加四个维度：① 回撤路径与回撤时长（分布相同但路径可以更惨烈）；② 执行现实性——信号用的是收盘价还是可成交价、日内容量；③ 策略容量与拥挤度；④ 与你现有持仓的净额机会（能降整体成本的胜出）。</p>
+              <p><b>检验。</b>自检方法：把两个策略的净值曲线画在一起，如果一条浅回撤、一条深回撤，分布相同也分高下；把成本加倍重跑，净值差排序若翻转，说明比较结果被成本假设主导。</p>
+              <p><b>面试怎么讲。</b>用「样本外、成本、容量、相关、稳定」五个词组织 F21；F22 直接接「分布之外看路径与执行」。这两个问题的标准陷阱是只报夏普和年化，主动展开多维比较即是加分项。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 8（源题 F25）：你是风险厌恶的（偏好低标准差）。两个资产标准差相同、其中一个期望收益更高，你选哪个？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>风险厌恶通过标准差起作用；此处两者标准差相同，风险的「价格」为零，比较只剩均值。</p>
+              <p><b>推导。</b>若两者分布形状相同、只是均值平移，高均值者一阶随机占优（first-order stochastic dominance）：任何效用函数 \(u\) 单调递增，都有 \(\mathbb{E}[u(W+B)]\ge\mathbb{E}[u(W+A)]\)。选期望收益更高的那个。</p>
+              <p><b>检验。</b>反向自检：若「更高均值」其实来自厚尾或隐藏的流动性风险（标准差没变但偏度变了），结论要重新审——题目只约束了均值与标准差两个矩，面试时值得主动点破这一边界。</p>
+              <p><b>面试怎么讲。</b>三十秒题：「同波动、高均值，等于白送的均值，选高者；前提是其他矩确实相同。」先答结论再补边界，体现快而不糙。</p>
+            </div>
+          </div>
+
+          <h3 id="s-037-6"><a class="anchor-link" href="#s-037-6" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>五个高频误区</b><p>① 正态口径低估尾部：\(\Phi(-4)\approx 3\times 10^{-5}\) 只在正态下成立，厚尾分布下同倍数的亏损概率大一个数量级以上；② \(\sqrt{252}\) 年化对自相关收益失效（见本章讲解）；③ 样本夏普有估计误差：其标准误约为 \(\sqrt{(1+\text{SR}^2/2)/n}\)，短样本高夏普极不可信；④ 组合夏普不是成分夏普的加权平均——相关性决定一切，这也是 F34 的核心；⑤ 用同一段数据挑了很多策略后留下的「最好夏普」含多重检验偏差，正确做法是留出样本外（口径见 <a href="019.html">019 章</a>）。考官常见变式：把「亏钱」改成「回撤超过 10%」、把日夏普改成月夏普换算、给出含自相关的序列让你判断能否直接乘 \(\sqrt{252}\)。</p></div>
+          <div class="intuition-box"><b>夏普之外的补充指标</b><p>夏普对上行波动与下行波动一视同仁，也不惩罚偏度。追问时能报出替代口径：索提诺比率（Sortino，用下行波动）、卡玛比率（Calmar，收益除以最大回撤）、以及把收益对一篮子因子回归后看残差夏普（信息比率，information ratio）。知道夏普的边界比背更多比率更重要。</p></div>
+
+          <h3 id="s-037-7"><a class="anchor-link" href="#s-037-7" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出夏普比率定义，并把日夏普按 \(\sqrt{252}\) 年化，同时说出 iid 与无自相关假设。</li>
+            <li>我能解释为什么年化是 \(\sqrt{T}\) 而不是 \(T\)：均值线性累积、标准差平方根累积。</li>
+            <li>我能把任意期限的亏损概率写成 \(\Phi(-\text{SR}\sqrt{T})\)，并心算 \(\Phi(1)\approx 84\%\)、\(\Phi(-2)\approx 2.3\%\)。</li>
+            <li>我能推导删除零收益日的影响：均值翻倍、标准差至多放大 \(\sqrt{2}\)、夏普至少虚增 \(\sqrt{2}\)。</li>
+            <li>我能写出两资产最大夏普权重的解析式并代入数值（F26 的 100% B 情形）。</li>
+            <li>我能说明多策略最高夏普配置 \(w\propto\Sigma^{-1}\mu\) 与相关矩阵在其中的角色。</li>
+            <li>我能从样本外、成本、容量、相关性、稳定性五个维度比较两个回测策略。</li>
+            <li>我能指出夏普的边界：厚尾、自相关、估计误差、多重检验，并说出 Sortino 或 Calmar 等替代口径。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="036.html">← 036. 编程六：数据结构设计题</a><a href="038.html">038. 金融二：期权入门 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

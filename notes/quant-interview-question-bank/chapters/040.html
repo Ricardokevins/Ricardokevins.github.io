@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>040. 金融四：组合构建与回测 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 040</div>
+        <div class="brand-title">金融四：组合构建与回测</div>
+        <div class="brand-meta">beta 与 alpha 分解、市场中性、最小方差、再平衡与回测落地差。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-040-1">学习目标：从信号到实盘的完整链条</a><a class="toc-link" href="#s-040-2">因子分解：beta、alpha 与市场中性</a><a class="toc-link" href="#s-040-3">组合数学：最小方差、相关矩阵与模拟</a><a class="toc-link" href="#s-040-4">例题详解一：配权、降暴露与再平衡</a><a class="toc-link" href="#s-040-5">例题详解二：波动率估计与研究口径</a><a class="toc-link" href="#s-040-6">误区与边界</a><a class="toc-link" href="#s-040-7">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link current" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="finance" data-title="金融四：组合构建与回测">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>040. 金融四：组合构建与回测</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>手册最后一章把前三章的零件装成一台完整的机器：用 beta/alpha 分解构造市场中性组合，用最小方差与相关矩阵配权，用再平衡讨论路径收益，最后面对回测与实盘的鸿沟。覆盖源题 F1–F3、F9–F12、F18、F19、F24、F27、F35，并统一解答统计源题 S26。</p></aside>
+          <figure class="visual-lead"><img src="../assets/finance-map.svg" alt="金融直觉板块知识地图：组合构建与回测主题汇总夏普、期权与微观结构三条主线"></figure>
+
+          <h3 id="s-040-1"><a class="anchor-link" href="#s-040-1" aria-label="跳转到本节">#</a>学习目标：从信号到实盘的完整链条</h3>
+          <p>量化研究的完整链条是：假设 → 信号 → 组合 → 成本 → 实盘 → 归因复盘。前面三章分别给了评价语言（<a href="037.html">037 章</a>夏普）、定价直觉（<a href="038.html">038 章</a>期权）与执行环境（<a href="039.html">039 章</a>微观结构），本章负责把它们串起来。面试里这一板块的题最「开口」：为什么做多做空一只股票、alpha 什么最重要、回测和实盘差在哪——考的都是你有没有真实做过研究的口径。</p>
+          <p>数学上本章只有两块硬通货：一是收益的因子分解（beta 是什么、怎么消掉），二是协方差矩阵的运用（最小方差配权、Cholesky 生成相关正态、多时间尺度的相关性）。其余都是把这两块用到正确的问题上。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>收益分解</b><p>把收益拆成市场部分 \(\beta r_M\) 加残差 alpha：市场中性组合就是把 \(\beta\) 压到零、只交易残差。</p></div>
+            <div class="concept-card"><b>协方差矩阵</b><p>最小方差权重 \(w\propto\Sigma^{-1}\mathbf{1}\)、最大夏普权重 \(w\propto\Sigma^{-1}\mu\)、相关正态模拟的 Cholesky 因子——全是同一个 \(\Sigma\) 的三张面孔。</p></div>
+            <div class="concept-card"><b>回测的边界</b><p>回测假设你的订单不改变世界；实盘里排队、部分成交、冲击成本与 regime 变化全部到场。审计与 TCA 是把两者对账的工具。</p></div>
+          </div>
+
+          <h3 id="s-040-2"><a class="anchor-link" href="#s-040-2" aria-label="跳转到本节">#</a>因子分解：beta、alpha 与市场中性</h3>
+          <p><b>beta 是什么（源题 F19）。</b>beta 度量个股收益对市场收益的敏感度，定义与 CAPM（Capital Asset Pricing Model）口径：</p>
+          <div class="math-display">\[ \beta_i=\frac{\mathrm{Cov}(R_i,R_M)}{\mathrm{Var}(R_M)}=\rho_{iM}\,\frac{\sigma_i}{\sigma_M},\qquad \mathbb{E}[R_i]=r_f+\beta_i\bigl(\mathbb{E}[R_M]-r_f\bigr). \]</div>
+          <p>怎么读：beta 是 \(R_i\) 对 \(R_M\) 的回归斜率——市场涨 1%，该股平均涨 \(\beta\)%。估计：用 1–5 年月度或日度收益做 OLS 回归（回归细节见 <a href="026.html">026 章</a>）；坑：beta 时变（牛市末尾偏高）、不同估计窗口差异大、薄交易导致偏差，实务常用向 1 收缩的调整。对冲视角：\(\beta\) 份指数空头即可对冲掉该股的市场暴露。</p>
+          <p><b>市场中性组合怎么构造（源题 F9）。</b>目标是让组合对市场（以及常见因子）的暴露为零，只留下残差收益。三层做法：① beta 对冲：组合暴露 \(c=\sum_i w_i\beta_i\)，卖出 \(c\) 份名义的指数期货/互换，一阶消掉市场暴露；② 结构中性：多空两侧市值对齐（dollar neutral）、行业与风格权重对齐（sector/size neutral），防止残差里混进行业 beta；③ 回归中性：把每只票的收益对一篮子因子回归，只用残差排序构造信号。残余风险要诚实：beta 是估计量（有误差）、相关性在危机中趋同、crowding 会让「中性」组合一起被赎回——中性 ≠ 零风险，它只是把风险搬到了残差端。</p>
+          <p><b>alpha 最重要的因素是什么（源题 F18）。</b>这道题要的是判断而不是清单。有判断的答案：最重要的是<b>真实性</b>——统计上显著且样本外存活、并且有能讲通的经济机制（为什么这个错误定价存在、谁在另一边、为什么没被套利掉）。理由是排序逻辑：一个真实但微弱的 alpha 可以通过加杠杆或与其他策略组合放大（<a href="037.html">037 章</a>的 \(\sqrt{N}\) 逻辑），而一个虚假的大 alpha 无法复制，实盘必然衰减归零；容量与成本是第二梯队——它们决定 alpha 能「兑现多少」，但不决定它「是否存在」。面试口径：先亮观点（真实性/稳健性第一），再讲排序理由，最后补容量与成本的约束。</p>
+          <p><b>为什么做多或做空一只股票（源题 F10）。</b>结构化口径：做多理由——估值显著低于内在价值（相对可比、相对历史）、基本面改善的催化剂（盈利上修、份额扩张）、质量溢价未被定价；做空理由——估值透支、基本面恶化（盈利质量、现金流转弱）、催化剂临近（指引下修、监管事件）、拥挤多头的平仓压力；空头的额外约束——借券成本与召回风险、逼空风险、上行亏损无限（收益分布左偏右长），所以空头通常要有催化剂陪伴而非只押估值回归。加一句组合视角：任何单票决策最终要过「对组合的边际贡献」这一关。</p>
+
+          <h3 id="s-040-3"><a class="anchor-link" href="#s-040-3" aria-label="跳转到本节">#</a>组合数学：最小方差、相关矩阵与模拟</h3>
+          <p><b>最小方差配权（源题 F27）。</b>给定一组股票、要求组合波动最小，这是带等式约束的二次规划。无约束（权重和为 1、允许任意多空）时有闭式解：</p>
+          <div class="math-display">\[ w^{*}=\frac{\Sigma^{-1}\mathbf{1}}{\mathbf{1}^{\top}\Sigma^{-1}\mathbf{1}}, \]</div>
+          <p>怎么读：权重由协方差矩阵的逆决定——波动大的票权重小、彼此高相关的票互相「挤掉」，与期望收益完全无关（这是它和 <a href="037.html">037 章</a>切点组合的唯一区别）。两资产特例（例题 1 用到）：\(w_A=(\sigma_B^2-\rho\sigma_A\sigma_B)/(\sigma_A^2+\sigma_B^2-2\rho\sigma_A\sigma_B)\)。带现实约束（不能做空、行业上限、换手约束）时闭式解失效，改用二次规划数值求解，无约束解常作为热启动。</p>
+          <p><b>生成指定相关的正态样本（源题 F12）。</b>模拟组合路径、做压力测试都要「造出」相关结构。标准工具是 Cholesky 分解（Cholesky decomposition）：对正定的相关矩阵 \(R\)，找下三角矩阵 \(L\) 使 \(LL^{\top}=R\)；取独立标准正态向量 \(z\)，则 \(x=Lz\) 的协方差恰为 \(R\)。两资产时 \(L\) 有显式形式，代码只要四行核心逻辑：</p>
+          <pre><code>// 生成 n 对相关系数为 rho 的标准正态样本（Cholesky：L = [[1,0],[rho,sqrt(1-rho^2)]]）
+void sampleCorrelated(mt19937&amp; rng, double rho, int n,
+                      vector&lt;double&gt;&amp; x, vector&lt;double&gt;&amp; y) {
+    normal_distribution&lt;double&gt; N01(0.0, 1.0);
+    x.resize(n); y.resize(n);
+    const double s = sqrt(1.0 - rho * rho);   // Cholesky 因子 L22
+    for (int i = 0; i &lt; n; ++i) {
+        double z1 = N01(rng), z2 = N01(rng);  // 两个独立 N(0,1)
+        x[i] = z1;                            // x = L11 * z1
+        y[i] = rho * z1 + s * z2;             // y = L21 * z1 + L22 * z2
+    }
+}
+// 验证：Corr(x,y) 依概率收敛到 rho，复杂度 O(n)</code></pre>
+          <p>多资产推广：对目标协方差 \(\Sigma\) 做 Cholesky 得 \(L\)，对独立标准正态向量左乘 \(L\) 即得目标相关的样本；\(\Sigma\) 非正定（高度共线的收益序列）时需先加微小对角垫（岭收缩，见 <a href="027.html">027 章</a>）再分解。</p>
+          <p><b>相关性的时间尺度依赖（源题 F24 的地基）。</b>相关系数是对某个采样频率定义的：日收益的相关与年收益的相关可以完全不同，因为聚合时间越长，低频成分（漂移、趋势）权重越大，高频噪声被平均掉。「日度正相关、年度负相关」因此并不矛盾——机制与数值构造在例题 3 给出。</p>
+
+          <h3 id="s-040-4"><a class="anchor-link" href="#s-040-4" aria-label="跳转到本节">#</a>例题详解一：配权、降暴露与再平衡</h3>
+
+          <div class="worked-example">
+            <p><b>例题 1（源题 F27、统计源题 S26 同题统一解答）：给定一组股票如何配权使组合波动最小？股票 A、B 期望收益相同，标准差分别为 20% 与 30%，相关系数 0.5，具体怎么配？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>通用方案：估计 \(\Sigma\) 后取 \(w^{*}=\Sigma^{-1}\mathbf{1}/(\mathbf{1}^{\top}\Sigma^{-1}\mathbf{1})\)；S26 是两资产数值实例（期望收益相同——最小方差与期望无关，正好印证 F27 的通用解）。</p>
+              <p><b>推导。</b>两资产权重公式 \(w_A=(\sigma_B^2-\rho\sigma_A\sigma_B)/(\sigma_A^2+\sigma_B^2-2\rho\sigma_A\sigma_B)\)。代入 \(\sigma_A=20\%\)、\(\sigma_B=30\%\)、\(\rho=0.5\)（分子分母单位约去）：\(w_A=(900-300)/(400+900-600)=600/700=6/7\approx 85.7\%\)，\(w_B=1/7\approx 14.3\%\)。</p>
+              <p><b>检验。</b>组合方差（%² 单位）：\(\sigma_p^2=(36/49)\cdot 400+(1/49)\cdot 900+2\cdot 0.5\cdot(6/49)\cdot 600=18900/49\approx 385.7\)，\(\sigma_p\approx 19.6\%\lt 20\%=\min(\sigma_A,\sigma_B)\)——加入一只更高波的股票反而降了波动，分散化的直接证据。边界自查：\(\rho\to 1\) 时 \(w_A\to\sigma_B/(\sigma_A+\sigma_B)\) 比例反比于波动；\(\rho\to 0\) 时 \(w_A\to\sigma_B^2/(\sigma_A^2+\sigma_B^2)\)（逆方差加权，inverse-variance weighting），两个极端都对。</p>
+              <p><b>面试怎么讲。</b>「最小方差只看协方差：通用解 \(w\propto\Sigma^{-1}\mathbf{1}\)，两资产时代入公式得 6/7 与 1/7，组合波动 19.6%，低于两者各自。注意它对 \(\Sigma\) 的估计误差极其敏感，实务要加收缩或正则。」</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 2（源题 F11）：组合 X 对市场的暴露为 c。如何降低暴露？分别按交易次数、交易金额的绝对值、交易金额的平方作为成本函数，给出成本最小的削减方式（用直觉与拉格朗日两种方式）。设第 i 只股票的 beta 为 \(\beta_i\)，交易额（占组合比例）为 \(x_i\)。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>目标是把暴露从 c 降到 \(c-\Delta\)，即约束 \(\sum_i\beta_i x_i=-\Delta\)；三种成本函数给出三个性质完全不同的解。</p>
+              <p><b>推导。</b>① 成本 = 交易次数（L0）：次数与交易额无关，那么一笔大单优于多笔小单；把全部削减放在 \(|\beta|\) 最大的股票上，一笔交易 \(x_j=-\Delta/\beta_j\) 即达标——高 beta 是「最便宜的暴露搬运工」。② 成本 = \(\sum_i|x_i|\)（L1）：每削减一单位暴露所需名义为 \(1/|\beta_i|\)，线性成本下不存在「摊薄」激励，最优仍是全部集中在 \(|\beta|\) 最大的票上（若有单票仓位上限，则按 \(|\beta|\) 从大到小贪心填充）。③ 成本 = \(\sum_i x_i^2\)（L2，刻画冲击成本随单笔规模加速上升）：拉格朗日函数</p>
+              <div class="math-display">\[ \mathcal{L}=\sum_i x_i^2+\lambda\Bigl(\sum_i\beta_i x_i+\Delta\Bigr)\;\Rightarrow\;2x_i+\lambda\beta_i=0\;\Rightarrow\;x_i=-\frac{\Delta\,\beta_i}{\sum_j\beta_j^2}. \]</div>
+              <p>即按 beta <b>成比例</b>地在所有票上分摊，谁贡献暴露谁多砍。数值例：\(\beta=(2,1,0.5)\)、\(\Delta=1\)：L0/L1 全砍第一只（\(x_1=-0.5\)，L2 成本 0.25）；L2 给 \(x=(-0.381,-0.190,-0.095)\)，成本 \(\sum x_i^2\approx 0.190\lt 0.25\)，且 \(\sum\beta_ix_i=-1\) 达标。</p>
+              <p><b>检验。</b>三类解的一致性：L1 与 L0 都集中（线性成本不奖励分散），L2 强制分散（平方成本惩罚大单）；现实的市场冲击近似平方根律，最优解落在 L1 的「集中」与 L2 的「均摊」之间。</p>
+              <p><b>面试怎么讲。</b>「成本函数的曲率决定答案：数次数与线性金额下，交易集中在最高 beta 名义最省；平方金额下拉格朗日给出 \(x_i\propto\beta_i\) 的均摊解。一句话：线性成本挑工具，二次成本摊着来。」</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 3（源题 F24）：两只股票可能日度正相关、而年度负相关吗？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>可能。相关系数依赖于采样频率：日相关由「共同高频噪声」主导，年相关由「低频漂移」主导，两者的符号可以相反。</p>
+              <p><b>推导。</b>构造日收益：\(\Delta A=a+\varepsilon+\eta_A\)，\(\Delta B=-a+\varepsilon+\eta_B\)，其中 \(\varepsilon\) 为共同日噪声（方差 \(v_\varepsilon^2\)），\(\eta\) 为各自特有噪声（方差 \(v^2\)），\(a\) 为方向相反的日漂移。日相关：</p>
+              <div class="math-display">\[ \rho_{\text{日}}=\frac{v_\varepsilon^2-a^2}{v_\varepsilon^2+a^2+v^2},\qquad \rho_{\text{年}}\;\text{由}\;\mathrm{Cov}_{\text{年}}=T\,v_\varepsilon^2-T^2 a^2\;\text{的符号决定}. \]</div>
+              <p>（\(T=252\)，年方差相应聚合。）数值例：\(a=0.5\%\)（反向漂移）、\(\varepsilon\) 波动 1%、特有波动 0.5%（单位%）：\(\rho_{\text{日}}=(1-0.25)/(1+0.25+0.25)=0.5\gt 0\)；而 \(\mathrm{Cov}_{\text{年}}=252\times 1-252^2\times 0.25\lt 0\)——年相关为负。</p>
+              <p><b>检验。</b>直觉复核：两家公司每天被同一个市场/板块噪声推着同涨同跌（日正相关），但一家在缓慢赢得份额、另一家在缓慢失去份额，一年下来股价反向（年负相关）——趋势与噪声分离的典型形态。另一机制是 lead-lag 与均值回复：B 对 A 的滞后反向跟随，短期看是同向跟随、长期看是回归。</p>
+              <p><b>面试怎么讲。</b>「相关性是频率依赖的统计量。日度窗口里共同噪声说了算，年度窗口里漂移说了算——构造『共同高频噪声 + 反向低频漂移』就能同时得到日正、年负。提醒：这在实务里意味着用日度相关矩阵去管年度风险是错配的。」</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 4（源题 F35）：股票在 t=1 时价格 100，t=n 时回到 100。你维持一个恒定 100 的组合（涨了就卖、跌了就买）。这个策略最终收益为正吗？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>每期期初持有市值恰为 100 的股票（涨了卖回 100、跌了用现金补到 100），第 \(t\) 期的盈亏即 \(100\,r_t\)（\(r_t\) 为该期收益率）。终端总盈亏 \(=100\sum_t r_t\)，而买入持有是 \(100\bigl(\prod_t(1+r_t)-1\bigr)=0\)。</p>
+              <p><b>推导。</b>关键是恒等式：对一切 \(x\gt -1\)，\(x-\ln(1+x)\ge 0\)（等号仅当 \(x=0\)）。求和：</p>
+              <div class="math-display">\[ \sum_t r_t=\underbrace{\sum_t\ln(1+r_t)}_{=\ln(S_n/S_1)=0}+\sum_t\bigl(r_t-\ln(1+r_t)\bigr)\;\ge\;0,\qquad\approx\tfrac{1}{2}\sum_t r_t^2\gt 0. \]</div>
+              <p><b>答案：是正的</b>（只要中途有任何波动），近似等于 \(50\sum_t r_t^2\)。数值例：100 → 120 → 100：第一期赚 20，第二期持有 100 市值亏 \(100\times(-1/6)\approx 16.7\)，净赚 \(3.33\)；公式复核 \(100\times\frac{1}{2}(0.2^2+(1/6)^2)\approx 3.33\)。</p>
+              <p><b>检验。</b>两个视角互证：① AM-GM：\(\frac1n\sum(1+r_t)\ge\bigl(\prod(1+r_t)\bigr)^{1/n}=1\)，算术平均不小于几何平均，策略把「算术路径」变现；② 波动率拖累（volatility drag）的对偶：买入持有的对数收益 \(\sum\ln(1+r_t)\approx\sum r_t-\frac12\sum r_t^2\)，拖累项正是策略的利润来源。这个策略就是恒定比例组合（constant mix）的波动率收割（volatility harvesting），与 Shannon 的恶魔、<a href="038.html">038 章</a>对冲组合的 gamma 损益 \(\tfrac12\Gamma S^2\sigma_r^2\) 同构——都是赚已实现方差。</p>
+              <p><b>面试怎么讲。</b>「正收益，近似 \(50\sum r_t^2\)：恒定敞口等价于机械地高抛低吸，把波动率拖累反向兑现。但要补风险边界：下跌期需要不断追加现金、股票趋零时摊低无底（需止损/融资约束），它不是免费午餐，是路径风险的补偿。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-040-5"><a class="anchor-link" href="#s-040-5" aria-label="跳转到本节">#</a>例题详解二：波动率估计与研究口径</h3>
+
+          <div class="worked-example">
+            <p><b>例题 5（源题 F1）：定义几个波动率估计器。它们的理论性质如何？如何做样本外检验？（子问：线性回归闭式解、何时不可逆、岭回归闭式解、所逆矩阵的谱如何变化、Lasso 为何用梯度类算法。）</b></p>
+            <div class="solution">
+              <p><b>建模。</b>波动率估计器 = 从不同「价格信息切片」构造日方差估计，性质 = 在 GBM 假设下的无偏性与效率；样本外检验 = 预测问题，不是拟合问题。</p>
+              <p><b>推导。</b>四个估计器（\(O,H,L,C\) 为开高低收，\(r_t\) 为日对数收益）：</p>
+              <div class="formula-list">
+                <p><b>收盘-收盘（close-to-close）：</b>\(\hat{\sigma}^2=\frac{1}{n-1}\sum_t (r_t-\bar{r})^2\)。无偏，但每天只取一个观测，效率最低，且对日内信息完全失明。</p>
+                <p><b>Parkinson：</b>\(\hat{\sigma}^2_P=\frac{1}{4\ln 2}\cdot\frac1n\sum_t \ln^2(H_t/L_t)\)。只用高低价，GBM 无漂移假设下效率约为收盘-收盘的 5 倍；隔夜跳空与漂移使其有偏（通常低估）。</p>
+                <p><b>Garman-Klass：</b>\(\hat{\sigma}^2_{GK}=\frac1n\sum_t\bigl[\tfrac12\ln^2(H_t/L_t)-(2\ln 2-1)\ln^2(C_t/O_t)\bigr]\)。用满 OHLC，效率约 7–8 倍；偏差来源与 Parkinson 同。</p>
+                <p><b>已实现波动率（realized volatility）：</b>\(RV_t=\sum_i r_{t,i}^2\)（日内收益平方和）。采样无限加密时收敛于当日积分方差；过高频率受买卖价差反弹（bid-ask bounce）污染而偏高——signature plot（不同频率下的 RV 曲线）是诊断工具。</p>
+              </div>
+              <p>样本外检验口径：把「估计器在 t 日的输出」当作对 t+1（或未来 k 日）已实现波动的预测，做 Mincer-Zarnowski 回归 \(\sigma^2_{t+1}=a+b\,\hat{\sigma}^2_t+\varepsilon\)，检验 \(a=0,b=1\)（检验工具见 <a href="019.html">019 章</a>）；比较用 MSE 或对数尺度更稳的 QLIKE 损失，多估计器两两比较用 Diebold-Mariano 检验。</p>
+              <p><b>子问（回归与正则化）。</b>OLS 闭式解 \(\hat{\beta}=(X^{\top}X)^{-1}X^{\top}y\)；不可逆出现在 \(X^{\top}X\) 奇异时——特征数超过样本数（\(p\gt n\)）或特征共线。岭回归闭式解 \(\hat{\beta}_{ridge}=(X^{\top}X+\lambda I)^{-1}X^{\top}y\)：谱的视角，\(X^{\top}X\) 的特征值 \(\lambda_i\) 整体右移为 \(\lambda_i+\lambda\)，全部严格为正，条件数 \((\lambda_{\max}+\lambda)/(\lambda_{\min}+\lambda)\) 变小——求逆从病态变良态；Lasso 的 \(\ell_1\) 惩罚使目标不可微、无闭式解，用坐标下降或次梯度法求解，其条件数讨论与收敛细节见 <a href="027.html">027 章</a>。</p>
+              <p><b>面试怎么讲。</b>「先按信息量排估计器：收盘-收盘无偏但低效，Parkinson、Garman-Klass 用高低开收效率翻倍但怕隔夜跳空，realized vol 一致但怕微观结构噪声。检验永远是样本外预测问题：MZ 回归加 QLIKE。回归子问一句话：\(X^{\top}X\) 奇异时 OLS 无解，岭把谱整体右移 \(\lambda\) 恢复可逆。」</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 6（源题 F2）：描述你的研究主题。如何计算策略的 alpha？用到哪些数学模型？什么条件触发交易信号？策略表现是否满意？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>这是一道「简历题」，考的不是具体主题而是你能否按研究流程讲清楚。给一个可复用的答题模板（以「低波动异象的时序实现」这类中性主题为例）。</p>
+              <div class="formula-list">
+                <p><b>① 一句话主题：</b>研究什么现象、在哪个市场、为什么存在（错误定价的来源：风险补偿还是行为偏差）。</p>
+                <p><b>② 信号构造：</b>特征定义、标准化方式、对市场与行业的中性化处理；数学工具：排序、z-score、回归残差。</p>
+                <p><b>③ 组合构造：</b>权重方案（等权、风险平价、优化器）、换手与容量约束、再平衡频率。</p>
+                <p><b>④ 成本模型：</b>双边价差加冲击（按 <a href="039.html">039 章</a>的微观结构口径），净收益才算数。</p>
+                <p><b>⑤ alpha 计算：</b>把组合收益对因子回归 \(r_p=\alpha+\sum_k\beta_k f_k+\varepsilon\)，\(\hat{\alpha}\) 的 t 统计量即「风险调整后是否显著为正」；辅以信息系数 \(\mathrm{IC}=\mathrm{corr}(\text{信号},\text{前瞻收益})\) 与 <a href="037.html">037 章</a>的净夏普。</p>
+                <p><b>⑥ 触发条件：</b>信号阈值、再平衡日历、风险开关（回撤/波动上限、拥挤度指标）。</p>
+                <p><b>⑦ 表现评估：</b>相对基准与机会成本的判断——样本外夏普、容量曲线（规模翻倍后净收益剩多少）、分 regime 稳定性。</p>
+              </div>
+              <p><b>检验。</b>自检三问：每个环节能否被追问两层（信号的统计性质、成本的敏感性）？alpha 与夏普是否做过样本外？如果答案是「满意」，有没有量化对照（不满意也能讲：指出衰减与容量瓶颈更显成熟）。</p>
+              <p><b>面试怎么讲。</b>按模板七步走，每步一句话；主动把「信号 → 组合 → 成本 → 归因」的链条说完整，最忌只讲信号不讲成本与容量。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 7（源题 F3）：系统化策略在回测环境与实盘交易中的主要差异是什么？哪些效应只在实盘发生、回测无法复现？实盘的自动交易如何审计？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>差异来自三个隐含假设：你的订单不影响市场、你能按看到的价成交、市场结构不变。逐条拆掉它们。</p>
+              <p><b>推导（口径）。</b>实盘独有、回测难复现的效应：① 排队与成交概率——限价单排在队尾，看到的价格不是你的价格；② 部分成交与拒单——回测假设全量成交；③ 市场冲击——你的单推动价格，信号容量越大越严重（与 <a href="039.html">039 章</a>的价差、深度直接相关）；④ 滑点与延迟——决策价与成交价之间的差，含网络与撮合延迟；⑤ 借券与费用——做空成本、清算费在回测里常被简化；⑥ regime 与拥挤——同一信号被他人抢先执行（alpha 衰减）、流动性真空、涨跌停与熔断；⑦ 公司行为处理的细节差错。审计口径：逐笔对账（成交回报与行情按时间戳核对，TCA：实现滑点相对决策价/到达价的分布）、全链路日志（信号生成、下单、成交三段留痕）、影子运行（paper trading 与实盘并行比对偏差）、限额与熔断机制（单日亏损、错误单频率触发 kill switch）、定期把实盘 PnL 与回测预测的差异做归因分解。</p>
+              <p><b>检验。</b>健康度指标：实盘/回测夏普比若长期低于 0.5，先怀疑成本模型而非市场；滑点分布若有厚尾，检查是否集中在开盘与事件时段。</p>
+              <p><b>面试怎么讲。</b>「回测的三个隐含假设——不冲击市场、按看到的价成交、结构不变——在实盘全部失效。我把差异归为成交类（排队、部分成交、冲击、滑点）与环境类（borrow、regime、拥挤），审计靠逐笔对账、全链路日志、影子运行和 kill switch。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-040-6"><a class="anchor-link" href="#s-040-6" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>常见误区</b><p>① 「市场中性 = 没有风险」——beta 归零只是搬走了一个因子，残差波动、行业暴露与拥挤风险都还在；② 最小方差解对 \(\Sigma\) 的估计误差极度敏感——样本协方差在维度高时近乎噪声，实务必须收缩（与 <a href="027.html">027 章</a>岭回归同一逻辑）；③ beta 用哪个窗口都对/都不对——它是时变量，报告 beta 必须带窗口与置信区间；④ 例题 4 的再平衡收益不是套利——它需要承担路径风险并提供下跌期的追加资金；⑤ 回测里最大的偏差往往不是漏了成本，而是多重检验：试了一百个信号后留下的最好者，样本外衰减是必然（检验口径见 <a href="019.html">019 章</a>）；⑥ 日度相关矩阵不能直接回答年度风险问题（例题 3）。</p></div>
+          <div class="intuition-box"><b>考官追问的变式</b><p>常见变式：把 F11 的成本函数改成平方根律（答案在 L1 与 L2 解之间，需数值求解）；把 F27 加上「不能做空」约束（闭式解失效，退化为带界二次规划，边界上多只票权重为零）；把 F24 反过来问「年度正相关、日度负相关可能吗」（同样可能，换成反向共同噪声与同向漂移即可）；把 F35 的恒定市值改成恒定份额（恒定份额 = 买入持有，不再有再平衡收益）。准备这些问题时始终回到两块硬通货：因子分解与协方差矩阵。</p></div>
+
+          <h3 id="s-040-7"><a class="anchor-link" href="#s-040-7" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出 beta 的定义与 CAPM 口径，并说明估计窗口、时变性与向 1 收缩的处理。</li>
+            <li>我能给出市场中性组合的三层构造：beta 对冲、结构中性、回归残差，并诚实指出残余风险。</li>
+            <li>我能就「alpha 最重要的因素」给出有排序的判断：真实性/样本外稳健性优先于容量与成本，并讲清理由。</li>
+            <li>我能按交易次数、绝对金额、平方金额三种成本函数给出降暴露的最优路径，并写出 L2 情形的拉格朗日推导。</li>
+            <li>我能用两资产公式与通用式 \(w\propto\Sigma^{-1}\mathbf{1}\) 算最小方差权重（S26：6/7 与 1/7，波动 19.6%）。</li>
+            <li>我能用 Cholesky 写出生成指定相关正态的代码，并解释「日度正相关、年度负相关」的机制。</li>
+            <li>我能证明恒定市值再平衡策略的终期收益为正（约 \(50\sum r_t^2\)），并说出它与波动率拖累、gamma 损益的对偶关系。</li>
+            <li>我能列出回测与实盘的七类差异和审计四件套（对账、日志、影子运行、kill switch），并按七步模板讲清一项研究。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="039.html">← 039. 金融三：市场微观结构</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

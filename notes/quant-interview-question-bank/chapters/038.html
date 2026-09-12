@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>038. 金融二：期权入门 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 038</div>
+        <div class="brand-title">金融二：期权入门</div>
+        <div class="brand-meta">期权定价六输入、欧式美式之辨与隐含波动率交易。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-038-1">学习目标：六个输入与一个不可观测的量</a><a class="toc-link" href="#s-038-2">定价的输入变量与 BS 公式结构</a><a class="toc-link" href="#s-038-3">欧式与美式：提前行使的权利</a><a class="toc-link" href="#s-038-4">隐含波动率：从价格反推的市场观点</a><a class="toc-link" href="#s-038-5">例题详解一：欧式与美式之辨</a><a class="toc-link" href="#s-038-6">例题详解二：波动率交易与曲线构建</a><a class="toc-link" href="#s-038-7">误区与边界</a><a class="toc-link" href="#s-038-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link current" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="finance" data-title="金融二：期权入门">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>038. 金融二：期权入门</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>本章建立期权的三层直觉：定价需要哪些输入、欧式与美式差在哪里、隐含波动率如何成为交易对象。覆盖源题 F6、F13、F14、F15、F31、F32、F33，并覆盖编程源题 C15 的 d/e/f 子问（Black-Scholes、对冲组合、swap 曲线 bootstrap）的面试口径。</p></aside>
+          <figure class="visual-lead"><img src="../assets/finance-map.svg" alt="金融直觉板块知识地图：期权主题与夏普、微观结构、组合构建的衔接关系"></figure>
+
+          <h3 id="s-038-1"><a class="anchor-link" href="#s-038-1" aria-label="跳转到本节">#</a>学习目标：六个输入与一个不可观测的量</h3>
+          <p>期权题在面试里的出题密度很高，因为它们是「金融直觉 + 概率计算」的复合考点。好消息是入门级的期权面试题几乎全部挂在同一个骨架上：定价只依赖六个输入（源题 F6），其中五个能从市场读到，只有波动率不可直接观测——于是衍生出两条主线：一条比价线（欧式 vs 美式、短期限 vs 长期限，F13–F15），一条波动率线（隐含波动率与 realized 的差是做市商的口粮，F31–F33）。</p>
+          <p>本章不推任何偏微分方程的细节，重点是把每条结论背后的「权利与现金流」逻辑讲透：期权是权利不是义务，多一份权利就该多一份价格；价格差异永远可以还原成「谁多拥有什么选择权、谁多承担什么约束」。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>六个输入</b><p>标的价 \(S\)、行权价 \(K\)、到期时间 \(T\)、波动率 \(\sigma\)、无风险利率 \(r\)、分红/持有成本 \(q\)。只有 \(\sigma\) 不可观测。</p></div>
+            <div class="concept-card"><b>权利定价</b><p>美式 = 欧式 + 提前行使的权利，所以美式不便宜于欧式；无分红 call 的提前行使权一文不值，两者等价。</p></div>
+            <div class="concept-card"><b>波动率交易</b><p>对冲后的期权损益按「已实现方差减隐含方差」累积：\(\tfrac{1}{2}\Gamma S^2(\sigma_r^2-\sigma_i^2)\) 是波动率买卖的核心公式。</p></div>
+          </div>
+
+          <h3 id="s-038-2"><a class="anchor-link" href="#s-038-2" aria-label="跳转到本节">#</a>定价的输入变量与 BS 公式结构</h3>
+          <p>期权价格是合约条款与市场状态的函数。面试第一问（源题 F6）要求你把输入列全并说出方向，一个都不能漏：</p>
+          <div class="formula-list">
+            <p><b>标的现价 \(S\)：</b>call 价值随 \(S\) 严格递增，put 严格递减；\(S\) 是所有希腊字母的锚。</p>
+            <p><b>行权价 \(K\)：</b>call 随 \(K\) 递减、put 随 \(K\) 递增；\(K\) 决定期权的「虚实值」（moneyness）。</p>
+            <p><b>到期时间 \(T\)：</b>时间越长不确定性越多；美式下更长到期必然不差，欧式存在例外（见例题 1）。</p>
+            <p><b>波动率 \(\sigma\)：</b>唯一不可直接观测的输入，call 与 put 都随 \(\sigma\) 递增——波动率是期权买方购买的「货物」。</p>
+            <p><b>无风险利率 \(r\)：</b>通过行权价的贴现 \(Ke^{-rT}\) 与远期价格起作用：\(r\) 升高推高 call、压低 put（其余不变）。</p>
+            <p><b>分红与持有成本 \(q\)：</b>持有期内的分红降低股票的漂移预期：分红升则 call 降、put 升。</p>
+          </div>
+          <p>把这六个输入组装起来的最简模型是 Black-Scholes（编程源题 C15.d 的面试口径）。不要求背推导，要求能写出结构并解释两项的含义：</p>
+          <div class="math-display">\[ C=S\,N(d_1)-Ke^{-rT}N(d_2),\qquad d_1=\frac{\ln(S/K)+(r+\tfrac{1}{2}\sigma^2)T}{\sigma\sqrt{T}},\qquad d_2=d_1-\sigma\sqrt{T}. \]</div>
+          <p>怎么读：期权被拆成「股票腿 \(SN(d_1)\)」减「债券腿 \(Ke^{-rT}N(d_2)\)」。\(N(d_2)\) 是风险中性测度下到期实值（\(S_T\gt K\)）的概率；\(N(d_1)\) 是复制组合里持有的股票份数，即 delta。BS 的本质不是分布假设多漂亮，而是<b>复制</b>：期权 payoff 可以用动态调仓的股票与债券组合复制，价格就是复制成本。带分红 \(q\) 时把 \(S\) 换成 \(Se^{-qT}\) 即可。</p>
+          <p>与 BS 并列必背的是 put-call 平价（put-call parity），它不依赖任何分布假设，只靠无套利现金流拼贴：</p>
+          <div class="math-display">\[ C-P=Se^{-qT}-Ke^{-rT}. \]</div>
+          <p>怎么读：买 call 卖 put 等于「融资买股票」——两者到期 payoff 完全相同（合成远期）。parity 把四个价格绑在一起：给出任意三个，第四个就是确定的；这也意味着 call 与 put 的隐含波动率必须相同，否则存在套利。</p>
+
+          <h3 id="s-038-3"><a class="anchor-link" href="#s-038-3" aria-label="跳转到本节">#</a>欧式与美式：提前行使的权利</h3>
+          <p>欧式期权只能在到期日行使，美式期权在到期前任意一天都可以行使。所以美式 = 欧式 + 一份「提前行使的选择权」，立即得到两条不等式（F14 的答案骨架）：</p>
+          <div class="math-display">\[ V_{\text{美式}}\;\ge\; V_{\text{欧式}}\;\ge\; \text{内在价值}. \]</div>
+          <p>什么时候取等号？无分红股票的 call 是最经典的结论（Merton）：提前行使意味着放弃剩余时间价值、并且提前支付 \(K\) 损失利息，而收益只是立刻锁定内在价值——不划算，因此提前行使权价值为零，美式 call = 欧式 call。put 则不同：深度实值 put 提前行使能拿到 \(K\) 并立刻吃利息，即便没有分红，美式 put 也可能严格贵于欧式 put。</p>
+          <p>定价美式期权的标准工具是二叉树（binomial tree）：在每个节点比较「立即行使的内在价值」与「继续持有的贴现期望值」，取较大者，自叶向根回溯。行使价值超过持有价值的标的价格构成<b>提前行使边界</b>（early exercise boundary），它是美式定价里的自由边界——没有闭式解，这是与欧式的本质区别。</p>
+          <div class="intuition-box"><b>「权利更多是否更贵」的正确打开方式</b><p>比较两份期权时，先问「谁多一份权利、谁多一份约束」。美式对欧式多一份行使权，所以不便宜（F14）。期限长的对期限短的多覆盖一段时间的不确定性，通常更贵（F15）——但「通常」两个字必须会解释反例：欧式深度实值 put 在高利率下期限越长越便宜（payoff 要贴现更久且不能提前拿钱）；欧式 call 若长期限内横着一次大分红，远期被拉低，也可能比短期限的便宜。反例的存在恰恰证明「更长 = 更贵」依赖的是不确定性而非日历长度。</p></div>
+
+          <h3 id="s-038-4"><a class="anchor-link" href="#s-038-4" aria-label="跳转到本节">#</a>隐含波动率：从价格反推的市场观点</h3>
+          <p>BS 公式里五个输入可观测、一个不可观测，于是市场把方向反过来用：把期权的市场成交价代入 BS，反解出的 \(\sigma\) 就是<b>隐含波动率</b>（implied volatility）。隐含波动率不是预测，它是「让模型价格等于市场价格的那只参数」——市场对未知的共识定价。同一到期日不同行权价的隐含波动率连成微笑或偏斜（vol smile/skew），说明真实分布不是对数正态：尾部被定了更高的价。</p>
+          <p>波动率交易的数学核心（编程源题 C15.e 对冲组合的口径）是对冲组合的损益分解。买入期权并做 delta 对冲后，每个小区间 \(\mathrm{d}t\) 的损益为</p>
+          <div class="math-display">\[ \mathrm{dPnL}=\tfrac{1}{2}\,\Gamma\,S^2\bigl(\sigma_{\text{realized}}^2-\sigma_{\text{implied}}^2\bigr)\,\mathrm{d}t, \]</div>
+          <p>怎么读：对冲掉一阶方向暴露后，剩下的损益正比于「实际发生的方差减买入时定价的方差」。这就是 straddle 买卖双方的赌桌：买方付隐含方差的钱、收已实现方差；卖方相反。gamma 越大（临近到期、接近平值），同样的方差差兑现得越快。</p>
+          <p>最后两个常用近似（F32 的基础）：平值期权的 vega（对波动率的敏感度）约为 \(\varphi(0)S\sqrt{T}\approx 0.4\,S\sqrt{T}\)，一阶上与 \(\sigma\) 本身无关；straddle 的 vega 是单腿的两倍。因此平值 vega 随到期时间按 \(\sqrt{T}\) 衰减，且衰减<b>速率</b>随到期临近而加快——短端期权的时间最贵。</p>
+
+          <h3 id="s-038-5"><a class="anchor-link" href="#s-038-5" aria-label="跳转到本节">#</a>例题详解一：欧式与美式之辨</h3>
+
+          <div class="worked-example">
+            <p><b>例题 1（源题 F14、F15）：欧式与美式期权哪个更贵？两个条件完全相同的欧式期权，一个到期更晚，哪个更贵？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两问都是「权利比较」题：把每份期权拆成权利束，比较谁包含谁。</p>
+              <p><b>推导。</b>第一问：美式持有者可行使欧式的全部策略（持有到期），另加任意提前行使的权利，权利是期权、义务不存在，故 \(V_{\text{美式}}\ge V_{\text{欧式}}\)。等号条件：无分红股票的 call——提前行使必然劣于卖出期权（提前付 \(K\) 损失利息且放弃时间价值），行使权价值为零，两者相等；有分红的 call 与任何 put（含无分红）都可能严格不等。第二问：设短期限 \(T_1\)、长期限 \(T_2\)。长期限期权在 \(T_1\) 时刻仍未到期，其持有者可以选择「当作 \(T_1\) 到期来用」，可行策略严格更多。对美式期权或无套利下的一般欧式 call，长期限不便宜：\(V(T_2)\ge V(T_1)\)。</p>
+              <p><b>检验（反例自查）。</b>「长期限更贵」并非铁律，两个经典反例：① 欧式深度实值 put + 高利率：价值逼近 \(Ke^{-rT}-S\)，\(T\) 越大贴水越深，长期限反而便宜；② 欧式 call 若在 \(T_1\) 之后不久有一次大额分红，长期限的标的被除权下砸，远期 \(Se^{(r-q)T}\) 更低，长期限 call 可能更便宜。能举出反例是这道题的满分线。</p>
+              <p><b>面试怎么讲。</b>结构：「美式 = 欧式 + 提前行使权 → 不便宜；无分红 call 取等号（利息 + 时间价值双重惩罚）；期限长的权利更多 → 通常更贵，但欧式 put 的贴现反例与大分红反例说明这不是公理。」</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 2（源题 F13）：期权定价函数需要哪些参数？已知同一到期日的欧式期权价格，如何为美式期权定价？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>参数清单即 F6 的六输入（\(S,K,T,\sigma,r,q\)，外加模型选择）。欧式价格可由 BS（或同一棵树的欧式回溯）给出；美式 = 欧式 + 提前行使溢价，用二叉树逐节点「取 max」把它算出来。</p>
+              <p><b>推导。</b>两期二叉树数值例：\(S_0=100\)，\(K=100\)，\(u=1.2\)，\(d=0.8\)，每期利率 5%，风险中性概率 \(p=(1.05-0.8)/(1.2-0.8)=0.625\)。<b>欧式 put</b>：到期 payoff 为 \(uu{:}\,0\)、\(ud{:}\,4\)、\(dd{:}\,36\)，期望 \(0.46875\times 4+0.140625\times 36=6.9375\)，贴现得 \(6.9375/1.05^2\approx 6.29\)。<b>美式 put</b>：在下行节点 \(S=80\) 处，内在价值 20，持有价值 \((0.625\times 4+0.375\times 36)/1.05\approx 15.24\)，行使更优，节点价值取 20；回溯到根：\((0.625\times 1.43+0.375\times 20)/1.05\approx 7.99\)。提前行使溢价 \(\approx 7.99-6.29=1.70\)。</p>
+              <p><b>检验。</b>溢价为正符合「美式 \(\ge\) 欧式」；把利率改为 0 重算，下行节点行使价值与持有价值相等（20 vs 20），溢价缩小——与「提前行使的主要动力是 K 的利息」一致。树步数加密后值收敛（收敛速度 \(O(1/n)\)）。</p>
+              <p><b>面试怎么讲。</b>口径：「同一到期日时，美式 = 欧式 + 提前行使溢价；欧式部分我用 BS/树的欧式公式，溢价部分我在树上每个节点做 \(\max(\text{内在价值},\text{持有价值})\) 回溯。无分红 call 两者相等，不用另算。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-038-6"><a class="anchor-link" href="#s-038-6" aria-label="跳转到本节">#</a>例题详解二：波动率交易与曲线构建</h3>
+
+          <div class="worked-example">
+            <p><b>例题 3（源题 F31）：股票 A、B 价格相同。你预期 A 将实现 25% 的波动率、B 将实现 35%，而两者的隐含波动率分别为 20% 与 30%。买入并持有哪一个 straddle 的损益更高？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>长 straddle 的损益来自「实现与隐含的差」。两只股票的差都是 5 个 vol 点（25−20 与 35−30），一阶看是平局，决定胜负的是二阶口径。</p>
+              <p><b>推导。</b>一阶（vega 口径）：期望损益 \(\approx\text{vega}\times(\sigma_r-\sigma_i)\)。同价同期权平值 vega \(\approx 0.4\,S\sqrt{T}\) 相同，两边同得 \(0.4S\sqrt{T}\times 5\%\)，打平。二阶（对冲组合 gamma 口径）：由 \(\mathrm{dPnL}=\tfrac{1}{2}\Gamma S^2(\sigma_r^2-\sigma_i^2)\mathrm{d}t\)，损益按<b>方差差</b>结算：A 的边际为 \(0.25^2-0.20^2=0.0225\)，B 为 \(0.35^2-0.30^2=0.0325\)——每单位 gamma B 多 44%。修正项：平值 \(\Gamma\propto 1/(\sigma\sqrt{T})\)，B 的初始 gamma 略低（\(0.0325/0.30\approx 0.108\) 对 A 的 \(0.0225/0.20=0.1125\)），几乎抵消；但 B 的实现波动更大、路径把期权更多时间推入高 gamma 的活跃区，做市商的标准口径按方差差结算。<b>答案：B</b>。</p>
+              <p><b>检验。</b>反向口径自查：若按权利金收益率（ROI）比较，edge/权利金 \(\propto(\sigma_r-\sigma_i)/\sigma_i\)，A 为 25%、B 为 16.7%，A 反超——所以这题的完整答案要说明比较口径；题库答案 B 采用的是绝对损益、方差差结算的做市口径。</p>
+              <p><b>面试怎么讲。</b>分三层：① 一阶 vega 口径平局（都是 5 个点）；② 损益真正按 \(\sigma^2\) 结算，\(0.0325\gt 0.0225\)，B 胜；③ 主动指出 ROI 口径会翻向 A——展示你理解「vol 点数相同不等于损益相同」，这是本题真正的考点。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 4（源题 F32）：一个一个月期平值 straddle，若 5 天后过去、标的价格不变，其 vega 如何变化？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>平值 vega \(\approx 0.8\,S\sqrt{T}\)（straddle，两倍单腿），只随剩余期限 \(T\) 变化。</p>
+              <p><b>推导。</b>一个月按 21 个交易日计，过 5 天剩 16 天：</p>
+              <div class="math-display">\[ \frac{\text{vega}_{\text{新}}}{\text{vega}_{\text{旧}}}=\sqrt{\frac{16}{21}}\approx 0.87, \]</div>
+              <p>即 vega 下降约 13%。且衰减在加速：vega 对剩余时间的导数绝对值为 \(0.8S/(2\sqrt{T})\)，\(T\) 越小每过一天掉的 vega 越多——若从 10 天掉到 5 天，vega 要掉 \(1-\sqrt{1/2}\approx 29\%\)。</p>
+              <p><b>检验。</b>极限自检：到期日 \(T\to 0\)，平值 vega \(\to 0\)，与「最后一秒波动率观点无法再变现」一致；对比 gamma：平值 gamma \(\propto 1/\sqrt{T}\) 随到期<b>上升</b>——vega 在缩水、gamma 在变大，两者不矛盾（gamma 是每单位价格变动的对冲收益，vega 是每单位隐含波动的敞口）。</p>
+              <p><b>面试怎么讲。</b>「平值 vega 正比 \(\sqrt{T}\)，5/21 天后乘 \(\sqrt{16/21}\approx 0.87\)；短端 vega 衰减最快，这也是临近到期 theta 最痛、gamma 最肥的原因。」一句话把 vega、theta、gamma 的期限结构串起来。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 5（源题 F33）：一周后到期的欧式期权，你的系统给出的隐含波动率高于 Bloomberg。可能的原因有哪些？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>差异来源按「数据、模型、市场」三层排查，这是执行/做市岗位的现实工作流。</p>
+              <p><b>推导（口径）。</b>① 数据层：期权盘口宽且陈旧——短端期权流动性差，mid 价可能来自几小时前的报价，隐含波动率虚高/虚失真；标的价格时间戳不对齐。② 模型层：波动率曲面的插值与外推方式不同（短端、深虚值处尤其敏感）；分红假设不同——下周若有除息日或分红公告不确定，短端 call/put 对它极其敏感；贴现曲线与利率假设不同；Bloomberg 面是平滑过的模型面，你的系统可能用原始成交。③ 市场层：事件溢价——财报、央行议息就在下周，做市商真实报出的隐含波动率高于任何历史面；宽尾/崩盘溢价的买卖不平衡。④ 最后先查自己：合约规格、行权价是否同一只、反解隐含波动率是否收敛失败用了 fallback。</p>
+              <p><b>检验。</b>内部一致性检验：用 put-call parity 反推合成远期 \(Se^{-qT}=C-P+Ke^{-rT}\)，若合成远期与现货币种偏离，说明数据/假设有错而非市场异象。</p>
+              <p><b>面试怎么讲。</b>「差异 ≠ 套利。我先分数据、模型、市场三层排查：报价新鲜度、曲面插值、分红与利率假设、然后才是事件溢价。最后用 parity 做一致性检验。」展现的是排查框架而不是背清单。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 6（编程源题 C15.f）：什么是 swap 曲线的 bootstrapping？请用一个两期数值例子说明。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>利率市场的面试常客。par swap 约定：固定腿现值 = 面值。bootstrapping 从最短期限开始，逐段解出贴现因子（discount factor），不依赖任何模型假设，只依赖插值规则。</p>
+              <p><b>推导。</b>平价条件（面值 1、年度支付）：\(c_n\sum_{i=1}^{n}DF_i=1-DF_n\)。设 1 年期 par 利率 5%、2 年期 par 利率 6%。第一期只有一项：\(0.05\,DF_1=1-DF_1\Rightarrow DF_1=1/1.05\approx 0.9524\)。第二期代入：\(0.06(DF_1+DF_2)=1-DF_2\)，解得 \(DF_2=(1-0.06\times 0.9524)/1.06\approx 0.8895\)，对应 2 年期零利率 \(z_2=DF_2^{-1/2}-1\approx 6.03\%\)。</p>
+              <p><b>检验。</b>零利率 6.03% 高于两个 par 利率、且高于 1 年期——由贴现因子单调性自洽；若解出的 \(DF\) 不单调递减或出现负利率，说明输入 par 利率本身存在套利，应先清洗数据。</p>
+              <p><b>面试怎么讲。</b>「bootstrapping 是把一串平价利率逐段换成贴现因子的机械算法：第 \(n\) 期的方程里只有 \(DF_n\) 未知，前面的都已解出，代入即可。它与期权无关、无模型风险，swap 曲线因此成为衍生品定价的贴现基准。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-038-7"><a class="anchor-link" href="#s-038-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>常见误区</b><p>① 「波动率微笑证明 BS 错」——更准确的说法是：BS 的对数正态假设与市场隐含分布不一致，但每个行权价各自的隐含波动率让 BS 价格始终等于市场价格，模型「错得有用」；② parity 套利在现实中有摩擦：借贷利率不同、卖空成本、中间保证金，价差小于这些成本就搬不动；③ 美式期权没有闭式解，二叉树收敛慢（\(O(1/n)\)），实务用控制变量或 Barone-Adesi-Whaley 近似；④ 隐含波动率是市场出清价不是预测——它是「贵不贵」的标尺，是否值得买还要与自己的 realized 预期比较（F31 的逻辑）；⑤ 短期限期权对分红日期极度敏感，「隐含波动率异常」先查除息日。</p></div>
+          <div class="intuition-box"><b>考官追问的变式</b><p>常见变式：把 F32 的「价格不变」改成「价格涨了 5%」，此时 vega 还叠加了 moneyness 的变化（移出平值 vega 先降）；把 F31 改成「两边 edge 都是隐含的 20%」，则 ROI 打平、绝对损益 B 大；把 F14 追问到「深度实值美式 call、利率为负会怎样」——负利率下行权价不生息，提前行使的唯一动机只剩躲分红。准备好「利息、分红、时间价值」三个词应对一切行使类追问。</p></div>
+
+          <h3 id="s-038-8"><a class="anchor-link" href="#s-038-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能不假思索地列出期权定价的六个输入并说出每个的方向效应。</li>
+            <li>我能写出 BS 的 call 公式结构，并解释 \(N(d_1)\) 是 delta、\(N(d_2)\) 是风险中性实值概率。</li>
+            <li>我能用无套利现金流推出 put-call parity，并说明它为何不依赖分布假设。</li>
+            <li>我能论证美式不便宜于欧式、无分红 call 两者相等，并举出欧式「长期限更便宜」的两个反例。</li>
+            <li>我能在二叉树上为美式 put 定价：每个节点取内在价值与持有价值的较大者。</li>
+            <li>我能解释对冲组合损益公式 \(\tfrac{1}{2}\Gamma S^2(\sigma_r^2-\sigma_i^2)\)，并用它比较 straddle 交易（F31 答案 B 的逻辑链）。</li>
+            <li>我知道平值 vega \(\propto\sqrt{T}\)、短端衰减最快，能算 5/21 天后 vega 乘 \(\sqrt{16/21}\approx 0.87\)。</li>
+            <li>我能按数据、模型、市场三层排查两个系统的隐含波动率差异，并用 parity 做一致性检验；能写出 bootstrapping 的两期数值例子。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="037.html">← 037. 金融一：夏普比率专题</a><a href="039.html">039. 金融三：市场微观结构 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

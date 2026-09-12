@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>028. 统计三：MLE 与贝叶斯估计 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 028</div>
+        <div class="brand-title">统计三：MLE 与贝叶斯估计</div>
+        <div class="brand-meta">似然、Fisher 信息与 CRB 下界，贝叶斯更新与基率谬误，配柯西、双秤与圆盘采样。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-028-1">学习目标：换一套语言谈「估得准」</a><a class="toc-link" href="#s-028-2">知识点一：似然、Fisher 信息与 CRB 下界</a><a class="toc-link" href="#s-028-3">知识点二：贝叶斯更新与先验后验</a><a class="toc-link" href="#s-028-4">例题详解 I：MLE 框架与柯西位置估计</a><a class="toc-link" href="#s-028-5">例题详解 II：贝叶斯与信息融合</a><a class="toc-link" href="#s-028-6">例题详解 III：采样与快速概率</a><a class="toc-link" href="#s-028-7">误区与边界</a><a class="toc-link" href="#s-028-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link current" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="statistics" data-title="统计三：MLE 与贝叶斯估计">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>028. 统计三：MLE 与贝叶斯估计</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>估计理论的两大支柱：极大似然（频率派）与贝叶斯更新，配上评估估计量好坏的完整标尺。覆盖源题 S2、S15、S34、S16、S12 与博弈分册的柯西位置估计 GT10，并衔接 <a href="026.html">026 章</a>例题 5 的「MSE 即 MLE」。</p></aside>
+          <figure class="visual-lead"><img src="../assets/statistics-core.svg" alt="统计分册核心知识地图：极大似然与贝叶斯估计在估计主题中的位置"></figure>
+
+          <h3 id="s-028-1"><a class="anchor-link" href="#s-028-1" aria-label="跳转到本节">#</a>学习目标：换一套语言谈「估得准」</h3>
+          <p>「估计一个参数」人人会说，但量化面试考的是三段完整的推理：<b>怎么估</b>（给一个原则，而不是拍脑袋给公式）、<b>估得多好</b>（有没有理论下界、我的估计量离下界多远）、<b>怎么验证</b>（样本外怎么检验、数值上怎么仿真）。本章把这三段配齐：极大似然给出「怎么估」的原则——选让观测数据出现概率最大的参数；Fisher 信息与 Cramér–Rao 下界给出「多好」的标尺；仿真与样本外检验给出「验证」的动作。这是源题 S2 的完整答案骨架。</p>
+          <p>另一条主线是贝叶斯估计：参数不再是未知常数，而是带着先验分布的随机变量，数据到来后更新为后验。它解释两类高频考点：一是<b>基率谬误</b>（检测准确率 99% 不等于阳性即患病，源题 S15）；二是<b>信息融合</b>（两把精度不同的秤怎么读数，源题 S34——答案恰好是逆方差加权，与高斯先验的后验公式同构）。两章之前 <a href="018.html">018 章</a>已用贝叶斯判别过偏币，这里把机制补成通用理论。</p>
+          <p>本章还收编了三个「采样与快速概率」的实用题：单位圆盘均匀采样（拒绝采样与极坐标陷阱，源题 S16）、iid 正态的正负号概率（源题 S12）。它们共同的教训是：<b>采样分布的雅可比量（面积元、密度变换）决定「均匀」的含义</b>，凭直觉均匀地撒参数往往撒错。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>极大似然</b><p>\(\hat\theta_{\text{MLE}}=\arg\max_\theta\prod_i f(x_i;\theta)\)；一致、渐近有效，渐近方差 \(1/(nI(\theta))\)。</p></div>
+            <div class="concept-card"><b>CRB 下界</b><p>任何无偏估计 \(\mathrm{Var}(\hat\theta)\ge 1/I_n(\theta)\)，\(I_n=nI_1\)；MLE 渐近达到下界。</p></div>
+            <div class="concept-card"><b>贝叶斯融合</b><p>高斯先验乘高斯似然给高斯后验：后验均值是逆方差加权平均，后验方差小于任何单源。</p></div>
+          </div>
+
+          <h3 id="s-028-2"><a class="anchor-link" href="#s-028-2" aria-label="跳转到本节">#</a>知识点一：似然、Fisher 信息与 CRB 下界</h3>
+          <p>给定 iid 样本 \(x_1,\dots,x_n\) 与参数化密度族 \(f(x;\theta)\)，<b>似然函数</b>（likelihood）把「数据的概率」看作 \(\theta\) 的函数：</p>
+          <div class="math-display">\[L(\theta) = \prod_{i=1}^n f(x_i;\theta),\qquad \ell(\theta)=\sum_{i=1}^n\log f(x_i;\theta).\]</div>
+          <p>极大似然估计（Maximum Likelihood Estimator, MLE）取 \(\hat\theta=\arg\max_\theta \ell(\theta)\)。直觉读法：<b>在所有候选 \(\theta\) 里，挑一个让你「已经看到的样本」出现概率最大的</b>——不是最可能的 \(\theta\)（那需要先验，是贝叶斯的语言），而是让数据最不惊讶的 \(\theta\)。</p>
+          <h4>衡量「数据里有多少关于 \(\theta\) 的信息」</h4>
+          <p>得分函数 \(S(\theta)=\ell'(\theta)\) 满足 \(\mathbb{E}[S(\theta)]=0\)，其方差定义为 Fisher 信息：</p>
+          <div class="math-display">\[I(\theta) = \mathrm{Var}\bigl(\ell'(\theta)\bigr) = -\,\mathbb{E}\bigl[\ell''(\theta)\bigr]\qquad\text{（单样本），}\qquad I_n(\theta)=nI(\theta).\]</div>
+          <p>读法：对数似然曲面的曲率越大（弯得越急），峰值定位越准，数据携带的信息越多。Cramér–Rao 下界（CRB）把这句话变成硬约束——任何无偏估计满足：</p>
+          <div class="math-display">\[\mathrm{Var}(\hat\theta)\ \ge\ \frac{1}{I_n(\theta)} = \frac{1}{nI(\theta)}.\]</div>
+          <p>经典例：\(N(\mu,\sigma^2)\)（\(\sigma^2\) 已知）中 \(I(\mu)=1/\sigma^2\)，样本均值 \(\bar x\) 的方差恰为 \(\sigma^2/n\)——<b>达到下界，没有更好的无偏估计</b>。MLE 的三条大样本性质也顺手记下：一致性（\(\hat\theta\to\theta\)）、渐近正态（\(\sqrt{nI(\theta)}(\hat\theta-\theta)\Rightarrow N(0,1)\)）、渐近有效（渐近方差达到 CRB）。</p>
+          <h4>一个必须知道的瑕疵</h4>
+          <p>MLE <b>不保证无偏</b>。最著名的例子：\(N(\mu,\sigma^2)\) 的方差 MLE \(\hat\sigma^2_{\text{MLE}}=\frac1n\sum(x_i-\bar x)^2\) 期望是 \(\frac{n-1}{n}\sigma^2\)，偏小；除以自由度修正成 \(\frac{1}{n-1}\sum(x_i-\bar x)^2\) 才无偏。<a href="026.html">026 章</a>例题 5 也见过同一件事：高斯噪声下 \((a,b)\) 的 MLE 与 OLS 相同，但 \(\sigma^2\) 的 MLE 用 \(n\) 做分母。面试里主动指出这一条，是「懂理论」与「背公式」的分水岭。</p>
+          <div class="intuition-box"><b>怎么评估一个估计量（源题 S2 的后半问）</b><p>四把尺子按序使用：无偏（期望等于真值）、一致（样本够多就收敛）、有效（方差贴近 CRB）、稳健（离群点不翻车）。再加两步实证：仿真（已知真值造数据，看估计分布）与样本外检验（留出数据看对数似然、覆盖率或预测误差是否兑现）。</p></div>
+
+          <h3 id="s-028-3"><a class="anchor-link" href="#s-028-3" aria-label="跳转到本节">#</a>知识点二：贝叶斯更新与先验后验</h3>
+          <p>贝叶斯观点把未知参数 \(\theta\) 视为随机变量：先验 \(\pi(\theta)\) 编码数据到来前的信念，观测 \(x\) 之后用贝叶斯定理更新：</p>
+          <div class="math-display">\[\pi(\theta\mid x) = \frac{f(x\mid\theta)\,\pi(\theta)}{\int f(x\mid\theta')\pi(\theta')\,d\theta'} \propto f(x\mid\theta)\,\pi(\theta).\]</div>
+          <p>读法：后验正比于似然乘先验——数据负责「乘法修正」，先验负责「锚定」。上一章例题 7 的「平滑先验」、<a href="018.html">018 章</a>的偏币后验，用的都是这一个公式。</p>
+          <h4>高斯 × 高斯 = 逆方差加权</h4>
+          <p>最有用的特例：先验 \(\theta\sim N(\mu_0,\tau^2)\)，观测 \(x\mid\theta\sim N(\theta,\sigma^2)\)。完成平方（配方法）后，后验仍是高斯：</p>
+          <div class="math-display">\[\theta\mid x \sim N\Bigl(\mu_{\text{post}},\ \sigma_{\text{post}}^2\Bigr),\qquad \mu_{\text{post}} = \frac{\mu_0/\tau^2 + x/\sigma^2}{1/\tau^2+1/\sigma^2},\qquad \sigma_{\text{post}}^2 = \frac{1}{1/\tau^2+1/\sigma^2}.\]</div>
+          <p>三条读法值得逐条念出：(1) 后验均值是先验均值与观测的<b>逆方差加权平均</b>——谁精度高（\(1/\)方差）谁话语权大；(2) 后验方差小于两个源各自的方差——信息只会越合越多；(3) 令 \(\tau\to\infty\)（扁平先验），后障均值退化为 \(x\)，贝叶斯估计退化为 MLE。<b>这个公式就是源题 S34「两把秤」的全部答案</b>，也是卡尔曼滤波每次量测更新时走的那一步。</p>
+          <div class="intuition-box"><b>基率谬误的机制</b><p>看到「检测准确率 99%」就断定阳性即患病，错在把 \(P(\text{阳性}\mid\text{患病})\) 与 \(P(\text{患病}\mid\text{阳性})\) 混为一谈——两者由贝叶斯定理连接，中间隔着<b>先验（患病率）</b>。患病率越低，阳性里「假阳性」占比越高：例题 3 会算出患病率 25% 时阳性后验约 97%，而患病率 1% 时只有 50%。同一台检测器，换个城市结论天差地别。</p></div>
+
+          <h3 id="s-028-4"><a class="anchor-link" href="#s-028-4" aria-label="跳转到本节">#</a>例题详解 I：MLE 框架与柯西位置估计</h3>
+          <div class="worked-example">
+            <p><b>例题 1（源题 S2）：什么是极大似然估计？给出一个例子，并说明如何评估一个估计方法的有效性。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>分两半作答：前半给定义与一个完整算例，后半给评估框架。算例选均值为 \(\mu\)、方差已知的正态：\(x_i\mid\mu \overset{\text{iid}}{\sim} N(\mu,\sigma^2)\)。</p>
+              <p><b>推导。</b>对数似然 \(\ell(\mu)=-\frac{n}{2}\log(2\pi\sigma^2)-\frac{1}{2\sigma^2}\sum(x_i-\mu)^2\)，求导令零：\(\ell'(\mu)=\frac{1}{\sigma^2}\sum(x_i-\mu)=0\)，得</p>
+              <div class="math-display">\[\hat\mu_{\text{MLE}} = \bar x,\qquad \mathrm{Var}(\bar x)=\frac{\sigma^2}{n} = \frac{1}{I_n(\mu)},\qquad I(\mu)=\frac{1}{\sigma^2}.\]</div>
+              <p>样本均值无偏、一致、方差<b>恰好达到 CRB</b>——在所有无偏估计里已是最优。评估有效性按四把尺子加两步实证：无偏/一致/有效（对照 CRB）/稳健；仿真（真值已知时重复采样看估计量的分布与均方误差）；样本外检验（留出集对数似然、置信区间的实际覆盖率、或预测误差对比基准估计量）。</p>
+              <p><b>检验。</b>反例自检：换成 \(N(\mu,\sigma^2)\) 的双参数 MLE，\(\hat\sigma^2_{\text{MLE}}\) 有偏（偏因子 \((n-1)/n\)）——说明「MLE 达 CRB」是<b>渐近</b>性质，有限样本不保证无偏，答完主动声明这一边界。</p>
+              <p><b>面试怎么讲。</b>用一句话定义（让已见数据概率最大的参数），一个算例走完「似然—求导—方差—对照 CRB」闭环，再背出评估的「四尺两步」。这题考框架完整度，不考算力。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2（源题 GT10，出自博弈分册的统计题）：为柯西分布的平移参数（位置参数）设计一个估计量。它以多快的速度收敛？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>密度 \(f(x;\theta)=\dfrac{1}{\pi\gamma\bigl(1+((x-\theta)/\gamma)^2\bigr)}\)，取尺度 \(\gamma=1\)。柯西尾部是 \(1/x^2\) 量级，期望不存在——这是一道「均值族工具全部失效」的题。</p>
+              <p><b>推导。</b>先排除均值：柯西是稳定指数 \(\alpha=1\) 的稳定分布，\(n\) 个 iid 柯西的平均<b>仍服从同参数的柯西分布</b>——分布形状与 \(n\) 无关，样本均值根本不收敛（连大数定律的前提都不满足）。改用<b>样本中位数</b> \(\hat\theta=\mathrm{median}(x_1,\dots,x_n)\)：中位数存在且唯一（分布函数严格单调），由次序统计量理论，\(\hat\theta\) 渐近正态：</p>
+              <div class="math-display">\[\mathrm{Var}(\hat\theta)\ \approx\ \frac{1}{4n f(\theta)^2} = \frac{\pi^2}{4n}\ \approx\ \frac{2.47}{n}.\]</div>
+              <p>收敛速度的说法要精确：方差以 \(O(1/n)\) 收缩、标准误以 \(O(1/\sqrt n)\) 收缩——与「均值型」估计量（如正态样本均值的 \(\sigma^2/n\)）<b>速率同阶、常数吃亏</b>（\(2.47\) 对 \(1\)，以尺度参数为单位）。对照理论极限：柯西位置的 Fisher 信息 \(I(\theta)=1/2\)，MLE 渐近方差 \(2/n\)，优于中位数的 \(2.47/n\)，但 MLE 无闭式需数值求解。稳健折中：截尾均值（trim 后方差介于两者之间）。</p>
+              <p><b>检验。</b>量级核对：\(n=100\) 时中位数标准误约 \(\sqrt{2.47/100}\approx0.157\) 个尺度单位，仿真一百万次柯西样本会看到均值估计的散布<b>不随 \(n\) 收窄</b>而中位数稳定收窄——排除法与收敛性都得到验证。</p>
+              <p><b>面试怎么讲。</b>三段式：(1) 柯西无均值，样本均值是稳定律、不收敛——一句话排除；(2) 中位数渐近正态、方差 \(\pi^2/(4n)\)，速率 \(1/\sqrt n\)、常数 2.47 劣于 MLE 的 2；(3) 收尾提截尾均值与「重尾分布请先问矩是否存在」的一般教训。</p>
+            </div>
+          </div>
+
+          <h3 id="s-028-5"><a class="anchor-link" href="#s-028-5" aria-label="跳转到本节">#</a>例题详解 II：贝叶斯与信息融合</h3>
+          <div class="worked-example">
+            <p><b>例题 3（源题 S15）：COVID 检测：患病者 99% 检出阳性，健康者 99% 检出阴性。(a) 人群患病率 25%，随机检测一人，阳性概率是多少？(b) 该人阳性时，真患病的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>记 \(D\) 为患病（先验 \(P(D)=0.25\)），灵敏度 \(P(+\mid D)=0.99\)，特异度 \(P(-\mid\lnot D)=0.99\) 即 \(P(+\mid\lnot D)=0.01\)。全概率公式加贝叶斯定理。</p>
+              <p><b>推导。</b>(a) 全概率：</p>
+              <div class="math-display">\[P(+) = P(+\mid D)P(D)+P(+\mid\lnot D)P(\lnot D) = 0.99\times0.25 + 0.01\times0.75 = 0.2475+0.0075 = 0.255\ \approx\ 0.26.\]</div>
+              <p>(b) 后验：</p>
+              <div class="math-display">\[P(D\mid +) = \frac{0.99\times0.25}{0.255} = \frac{0.2475}{0.255}\approx 0.971\ \text{即约 }97\%.\]</div>
+              <p><b>检验。</b>交叉核对「阴性后验」：\(P(-)=0.01\times0.25+0.99\times0.75=0.7475\)，\(P(\lnot D\mid-)=0.7425/0.7475\approx0.993\)，与直觉相符。再对照患病率 1% 的世界：\(P(D\mid+)=0.0099/(0.0099+0.0099)=50\%\)——同样 99% 的检测器，阳性只值一枚硬币。这就是基率谬误：似然比固定，后验 odds = 先验 odds × 似然比。</p>
+              <p><b>面试怎么讲。</b>先列三件套（灵敏度、特异度、患病率），再两步算出 0.255 与 97%；主动给出 1% 患病率时跌到 50% 的对照，把「检测质量」与「人群基率」解耦讲清——这是这道题的真正考点。延伸一句「两次独立检测都阳性后验会跳到 98% 以上」更显完整。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4（源题 S34）：用两把秤称同一件物品，读数 \(w_1\)、\(w_2\)。两把秤的误差分别是零均值、标准差 \(\sigma_1\)、\(\sigma_2\) 的正态。真实重量怎么估计？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>观测模型 \(w_i = w + e_i\)，\(e_i\sim N(0,\sigma_i^2)\) 相互独立。对 \(w\) 做极大似然（等价于对 \(w\) 取扁平先验的贝叶斯后验众数）。</p>
+              <p><b>推导。</b>对数似然 \(\ell(w) = -\frac{(w_1-w)^2}{2\sigma_1^2} - \frac{(w_2-w)^2}{2\sigma_2^2} + C\)，求导令零：</p>
+              <div class="math-display">\[\hat w = \frac{w_1/\sigma_1^2 + w_2/\sigma_2^2}{1/\sigma_1^2+1/\sigma_2^2},\qquad \mathrm{Var}(\hat w) = \frac{1}{1/\sigma_1^2+1/\sigma_2^2}\ \le\ \min(\sigma_1^2,\sigma_2^2).\]</div>
+              <p>这就是<b>逆方差加权</b>（inverse-variance weighting）：精度（\(1/\sigma^2\)）当权重。方差不等式说明融合严格不吃亏——差秤的加入只会稀释而不会恶化到比单用差秤还差。特例核对：\(\sigma_1=\sigma_2\) 时 \(\hat w=(w_1+w_2)/2\)；\(\sigma_2\to\infty\)（秤 2 完全没谱）时 \(\hat w\to w_1\)。它与知识点二的高斯后验公式完全同构：把「秤 1」当先验、「秤 2」当数据，或视两把秤为两个独立证据源，公式不变；推广到 \(k\) 把秤即权重 \(1/\sigma_i^2\) 归一化。若两秤误差<b>相关</b>（共同的环境干扰），要用广义最小二乘带上协方差项，权重改为精度矩阵的分量——主动提这一句是加分项。</p>
+              <p><b>检验。</b>量纲核对：权重无量纲、分子分母同为重量的量纲；仿真核对：取 \(w=10\)、\(\sigma_1=1\)、\(\sigma_2=2\)，权重为 \(0.8/0.2\)，\(\mathrm{Var}(\hat w)=1/(1+0.25)=0.8\lt1\)，好于任何单秤。</p>
+              <p><b>面试怎么讲。</b>报出逆方差加权公式并强调「精度当权重、融合后方差小于最小单源」；再点一句它就是高斯贝叶斯更新与卡尔曼滤波量测步的骨架，展示你看穿题目的层级。</p>
+            </div>
+          </div>
+
+          <h3 id="s-028-6"><a class="anchor-link" href="#s-028-6" aria-label="跳转到本节">#</a>例题详解 III：采样与快速概率</h3>
+          <div class="worked-example">
+            <p><b>例题 5（源题 S16）：如何在单位圆盘上模拟均匀分布的点？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>目标是圆盘 \(\{(x,y): x^2+y^2\le1\}\) 上的均匀分布：任意等面积区域落点概率相等。候选方案有两个——直角坐标拒绝采样、极坐标变换采样。</p>
+              <p><b>推导。</b>方案一（拒绝采样）：在 \([-1,1]^2\) 撒均匀点，落在圆内接受、圆外重撒。接受率是面积比 \(\pi/4\approx78.5\%\)，平均每点需要 \(4/\pi\approx1.27\) 次采样；无偏、简单，代价是循环次数随机。方案二（极坐标）：取 \(\theta=2\pi U_1\)（\(U_1\) 均匀），<b>半径必须取 \(r=\sqrt{U_2}\)</b>。原因：面积元是 \(r\,\mathrm{d}r\,\mathrm{d}\theta\)，圆盘内均匀意味着 \(P(R\le r)=\dfrac{\pi r^2}{\pi}=r^2\)，即 \(R\) 的分布函数是 \(r^2\)，反变换得 \(r=\sqrt{U_2}\)。若错取 \(r\sim U[0,1]\)，单位半径上的密度正比于 \(1/r\) 的倒数关系被破坏——点向圆心拥挤（内圈单位面积落点数是外圈的两倍量级），这是极坐标采样的经典陷阱。</p>
+              <div class="math-display">\[\theta = 2\pi U_1,\quad r=\sqrt{U_2}\ \Longrightarrow\ (x,y)=(r\cos\theta,\ r\sin\theta)\ \text{圆盘均匀}.\]</div>
+              <p><b>检验。</b>密度核对：代入雅可比 \(\mathrm{d}x\,\mathrm{d}y = r\,\mathrm{d}r\,\mathrm{d}\theta\)，联合密度 \(f(r,\theta)=f_r(r)f_\theta(\theta)=2r\cdot\frac{1}{2\pi}=\frac{r}{\pi}\)，恰是圆盘均匀密度在极坐标下的表达；四象限落点数仿真各占 25% 亦可数值验证。</p>
+              <p><b>面试怎么讲。</b>两个方案都讲，重点展示「为什么 \(r\) 要开根号」：面积元带因子 \(r\)，累计面积是 \(r^2\)，反变换开根。蒙特卡洛方法的更多案例（用采样算 \(\pi\)、标准误控制）在 <a href="035.html">035 章</a>展开。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 6（源题 S12）：\(X\)、\(Y\) 独立同服从标准正态。求 \(P(X\gt0,\ Y\lt0)\)。若 \(X\)、\(Y\) 相关系数为 \(\rho\)，答案变成什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>iid 情形：正态关于零对称，每个符号独立等概率，相当于掷两枚公平硬币。</p>
+              <p><b>推导。</b>独立情形：\(P(X\gt0)=P(Y\lt0)=\tfrac12\)，相乘得 \(P(X\gt0,Y\lt0)=\tfrac14\)。相关情形：二维标准正态的等密度线是同心圆，联合分布在旋转下不变，任意过原点的半圆概率 \(\tfrac12\)，两半圆交集的楔形概率 \(=\dfrac{\text{圆心角}}{2\pi}\)。由 \(\mathrm{Cov}(X,Y)=\rho\) 与旋转对称可推出通式（<a href="029.html">029 章</a>例题 3 系统推「楔形角」技巧）：</p>
+              <div class="math-display">\[P(X\gt0,\ Y\lt0) = \frac14 - \frac{1}{2\pi}\arcsin(\rho).\]</div>
+              <p><b>检验。</b>端点核对：\(\rho=0\) 回到 \(\tfrac14\)；\(\rho=1\)（\(Y=X\)）给 \(0\)——完全同向时「一正一负」不可能；\(\rho=-1\)（\(Y=-X\)）给 \(\tfrac12=P(X\gt0)\)——\(X\) 为正则 \(Y\) 必为负。三点全对。</p>
+              <p><b>面试怎么讲。</b>先秒答独立情形的 \(\tfrac14\)（并说明只需对称性与独立性，不必是正态）；再主动升级到相关情形给 \(\arcsin\) 公式并做三个端点核对。能把「对称性够不够」这个层次讲清，这题就是送分变加分。</p>
+            </div>
+          </div>
+
+          <h3 id="s-028-7"><a class="anchor-link" href="#s-028-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>误区一：把 MLE 当无偏的代名词</b><p>MLE 的一致与有效都是<b>渐近</b>承诺；有限样本可以有偏（正态方差 MLE 偏小 \(1/n\)），甚至不存在显式解（柯西位置）。报出「MLE 无偏」这种话，面试官会立刻追问 \(1/n\) 修正。</p></div>
+          <div class="intuition-box"><b>误区二：混淆两种条件概率</b><p>\(P(+\mid D)\) 与 \(P(D\mid+)\) 差一个贝叶斯定理与一个先验。基率谬误的工程版本同样致命：回测里「信号后上涨概率 70%」若来自 20% 的先验基础上涨率与噪声筛选，实盘会现形。养成习惯：听到任何条件概率，先问「条件的是哪一边、先验是什么」。</p></div>
+          <div class="intuition-box"><b>误区三：柯西题答「用均值，方差大」</b><p>柯西期望不存在，「方差大」的表述本身不成立；样本均值不收敛（稳定律）。正确的语言是矩是否存在、估计量依何种速率收敛。重尾场景（金融收益率）下先查尾部指数，再选统计工具。</p></div>
+          <div class="intuition-box"><b>边界：逆方差加权的前提</b><p>公式假设误差独立、零均值、方差已知。误差相关时要换广义最小二乘（权重来自精度矩阵）；方差未知时要先估方差（\(t\) 化处理、收缩估计）。盲目加权两把「看起来独立」的秤，可能被共同偏差一起带偏。</p></div>
+          <div class="intuition-box"><b>边界：均匀 ≠ 参数均匀</b><p>S16 的教训一般化：在几何对象上均匀分布，变换到新参数（极径、角度、球面纬度）后密度会带雅可比因子。开根号、\(\sin\) 权重这类修正，是所有「在流形上均匀采样」题的固定考点。</p></div>
+
+          <h3 id="s-028-8"><a class="anchor-link" href="#s-028-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出似然与对数似然，用「求导令零」完成一个完整的 MLE 算例，并说出 MLE 的三条渐近性质。</li>
+            <li>我能定义 Fisher 信息（曲率读法）并写出 CRB；知道样本均值在正态族中恰好达到下界。</li>
+            <li>我能举出 MLE 有偏的具体例子（正态方差）并给出自由度修正。</li>
+            <li>我能按「四把尺子（无偏、一致、有效、稳健）加两步实证（仿真、样本外）」评估任意估计量。</li>
+            <li>我能解释柯西位置估计：均值不收敛（稳定律），中位数渐近方差 \(\pi^2/(4n)\)，MLE 达 \(2/n\)。</li>
+            <li>我能完整计算检测问题：全概率给 \(P(+)\approx0.26\)（精确 0.255），贝叶斯给 97% 的阳性后验，并说明基率谬误。</li>
+            <li>我能推导两把秤的逆方差加权融合 \(\hat w\) 与其方差，说明它与高斯后验、卡尔曼滤波的同构关系。</li>
+            <li>我知道单位圆盘采样要 \(r=\sqrt U\)（面积元因子），以及 \(P(X\gt0,Y\lt0)\) 从 \(1/4\) 到 \(\tfrac14-\tfrac1{2\pi}\arcsin\rho\) 的升级路径。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="027.html">← 027. 统计二：岭回归、Lasso 与模型选择</a><a href="029.html">029. 统计四：多元高斯与相关系数 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

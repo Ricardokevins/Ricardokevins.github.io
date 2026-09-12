@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>021. 概率八：期望计算进阶 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 021</div>
+        <div class="brand-title">概率八：期望计算进阶</div>
+        <div class="brand-meta">指示变量、容斥、阶段求和与尾和公式：一整套把期望算得又快又稳的工具。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-021-1">学习目标：期望是一道加法题</a><a class="toc-link" href="#s-021-2">知识点一：指示变量与期望线性性</a><a class="toc-link" href="#s-021-3">知识点二：期望工具箱</a><a class="toc-link" href="#s-021-4">例题详解 I：邻对与计数</a><a class="toc-link" href="#s-021-5">例题详解 II：圆桌与分组</a><a class="toc-link" href="#s-021-6">例题详解 III：错排、穿隧与 Jensen</a><a class="toc-link" href="#s-021-7">例题详解 IV：两道硬菜</a><a class="toc-link" href="#s-021-8">误区与边界</a><a class="toc-link" href="#s-021-9">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link current" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="概率八：期望计算进阶">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>021. 概率八：期望计算进阶</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章把「求期望」从单变量计算升级为结构性方法：指示变量求和、容斥、阶段几何求和、尾和公式与 Jensen 不等式。覆盖源题 P17、P18、P23、P28、P34、P56、P58、P74、P75、P81、P86、P88。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-core.svg" alt="期望计算工具箱的分层导图"></figure>
+
+          <h3 id="s-021-1"><a class="anchor-link" href="#s-021-1" aria-label="跳转到本节">#</a>学习目标：期望是一道加法题</h3>
+          <p><a href="014.html">014 章</a>的期望递推解决「一个过程走多久」；本章解决另一大类：「一堆东西里平均有多少件满足某性质」——平均有多少对相邻的异性、平均几张牌换色、平均多少组恰好各含一名资深。这类问题的通用钥匙是指示变量（indicator variable）：把计数拆成 0/1 的小事件，期望立刻变成概率的和，而且<b>线性性不要求任何独立性</b>——这是全部邻对型问题的命门，也是初学者最常自我设限的地方。</p>
+          <p>本章还打包了三件进阶装备：容斥原理（算「一个都没有」的概率）、阶段几何求和（分阶段的过程把每段的期望时长加起来）、尾和公式 \(E[N]=\sum_{n\ge 0}P(N\gt n)\)（把首达时刻的期望化为可积的尾概率）。最后用 Jensen 不等式收尾——它是「期望与函数交换顺序」的一般规律，也是方差非负、组合收益凹性等一大族面试题的总纲。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>指示变量</b><p>\(E[\mathbf 1_A]=P(A)\)，计数 \(=\sum_i \mathbf 1_{A_i}\)，期望 \(=\sum_i P(A_i)\)。位置可以任意相关，求和照做。</p></div>
+            <div class="concept-card"><b>阶段法与尾和</b><p>齐次阶段内等待是几何分布，期望 \(1/p\)；非齐次就分阶段相加。首达时刻用 \(E[N]=\sum P(N\gt n)\) 换轨道。</p></div>
+            <div class="concept-card"><b>Jensen 不等式</b><p>凸函数下 \(E[g(X)]\ge g(E[X])\)。方差非负、\(E[\sqrt{X}]\) 高估偏差、对数效用，全是它的推论。</p></div>
+          </div>
+          <ul class="checkpoint-list">
+            <li>拿到「平均多少对/张/组」类问题，我能先想到指示变量拆分，而不是枚举排列。</li>
+          </ul>
+
+          <h3 id="s-021-2"><a class="anchor-link" href="#s-021-2" aria-label="跳转到本节">#</a>知识点一：指示变量与期望线性性</h3>
+          <p>指示变量 \(\mathbf 1_A\) 在事件 \(A\) 发生时取 1、否则取 0。它把「计数」翻译成「求和」：想数满足性质的单元个数，就给每个单元配一个指示变量再相加。两个基本事实：</p>
+          <div class="formula-list">
+            <p><b>期望即概率：</b>\(E[\mathbf 1_A]=1\cdot P(A)+0\cdot P(A^c)=P(A)\)。怎么读：指示变量的期望就是它盯着的事件的概率。</p>
+            <p><b>线性性无条件成立：</b>\(E\big[\sum_i \mathbf 1_{A_i}\big]=\sum_i P(A_i)\)，不管 \(A_i\) 之间是否相关。怎么读：算期望时永远可以先拆开再逐个算，独立性不是必要条件。</p>
+            <p><b>方差才需要协方差：</b>\(\mathrm{Var}\big(\sum_i \mathbf 1_{A_i}\big)=\sum_i \mathrm{Var}(\mathbf 1_{A_i})+\sum_{i\ne j}\mathrm{Cov}(\mathbf 1_{A_i},\mathbf 1_{A_j})\)——期望免检、方差要查相关，这一对比值得分。</p>
+          </div>
+          <p>工作流程四步：①把所求量拆成「位置 / 相邻对 / 人 / 组」这类单元的计数；②对每个单元定义指示变量；③算单个单元的概率（这一步常用对称性或条件概率，参见 <a href="020.html">020 章</a>）；④单元数乘单点概率、或逐单元求和。绝大多数「期望对数」题到第④步就结束了，而且答案常常是漂亮的有理数。</p>
+          <div class="intuition-box"><b>为什么线性性不需要独立</b><p>直觉版解释：期望是「平均意义下的加权计数」，计数本身不需要知道各单元是否联动——不管指示变量之间怎么相关，「平均数之和等于和之平均」恒成立。联动影响的是波动（方差），不是平均水平。这就是为什么邻对、换色、同组这类强相关问题在期望层面依然一行解决。</p></div>
+
+          <h3 id="s-021-3"><a class="anchor-link" href="#s-021-3" aria-label="跳转到本节">#</a>知识点二：期望工具箱</h3>
+          <p><b>容斥原理（inclusion–exclusion）。</b>求「没有一个事件发生」的概率时，把「至少一个」的概率先撑开再收缩：</p>
+          <div class="math-display">\[P\Big(\bigcup_{i=1}^{n}A_i\Big)=\sum_i P(A_i)-\sum_{i\lt j}P(A_iA_j)+\sum_{i\lt j\lt k}P(A_iA_jA_k)-\cdots\]</div>
+          <p>在「对称结构 + 恰好取到 \(k\) 个事件的交」的场景下，每一层缩成一项二项系数，级数常常收敛到 \(e^{-1}\) 这类常数（例题 5 的错排）。</p>
+          <p><b>阶段几何求和。</b>若过程分阶段，第 \(k\) 阶段每次试验以概率 \(p_k\) 成功，则该阶段期望耗时 \(1/p_k\)（几何分布期望，见 <a href="014.html">014 章</a>），总期望 \(=\sum_k 1/p_k\)。关键动作是识别「成功后状态永久改变」的阶段边界。</p>
+          <p><b>尾和公式（tail-sum formula）。</b>对取非负整数值的随机变量 \(N\)：</p>
+          <div class="math-display">\[E[N]=\sum_{n=0}^{\infty}P(N\gt n).\]</div>
+          <p>怎么读：把「柱子的高度」横过来数面积。当 \(P(N\gt n)\) 有闭式（如 \(1/n!\)）而 \(N\) 的分布很难直接写时，这条公式是唯一通路。</p>
+          <p><b>递归积分（连续版首步分析）。</b>对连续状态的过程，设 \(f(x)\) 为「距目标还差 \(x\)」时的期望步数，按一次试验的结果分解并积分，常得到 \(f(x)=1+\int_0^x f(x-u)\,du\) 型方程，求导降阶为 ODE 求解（例题 11）。</p>
+          <p><b>Jensen 不等式（Jensen's inequality）。</b>若 \(g\) 凸，则 \(E[g(X)]\ge g(E[X])\)；\(g\) 凹则反向。证明骨架是凸函数的切线不等式 \(g(x)\ge g(\mu)+g'(\mu)(x-\mu)\)，两边取期望即得。等号成立当且仅当 \(X\) 退化（方差为零）或 \(g\) 在 \(X\) 的支撑上线性。它取决于两件事：<b>函数的凹凸方向</b>与<b>变量的波动大小</b>——波动越大，不等式的缺口越宽（例题 7 给出定量例子）。</p>
+
+          <h3 id="s-021-4"><a class="anchor-link" href="#s-021-4" aria-label="跳转到本节">#</a>例题详解 I：邻对与计数</h3>
+          <div class="worked-example">
+            <p><b>例题 1（源题 P23）：50 个人两两各赛一场单循环赛，总共要打多少场？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>「每场比赛」对应「一对选手」——场数就是 50 人中无序对的个数，这是指示变量计数的最简形态（每对指示变量恒为 1，概率 1）。</p>
+              <p><b>推导。</b>每场比赛从 50 人中选 2 人：</p>
+              <div class="math-display">\[\binom{50}{2}=\frac{50\times 49}{2}=1225.\]</div>
+              <p>指示变量口径：\(\sum_{i\lt j}\mathbf 1_{\{i,j\text{ 赛一场}\}}\)，每项期望 1，共 \(\binom{50}{2}\) 项。</p>
+              <p><b>检验。</b>每人打 49 场，共 \(50\times 49\) 人次，每场被数 2 次，除以 2 得 1225——两个口径一致 ✓。小情形 \(n=3\)：\(\binom32=3\) 场，与常识吻合。</p>
+              <p><b>面试怎么讲。</b>「1225，一句话：场数等于无序对数 \(\binom{n}{2}\)。」这题是热身，价值在于引出「对」作为计数单元的思想，后面的邻对题全是它的随机版。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2（源题 P28）：一副 26 红 26 黑的牌随机洗开。颜色段（run，同色连续块）的期望个数是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>一段的定义是「极大同色连续块」，段数 = 1（第一段）+ 后续每次换色各起一段。对 52 个位置中的 51 个相邻间隔定义指示变量：\(I_i=\mathbf 1\{\text{第 }i+1\text{ 张与第 }i\text{ 张颜色不同}\}\)，\(i=1,\dots,51\)。</p>
+              <p><b>推导。</b>段数 \(=1+\sum_{i=1}^{51}I_i\)。无论第 \(i\) 张是什么颜色，剩下 51 张中恰有 26 张是另一种颜色（26 张异色、25 张同色，因为第 \(i\) 张已取走一张），故 \(P(I_i=1)=\frac{26}{51}\)。由线性性：</p>
+              <div class="math-display">\[E[\text{runs}]=1+51\times\frac{26}{51}=1+26=27.\]</div>
+              <p><b>检验。</b>边界：全部同色排一起最少 2 段，完美交替最多 52 段，27 恰好居中略偏小；\(\frac{26}{51}\approx 0.51\) 略高于 \(\tfrac12\)（无放回抽异色比有放回略容易），期望 27 段合理。若换成 13 红 13 黑 26 张小牌堆，同法得 \(1+25\times\frac{13}{25}=14\) 段，公式可伸缩 ✓。</p>
+              <p><b>面试怎么讲。</b>「27。定义换色指示变量，51 个间隔每个换色概率 26/51，1+26=27。重点是换色概率不依赖前面任何信息——剩 51 张里异色恒 26 张，所以连条件概率都不用展开。」</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 3（源题 P56 与 P58 合讲）：5 只狐狸 7 只狗随机排成一排，相邻「狐-犬」对的期望个数是多少？8 男 9 女随机排成一队，相邻异性对的期望个数呢？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两题同构：两类个体随机排列，数「相邻且异类」的对。队列长 \(n\) 时相邻间隔有 \(n-1\) 个，对每个间隔定义指示变量 \(I_i\)。</p>
+              <p><b>推导（狐犬）。</b>单个间隔是异类对的概率：第一个位置是狐狸的概率 \(\frac{5}{12}\)，此后第二个位置是狗的概率 \(\frac{7}{11}\)；再对称地加上犬-狐方向：</p>
+              <div class="math-display">\[P(I_i=1)=\frac{5}{12}\cdot\frac{7}{11}+\frac{7}{12}\cdot\frac{5}{11}=\frac{70}{132}=\frac{35}{66},\qquad E=\sum_{i=1}^{11}P(I_i=1)=11\cdot\frac{35}{66}=\frac{35}{6}\approx 5.83.\]</div>
+              <p><b>推导（男女）。</b>队列 17 人有 16 个间隔，单个间隔异性的概率 \(\frac{8}{17}\cdot\frac{9}{16}+\frac{9}{17}\cdot\frac{8}{16}=\frac{144}{272}=\frac{9}{17}\)，故</p>
+              <div class="math-display">\[E=16\cdot\frac{9}{17}=\frac{144}{17}\approx 8.47.\]</div>
+              <p><b>检验。</b>两题的「间隔异类概率」都等于 \(\frac{2mn}{n(n-1)}\) 形式（\(m\) 与 \(n\) 为两类数量），且都近似 \(2\cdot\)(两类占比之积)——有放回版本狐犬是 \(11\times 2\times\frac{5}{12}\cdot\frac{7}{12}\approx 5.90\)，与 5.83 相差无几，量级吻合 ✓。上界检查：完美交替最多 \(\min(m,n)\times 2=10\)（狐犬）与 16（男女），期望值都在上界的一半略多，合理。</p>
+              <p><b>面试怎么讲。</b>「(间隔数)×(单个间隔异类概率)，概率用无放回两连乘加对称项。狐犬 35/6 约 5.83 对，男女 144/17 约 8.47 对。主动声明：间隔之间高度相关，但期望不需要独立。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-021-5"><a class="anchor-link" href="#s-021-5" aria-label="跳转到本节">#</a>例题详解 II：圆桌与分组</h3>
+          <div class="worked-example">
+            <p><b>例题 4（源题 P34 与 P81 合讲）：5 人随机围圆桌就座，其中 2 人穿红衣，他们相邻的概率是多少？推广到 \(n\) 人中 \(k\) 个朋友，这 \(k\) 人连坐在一起的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模（红衣）。</b>圆排列中「固定锚点」是最强的对称工具：先钉住一个红衣者的位置（圆的旋转对称使这一步无损），再看另一个红衣者落点。</p>
+              <p><b>推导（红衣）。</b>钉住红衣者 A 后，剩 4 个座位对其余 4 人等可能，其中与 A 相邻的座位恰 2 个：</p>
+              <div class="math-display">\[P(\text{相邻})=\frac{2}{4}=\frac12.\]</div>
+              <p><b>推导（推广）。</b>\(n\) 人围圆桌的圆排列共 \((n-1)!\) 种。把 \(k\) 个朋友捆成一个区块：区块与其余 \(n-k\) 人共 \(n-k+1\) 个对象做圆排列，有 \((n-k)!\) 种，区块内部 \(k!\) 种，故</p>
+              <div class="math-display">\[P(k\text{ 人连坐})=\frac{k!\,(n-k)!}{(n-1)!}.\]</div>
+              <p>锚点法复核：钉住朋友 A，区块含 A 且 A 可处于区块内 \(k\) 个位置之一，每种位置对应其余 \(k-1\) 人占据的一个固定座位集，概率 \(\frac{(k-1)!\,(n-k)!}{(n-1)!}\)，乘 \(k\) 种位置同样得 \(k!(n-k)!/(n-1)!\) ✓。取 \(k=2\) 退化为 \(\frac{2}{n-1}\)，与红衣小题一致。</p>
+              <p><b>检验。</b>红衣题：\(n=5\)、\(k=2\)，\(\frac{2}{4}=\frac12\) ✓；\(n=3\)、2 人相邻概率 \(\frac{2}{2}=1\)（三人围桌人人相邻）✓。退化边界：\(k=n\)（全员都是「朋友」）时概率应为 1，但公式给 \(\frac{n!\,0!}{(n-1)!}=n\)——因为此时「区块」就是整桌、区块内部自身构成圆排列（循环等价类），区块法不再适用；使用公式时约定 \(k\lt n\)。数值例：\(n=5,k=3\)：\(\frac{3!\,2!}{4!}=\frac{12}{24}=\frac12\)。</p>
+              <p><b>面试怎么讲。</b>「红衣：钉住一个人，另一个等可能落 4 座、2 座相邻，1/2。推广：区块法 \(k!(n-k)!/(n-1)!\)，并主动给锚点法复核——两法一致是圆桌题最可靠的自我检查。」</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5（源题 P75）：16 人中有 4 名资深量化、12 名初级，随机均分为 4 组每组 4 人。每组恰好 1 名资深的概率是多少？请用条件概率的方法做。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>按资深者依次「入座」的顺序看条件概率：第一位资深随便进哪组都行；此后每位资深必须落在「还没有资深」的组里。</p>
+              <p><b>推导。</b>第一位资深入组后（占掉某组 1 席），还剩 15 个席位：第二位资深需要落进另外 3 组的 12 个席位，概率 \(\frac{12}{15}\)；此后剩 14 席，第三位要落进剩 2 组的 8 席，概率 \(\frac{8}{14}\)；最后剩 13 席，第四位要落进最后 1 组的 4 席，概率 \(\frac{4}{13}\)。故</p>
+              <div class="math-display">\[P=\frac{12}{15}\cdot\frac{8}{14}\cdot\frac{4}{13}=\frac{384}{2730}=\frac{64}{455}\approx 14.07\%.\]</div>
+              <p><b>检验。</b>计数口径复核（给 4 个组贴标签）：总分配 \(\binom{16}{4}\binom{12}{4}\binom{8}{4}\binom{4}{4}\)；有利分配：4 名资深排进 4 组有 \(4!\) 种，再为各组从 12 名初级中选 3 人：\(\binom{12}{3}\binom{9}{3}\binom{6}{3}\binom{3}{3}\)。两式相除同样得 \(\frac{64}{455}\) ✓。直觉对照：每组资深数的期望恰为 1（线性性），但「恰好都为 1」的概率只有 14%——期望达标不等于结构达标，这是本题的深层考点。</p>
+              <p><b>面试怎么讲。</b>「条件概率连乘 12/15、8/14、4/13，得 64/455 约 14%。再用组合计数复核一遍。最后点题：每组资深期望都是 1，但方差让『整齐分组』成为小概率事件。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-021-6"><a class="anchor-link" href="#s-021-6" aria-label="跳转到本节">#</a>例题详解 III：错排、穿隧与 Jensen</h3>
+          <div class="worked-example">
+            <p><b>例题 6（源题 P17）：\(n\) 位客人入住 \(n\) 间房，钥匙随机分发。没有人拿到自己房间钥匙的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>钥匙的分发等价于 \(\{1,\dots,n\}\) 的一个均匀随机排列 \(\pi\)，「有人拿对」即存在不动点 \(\pi(i)=i\)。所求是「零不动点排列」（错排，derangement）的占比。</p>
+              <p><b>推导。</b>令 \(A_i\)＝「第 \(i\) 人拿对」。固定某 \(k\) 个人都拿对的概率：其余 \(n-k\) 人任意排列，\(\frac{(n-k)!}{n!}\)；这样的 \(k\) 元子集有 \(\binom nk\) 个。容斥：</p>
+              <div class="math-display">\[P(\text{无人拿对})=1-\binom n1\frac{(n-1)!}{n!}+\binom n2\frac{(n-2)!}{n!}-\cdots=\sum_{k=0}^{n}\frac{(-1)^k}{k!}.\]</div>
+              <p>这正是 \(e^{-1}\) 的泰勒级数的部分和，\(n\to\infty\) 时趋于 \(\frac1e\approx 36.8\%\)。</p>
+              <p><b>检验。</b>数值：\(n=3\) 得 \(\tfrac13\)（6 个排列中 2 个错排）✓；\(n=4\) 得 \(\tfrac{9}{24}=0.375\)；\(n=5\) 得 \(\tfrac{44}{120}\approx 0.3667\)；\(n=10\) 已达 0.36788——收敛极快，\(n\ge 5\) 就可以放心报「约 36.8%」。单人不拿对自己钥匙的概率是 \(\frac{n-1}{n}\to 1\)，但「人人都不拿对」卡在 1/e，朴素近似 \((\frac{n-1}{n})^n\) 也趋于 \(e^{-1}\)——两种口径殊途同归，因为拿对事件之间近似独立（严格说负相关，此处恰好不影响极限）。</p>
+              <p><b>面试怎么讲。</b>「容斥，级数是 \(e^{-1}\) 的展开，答案约 36.8%。我会当场写 \(1-1+\tfrac12-\tfrac16\cdots\)，并说明 \(n\) 很小的时候部分和就是精确值。」</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 7（源题 P18 与 P88 合讲）：数轴上 \(n\) 只虫子大小互不相同、朝同一方向爬行，大虫更快，追上小虫就吃掉它。足够长时间后，平均剩几只虫子？另：简述 Jensen 不等式 \(E[g(X)]\) 与 \(g(E[X])\) 的大小关系及依赖条件。</b></p>
+            <div class="solution">
+              <p><b>建模（虫子）。</b>「大吃小」的碰撞规则看似要模拟一长串相遇，但有一个等价改写：让虫子<b>互相穿过</b>、穿过时交换身份标签。对外部观察者，「大虫吞掉小虫并继续爬」与「两只幽灵穿过、大虫标签跳到前方那只幽灵上」产生完全相同的轨迹。这就是穿隧论证（tunneling argument）。</p>
+              <p><b>推导（虫子）。</b>直向论述：最大的虫子速度最快，前方所有虫子都比它慢，迟早逐个被追上；后方虫子都比它小、更慢，永远追不上它。于是它最终吃掉所有虫子——<b>恰剩 1 只</b>，且必定是最大的那只。穿隧口径：幽灵们各自匀速直线运动互不干扰，任意时刻每个位置上有一个标签，最大标签每次「被超过」就前移，最终稳定在最前方的幽灵上；标签总数减到 1。因此期望剩余数 \(=1\)，而且是确定性结果、与初始位置无关。</p>
+              <p><b>检验（虫子）。</b>\(n=1\) 剩 1 ✓；\(n=2\)：大的必追上小的，剩 1 ✓；反向变式「虫子可双向爬行」时穿隧论证同样给出「剩 1 只」，但存活的是「初始时刻最靠某方向的」——说明穿隧是比「最大最快」更一般的工具。</p>
+              <p><b>推导（Jensen）。</b>\(g\) 凸 \(\Rightarrow E[g(X)]\ge g(E[X])\)；\(g\) 凹 \(\Rightarrow E[g(X)]\le g(E[X])\)。证明：切线不等式 \(g(x)\ge g(\mu)+g'(\mu)(x-\mu)\)（\(\mu=E[X]\)），取期望，线性项消失。等号条件：\(X\) 几乎必然为常数（\(\mathrm{Var}(X)=0\)），或 \(g\) 在 \(X\) 的支撑上是线性的。依赖因素就两个：<b>\(g\) 的凹凸性</b>决定方向，<b>\(X\) 的波动</b>决定缺口宽度。定量例：\(g(x)=x^2\)（严格凸），\(E[X^2]=(E[X])^2+\mathrm{Var}(X)\gt (E[X])^2\) 只要方差为正——「方差非负」本身就是 Jensen 不等式；凹向例：\(E[\ln X]\lt \ln E[X]\)（几何平均不超过算术平均），\(E[\sqrt X]\lt\sqrt{E[X]}\)（样本标准差低估的根源）。</p>
+              <p><b>面试怎么讲。</b>「虫子：穿隧论证，等价于互相穿过交换标签，答案恒为 1，与位置无关。Jensen：凸函数下期望的函数 ≥ 函数的期望，方向看凹凸、缺口看方差；主动给 \(E[X^2]\) 与几何平均两个例子，再补一句金融含义——对数财富的期望低于期望财富的对数，这是 Kelly 公式要求按对数效用的根源（见 <a href="025.html">025 章</a>）。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-021-7"><a class="anchor-link" href="#s-021-7" aria-label="跳转到本节">#</a>例题详解 IV：两道硬菜</h3>
+          <div class="worked-example">
+            <p><b>例题 8（源题 P74）：独立同分布 \(U[0,1]\) 随机变量逐个累加，\(N\) 是使部分和首次超过 1 的项数。求 \(E[N]\)。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>连续版首达问题：状态是「距 1 还差多少」。设 \(f(x)\)＝当前和距超过目标还差 \(x\) 时（\(0\le x\le 1\)）的期望追加次数，所求 \(f(1)\)。</p>
+              <p><b>推导（递归积分）。</b>再抽一个 \(U\sim U[0,1]\)：若 \(U\gt x\)，一次结束；若 \(U\le x\)，用掉一次后状态变为差 \(x-U\)。分解：</p>
+              <div class="math-display">\[f(x)=1+\int_0^{x}f(x-u)\,du=1+\int_0^{x}f(t)\,dt.\]</div>
+              <p>两边求导得 \(f'(x)=f(x)\)，初值 \(f(0)=1\)（差 0 时任何严格正的抽取都结束，期望一次），解出 \(f(x)=e^x\)。故</p>
+              <div class="math-display">\[E[N]=f(1)=e\approx 2.718.\]</div>
+              <p><b>检验（尾和公式）。</b>换轨道验证：\(P(N\gt n)=P(\text{前 }n\text{ 项之和}\le 1)\) 是 \(n\) 维单位单纯形的体积 \(\frac{1}{n!}\)，于是 \(E[N]=\sum_{n\ge0}P(N\gt n)=\sum_{n\ge0}\frac{1}{n!}=e\) ✓。数值直觉：两数之和平均为 1，但要「确保超过 1」平均需要约 2.72 个，比 2 多、比 3 少，量级自洽。</p>
+              <p><b>面试怎么讲。</b>「递归积分：\(f(x)=1+\int_0^x f\)，求导得 ODE，解 \(e^x\)，答案 \(e\)。交叉验证用尾和公式：\(P(N\gt n)=1/n!\)，级数还是 \(e\)。两个独立方法给出同一个常数，这是最硬的检验。」</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 9（源题 P86）：一副 52 张牌，红桃 K 在牌底。每轮取走顶牌，再把它均匀随机插回整副牌中任意位置。红桃 K 第一次到牌顶平均需要多少轮？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>关键状态变量是「红桃 K 之下已垫了多少张牌」，记为 \(j\)（初始 \(j=0\)）。K 到顶等价于 \(j=51\)。每轮只有顶牌（必然在 K 之上）被抽出重插：抽出的牌插到 K 之下时 \(j\to j+1\)，否则 \(j\) 不变；K 下方的牌永远不会被抽出（我们只动顶牌），所以 \(j\) 单调不减——过程被简化成一维阶段推进。</p>
+              <p><b>推导。</b>当前状态 \(j\)：抽出顶牌后牌堆剩 51 张（K 下方 \(j\) 张、上方 \(50-j\) 张），重插位置共 52 个等可能；落在 K 之下的插法有 \(j+1\) 个（K 正后方、\(j\) 张下方牌之间的 \(j-1\) 个缝、以及最底端）。故每轮推进概率 \(p_j=\frac{j+1}{52}\)，该阶段期望轮数 \(\frac{52}{j+1}\)（几何分布）。总期望：</p>
+              <div class="math-display">\[E=52\sum_{j=0}^{50}\frac{1}{j+1}=52\,H_{51}\approx 52\times 4.5188\approx 235\ \text{轮},\]</div>
+              <p>其中 \(H_{51}=1+\tfrac12+\cdots+\tfrac1{51}\) 是调和数。</p>
+              <p><b>检验。</b>小样例全枚举：3 张牌 \([A,B,K]\)，同样规则。阶段一 \(p_0=\tfrac13\) 期望 3 轮；阶段二（一张牌垫到 K 下后）\(p_1=\tfrac23\) 期望 1.5 轮；总期望 \(3\cdot H_2=4.5\) 轮——直接对 3 张牌马尔可夫链求解同样是 4.5 ✓，而「每轮都以 1/3 概率垫牌」的朴素算法给 \(2\times3=6\)，偏大。上界检查：\(52 H_{51}\le 52\times 51=2652\)，朴素值恰是把所有阶段概率都当成最差 \(\frac{1}{52}\) 的上界。逻辑检查：\(\frac{1}{52}\) 只是第一阶段（\(j=0\)）的概率；K 逐步上浮后，「插到 K 之下」的目标越来越大，推进越来越容易，所以真实期望远小于 2652。</p>
+              <p><b>面试怎么讲。</b>「把状态定为 K 之下的牌数 \(j\)：每轮顶牌以 \((j+1)/52\) 的概率垫到 K 下，阶段期望 \(52/(j+1)\)，总期望 \(52H_{51}\approx235\) 轮。主动指出常见错误答案 2652：它假设每轮推进概率恒为 1/52，忽略了概率随 \(j\) 增长——这道题的考点恰恰是『阶段概率不是常数』。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-021-8"><a class="anchor-link" href="#s-021-8" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>四个高频翻车点</b><p>一，「相关就不能加」：线性性对相关变量无条件成立，邻对题里间隔强相关完全不影响期望求和；受影响的是方差。二，红衣题把分母写成 \(n\)：圆桌必须先钉锚点，分母是 \(n-1\) 个剩余座位；线形队列与圆桌的分母差一，混用即错。三，分组题先入为主「每组期望 1 就该大概率整齐」：期望达标与结构整齐是两回事，P75 的 14% 是最好的解药。四，红桃 K 题把阶段概率当常数：2652 的错误答案流传甚广，正确结构是调和数 \(52H_{51}\approx235\)。</p></div>
+          <p>边界与变式：错排在 \(n\) 小时要用部分和精确值（\(n=3\) 是 1/3 而非 36.8%）；断言「约 1/e」前先看 \(n\ge5\) 是否成立。虫子问题改成双向爬行后答案仍为 1，但「谁活下来」变成初始位置问题——穿隧论证仍是首选工具。P74 的变式「和首次超过 \(x\)」直接用 \(f(x)=e^x\) 全套结论；「和首次超过 2」则需要重新建立递归（第一段跨越 1 之前的剩余量分布不再均匀），思路相同但计算更长，面试中口头说明框架即可。Jensen 在金融语境的两个方向都要会：凹效用（风险厌恶、Kelly）与凸收益曲线（杠杆损耗、波动率拖累），<a href="025.html">025 章</a>与 <a href="037.html">037 章</a>会再遇到它。</p>
+
+          <h3 id="s-021-9"><a class="anchor-link" href="#s-021-9" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能用指示变量把「期望对数」拆成「单元数 × 单元概率」，并说明为何不需要独立性。</li>
+            <li>我能算颜色 runs 期望（27）、狐犬邻对（35/6）、异性邻对（144/17），三题共用一个模板。</li>
+            <li>我掌握圆桌相邻的锚点法（2/(n−1)）与 k 人连坐的区块公式，并能互相复核。</li>
+            <li>我会用条件概率连乘解分组题（64/455），并用组合计数复核。</li>
+            <li>我能用容斥推导错排级数并识别 \(e^{-1}\)，知道小 n 时要用部分和。</li>
+            <li>我能用穿隧论证秒杀虫子类问题，并说明结论与初始位置无关。</li>
+            <li>我会用递归积分推导 \(E[N]=e\)，并用尾和公式 \(P(N\gt n)=1/n!\) 交叉验证。</li>
+            <li>我能指出红桃 K 问题答案 \(52H_{51}\approx235\)，并解释 2652 错在哪里。</li>
+            <li>我能陈述 Jensen 不等式的方向、等号条件与两个金融例子。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="020.html">← 020. 概率七：条件概率与对称性</a><a href="022.html">022. 概率九：随机过程与灭绝 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>
