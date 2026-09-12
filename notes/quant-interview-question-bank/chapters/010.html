@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>010. 进阶概念：外部排序与 NP 完全 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 010</div>
+        <div class="brand-title">进阶概念：外部排序与 NP 完全</div>
+        <div class="brand-meta">放不进内存怎么排序、没有多项式算法怎么办：两道概念防线。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-010-1">学习目标：两道「只要概念」的防线题</a><a class="toc-link" href="#s-010-2">外部排序：为什么是多路归并</a><a class="toc-link" href="#s-010-3">初始 run：朴素切块与置换选择</a><a class="toc-link" href="#s-010-4">k 路归并的内部代价：堆与败者树</a><a class="toc-link" href="#s-010-5">P、NP、NP-hard 与 NP-complete</a><a class="toc-link" href="#s-010-6">归约：证明 NP 完全的语言</a><a class="toc-link" href="#s-010-7">例题详解 I：场景判断是否 NP 完全</a><a class="toc-link" href="#s-010-8">例题详解 II：估算外部排序的 I/O 账</a><a class="toc-link" href="#s-010-9">例题详解 III：遇到 NP 难题的应对</a><a class="toc-link" href="#s-010-10">误区与边界</a><a class="toc-link" href="#s-010-11">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link current" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="dsa" data-title="进阶概念：外部排序与 NP 完全">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>010. 进阶概念：外部排序与 NP 完全</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>本章回收 <a href="007.html">007 章</a>埋下的伏笔，处理源题库提纲中明确标注「只要概念、不要求实现」的两个进阶主题：外部排序（数据放不进内存时为什么用多路归并、初始 run 的生成、k 路归并的 I/O 账）与 NP 完全（P/NP/NP-hard/NP-complete 的定义与关系、归约思想、遇到 NP 难题的应对）。面试对它们的要求是「讲得清、算得动」。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后数据结构与算法部分收官，进入 <a href="011.html">011. 经典脑题 I：标签、投资与过桥</a>——离开算法正题，转向面试的另一翼：逻辑推理与估算。</p></aside>
+          <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法板块核心知识地图：外部排序与 NP 完全所处的位置"></figure>
+
+          <h3 id="s-010-1"><a class="anchor-link" href="#s-010-1" aria-label="跳转到本节">#</a>学习目标：两道「只要概念」的防线题</h3>
+          <p>数据结构面试的尽头是两道「概念防线」题。第一道：<b>数据放不进内存，怎么排序？</b>100 GB 的成交日志按时间戳排序、机器只有 16 GB 内存——快排与堆排的随机访问模式在磁盘上会立刻崩溃。答案是多路归并的外部排序（external sorting），它不是新算法，而是 <a href="007.html">007 章</a>归并排序「只做顺序访问」这一性质在磁盘上的放大。考法不是手写代码，而是「为什么这么设计、I/O 账怎么算」——提纲原文写着「External Sort — No implementation; Just know the concept」。</p>
+          <p>第二道：<b>问题本身没有已知的多项式算法，怎么办？</b>面试官抛出一个场景，你首先要判断它是「能在多项式时间精确求解」还是「NP 难」，然后给出对应的策略：小规模精确枚举、伪多项式动态规划、近似算法、分支限界剪枝、或利用特殊结构。这需要一套语言：P、NP、NP-hard、NP-complete 的定义与关系，以及读得懂「归约（reduction）」的方向。提纲同样标注「Just know the concept」。两道防线题的共同点：<b>概念清晰比代码熟练更重要</b>，答错方向（比如对 NP 难问题硬找多项式算法）是灾难，答对方向再给层次化方案就是满分。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>I/O 是主角</b><p>内存排序比的是比较次数，外部排序比的是读写总量与顺序性。归并只做顺序读写，这是它在磁盘上不可替代的原因；总 I/O 由「趟数」决定，每趟固定 \(2N\)。</p></div>
+            <div class="concept-card"><b>趟数对数</b><p>归并趟数 \(\lceil \log_k R \rceil\) 由初始 run 数 \(R\) 与归并路数 \(k\) 决定。三个杠杆——加大内存 \(M\)、加大 \(k\)、加长初始 run（置换选择）——全部为了压这个对数。</p></div>
+            <div class="concept-card"><b>可验证性定义 NP</b><p>NP 不是「non-polynomial」，而是「解一旦给出，可在多项式时间验证」。NPC = NP ∩ NP-hard；判定、验证、求解三种身份先分清，再谈分类。</p></div>
+          </div>
+
+          <h3 id="s-010-2"><a class="anchor-link" href="#s-010-2" aria-label="跳转到本节">#</a>外部排序：为什么是多路归并</h3>
+          <p><b>内排序为什么失灵。</b>设数据量 \(N\) 远大于可用内存 \(M\)。快排、堆排的每次比较都可能引发一次随机磁盘访问：机械硬盘一次寻道约几毫秒，而顺序读带宽约每秒几百 MB——随机与顺序相差三到四个数量级；固态硬盘虽无寻道，但小块随机读写仍显著劣于大批量顺序传输。结论：磁盘上的算法要「只顺扫、只追加」，这正是 <a href="007.html">007 章</a>说「归并排序天然适合外部排序」的原因——合并时输入输出指针都只前进。</p>
+          <p><b>两阶段结构。</b>外部排序 = 造 run + 多路归并。阶段一（run 生成）：反复读入一块恰好装满内存的数据（\(M\) 条记录），用任一内排序（如快排）将其排好，顺序写出一个有序段文件（run），得到 \(R = \lceil N / M \rceil\) 个 run。阶段二（k 路归并）：为 k 个 run 各配一个输入缓冲块、再加一个输出缓冲块；反复在 k 路头部取最小记录写入输出缓冲，缓冲满则顺序写盘，某路输入缓冲空则顺读该 run 的下一块。一趟归并把 k 个 run 变成 1 个；不够一趟装下的就再来一趟。全程只有顺序读写。</p>
+          <p><b>I/O 账。</b>设总数据量为 \(N\)（以字节或页计）、初始 run 数为 \(R\)、每趟归并同时归并 \(k\) 路：</p>
+          <div class="math-display">\[R = \left\lceil \frac{N}{M} \right\rceil, \qquad T = \left\lceil \log_k R \right\rceil, \qquad \text{总 I/O} = 2N \cdot (1 + T).\]</div>
+          <p>怎么读：run 生成一读一写共 \(2N\)；之后每趟归并再一读一写各 \(N\)，共 \(T\) 趟。所以优化就是压 \(T\)：增大 \(M\)（更少 run）、增大 \(k\)（对数底更大）、加长初始 run（置换选择，见下节）。k 的物理约束是缓冲区：内存要同时放下 k 个输入块加 1 个输出块，块太小则读写请求过碎、失去顺序性收益，于是 \(k\) 大致受 \(M / B\) 限制（B 为块大小）——「k 越大越好」并不成立。</p>
+          <div class="intuition-box"><b>与 007 章的一条线</b><p>自底向上归并把数组看成 n 个长度 1 的 run，按 2、4、8 逐轮两两合并；外部排序的骨架完全相同，只是 run 的起点从「单元素」换成「一次内存排序的输出」、二路合并推广成 k 路。理解了 007 章「run 长度逐轮翻倍」的图，这里只剩一个问题：怎么让第一轮的 run 尽量长、每一轮的路数尽量多。</p></div>
+
+          <h3 id="s-010-3"><a class="anchor-link" href="#s-010-3" aria-label="跳转到本节">#</a>初始 run：朴素切块与置换选择</h3>
+          <p><b>朴素做法。</b>每次装满内存排一次，run 长度恰为 \(M\)，\(R = \lceil N / M \rceil\)。它浪费了一个事实：读入下一条记录不需要等上一批全部写完——内存可以边输出边补充。</p>
+          <p><b>置换选择（replacement selection）。</b>让 run 平均长度翻倍的经典技巧。流程：（1）内存建一个大小为 \(M\) 的最小堆，先读满 M 条记录；（2）取堆顶（当前最小）输出到当前 run，记 \(\mathrm{last} =\) 刚输出的值；（3）顺读下一条记录 r：若 \(r \ge \mathrm{last}\)，它可以属于当前 run（仍保有序），入堆；若 \(r \lt \mathrm{last}\)，它属于<b>下一个</b> run，冻结在内存死区；（4）当堆中活区耗尽（全部 M 个槽位都被冻结），当前 run 结束，冻结区整块解冻成为新堆，开下一个 run；（5）输入耗尽且堆空，结束。</p>
+          <p><b>为什么平均 run 长度约 \(2M\)。</b>直觉版：run 的输出序列是递增的，新记录大约以一半的概率不小于 last（随机输入下），能留下继续为本 run 供货；能留下的那些又会腾出槽位再吸新记录。 Knuth 的经典结论是随机输入下期望 run 长度约为 \(2M\)——相当于内存「虚拟翻倍」。两个极端也好读：输入基本递增时几乎每条都能入堆，一个 run 可以无限长（最好情况，一趟归并都省了）；输入基本递减时每条都被冻结，run 退化为 \(M\)（等价于朴素法）。对追加写出的日志文件（时间戳天然近乎有序），置换选择常常直接给出一个巨大 run，外部排序几乎退化成一次内排序。</p>
+          <div class="formula-list">
+            <p><b>朴素 run 生成：</b>run 长度 \(= M\)，个数 \(R = \lceil N/M \rceil\)，需要归并 \(\lceil \log_k R \rceil\) 趟。</p>
+            <p><b>置换选择：</b>随机输入下期望 run 长度 \(\approx 2M\)，\(R\) 约减半；若这使 \(\lceil \log_k R \rceil\) 少一趟，总 I/O 直接省 \(2N\)——效果立竿见影。</p>
+            <p><b>最优归并树：</b>当各 run 长度不等时，按「最短的先合并」（Huffman 树思想）选合并次序，可使加权总 I/O 最小——概念了解即可，考官极少展开。</p>
+          </div>
+
+          <h3 id="s-010-4"><a class="anchor-link" href="#s-010-4" aria-label="跳转到本节">#</a>k 路归并的内部代价：堆与败者树</h3>
+          <p><b>归并的瓶颈不是 I/O 就是比较。</b>k 路归并每输出一个元素，需要在 k 路当前头部中取最小。用大小为 k 的最小堆（<a href="004.html">004 章</a>），每次取最小加 sift-down 是 \(O(\log k)\) 次比较，输出全部 \(N\) 个元素共 \(O(N \log k)\)。当 k 达到几十上百路时，比较与缓存成为可见的内部代价，于是教科书给出一个经典优化。</p>
+          <p><b>败者树（tree of losers）。</b>一棵完全二叉树，k 个叶子放 k 路当前头元素，每个内部结点记录其两棵子树中「打输的一方」（较大者），根之上输出总冠军（全局最小）。冠军被输出后，只有冠军所在叶子到根的一条路径需要重赛——新来的元素恰与 \(\lceil \log_2 k \rceil\) 个内部结点各比较一次。与堆相比：每次更新的比较次数是<b>确定</b>的 \(\lceil \log_2 k \rceil\)（堆的 sift-down 常有两次比较一层且访问下标跳跃、缓存不友好），且败者树更新只写路径上的败者、访存模式规则。胜者树（记胜者）与败者树（记败者）是一对，败者树更新时少一次读取，是外部归并的传统标配。概念了解即可——面试说出来龙去脉就够。</p>
+          <div class="algorithm-grid">
+            <div class="algorithm-card"><b>堆做 k 路归并</b><p>取最小 + 下沉 \(O(\log k)\)，总 \(O(N \log k)\)。实现最简单（priority_queue 即可），k 中等时完全够用；缺点是常数次比较、下标跳跃缓存不友好。</p></div>
+            <div class="algorithm-card"><b>败者树做 k 路归并</b><p>每次输出恰 \(\lceil \log_2 k \rceil\) 次比较、只重赛冠军路径。比较次数确定、访存规则，大 k 时的传统首选；实现较繁，面试讲原理。</p></div>
+            <div class="algorithm-card"><b>二路归并逐趟</b><p>\(k = 2\) 的退化情形即 007 章自底向上归并：趟数 \(\lceil \log_2 R \rceil\) 最多，但每步只比较一次、缓冲最少；小数据或 k 受限时仍用它。</p></div>
+          </div>
+          <p><b>现实系统里的外部排序。</b>数据库的 order by 在数据超过内存时切到外部归并排序算子（run 生成 + 多路归并 + 可选置换选择）；MapReduce / Spark 的 shuffle 阶段对每个分区做内存排序、溢写为 run 文件、最后归并——结构同出一辙。面试提一句这个对应关系，能证明概念真的落地过。</p>
+
+          <h3 id="s-010-5"><a class="anchor-link" href="#s-010-5" aria-label="跳转到本节">#</a>P、NP、NP-hard 与 NP-complete</h3>
+          <p><b>先把「问题」说清。</b>复杂性类按<b>判定问题</b>（答案是「是/否」）定义；最优化问题（求最优值）先转判定版（「是否存在不超过 B 的解？」）再归类。一个判定问题 A 属于 <b>P</b>，指存在确定性算法在输入长度 n 的多项式时间内解它。属于 <b>NP</b>，指「是」实例存在多项式长的证书（certificate），且给定证书能在多项式时间<b>验证</b>——等价说法是非确定性图灵机多项式时间可解。注意方向：NP 定义的是「验证容易」，不是「non-polynomial」；P ⊆ NP（能解就能验，证书可取空）。</p>
+          <p><b>难与最难。</b><b>NP-hard</b>：所有 NP 问题都可多项式归约到它——它「至少和整个 NP 一样难」，但自身不必属于 NP（可以不是判定问题，甚至不可判定，如停机问题）。<b>NP-complete（NPC）</b>：既在 NP 中，又 NP-hard——NP 里最难的一档。Cook–Levin 定理给出第一个 NPC 问题：SAT（布尔可满足性）；此后一切 NPC 结论都从它链式归约出来。核心推论：任何 一个 NPC 问题若有多项式算法，则 P = NP；所以「P = NP?」是千禧年难题，NPC 问题之间在多项式时间意义下等价。</p>
+          <div class="math-display">\[A \le_p B:\; \exists \text{ 多项式时间可计算 } f,\; \forall x:\; x \in A \iff f(x) \in B.\]</div>
+          <p>怎么读：\(\le_p\) 读作「A 可以归约到 B」——A 的每个实例都能在多项式时间翻译成 B 的实例、且答案保持一致。若 A 难而 A 归约到 B，则 B 至少与 A 一样难。这正是下一节「方向」的机器。</p>
+          <div class="table-wrap"><table><thead><tr><th>问题</th><th>问什么</th><th>地位</th></tr></thead><tbody>
+          <tr><td>SAT / 3-SAT</td><td>布尔公式是否存在满足赋值</td><td>第一个 NPC（Cook–Levin），一切归约链的源头</td></tr>
+          <tr><td>独立集 / 团 / 点覆盖</td><td>是否存在大小至少 k（至多 k）的独立集/团/覆盖</td><td>NPC，三者互相归约（独立集与点覆盖互补）</td></tr>
+          <tr><td>哈密顿回路</td><td>是否存在经过每点恰一次的回路</td><td>NPC</td></tr>
+          <tr><td>TSP（判定版）</td><td>是否存在成本不超过 B 的巡回</td><td>NPC；最优化版为 NP-hard</td></tr>
+          <tr><td>子集和（背包判定）</td><td>是否存在子集之和恰为 T</td><td>NPC（弱 NPC：有伪多项式算法）</td></tr>
+          <tr><td>划分</td><td>能否分成和相等的两部分</td><td>NPC，是子集和的特例（T 为总和一半）</td></tr>
+          <tr><td>图 3 染色</td><td>能否用 3 色给相邻点异色</td><td>NPC；注意 2 染色（二部图判定）在 P</td></tr>
+          <tr><td>素性检测</td><td>n 是否素数</td><td>P（AKS 算法，2002；实践用 Miller–Rabin 随机化）</td></tr>
+          <tr><td>整数分解 / 图同构</td><td>找因子 / 两图是否同构</td><td>在 NP 中，既未知在 P、也未知 NPC——中间地带确实存在</td></tr>
+          </tbody></table></div>
+          <div class="intuition-box"><b>一张关系图先画在草稿上</b><p>画一个大圈 NP，左下角一个小圈 P 完全 contained；NP-hard 是横跨圈外的整个上半平面，与 NP 的交集就是 NPC。回答任何分类题之前先把问题「放」到这张图上：验证容易吗（在 NP 吗）？有已知多项式算法吗（在 P 吗）？所有 NP 问题都能归约到它吗（NP-hard 吗）？三问定位，比背清单可靠。</p></div>
+
+          <h3 id="s-010-6"><a class="anchor-link" href="#s-010-6" aria-label="跳转到本节">#</a>归约：证明 NP 完全的语言</h3>
+          <p><b>方向是命门。</b>要证明问题 B 是 NP-hard，要从<b>已知</b> NP-hard 的 A 出发，构造 \(A \le_p B\)——「把 A 的实例翻译成 B 的实例」。方向口诀：<b>从难到易证难</b>：已知的难问题 A 能塞进 B，说明 B 至少一样难。反过来把 B 归约到已知难题 A 什么也证明不了（难的被塞进难的，理所当然）。面试里方向写反是最常见的失分点，比不会证还刺眼。</p>
+          <p><b>四个概念级例子</b>（说清构造思路即可，不展开证明）：</p>
+          <div class="formula-list">
+            <p><b>3-SAT ≤p 独立集：</b>每个子句的文字做一个三角形（保证每子句至多选一个真文字），再在每对互补文字之间连边（真值一致性）。存在大小为子句数 m 的独立集，当且仅当公式可满足。</p>
+            <p><b>独立集 ↔ 点覆盖：</b>S 是独立集当且仅当其补集 V∖S 是点覆盖，故「大小至多 k 的点覆盖」与「大小至少 n−k 的独立集」同时成立——两个问题一样难，互补关系一步归约。</p>
+            <p><b>哈密顿回路 ≤p TSP：</b>把图补成完全图：原图已有的边权 1、补出的边权 2，问是否存在成本至多 n 的巡回。巡回全走权 1 边当且仅当原图有哈密顿回路。</p>
+            <p><b>划分 ≤p 子集和：</b>给划分实例（数集总和 2T），问子集和是否存在 T 的子集——划分就是目标值被固定的子集和，特例即归约。</p>
+          </div>
+          <p><b>伪多项式不矛盾。</b>子集和有 \(O(nT)\) 的动态规划，为何仍是 NPC？因为复杂度要按<b>输入长度</b>计：T 以二进制编码只占 \(\log T\) 位，\(O(nT)\) 对输入长度是指数级。这类「弱 NPC」问题的 DP 叫伪多项式算法（pseudo-polynomial）——「数字范围小就能跑」与「理论上是 NPC」并行不悖，也是面试应对 NP 难题的第一条出路。</p>
+          <div class="intuition-box"><b>遇到 NP 难题的四条出路（面试答题骨架）</b><p>一，<b>小 n 精确</b>：\(n \le 20\) 用位掩码枚举（\(2^{20} \approx 10^6\)），\(n \le 40\) 用折半枚举（meet in the middle，\(2^{n/2}\)）——<a href="009.html">009 章</a>的枚举模板直接复用。二，<b>数字小用伪多项式 DP</b>：背包、子集和在 T 不大时精确可解。三，<b>近似算法</b>：点覆盖有贪心 2-近似（取极大匹配的两端点），度量 TSP 有基于 MST 的 2-近似；要证近似比的那种是面试亮点。四，<b>分支限界与剪枝</b>：回溯框架上加「当前部分解已超过已知最优则剪枝」，配合启发式界在中等规模上常够用。另有隐藏第五条：<b>利用特殊结构</b>——区间图上的染色、树上的独立集、DAG 上的路径都有多项式精确算法，「先确认输入是不是普通图」有时直接免战。</p></div>
+
+          <h3 id="s-010-7"><a class="anchor-link" href="#s-010-7" aria-label="跳转到本节">#</a>例题详解 I：场景判断是否 NP 完全</h3>
+          <div class="worked-example">
+            <p><b>例题 1：面试官连续抛出六个小场景，要求逐一回答「在 P、在 NP 且未知、NP-complete、还是 NP-hard（判定之外）」，并给一句依据。(a) 判断无向图是否二部图；(b) 判断图能否 3 染色；(c) 判断给定数集中是否存在和恰为 T 的子集；(d) 验证给定子集之和是否恰为 T；(e) 求带权完全图上最便宜 TSP 巡回的最小成本；(f) 判断一个 64 位整数是否为素数。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>分类题的三问定位法：先分清身份（判定 / 验证 / 求解），再问「验证是否容易」（NP）、「是否有已知多项式算法」（P）、「是否承接了已知难问题」（NPC / NP-hard）。</p>
+              <p><b>(a) 二部图判定：P。</b>BFS 逐层交替染两色，出现同色边即非二部，\(O(V + E)\)。依据：奇圈是二部图的唯一障碍，交替染色一次遍历即可暴露。</p>
+              <p><b>(b) 3 染色：NP-complete。</b>3-SAT ≤p 3-COLOR 是归约链上的经典一环（变量真值 gadget + 子句 gadget）。亮点在与 (a) 对照：2 染色多项式、3 染色 NPC——「k 从 2 到 3」跨过的正是 P 与 NP 的边界，这句话面试值得主动说。</p>
+              <p><b>(c) 子集和判定：NP-complete。</b>证书是子集本身（多项式长、可验证），故在 NP；划分 ≤p 子集和（或沿 SAT 归约链），故 NP-hard。注意它是弱 NPC：\(O(nT)\) 的伪多项式 DP 存在，但不矛盾（见 s-010-6）。</p>
+              <p><b>(d) 验证子集之和：P。</b>把子集求和一次 \(O(n)\)。这是 (c) 的对照组：同一个问题，「找解」难、「验解」易——「找难验易」正是 NP 的定义性体验，说清这一对是本题的点睛。</p>
+              <p><b>(e) TSP 最小成本（最优化版）：NP-hard。</b>它甚至不是判定问题，严格说谈不上在 NP 里；其判定版（成本 ≤ B？）是 NPC（哈密顿回路 ≤p TSP 的构造见 s-010-6）。口径要分清：优化版 NP-hard、判定版 NPC。</p>
+              <p><b>(f) 素性检测：P。</b>AKS 算法（2002）给出确定性多项式算法；实践中用 Miller–Rabin 概率检验更快。对照同源的<b>整数分解</b>：在 NP 中，既未被证明在 P、也未被证明 NPC——密码学（RSA）的安全性正押在「分解大概很难」上。这个中间地带的反例能防住「NP 里的问题不是 P 就是 NPC」的错误二分。</p>
+              <p><b>面试怎么讲。</b>每问按「身份 → 结论 → 一句依据（算法名或归约名）」三段式作答；(a)(b) 与 (c)(d) 两组对照主动点破——前一组展示「参数小变化引起分类跃迁」，后一组展示「NP = 易验证」。最后补一句 P ⊆ NP 且「P = NP?」未解，展示框架完整。</p>
+            </div>
+          </div>
+
+          <h3 id="s-010-8"><a class="anchor-link" href="#s-010-8" aria-label="跳转到本节">#</a>例题详解 II：估算外部排序的 I/O 账</h3>
+          <div class="worked-example">
+            <p><b>例题 2：8 GB 的交易记录按时间戳排序，机器可用内存 1 GB（全部作缓冲），磁盘顺序带宽约 200 MB/s。(1) 估算朴素两阶段外部排序的总 I/O 与纯 I/O 时间；(2) 若内存碎片限制只能 k = 4 路，结果如何？(3) 置换选择能救回多少？(4) 追问：1 TB 数据、64 GB 内存需要几趟？</b></p>
+            <div class="solution">
+              <p><b>(1) 朴素方案。</b>run 生成：每次装满 1 GB 内存内排序后写出一个 run，得 \(R = 8 / 1 = 8\) 个 run，读写各 8 GB，I/O 共 16 GB。归并阶段把 1 GB 内存分成 8 个输入缓冲加 1 个输出缓冲（每个约 1/9 GB ≈ 114 MB，块够大不失顺序性），k = 8 恰好 \(\lceil \log_8 8 \rceil = 1\) 趟，I/O 又 16 GB。总账：</p>
+              <div class="math-display">\[\text{总 I/O} = 2N\,(1 + T) = 2 \times 8 \times (1 + 1) = 32 \text{ GB}.\]</div>
+              <p>纯 I/O 时间 \(32 \times 1024 / 200 \approx 164\) 秒——I/O 主导，内部比较时间忽略不计，这正是外部排序的记账方式。</p>
+              <p><b>(2) 只有 k = 4。</b>趟数 \(\lceil \log_4 8 \rceil = 2\)，总 I/O \(= 16 + 2 \times 16 = 48\) GB，约 246 秒——多一趟多付 16 GB（+50%）。可见「k 够不够」直接决定趟数跳档，也是「k 并非越大越好、但必须够用」的数值注脚。</p>
+              <p><b>(3) 置换选择。</b>平均 run 长度 \(\approx 2M = 2\) GB，\(R = 4\)，于是 k = 4 也只需 \(\lceil \log_4 4 \rceil = 1\) 趟：总 I/O 回到 16 + 16 = 32 GB。更妙的是本例数据按时间戳、且日志天然近乎有序——置换选择大概率直接产出接近 8 GB 的巨型 run，归并阶段近乎消失，总 I/O 逼近一次读写的 16 GB。结论表：</p>
+              <div class="table-wrap"><table><thead><tr><th>方案</th><th>初始 run 数 R</th><th>可用 k</th><th>归并趟数 T</th><th>总 I/O</th></tr></thead><tbody>
+              <tr><td>朴素 + k=8</td><td>8</td><td>8</td><td>1</td><td>32 GB</td></tr>
+              <tr><td>朴素 + k=4</td><td>8</td><td>4</td><td>2</td><td>48 GB</td></tr>
+              <tr><td>置换选择 + k=4</td><td>约 4</td><td>4</td><td>1</td><td>32 GB</td></tr>
+              <tr><td>置换选择 + 近有序输入</td><td>接近 1</td><td>—</td><td>0</td><td>约 16 GB</td></tr>
+              </tbody></table></div>
+              <p><b>(4) 1 TB、64 GB。</b>\(R = 1024 / 64 = 16\)；内存可容纳 k 大到 63 路（64 块 1 GB 缓冲），\(\lceil \log_{63} 16 \rceil = 1\) 趟；总 I/O \(= 2 \times 1024 \times 2 = 4096\) GB（4 TB）。如果只有 k = 4，则 \(\lceil \log_4 16 \rceil = 2\) 趟、6 TB——数据涨一千倍，趟数只涨一趟，对数的功劳。</p>
+              <p><b>面试怎么讲。</b>账本三行式：「run 数 R = N/M；路数 k = 缓冲预算/块大小；趟数 T = \(\lceil \log_k R \rceil\)；总 I/O = 2N(1+T)」。先报朴素账，再给两个杠杆（加大 k、置换选择）各算一次，最后落一句「I/O 主导、比较次要」与「数据近乎有序时外排序近线性」——四句话就是满分结构。</p>
+            </div>
+          </div>
+
+          <h3 id="s-010-9"><a class="anchor-link" href="#s-010-9" aria-label="跳转到本节">#</a>例题详解 III：遇到 NP 难题的应对</h3>
+          <div class="worked-example">
+            <p><b>例题 3：风控对账场景。一个账本录了 n = 40 笔交易的金额，账面出现差额 T（例如恰好 133,742 分），怀疑是若干笔的重复记账或漏记。要求找出金额之和恰等于 T 的交易子集。面试时应如何组织回答？</b></p>
+            <div class="solution">
+              <p><b>第一步：识别与定性。</b>「子集之和恰等于目标」正是<b>子集和问题</b>（subset sum），其判定版是 NP-complete（例题 1 (c)）。开场先声明：「这是子集和，判定版 NP 完全，不存在已知的多项式精确算法——我不会试图硬找一个；接下来按规模和数值范围分层给方案」。这一句是整道题的分水岭：先定性，再谈工程。</p>
+              <p><b>第二步：按 n 与 T 分层给精确方案。</b></p>
+              <p><b>层一（n = 40，折半枚举）：</b>把 40 笔拆成两半各 20，各枚举 \(2^{20} \approx 10^6\) 个子集和，排序一半、另一半对每个和 s 二分查找 \(T - s\)。总代价 \(O(2^{n/2} \cdot n) \approx 4 \times 10^7\)，秒级出精确答案——比朴素 \(2^{40} \approx 10^{12}\) 快五个数量级。这正是 <a href="009.html">009 章</a>枚举模板的进阶用法：枚举仍是枚举，但结构上砍半。</p>
+              <p><b>层二（金额范围小，伪多项式 DP）：</b>金额以分为单位、T 至多百万量级时，bitset DP 一行转移 <code>dp |= dp &lt;&lt; w_i</code>，\(O(nT / 64)\)，机器字并行使它快得不像指数——「数字小就能 DP」的现场证明（s-010-6 伪多项式不矛盾）。</p>
+              <p><b>层三（只要快速定位嫌疑集）：</b>不必精确时给启发式——随机抽样子集、按金额贴近度排序贪心组队、或先按交易属性过滤缩小 n。定位风控嫌疑不需要数学意义上的完备解。</p>
+              <p><b>层四（问题带特殊结构时退敌）：</b>若已知「最多 3 笔出错」，直接枚举组合 \(\binom{40}{3} \approx 9.9 \times 10^3\)，多项式精确；若金额都是某个基数的倍数，先除公约数缩 T；若交易时间局部聚集，先按时间窗切分再各窗内求解——「先确认输入是不是普通实例」经常直接把 NPC 打回 P。</p>
+              <p><b>第三步：生产口径收尾。</b>金额一律以整数（分/tick）存储与计算，避免浮点误差造成「理论上有解、数值上永远差一点」的假阴性（与 <a href="009.html">009 章</a>符号数规则呼应）；对账是反复运行的任务，可把「上次对账确认过的交易」从候选集中剔除，实际 n 远小于 40；要求完备性时用层一/层二精确解兜底，启发式只做初筛。</p>
+              <p><b>面试怎么讲。</b>骨架四句：「这是子集和，NP 完全，先定性」；「n=40 用折半枚举精确，代价 \(2^{n/2}\)」；「金额小时用伪多项式 DP，\(O(nT/64)\)」；「生产上整数化金额 + 缩小候选集」。若考官追问「为什么不写个多项式算法」，回答：那等价于解决 P = NP——分层与近似才是正确姿势。</p>
+            </div>
+          </div>
+
+          <h3 id="s-010-10"><a class="anchor-link" href="#s-010-10" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>五个高频误区</b><p>一，把 NP 读成「non-polynomial」——NP 的定义是多项式可验证，P ⊆ NP，「NP 里的简单问题」自相矛盾之说是没入门的标志。二，混淆 NP-hard 与 NPC：NP-hard 不必属于 NP（停机问题、TSP 优化版），说「TSP 优化版是 NP 完全」不严谨，要说「其判定版是 NPC、优化版 NP-hard」。三，归约方向写反：证明 B 难要从已难的 A 归约到 B；从 B 归约到 A 毫无信息。四，看到子集和的 DP 就断言它在 P：那是伪多项式，复杂度须按输入长度（log T）计。五，认为外部排序优化的对象是比较次数：外部排序的账本上是 I/O 与趟数，比较次数只在 k 很大时通过败者树进入视野。</p></div>
+          <div class="intuition-box"><b>考官常见追问与变式</b><p>「SSD 时代外部排序还有意义吗？」——有：小块随机写仍显著慢于大批量顺序写，块对齐与顺序吞吐的逻辑不变，只是差距缩小。「k 越大越好吗？」——k 受内存缓冲约束，且缓冲块太小时读写请求碎化、反而失去顺序性；k 的最优值在「趟数下降」与「块大小下限」之间权衡。「为什么不用快排直接在磁盘上排？」——快排的访问模式随机，每次分区都全盘寻道。「用数据库索引不就不用排序了？」——索引适合多次按键查询的一次性投入；只需一次全量排序时建索引反而更贵。「两个有序文件归并一次算外部排序吗？」——算 k=2 的单趟特例，正是 007 章归并在文件世界的最小化身。「遇到 NP 难但 n ≤ 20 怎么办？」——位掩码 DP，\(2^{20} n\) 完全可行，见 <a href="009.html">009 章</a>；n ≤ 40 折半，n 更大才谈近似与剪枝。</p></div>
+
+          <h3 id="s-010-11"><a class="anchor-link" href="#s-010-11" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能说出外部排序的两阶段（run 生成 + k 路归并），并解释为什么磁盘上必须只做顺序读写。</li>
+            <li>我能默写总 I/O \(= 2N(1 + \lceil \log_k R \rceil)\)，指出压趟数的三个杠杆：内存 \(M\)、路数 \(k\)、初始 run 长度。</li>
+            <li>我能描述置换选择生成初始 run 的流程（最小堆 + last 阈值 + 冻结区），并说明随机输入下平均 run 约 \(2M\)、近有序输入可产出巨型 run。</li>
+            <li>我能比较堆与败者树做 k 路归并：败者树每次输出恰 \(\lceil \log_2 k \rceil\) 次比较、只重赛冠军路径。</li>
+            <li>我能给出 P、NP、NP-hard、NP-complete 的定义与包含关系（P ⊆ NP，NPC = NP ∩ NP-hard），并用「验证易」解释 NP。</li>
+            <li>我能陈述归约的方向规则「从难到易证难」，并说出 3-SAT→独立集、独立集↔点覆盖、哈密顿回路→TSP 的构造思路。</li>
+            <li>我能解释伪多项式算法（如子集和的 \(O(nT)\) DP）为何不与 NP 完全矛盾。</li>
+            <li>面对判定、验证、求解三类提问我能先分身份再作答，遇到 NP 难题能给出小 n 枚举、伪多项式 DP、近似算法、分支限界与特殊结构五条出路。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="009.html">← 009. 组合枚举与位运算：排列、子集与符号数</a><a href="011.html">011. 经典脑题 I：标签、投资与过桥 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

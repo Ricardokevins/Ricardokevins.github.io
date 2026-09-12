@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>024. 博弈一：策略与期望值 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 024</div>
+        <div class="brand-title">博弈一：策略与期望值</div>
+        <div class="brand-meta">逆向归纳、最优停止、似然与枚举：从单局估值到策略性思维。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-024-1">学习目标：从算期望到想策略</a><a class="toc-link" href="#s-024-2">知识点一：逆向归纳与最优停止</a><a class="toc-link" href="#s-024-3">知识点二：均衡、似然与可数枚举</a><a class="toc-link" href="#s-024-4">例题详解一：单局决策与重掷阈值</a><a class="toc-link" href="#s-024-5">例题详解二：结构化猜测与抓兔子</a><a class="toc-link" href="#s-024-6">例题详解三：多人博弈与连胜结构</a><a class="toc-link" href="#s-024-7">误区与边界</a><a class="toc-link" href="#s-024-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link current" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="gametheory" data-title="博弈一：策略与期望值">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>024. 博弈一：策略与期望值</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>博弈板块第一章：先把「一个决策者的期望值最大化」做扎实（重掷阈值、最优停止），再进入真正的策略性思维——对手也在思考你的思考（最小唯一数、连胜排程、糖果矩阵）。破产与下注尺度的内容在<a href="025.html">025 章</a>。</p></aside>
+          <figure class="visual-lead"><img src="../assets/gametheory-map.svg" alt="博弈论板块知识地图：逆向归纳、最优停止、均衡推理、破产与下注尺度"></figure>
+
+          <h3 id="s-024-1"><a class="anchor-link" href="#s-024-1" aria-label="跳转到本节">#</a>学习目标：从算期望到想策略</h3>
+          <p>量化面试的博弈题分两个层次。<b>第一层</b>没有对手：只有你和一个随机源（骰子、随机数），考的是期望值最大化与最优停止——什么时候停、什么时候继续。这一层的工具是逆向归纳（backward induction）：从最后一轮的价值函数出发，一层层往回推。它本质上是<a href="014.html">014 章</a>期望递推在决策问题上的版本：状态里多了一个「动作」维度。<b>第二层</b>有对手：最小唯一数博弈里别人会猜你的猜测，连胜排程里「对手强弱」决定你的排布，糖果矩阵里对手每一步都在规避同一颗坏糖果。这一层的工具是均衡思维——把自己放进对手的位置验证策略稳定性。</p>
+          <p>本章七道例题按这两层组织：骰子重掷与百面骰阈值练第一层；猜 \(N\)、抓兔子、最小唯一数、FBF/BFB、糖果矩阵练第二层。学完你应该有一个条件反射：看到博弈题，先问「我的最优动作是否依赖于对手的行为」——不依赖的是期望题，依赖的才是博弈题。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>逆向归纳</b><p>从最后一轮往回定义价值函数 \(V_k = \mathbb{E}[\max(X, V_{k-1})]\)，停止规则自动浮出：当前所得超过继续价值就停。</p></div>
+            <div class="concept-card"><b>均衡推理</b><p>策略要经得起「如果大家都这么想」的检验：纯策略走不通时考虑混合，对手位置不动时找对称配对。</p></div>
+            <div class="concept-card"><b>可数枚举</b><p>未知参数取值可数时，对参数表按对角线逐一尝试，有限步内必然命中——把「不可能搜索完」变成「必然命中」。</p></div>
+          </div>
+
+          <h3 id="s-024-2"><a class="anchor-link" href="#s-024-2" aria-label="跳转到本节">#</a>知识点一：逆向归纳与最优停止</h3>
+          <p>重掷类问题的统一框架。设 \(V_{k}\) 为「还可重掷 \(k\) 次」时游戏对你的期望价值（最优玩法下）。若当前掷出 \(X=x\)，你有两个动作：<b>收下 \(x\)</b>，或<b>放弃 \(x\) 换取还剩 \(k-1\) 次重掷的局面</b>（价值 \(V_{k-1}\)，若重掷要付费 \(c\) 则为 \(V_{k-1}-c\)）。最优动作取两者较大，于是：</p>
+          <div class="math-display">\[ V_{k} = \mathbb{E}\bigl[\max\left(X,\; V_{k-1} - c\right)\bigr] \]</div>
+          <p>怎么读：把「继续玩的价值」当成一张固定面额的支票，每一掷都是「骰子点数」与「支票面额」取最大再平均。边界条件 \(V_{0} = \mathbb{E}[X]\)：不能重掷时只能收下第一掷。<b>最优策略的形状</b>由同一式给出——当且仅当 \(x \lt V_{k-1} - c\) 时重掷。所以重掷类问题的答案永远是一个<b>阈值策略</b>（threshold policy）：点数低于阈值就重掷，否则收下；剩余机会越多，阈值越高（继续价值越大，你越挑剔）。</p>
+          <div class="formula-list">
+            <p><b>价值函数：</b>\( V_{k} = \mathbb{E}[\max(X, V_{k-1}-c)] \)，边界 \(V_{0}=\mathbb{E}[X]\)，自内向外一层层算。</p>
+            <p><b>阈值规则：</b>重掷当且仅当 \( x \lt V_{k-1}-c \)；阈值就是「继续局面的净价值」。</p>
+            <p><b>单调性：</b>\(V_{k}\) 随 \(k\) 递增且趋于 \(X\) 的上确界；免费重掷越多你越挑，付费重掷的门槛则被费用抬高。</p>
+          </div>
+          <div class="intuition-box"><b>为什么阈值必然最优</b><p>收下的收益随 \(x\) 单调递增，继续的价值与 \(x\) 无关（骰子无记忆），两条线只交叉一次——交叉点即阈值。任何「非阈值」策略（比如掷出 2 重掷、掷出 3 收下、掷出 4 又重掷）都可以在不改变其他情形下把中间那段改成跟随阈值而变优，因此最优策略必为阈值形。论证一句就说完，面试时值得主动讲。</p></div>
+
+          <h3 id="s-024-3"><a class="anchor-link" href="#s-024-3" aria-label="跳转到本节">#</a>知识点二：均衡、似然与可数枚举</h3>
+          <p><b>均衡：纯策略走不通时想混合。</b>「三人各写一个正整数、最小且无重复者胜」是典型：任何固定推荐都会被模仿或被绕开——若大家都写 1，写 2 的人独赢；若大家都转向 2，写 1 或 3 的人又占优。推荐不稳定，说明均衡（equilibrium）在混合策略（mixed strategy）里：以一定概率分布随机化，让对手无法针对。判别一个纯策略组合是否均衡的标准动作是<b>逐一检查偏离动机</b>：每个参与者单独改动作能否变好？能则不是均衡。</p>
+          <p><b>似然：猜参数就是选后验最大的那个。</b>观测数据 \(D\) 之后猜参数 \(N\)，赢输规则告诉你损失函数；对「猜对得 1、猜错赔 1」的规则，最优猜测是<b>最大后验估计</b>（maximum a posteriori, MAP）：</p>
+          <div class="math-display">\[ \hat{N}_{\text{MAP}} = \arg\max_{N} \Pr[N \mid D], \qquad \Pr[N \mid D] \propto \Pr[D \mid N]\,\Pr[N] \]</div>
+          <p>怎么读：后验正比于似然乘先验；均匀先验下就取似然最大的那个 \(N\)。这是<a href="018.html">018 章</a>贝叶斯与<a href="028.html">028 章</a>估计理论的直接应用——博弈题里的「怎么猜」本质是统计题。</p>
+          <p><b>可数枚举：dovetailing。</b>未知参数 \((p, m)\) 各取值可数时，把参数表 \(\mathbb{Z} \times \mathbb{Z}\) 按「绝对值之和」分层（对角线）排成一个序列，第 \(t\) 步检验第 \(t\) 对参数。任何真实参数对出现在序列中的位置有限，所以有限步内必然轮到它——<b>不必知道参数，也能保证命中</b>。这个技巧叫对角线枚举（dovetailing），名字来自缝纫机针脚左右交错前进的样子。</p>
+          <div class="intuition-box"><b>三层工具的选用顺序</b><p>先问：有没有对手？没有对手，是期望/最优停止题，用逆向归纳。有对手但对手的行为不依赖你（例如排程、对称位置），找结构性论证（配对、对称、奇偶）。对手行为依赖你且无占优策略，进入均衡分析，先查纯策略、再想混合。绝大多数面试博弈题停在前两层。</p></div>
+
+          <h3 id="s-024-4"><a class="anchor-link" href="#s-024-4" aria-label="跳转到本节">#</a>例题详解一：单局决策与重掷阈值</h3>
+          <div class="worked-example">
+            <p><b>例题 1：掷一枚公平骰子得到点数 \(X\)。你可以收下 \(X\) 元，或选择重掷一次并必须接受新结果。最优策略与游戏期望价值是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>套 \(V_{k} = \mathbb{E}[\max(X, V_{k-1})]\)，免费重掷 \(c=0\)：\(V_{0} = \mathbb{E}[X] = 3.5\)，则</p>
+              <div class="math-display">\[ V_{1} = \mathbb{E}[\max(X,\, 3.5)] = \frac{3.5+3.5+3.5+4+5+6}{6} = \frac{25.5}{6} = 4.25 \]</div>
+              <p><b>推导。</b>阈值规则：重掷当且仅当 \(x \lt 3.5\)，即掷出 1、2、3 重掷，4、5、6 收下。逐项验证阈值两侧：掷出 4 时收下得 4，重掷只得 3.5，收下更优；掷出 3 时重掷 3.5 大于收 3，重掷更优。期望价值 <b>4.25 元</b>：相对不重掷的 3.5 元，重掷权为你增加了 0.75 元。</p>
+              <p><b>检验。</b>另一条独立算法：条件分解 \(V_{1} = \tfrac{3}{6} \times 3.5 + \tfrac{3}{6} \times \tfrac{4+5+6}{3} = 1.75 + 2.5 = 4.25\)，一致。边界自查：若重掷无限次，价值趋于 6（永远挑到 6 才停）；若只能重掷零次，价值 3.5——4.25 落在两者之间且偏近下端，合理，因为只有一次机会。</p>
+              <p><b>面试怎么讲。</b>「先算不重掷的价值 3.5，它就是继续价值，于是策略是低于 3.5 就重掷；期望 \(\mathbb{E}[\max(X,3.5)] = 4.25\)。」一句话点出「继续价值即阈值」，再报数。变式准备：重掷收费 1 元，阈值变为 \(3.5-1 = 2.5\)，只有掷出 1、2 才值得重掷；更多重掷次数的版本在<a href="025.html">025 章</a>例题 1 展开。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2：掷一枚 100 面骰（点数 1 到 100）。你可以收下 \(X\) 元并结束，或付 1 美元放弃当前结果重掷（重掷后面临同样的选择）。最优策略的结构是什么？阈值大约多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>无限视野的最优停止问题，但策略应为一个固定阈值 \(t\)：收下一切 \(x \ge t\)，重掷一切 \(x \lt t\)。在给定 \(t\) 下求平稳价值 \(V(t)\)，再对 \(t\) 求最优。重掷概率 \(\tfrac{t-1}{100}\)，收下时条件期望 \(\tfrac{t+100}{2}\)，重掷花费 1 美元后回到同款局面：</p>
+              <div class="math-display">\[ V = \frac{101-t}{100} \cdot \frac{t+100}{2} + \frac{t-1}{100}\,(V - 1) \]</div>
+              <p><b>推导。</b>解出 \(V\) 关于 \(t\) 的表达式：两边乘 100、移项合并 \(V\) 项：</p>
+              <div class="math-display">\[ V(t) = \frac{t+100}{2} - \frac{t-1}{101-t} \]</div>
+              <p>第一项随 \(t\) 线性上升（更挑剔则收下的均值更高），第二项是重掷费的惩罚。逐点比较整数阈值：\(V(86) \approx 93 - 5.67 = 87.33\)，\(V(87) \approx 93.5 - 6.14 = 87.36\)，\(V(88) \approx 94 - 6.69 = 87.31\)。<b>最优阈值 \(t^{*} = 87\)</b>，期望价值约 <b>87.4 美元</b>。策略结构：掷出 87 及以上收下，86 及以下付 1 美元重掷。</p>
+              <p><b>检验。</b>数量级直觉：不重掷价值 50.5；免费无限重掷价值 100。付费 1 美元的重掷权居然把价值推到 87，说明「便宜的多次重掷权」极其强大——这正是期权价值的雏形（重掷权 = 看跌期权，见<a href="038.html">038 章</a>）。阈值偏高（87 而非 51）的原因：费用低到几乎可忽略时，最优行为逼近「只收最高的那些点数」。若重掷免费，同样方程去掉费用项给出 \(V(t) = \tfrac{t+100}{2}\)，阈值推到 100、价值 100——一致。</p>
+              <p><b>面试怎么讲。</b>面试官明说「不必算出最终数值」，要的是结构：「最优策略是阈值策略——点数不低于 \(t\) 就收，否则付 1 美元重掷；\(t\) 由『收下均值上升』与『重掷费用与次数的平衡』决定，数值大约在 87 附近，价值约 87.4。」再补一句单调性：「费用越贵阈值越低，费用趋于零阈值趋于 100」——展示你理解阈值怎么随参数移动，比报出精确数字更值钱。</p>
+            </div>
+          </div>
+
+          <h3 id="s-024-5"><a class="anchor-link" href="#s-024-5" aria-label="跳转到本节">#</a>例题详解二：结构化猜测与抓兔子</h3>
+          <div class="worked-example">
+            <p><b>例题 3：先从 1 到 1000 均匀抽一个整数 \(N\)，再从 1 到 \(N\) 均匀抽 10 个整数给你看。猜对 \(N\) 赢 1 美元，猜错赔 1 美元。你的策略是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>这是「猜对/猜错」的 0-1 损失，最优猜测是 MAP（知识点二）。设你看到的 10 个数中最大值为 \(M\)。似然函数：</p>
+              <div class="math-display">\[ \Pr[D \mid N] = \left(\frac{1}{N}\right)^{10} \cdot \mathbf{1}\{N \ge M\} \]</div>
+              <p>怎么读：从 1 到 \(N\) 里抽 10 个数，每个都是 \(\tfrac{1}{N}\) 的概率；同时任何数超过 \(N\) 的情形概率为零，所以似然在 \(N \ge M\) 上是 \(\tfrac{1}{N^{10}}\)，其余为零。先验是 \(\tfrac{1}{1000}\) 常数，因此后验 \(\Pr[N \mid D]\) 在 \(N = M, M+1, \dots, 1000\) 上正比于 \(N^{-10}\)。</p>
+              <p><b>推导。</b>\(N^{-10}\) 严格递减，最大值在 \(N = M\) 取得。由于损失是 0-1 型（猜对/猜错），最大化胜率就是取后验众数：</p>
+              <div class="math-display">\[ \hat{N}_{\text{MAP}} = M \]</div>
+              <p><b>猜你看到的最大值</b>。胜率也不难估：\(\Pr[N=M \mid D] = M^{10} \big/ \sum_{j=M}^{1000} j^{10}\)。由于 \(j^{-10}\) 衰减极快，分母几乎等于 \(M^{10}(1 + (1+\tfrac{1}{M})^{-10} + \cdots)\)，第二项已小于 \((11/10)^{-10} \approx 0.386\)，实际胜率通常在 70% 以上。</p>
+              <p><b>检验。</b>直觉核查：\(N\) 不可能小于 \(M\)（观测支撑集），而大 \(N\) 需要十个数恰好全挤在低处的巧合，似然惩罚是十次方的——所以「就猜最大值」既符合直觉又有公式背书。损失函数敏感性：若改罚 \(|\hat{N} - N|\)，最优猜测会略高于 \(M\)（后验均值大于众数），说明「怎么猜」取决于「错了怎么罚」，这一句是面试的加分反思。</p>
+              <p><b>面试怎么讲。</b>「0-1 损失下取 MAP：似然 \(\propto N^{-10}\) 在 \(N \ge M\) 上递减，所以猜 \(M\)。」再主动补损失函数的讨论。这题把博弈题还原成了<a href="028.html">028 章</a>的估计题——认出「这其实是统计」本身就是答案的一半。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4：数轴上每个整数位置有一个盒子（正负无穷延伸）。一只兔子从位置 \(p\) 出发，每一步移动固定距离 \(m\)（\(p\)、\(m\) 都是固定但未知的整数，每步同时你检查一个盒子）。你能保证抓到兔子吗？策略是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>第 \(t\) 步兔子在 \(p + m t\)。兔子的整条轨迹由参数对 \((p, m) \in \mathbb{Z} \times \mathbb{Z}\) 决定，可数多个。你每步只能检查一个位置，看似不可能覆盖——除非把「参数对」而不是「位置」当作搜索对象：第 \(t\) 步检查<b>第 \(t\) 对参数所预言的兔子位置</b>。</p>
+              <p><b>推导。</b>把 \(\mathbb{Z} \times \mathbb{Z}\) 排成序列 \((p_{1}, m_{1}), (p_{2}, m_{2}), \dots\)，要求每对参数出现在有限下标处——标准做法是对角线枚举（dovetailing）：按 \(|p| + |m| = k\) 分层，第 \(k\) 层有限多对，逐层列出。策略：第 \(t\) 步打开盒子：</p>
+              <div class="math-display">\[ \text{box}_{t} = p_{t} + m_{t}\, t \]</div>
+              <p>若真实参数是 \((p^{*}, m^{*})\)，它在序列中的下标记为 \(t^{*}\)（有限）。那么第 \(t^{*}\) 步你检查的正是 \(p^{*} + m^{*} t^{*}\)——恰好是兔子此刻的位置。<b>必然抓到</b>。注意策略完全不需要知道 \(t^{*}\) 是多少，「有限」就够了。</p>
+              <p><b>检验。</b>为什么朴素策略失败：固定猜速度 \(m=1\) 从左往右扫——若兔子 \(m=2\) 同向，永远追不上；对每个速度分别扫到底——每轮无穷长，轮不到第二轮。失败根源都是「在无穷对象上串行穷举」。dovetailing 的修复在于交错推进：所有参数对的检验同时「欠着账」，每个账都有限步内结清。这也解释了为什么要求 \(p\)、\(m\) 是整数（可数）：若 \(m\) 可取任意实数，参数不可数，任何可数步策略都无法覆盖。</p>
+              <p><b>面试怎么讲。</b>「能。把 \((p,m)\) 按对角线排成序列，第 \(t\) 步查第 \(t\) 对参数预言的位置 \(p_{t} + m_{t} t\)。真实参数对的检验时机有限，到点即抓到。」再补可数性边界（实数速度则无保证）。这题考的是把「物理上抓兔子」翻译成「参数空间搜索」——模型转译能力本身就是面试考点。</p>
+            </div>
+          </div>
+
+          <h3 id="s-024-6"><a class="anchor-link" href="#s-024-6" aria-label="跳转到本节">#</a>例题详解三：多人博弈与连胜结构</h3>
+          <div class="worked-example">
+            <p><b>例题 5：你与另外两人各写一个正整数，三数同时亮出。如果你写的数是三人中最小且没有别人与你重复的数，你赢（三人全相同则无人赢）。最优策略是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>三人对称博弈，胜利条件「最小且唯一」制造了两种张力：往小写（1 最容易最小），但又不能和别人撞车。先做均衡分析，再谈实际玩法。</p>
+              <p><b>推导。</b><b>第一步：纯策略推荐不稳定。</b>若三人都写 1，无人赢；任何一人改写 2 即独赢——「全写 1」不是均衡。一般地，考察纯策略组合：三数全同时，改成 1（若原数大于 1）或改成 2（若原数是 1）就能赢，存在偏离动机；两数相同时（如 \(1,1,c\)），写 \(c\) 的人改写 2 即赢，也有偏离动机。有趣的是<b>三数互不相同的组合确实是纯策略纳什均衡</b>（如 \(1,2,3\)：写 1 者已赢，写 2、3 者无论改写什么都只会让他人赢）——但这种均衡要求三人凭空协调「谁写 1」，对对称的局中人不构成可执行的推荐。<b>第二步：对称解必须混合。</b>设每人独立按同一分布抽取。均衡化条件：分布支撑里的每个数 \(k\) 胜率应相等（否则把概率挪向胜率高的数）。以支撑 \(\{1,2,3\}\) 为例做近似计算：设分布 \((p_{1}, p_{2}, p_{3})\)，写 1 的胜率是「别人都不写 1」的概率 \((p_{2}+p_{3})^{2}\)；写 2 的胜率是「别人要么都写 1、要么都不写 1 也不写 2」的概率 \(p_{1}^{2} + p_{3}^{2}\)；写 3 的胜率是 \(p_{1}^{2}+p_{2}^{2}\)。令三者相等解得 \(p_{1} \approx 0.46,\ p_{2} = p_{3} \approx 0.27\)。<b>第三步：诚实声明边界。</b>在这个三数分布下，改写 4（三人撞车时 4 也可能成为最小唯一）的胜率并不更差，说明真正的对称均衡要把质量摊到更多数上、按近似几何速度衰减——精确分布超出面试范围，思路到此已够。</p>
+              <p><b>检验。</b>胜率口径核对：\(p_{1}=0.46, p_{2}=p_{3}=0.27\) 下单人胜率约 \((0.54)^{2} \approx 0.29\)，三人合计约 0.86，其余约 0.14 的概率出现撞车无人赢——量级合理。策略直觉核对：分布质量大头在 1、2，与「最小者赢」的激励方向一致；尾部衰减体现「写大数要靠别人撞车」的弱激励。</p>
+              <p><b>面试怎么讲。</b>分三段：「纯推荐不稳定——全写 1 无人赢，有人改 2 就赢，循环往复；互不相同的三数虽是均衡但需要无法实现的协调；所以对称解是混合策略，把主要概率放在 1、2、3 上并快速衰减。」面试官要听的是均衡论证的过程（偏离—修复—再偏离的循环），不是精确分布。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 6：你要与父亲、兄弟连打三场比赛，顺序二选一：FBF（父—兄—父）或 BFB（兄—父—兄）。你对父亲的胜率是 50%，对兄弟的胜率是 5%（原文如此，兄弟远强于你）。目标是赢下连续两场，选哪个顺序？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>三场独立，胜率依次为 \(p_{1}, p_{2}, p_{3}\)。「连续赢两场」等价于<b>赢下第 2 场且至少赢下第 1、3 场之一</b>：</p>
+              <div class="math-display">\[ P(\text{两连胜}) = p_{2}\,\bigl(p_{1} + p_{3} - p_{1}p_{3}\bigr) \]</div>
+              <p>怎么读：中间那场在两条连赢路径（1-2 与 2-3）上都必经，所以它单独作乘性因子；两端至少赢一场用容斥。这个分解立刻给出直觉——<b>把最有把握的一场放在中间</b>，两端「两张彩票」用容斥合并。</p>
+              <p><b>推导。</b>记 \(p_{F} = 0.5\)、\(p_{B} = 0.05\)。BFB（中间是父亲）：\(P_{\text{BFB}} = 0.5 \times (0.05 + 0.05 - 0.0025) = 0.5 \times 0.0975 = 0.04875\)。FBF（中间是兄弟）：\(P_{\text{FBF}} = 0.05 \times (0.5 + 0.5 - 0.25) = 0.05 \times 0.75 = 0.0375\)。等价地按事件分解核对 \(P_{\text{BFB}}\)：赢第 1、2 场 \(0.05 \times 0.5\)，加上输第 1 场后赢 2、3 场 \(0.95 \times 0.5 \times 0.05\)，合计 \(0.025 + 0.02375 = 0.04875\)。<b>选 BFB</b>，胜率约 4.9% 对 3.8%。</p>
+              <p><b>检验。</b>直觉核查：中间场是瓶颈，胜率 0.5 的对手理应占据瓶颈位；强敌（兄弟）放在两端，只需在两张 5% 彩票中命中一张，而不是在必经之路上全取。反事实检验：若目标改为「三场至少赢两场」（多数胜），结构完全不同——FBF 下赢两场父赛的 \(0.25\) 占主导，\(P_{\text{FBF}} = 0.275\) 远大于 \(P_{\text{BFB}} = 0.05\)，<b>结论反转</b>。这说明「连胜」与「多数胜」是两个不同的优化问题，面试官最爱在这个分叉口追问。</p>
+              <div class="table-wrap"><table><thead><tr><th>目标</th><th>FBF（兄弟居中）</th><th>BFB（父亲居中）</th><th>应选</th></tr></thead><tbody>
+              <tr><td>连续赢两场</td><td>0.0375</td><td>0.04875</td><td>BFB</td></tr>
+              <tr><td>至少赢两场</td><td>0.275</td><td>0.05</td><td>FBF</td></tr>
+              </tbody></table></div>
+              <p><b>面试怎么讲。</b>「连续两胜必经中间场，所以把五成胜率的父亲放中间：BFB，胜率约 4.9%，高于 FBF 的 3.8%。」然后主动抛出反转：「如果目标是赢下多数场，答案反过来选 FBF——两场对父亲的比赛是主要得分来源。」公式一个、数字两行、变式一个，这道题就答满了。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 7：\(N \times N\) 的糖果矩阵中有恰好一颗坏糖果。两人轮流每回合吃掉一整行或一整列（已不存在的行列不可选），吃到坏糖果的人输。你想当先手还是后手？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设坏糖果在第 \(r\) 行第 \(c\) 列。任何时刻局面由「尚存的行集合与列集合」决定。吃掉第 \(r\) 行或第 \(c\) 列的人立刻吃到坏糖果、输掉——所以理性人<b>绝不主动碰这两条线</b>，直到无别的选择。于是所有安全着法就是：吃掉 \(r\) 之外的行（共 \(N-1\) 条）或 \(c\) 之外的列（共 \(N-1\) 条）。</p>
+              <p><b>推导。</b>关键计数：安全着法的总数是：</p>
+              <div class="math-display">\[ (N-1) + (N-1) = 2N - 2 \]</div>
+              <p>与行、列被吃的顺序无关，永远是偶数。两个理性人轮流消耗安全着法，\(2N-2\) 步之后局面必然收缩为「只剩第 \(r\) 行和第 \(c\) 列」，即矩阵只剩坏糖果一颗；这时轮到的<b>先手</b>无路可走，只能吃坏糖果。<b>当后手</b>。后手还有一个漂亮的具体走法（配对策略）：把 \(N-1\) 条安全行与 \(N-1\) 条安全列任意两两配对，对方每吃一条线，你就吃它的配对线——对方的每个安全着法都有安全回应，坏糖果必然最终留给对方。顺带一提，先手也救不了自己：不吃坏线就只剩安全线可耗，而安全线总数是偶数，先手注定最后一个「无安全着法」的人（\(N=1\) 的退化情形同样成立：先手第一步就面对坏糖果）。</p>
+              <p><b>检验。</b>小例核对 \(N=2\)：四颗糖、一颗坏。先手吃安全行（或列），后手吃安全列（或行），只剩坏糖果给先手——先手输，与公式 \(2N-2 = 2\)（偶数）一致。对比类题目：Chomp 类「吃毒巧克力」博弈先手有偷策略论证（strategy stealing）可赢，本题不行——因为先手任意第一步都只是消耗一条安全线，没有「额外一手」可占，奇偶性主导结局。这是「结构论证（计数与配对）先于策略搜索」的范例。</p>
+              <p><b>面试怎么讲。</b>「当后手。坏糖果的行列没人敢碰，安全着法恰好 \(2N-2\) 条、恒为偶数，耗尽后被迫吃坏糖果的一定是先手；后手还可以用行列配对法保证回应。」计数、配对、小例验证三件套讲完，这类位置博弈基本就结束了。</p>
+            </div>
+          </div>
+
+          <h3 id="s-024-7"><a class="anchor-link" href="#s-024-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>五个高频翻车点</b><p>一，重掷题只算「重掷一次的期望 3.5」却忘了和收下值比较——阈值才是策略，期望只是副产品。二，百面骰题试图精确解最优阈值却在方程上纠缠：面试官明说只要结构，先把阈值形式与单调性讲清。三，猜 \(N\) 题去猜均值而非众数：0-1 损失对应 MAP，损失函数换了答案就换。四，连胜题把「连续两胜」当「至少两胜」算：前者必经中间场，后者依赖两端强强联合，结论相反。五，糖果矩阵题试图给先手找必胜策略：安全着法的奇偶计数已经封死了一切策略，先承认计数再谈策略。</p></div>
+          <div class="intuition-box"><b>考官常见变式</b><p>骰子可重掷两次、收费重掷、点数可累计（见 <a href="025.html">025 章</a>例题 1）；猜 \(N\) 改成罚绝对误差、或只给你样本中位数；兔子允许每步加速（参数变为三元组，dovetailing 照用）；FBF/BFB 改成五场三胜或「必须连胜三场」；糖果矩阵改成 \(N \times M\)（\(N \ne M\) 时奇偶性变化，先手是否翻盘值得现场重算——安全着法 \(N+M-2\) 条，奇偶决定生死）。变式的共同套路：先找不变量（计数、奇偶、对称），不变量不够再进入搜索或均衡。</p></div>
+
+          <h3 id="s-024-8"><a class="anchor-link" href="#s-024-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出重掷类问题的价值函数 \(V_{k} = \mathbb{E}[\max(X, V_{k-1}-c)]\) 并解释「继续价值即阈值」。</li>
+            <li>我能算出一次免费重掷的价值 4.25 元，并说明收费重掷如何压低阈值。</li>
+            <li>我能描述百面骰付费重掷的阈值结构（约 87）与其随费用、随重掷次数的单调性。</li>
+            <li>我能在 0-1 损失下用似然 \(\propto N^{-10}\) 推出「猜样本最大值」的 MAP 策略，并指出损失函数改变时答案随之改变。</li>
+            <li>我能用对角线枚举（dovetailing）给出必抓兔子的策略，并说明可数性假设不可去掉。</li>
+            <li>我能论证最小唯一数博弈没有稳定的纯策略推荐，并描述对称混合策略的定性结构。</li>
+            <li>我能用「中间场必经」的分解式解释为什么连胜目标选 BFB、多数胜目标选 FBF。</li>
+            <li>我能用安全着法计数 \(2N-2\) 与行列配对论证糖果矩阵后手必胜。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="023.html">← 023. 概率十：杂题精选</a><a href="025.html">025. 博弈二：破产、复注与下注尺度 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>009. 组合枚举与位运算：排列、子集与符号数 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 009</div>
+        <div class="brand-title">组合枚举与位运算：排列、子集与符号数</div>
+        <div class="brand-meta">排列、子集的回溯与字典序模板，加补码与溢出的底层规则。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-009-1">学习目标：在指数空间里有序行走</a><a class="toc-link" href="#s-009-2">回溯模板：全排列与子集（含去重）</a><a class="toc-link" href="#s-009-3">置换的字典序：next_permutation 的原理</a><a class="toc-link" href="#s-009-4">位运算子集枚举：mask 遍历与 lowbit</a><a class="toc-link" href="#s-009-5">有符号与无符号：补码、环绕与未定义行为</a><a class="toc-link" href="#s-009-6">例题详解 I：手写 next_permutation</a><a class="toc-link" href="#s-009-7">例题详解 II：含重复元素的全排列去重</a><a class="toc-link" href="#s-009-8">例题详解 III：位运算三件套</a><a class="toc-link" href="#s-009-9">例题详解 IV：无符号溢出追踪实例</a><a class="toc-link" href="#s-009-10">误区与边界</a><a class="toc-link" href="#s-009-11">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link current" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="dsa" data-title="组合枚举与位运算：排列、子集与符号数">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>009. 组合枚举与位运算：排列、子集与符号数</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>本章解决组合枚举的「怎么走遍不迷路」与整数的「同一串比特两种解释」两类问题：全排列与子集的回溯模板（含重复元素去重）、字典序意义的 next_permutation 原理与手写、位掩码子集枚举与 lowbit 技巧，以及源题库提纲点名的「difference btw Unsigned vs signed numbers」——补码表示、无符号环绕、有符号溢出未定义行为与 INT_MIN 陷阱。</p></aside>
+          <aside class="next-step"><b>下一步建议</b><p>读完本章后进入 <a href="010.html">010. 进阶概念：外部排序与 NP 完全</a>——枚举的复杂度上界（\(n!\) 与 \(2^n\)）恰好引出「指数之外怎么办」的两个话题：数据放不进内存、问题本身 NP 难。</p></aside>
+          <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法板块核心知识地图：组合枚举与位运算所处的位置"></figure>
+
+          <h3 id="s-009-1"><a class="anchor-link" href="#s-009-1" aria-label="跳转到本节">#</a>学习目标：在指数空间里有序行走</h3>
+          <p>枚举类面试题的共同点是<b>答案空间指数级</b>：n 个元素的全排列有 \(n!\) 个、子集有 \(2^n\) 个，任何一个都不可能「算得比输出更快」。所以这类题考的从来不是聪明，而是<b>模板与秩序</b>：回溯（backtracking）把「每一步选什么」组织成一棵决策树上的深度优先遍历，字典序算法（next_permutation）把全部排列串成一条有下一条的链，位掩码（bitmask）把「选或不选」压缩成一个整数的比特。三条路都能走遍全空间而不重复、不遗漏——「有序行走」就是本章的第一个关键词。</p>
+          <p>第二个关键词是<b>底层表示</b>。位运算的另一面是整数的编码：同一串比特，按有符号（signed）与无符号（unsigned）解释会得到完全不同的数。量化系统里这不是偏门知识——价格常用无符号整数计数 tick、时间戳用 64 位无符号毫秒、哈希与随机数全是位运算；同时有符号溢出在 C++ 里是未定义行为（undefined behavior, UB），能悄无声息地毁掉一个看似正确的比较。源题库提纲在算法部分点名「Bit Manipulation &amp; Numbers — difference btw Unsigned vs signed numbers」，本章把它讲透：补码（two's complement）怎么来、无符号环绕为什么是良定义的、溢出判断为什么必须「先判后算」。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>回溯 = 决策树 DFS</b><p>维护「路径、选择列表、结束条件」三要素，进入分支前做选择、返回后撤销选择。去重 = 在树上剪掉「同一层等价」的分支：先排序，再让相同元素按固定顺序被选。</p></div>
+            <div class="concept-card"><b>字典序 = 全排列上的下一格</b><p>next_permutation 给出「恰好比当前大的最小排列」，四步即可手写；重复元素被自动折叠，从最小排列走到最大恰好经过每个相异排列一次。</p></div>
+            <div class="concept-card"><b>补码 = 一套加法器管正负</b><p>负值 \(-v\) 编码为 \(2^w - v\)（w 位），加减法无需区分符号。无符号运算是模 \(2^w\) 的时钟算术，良定义；有符号溢出则是 UB，判溢出要靠位与范围检查，不能先加后比。</p></div>
+          </div>
+
+          <h3 id="s-009-2"><a class="anchor-link" href="#s-009-2" aria-label="跳转到本节">#</a>回溯模板：全排列与子集（含去重）</h3>
+          <p><b>三个要素。</b>回溯函数任一时刻由三样东西完整描述：<b>路径</b>（path，已做的选择序列）、<b>选择列表</b>（当前还能选哪些元素）、<b>结束条件</b>（路径长度达到目标即收集答案）。for 循环横向遍历同一层的所有选择，递归纵向深入一层，函数返回前撤销刚才的选择。全排列与子集的差别只在「选择列表怎么定义」：排列用 used 数组标记「已在路径上」；子集用 start 索引保证「只向右走」，从而把组合与排列区分开。</p>
+          <pre><code>vector&lt;vector&lt;int&gt;&gt; res;      // 收集所有答案
+vector&lt;int&gt; path;              // 当前路径
+vector&lt;bool&gt; used;             // 全排列：标记元素是否已在路径上
+
+void backtrackPerm(vector&lt;int&gt;&amp; a) {          // 模板一：全排列
+    if ((int)path.size() == (int)a.size()) {   // 结束条件：路径填满
+        res.push_back(path);
+        return;
+    }
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        if (used[i]) continue;                 // 已在路径上，跳过
+        used[i] = true;
+        path.push_back(a[i]);                  // 做选择
+        backtrackPerm(a);                      // 深入下一层
+        path.pop_back();                       // 撤销选择
+        used[i] = false;
+    }
+}</code></pre>
+          <pre><code>void backtrackSubsets(vector&lt;int&gt;&amp; a, int start) {  // 模板二：子集
+    res.push_back(path);   // 每个结点本身就是一个子集（含空集）
+    for (int i = start; i &lt; (int)a.size(); ++i) {
+        path.push_back(a[i]);        // 选 a[i]
+        backtrackSubsets(a, i + 1);  // 只允许从 i+1 往后选，组合不重
+        path.pop_back();             // 不选 a[i]，回到本层继续
+    }
+}</code></pre>
+          <p>怎么读这两段模板：排列的树每一层「所有还没用的元素」都是候选，叶子是完整排列；子集的树每个结点（不只是叶子）都是一个合法子集，start 参数保证 \(\{1,2\}\) 与 \(\{2,1\}\) 只出现一次。子集还有第二种等价写法——每个元素「选/不选」的二叉决策，n 层决策后 \(2^n\) 个叶子，这与位掩码一一对应（第 i 位是 1 即选 \(a_i\)），是 s-009-4 节的伏笔。</p>
+          <p><b>去重：排序 + 同层剪枝。</b>输入含重复元素时（如 [1,1,2]），朴素模板会输出重复排列。标准做法分两步：先排序使相同元素相邻；再在 for 循环里剪掉「同一层的等价分支」。子集/组合的去重条件是「\(i \gt start\) 且 \(a_i = a_{i-1}\) 则跳过」；全排列因为每层候选都要从头扫，条件换成「\(a_i = a_{i-1}\) 且前一个同值元素尚未进入路径则跳过」，例题 2 会完整推导。剪枝的本质是把「相同数值的元素」规定一个被选的先后次序，等价的选法只保留一种。</p>
+          <div class="formula-list">
+            <p><b>全排列计数：</b>n 个互异元素的排列数 \(P(n) = n!\)；含重复元素（值 j 出现 \(c_j\) 次）时相异排列数是多重集排列 \(\frac{n!}{\prod_j c_j!}\)。</p>
+            <p><b>子集计数：</b>n 个互异元素的子集数 \(2^n\)；含重复元素时按「每种值取 0 到 \(c_j\) 个」计算，即 \(\prod_j (c_j + 1)\)。</p>
+            <p><b>复杂度：</b>生成全部答案的时间是输出敏感的——排列 \(O(n \cdot n!)\)、子集 \(O(n \cdot 2^n)\)（每个答案 O(n) 复制），已是最优阶；递归深度 O(n)。</p>
+          </div>
+          <div class="intuition-box"><b>为什么「先排序」是去重的前提</b><p>剪枝条件依赖「相同元素相邻」这一事实（比较 \(a_i\) 与 \(a_{i-1}\)），不排序时相同值散落各处，条件既难写也更难论证。排序同时给出一个干净的语义：把重复元素想成「排好队的同一个人」，规定它们只能按队首到队尾的顺序进入路径。这与 <a href="007.html">007 章</a>稳定排序的讨论同源——先确立一个全序，等价对象才谈得上「只取第一个」。</p></div>
+
+          <h3 id="s-009-3"><a class="anchor-link" href="#s-009-3" aria-label="跳转到本节">#</a>置换的字典序：next_permutation 的原理</h3>
+          <p><b>字典序（lexicographic order）。</b>两个排列从左到右逐位比较，第一个不同位置上较小者为小。按此序，所有排列构成一个全序，最小是升序、最大是降序。标准库的 <code>std::next_permutation</code> 把这个序变成可执行的操作：给定当前排列，产出「恰好比它大的最小排列」；若当前已是最大，则翻回最小并返回 false。于是枚举全部排列只需一个 do-while 循环——这就是字典序引擎与回溯引擎的分工。</p>
+          <p><b>四步算法。</b>对排列 \(a[0..n-1]\)：</p>
+          <div class="formula-list">
+            <p><b>第一步找 pivot：</b>从右向左找第一个满足 \(a_i \lt a_{i+1}\) 的下标 i（最右的升序相邻对）。不存在则整个排列是非升的，已是字典序最大。</p>
+            <p><b>第二步找 successor：</b>在后缀 \(a[i+1..n-1]\)（它必然非升）中从右向左找第一个满足 \(a_j \gt a_i\) 的下标 j——由于后缀非升，这个 j 恰指向「大于 \(a_i\) 的最小元素」。</p>
+            <p><b>第三步交换：</b>swap \(a_i\) 与 \(a_j\)。</p>
+            <p><b>第四步反转后缀：</b>把 \(a[i+1..n-1]\) 反转，使它从非升变成非降——即这些元素的最小排列。</p>
+          </div>
+          <p><b>为什么这恰是「下一个」。</b>后缀非升意味着：保持前缀 \(a[0..i]\) 不变的前提下，后缀已经是这些元素能组成的<b>最大</b>排列，不可能再变大。所以下一个排列必须改动某个位置 \(\le i\)；而字典序中前面的位置优先级最高，正确的策略是保住最长前缀 \(a[0..i-1]\)，把位置 i 增大到「后缀中大于 \(a_i\) 的最小值」（增量最小的可行选择），再把剩余元素排成最小序（非降），反转即得。三步合起来：前缀不动、第 i 位最小可行增大、后缀取最小——每一步都取最小可行，所以整体是紧邻的下一个。这个「先定位最后一个可以进位的位置，再最小幅度进位」的结构，与十进制数加一的进位完全同构。</p>
+          <p><b>复杂度。</b>单次调用最坏 \(O(n)\)（找 pivot 可能扫全数组）。但从最小排列出发枚举全部 \(n!\) 个排列，每次调用的<b>均摊代价是 \(O(1)\)</b>：从右向左扫描的长度至少为 m，当且仅当末 m 个元素非升，均匀随机排列下概率为 \(\frac{1}{m!}\)，于是期望扫描长度为</p>
+          <div class="math-display">\[\mathbb{E}[\text{扫描长度}] = \sum_{m \ge 1} \Pr[\text{长度} \ge m] = \sum_{m \ge 1} \frac{1}{m!} = e - 1 \approx 1.72,\]</div>
+          <p>怎么读：绝大多数调用只看队尾一两个元素就找到 pivot，需要回望很长的可能性随 m 阶乘衰减。因此「用 next_permutation 走完一圈」的总代价是 \(O(n!)\)，与输出规模同阶，均摊每次 O(1)——这是面试里展示「会用」与「懂原理」的分水岭。</p>
+          <div class="intuition-box"><b>重复元素的自动去重</b><p>算法各步用的是严格比较（\(\lt\) 与 \(\gt\)），重复元素在每个「字典序档位」只出现一次，从最小走到最大恰好经过每个<b>相异</b>排列一次，总数即 \(\frac{n!}{\prod_j c_j!}\)。所以「含重复元素枚举全部排列」有两个标准答案：回溯 + 同层剪枝（例题 2），或排序后反复 next_permutation（例题 1）。两条路一个原理：给等价对象定序，只走第一个。</p></div>
+
+          <h3 id="s-009-4"><a class="anchor-link" href="#s-009-4" aria-label="跳转到本节">#</a>位运算子集枚举：mask 遍历与 lowbit</h3>
+          <p><b>子集即掩码。</b>n 个元素的任意子集与 n 位整数的比特一一对应：第 i 位为 1 表示选 \(a_i\)。于是「枚举全部子集」就是一个 for 循环：</p>
+          <pre><code>for (int mask = 0; mask &lt; (1 &lt;&lt; n); ++mask) {  // 0 到 2^n - 1
+    // 测试第 i 位是否被选：if (mask &gt;&gt; i &amp; 1) ...
+}</code></pre>
+          <p>怎么读：<code>1 &lt;&lt; n</code> 是 \(2^n\)，mask 遍历的次序恰是「按数值递增」，也就是「按字典序枚举选择向量」。注意两个坑：n 达到 31 时 <code>1 &lt;&lt; 31</code> 在有符号 int 上溢出（见 s-009-5），应写 <code>1u &lt;&lt; n</code> 或改用 64 位；循环变量与 mask 同为无符号或同为有符号，避免混用比较（<code>-1 &lt; 1u</code> 为 false 的陷阱同源）。</p>
+          <p><b>枚举 x 的所有子集。</b>更进阶的套路：不枚举全集，只枚举某个给定掩码 x 的子集（状态压缩 DP 优化里的高频操作）：</p>
+          <pre><code>for (int s = x; ; s = (s - 1) &amp; x) {  // 依数值递减访问 x 的每个子集
+    visit(s);                          // 含 x 自身与空集 0
+    if (s == 0) break;                 // 空集是最后一站，漏判即死循环
+}</code></pre>
+          <p>怎么读：<code>s - 1</code> 把 s 最低位的 1 借位减掉、其后的 0 全变 1；<code>&amp; x</code> 把不属于 x 的位重新抹掉。两个动作合起来等价于「把 s 限制在 x 的位上做二进制减一」，所以循环严格递减、恰有 \(2^{\mathrm{popcount}(x)}\) 圈（x 的每个 1 位有「在 s 中」与「不在 s 中」两种状态）。把所有 x 的子集枚举量加总还有一个漂亮的封闭形式：</p>
+          <div class="math-display">\[\sum_{x=0}^{2^n - 1} 2^{\mathrm{popcount}(x)} = 3^n,\]</div>
+          <p>怎么读：每个元素有三种状态——不在 x 中、在 x 中但不在 s 中、同时在 x 与 s 中——独立相乘得 \(3^n\)。这是「枚举子集的子集」类状压 DP 复杂度的标准证据。</p>
+          <p><b>lowbit 与清最低位。</b>两个原子操作贯穿全部位技巧：<b>lowbit</b> 取最低位的 1，表达式 <code>x &amp; (-x)</code>；<b>清最低位</b>，表达式 <code>x &amp; (x - 1)</code>。lowbit 的原理正是补码：\(-x\) 的编码是「按位取反再加一」，它恰把 x 最低位 1 所在位保持为 1、更低位全部回到 0、更高位全部反转，按位与后只剩最低位的 1。以 \(x = 12 = (1100)_2\) 为例：\(-x\) 在 32 位下是 \((\ldots10100)_2\)，\(x \mathbin{\&amp;} (-x) = (0100)_2 = 4\)。lowbit 是树状数组（Fenwick tree）的核心操作；清最低位则给出计数位 1 的 Brian Kernighan 写法——每消一个 1 循环一次，只循环「位 1 的个数」次。</p>
+          <div class="table-wrap"><table><thead><tr><th>目的</th><th>表达式</th><th>说明</th></tr></thead><tbody>
+          <tr><td>取最低位的 1（lowbit）</td><td><code>x &amp; (-x)</code></td><td>补码使最低位 1 以下保持、以上翻转；树状数组核心</td></tr>
+          <tr><td>清最低位的 1</td><td><code>x &amp; (x - 1)</code></td><td>popcount 迭代、判 2 的幂都靠它</td></tr>
+          <tr><td>判断 2 的幂</td><td><code>x != 0 &amp;&amp; (x &amp; (x - 1)) == 0</code></td><td>2 的幂恰有一个 1 位；有符号时守卫要用 <code>x &gt; 0</code></td></tr>
+          <tr><td>取第 i 位</td><td><code>(x &gt;&gt; i) &amp; 1</code></td><td>先移位再取位，避免构造大掩码</td></tr>
+          <tr><td>置 / 清第 i 位</td><td><code>x | (1 &lt;&lt; i)</code>、<code>x &amp; ~(1 &lt;&lt; i)</code></td><td>状态压缩 DP 的读写原语</td></tr>
+          </tbody></table></div>
+
+          <h3 id="s-009-5"><a class="anchor-link" href="#s-009-5" aria-label="跳转到本节">#</a>有符号与无符号：补码、环绕与未定义行为</h3>
+          <p><b>补码（two's complement）的定义。</b>w 位编码 \(b_{w-1} \ldots b_1 b_0\) 按有符号解释的值是</p>
+          <div class="math-display">\[\mathrm{val}(b) = -b_{w-1} \cdot 2^{w-1} + \sum_{i=0}^{w-2} b_i \cdot 2^i,\qquad -v \;\mapsto\; 2^w - v.\]</div>
+          <p>怎么读：唯一的变化是最高位（符号位）带负权重 \(-2^{w-1}\)。于是 \(-1\) 的 8 位编码是 \(256 - 1 = 255 = (11111111)_2\)——一串全 1；\(-128\) 是 \(256 - 128 = 128 = (10000000)_2\)。补码的精妙在于加法器无需任何改造：\(x + (-v)\) 的位级运算与无符号加法完全相同，一套电路管两种解释。C++20 起标准明文规定补码；此前是「实现定义但事实上全是补码」。</p>
+          <div class="table-wrap"><table><thead><tr><th>位模式（w = 8）</th><th>按 int8_t 解释</th><th>按 uint8_t 解释</th></tr></thead><tbody>
+          <tr><td>1000 0000</td><td>−128</td><td>128</td></tr>
+          <tr><td>1111 1111</td><td>−1</td><td>255</td></tr>
+          <tr><td>1111 1110</td><td>−2</td><td>254</td></tr>
+          <tr><td>0000 0000</td><td>0</td><td>0</td></tr>
+          <tr><td>0111 1111</td><td>127</td><td>127</td></tr>
+          </tbody></table></div>
+          <p>同一串比特、两种值——这就是「difference between unsigned and signed numbers」的全部来源。位数放宽到 32：int 的范围是 \([-2^{31}, 2^{31} - 1]\)，unsigned int 是 \([0, 2^{32} - 1]\)，编码完全共享。</p>
+          <p><b>无符号运算：模 \(2^w\) 的时钟算术。</b>无符号加、减、乘的结果定义为「数学结果对 \(2^w\) 取模」，标准保证这一环绕（wraparound）<b>良定义</b>：减出负数会绕到巨大值，\(0u - 1 = 4294967295u\)；加法超过上限绕回小值。这像钟面上 23 点加 2 小时等于 1 点，不是错误而是定义。量化场景里时间戳差、累计计数器（可能回绕）、哈希混合都依赖这个语义。</p>
+          <p><b>有符号溢出：未定义行为。</b>signed 加减乘移位一旦超出表示范围，C++ 标准直接宣布程序行为未定义——不是「环绕」，而是<b>编译器有权假设它永不发生</b>。后果是「先算后比」的溢出检测完全失效：</p>
+          <pre><code>bool addOverflowsBad(int a, int b) {
+    int s = a + b;      // 若真溢出，这一行已经 UB
+    return s &lt; a;       // 编译器据「不溢出」假设可将其优化为 return false
+}</code></pre>
+          <p>正确姿势是<b>先判后算</b>——用范围或位检查代替「加完再比」：</p>
+          <pre><code>bool addOverflows(int a, int b) {     // 正确：先判后算
+    if (b &gt; 0 &amp;&amp; a &gt; INT_MAX - b) return true;   // 上溢预判
+    if (b &lt; 0 &amp;&amp; a &lt; INT_MIN - b) return true;   // 下溢预判
+    return false;   // 生产代码可直接用 __builtin_add_overflow(a, b, &amp;r)
+}</code></pre>
+          <p><b>混算转换规则与三个经典陷阱。</b>同宽度的有符号与无符号混合运算时，有符号操作数被<b>转换为无符号</b>（usual arithmetic conversions），于是 <code>-1 &lt; 1u</code> 先把 −1 转成 4294967295 再比较，结果为 false；<code>v.size() - 1</code> 在 v 为空时得到 SIZE_MAX 而非 −1；反向遍历写成 <code>for (size_t i = v.size() - 1; i &gt;= 0; --i)</code> 则 i 永远大于等于 0，死循环加越界。第三个陷阱是 <b>INT_MIN 取负</b>：数学值 \(+2^{31}\) 不可表示，<code>-INT_MIN</code> 与 <code>abs(INT_MIN)</code> 都是 UB，补码机多半原地返回 INT_MIN（仍是负数），安全写法是先转到更宽类型或无符号。例题 4 将逐一追踪这些数值。</p>
+          <div class="formula-list">
+            <p><b>无符号环绕：</b>\(a + b\) 的结果定义为 \((a + b) \bmod 2^w\)，良定义；检测上溢可用「和小于加数」：\((a + b) \bmod 2^w \lt a\) 当且仅当 \(a + b \ge 2^w\)（仅对无符号成立）。</p>
+            <p><b>有符号溢出：</b>超出 \([-2^{w-1}, 2^{w-1} - 1]\) 即 UB；检测必须预判（如 \(b \gt 0\) 时 \(a \gt \mathrm{INT\_MAX} - b\)）或转宽类型/无符号后运算。</p>
+            <p><b>INT_MIN 陷阱：</b>\(-(-2^{31}) = 2^{31}\) 不可表示，取负与取绝对值皆 UB；安全出口是 <code>(unsigned)x</code> 或 <code>-(long long)x</code>。</p>
+          </div>
+          <div class="intuition-box"><b>「无符号是承诺，有符号是信任」</b><p>写无符号时你向编译器承诺「环绕正是我要的」（计数器、差值、位模式），它给你确定的模运算；写有符号时你被要求信任「数学结果必在范围内」，一旦越界契约破裂，优化器可能做出任何事。所以工程守则很朴素：位模式与模运算用无符号，可能过界的算术用更宽类型或预判，混用比较前先想 <code>-1 &lt; 1u</code>。UBSan（undefined behavior sanitizer）能在测试期立刻抓到这类问题。</p></div>
+
+          <h3 id="s-009-6"><a class="anchor-link" href="#s-009-6" aria-label="跳转到本节">#</a>例题详解 I：手写 next_permutation</h3>
+          <div class="worked-example">
+            <p><b>例题 1：给定一个整数数组，将其原地重排为字典序的下一个排列；若已是最大排列，则重排为最小排列。要求手写实现并走查一个含重复元素的例子（对应 LeetCode 31「下一个排列」，即 std::next_permutation 的手写版）。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>「下一个排列」= 恰好比当前大的最小排列。按 s-009-3 的四步：找最右升序对定 pivot、在后缀找大于 pivot 的最小元素、交换、反转后缀。正确性三句话：后缀非升说明前缀不动时已到顶；字典序前面的位置优先，所以保住最长前缀、只推进位置 i；推进幅度取最小（successor），其余元素排成最小序（反转后缀）。</p>
+              <pre><code>bool nextPerm(vector&lt;int&gt;&amp; a) {              // 返回 false 表示已是最大排列
+    int n = (int)a.size(), i = n - 2;
+    while (i &gt;= 0 &amp;&amp; a[i] &gt;= a[i + 1]) --i;  // 1) 最右升序相邻对的前一个下标
+    if (i &lt; 0) {                              // 整个数组非升：已是字典序最大
+        reverse(a.begin(), a.end());          // 翻回最小，进入下一轮循环
+        return false;
+    }
+    int j = n - 1;
+    while (a[j] &lt;= a[i]) --j;                // 2) 从右向左第一个大于 a[i] 的元素
+    swap(a[i], a[j]);                         // 3) 最小可行「进位」
+    reverse(a.begin() + i + 1, a.end());      // 4) 后缀反转为非降，即最小排列
+    return true;
+}</code></pre>
+              <p>用法即 do-while 循环：<code>sort(a.begin(), a.end()); do { emit(a); } while (nextPerm(a));</code>，从最小排列不重不漏走完全部相异排列。</p>
+              <p><b>数值走查。</b>取 \(a = [1, 5, 8, 4, 7, 6, 5, 3, 1]\)：第一步从右扫，3 与 1 非升、5 与 3 非升、6 与 5 非升、7 与 6 非升，到 \(a_3 = 4 \lt a_4 = 7\) 停下，pivot 下标 \(i = 3\)；第二步从右找第一个大于 4 的元素，跳过 1、3、再到 \(a_6 = 5\) 停下，\(j = 6\)（注意后缀非升保证 5 正是「大于 4 的最小值」，且重复的 5 不会造成歧义）；第三步交换得 \([1, 5, 8, 5, 7, 6, 4, 3, 1]\)；第四步反转下标 4 起的后缀 \([7,6,4,3,1] \to [1,3,4,6,7]\)，最终 \([1, 5, 8, 5, 1, 3, 4, 6, 7]\)。再如 \([3,2,1]\)：找不到升序对，返回 false 并翻转为 \([1,2,3]\)。三元素完整圈：123 → 132 → 213 → 231 → 312 → 321 → 回到 123。</p>
+              <p><b>复杂度与边界。</b>单次最坏 \(O(n)\)、均摊 \(O(1)\)（全枚举期望扫描 \(e - 1 \approx 1.72\) 位，s-009-3 已推导）；空间 \(O(1)\)，纯原地。边界：单元素（i 初始为 −1，直接翻回自身，正确）；全相等元素（同理，只产生一个排列）；已是最大（返回 false 语义要向调用方说明）；重复元素由严格比较自动折叠，无需额外去重代码。</p>
+              <p><b>面试怎么讲。</b>先讲进位类比：「找最后一个还能进位的位置，用最小的幅度进位，其余部分重置为最小」。写完代码立刻用 [1,2,3] 走一圈验证，再主动补均摊分析——「枚举全圈的期望扫描长度是 \(e - 1\)，均摊 O(1)」是让考官记住你的那一句。</p>
+            </div>
+          </div>
+
+          <h3 id="s-009-7"><a class="anchor-link" href="#s-009-7" aria-label="跳转到本节">#</a>例题详解 II：含重复元素的全排列去重</h3>
+          <div class="worked-example">
+            <p><b>例题 2：给定可含重复数字的数组（如 [1,1,2]），返回所有不重复的全排列。要求回溯实现，解释剪枝条件为什么成立，并与 next_permutation 方案对照（对应 LeetCode 47「全排列 II」）。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>重复的根源是决策树里存在「同一层、等价选择」的分支：前缀相同、本轮分别选第 1 个 1 或第 2 个 1，产生的子树完全一样。剪枝策略：排序使相同元素相邻，并规定<b>同值元素必须按索引顺序进入路径</b>——在某层若 \(a_i = a_{i-1}\) 而 \(a_{i-1}\) 尚未进入路径（used[i-1] 为 false），说明正在尝试「跳过前一个、选当前这个」，这与「选前一个、跳过当前」等价，剪掉当前分支。</p>
+              <pre><code>vector&lt;vector&lt;int&gt;&gt; permuteUnique(vector&lt;int&gt;&amp; a) {
+    sort(a.begin(), a.end());            // 去重前提：同值元素相邻
+    res.clear(); path.clear();
+    used.assign(a.size(), false);
+    backtrackDup(a);
+    return res;
+}
+
+void backtrackDup(vector&lt;int&gt;&amp; a) {
+    if (path.size() == a.size()) { res.push_back(path); return; }
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        if (used[i]) continue;           // 已在路径上
+        // 同层剪枝：与前一元素同值、且它还没被选，则当前分支是等价重复
+        if (i &gt; 0 &amp;&amp; a[i] == a[i - 1] &amp;&amp; !used[i - 1]) continue;
+        used[i] = true; path.push_back(a[i]);
+        backtrackDup(a);
+        path.pop_back(); used[i] = false;
+    }
+}</code></pre>
+              <p><b>数值走查。</b>\(a = [1, 1, 2]\)（已排序）。根层候选 1（第 0 个）、1（第 1 个）、2：选第 0 个 1 合法；轮到第 1 个 1 时因 \(a_1 = a_0\) 且 used[0] 为 false 被剪；选 2 合法。如此展开，最终恰好得到 \([1,1,2]\)、\([1,2,1]\)、\([2,1,1]\) 三个排列——与多重集公式 \(\frac{3!}{2! \cdot 1!} = 3\) 一致，朴素模板会输出 6 个（每个重复一次）。</p>
+              <p><b>与 next_permutation 对照。</b>两方案共享同一原理「定序消等价」：回溯版在决策树上按层剪枝，字典序版在最终排列的全序上只走相邻相异排列。工程选择看需求：要迭代产出、断点续跑、或输入基本有序，用 next_permutation（均摊 O(1) 一格）；要按树形结构加更多约束（如剪掉不满足条件的分支），用回溯。子集的去重同型：排序后条件改写为 <code>i &gt; start &amp;&amp; a[i] == a[i-1]</code> 时跳过（对应 LeetCode 90，[1,2,2] 得 6 个子集），与例题 2 同型，仅「对象从排列换成子集、start 取代 used 作层标识」不同。</p>
+              <p><b>复杂度与边界。</b>时间 \(O(n \cdot k)\)，其中 \(k = \frac{n!}{\prod_j c_j!}\) 是相异排列数（输出敏感）；空间 \(O(n)\) 递归深度加 used。边界：全相等元素（\(k = 1\)，剪枝保证只输出一次）；空数组（返回仅含空排列或空集，按题意定义）；必须先排序，否则剪枝条件失效；swap 型排列写法配去重极易出错（需要按值去重的集合判定），面试别冒险。</p>
+              <p><b>面试怎么讲。</b>先画 [1,1,2] 的两层树指出重复分支，再给剪枝条件并强调「规定同值元素的入选次序」这一不变量；最后补一句对照——「也可以排序后反复调用 next_permutation，重复元素自动折叠」，展示你把 s-009-3 与 s-009-2 串成了一条线。</p>
+            </div>
+          </div>
+
+          <h3 id="s-009-8"><a class="anchor-link" href="#s-009-8" aria-label="跳转到本节">#</a>例题详解 III：位运算三件套</h3>
+          <div class="worked-example">
+            <p><b>例题 3：三个高频位运算小题一次讲清——(a) 判断一个整数是否为 2 的幂（LeetCode 231）；(b) 统计整数的二进制表示中 1 的个数（LeetCode 191）；(c) 枚举掩码 x 的所有子集，并用 lowbit 解释每一站。</b></p>
+            <div class="solution">
+              <p><b>(a) 判 2 的幂。</b>2 的幂的二进制恰有一个 1 位（\(2^k = (1\underbrace{0\ldots0}_{k})_2\)），<code>x &amp; (x - 1)</code> 恰好消去最低位的 1：若 x 只有这一个 1，结果为 0。因此判定式是「非零且清最低位后归零」。陷阱：用有符号 int 时守卫必须写 <code>x &gt; 0</code>——INT_MIN 的位模式 \((1000\ldots0)_2\) 清最低位后也是 0，会被误判为「2 的幂」，而它根本是负数；若以 unsigned 视角，\(2^{31}\) 确实是 2 的幂，判定应当为真。结论对错取决于「你声明的是什么类型」，这本身就是符号数考点的活例子。</p>
+              <p><b>(b) 统计位 1。</b>Brian Kernighan 写法每轮消一个 1，循环次数恰为 popcount，最坏仍 \(O(w)\) 但对稀疏位模式极快；标准工具是 <code>__builtin_popcount</code> 与 C++20 的 <code>std::popcount</code>（多数 CPU 有 POPCNT 指令，O(1)）。</p>
+              <p><b>(c) 枚举 x 的子集。</b>循环 <code>s = (s - 1) &amp; x</code> 从 x 出发按数值递减走遍每个子集；lowbit 视角看每一站的变化：<code>s - 1</code> 借位减掉 s 的最低位 1（设其在第 t 位），第 t 位变 0、更低位全变 1，再与 x 相与抹掉不属于 x 的位——相当于「x 位域内的减一」。</p>
+              <pre><code>bool isPowerOfTwo(uint32_t x) {          // (a) 2 的幂恰有一个 1 位
+    return x != 0 &amp;&amp; (x &amp; (x - 1)) == 0;
+}   // 若参数是 int，守卫必须写成 x &gt; 0，防 INT_MIN 误判
+
+int popcount(uint32_t x) {              // (b) 每消一个 1 循环一次
+    int c = 0;
+    while (x) { x &amp;= x - 1; ++c; }      // 清最低位的 1
+    return c;
+}
+
+void enumerateSubmasks(uint32_t x) {    // (c) x 的全部子集（含 0 与 x）
+    for (uint32_t s = x; ; s = (s - 1) &amp; x) {
+        visit(s);                       // 依数值递减次序出现
+        if (s == 0) break;              // 空集是终点，漏判即死循环
+    }
+}</code></pre>
+              <p><b>数值走查。</b>取 \(x = (10110)_2 = 22\)（popcount 为 3，应有 \(2^3 = 8\) 个子集）：22 → <code>(21)&amp;22</code> = \((10101)_2 \mathbin{\&amp;} (10110)_2 = (10100)_2 = 20\) → <code>(19)&amp;22</code> = 18 → <code>(17)&amp;22</code> = 16 → <code>(15)&amp;22</code> = 6 → <code>(5)&amp;22</code> = 4 → <code>(3)&amp;22</code> = 2 → <code>(1)&amp;22</code> = 0，共 8 站：{22, 20, 18, 16, 6, 4, 2, 0}，恰为位域 {1,2,4} 上的全部组合、严格递减、无一重复。</p>
+              <p><b>复杂度与边界。</b>(a) \(O(1)\)；(b) \(O(\mathrm{popcount})\)；(c) \(O(2^{\mathrm{popcount}(x)})\)，全部 x 的子集总枚举量 \(3^n\)。边界：x = 0（(c) 只访问空集一次即退出）；n 较大时掩码用 <code>1ull &lt;&lt; n</code> 或 unsigned long long（<code>1 &lt;&lt; 31</code> 在 int 上已是负数）；(a) 的类型口径（int 还是 unsigned）先声明再作答。</p>
+              <p><b>面试怎么讲。</b>三题共用一句话开场：「2 的幂、位 1 计数、子集枚举都是对『最低位的 1』做文章——清它、数它、或借它减一」。lowbit 与清最低位的表达式顺手写出补码解释（\(-x = \sim x + 1\)），把 s-009-5 的知识与位技巧焊在一起。</p>
+            </div>
+          </div>
+
+          <h3 id="s-009-9"><a class="anchor-link" href="#s-009-9" aria-label="跳转到本节">#</a>例题详解 IV：无符号溢出追踪实例</h3>
+          <div class="worked-example">
+            <p><b>例题 4：无符号与有符号溢出的数值追踪。计算 uint32_t 上 4,000,000,000 + 500,000,000 的结果并解释；判断 <code>-1 &lt; 1u</code> 的值；解释 <code>-INT_MIN</code> 为何危险；给出有符号加法溢出的正确检测。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>无符号加法是模 \(2^{32}\) 的时钟算术：数学和若达 \(2^{32}\) 即绕回。有符号溢出则无任何数学保证——直接触发 UB。追踪三类现象需要的是同一条公式：环绕值 = 数学和减去足够的 \(2^{32}\) 使其落回 \([0, 2^{32})\)。</p>
+              <pre><code>uint32_t a = 4000000000u, b = 500000000u;
+uint32_t c = a + b;    // 数学和 4,500,000,000 &gt;= 2^32 = 4,294,967,296
+// 环绕：c = 4,500,000,000 - 4,294,967,296 = 205,032,704（良定义）
+
+int x = -1;
+unsigned u = 1u;
+bool r = x &lt; u;        // false：x 先转换为 4,294,967,295u 再比较
+
+int m = INT_MIN;       // -2147483648
+// int y = -m;         // UB：数学值 +2^31 无法用 int 表示
+unsigned uu = (unsigned)m;      // 安全：得到 2^31 = 2147483648u
+long long y = -(long long)m;    // 安全：得到 +2147483648LL</code></pre>
+              <p><b>数值追踪。</b>(1) \(a + b\)：数学和 \(4{,}500{,}000{,}000\)，减一圈 \(2^{32} = 4{,}294{,}967{,}296\) 得 205,032,704——无符号下这是<b>正确结果</b>而非错误，但拿去做「和是否超过 4.29e9」这类判断就会全盘皆错。(2) <code>-1 &lt; 1u</code>：混算把 −1 按补码位模式 \(0xFFFFFFFF\) 转为 4,294,967,295u，比较 4294967295 与 1，结果 false；同理 <code>v.size() - 1</code> 当 v 为空时是 SIZE_MAX，反向 for 循环 <code>i &gt;= 0</code> 永真而死循环。(3) <code>-INT_MIN</code>：补码位模式 \(0x80000000\) 取负仍得 \(0x80000000\)（机器层面），语义层面是 UB；<code>abs(INT_MIN)</code> 同罪。LeetCode 7「整数反转」在这栽跟头的实现数不胜数。</p>
+              <p><b>正确的溢出检测。</b>原则「先判后算，用范围或位，不用加法结果反推」：</p>
+              <pre><code>bool addOverflows(int a, int b) {              // 有符号：预判
+    if (b &gt; 0 &amp;&amp; a &gt; INT_MAX - b) return true; // 上溢：先算安全的 INT_MAX - b
+    if (b &lt; 0 &amp;&amp; a &lt; INT_MIN - b) return true; // 下溢
+    return false;
+}   // 或 __builtin_add_overflow(a, b, &amp;sum)：一条内建搞定加减乘
+
+bool unsignedAddOverflows(unsigned a, unsigned b) {  // 无符号：环绕良定义
+    return a + b &lt; a;    // 环绕必然变小，此比较合法且常被编译器保留
+}</code></pre>
+              <p>怎么读：有符号的 <code>a + b &lt; a</code> 会被编译器依「不溢出」假设优化成 false（例：<code>addOverflowsBad</code>），必须预判；无符号的环绕是定义的一部分，「和小于加数」反而是合法且可靠的上溢信号——同一表达式在两种符号性下命运迥异，正是源题库强调 difference 的原因。</p>
+              <p><b>边界与工具。</b>涉及可能过界的中间量，统一升宽（int → long long、unsigned → unsigned long long）后再算；测试期开 UBSan（<code>-fsanitize=undefined</code>）让有符号溢出当场报错；审阅重点盯三类位置——反向循环的下界、size() 参与的减法、对任意输入取负/求绝对值。</p>
+              <p><b>面试怎么讲。</b>开口先立框架：「无符号是模 \(2^w\) 的良定义环绕，有符号溢出是 UB，混算先转无符号」，然后逐个报数：4e9 + 5e8 = 205,032,704；−1 转 unsigned 后比较为 false；−INT_MIN 是 UB。最后给守门三件套：升宽、先判后算、UBSan。能把三件事用「同一串比特、两种契约」串起来，就是满分结构。</p>
+            </div>
+          </div>
+
+          <h3 id="s-009-10"><a class="anchor-link" href="#s-009-10" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>五个高频错误</b><p>一，掩码循环写 <code>mask &lt; (1 &lt;&lt; n)</code> 且 n 可达 31：<code>1 &lt;&lt; 31</code> 在 int 上是负数（UB 或 INT_MIN），循环直接不执行，应写 <code>1u &lt;&lt; n</code> 或限 n 至 30 并用 64 位。二，子集枚举 <code>s = (s-1) &amp; x</code> 忘记空集终点判断，s 到 0 后下一步又回到 x，死循环。三，去重不先排序，剪枝条件失效；或把全排列的 used 剪枝写成子集的 start 剪枝，两类问题的「层」定义不同。四，<code>abs(INT_MIN)</code>、<code>-INT_MIN</code>、反转整数时的中间乘法——有符号边界上的经典 UB 三连。五，用有符号变量接收 size() 差值或与 unsigned 混比，<code>-1 &lt; 1u</code> 为 false、空容器 <code>size()-1</code> 得 SIZE_MAX。</p></div>
+          <div class="intuition-box"><b>考官常见追问与变式</b><p>「排列去重剪枝里 used[i-1] 写成 true 行不行？」——行，那是「允许跳着选同值元素」的另一种对称剪法，树形不同、结果集相同，但必须与条件其余部分自洽，面试推荐「!used[i-1]」这个易论证版本。「求第 k 个排列怎么办？」——康托展开（Cantor expansion）：按位乘阶乘计数跳过整棵子树，\(O(n^2)\)，与本章模板同源。「子集枚举的总复杂度？」——所有 x 的子集之和为 \(3^n\)，状压 DP「枚举子集的子集」以此为证。「next_permutation 与回溯各自的最佳场景？」——字典序版适合迭代产出与断点续跑，回溯版适合加额外剪枝约束。「为什么编译器敢把 <code>a+1 &gt; a</code> 优化成 true？」——因为有符号溢出是 UB，「不溢出」即被写进优化假设，这正是 UB 的含义。前一章 <a href="008.html">008 章</a>的 mid 防溢出写法 \(lo + (hi - lo) / 2\) 就是本节原则的一次提前应用。</p></div>
+
+          <h3 id="s-009-11"><a class="anchor-link" href="#s-009-11" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能默写全排列与子集的回溯模板，说清「路径、选择列表、结束条件」三要素与撤销选择的时机。</li>
+            <li>我能对含重复元素的输入去重：先排序，再用同层剪枝，并用 \(\frac{n!}{\prod_j c_j!}\) 验证输出个数。</li>
+            <li>我能手写 next_permutation 四步，用「最小可行进位」论证结果恰是下一个排列，并用 [1,2,3] 走完整圈。</li>
+            <li>我能用期望扫描长度 \(e - 1\) 论证全枚举时每次调用均摊 \(O(1)\)。</li>
+            <li>我能写 mask 全子集循环、<code>s = (s-1) &amp; x</code> 子集枚举与 lowbit = <code>x &amp; (-x)</code>，并解释 \(2^{\mathrm{popcount}(x)}\) 与 \(3^n\) 两个计数。</li>
+            <li>我能用 <code>x &amp; (x-1)</code> 判断 2 的幂与统计位 1，并指出 int 输入时守卫须为正数判断、防 INT_MIN 误判。</li>
+            <li>我能写出补码定义与 8 位对照表，讲清「无符号环绕良定义、有符号溢出 UB、混算先转无符号」三条契约。</li>
+            <li>我能追踪 \(-1 \lt 1u\) 为 false、空容器 <code>size()-1</code> 得 SIZE_MAX、<code>-INT_MIN</code> 为 UB 三类陷阱，并给出先判后算与升宽类型的安全写法。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="008.html">← 008. 查找与选择：二分查找与第 K 小元素</a><a href="010.html">010. 进阶概念：外部排序与 NP 完全 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

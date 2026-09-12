@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>036. 编程六：数据结构设计题 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 036</div>
+        <div class="brand-title">编程六：数据结构设计题</div>
+        <div class="brand-meta">双堆中位数、钥匙可达性与数位 DP：设计题的状态、不变量与均摊代价。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-036-1">学习目标：设计题怎么答</a><a class="toc-link" href="#s-036-2">知识点一：对半维护——双堆与多重集合</a><a class="toc-link" href="#s-036-3">知识点二：把约束放进状态——钥匙、锁与不动点</a><a class="toc-link" href="#s-036-4">例题一：运行中位数（源题 66）</a><a class="toc-link" href="#s-036-5">例题二：滑动窗口中位数（源题 40）</a><a class="toc-link" href="#s-036-6">例题三：房间、钥匙与可达性（源题 61）</a><a class="toc-link" href="#s-036-7">例题四：岛屿、完全背包与数位 DP（源题 53、75、69）</a><a class="toc-link" href="#s-036-8">例题五：调度、填充与回归口径（源题 29、30、73）</a><a class="toc-link" href="#s-036-9">误区与边界</a><a class="toc-link" href="#s-036-10">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link current" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="coding" data-title="编程六：数据结构设计题">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>036. 编程六：数据结构设计题</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>编程篇收官章处理「设计一个结构/流程」类题目：运行中位数与滑动窗口中位数的双堆维护、带钥匙锁的图可达性、岛屿连通、数位 DP、完全背包判定，另收调度与填充两道题以及回归设计矩阵不可逆的统计口径。覆盖源题 29、30、40、53、61、66、69、73、75。</p></aside>
+          <figure class="visual-lead"><img src="../assets/coding-patterns.svg" alt="双堆对半维护、带钥匙的图搜索与数位 DP 等设计题模式导图"></figure>
+
+          <h3 id="s-036-1"><a class="anchor-link" href="#s-036-1" aria-label="跳转到本节">#</a>学习目标：设计题怎么答</h3>
+          <p>设计题与算法题的差别在于：题面先给你一个<b>接口</b>（连续调用 add、窗口滑动、图上带锁移动），你要选一个内部表示让每次调用都便宜。答题的通用骨架是四步：先复述接口与调用模式（多少次插入、多少次查询、能否修改输入）；再选结构并说出<b>不变量</b>（结构内部任何时刻必须满足的性质）；然后做均摊分析（单次调用的最坏与均摊代价）；最后给边界（空流、单元素、重复值、溢出）。面试官评的是这条流程的完整度，而不只是能不能跑。</p>
+          <p>本章的三个主角恰好展示三种「状态设计」思路：中位数家族靠<b>对半维护</b>——两个堆各管一半，中位数永远在堆顶；带钥匙的可达性靠<b>约束入状态</b>——把「已收集的钥匙」并入搜索状态，或者用不动点迭代绕开显式状态；优惠券数位和靠<b>数位 DP</b>——把「数值大小约束」拆成逐位决策。设计题的本质是状态选择，这句话值得在面试里说出口。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>接口优先</b><p>先问清操作序列：流式 add 是均摊分析；窗口滑动含删除，堆不直接支持删除，就要多重集合或延迟删除。</p></div>
+            <div class="concept-card"><b>不变量即正确性</b><p>双堆的正确性全部压在「左堆最大不大于右堆最小、大小差不超过一」上；讲清不变量比画十个例子更有说服力。</p></div>
+            <div class="concept-card"><b>trade-off 表达</b><p>同一需求给出两套结构（双堆 vs 有序集合、不动点 BFS vs 状压 BFS），按数据范围选型，是设计题的满分姿势。</p></div>
+          </div>
+
+          <h3 id="s-036-2"><a class="anchor-link" href="#s-036-2" aria-label="跳转到本节">#</a>知识点一：对半维护——双堆与多重集合</h3>
+          <p>中位数只需要「正中间的一两个数」，因此不需要维护全序，只需要把数据切成较小的左半与较大的右半：左半用大根堆（堆顶是左半最大），右半用小根堆（堆顶是右半最小）。两条不变量：</p>
+          <div class="formula-list">
+            <p><b>有序不变量：</b>任意时刻 \(\max(\text{low}) \le \min(\text{high})\)——新元素先与左堆顶比较决定进哪半，再平衡，保证不被破坏。</p>
+            <p><b>平衡不变量：</b>\(|\text{low}| = |\text{high}|\) 或 \(|\text{low}| = |\text{high}| + 1\)——奇数个元素时左堆多一个，中位数即左堆顶；偶数个时取两堆顶平均。</p>
+            <p><b>均摊代价：</b>每次 add 至多触发一次堆间搬运，\(O(\log n)\)；查询中位数只看堆顶，\(O(1)\)。</p>
+          </div>
+          <p>难点在<b>删除</b>：标准堆不支持删除任意元素。两条路：其一，换成两个有序多重集合（<code>multiset</code>），删除 \(O(\log n)\) 精确完成，窗口中位数用它最省心；其二，保留双堆，把要删的元素记入「延迟删除」哈希表，等到它浮到堆顶时才真正弹出，并各维护一个「有效大小」计数——在线算法与带删除场景的标准工业做法。代价是代码量翻倍，面试里先讲清思路再决定写哪版。</p>
+          <div class="intuition-box"><b>为什么不用一个有序数组</b><p>有序数组（或 <code>sort</code> 每次查询）插入是 \(O(n)\)，流式场景 \(n\) 次插入要 \(O(n^2)\)；平衡 BST 或树状数组上二分能做到 \(O(\log n)\) 但代码更重。双堆是「只需要中位数」这一需求下的最小代价结构——能讲出这层取舍，设计题就赢了一半。</p></div>
+
+          <h3 id="s-036-3"><a class="anchor-link" href="#s-036-3" aria-label="跳转到本节">#</a>知识点二：把约束放进状态——钥匙、锁与不动点</h3>
+          <p>普通图搜索的状态是「当前在哪个房间」；带锁之后，能走哪条边还取决于「手里有哪些钥匙」，状态必须扩成（房间，钥匙集合）。两种实现按钥匙类型数 \(k\) 分流：</p>
+          <div class="algorithm-grid">
+            <div class="algorithm-card"><b>状压 BFS（\(k\) 较小）</b><p>状态 \((\text{room}, \text{mask})\)，mask 是已收集钥匙类型的位掩码。进入房间即把该房间钥匙类型置位。复杂度 \(O(2^k \cdot m)\)，\(k \le 20\) 左右可用。</p></div>
+            <div class="algorithm-card"><b>不动点 BFS（\(k\) 很大或未知）</b><p>从当前已访问房间出发做一轮普通 BFS，只能穿「已有钥匙」的隧道；访问新房间可能带来新钥匙，若本轮有新增就再跑一轮，直到无新增（不动点）。每轮至少新开一个房间，至多 \(n\) 轮，复杂度 \(O(n \cdot (n + m))\)，不依赖 \(k\)。</p></div>
+          </div>
+          <p>两者的关系值得多说一句：不动点版本等价于把「钥匙集合单调增长」这一性质抽出来做了松弛——钥匙只会增多不会减少，所以重复扫描必然收敛，这与贝尔曼-福特反复松弛边是同一种思想。面试里能指出「这是带单调性的松弛」会比背模板更加分。</p>
+
+          <h3 id="s-036-4"><a class="anchor-link" href="#s-036-4" aria-label="跳转到本节">#</a>例题一：运行中位数（源题 66）</h3>
+          <div class="worked-example">
+            <p><b>例题 1（源题 66）：写一个函数，返回一个数列的运行中位数（running median）——每读入一个数，输出至今所有数的中位数。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>知识点一的双堆：新数与左堆顶比较决定去向，插入后立即恢复平衡不变量；中位数按奇偶从堆顶读取。</p>
+              <pre><code>class RunningMedian {
+public:
+    void add(int x) {
+        if (low.empty() || x &lt;= low.top()) low.push(x); // 新数进较小的一半
+        else high.push(x);
+        if (low.size() &gt; high.size() + 1) {            // 平衡：low 恰好多 0 或 1
+            high.push(low.top()); low.pop();
+        } else if (high.size() &gt; low.size()) {
+            low.push(high.top()); high.pop();
+        }
+    }
+    double median() const {
+        if (low.empty()) return 0.0 / 0.0;             // 空流：中位数无定义
+        return low.size() &gt; high.size()
+                   ? (double)low.top()                  // 奇数个：左堆顶
+                   : (low.top() + high.top()) / 2.0;   // 偶数个：两堆顶平均
+    }
+private:
+    priority_queue&lt;int&gt; low;                            // 较小一半：大根堆
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; high; // 较大一半：小根堆
+};</code></pre>
+              <p><b>数值结果。</b>流 \(2, 1, 5, 7, 2, 0, 5\) 的运行中位数依次为 \(2,\ 1.5,\ 2,\ 3.5,\ 2,\ 2,\ 2\)。</p>
+              <p><b>复杂度与边界。</b>add 均摊 \(O(\log n)\)（一次插入至多再搬运一个元素）、median \(O(1)\)，空间 \(O(n)\)。边界：空流返回 NaN 或抛异常（口径先说死）；偶数个的平均值注意 <code>(a + b) / 2.0</code> 用浮点除，两个 int 相加先提升为 long long 防溢出；重复值天然支持（堆不管相等）。</p>
+              <p><b>面试怎么讲。</b>三句话定调：「中位数只需要中间一两个数，所以对半维护」「两条不变量：跨堆有序、大小差至多一」「add 对数、查询常数」。然后主动延伸：若还要支持删除，换双多重集合或延迟删除双堆——顺势把下一题引出来。</p>
+            </div>
+          </div>
+
+          <h3 id="s-036-5"><a class="anchor-link" href="#s-036-5" aria-label="跳转到本节">#</a>例题二：滑动窗口中位数（源题 40）</h3>
+          <div class="worked-example">
+            <p><b>例题 2（源题 40）：给定数列与窗口长度 \(k\)，给出每个长度为 \(k\) 的滑动子数组（sliding sublist）的中位数。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>窗口每滑一步 = 一次插入 + 一次删除 + 一次查询。堆不支持删除，用<b>两个多重集合</b>维护左右两半（与双堆完全同构的不变量），删除用 <code>find</code> 精确擦除一个实例，再平衡。</p>
+              <pre><code>vector&lt;double&gt; slidingMedian(const vector&lt;int&gt;&amp; a, int k) {
+    multiset&lt;int&gt; low, high;                  // low：较小一半；high：较大一半
+    auto rebalance = [&amp;]() {
+        while (low.size() &gt; high.size() + 1) {
+            high.insert(*low.rbegin());       // 左半最大值上移
+            low.erase(prev(low.end()));
+        }
+        while (low.size() &lt; high.size()) {
+            low.insert(*high.begin());        // 右半最小值下移
+            high.erase(high.begin());
+        }
+    };
+    vector&lt;double&gt; res;
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        if (low.empty() || a[i] &lt;= *low.rbegin()) low.insert(a[i]);
+        else high.insert(a[i]);               // 插入新元素到对应半区
+        if (i &gt;= k) {                         // 窗口左界滑出：删除旧元素
+            int out = a[i - k];
+            auto it = low.find(out);
+            if (it != low.end()) low.erase(it);
+            else high.erase(high.find(out));  // 必在另一侧（不变量保证）
+        }
+        rebalance();
+        if (i &gt;= k - 1) {                     // 窗口填满后逐个输出
+            long long m1 = *low.rbegin();
+            res.push_back(k % 2 == 1 ? (double)m1 : (m1 + *high.begin()) / 2.0);
+        }
+    }
+    return res;
+}</code></pre>
+              <p><b>数值结果。</b>\([1,3,-1,-3,5,3,6,7]\)、\(k=3\)：中位数序列 \(1, -1, -1, 3, 5, 6\)。</p>
+              <p><b>复杂度与边界。</b>每步插入、删除、平衡都是 \(O(\log k)\)，总 \(O(n \log k)\)、空间 \(O(k)\)。边界：\(k = 1\) 时中位数就是元素本身；\(k\) 等于数组长度退化为单次中位数；重复值由多重集合天然处理（<code>erase(iterator)</code> 只删一个实例，切勿传值删除）。若面试官要求双堆版，就讲延迟删除：待删值进哈希计数，堆顶命中时才弹出，有效大小单独记账——思路分与代码分可以分开拿。</p>
+              <p><b>面试怎么讲。</b>先说「窗口滑动引入删除，堆不擅长删除，两个多重集合是最短路径」，写完补一句均摊 \(O(n\log k)\)，并主动对比延迟删除双堆——这就是知识点一里 trade-off 表达的落地。</p>
+            </div>
+          </div>
+
+          <h3 id="s-036-6"><a class="anchor-link" href="#s-036-6" aria-label="跳转到本节">#</a>例题三：房间、钥匙与可达性（源题 61）</h3>
+          <div class="worked-example">
+            <p><b>例题 3（源题 61）：\(n\) 个房间、\(m\) 条隧道，房间 \(i\) 内有一把类型为 \(r[i]\) 的钥匙，第 \(j\) 条隧道连接 \(u[j]\) 与 \(v[j]\) 但上锁，需要类型 \(c[j]\) 的钥匙才能通过。给定起点 \(s\)，问能访问哪些房间；再问从哪个房间出发能访问最多房间。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>图搜索的边带「钥匙门」约束。按知识点二：钥匙类型数未知时用不动点 BFS——每轮从已访问房间做一次普通 BFS（只穿已持有钥匙的隧道），新房间可能带来新钥匙，有新增就再来一轮。第二个问题枚举所有起点取最大（钥匙结构一般无法共享加速，这是诚实且正确的答案）。</p>
+              <pre><code>// tunnels[j] = {u, v, 打开该隧道所需钥匙类型}；key[i] = 房间 i 内的钥匙类型
+vector&lt;int&gt; reachableRooms(int n, int s, const vector&lt;int&gt;&amp; key,
+                           const vector&lt;array&lt;int, 3&gt;&gt;&amp; tunnels) {
+    vector&lt;vector&lt;pair&lt;int, int&gt;&gt;&gt; adj(n);              // (对端房间, 所需钥匙类型)
+    for (auto&amp; [u, v, c] : tunnels) {
+        adj[u].push_back({v, c});
+        adj[v].push_back({u, c});
+    }
+    vector&lt;char&gt; vis(n, 0);
+    vis[s] = 1;                                         // 进入起点房间
+    while (true) {
+        unordered_set&lt;int&gt; keys;                        // 已到过房间提供的钥匙
+        for (int i = 0; i &lt; n; ++i) if (vis[i]) keys.insert(key[i]);
+        queue&lt;int&gt; q;
+        for (int i = 0; i &lt; n; ++i) if (vis[i]) q.push(i);
+        int fresh = 0;                                  // 本轮新开房间数
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            for (auto&amp; [v, c] : adj[u])
+                if (!vis[v] &amp;&amp; keys.count(c)) {         // 钥匙在手才能穿隧道
+                    vis[v] = 1; ++fresh;
+                    keys.insert(key[v]);                // 新钥匙当场生效
+                    q.push(v);
+                }
+        }
+        if (fresh == 0) break;                          // 不动点：无新房间即收敛
+    }
+    vector&lt;int&gt; rooms;
+    for (int i = 0; i &lt; n; ++i) if (vis[i]) rooms.push_back(i);
+    return rooms;
+}
+
+// 第二问：枚举所有起点，取可达房间最多者
+int bestStart(int n, const vector&lt;int&gt;&amp; key,
+              const vector&lt;array&lt;int, 3&gt;&gt;&amp; tunnels) {
+    int bestCnt = -1, bestRoom = -1;
+    for (int s = 0; s &lt; n; ++s) {
+        int cnt = (int)reachableRooms(n, s, key, tunnels).size();
+        if (cnt &gt; bestCnt) { bestCnt = cnt; bestRoom = s; }
+    }
+    return bestRoom;
+}</code></pre>
+              <p><b>数值结果。</b>4 个房间，钥匙类型 \(\text{key} = [0,1,2,5]\)，隧道 \(\{0,1,5\}, \{1,2,1\}, \{2,3,2\}\)：从 0 出发只有钥匙类型 0，隧道 0–1 需要类型 5，只能访问 \(\{0\}\)；从 1 出发顺次拿到钥匙 1、2、5，反过来还能打开 0–1，四个房间全到。最佳起点是 1。</p>
+              <p><b>复杂度与边界。</b>每轮 BFS \(O(n + m)\)，每轮至少新开一个房间，单起点 \(O(n(n+m))\)；枚举全部起点 \(O(n^2(n+m))\)，面试规模足够。若钥匙类型数 \(k \le 20\)，主动改口：「也可以状压 BFS，状态 \((\text{room}, \text{mask})\)，\(O(2^k m)\)，\(k\) 小的时候更快」——同一题给两套按范围分流的方案是设计题的标准答法。边界：起点房间钥匙必收；隧道双向可达（题意如此则建双向边）；自环与重边无影响。</p>
+              <p><b>面试怎么讲。</b>先把「锁约束」翻译成状态扩展或不动点松弛（二选一讲透），用小例子演示「新钥匙回头开旧门」的循环打开过程，最后给两套实现的选型条件。</p>
+            </div>
+          </div>
+
+          <h3 id="s-036-7"><a class="anchor-link" href="#s-036-7" aria-label="跳转到本节">#</a>例题四：岛屿、完全背包与数位 DP（源题 53、75、69）</h3>
+          <div class="worked-example">
+            <p><b>例题 4（源题 53）：给定 0/1 二维矩阵，1 表示陆地，识别其中的岛屿（四方向相邻的 1 连通块）并计数。</b></p>
+            <div class="solution">
+              <p><b>思路。</b>洪泛（flood fill）：扫到一块未访问的陆地就把整座岛淹没，计数加一。DFS 版就地标记；图论基础（BFS/DFS、并查集）在 <a href="005.html">005 章</a>有完整讲解，这里给最简实现。</p>
+              <pre><code>int numIslands(vector&lt;vector&lt;char&gt;&gt;&amp; g) {
+    int n = g.size(), m = g[0].size(), ans = 0;
+    function&lt;void(int, int)&gt; dfs = [&amp;](int r, int c) {
+        if (r &lt; 0 || r &gt;= n || c &lt; 0 || c &gt;= m || g[r][c] != '1') return; // 越界或非陆地
+        g[r][c] = '0';                                  // 就地标记，防止回头
+        dfs(r + 1, c); dfs(r - 1, c); dfs(r, c + 1); dfs(r, c - 1);
+    };
+    for (int r = 0; r &lt; n; ++r)
+        for (int c = 0; c &lt; m; ++c)
+            if (g[r][c] == '1') { ++ans; dfs(r, c); }   // 每次洪泛即一座新岛
+    return ans;
+}</code></pre>
+              <p><b>复杂度与边界。</b>时间空间均 \(O(nm)\)，每格至多访问两次。边界：空矩阵返回 0；全 1 矩阵答案 1。追问准备：不许改输入就用 visited 数组或并查集；矩阵大到放不进内存就按行扫描 + 并查集合并（面试只需说思路）。源题另一问「按系数找连通关系」即邻接判定（上下左右），口径先复述。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5（源题 75）：实现 \(f(a, b)\)：\(a\) 为正整数，\(b\) 为正整数列表，判断 \(a\) 能否表示为 \(b\) 中元素之和（每个元素可重复使用任意次）。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>完全背包（unbounded knapsack）的可达性版本：\(dp[x]\) 表示金额 \(x\) 能否凑出，\(dp[0] = \text{true}\)，转移 \(dp[x] = \bigvee_{v \in b,\ v \le x} dp[x - v]\)。</p>
+              <pre><code>bool canSum(int a, const vector&lt;int&gt;&amp; b) {
+    if (a == 0) return true;                 // 空和即为 0（题设 a 为正，此行是防御）
+    vector&lt;char&gt; dp(a + 1, 0);
+    dp[0] = 1;                               // 完全背包可达性
+    for (int x = 1; x &lt;= a; ++x)
+        for (int v : b)
+            if (v &lt;= x &amp;&amp; dp[x - v]) { dp[x] = 1; break; }
+    return dp[a];
+}</code></pre>
+              <p><b>数值结果。</b>\(a = 11, b = [5, 3]\)：\(11 = 3+3+5\)，返回真；\(a = 7, b = [5, 3]\)：可达集 \(\{3,5,6,8,9,10,11,\ldots\}\) 不含 7，返回假。</p>
+              <p><b>复杂度与边界。</b>时间 \(O(a \cdot |b|)\)、空间 \(O(a)\)。剪枝彩蛋：若 \(\gcd(b) \nmid a\) 直接返回假；由 Frobenius 数结论，\(a\) 超过约 \((\min b)(\max b)\) 量级后必然可达——\(a\) 极大时可先用这两条短路，再对剩余小值跑 DP。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 6（源题 69）：优惠券编号从 LowValue 到 HighValue，每张券的码是其数位和；获奖者均匀分配在所有码上。用动态规划求码的分配方式数、最少与最多的获奖人数（例：2 到 11 时，码 2 有两张券（2 与 11），其余码各一，共 9 种码、最多 2 人）。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>先求计数函数 \(f(N)\)：\(0..N\) 中每种数位和的券数。数位 DP：预处理 \(g[i][s]\)（\(i\) 个 0–9 自由数位凑出和 \(s\) 的方案数）；再逐位枚举「第 \(i\) 位首次小于 \(N\) 的数字」的情形，后缀自由。区间 \([\text{Lo}, \text{Hi}]\) 的计数为 \(f(\text{Hi}) - f(\text{Lo}-1)\)，非零项即码数，取最小/最大即所求。</p>
+              <pre><code>// f(N)：0..N 中每种「数位和」的计数（数位 DP）
+vector&lt;long long&gt; digitSumCounts(long long N) {
+    string D = to_string(N);
+    int n = D.size();
+    // g[i][s]：i 个 0..9 自由数位凑出和 s 的方案数
+    vector&lt;vector&lt;long long&gt;&gt; g(n + 1, vector&lt;long long&gt;(9 * n + 1, 0));
+    g[0][0] = 1;
+    for (int i = 1; i &lt;= n; ++i)
+        for (int s = 0; s &lt;= 9 * i; ++s)
+            for (int d = 0; d &lt;= 9 &amp;&amp; d &lt;= s; ++d) g[i][s] += g[i - 1][s - d];
+    vector&lt;long long&gt; cnt(9 * n + 1, 0);
+    int pref = 0;                            // 与 N 完全相同的前缀数位和
+    for (int i = 0; i &lt; n; ++i) {
+        for (int d = 0; d &lt; D[i] - '0'; ++d)     // 第 i 位首次小于 N 的数字
+            for (int s = 0; s &lt;= 9 * (n - i - 1); ++s)
+                cnt[pref + d + s] += g[n - i - 1][s];
+        pref += D[i] - '0';
+    }
+    cnt[pref] += 1;                          // N 自身
+    return cnt;
+}
+
+// 返回：码数、每个码上最少获奖人数、最多获奖人数
+tuple&lt;long long, long long, long long&gt; couponStats(long long Lo, long long Hi) {
+    auto hi = digitSumCounts(Hi);
+    auto lo = Lo &gt; 0 ? digitSumCounts(Lo - 1)
+                     : vector&lt;long long&gt;(hi.size(), 0);
+    long long codes = 0, mn = LLONG_MAX, mx = 0;
+    for (size_t s = 0; s &lt; hi.size(); ++s) {
+        long long c = hi[s] - (s &lt; lo.size() ? lo[s] : 0);
+        if (c &gt; 0) { ++codes; mn = min(mn, c); mx = max(mx, c); }
+    }
+    if (codes == 0) return {0, 0, 0};        // 空区间防御
+    return {codes, mn, mx};
+}</code></pre>
+              <p><b>数值结果。</b>\(\text{Lo}=2, \text{Hi}=11\)：码 1 只有券 10（1 张），码 2 有券 2 与 11（2 张），码 3–9 各 1 张——共 9 种码、最少 1 人、最多 2 人，与题给示例完全一致。</p>
+              <p><b>复杂度与边界。</b>数位 DP 为 \(O(L^2 \cdot 81)\)（\(L\) 为位数，\(9L\) 为最大数位和），对 long long 范围绰绰有余。边界：Lo 为 0 时 \(f(\text{Lo}-1)\) 直接置零向量；数位和最大 \(9 \times 19 = 171\)，两表长度不同时以长表为准逐位相减。追问准备：若问「哪个码人数最多」，返回最大值下标即可；若码上均匀抽奖，某张券中奖概率是 \(\frac{1}{\text{该码券数}} \times \frac{1}{\text{码数}}\)——顺口就能补上概率口径。</p>
+            </div>
+          </div>
+
+          <h3 id="s-036-8"><a class="anchor-link" href="#s-036-8" aria-label="跳转到本节">#</a>例题五：调度、填充与回归口径（源题 29、30、73）</h3>
+          <p>编程篇收尾的三道题分属贪心调度、位运算填充与统计口径，按题库完整性收录于此；它们共同的模式是「先用小例子把口径钉死，再动手」。</p>
+          <div class="worked-example">
+            <p><b>例题 7（源题 29）：给定若干部影片时长，求最少观看天数；每天可组合多部影片，但每天总时长不超过 3 小时。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>装箱问题（bin packing，箱容量 3）。先与考官确认「每天至多几部」：至多两部时是经典的双指针配对（最长带最短，装不下就单独一天）；不限部数且时长为整数小时时可给闭式解；任意实数时长则是一般装箱——NP 难，标准做法是首次适应递减（FFD）启发式。</p>
+              <pre><code>int minDays(vector&lt;int&gt;&amp; dur) {              // 每天总时长至多 3，每天至多两部
+    sort(dur.begin(), dur.end());
+    int i = 0, j = dur.size() - 1, days = 0;
+    while (i &lt;= j) {                         // 最长影片尽量带一部最短的
+        if (i &lt; j &amp;&amp; dur[i] + dur[j] &lt;= 3) ++i;
+        --j; ++days;
+    }
+    return days;
+}</code></pre>
+              <p><b>数值结果与变体。</b>时长 \([1,1,1,1,1]\)：每天至多两部的双指针版得 3 天（\((1,1),(1,1),(1)\)）；整数任意部版的闭式 \(n_3 + n_2 + \lceil \max(0, n_1 - n_2)/3 \rceil = 0 + 0 + 2\) 得 2 天（\((1,1,1),(1,1)\)）——这个例子正好把两种口径区分开。若时长为 \([1,1,2,2,3]\)，两种口径同为 3 天（\((3),(1,2),(1,2)\)）。</p>
+              <p><b>复杂度与边界。</b>双指针 \(O(n \log n)\)（排序主导）。边界：超过 3 小时的影片按题意不存在（存在则无解，先声明）；单部影片成天。能主动说出「一般装箱 NP 难、FFD 是 \(\frac{11}{9}\) 近似」就到了追问的天花板。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 8（源题 30）：文件上传场景：给定哪些位置已被占用，要求用大小为 \(2^n\) 的文件把其余位置填满，求最少文件数。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>把空位切成极大连续段，每段独立填充。长度 \(L\) 的段需要的最少 2 的幂文件数是 \(L\) 的二进制表示中 1 的个数（popcount）：任何 2 的幂之和都可合并——两个 \(2^k\) 换一个 \(2^{k+1}\)，故最优解就是二进制分解。</p>
+              <pre><code>int minFiles(const string&amp; slots) {          // '.' 空位，'#' 占用
+    int total = 0, run = 0;
+    string s = slots + '#';                  // 末尾哨兵 flush 最后一段
+    for (char c : s) {
+        if (c == '.') ++run;
+        else { total += __builtin_popcount(run); run = 0; }
+    }
+    return total;
+}</code></pre>
+              <p><b>数值结果。</b><code>"..#...#"</code>：两段长度 2 与 3，分别需要 \(1\)（一个 \(2\)）与 \(2\)（\(2+1\)）个文件，共 3。</p>
+              <p><b>复杂度与边界。</b>线性 \(O(n)\)。为什么 popcount 是下界也要会说：\(k\) 个 2 的幂之和，其二进制 1 的个数不超过 \(k\)（合并只减不增），所以要凑出 \(L\) 至少需要 popcount(\(L\)) 个文件，而二进制分解恰好达到。变体：若文件必须按 \(2^k\) 对齐摆放（只能落在 \(2^k\) 的倍数位置），递归对半切分即可，答案仍是 popcount——两问同答，先问清是否对齐。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 9（源题 73，统计题）：线性回归中设计矩阵不可逆，怎么办？</b></p>
+            <div class="solution">
+              <p><b>诊断。</b>\(X^\top X\) 奇异通常来自四种情形：特征完全共线（某列是其余列的线性组合）、虚拟变量陷阱（哑变量加全了常数列）、样本数小于特征数（\(n \lt p\)）、重复或常数列。先做诊断再谈药方，是这道题的正确顺序。</p>
+              <div class="formula-list">
+                <p><b>删共线列：</b>去掉冗余列（或去掉一个哑变量基准类），让列满秩——最干净，前提是你能识别冗余。</p>
+                <p><b>岭回归：</b>解 \((X^\top X + \lambda I)\hat\beta = X^\top y\)，\(\lambda \gt 0\) 使矩阵正定可逆；等价于给 \(\beta\) 加 \(L_2\) 惩罚，\(\lambda\) 由交叉验证选。</p>
+                <p><b>伪逆（Moore–Penrose）：</b>\(\hat\beta = X^{+} y\) 用 SVD 计算，给出最小范数最小二乘解——不选 \(\lambda\) 的「自动」版本，数值上奇异值截断要设阈值。</p>
+                <p><b>补数据或重新采样：</b>若不可逆源于 \(n \lt p\) 或采样缺陷，治本靠再收集数据或特征选择。</p>
+              </div>
+              <p><b>面试怎么讲。</b>一句话总结：「先查共线来源，能删就删；删不了用岭回归或伪逆，两者分别是『可调参数的稳定解』与『最小范数解』」。岭回归的正则化视角与选择问题在 <a href="027.html">027 章</a>展开，OLS 的几何与推导见 <a href="026.html">026 章</a>。</p>
+            </div>
+          </div>
+
+          <h3 id="s-036-9"><a class="anchor-link" href="#s-036-9" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>中位数家族的三个坑</b><p>一、平衡写反：左堆只允许比右堆<b>多</b>一个，反了会偶数取错堆顶；二、多重集合删除传值：<code>erase(value)</code> 会删光所有实例，必须传 <code>find</code> 返回的迭代器；三、偶数平均溢出：两个 int 堆顶相加先转 long long 或 double。窗口题还有一个隐藏坑：删除元素找错半区会破坏不变量，应先在左半 <code>find</code>，找不到再删右半——依据是跨堆有序。</p></div>
+          <div class="intuition-box"><b>图与 DP 的口径坑</b><p>钥匙题：忘收起点房间的钥匙、或把「新钥匙当场生效」写成下一轮才生效，都会漏解；状压与不动点按钥匙类型数分流，别在 \(k\) 很大时硬上 \(2^k\)。数位 DP：上界本身（\(N\) 那一支）要单独加一，区间相减时两表长度对齐。完全背包：\(a\) 特大时先做 gcd/Frobenius 短路。调度与填充题：装箱的「每天几部」与文件的「是否对齐」两个口径必须先问——这类题丢分大多丢在口径而非算法。</p></div>
+
+          <h3 id="s-036-10"><a class="anchor-link" href="#s-036-10" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出双堆运行中位数，口述两条不变量与 add 均摊 \(O(\log n)\)、查询 \(O(1)\) 的代价。</li>
+            <li>我能把双堆改造成双多重集合以支持删除，正确输出滑动窗口中位数，并说明延迟删除双堆的替代方案。</li>
+            <li>我能把「锁与钥匙」约束并入图搜索状态，实现不动点 BFS，并按钥匙类型数在 \(O(n(n+m))\) 与 \(O(2^k m)\) 之间选型。</li>
+            <li>我能用洪泛数岛屿并就地标记，说出禁止改输入时的 visited/并查集替代方案。</li>
+            <li>我能实现完全背包可达性 \(f(a,b)\)，并用 gcd 与 Frobenius 结论对大 \(a\) 短路。</li>
+            <li>我能用数位 DP 求任意区间内数位和的分布，并复现 2..11 的「9 种码、最多 2 人」示例。</li>
+            <li>我能对设计矩阵不可逆给出诊断顺序与三类药方（删列、岭回归、伪逆），并链接到正则化章节。</li>
+            <li>我拿到任何设计题都会先复述接口与调用模式，再选结构、讲不变量、做均摊分析、过边界清单。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="035.html">← 035. 编程五：二分、开方与蒙特卡洛</a><a href="037.html">037. 金融一：夏普比率专题 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>
