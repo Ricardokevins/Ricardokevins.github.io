@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>027. 统计二：岭回归、Lasso 与模型选择 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 027</div>
+        <div class="brand-title">统计二：岭回归、Lasso 与模型选择</div>
+        <div class="brand-meta">秩亏矩阵加 λI 变良态、L1 尖角出稀疏，配一套模型选择与过拟合的面试口径。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-027-1">学习目标：当 OLS 解不出来或解不稳时</a><a class="toc-link" href="#s-027-2">知识点一：岭回归的谱视角</a><a class="toc-link" href="#s-027-3">知识点二：Lasso 与 L1 几何</a><a class="toc-link" href="#s-027-4">知识点三：模型选择、过拟合与压缩</a><a class="toc-link" href="#s-027-5">例题详解 I：从闭式解到条件数</a><a class="toc-link" href="#s-027-6">例题详解 II：重复数据、噪声特征与共线</a><a class="toc-link" href="#s-027-7">例题详解 III：宽数据、平滑与模型治理</a><a class="toc-link" href="#s-027-8">误区与边界</a><a class="toc-link" href="#s-027-9">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link current" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="statistics" data-title="统计二：岭回归、Lasso 与模型选择">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>027. 统计二：岭回归、Lasso 与模型选择</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>上一章的闭式解在秩亏与病态时失效，本章讲两个标准修复——岭回归与 Lasso——以及围绕它们的模型选择、过拟合与压缩治理。覆盖源题 S1（综合）、S27、S21、S32、S25、S22/S23/S24/S28、S10、S14，并回接编程题库第 73 题。</p></aside>
+          <figure class="visual-lead"><img src="../assets/statistics-core.svg" alt="统计分册核心知识地图：正则化与模型选择在回归主题中的位置"></figure>
+
+          <h3 id="s-027-1"><a class="anchor-link" href="#s-027-1" aria-label="跳转到本节">#</a>学习目标：当 OLS 解不出来或解不稳时</h3>
+          <p><a href="026.html">026 章</a>的结论是 \(\hat\beta=(X^TX)^{-1}X^Ty\)，前提是 \(X^TX\) 可逆。可现实中两类场景天天出现：一是<b>解不出来</b>——特征比样本多（\(p\gt n\)）、列之间完全共线，\(X^TX\) 奇异；二是<b>解得出来但不稳</b>——近似共线让 \(X^TX\) 的最小特征值接近零，估计方差 \(\sigma^2(X^TX)^{-1}\) 爆炸，系数在样本微扰下剧烈跳动。两类问题的共同药方是<b>正则化</b>：在损失里对系数大小加罚，把病态问题改造成良态问题。</p>
+          <p>本章主线是三种「治法」的分工：岭回归（L2 罚）治共线与病态，代价是均匀收缩所有系数；Lasso（L1 罚）额外买到稀疏解，能顺带做特征选择；模型选择（交叉验证、信息准则）决定模型复杂度这一「元参数」。三套工具回答同一类问题：<b>训练误差下降与泛化能力改善不是一回事</b>，这一句是 S32 与 S22 的分水岭，也是量化研究中回测与实盘差距的统计学投影。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>岭回归</b><p>目标 \(\|y-X\beta\|^2+\lambda\|\beta\|^2\)，闭式解 \((X^TX+\lambda I)^{-1}X^Ty\)，特征值整体平移 \(\lambda\)，条件数被压下来。</p></div>
+            <div class="concept-card"><b>Lasso</b><p>目标 \(\tfrac12\|y-X\beta\|^2+\lambda\|\beta\|_1\)，约束区域是尖角菱形，最优解常落在角上，产生精确为零的系数。</p></div>
+            <div class="concept-card"><b>模型选择</b><p>交叉验证、AIC/BIC、早停、嵌套验证；原则只有一个——用<b>没参与训练</b>的数据评价泛化。</p></div>
+          </div>
+
+          <h3 id="s-027-2"><a class="anchor-link" href="#s-027-2" aria-label="跳转到本节">#</a>知识点一：岭回归的谱视角</h3>
+          <p>岭回归（ridge regression）在 OLS 目标上加 L2 罚项：</p>
+          <div class="math-display">\[\hat\beta_{\text{ridge}} = \arg\min_\beta\ \bigl\{\|y-X\beta\|^2 + \lambda\|\beta\|^2\bigr\},\qquad \lambda\gt0.\]</div>
+          <h4>闭式解与谱平移</h4>
+          <p>求导令零：\(2(X^TX+\lambda I)\beta - 2X^Ty=0\)，得到与 OLS 同构的闭式解：</p>
+          <div class="math-display">\[\hat\beta_{\text{ridge}} = (X^TX+\lambda I)^{-1}X^Ty.\]</div>
+          <p>读法：岭回归把被求逆的矩阵从 \(X^TX\) 换成 \(X^TX+\lambda I\)——所有特征值同时加 \(\lambda\)，最小特征值从可能为零变成至少 \(\lambda\)，矩阵必然正定可逆。这就是「秩亏也能解」的代数根源。</p>
+          <p>用奇异值分解 \(X=U\Sigma V^T\)（\(\Sigma\) 的对角元为奇异值 \(s_1\ge\dots\ge s_p\ge0\)）看得更透：\(X^TX=V\Sigma^2V^T\)，于是</p>
+          <div class="math-display">\[\hat\beta_{\text{ridge}} = \sum_{j=1}^{p} v_j\,\frac{s_j^2}{s_j^2+\lambda}\,(u_j^Ty).\]</div>
+          <p>对比 OLS 的 \(\hat\beta=\sum_j v_j (u_j^Ty)\)：岭回归把每个主方向上的分量乘上收缩因子 \(s_j^2/(s_j^2+\lambda)\)——数据支撑弱的方向（\(s_j\) 小）收缩狠，数据支撑强的方向几乎不动。\(\lambda\to0\) 退回 OLS，\(\lambda\to\infty\) 全体压向零。</p>
+          <h4>条件数怎么变</h4>
+          <p>条件数（condition number）\(\kappa(A)=\lambda_{\max}(A)/\lambda_{\min}(A)\) 度量求逆的数值稳定性。对 \(X^TX\) 与岭版本分别计算：</p>
+          <div class="math-display">\[\kappa(X^TX)=\frac{s_1^2}{s_p^2},\qquad \kappa(X^TX+\lambda I)=\frac{s_1^2+\lambda}{s_p^2+\lambda}\le\frac{s_1^2}{s_p^2}.\]</div>
+          <p>右端不等式对任意 \(\lambda\gt0\) 成立且随 \(\lambda\) 增大严格改善（\(s_1\gt s_p\) 时）。数值例：\(s_1=10\)、\(s_p=0.1\) 时 \(\kappa(X^TX)=10^4\)；加 \(\lambda=1\) 后 \(\kappa=(100+1)/(0.01+1)\approx100\)，改善两个数量级。梯度下降的收敛速度同样由这个条件数控制（误差以 \((\kappa-1)/(\kappa+1)\) 的速率几何衰减），所以「岭化」不仅救了求逆，也救了迭代法。</p>
+          <div class="intuition-box"><b>偏差–方差的对价</b><p>岭回归把系数从无偏推向有偏，换取方差下降。有效自由度 \(\mathrm{df}(\lambda)=\sum_j s_j^2/(s_j^2+\lambda)\) 从 \(p\)（\(\lambda=0\)）连续降到 \(0\)——\(\lambda\) 就是你在买「稳定」时付出的「灵活度」货币，交叉验证负责定价。</p></div>
+
+          <h3 id="s-027-3"><a class="anchor-link" href="#s-027-3" aria-label="跳转到本节">#</a>知识点二：Lasso 与 L1 几何</h3>
+          <p>Lasso（Least Absolute Shrinkage and Selection Operator）把罚项换成系数绝对值之和：</p>
+          <div class="math-display">\[\hat\beta_{\text{lasso}} = \arg\min_\beta\ \Bigl\{\tfrac12\|y-X\beta\|^2 + \lambda\sum_{j=1}^{p}|\beta_j|\Bigr\}.\]</div>
+          <p>几何读法：等价于在「残差平方和不超过某常数」的椭圆与「\(\|\beta\|_1\le t\)」的菱形约束交集中找解。菱形是<b>尖角</b>的，椭圆最容易在顶点处与之相切，而顶点坐标形如 \((0,\dots,0,\beta_k,0,\dots,0)\)——切在角上就意味着其余系数被精确压成零，这就是 Lasso 天然做特征选择的原因。L2 球没有角，切点一般落在弧上，只能整体收缩、不会清零。</p>
+          <div class="table-wrap"><table><thead><tr><th>维度</th><th>Ridge（L2）</th><th>Lasso（L1）</th></tr></thead><tbody>
+          <tr><td>约束区域形状</td><td>圆球，光滑无角</td><td>菱形，有尖角顶点</td></tr>
+          <tr><td>解的稀疏性</td><td>无精确零，均匀收缩</td><td>常在角上，产生精确零</td></tr>
+          <tr><td>闭式解</td><td>有：\((X^TX+\lambda I)^{-1}X^Ty\)</td><td>一般无（正交设计例外：软阈值）</td></tr>
+          <tr><td>强相关特征</td><td>系数摊分到各特征上</td><td>倾向只留其一，选择不稳定</td></tr>
+          <tr><td>求解算法</td><td>直接解线性方程组</td><td>坐标下降、近端梯度（ISTA）</td></tr>
+          <tr><td>典型用途</td><td>共线、病态、\(p\gt n\) 的预测</td><td>特征选择、稀疏模型、可解释性</td></tr>
+          </tbody></table></div>
+          <p>正交设计（\(X^TX=I\)）时有干净解：OLS 系数 \(z=X^Ty\)，Lasso 解为软阈值 \(\hat\beta_j = \mathrm{sign}(z_j)\max(|z_j|-\lambda, 0)\)——比 \(\lambda\) 小的直接归零，其余减去 \(\lambda\)。一般设计下没有闭式，但一阶条件（次梯度条件）仍是面试可写的推导：最优解满足</p>
+          <div class="math-display">\[X^T(y-X\hat\beta) \in \lambda\,\partial\|\hat\beta\|_1,\qquad\text{第 }j\text{ 个分量：}\ \bigl|X_j^T(y-X\hat\beta)\bigr|\le\lambda\ \text{当}\ \hat\beta_j=0.\]</div>
+          <p>读法：一个特征要「留下来」，它与残差的相关必须强过 \(\lambda\) 这道门槛；不过线就归零。梯度下降视角下，目标的光滑部分 \(\tfrac12\|y-X\beta\|^2\) 的 Hessian 是 \(X^TX\)，条件数依旧是 \(\kappa(X^TX)\)——先标准化特征、或用近端梯度（每步先走光滑梯度、再做软阈值投影）与坐标下降，是处理病态的标配；实在病态时也可以先岭后 Lasso（Elastic Net 把两种罚线性组合，兼收摊分与稀疏）。</p>
+          <div class="intuition-box"><b>一句话区分</b><p>面试被问「LASSO 和 Ridge 的区别」（源题 S27）：先答罚项 L1 对 L2，再答几何（尖角出零系数对光滑球面均匀收缩），再答工程（闭式解有无、相关特征下的行为），最后补 Elastic Net——四层递进，一分钟讲完。</p></div>
+
+          <h3 id="s-027-4"><a class="anchor-link" href="#s-027-4" aria-label="跳转到本节">#</a>知识点三：模型选择、过拟合与压缩</h3>
+          <p>正则化强度 \(\lambda\)、特征子集、树的深度、多项式次数——这些都是模型选择（model selection）问题。统一的组织原则：<b>训练集上的误差单调随复杂度下降，泛化误差先降后升</b>，交叉验证就是用数据找那个拐点。</p>
+          <div class="formula-list">
+            <p><b>k 折交叉验证（k-fold CV）：</b>把数据切成 k 份，轮流留一份做验证、其余做训练，取 k 个验证误差的平均；留一法（LOOCV）是 \(k=n\) 的极端。选 \(\lambda\) 用 CV，报告最终性能必须再用完全没碰过的测试集。</p>
+            <p><b>信息准则：</b>\(\mathrm{AIC}=2k-2\ell\)（侧重预测）、\(\mathrm{BIC}=k\log n-2\ell\)（\(\ell\) 为最大对数似然，\(k\) 为参数数；BIC 罚更重，偏好更省的模型）。样本够大时优先 CV，小样本或快速筛选时用准则。</p>
+            <p><b>过拟合治理（源题 S23）：</b>诊断看「训练误差低、验证误差高」的剪刀差；药方按优先级：加数据、降复杂度（剪枝、降阶、减特征）、正则化（L1/L2、早停）、集成（bagging 降方差）。根治手段只有一个——用未参与训练的数据评估。</p>
+            <p><b>大模型压缩（源题 S24）：</b>量化（float32 降到 int8，牺牲精度换内存与速度）、剪枝（删小权重/神经元再微调）、知识蒸馏（大模型当教师训小模型）、低秩分解（把大矩阵拆成两个瘦矩阵乘积）。取舍口径：内存/延迟预算、可接受的精度回吐、以及压缩后是否需要再校准。</p>
+            <p><b>bagging 与 boosting（源题 S28）：</b>bagging（bootstrap aggregating）并行训练多个高方差模型取平均，降方差不降偏差，代表随机森林；boosting 串行训练弱模型、每轮拟合上一轮的残差，主要降偏差，代表 AdaBoost 与梯度提升。口径：深树高方差配 bagging，浅桩高偏差配 boosting。</p>
+          </div>
+          <p>这些条目在例题 8 里以「面试问答」的形式再串一遍，此处先把机制记牢：CV 防「用测试集调参」的泄漏，信息准则给复杂度明码标价，正则与压缩都是在「容量」与「稳定」之间做交易。</p>
+
+          <h3 id="s-027-5"><a class="anchor-link" href="#s-027-5" aria-label="跳转到本节">#</a>例题详解 I：从闭式解到条件数</h3>
+          <div class="worked-example">
+            <p><b>例题 1（源题 S1，综合题拆解）：从波动率估计器出发的一串追问。(a) 日常收益率序列的波动率估计器有哪些性质、如何做样本外检验？(b) 线性回归的闭式解何时出现不可逆问题？岭回归的闭式解是什么？(c) 加了 \(\lambda I\) 之后被求逆矩阵的谱怎么变？(d) Lasso 没有闭式解，用梯度下降求解时 conditioning 意味着什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>这是「一题串一章」的面试题：从估计量性质的语言（无偏、一致、稳健）出发，穿过 OLS 的可逆条件，落到岭与 Lasso 的数值性质。逐问作答。</p>
+              <p><b>(a) 推导。</b>零均值假设下 \(\hat\sigma^2=\frac1n\sum_{i=1}^n r_i^2\) 是 \(\sigma^2\) 的无偏、一致估计（平方项 iid，方差为 \(2\sigma^4/n\)，由 \(\chi^2_n/n\) 分布给出）。弱点：对离群点不稳健（平方放大尾部）、等权对待新旧信息、忽略波动聚集。改进族：EWMA \(\hat\sigma_t^2=(1-\lambda)\sum_{k\ge0}\lambda^k r_{t-k}^2\) 指数遗忘、GARCH 显式建模条件方差、高频已实现波动率。样本外检验：把估计出的波动率与随后<b>实现</b>的波动率回归（Mincer–Zarnowitz 回归，看截距零、斜率一），或比较多个估计器的样本外 RMSE/QLIKE。</p>
+              <p><b>(b) 推导。</b>OLS 闭式解 \(\hat\beta=(X^TX)^{-1}X^Ty\) 需要 \(\mathrm{rank}(X)=p\)。不可逆的三张面孔：完全共线的列（含 dummy 陷阱）、\(p\gt n\)（500 行 1000 列必秩亏）、以及数值上 \(s_p\approx0\) 的病态。岭回归给出始终可逆的闭式解 \((X^TX+\lambda I)^{-1}X^Ty\)，推导见知识点一（对增广目标求导即可）。</p>
+              <p><b>(c) 推导。</b>谱的变化就是「整体平移」：\(X^TX\) 的特征值 \(s_j^2\) 变成 \(s_j^2+\lambda\)。条件数从 \(s_1^2/s_p^2\) 变为 \((s_1^2+\lambda)/(s_p^2+\lambda)\)，数值例 \(s_1=10, s_p=0.1\)：\(10^4\to\) 约 \(100\)（\(\lambda=1\)）。每个主方向的系数被乘上 \(s_j^2/(s_j^2+\lambda)\)，弱方向被强收缩。</p>
+              <p><b>(d) 推导。</b>Lasso 目标的光滑部分 Hessian 为 \(X^TX\)，梯度下降收敛速率由 \(\kappa(X^TX)\) 控制；\(\lambda\|\beta\|_1\) 不可导但可次梯度处理。实务三件套：先标准化列（让罚项对各特征公平）；用近端梯度/坐标下降，每步软阈值 \(\hat\beta_j\leftarrow \mathrm{sign}(z_j)\max(|z_j|-\lambda,0)\) 处理非光滑；病态严重时用 Elastic Net 或先岭预条件。conditioning 差 = 等值线被拉成细长椭圆 = 折线振荡慢收敛。</p>
+              <p><b>检验。</b>一致性核对：\(\lambda=0\) 时 (b)(c) 全部退回 OLS；\(\lambda\to\infty\) 时系数全为零；(c) 的不等式在 \(s_1=s_p\)（正交球对称）时取等号——退化情形自洽。</p>
+              <p><b>面试怎么讲。</b>这题的评分点在「逐问而不乱」：每问先给结论公式、再给一句机制解释。可以主动收尾：「编程题库第 73 题『设计矩阵不可逆怎么办』就是 (b) 问——答案是加罚项（岭）、删共线列、或取伪逆 \(X^+=\lim_{\lambda\to0}(X^TX+\lambda I)^{-1}X^T\)，<a href="036.html">036 章</a>会从工程实现角度再遇它。」</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2（源题 S27）：LASSO 与 Ridge 的区别是什么？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两者同为「OLS + 罚项」，区别全部来自罚项的几何形状，从形状往下推性质。</p>
+              <p><b>推导。</b>罚项：Ridge 用 \(\lambda\|\beta\|_2^2\)，Lasso 用 \(\lambda\|\beta\|_1\)。约束区域的形状：L2 球光滑无角，L1 菱形有 \(2^p\) 个尖角顶点。椭圆等值线与约束区域相切的位置：Ridge 在弧上（系数被按比例收缩，无一为零），Lasso 常在角上（部分系数精确为零，天然特征选择）。代数上 Ridge 有闭式解 \((X^TX+\lambda I)^{-1}X^Ty\)，Lasso 只有次梯度条件（\(|X_j^T r|\le\lambda\) 时 \(\hat\beta_j=0\)）。相关特征下：Ridge 摊分系数、稳定；Lasso 二选一、选择具有不稳定性——这既是它的卖点也是它的风险。</p>
+              <p><b>检验。</b>单特征退化情形：两者都变成对一维系数的收缩（Ridge 乘 \(s^2/(s^2+\lambda)\)，Lasso 减 \(\lambda\) 后截断为零）——方向一致、方式不同，与直觉吻合。</p>
+              <p><b>面试怎么讲。</b>背下四层结构：罚项→几何→稀疏性→求解与共线行为，最后补一句「Elastic Net 线性组合两种罚，兼得稀疏与稳定」，体现你知道实践中怎么选。</p>
+            </div>
+          </div>
+
+          <h3 id="s-027-6"><a class="anchor-link" href="#s-027-6" aria-label="跳转到本节">#</a>例题详解 II：重复数据、噪声特征与共线</h3>
+          <div class="worked-example">
+            <p><b>例题 3（源题 S21）：数据管道出错，每条样本被录入了两次。与正确回归相比，输出的系数、\(R^2\) 和 t 统计量各会怎么变？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设原设计矩阵 \(X\in\mathbb{R}^{n\times p}\)（\(p\) 个含截距的参数），复制后 \(X'=\binom{X}{X}\)、\(y'=\binom{y}{y}\)，样本数 \(2n\)、秩仍为 \(p\)。</p>
+              <p><b>推导。</b>系数：\(X'^TX'=2X^TX\)、\(X'^Ty'=2X^Ty\)，故</p>
+              <div class="math-display">\[\hat\beta' = (2X^TX)^{-1}(2X^Ty) = \hat\beta,\qquad \hat y'= \hat y,\qquad R^2\ \text{不变（拟合与总变异同比例翻倍）}.\]</div>
+              <p>t 统计量：残差平方和翻倍 \(\mathrm{RSS}'=2\,\mathrm{RSS}\)，方差估计 \(\hat\sigma'^2 = 2\mathrm{RSS}/(2n-p)\)；再由 \((X'^TX')^{-1}=\tfrac12(X^TX)^{-1}\)，标准误平方为 \(\hat\sigma'^2\cdot\tfrac12 Q_{jj}\)（\(Q=(X^TX)^{-1}\)）。对比原来的 \(\hat\sigma^2 Q_{jj}=\frac{\mathrm{RSS}}{n-p}Q_{jj}\)：</p>
+              <div class="math-display">\[\frac{\mathrm{SE}'_j}{\mathrm{SE}_j} = \sqrt{\frac{n-p}{2n-p}},\qquad t'_j = t_j\sqrt{\frac{2n-p}{n-p}}\ \approx\ \sqrt2\,t_j.\]</div>
+              <p><b>检验。</b>直觉核对：有效信息没变（系数、\(R^2\) 不动），但「自由度账本」多记了一倍样本，标准误按 \(\sqrt{n}\) 法则缩到约 \(1/\sqrt2\)，显著性被虚增——这正是金融面板里「同一资产录两遍」会假造出星星的机制。极端核对 \(p\to0\)：\(t'=t\sqrt2\) 精确成立。</p>
+              <p><b>面试怎么讲。</b>先答「系数与 \(R^2\) 分毫不差、t 放大 \(\sqrt2\)」，再给上述两行推导，最后点破本质：复制数据骗不过点估计，只骗得过「自由度」——所以诊断重复样本要看标准误的异常变好。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4（源题 S32）：往线性回归里加入一个纯随机的额外参数（与目标无关的随机特征），训练集上的总误差会怎么变？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>把 OLS 看作把 \(y\) 投影到回归子张成的子空间：原模型对应子空间 \(S\)，加一个随机特征后扩大为 \(S\oplus\mathrm{span}(z)\)。</p>
+              <p><b>推导。</b>投影到更大子空间的距离（残差范数）不可能变大——目标函数在更大的可行集上取最小，所以<b>训练残差平方和必然不增</b>（通常严格下降）。高斯噪声下每加一个纯噪声特征，\(\mathbb{E}[\mathrm{RSS}\text{ 的下降}]=\sigma^2\)，即 \(R^2\) 平均虚高约 \((1-R^2)/n\)。这就是调整 \(R^2\) 要除以自由度的原因：</p>
+              <div class="math-display">\[R^2_{\text{adj}} = 1-(1-R^2)\,\frac{n-1}{n-p-1},\]</div>
+              <p>它对「加参数必涨 \(R^2\)」的机械行为收税。而<b>样本外</b>误差不降反可能升：噪声特征在训练集上学到的是采样偶然性，换一组数据就失效——训练误差与泛化误差的分叉即过拟合（知识点三的核心图景）。</p>
+              <p><b>检验。</b>极限核对：往模型里塞 \(n\) 个随机特征可以完美拟合任何 \(y\)（\(R^2\to1\)、训练误差 \(\to0\)），但预测完全没用——把「必然下降」推到荒谬即见分界。</p>
+              <p><b>面试怎么讲。</b>一句话版本：「最小化是在更大的空间里做的，训练误差单调不增；但样本外期望误差不变或变差，所以判断特征要看验证集，看训练集 \(R^2\) 会被纯噪声骗。」</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5（源题 S25）：\(X_1\)、\(X_2\) 高度相关。把 \(X_2\) 加进原本只用 \(X_1\) 的回归后，为什么系数估计的方差会变大？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>中心化后的双特征回归，考察 \(\mathrm{Var}(\hat\beta_1)\) 随两特征相关系数 \(r\) 的变化。</p>
+              <p><b>推导。</b>记 \(S_{11}=\sum\tilde x_{1i}^2\)、\(S_{22}=\sum\tilde x_{2i}^2\)、\(S_{12}=\sum\tilde x_{1i}\tilde x_{2i}\)，则</p>
+              <div class="math-display">\[(X^TX)^{-1}=\frac{1}{S_{11}S_{22}-S_{12}^2}\begin{pmatrix}S_{22} & -S_{12}\\ -S_{12} & S_{11}\end{pmatrix},\qquad \mathrm{Var}(\hat\beta_1)=\frac{\sigma^2 S_{22}}{S_{11}S_{22}-S_{12}^2}=\frac{\sigma^2}{S_{11}(1-r^2)}.\]</div>
+              <p>因子 \(1/(1-r^2)\) 就是<b>方差膨胀因子</b>（Variance Inflation Factor, VIF）：\(r=0\) 时无膨胀；\(r=0.9\) 时 VIF≈5.3；\(r\to1\) 时方差爆炸。机制：两个特征几乎共线时，数据无法分辨「效应归 \(X_1\) 还是归 \(X_2\)」，最小二乘在共线方向上自由度过剩，系数沿着这条「无信息方向」大幅摆动，方差随之放大。</p>
+              <p><b>检验。</b>量纲核对：\(r\) 无量纲，公式两侧量纲一致；退化核对 \(r=\pm1\) 分母为零——与「完全共线则解不唯一」相接，正是例题 1(b) 的连续版。</p>
+              <p><b>面试怎么讲。</b>写出 VIF 公式是硬通货；随后必须补一句平衡：「系数方差变大不等于模型没用——若 \(X_2\) 携带真实增量信息，预测方差可能反而下降；膨胀的是<b>单个系数的解释权</b>。要稳定系数就用岭回归（把 \(s_p^2\) 垫高），要选特征就用 Lasso 或先做相关分析。」</p>
+            </div>
+          </div>
+
+          <h3 id="s-027-7"><a class="anchor-link" href="#s-027-7" aria-label="跳转到本节">#</a>例题详解 III：宽数据、平滑与模型治理</h3>
+          <div class="worked-example">
+            <p><b>例题 6（源题 S10）：一个 500 行、1000 列（特征）的数据集，怎么建模？给出 2–3 种模型并比较。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>先指出结构性约束：\(p=1000\gt n=500\)，\(\mathrm{rank}(X)\le500\)，\(X^TX\) 必奇异，OLS 无唯一解；而且每样本只摊到半个特征，过拟合风险极高——模型必须自带「降容量」机制。</p>
+              <p><b>推导（三个候选及取舍）。</b>其一，<b>Lasso / Elastic Net</b>：L1 罚把多数系数压零，1000 列里自动挑出小支撑集；强相关特征多时 Elastic Net 更稳。取舍：稀疏、可解释，但选集对样本扰动敏感，需 CV 定 \(\lambda\)。其二，<b>岭回归 / PCA 回归</b>：岭直接用 \((X^TX+\lambda I)^{-1}X^Ty\) 恢复可逆性，把方差摊到所有特征上；PCA 回归先取前 \(k\) 个主成分（覆盖绝大部分方差）再回归，把 \(p\) 压到 \(k\ll n\)。取舍：预测通常稳，但主成分是特征的线性组合、解释费力。其三，<b>树集成（随机森林 / 梯度提升）</b>：天然处理 \(p\gt n\)（每棵树每次分裂只抽样特征子集），捕捉非线性与交互，无需标准化。取舍：外推能力弱、高维稀疏线上不如线性模型干脆。共同纪律：特征先标准化（罚项才公平）、\(k\) 折交叉验证选超参、留出独立测试集报告性能。</p>
+              <p><b>检验。</b>退化核对：若 1000 列里只有 10 列有真信号，Lasso 应大致找回这 10 列（支撑恢复），岭给出的系数会在相关特征间摊开——与知识点二的表格一致。</p>
+              <p><b>面试怎么讲。</b>开场先说「\(p\gt n\)，OLS 不可逆」，这一句就证明了你懂结构；然后按「目标」分流：要解释选 Lasso，要预测稳选岭/PCA，要非线性选树集成；最后提数据侧动作（去掉零方差列、按缺失率筛列）体现工程感。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 7（源题 S14）：回归模型 \(Y=aX\) 的预测今天与明天跳变剧烈。如何改造模型，使 \(Y(t+1)\) 的预测不偏离 \(Y(t)\) 太多？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>把「相邻两天的预测要接近」写进目标函数：在拟合误差之外，对预测的逐期变化 \(\hat y_{t+1}-\hat y_t\) 加罚。</p>
+              <p><b>推导。</b>新目标与一阶条件：</p>
+              <div class="math-display">\[\min_\beta\ \sum_t\bigl(y_t-x_t^T\beta\bigr)^2+\lambda\sum_t\bigl(x_{t+1}^T\beta-x_t^T\beta\bigr)^2 \ \Longrightarrow\ \hat\beta=\bigl(X^TX+\lambda X^TD^TDX\bigr)^{-1}X^Ty,\]</div>
+              <p>其中 \(D\) 是一阶差分矩阵（第 \(t\) 行为 \(e_{t+1}-e_t\)）。它是「广义岭回归」：把 \(\lambda I\) 换成了沿时间方向的罚 \(\lambda X^TD^TDX\)——不罚系数本身的绝对大小，只罚系数引起的<b>预测跳变</b>。贝叶斯读法：等价于给 \((D X\beta)\) 施加高斯先验（先验精度 \(\lambda I\)），即「预测路径平滑」这一先验信念。两个实操替身：(1) 加滞后项 \(y_{t-1}\) 作特征（自回归化，让模型显式继承昨天的水平）；(2) 对系数差分罚 \(\sum\|\beta_{t+1}-\beta_t\|^2\)（时变系数平滑，即 Kalman 滤波 / Holt-Winters 一族的离散形态）。当模型取恒等映射时，该目标就是信号处理里的 Whittaker–Henderson / Hodrick–Prescott 平滑器。</p>
+              <p><b>检验。</b>极限核对：\(\lambda=0\) 回到原模型；\(\lambda\to\infty\) 预测被锁成常数（完全平滑）——两端行为符合「平滑度旋钮」的语义。</p>
+              <p><b>面试怎么讲。</b>先把需求翻译成罚项「\(\lambda\sum(\hat y_{t+1}-\hat y_t)^2\)」，写出广义岭形式；再补一句贝叶斯读法（平滑先验）与两个实务替代（滞后特征、时变系数）。追问「会不会牺牲拟合」时答：会，这是偏差换方差，\(\lambda\) 由 CV 定。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 8（源题 S22、S23、S24、S28 四连问）：如何选择模型？如何应对过拟合？预测模型太大如何压缩？bagging 与 boosting 有何区别、代表算法谁偏偏差谁偏方差？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>四问共用一张地图：横轴模型容量、纵轴误差；训练误差随容量单调降，泛化误差先降后升。所有答案都是在这张图上做操作。</p>
+              <p><b>推导（作答口径）。</b>模型选择：候选集先按业务与计算预算裁剪；同一数据内用 \(k\) 折 CV（或 AIC/BIC 快筛）选出泛化估计最好的复杂度；<b>最终性能用从未参与选型的测试集报告</b>，超参嵌套在内层 CV 里防泄漏。过拟合：诊断「训练误差远低于验证误差」的剪刀差；治理按优先级——加数据、降容量（减特征、降阶、剪枝）、正则化（L1/L2/早停）、bagging 平均降方差。大模型压缩：量化（int8 权重，换内存延迟）、剪枝（幅值小的权重置零再微调）、蒸馏（教师软标签训小模型）、低秩分解；验收看「精度回吐多少、延迟降多少」。bagging 对 boosting：bagging 并行训多个<b>高方差</b>基学习器取平均，降方差，代表随机森林（深树方差大，平均后稳）；boosting 串行拟合残差，把<b>高偏差</b>弱学习器逐步加成强模型，代表 AdaBoost、梯度提升（浅树偏差大，逐步纠偏）。</p>
+              <p><b>检验。</b>交叉核对知识点三的公式：AIC \(=2k-2\ell\) 罚轻、BIC \(=k\log n-2\ell\) 罚重，样本大时 BIC 选出更省的模型——与「BIC 偏好真实模型、AIC 偏好预测最优」的教科书口径一致。</p>
+              <p><b>面试怎么讲。</b>这四问是「口径题」，考的是结构化输出：每问先一句总原则（未参与训练的数据定夺 / 容量与数据量匹配 / 压缩是精度换资源 / 方差对偏差），再列 2–3 个手段，各配一个代表算法。避免罗列名词不给取舍。</p>
+            </div>
+          </div>
+
+          <h3 id="s-027-8"><a class="anchor-link" href="#s-027-8" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>误区一：正则化能治偏差</b><p>不能。岭与 Lasso 对抗的是<b>方差</b>（共线、病态、过拟合），它们自己还引入偏差（收缩）。外生性、遗漏变量、样本选择偏差带来的不一致性，正则化一概无能为力——药要对症。</p></div>
+          <div class="intuition-box"><b>误区二：先罚后忘标准化</b><p>L1/L2 罚对「单位」敏感：价格以元还是千元计，系数差一千倍，罚项的力度完全不同。正则化前必须标准化（或至少中心化加缩放），否则 \(\lambda\) 在惩罚不同特征时厚此薄彼。</p></div>
+          <div class="intuition-box"><b>误区三：把 t 统计量 ×√2 当成「模型变好了」</b><p>例题 3 的复制数据场景里点估计纹丝不动，只有显著性在虚增；同理，例题 4 里训练 \(R^2\) 的提升可以由纯噪声制造。判断改善永远看样本外。</p></div>
+          <div class="intuition-box"><b>边界：Lasso 的选择不可全信</b><p>强相关特征下 Lasso「留谁删谁」由样本噪声决定，换一期数据可能换一批人；要稳定解释用岭或 Elastic Net，要把选择本身当估计量做稳定性检验（重抽样后看重合率）。</p></div>
+          <div class="intuition-box"><b>边界：交叉验证的泄漏通道</b><p>标准化、特征筛选、超参选择若在 CV 划分<b>之前</b>用全量数据做，验证集信息已泄漏，CV 分数会系统性乐观。正确顺序：每个训练折内部独立完成预处理与选型（嵌套 CV）。</p></div>
+
+          <h3 id="s-027-9"><a class="anchor-link" href="#s-027-9" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能写出岭回归目标、闭式解 \((X^TX+\lambda I)^{-1}X^Ty\)，并用特征值平移解释它为何总是可逆、条件数为何下降。</li>
+            <li>我能用 SVD 把岭解写成各主方向的收缩 \(s_j^2/(s_j^2+\lambda)\)，并说明 \(\lambda\) 的两个极限行为。</li>
+            <li>我能用「菱形尖角对光滑圆球」讲清 Lasso 出稀疏、Ridge 均匀收缩，并背下正交设计下的软阈值公式。</li>
+            <li>我能推导复制数据下「系数与 \(R^2\) 不变、t 乘 \(\sqrt{(2n-p)/(n-p)}\approx\sqrt2\)」并解释自由度机制。</li>
+            <li>我能证明加纯随机特征后训练误差必然不增（投影变大），并说出样本外为什么不受这个保证。</li>
+            <li>我能从双特征回归的逆矩阵推出 VIF \(=1/(1-r^2)\)，并解释共线为何放大系数方差而非必然毁掉预测。</li>
+            <li>面对 \(p\gt n\) 的宽表格，我能给出 Lasso、岭/PCA、树集成三个方案并说清取舍。</li>
+            <li>我能把「预测不要跳变」翻译成对 \(\hat y_{t+1}-\hat y_t\) 的罚项，写出广义岭形式并给出贝叶斯读法。</li>
+            <li>我能按「总原则 + 2–3 个手段 + 代表算法」的口径回答模型选择、过拟合、压缩与 bagging/boosting 四连问。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="026.html">← 026. 统计一：OLS 与两个方向的回归</a><a href="028.html">028. 统计三：MLE 与贝叶斯估计 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

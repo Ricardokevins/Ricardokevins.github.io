@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>002. 数据结构 I：动态数组、链表、栈与队列 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 002</div>
+        <div class="brand-title">数据结构 I：动态数组、链表、栈与队列</div>
+        <div class="brand-meta">从会用 STL 到能手写容器：均摊扩容、指针操作与受限访问秩序。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-002-1">学习目标：从「会用容器」到「能造容器」</a><a class="toc-link" href="#s-002-2">动态数组：倍增扩容与均摊 O(1)</a><a class="toc-link" href="#s-002-3">链表：反转与快慢指针</a><a class="toc-link" href="#s-002-4">栈与队列：两种访问秩序</a><a class="toc-link" href="#s-002-5">例题详解</a><a class="toc-link" href="#s-002-6">误区与边界</a><a class="toc-link" href="#s-002-7">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link current" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="dsa" data-title="数据结构 I：动态数组、链表、栈与队列">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>002. 数据结构 I：动态数组、链表、栈与队列</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>本章覆盖源题提纲的 Dynamic Array、Linked List、Stack &amp; Queue 三项：动态数组为什么均摊 O(1)、链表的反转与快慢指针、栈与队列互相实现及单调栈，并完整解掉源题库统计板块第 6 题的「两个容器」设计题。</p></aside>
+          <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法知识地图：线性结构、树与哈希、图算法、排序查找范式四大板块与面试口径"></figure>
+
+          <h3 id="s-002-1"><a class="anchor-link" href="#s-002-1" aria-label="跳转到本节">#</a>学习目标：从「会用容器」到「能造容器」</h3>
+          <p>量化面试的编程环节很少考偏题怪题，但非常喜欢考「你天天在用的东西，你懂它吗」。std::vector 的 push_back 凭什么说是 O(1)？单次扩容明明要搬全部元素。什么时候链表反而比数组快？两个栈为什么能拼出一个队列，代价又是什么？这些问题答不上来，刷再多题也会在最基础的一层露馅。</p>
+          <p>本章把四个最基础的线性结构——动态数组、链表、栈、队列——从接口层挖到实现层。核心线索只有一条：<b>每个操作的真实代价由「数据在内存里怎么摆」决定</b>。数组连续摆放换来随机访问和缓存友好，代价是扩容搬运；链表用指针换插删灵活，代价是失去随机访问；栈和队列是加上了访问限制的容器，限制换来了秩序，也约束了实现方式。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>均摊分析</b><p>把偶发的昂贵操作（扩容搬运）摊到之前所有便宜操作头上，得到「每次操作的平均代价」。这是回答 vector 为何 O(1) 的唯一正确口径。</p></div>
+            <div class="concept-card"><b>指针不变量</b><p>链表题的全部技巧就是维护循环不变量：每一步哪些指针指向哪段链、断链前先存谁。反转、找中点、判环都是同一种训练。</p></div>
+            <div class="concept-card"><b>受限访问</b><p>栈只开一端（LIFO），队列开两端（FIFO）。限制本身是工具：括号匹配、单调栈、层序遍历都靠「只能从一端拿」建立秩序。</p></div>
+          </div>
+          <p>读完本章你应该能在白板上手写一个带倍增扩容的动态数组、三指针迭代反转链表、用两个栈实现均摊 O(1) 的队列，并且每个都能当场给出复杂度与边界。这三件事是后续所有章节（哈希表、堆、图）的物理基础。</p>
+
+          <h3 id="s-002-2"><a class="anchor-link" href="#s-002-2" aria-label="跳转到本节">#</a>动态数组：倍增扩容与均摊 O(1)</h3>
+          <p>静态数组的大小编译期定死，而业务数据的规模通常未知，于是有了动态数组（dynamic array）：一块容量为 \(m\) 的连续内存，实际存了 \(n\) 个元素。两个数分开维护，\(n \le m\)；当 \(n\) 追上 \(m\) 时申请一块更大的内存，把旧元素整体搬过去。C++ 的 std::vector、Java 的 ArrayList、Python 的 list 都是这个结构。</p>
+          <div class="formula-list">
+            <p><b>规模与容量：</b>size \(n\) 是已存元素个数，capacity \(m\) 是已申请槽位数，恒有 \(n \le m\)。</p>
+            <p><b>扩容触发：</b>当 \(n = m\) 还要继续插入时，按几何级数扩容：\(m' = 2m\)（倍增策略，growth factor 为 2）。</p>
+            <p><b>搬运代价：</b>一次扩容要把 \(n\) 个旧元素逐个搬到新内存，单次代价 \(\Theta(n)\)，同时旧内存释放。</p>
+            <p><b>随机访问：</b>首地址加下标偏移，\(a[i]\) 的地址是 \(\mathrm{base} + i \times \mathrm{sizeof}(T)\)，故 \(\Theta(1)\)。</p>
+          </div>
+          <p>关键问题是：扩容这么贵，凭什么说 push_back 是 O(1)？答案是均摊（amortized）分析里的聚合法（aggregate method）：看 \(n\) 次连续 push_back 的<b>总代价</b>，而不是单次最坏代价。从容量 1 开始倍增，扩容发生在 \(n = 1, 2, 4, \dots\) 处，各搬运一次：</p>
+          <div class="math-display">\[C(n) \;=\; \underbrace{1 + 2 + 4 + \cdots + 2^{\lceil \log_2 n \rceil - 1}}_{\text{历次搬运}} \;=\; 2^{\lceil \log_2 n \rceil} - 1 \;\lt\; 2n.\]</div>
+          <p>怎么读：搬运总量是「不超过 \(n\) 的最大 2 的幂」的等比求和，结果小于 \(2n\)。再算上每次 push 本身的写入代价 \(n\)，\(n\) 次操作总代价小于 \(3n\)，于是每次操作的均摊代价是 \(\Theta(1)\)。注意口径：单次最坏仍是 \(\Theta(n)\)，均摊 O(1) 描述的是一段操作的平均，面试时必须主动把这两个口径分开说。</p>
+          <p>反例同样重要：如果每次只把容量加一个常数（比如 \(m' = m + 1\)），扩容会发生在每一次插入，总搬运代价变成：</p>
+          <div class="math-display">\[C(n) \;=\; 1 + 2 + \cdots + (n-1) \;=\; \frac{n(n-1)}{2} \;=\; \Theta(n^2),\]</div>
+          <p>均摊每次 \(\Theta(n)\)。这就是「必须几何级数扩容」的全部理由：倍增让昂贵操作的发生频率按指数衰减，摊薄了它的代价。</p>
+          <div class="intuition-box"><b>为什么缩容要「滞后」</b><p>对称的问题出现在删除：如果元素一少到 \(n \lt m/4\) 就立刻缩一半，交替执行「插到触发扩容、删到触发缩容」会让每次操作都是 \(\Theta(n)\)。工程解法是滞后阈值（hysteresis）：扩容在 \(n = m\) 触发倍增，缩容在 \(n \le m/4\) 才触发减半，两个阈值隔开一倍距离，抖动（thrashing）就不可能连续发生。</p></div>
+          <p>把数组和链表放在同一张表里对比，是面试里检验「懂不懂底层」的高频动作：</p>
+          <div class="table-wrap"><table><thead><tr><th>操作</th><th>动态数组</th><th>链表</th><th>原因</th></tr></thead><tbody>
+          <tr><td>随机访问 a[i]</td><td>\(\Theta(1)\)</td><td>\(\Theta(n)\)</td><td>数组地址可算，链表要沿指针走</td></tr>
+          <tr><td>尾部插入</td><td>均摊 \(\Theta(1)\)</td><td>\(\Theta(1)\)</td><td>数组偶发扩容；链表改一个指针</td></tr>
+          <tr><td>头部插入</td><td>\(\Theta(n)\)</td><td>\(\Theta(1)\)</td><td>数组要整体右移；链表改指针</td></tr>
+          <tr><td>按值查找</td><td>\(\Theta(n)\)</td><td>\(\Theta(n)\)</td><td>无序时都只能线性扫</td></tr>
+          <tr><td>内存与缓存</td><td>连续、缓存友好</td><td>节点分散、指针开销</td><td>缓存的按行预取偏爱连续内存</td></tr>
+          </tbody></table></div>
+          <p>结论要能一句话讲出：数组赢在「算得出地址 + 缓存友好」，链表只在「位置已知的插入删除」上赢，而后者经常被数组「找到位置就要 \(\Theta(n)\)」抵消——所以实践中 vector 几乎总是默认选择。</p>
+
+          <h3 id="s-002-3"><a class="anchor-link" href="#s-002-3" aria-label="跳转到本节">#</a>链表：反转与快慢指针</h3>
+          <p>链表（linked list）的每个节点存「值 + 指向下一个节点的指针」，内存里不要求连续。单链表只给了 next 方向，所以一切操作的本质都是<b>指针重接</b>。面试链表题的稳定性技巧是：动手前先写下循环不变量，每一步只做「保存后继、反转一条边、两个指针各前进一步」三件事。</p>
+          <p>迭代反转的不变量是：<b>prev 指向已经反转完成的那段链的头，curr 指向尚未反转那段链的头</b>，且 prev 这段的尾（也就是原链第一个节点）已经安全地指向 nullptr。循环每轮把 curr 的 next 指回 prev，就把「已反转段」向前推进一个节点；curr 变空时全部反转完成，prev 即新表头。整个过程中任何时刻链表都没有「失联」的节点——先存 next 再改指向，是所有链表题的第一守则。</p>
+          <p>第二个核心工具是快慢指针（fast/slow pointers，龟兔赛跑）：慢指针每次走 1 步、快指针每次走 2 步。两个用法都来自同一个数学事实：任意时刻快指针走过的步数是慢指针的两倍，即 \(\text{fast} = 2 \times \text{slow}\)。</p>
+          <div class="formula-list">
+            <p><b>找中点：</b>快指针触底（走到 nullptr）时，慢指针恰在链表中点：fast 走了 \(2k\) 步 ⇒ slow 走了 \(k\) 步，链长为 \(2k\) 或 \(2k+1\)。</p>
+            <p><b>判环：</b>若链有环，两指针迟早都进环；进环后变成追及问题，相对速度为 1，相遇所需步数不超过环长减 1，所以一定会相遇、不会跳过。</p>
+            <p><b>找环入口：</b>设表头到环入口距离为 \(a\)，环长 \(r\)，相遇时慢指针在环内走了 \(s\) 步。由快指针步数是慢指针两倍：\(2(a+s) = a + s + mr\)（\(m\) 为快指针多绕的圈数），化简得 \(a = (m-1)r + (r-s)\)。</p>
+          </div>
+          <p>最后一条怎么读：\(a\) 步可以从表头走到环入口，而 \((m-1)r + (r-s)\) 步可以从<b>相遇点</b>绕若干整圈再走到环入口——两者位置相同。于是把一个指针放回表头、两指针同速前进，第一次相遇的地方就是环入口。这是 Floyd 判圈算法（Floyd's cycle detection），也被用来做伪随机数周期的检测，面试里是「判环」追问的标准续集。</p>
+          <div class="intuition-box"><b>为什么快慢指针不会「跳过」彼此</b><p>关键在相对速度恰好为 1：两指针都在环内时，每一步把两者间距缩小 1。间距是整数，从任何正整数一路减 1 必然经过 0（相遇），不存在从 1 直接跳到负数跳过 0 的可能。如果改成快指针 3 步慢指针 1 步，相对速度为 2，间距为奇数时会互相跳过，需要更细的讨论——这也是考官爱问的变式。</p></div>
+
+          <h3 id="s-002-4"><a class="anchor-link" href="#s-002-4" aria-label="跳转到本节">#</a>栈与队列：两种访问秩序</h3>
+          <p>栈（stack）只允许在同一端进出——后进先出（LIFO，last-in first-out）；队列（queue）一端进另一端出——先进先出（FIFO，first-in first-out）。它们不是新的存储方式，而是<b>给访问加限制</b>：底层用数组（循环数组）或链表都能实现，限制本身就是算法工具。</p>
+          <div class="formula-list">
+            <p><b>栈接口：</b>push / pop / top，全部 \(\Theta(1)\)；数组实现的栈就是「数组 + 栈顶下标」。</p>
+            <p><b>队列接口：</b>push（队尾）/ pop（队头），全部均摊 \(\Theta(1)\)；数组实现用循环缓冲区避免出队后的整体左移。</p>
+            <p><b>括号匹配：</b>左括号进栈，右括号找栈顶配对并弹出。失败只有三种：配对不上、要弹时栈空、扫完栈非空。</p>
+            <p><b>单调栈：</b>栈内元素自底向上保持单调（求「下一个更大」用递减栈）。每个元素至多进栈、出栈各一次，总代价 \(\Theta(n)\)。</p>
+          </div>
+          <p>括号匹配是栈的「天然对应」：合法括号串的定义就是「每个右括号必须与<b>最近的、尚未配对的</b>左括号配对」，而「最近的未处理者」正是栈顶的定义。栈在这里承担的是「回溯到上一个待匹配对象」的角色——同样的角色出现在表达式求值、HTML 标签配对、编辑器的撤销栈里。</p>
+          <p>单调栈解决的是一族问题：「对每个元素，找它右边第一个比它大（或小）的元素」。暴力是对每个位置向后扫，\(\Theta(n^2)\)。单调栈的洞察是：当新元素 \(x\) 到来时，栈里所有小于 \(x\) 的元素<b>等不到别的答案了</b>——它们的「下一个更大」就是 \(x\)，可以立即结算并出栈；剩下的元素都不小于 \(x\)，\(x\) 压栈。每个元素一生进栈一次、出栈一次，所以尽管有内层 while 循环，总代价仍是 \(\Theta(n)\)——这又是一次均摊分析，和动态数组是同一套思维方式。更多单调栈题型（直方图最大矩形、去重字典序）在<a href="034.html">034 章</a>展开。</p>
+
+          <h3 id="s-002-5"><a class="anchor-link" href="#s-002-5" aria-label="跳转到本节">#</a>例题详解</h3>
+
+          <div class="worked-example">
+            <p><b>例题 1：手写一个支持 push_back 的动态数组，说明扩容策略并分析复杂度。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>用裸指针管理一块堆内存，维护 data_（首地址）、size_（元素数）、cap_（容量）。不变量：\(\text{size\_} \le \text{cap\_}\)，且 data_[0..size_-1] 是有效元素。push_back 时若不变量即将被破坏（size_ 等于 cap_），先倍增再写入。</p>
+              <p><b>代码。</b></p>
+              <pre><code>#include &lt;cstddef&gt;
+#include &lt;cassert&gt;
+
+class DynamicArray {
+public:
+    DynamicArray() : data_(nullptr), size_(0), cap_(0) {}
+    ~DynamicArray() { delete[] data_; }
+
+    // 禁用拷贝，避免双重释放；需要拷贝时按 rule of three 补齐
+    DynamicArray(const DynamicArray&amp;) = delete;
+    DynamicArray&amp; operator=(const DynamicArray&amp;) = delete;
+
+    void push_back(int value) {
+        if (size_ == cap_)
+            reserve(cap_ == 0 ? 1 : cap_ * 2);  // 倍增扩容，保证均摊 O(1)
+        data_[size_++] = value;
+    }
+
+    void reserve(std::size_t newCap) {
+        int* fresh = new int[newCap];           // 申请更大的连续内存
+        for (std::size_t i = 0; i &lt; size_; ++i)
+            fresh[i] = data_[i];                 // 逐个搬运旧元素
+        delete[] data_;                          // 释放旧内存
+        data_ = fresh;
+        cap_ = newCap;
+    }
+
+    int&amp; at(std::size_t i) {
+        assert(i &lt; size_ &amp;&amp; "index out of range");  // fail-fast
+        return data_[i];
+    }
+
+    std::size_t size() const { return size_; }
+    std::size_t capacity() const { return cap_; }
+
+private:
+    int* data_;
+    std::size_t size_, cap_;
+};</code></pre>
+              <p><b>数值演示。</b>从空数组开始连 push 1 到 9：容量序列 1 → 2 → 4 → 8 → 16，搬运发生在长度 1、2、4、8 处，总搬运次数 \(1+2+4+8=15\)，小于 \(2 \times 9 = 18\)，与「搬运总量 \(\lt 2n\)」的界吻合。</p>
+              <p><b>复杂度。</b>push_back 均摊 \(\Theta(1)\)，单次最坏 \(\Theta(n)\)（触发扩容的那一次）；at 是 \(\Theta(1)\)。若把倍增换成 cap_ + 1，均摊退化为 \(\Theta(n)\)。</p>
+              <p><b>边界。</b>初始 cap_ 为 0，首次插入要先分配；拷贝构造若不禁用会造成双重释放；扩容后所有指向旧元素的指针、引用、迭代器全部失效——这是 vector 最著名的坑，面试必须主动提。生产代码中搬运应使用移动或 std::unique_ptr，此处为了展示机制保留最朴素的写法。</p>
+              <p><b>面试怎么讲。</b>先讲 size 与 capacity 的分离，再讲倍增，然后用等比数列求和当场推出总搬运 \(\lt 2n\)，最后补一句「单次最坏 O(n)、均摊 O(1)，低延迟场景应 reserve 预分配」——这一句把均摊与最坏的区别讲清楚，通常是加分点。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 2：给定单链表头指针，用迭代方式原地反转链表。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>维护三指针：prev（已反转段的头）、curr（未反转段的头）、nxt（暂存后继防断链）。不变量：每轮开始时，prev 到原头节点的一段已完全反向，curr 到原尾节点的一段方向未动。</p>
+              <p><b>代码。</b></p>
+              <pre><code>struct ListNode {
+    int val;
+    ListNode* next;
+    ListNode(int x) : val(x), next(nullptr) {}
+};
+
+ListNode* reverseList(ListNode* head) {
+    ListNode* prev = nullptr;   // 已反转链的头
+    ListNode* curr = head;      // 未反转链的头
+    while (curr != nullptr) {
+        ListNode* nxt = curr-&gt;next;  // 先存后继，防止断链
+        curr-&gt;next = prev;           // 反转一条边
+        prev = curr;                // 两指针各前进一步
+        curr = nxt;
+    }
+    return prev;                // curr 为空时 prev 即新表头
+}</code></pre>
+              <p><b>数值演示。</b>链 1 → 2 → 3：第一轮后 1 → nullptr（prev=1），第二轮后 2 → 1（prev=2），第三轮后 3 → 2（prev=3），返回 3，链变为 3 → 2 → 1。</p>
+              <p><b>复杂度。</b>时间 \(\Theta(n)\)，每个节点处理一次；空间 \(\Theta(1)\)，只用三个指针。递归版本同样 \(\Theta(n)\) 时间，但递归深度 \(n\) 带来 \(\Theta(n)\) 栈空间，百万级链表会栈溢出——面试要能说出迭代版胜在空间。</p>
+              <p><b>边界。</b>空链表（head 为 nullptr，循环不执行，直接返回 nullptr）；单节点（一轮即完，返回原头）。变式追问：每 k 个一组反转——外层再套一个计数循环，组内逻辑与本例完全相同。</p>
+              <p><b>面试怎么讲。</b>先在白板写不变量再写代码，讲清「先存 next 再改指向」的动机；主动对比递归解法的空间代价，并指出这是「能徒手写对指针」这一基本功的标准检验题。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 3：快慢指针二合一——(a) 一次遍历找链表中点；(b) 判断链表是否有环。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两个小问共用同一骨架：慢指针 1 步、快指针 2 步。(a) 快指针触空即停，慢指针停在中点；(b) 两指针相等即有环，快指针触空即无环。</p>
+              <p><b>代码。</b></p>
+              <pre><code>// (a) 返回中间节点（偶数长度时返回靠后的那个中点）
+ListNode* middleNode(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast != nullptr &amp;&amp; fast-&gt;next != nullptr) {
+        slow = slow-&gt;next;          // 慢指针 1 步
+        fast = fast-&gt;next-&gt;next;    // 快指针 2 步
+    }
+    return slow;
+}
+
+// (b) Floyd 判圈：有环必相遇
+bool hasCycle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast != nullptr &amp;&amp; fast-&gt;next != nullptr) {
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+        if (slow == fast) return true;   // 相对速度 1，环内必相遇
+    }
+    return false;                        // fast 触空，无环
+}</code></pre>
+              <p><b>数值演示。</b>(a) 链 1 → 2 → 3 → 4 → 5：fast 走 1→3→5 触空，slow 走 1→2→3，返回 3，正确中点。链 1 → 2 → 3 → 4：fast 走 1→3→nullptr 停，slow 停在 2? 逐步验证：初始 slow=1,fast=1；第一轮 slow=2,fast=3；fast-&gt;next=4 非空，第二轮 slow=3,fast=nullptr，循环停，slow=3——偶数长度返回靠后的中点。(b) 环 3 → 4 → 5 → 3：slow 进环后两者间距每步缩 1，必在某点重合。</p>
+              <p><b>复杂度。</b>两问均为时间 \(\Theta(n)\)、空间 \(\Theta(1)\)。判环的正确性依赖相对速度 1：间距逐次减 1 必到 0，不会跳过。</p>
+              <p><b>边界。</b>空链表与单节点（循环条件直接挡掉）；(a) 偶数长度想取<b>靠前</b>的中点时，把 fast 初始化为 head-&gt;next 再进循环；(b) 追问续集是「找环入口」——一个指针放回表头，两指针同速前进，再次相遇处即入口，依据是 \(a = (m-1)r + (r-s)\)（见知识点推导）。</p>
+              <p><b>面试怎么讲。</b>先把「快指针步数恒为慢指针两倍」这半句说出口，(a) (b) 的正确性就都有了着落；再主动给「找环入口」的推导，这题基本就满分了。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 4（源题·统计板块第 6 题）：两个容器各自只支持「尾部进、头部出」，开始时一个装满元素、另一个为空。仅用这两种受限操作，组合出更复杂的访问秩序。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>「尾部进、头部出」的容器就是队列（queue）。于是题意是：给你两个队列 A、B，组合出栈的 LIFO 行为。这是源题库里少见的算法设计原题，考察点是「用受限原语搭出另一种秩序」——它的对偶版本「两个栈实现队列」同样必会，本解一并给出，方便对照。</p>
+              <p><b>思路（两队列实现栈）。</b>push：直接从 A 尾部进。pop：A 里只剩一个元素时它才是「最后进的」（栈顶），于是把 A 的前 \(n-1\) 个元素依次出队、搬进 B，弹出 A 剩下的那个，再把 A、B 角色互换。任何时刻 B 只是临时缓冲。</p>
+              <p><b>代码。</b></p>
+              <pre><code>#include &lt;queue&gt;
+#include &lt;utility&gt;
+
+class MyStack {
+public:
+    void push(int x) {
+        a_.push(x);                    // 新元素永远从尾部进 A
+    }
+
+    int pop() {
+        while (a_.size() &gt; 1) {        // 前 n-1 个搬去 B
+            b_.push(a_.front());
+            a_.pop();
+        }
+        int top = a_.front();          // 剩下的就是最后进的（栈顶）
+        a_.pop();
+        std::swap(a_, b_);             // 角色互换，B 变回主容器
+        return top;
+    }
+
+    bool empty() const { return a_.empty(); }
+
+private:
+    std::queue&lt;int&gt; a_, b_;
+};</code></pre>
+              <p><b>数值演示。</b>push 1、2、3 后 A = [1,2,3]。pop：搬 1、2 进 B，弹 3（正确，3 最后进）。再 pop：搬 1 进 B，弹 2。再 pop：直接弹 1。序列 3、2、1，LIFO 达成。</p>
+              <p><b>对偶版（两栈实现队列）与代价对比。</b>栈是「同端进出」，把 in 栈整体倒入 out 栈，顺序恰好翻转一次，两次翻转抵消，恢复 FIFO。关键是只在 out 栈为空时才倒：</p>
+              <pre><code>#include &lt;stack&gt;
+
+class MyQueue {
+public:
+    void push(int x) {
+        in_.push(x);                        // 只管进
+    }
+
+    int pop() {
+        if (out_.empty()) transfer();       // out 空了才搬运
+        int front = out_.top();
+        out_.pop();
+        return front;
+    }
+
+private:
+    void transfer() {
+        while (!in_.empty()) {              // in 整体倒进 out
+            out_.push(in_.top());
+            in_.pop();
+        }
+    }
+    std::stack&lt;int&gt; in_, out_;
+};</code></pre>
+              <p>两个方向的代价<b>不对称</b>，这是本题的面试灵魂：两队列实现栈，每次 pop 都要全量搬运，单次就是 \(\Theta(n)\)；两栈实现队列，每个元素一生至多被搬运一次（in 到 out），\(n\) 次操作总搬运不超过 \(n\)，均摊 \(\Theta(1)\)——又一次聚合法均摊分析。为什么差这么多？因为栈倒进队列方向时顺序「翻转一次」就能复用，而队列倒队列顺序不变、每次 pop 都得重新排队。</p>
+              <p><b>复杂度。</b>两队列实现栈：push \(\Theta(1)\)，pop \(\Theta(n)\)。两栈实现队列：push \(\Theta(1)\)，pop 均摊 \(\Theta(1)\)、单次最坏 \(\Theta(n)\)。</p>
+              <p><b>边界。</b>对空栈/空队列 pop 必须显式报错而非返回垃圾值；两队列版的 swap 之后 B 必须确认为空，否则状态混乱。变式：用两个栈实现「带 getMin 的栈」——辅助栈同步维护当前最小值，见<a href="034.html">034 章</a>。</p>
+              <p><b>面试怎么讲。</b>先明确「尾部进、头部出 = 队列语义」，画出搬运示意，再主动对比两个方向的均摊复杂度并给出「每个元素至多搬一次」的证明——这道源题的采分点全在对比上。</p>
+            </div>
+          </div>
+
+          <div class="worked-example">
+            <p><b>例题 5：每日温度。数组 t 表示每天温度，对每个位置求「还要等几天才出现更高温度」，等不到记 0。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>即对每个下标 i 求「右侧第一个更大的下标 j」并输出 \(j - i\)。暴力对每个 i 向右扫是 \(\Theta(n^2)\)。用单调栈：栈存下标，对应的温度自底向上单调递减；新温度到来时，把栈顶所有更低的下标结算掉。</p>
+              <p><b>代码。</b></p>
+              <pre><code>#include &lt;vector&gt;
+#include &lt;stack&gt;
+
+std::vector&lt;int&gt; dailyTemperatures(const std::vector&lt;int&gt;&amp; t) {
+    int n = (int)t.size();
+    std::vector&lt;int&gt; ans(n, 0);
+    std::stack&lt;int&gt; st;                    // 存下标，温度自底向上递减
+    for (int i = 0; i &lt; n; ++i) {
+        while (!st.empty() &amp;&amp; t[st.top()] &lt; t[i]) {
+            ans[st.top()] = i - st.top();  // i 就是栈顶的下一个更暖天
+            st.pop();
+        }
+        st.push(i);
+    }
+    return ans;                            // 留在栈里的等不到，保持 0
+}</code></pre>
+              <p><b>数值演示。</b>t = [73, 74, 75, 71, 69, 72, 76, 73]：过程结算顺序为 73←74（1 天）、74←75（1 天）、69←72（1 天）、71←72（2 天）、72←76（1 天）、75←76（1 天），最终答案 [1,1,4,2,1,1,0,0]。</p>
+              <p><b>复杂度。</b>每个下标恰好进栈一次、出栈至多一次，外层 for 虽然套着内层 while，总步数仍是 \(\Theta(n)\)，空间最坏 \(\Theta(n)\)（严格递减序列）。</p>
+              <p><b>边界。</b>空数组返回空；严格递减输入（如 [75,74,73]）全为 0，栈最终留满；相等温度不算「更高」，比较用严格小于，栈内允许相等元素共存。</p>
+              <p><b>面试怎么讲。</b>先说暴力与瓶颈（重复扫描被放弃的次大值），再给「栈里留着的都是还没等到答案的候选」这句直觉，最后强调总代价是进出栈各一次的均摊论证——与例题 1 的扩容分析呼应成一套。</p>
+            </div>
+          </div>
+
+          <h3 id="s-002-6"><a class="anchor-link" href="#s-002-6" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>均摊 O(1) 不是最坏 O(1)</b><p>把 vector 的 push_back 说成「O(1)」而不加口径，是面试最常见的表述错误。单次扩容 \(\Theta(n)\)，均摊才是 \(\Theta(1)\)。若面试官追问「低延迟交易系统里怎么办」，答案是：预知规模就 reserve 一次性分配，或者用固定容量的环形缓冲（ring buffer），用空间与承诺换掉偶发毛刺。</p></div>
+          <div class="intuition-box"><b>扩容的连带失效</b><p>扩容后旧内存被释放，之前保存的所有迭代器、指针、引用全部悬空。同理，vector 中间插入会使之后的迭代器失效。答题时主动指出「哪些操作会让哪些句柄失效」，是区分背题者与理解者的快速判据。</p></div>
+          <div class="intuition-box"><b>快慢指针的口径细节</b><p>偶数长度链表「中点」有两个，slow 停在靠后的那个；要靠前的那个须改 fast 初值为 head-&gt;next。判环改「快 3 慢 1」时相对速度为 2，可能跳过相遇，不再是白给的正确性——变式题在这里等你。</p></div>
+          <div class="intuition-box"><b>两个栈实现队列的「搬运时机」</b><p>经典错误是 pop 时无条件把 in 倒进 out：这会打乱顺序（out 里还有存量时新倒进来的会排在错误的位置）。正确不变量是「out 非空时绝不搬运」。以及例题 4 证明过的方向不对称：队列实现栈没有可复用的翻转，每次 pop 都是全量搬运。</p></div>
+          <p>高频追问清单：数组与链表怎么选（默认 vector，理由是缓存友好与均摊性能）？为什么标准库 deque 头尾都 O(1)（分块连续内存 + 中控数组，了解思想即可）？LRU 缓存怎么用「哈希 + 双向链表」做到 O(1)（<a href="036.html">036 章</a>设计题专题）？单向链表给定了指向某节点的指针，如何 O(1)「删除」它（拷贝后继值再跳过后继——但删尾节点做不到，这个例外要说）？</p>
+
+          <h3 id="s-002-7"><a class="anchor-link" href="#s-002-7" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能手写带倍增扩容的动态数组，并用等比求和推出总搬运代价 \(\lt 2n\)、均摊 \(\Theta(1)\)。</li>
+            <li>我能说清 size 与 capacity 的区别，以及为什么扩容必须按几何级数（+1 常数增量退化 \(\Theta(n^2)\)）。</li>
+            <li>我能在白板上三指针迭代反转链表，并解释「先存 next 再改指向」的不变量。</li>
+            <li>我能用快慢指针一次遍历找中点、判环，并推导「表头出发与相遇点出发同速必在环入口相遇」。</li>
+            <li>我能用两个队列实现栈、两个栈实现队列，并证明后者 pop 均摊 \(\Theta(1)\)、说明两者代价为何不对称。</li>
+            <li>我能写出单调栈求「下一个更大元素」的代码，并用「每元素进出栈各一次」论证总代价 \(\Theta(n)\)。</li>
+            <li>我能指出括号匹配的三种失败模式，并说明为什么栈是该问题的天然数据结构。</li>
+            <li>我能主动区分「均摊」「最坏」「期望」三种复杂度口径，并各举一个本章的例子。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="001.html">← 001. 如何使用这本量化面试题解手册</a><a href="003.html">003. 数据结构 II：哈希表与二叉搜索树 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

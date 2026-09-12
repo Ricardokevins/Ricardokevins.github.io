@@ -1,5 +1,13 @@
 # Ricardokevins.github.io Progress
 
+## 2026-09-12 量化面试通用题解手册（quant-interview-question-bank）首建
+
+- 新建独立题库手册 `notes/quant-interview-question-bank/`：以一份约 265 道真题的量化面试通用题库（General Practice Questions）为底稿，重组为 40 章知识手册（index.html + chapters/001-040 + quant-bank.css/js + 8 张导图 SVG），骨架与「数学速修手册」「LLM 面试题库」同构。
+- 板块映射：数据结构与算法 9 章（复习提纲逐项 + C++ 实现）、脑题 3 章（10 题全解）、概率 10 章（88 题）、博弈 2 章（11 题）、统计 5 章（46 题）、编程 6 章（75 题收敛到五个模板）、金融直觉 4 章（35 题）；每章按「学习目标 → 知识点讲解 → 例题详解（建模/推导/检验/面试口径四段式）→ 误区边界 → 检查清单」组织。
+- 登记 `_data/notes.yml`（kind: Interview Question Bank，与小红书量化题库同组）并扩展 `scripts/validate_notes_index.rb`：BOOK_INDEX_URLS / BOOK_CHAPTER_INDEXES / BANK_CHAPTER_PATH 纳入 quant 题库，章节审计沿用 math 题库阈值（≥5000 字符、≥8 小节、公式/例题/边界信号）。
+- 手册 index 与 001 导读章已链接站内《小红书量化面试题库 3–54》，形成「量化面试」专题互链。
+- 本提交为首批：骨架 + 001 导读 + 已完成章节；其余章节由并行子任务生成中，后续批次提交补齐，完成后做全量 QA（validate 脚本 + Jekyll 构建 + 公式裸符号扫描）。
+
 ## 2026-08-20 Debate Training / RLAIF 奖励黑客深读（已完成；已验证，已推送）
 
 ### 目标、材料边界与关键判断

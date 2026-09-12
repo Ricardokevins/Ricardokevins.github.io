@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>026. 统计一：OLS 与两个方向的回归 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 026</div>
+        <div class="brand-title">统计一：OLS 与两个方向的回归</div>
+        <div class="brand-meta">最小二乘的闭式解与满秩条件、双向回归斜率乘积等于 r 方、高斯噪声下 MSE 即 MLE。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-026-1">学习目标：最小二乘在估什么</a><a class="toc-link" href="#s-026-2">知识点一：OLS 的闭式解、投影与假设</a><a class="toc-link" href="#s-026-3">知识点二：两个方向的回归与 r 方的几何</a><a class="toc-link" href="#s-026-4">例题详解 I：闭式解与双向斜率</a><a class="toc-link" href="#s-026-5">例题详解 II：高斯噪声、MLE 与均匀变量陷阱</a><a class="toc-link" href="#s-026-6">误区与边界</a><a class="toc-link" href="#s-026-7">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link current" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="statistics" data-title="统计一：OLS 与两个方向的回归">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>026. 统计一：OLS 与两个方向的回归</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>统计分册的第一章把「回归」这个用得最多的工具从几何上讲透：闭式解从哪里来、什么时候不存在，为什么 Y 对 X 与 X 对 Y 是两条不同的直线，以及高斯噪声下最小二乘与极大似然为何殊途同归。覆盖源题 S43、S5/S41、S13/S30、S20、S33、S45，并回接概率题库的 P32。</p></aside>
+          <figure class="visual-lead"><img src="../assets/statistics-core.svg" alt="统计分册核心知识地图：回归、正则化、估计与多元高斯五个主题的关系"></figure>
+
+          <h3 id="s-026-1"><a class="anchor-link" href="#s-026-1" aria-label="跳转到本节">#</a>学习目标：最小二乘在估什么</h3>
+          <p>面试里所有回归题都可以还原成一个问题：<b>给定一堆观测 \((x_i, y_i)\)，我要在「用 X 的线性函数预测 Y」这个家族里找误差平方和最小的那个成员。</b>这句话里有三个可追问的点——家族是什么（带不带截距）、「最小」怎么求（导数为零，得到闭式解）、什么时候解不存在（矩阵秩亏）。本章第一节把这三件事一次讲完，这就是源题 S43 的全部内容。</p>
+          <p>第二个主题是「方向」。同一个散点图，把 Y 对 X 回归和把 X 对 Y 回归，得到的是两条不同的直线——它们各自最小化的是竖直方向与水平方向的平方距离。两条直线的斜率相乘等于决定系数 \(r^2\)，这个小小的等式（源题 S5/S41、S13/S30）串起了斜率、相关系数与投影几何，是统计面试里出镜率最高的推导之一。</p>
+          <p>第三个主题是「等价性」。用均方误差（MSE）估参数和用极大似然（MLE）估参数是两套语言，但在高斯噪声假设下它们给出完全相同的斜率与截距（源题 S20）；而当噪声不是高斯时两者分道扬镳。分清「什么时候等价、为什么」，是本章与 <a href="028.html">028 章</a>似然理论之间的桥。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>闭式解与满秩</b><p>\(\hat\beta=(X^TX)^{-1}X^Ty\) 只有在 \(X\) 列满秩时才唯一存在；秩亏时要正则化或降维，见 <a href="027.html">027 章</a>。</p></div>
+            <div class="concept-card"><b>双向回归</b><p>Y 对 X 的斜率是 \(r\,s_y/s_x\)，X 对 Y 的斜率是 \(r\,s_x/s_y\)，乘积恒为 \(r^2\)；除非 \(|r|=1\)，两条直线不重合也不互逆。</p></div>
+            <div class="concept-card"><b>MSE 即 MLE</b><p>噪声独立同高斯分布时，极大似然化简后就是最小化残差平方和；高斯假设是等号成立的关键。</p></div>
+          </div>
+
+          <h3 id="s-026-2"><a class="anchor-link" href="#s-026-2" aria-label="跳转到本节">#</a>知识点一：OLS 的闭式解、投影与假设</h3>
+          <p>把模型写成矩阵形式 \(y = X\beta + \varepsilon\)，其中 \(y\in\mathbb{R}^n\) 是响应，\(X\in\mathbb{R}^{n\times p}\) 是设计矩阵（第一列可以全为 1，对应截距），\(\beta\in\mathbb{R}^p\) 是待估参数，\(\varepsilon\) 是噪声。普通最小二乘（Ordinary Least Squares, OLS）的目标函数是残差平方和：</p>
+          <div class="math-display">\[S(\beta) = \|y - X\beta\|^2 = (y-X\beta)^T(y-X\beta).\]</div>
+          <h4>正规方程的推导</h4>
+          <p>对向量 \(\beta\) 求导（矩阵求导法则 \(\nabla_\beta \|y-X\beta\|^2 = -2X^T(y-X\beta)\)）并令其为零：</p>
+          <div class="math-display">\[X^T(y - X\hat\beta) = 0 \quad\Longleftrightarrow\quad X^TX\hat\beta = X^Ty,\]</div>
+          <p>这就是<b>正规方程</b>（normal equations）。读法：最优残差 \(\hat\varepsilon = y - X\hat\beta\) 与设计矩阵的每一列正交——「预测做完后，剩下的部分里再也榨不出线性信息」。若 \(X^TX\) 可逆（等价于 \(X\) 列满秩，\(\mathrm{rank}(X)=p\)，这要求 \(n\ge p\)），唯一解为：</p>
+          <div class="math-display">\[\hat\beta = (X^TX)^{-1}X^Ty.\]</div>
+          <p>拟合值 \(\hat y = X\hat\beta = Hy\)，其中 \(H = X(X^TX)^{-1}X^T\) 称为帽子矩阵（hat matrix），它把 \(y\) 正交投影到 \(X\) 的列空间上：\(H\) 对称、幂等（\(H^2=H\)），且残差与拟合值正交（\(\hat y\perp\hat\varepsilon\)）。这套投影语言是整个线性模型的几何本体。</p>
+          <h4>高斯–马尔可夫假设清单</h4>
+          <div class="formula-list">
+            <p><b>线性性：</b>模型对参数线性（\(y = X\beta+\varepsilon\)），对特征可以非线性（放入 \(x^2\)、\(\log x\) 都行）。</p>
+            <p><b>随机样本与外生性：</b>样本独立同分布，且 \(\mathbb{E}[\varepsilon\mid X]=0\)——噪声与回归变量不相关。违背它（内生性）是偏差而非方差问题，OLS 不再一致。</p>
+            <p><b>无完全共线：</b>\(\mathrm{rank}(X)=p\)，没有一列是其余列的线性组合，否则 \(\hat\beta\) 不唯一（拟合值仍唯一）。</p>
+            <p><b>同方差与无自相关：</b>\(\mathrm{Var}(\varepsilon\mid X)=\sigma^2 I\)。这是高斯–马尔可夫定理（Gauss–Markov theorem）断言 OLS 为最优线性无偏估计（BLUE）所需要的条件；违背时改用稳健标准误或广义最小二乘。</p>
+            <p><b>正态性（可选加强）：</b>\(\varepsilon\mid X\sim N(0,\sigma^2)\) 不是 BLUE 所需，但它是小样本下 t 检验、F 检验与置信区间精确成立、以及「MSE 估计 = MLE 估计」的前提。</p>
+          </div>
+          <div class="intuition-box"><b>满秩条件怎么记</b><p>两列完全相同（或一列是另一列的倍数）时，把系数在这两列之间任意搬运都不改变拟合值——正规方程有无穷多解；样本数 \(n\) 少于参数个数 \(p\) 时必然秩亏（500 行 1000 列的数据就是典型，见 <a href="027.html">027 章</a>例题），此时 \(X^TX\) 不可逆，必须正则化或降维。</p></div>
+          <p>无偏性与方差也顺手写出：在上述假设下 \(\mathbb{E}[\hat\beta]=\beta\)，\(\mathrm{Var}(\hat\beta)=\sigma^2(X^TX)^{-1}\)。这条方差公式是 <a href="027.html">027 章</a>讨论多重共线与重复数据两道题的引擎，值得先记下来。</p>
+
+          <h3 id="s-026-3"><a class="anchor-link" href="#s-026-3" aria-label="跳转到本节">#</a>知识点二：两个方向的回归与 r 方的几何</h3>
+          <p>单变量情形把闭式解翻译成样本矩。带截距回归 \(y = a + bx\) 的解是 \(b = S_{xy}/S_{xx}\)、\(a=\bar y - b\bar x\)，其中 \(S_{xy}=\sum(x_i-\bar x)(y_i-\bar y)\)、\(S_{xx}=\sum(x_i-\bar x)^2\)。用相关系数改写，斜率有一个必须背下来的形式：</p>
+          <div class="math-display">\[b_{y\mid x} = r\,\frac{s_y}{s_x}, \qquad b_{x\mid y} = r\,\frac{s_x}{s_y}.\]</div>
+          <p>读法：斜率 = 相关系数 × 两个标准差之比；相关系数提供「方向与强度」，标准差之比负责「换算单位」。两个方向用的是<b>同一个 \(r\)、互为倒数的换算比</b>，于是：</p>
+          <div class="math-display">\[b_{y\mid x}\cdot b_{x\mid y} = r^2 \in [0,1].\]</div>
+          <h4>投影几何的推导</h4>
+          <p>把中心化后的 \(\tilde x, \tilde y\) 看作 \(n\) 维空间中的两个向量。\(y\) 对 \(x\) 回归，是在 \(\tilde x\) 张成的直线上找与 \(\tilde y\) 最近的点，即把 \(\tilde y\) 投影到 \(\tilde x\) 上；投影系数为：</p>
+          <div class="math-display">\[b_{y\mid x} = \frac{\langle \tilde x,\tilde y\rangle}{\langle\tilde x,\tilde x\rangle} = \frac{\|\tilde y\|}{\|\tilde x\|}\cos\theta = \frac{s_y}{s_x}\,r,\]</div>
+          <p>其中 \(\theta\) 是两个中心化向量的夹角，\(\cos\theta = r\)。反方向回归是把 \(\tilde x\) 投影到 \(\tilde y\) 上，系数 \(b_{x\mid y} = (s_x/s_y)r\)。两个斜率分别是「沿对方方向走一步，自己的投影走多远」，方向相反当然不是互为倒数，除非 \(\cos\theta=\pm 1\)。若先把两个向量都标准化成单位长度（\(z\)-score），两个方向的斜率都退化为 \(\cos\theta = r\) 本身——<b>标准化后回归斜率就是相关系数</b>。</p>
+          <div class="intuition-box"><b>为什么不是同一条直线</b><p>\(y\) 对 \(x\) 最小化竖直距离平方，\(x\) 对 \(y\) 最小化水平距离平方，是两个不同的优化问题。数据点完全落在一条直线上（\(|r|=1\)）时两直线重合；\(r=0\) 时两条「直线」都退化为水平/垂直的均值线；其余情形两条直线关于散点云的主轴对称地张开，夹角随 \(|r|\) 减小而增大。面试画一张散点图标出两条线，胜过背三条公式。</p></div>
+          <p>还有一个常被追问的推论：两个方向回归给出的预测恰好是<b>条件均值的线性最佳近似</b>，而「\(X\) 能把 \(Y\) 的方差解释掉的比例」正是 \(r^2 = b\cdot b'\)——斜率乘积、决定系数、投影长度比的平方，三件事在几何上是同一件事。没有相关性（\(r=0\)）就没有预测增益，这个主旨我们在误区一节里回接概率题库的 P32。</p>
+
+          <h3 id="s-026-4"><a class="anchor-link" href="#s-026-4" aria-label="跳转到本节">#</a>例题详解 I：闭式解与双向斜率</h3>
+          <div class="worked-example">
+            <p><b>例题 1（源题 S43）：写出普通最小二乘回归中 \(\beta\) 的闭式解，并说明需要对数据做什么假设。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>设 \(y=X\beta+\varepsilon\)，\(X\in\mathbb{R}^{n\times p}\)。OLS 选择使残差平方和 \(S(\beta)=\|y-X\beta\|^2\) 最小的 \(\beta\)。</p>
+              <p><b>推导。</b>令梯度为零：\(-2X^T(y-X\beta)=0\)，得正规方程 \(X^TX\hat\beta=X^Ty\)。当 \(X\) 列满秩（\(\mathrm{rank}(X)=p\)，需要 \(n\ge p\) 且无完全共线）时 \(X^TX\) 正定可逆：</p>
+              <div class="math-display">\[\hat\beta=(X^TX)^{-1}X^Ty,\qquad \hat y = X\hat\beta = X(X^TX)^{-1}X^Ty.\]</div>
+              <p>二阶导 \(2X^TX\succeq 0\) 加上满秩即正定，驻点确为全局最小。假设按高斯–马尔可夫清单给：线性性、\(\mathbb{E}[\varepsilon\mid X]=0\)、\(\mathrm{rank}(X)=p\)、同方差无自相关（保证 BLUE），再加独立正态噪声则得到精确的推断与 MLE 等价性。</p>
+              <p><b>检验。</b>单变量退化检验：\(p=2\)（截距加斜率）时公式应还原为 \(b=S_{xy}/S_{xx}\)、\(a=\bar y-b\bar x\)；把 \(X\) 的某列乘 2，对应系数应除以 2，拟合值不变——量纲一致性通过。</p>
+              <p><b>面试怎么讲。</b>先写目标函数、求导、给闭式解，三步不要跳；然后主动补一句「\(X^TX\) 不可逆时（重复列、\(p\gt n\)）解不唯一，实务上加 \(\lambda I\) 变岭回归」——这一句直接把话题引向你准备好的 <a href="027.html">027 章</a>内容。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2（源题 S5 与 S41，两题同文）：\(X\)、\(Y\) 是两个 \(n\) 维向量，\(b\) 是 Y 对 X 回归的系数，\(b'\) 是 X 对 Y 回归的系数。\(b\) 与 \(b'\) 有什么关系？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>带截距的单变量回归，斜率由中心化向量的投影给出。</p>
+              <p><b>推导。</b>代数路线：\(b = \mathrm{Cov}(X,Y)/\mathrm{Var}(X) = r\,s_y/s_x\)，同理 \(b' = r\,s_x/s_y\)，相乘得</p>
+              <div class="math-display">\[b\,b' = r^2,\qquad\text{即}\quad b' = \frac{r^2}{b}\ (b\ne 0\ \text{时}).\]</div>
+              <p>几何路线：中心化后 \(\tilde x,\tilde y\) 的夹角 \(\theta\) 满足 \(\cos\theta=r\)，两个斜率分别是 \(\|\tilde y\|/\|\tilde x\|\cos\theta\) 与 \(\|\tilde x\|/\|\tilde y\|\cos\theta\)，长度比相消，乘积即 \(\cos^2\theta\)。</p>
+              <p><b>检验。</b>边界核对：\(r=\pm1\) 时 \(b\,b'=1\) 且 \(b'=1/b\)，两直线重合（互为逆函数）；\(r=0\) 时两个斜率同时为零；乘积落在 \([0,1]\) 内，与 \(r^2\) 的取值范围一致。</p>
+              <p><b>面试怎么讲。</b>给出乘积结论后主动解释「为什么不是 \(b'=1/b\)」：两个方向最小化的距离方向不同，并抛出几何解释（\(\cos\theta\)）；能补一句「所以由 \(y\) 的预测反推 \(x\) 不能用同一条直线，这正是均値回归现象的来源」即为满分口径。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 3（源题 S13 与 S30）：先用 Y=aX 过原点、再用 X=cY 过原点拟合同一组数据，a 与 c 有什么关系？若带截距的两个方向斜率相等（k=k'），k 可能取哪些值？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>过原点回归的斜率是 \(\mathbb{E}[XY]/\mathbb{E}[X^2]\)（最小化 \(\mathbb{E}[(Y-aX)^2]\) 得 \(a=\mathbb{E}[XY]/\mathbb{E}[X^2]\)）；带截距时斜率为 \(\mathrm{Cov}/\mathrm{Var}\)。</p>
+              <p><b>推导。</b>过原点情形：\(a\,c = \dfrac{\mathbb{E}[XY]}{\mathbb{E}[X^2]}\cdot\dfrac{\mathbb{E}[XY]}{\mathbb{E}[Y^2]} = \dfrac{\mathbb{E}[XY]^2}{\mathbb{E}[X^2]\mathbb{E}[Y^2]}\le 1\)，最后一步是柯西–施瓦茨不等式（Cauchy–Schwarz）；当 \(\mathbb{E}[X]=\mathbb{E}[Y]=0\) 时它恰好等于 \(r^2\)。带截距情形：\(k = r\,s_y/s_x\)、\(k' = r\,s_x/s_y\)，\(k=k'\) 给出 \(r(s_y/s_x - s_x/s_y)=0\)，故要么 \(r=0\)（此时 \(k=0\)），要么 \(s_x=s_y\)（此时 \(k=r\)）。综合：<b>\(k\) 的可能取值恰为 \([-1,1]\)</b>——取 \(s_x=s_y\)、相关系数为 \(k\) 即可实现任何一个 \(k\in[-1,1]\)，\(k=0\) 由 \(r=0\) 覆盖。</p>
+              <p><b>检验。</b>取 \(Y=X\)（完全正相关、同方差）：\(k=k'=1\) 成立；取 \(Y=-X\)：\(k=k'=-1\)；取独立数据：\(k=k'=0\)。三个端点都自洽。</p>
+              <p><b>面试怎么讲。</b>分「过原点 / 带截距」两条答，先给通用关系 \(a\,c\le1\)（柯西–施瓦茨），再给带截距的 \(k\,k'=r^2\)，落到 \(k\in[-1,1]\)。强调分类讨论的习惯：「等斜率要么因为零相关，要么因为同尺度」。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4（源题 S45）：来自相关系数 0.5、\(\sigma_x=0.5\)、\(\sigma_y=1\) 的双变量高斯数据，回归斜率是多少？你做了什么假设？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>题目问的是「Y 对 X」的斜率，即条件期望 \(\mathbb{E}[Y\mid X=x]\) 中 \(x\) 的系数；双变量高斯下条件期望恰是线性函数。</p>
+              <p><b>推导。</b>代入 \(\mathbb{E}[Y\mid X=x] = \mu_y + \rho\,\dfrac{\sigma_y}{\sigma_x}(x-\mu_x)\)：</p>
+              <div class="math-display">\[\beta_{y\mid x} = \rho\frac{\sigma_y}{\sigma_x} = 0.5\times\frac{1}{0.5} = 1,\qquad \beta_{x\mid y} = 0.5\times\frac{0.5}{1} = 0.25.\]</div>
+              <p><b>检验。</b>两方向斜率乘积 \(1\times0.25=0.25=r^2\)，与例题 2 的一致性核对通过；截距由 \(\mu_y - \beta\mu_x\) 给出，与斜率无关。</p>
+              <p><b>面试怎么讲。</b>先答 1，再讲假设：(1) 问的是 Y 对 X 的方向（反方向是 0.25）；(2) 总体双变量高斯——这保证条件期望严格线性、斜率公式精确成立，若只是边缘高斯或数据非高斯，该公式只是最佳<b>线性</b>近似；(3) 我们在谈总体参数，样本估计还有抽样误差。主动列出假设是统计题的得分习惯。</p>
+            </div>
+          </div>
+
+          <h3 id="s-026-5"><a class="anchor-link" href="#s-026-5" aria-label="跳转到本节">#</a>例题详解 II：高斯噪声、MLE 与均匀变量陷阱</h3>
+          <div class="worked-example">
+            <p><b>例题 5（源题 S20）：模型 \(Y = a + bX + \varepsilon\)。如何用均方误差估计 \(a,b\)？如何用极大似然估计？两种估计何时相同？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>MSE 路线最小化残差平方和；MLE 路线需要先给 \(\varepsilon\) 一个分布假设，设 \(\varepsilon_i \overset{\text{iid}}{\sim} N(0,\sigma^2)\)。</p>
+              <p><b>推导。</b>MSE 路线就是例题 1 的单变量版：\(b = S_{xy}/S_{xx}\)、\(a=\bar y-b\bar x\)。MLE 路线写对数似然：</p>
+              <div class="math-display">\[\ell(a,b,\sigma^2) = -\frac{n}{2}\log(2\pi\sigma^2) - \frac{1}{2\sigma^2}\sum_{i=1}^n\bigl(y_i - a - bx_i\bigr)^2.\]</div>
+              <p>对固定的 \(\sigma^2\)，最大化 \(\ell\) 等价于最小化平方和 \(\sum(y_i-a-bx_i)^2\)——与 MSE 的目标函数完全相同，因此 <b>\(\hat a_{\text{MLE}}=\hat a_{\text{OLS}}\)、\(\hat b_{\text{MLE}}=\hat b_{\text{OLS}}\)</b>。差别只出现在方差上：\(\hat\sigma^2_{\text{MLE}} = \frac{1}{n}\mathrm{RSS}\)，而无偏版本除以自由度 \(n-2\)。</p>
+              <p><b>检验。</b>反过来想：若 \(\varepsilon\) 是拉普拉斯噪声，似然正比于 \(\exp(-\frac{1}{b}\sum|y_i-a-bx_i|)\)，MLE 变成最小绝对偏差（LAD）回归——说明「高斯」才是等价的前提，而不是数值巧合。</p>
+              <p><b>面试怎么讲。</b>写出对数似然、指出「指数上的平方和」与 MSE 目标重合，两个句子完成推导；再补一句反向例子（拉普拉斯噪声给 LAD）展示你理解等价的条件结构。<a href="028.html">028 章</a>会把 MLE 的一般理论（Fisher 信息、Cramér–Rao 下界）展开。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 6（源题 S33）：设 \(X,Y\) 独立且都服从 \([0,1]\) 上的均匀分布，求用 \(aX+bY+c\) 最小二乘逼近 \(XY\) 时的系数 \(a,b,c\)。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>目标 \(Z=XY\)，回归子为 \(1, X, Y\)。OLS 的最优性条件是残差与每个回归子正交（例题 1 的正规方程），先算所需矩：\(\mathbb{E}X=\mathbb{E}Y=\tfrac12\)、\(\mathrm{Var}(X)=\mathrm{Var}(Y)=\tfrac1{12}\)、\(\mathrm{Cov}(X,Y)=0\)（独立性），以及</p>
+              <div class="math-display">\[\mathrm{Cov}(X, XY) = \mathbb{E}[X^2Y]-\mathbb{E}[XY]\mathbb{E}[X] = \tfrac13\cdot\tfrac12 - \tfrac14\cdot\tfrac12 = \tfrac1{24},\qquad \mathrm{Cov}(Y,XY)=\tfrac1{24}.\]</div>
+              <p><b>推导。</b>代入带截距双回归子的正规方程（\(a\,\mathrm{Var}(X)+b\,\mathrm{Cov}(X,Y)=\mathrm{Cov}(Z,X)\) 及对称式）：\(a/12=1/24\) 与 \(b/12=1/24\)，解得</p>
+              <div class="math-display">\[a=b=\tfrac12,\qquad c=\mathbb{E}[Z]-a\,\mathbb{E}X-b\,\mathbb{E}Y=\tfrac14-\tfrac14-\tfrac14=-\tfrac14.\]</div>
+              <p>此时残差为 \(XY - \tfrac12X - \tfrac12Y + \tfrac14 = (X-\tfrac12)(Y-\tfrac12)\)，它对中心化的 \(\tilde X,\tilde Y\) 与常数都正交（独立性使 \(\mathbb{E}[\tilde X\tilde Y\tilde X]=\mathbb{E}[\tilde X^2]\mathbb{E}[\tilde Y]=0\) 等），正交条件全部满足，确为 OLS 解。</p>
+              <p><b>检验。</b>再算决定系数：\(\mathrm{Var}(Z)=\mathbb{E}[X^2]\mathbb{E}[Y^2]-\tfrac1{16}=\tfrac19-\tfrac1{16}=\tfrac7{144}\)，拟合部分方差 \(=\tfrac14\mathrm{Var}(X)+\tfrac14\mathrm{Var}(Y)=\tfrac1{24}=\tfrac6{144}\)，故 \(R^2=\tfrac{6/144}{7/144}=\tfrac67\approx0.857\)——线性近似能解释八成半的方差，量级合理。</p>
+              <p><b>面试怎么讲。</b>这题的陷阱是把「\(X,Y\) 不相关」误推成「\(a=b=0\)、\(c=\mathbb{E}[XY]=\tfrac14\)」：不相关只说明回归子之间正交，不说明目标与它们线性无关——\(\mathrm{Cov}(X,XY)=1/24\ne0\) 才是定系数的量。答完务必把残差写成 \((X-\tfrac12)(Y-\tfrac12)\) 这个漂亮形式，自证正交。</p>
+            </div>
+          </div>
+
+          <h3 id="s-026-6"><a class="anchor-link" href="#s-026-6" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>误区一：两个方向的回归互为反函数</b><p>只有 \(|r|=1\)（数据完全共线）时才成立。一般情形 \(b\,b'=r^2\lt1\)，由 \(y\) 的预测直接除以 \(b\) 反推 \(x\) 会系统性低估偏离：高个父母的孩子平均没那么高、高个孩子的父母平均也没那么高，就是两条回归线各自成立、互不重合的「均值回归」。</p></div>
+          <div class="intuition-box"><b>误区二：没有相关也有预测增益</b><p>概率题库 P32 问：\(x,y\) 服从 \(p=0.5\) 的二项分布，已知 \(x=y\) 的概率为 47%，能否用 \(x\) 预测 \(y\)？预测增益只来自条件概率偏离无信息基线：猜 \(y=x\) 的正确率是 47%；在 \(x\ne y\) 的 53% 里，若两个方向对称（题目未给出反向不对称的信息），条件概率停在 50%，没有任何增益。这正是本章的主旨——斜率 \(b=\mathrm{Cov}/\mathrm{Var}\)，协方差为零则最优线性预测退化为均值，<a href="016.html">016 章</a>的协方差工具可回看。想超过 47% 必须引入额外的联合结构信息，单靠边缘分布不够。</p></div>
+          <div class="intuition-box"><b>边界：线性条件期望不是免费赠品</b><p>\(\mathbb{E}[Y\mid X=x]\) 恰好线性需要联合高斯（例题 4 的假设）；一般分布下 OLS 给的只是最佳线性近似，条件期望可以是曲线。同理，「条件方差与 \(x\) 无关」也是高斯的特产——<a href="029.html">029 章</a>会看到高斯条件分布的方差 \(\sigma_y^2(1-\rho^2)\) 是常数。</p></div>
+          <div class="intuition-box"><b>边界：满秩失败的三种常见面孔</b><p>重复列（一只股票用两种货币计价）、构造出的恒等列（dummy 变量陷阱）、\(p\gt n\)（宽表格数据）。前两种丢列即可，第三种必须正则化——这是 <a href="027.html">027 章</a>岭回归的入口。面试官最爱从例题 1 的「假设」追问滑到这里。</p></div>
+
+          <h3 id="s-026-7"><a class="anchor-link" href="#s-026-7" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能从 \(\|y-X\beta\|^2\) 出发求导推出正规方程与 \(\hat\beta=(X^TX)^{-1}X^Ty\)，并说出满秩条件的三种失败场景。</li>
+            <li>我能按高斯–马尔可夫清单逐条说出每条假设「买到了什么」（一致性、BLUE、精确推断）。</li>
+            <li>我能用投影几何证明 \(b_{y\mid x}\,b_{x\mid y}=r^2\)，并解释两条回归线为何不互逆、何时重合。</li>
+            <li>我能解「两方向斜率相等」类问题：带截距时 \(k\in[-1,1]\)，过原点时 \(ac\le1\)（柯西–施瓦茨）。</li>
+            <li>我能在双变量高斯下计算任意方向的回归斜率 \(\rho\sigma_y/\sigma_x\)，并说出所依赖的假设。</li>
+            <li>我能写出高斯噪声下 MSE 与 MLE 等价的完整推导，并举出等价失败的反例（拉普拉斯噪声给 LAD）。</li>
+            <li>我不会把「回归子之间不相关」误当成「回归子对目标无解释力」——S33 的 \(a=b=1/2\)、\(c=-1/4\) 我能独立重算。</li>
+            <li>我能解释 P32 的结论：预测增益只来自条件概率对基线的偏离，即协方差非零。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="025.html">← 025. 博弈二：破产、复注与下注尺度</a><a href="027.html">027. 统计二：岭回归、Lasso 与模型选择 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

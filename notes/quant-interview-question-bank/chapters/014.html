@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>014. 概率一：期望递推与首达时间 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 014</div>
+        <div class="brand-title">概率一：期望递推与首达时间</div>
+        <div class="brand-meta">用首步分解把等待时间写成方程：几何等待、优惠券收集与失败回退类题的统一解法。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-014-1">学习目标：把「等到什么时候」变成方程</a><a class="toc-link" href="#s-014-2">工具一：首步期望递推</a><a class="toc-link" href="#s-014-3">工具二：分段几何与级数求和</a><a class="toc-link" href="#s-014-4">例题详解 I：轮盘与首次成功</a><a class="toc-link" href="#s-014-5">例题详解 II：收集、奖励与先手优势</a><a class="toc-link" href="#s-014-6">例题详解 III：失败回退与逐步消耗</a><a class="toc-link" href="#s-014-7">误区与边界</a><a class="toc-link" href="#s-014-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<!--SIDEBAR-->
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="概率一：期望递推与首达时间">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>014. 概率一：期望递推与首达时间</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章处理概率面试中出现频率最高的一族题：「等到某件事第一次发生，平均要等多久」。工具是首步期望递推（first-step analysis）、分段几何与级数求和；覆盖轮盘赌、优惠券收集、首次掷出 6、按次数计酬的骰子游戏、射箭先手、过桥回退与吃糖消耗等经典源题。等一段特定序列（如连续三个正面）的问题在 <a href="015.html">015 章</a>展开。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-core.svg" alt="概率核心工具地图：期望递推、序列等待、贝叶斯更新与假设检验四大板块"></figure>
+
+          <h3 id="s-014-1"><a class="anchor-link" href="#s-014-1" aria-label="跳转到本节">#</a>学习目标：把「等到什么时候」变成方程</h3>
+          <p>「平均掷几次硬币才出第一个正面」「平均掷几次骰子才集齐六个面」「平均过多少次桥才能走完 N 座岛」——这些问题表面互不相干，内核完全相同：过程被某个随机事件<b>第一次发生</b>的时刻截断，我们要求这个时刻的期望。直接枚举所有路径当然不行，因为路径有无穷多条；正确做法是把「从现在到结束的期望」当成一个未知数 \(E\)，然后对<b>第一步</b>的所有可能结局做全概率分解，得到一个关于 \(E\) 的方程。</p>
+          <p>这就是首步期望递推（first-step analysis）：一步 之后，过程要么结束，要么「看起来和刚开始时一模一样」。后一种自相似性（无记忆性）让我们能写出形如 \(E=1+qE\) 的方程。它不成立时——比如失败会把进度清零、或成功概率随状态改变——我们就多设几个状态变量，或者把过程切成若干「阶段」，每阶段内部仍是简单的几何等待。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>首步分解</b><p>对第一步的结果条件化：结束分支贡献常数，重来分支贡献 \(E\) 本身，解一元一次方程。</p></div>
+            <div class="concept-card"><b>分段几何</b><p>成功概率随进度变化的过程切成若干阶段，每阶段是参数不同的几何分布，期望相加。</p></div>
+            <div class="concept-card"><b>条件化</b><p>已知「活下来了」这类信息后，必须在缩小后的样本空间里重新计算概率，不能用先验平均值。</p></div>
+          </div>
+
+          <h3 id="s-014-2"><a class="anchor-link" href="#s-014-2" aria-label="跳转到本节">#</a>工具一：首步期望递推</h3>
+          <p>设我们要等一个每次试验以概率 \(p\) 发生的事件。以 \(E\) 记从零开始的期望等待次数。看第一次试验：花掉 1 次；以概率 \(p\) 事件发生，结束；以概率 \(1-p\) 事件不发生——由于试验独立同分布，此刻的处境与开局完全相同，剩余期望仍是 \(E\)。于是：</p>
+          <div class="math-display">\[E=p\cdot 1+(1-p)\,(1+E)=1+(1-p)\,E\quad\Longrightarrow\quad E=\frac{1}{p}.\]</div>
+          <p>怎么读：期望等待次数是成功概率的倒数——成功越稀缺席越久，且这个关系是非线性的（\(p\) 减半，期望翻倍）。掷硬币等正面 \(p=\tfrac12\) 得 2；掷骰子等 6 得 6；等「骰子出 1 或 2」得 3。</p>
+          <div class="formula-list">
+            <p><b>几何期望：</b>首次成功等待次数期望 \(\tfrac1p\)，方差 \(\tfrac{1-p}{p^2}\)。面试中给出期望即可，方差在 <a href="019.html">019 章</a>的检验框架里才会用到。</p>
+            <p><b>首步方程通式：</b>若有多个「重来」分支，\(E=1+\sum_j q_j\,E_j\)，其中 \(q_j\) 是落入状态 \(j\) 的概率、\(E_j\) 是从该状态出发的期望；分支若回到原点则 \(E_j=E\)。</p>
+            <p><b>条件化原则：</b>已知信息 \(S\) 后，一切概率改为 \(P(\cdot\mid S)=P(\cdot\cap S)/P(S)\)。轮盘题的「不转」分支就是典型：条件把 4 个空弹仓变成等可能的新样本空间。</p>
+          </div>
+          <div class="intuition-box"><b>为什么「失败即重来」是合法的</b><p>因为每次试验独立同分布：掷出一次反面之后，未来的硬币序列分布与开局时完全一样，历史不留下任何痕迹。反过来，若失败会改变状态（回到起点、损失进度、改变成功概率），单变量方程就不够了——要么增设状态变量（本章的过桥题、<a href="015.html">015 章</a>的序列等待），要么分段处理（优惠券收集、吃糖题）。</p></div>
+
+          <h3 id="s-014-3"><a class="anchor-link" href="#s-014-3" aria-label="跳转到本节">#</a>工具二：分段几何与级数求和</h3>
+          <p>许多过程的「成功概率」随进度变化：集齐骰子六个面时，已收集的面越多，掷出新面越难；吃光红色糖果时，红糖越少，抽到红糖越难。处理办法是<b>分阶段</b>：固定阶段 \(k\) 内成功概率 \(p_k\) 不变，该阶段是几何等待，期望 \(\tfrac{1}{p_k}\)；总期望就是各阶段之和：</p>
+          <div class="math-display">\[E=\sum_{k}\frac{1}{p_k}.\]</div>
+          <p>怎么读：把一个「越来越难」的过程拆成一串难度固定的小关，每关的期望时间只由该关的成功概率决定。优惠券收集（coupon collector）是原型：已收集 \(k\) 个不同面时，下一次掷出新面的概率是 \(\tfrac{6-k}{6}\)，于是总期望为 \(\sum_{k=0}^{5}\tfrac{6}{6-k}=6\sum_{k=1}^{6}\tfrac1k=6H_6\)。</p>
+          <p>另一类工具是<b>级数封闭形</b>。当期望的表达式里出现 \(\sum_k \tfrac1k r^k\) 这种带 \(\tfrac1k\) 权重的和，标准处理是套对数级数：</p>
+          <div class="math-display">\[\sum_{k=1}^{\infty}\frac{x^k}{k}=-\ln(1-x),\qquad 0\le x\lt 1.\]</div>
+          <p>怎么读：带调和权的幂级数收敛到对数。它在对掷骰次数计酬的期望（本章例题 4）、以及后续章节里各类「按等待时间付费」的问题中反复出现。面试时先把期望写成显式级数，再认出 \(-\ln(1-x)\) 的形状，就能一步到封闭形。</p>
+
+          <h3 id="s-014-4"><a class="anchor-link" href="#s-014-4" aria-label="跳转到本节">#</a>例题详解 I：轮盘与首次成功</h3>
+          <div class="worked-example">
+            <p><b>例题 1：左轮手枪里装了 2 颗子弹，随机转一轮后扣动扳机，你活了下来。现在你可以再随机转一轮后扣扳机，也可以不转直接再扣一次。哪种选择活命概率更大？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>6 个弹仓排成圆圈，2 颗子弹。标准假设（面试必须先声明）：两颗子弹<b>相邻</b>。已发生的事件 \(S\) 是「第一枪是空的」。要比较两个条件概率：再转后的死亡概率与不转直接扣的死亡概率 \(P(\text{死}\mid S)\)。</p>
+              <p><b>推导。</b>再转：转轮把击锤重新均匀随机化，与第一枪无关，死亡概率 \(=\tfrac{2}{6}=\tfrac13\)。不转：条件化在 \(S\) 上，击锤当前等可能停在 4 个空弹仓之一。设子弹占 1、2 号仓，空仓为 3、4、5、6 号；扣动扳机后击锤移到下一仓，只有当前停在 6 号仓时下一仓（1 号）才是子弹，故</p>
+              <div class="math-display">\[P(\text{死}\mid S,\ \text{不转})=\frac{1}{4}\lt \frac13=P(\text{死}\mid \text{再转}).\]</div>
+              <p><b>检验。</b>直觉核对：相邻的 2 颗子弹在圆圈上形成「一段 2 长的雷区」，既然第一枪落在了 4 格长的安全区里，第二枪继续走下去只有安全区的一端接着雷区，撞雷机会是 4 选 1。反证假设敏感性：若两颗子弹<b>相对</b>（如 1 号、4 号仓），则 4 个空仓中有 2 个的下一仓是子弹，不转死亡概率 \(\tfrac24=\tfrac12\gt\tfrac13\)，结论反转成「该转」。可见结论完全依赖弹仓布局。</p>
+              <p><b>面试怎么讲。</b>第一句先声明假设「设两颗子弹相邻」；然后一句话给出核心：再转是先验概率 \(\tfrac13\)，不转是条件概率 \(\tfrac14\)，条件信息有利所以不转；最后主动补一句「若子弹不相邻，比如相对放置，不转变成 \(\tfrac12\)，就该转了」——展示你理解结论的边界。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 2：公平硬币掷出第一个正面平均要几次？公平骰子掷出第一个 6 呢？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两问同型，都是几何等待：成功概率分别为 \(p=\tfrac12\) 与 \(p=\tfrac16\)，用首步递推现场推导而不是背 \(\tfrac1p\)。</p>
+              <p><b>推导。</b>硬币：\(E=\tfrac12\cdot 1+\tfrac12(1+E)=1+\tfrac12E\)，解得 \(E=2\)。骰子：掷一次，以概率 \(\tfrac16\) 出 6 结束，以概率 \(\tfrac56\) 不出 6、过程完全重来：</p>
+              <div class="math-display">\[E=1+\frac56\,E\quad\Longrightarrow\quad E=6.\]</div>
+              <p><b>检验。</b>与几何分布期望 \(\tfrac1p\) 一致；量级合理（正面至少 1 次、6 至少 1 次，且都比 1 大得多才对）。再退一步核对：等「1 或 2 或 3」应为 \(\tfrac{1}{1/2}=2\)，与硬币情形一致，公式自洽。</p>
+              <p><b>面试怎么讲。</b>直接报「几何分布，期望 \(\tfrac1p\)，所以是 2 和 6」，然后立刻补一句递推式 \(E=1+\tfrac56E\) 展示推导能力；主动延伸：「若问方差，几何分布方差是 \(\tfrac{1-p}{p^2}\)」。</p>
+            </div>
+          </div>
+
+          <h3 id="s-014-5"><a class="anchor-link" href="#s-014-5" aria-label="跳转到本节">#</a>例题详解 II：收集、奖励与先手优势</h3>
+          <div class="worked-example">
+            <p><b>例题 3：反复掷一枚公平骰子，直到六个面都出现过为止。平均要掷多少次？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>优惠券收集问题（coupon collector）。分阶段：已收集到 \(k\) 个不同面时，下一掷「掷出新面」的概率 \(p_k=\tfrac{6-k}{6}\)，该阶段是参数 \(p_k\) 的几何等待。</p>
+              <p><b>推导。</b>各阶段期望相加：</p>
+              <div class="math-display">\[E=\sum_{k=0}^{5}\frac{6}{6-k}=6\Big(1+\frac12+\frac13+\frac14+\frac15+\frac16\Big)=6H_6=6\times 2.45=14.7.\]</div>
+              <p><b>检验。</b>逐项算：\(1+1.2+1.5+2+3+6=14.7\)。最后阶段「只差一个面」独占 6 次，占了总期望的四成——越来越难的尾巴是这类问题的特征。推广到 \(n\) 面骰子：\(nH_n\approx n\ln n+\gamma n\)，面试常追问这个渐近形式。</p>
+              <p><b>面试怎么讲。</b>先说「这是 coupon collector，分阶段几何」，写出 \(6H_6=14.7\)；主动指出最后一张优惠券贡献 6、第一张贡献 1，展示对结构而不只是答案的把握；若被追问推广，给 \(nH_n\) 与 \(n\ln n\) 渐近。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4：掷骰子游戏：首次掷出 6 时停止，你的奖励是 \(\tfrac{1}{\text{掷骰次数}}\) 元。比如第一次就出 6 得 1 元，第二次才出 6 得 0.5 元。这个游戏的期望收益是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>停止时刻 \(K\) 服从几何分布 \(P(K=k)=\big(\tfrac56\big)^{k-1}\tfrac16\)，收益是 \(K\) 的函数 \(\tfrac1k\)，故期望是级数 \(E=\sum_k \tfrac1k P(K=k)\)。注意这不是例题 2 的「等 6 要 6 次」，奖励函数改变了问题的本质。</p>
+              <p><b>推导。</b>写出级数并认出对数形状：</p>
+              <div class="math-display">\[E=\sum_{k=1}^{\infty}\frac1k\Big(\frac56\Big)^{k-1}\frac16=\frac15\sum_{k=1}^{\infty}\frac1k\Big(\frac56\Big)^{k}=\frac15\big(-\ln(1-\tfrac56)\big)=\frac{\ln 6}{5}\approx 0.358.\]</div>
+              <p>关键一步是 \(\big(\tfrac56\big)^{k-1}\tfrac16=\tfrac15\big(\tfrac56\big)^k\)，把级数整理成标准形 \(\sum \tfrac{x^k}{k}=-\ln(1-x)\)，取 \(x=\tfrac56\) 得 \(-\ln\tfrac16=\ln 6\)。</p>
+              <p><b>检验。</b>上下界夹逼：奖励恒不超过 1，且 \(P(K=1)=\tfrac16\) 已经贡献 \(\tfrac16\approx 0.167\)，故答案应落在 \([0.167, 1]\) 内，0.358 合理。常见错误是写成 \(\tfrac{1}{E[K]}=\tfrac16\)：期望的倒数不等于倒数的期望，且 \(f(x)=\tfrac1x\) 是凸函数，Jensen 不等式要求 \(E[\tfrac1K]\ge \tfrac{1}{E[K]}\)，0.358 恰好严格大于 0.167。</p>
+              <p><b>面试怎么讲。</b>先明确「求的是 \(E[\tfrac1K]\) 而不是 \(\tfrac{1}{E[K]}\)」，写出级数，指出用 \(\sum \tfrac{x^k}{k}=-\ln(1-x)\) 收尾，报出 \(\tfrac{\ln 6}{5}\approx 0.36\) 元；主动提 Jensen 检验，这一步几乎必然赢得好感。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 5：我与你对射箭靶，我每箭命中概率 \(p\)，你每箭命中概率 \(q\)，我先射。问我先射中靶子的概率是多少？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>轮流独立射击，每轮「我射一箭、你射一箭」，任一方命中即结束。我要的是「我的首次命中早于你的首次命中」的概率。两条几何等待时间在竞争，用首步递推最直接。</p>
+              <p><b>推导。</b>设 \(W\) 为我获胜的概率。第一箭：以概率 \(p\) 我直接命中获胜；以概率 \((1-p)\) 我未中，轮到你：以概率 \(q\) 你命中我输；以概率 \((1-p)(1-q)\) 你也未中，局面回到开局。故：</p>
+              <div class="math-display">\[W=p+(1-p)(1-q)\,W\quad\Longrightarrow\quad W=\frac{p}{1-(1-p)(1-q)}=\frac{p}{p+q-pq}.\]</div>
+              <p><b>检验。</b>代入极端值：\(p=1\) 得 1（我百发百中必赢）；\(q=1\) 得 \(p\)（你百发百中时我只有第一箭的机会）；\(p=q=\tfrac12\) 得 \(\tfrac{1/2}{1/2+1/2-1/4}=\tfrac47\gt \tfrac12\)，先手优势量化为 \(\tfrac47\) 对 \(\tfrac37\)。</p>
+              <p><b>面试怎么讲。</b>一句话建模「先手优势来自每轮我先出手」，写出几何级数求和或递推式，给出封闭形 \(\tfrac{p}{p+q-pq}\)；主动补 \(p=q\) 时的 \(\tfrac{1}{2-p}\)，把「先手值多少」讲清楚。</p>
+            </div>
+          </div>
+
+          <h3 id="s-014-6"><a class="anchor-link" href="#s-014-6" aria-label="跳转到本节">#</a>例题详解 III：失败回退与逐步消耗</h3>
+          <div class="worked-example">
+            <p><b>例题 6：要依次穿过 N 座岛。相邻两岛之间有两座桥，其中恰好一座是坏桥；走坏桥会被送回第一座岛重新开始（你无法分辨好坏桥，每次等概率任选一座）。问平均要走多少次桥才能到达第 N 座岛？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>每次过桥尝试独立地以 \(\tfrac12\) 概率成功（前进一岛）、\(\tfrac12\) 概率失败（回到 1 号岛）。失败会<b>清空全部进度</b>，所以不能用「每段期望 2 次」简单相乘——那只有在失败不回退时才成立。设 \(g_k\) 为「当前在第 \(k\) 座岛、从现在起到达第 N 座岛的期望过桥次数」。</p>
+              <p><b>推导。</b>在第 \(k\) 座岛尝试过桥：花 1 次；成功（概率 \(\tfrac12\)）到第 \(k+1\) 座岛；失败（概率 \(\tfrac12\)）回到第 1 座岛：</p>
+              <div class="math-display">\[g_k=1+\tfrac12\,g_{k+1}+\tfrac12\,g_1,\qquad g_N=0.\]</div>
+              <p>从 \(k=1\) 出发逐个回代：\(g_2=g_1-2\)，\(g_3=g_1-6\)，\(g_4=g_1-14\)，归纳得 \(g_k=g_1-(2^k-2)\)。代入边界 \(g_N=0\) 得</p>
+              <div class="math-display">\[g_1=2^N-2.\]</div>
+              <p>再用第二种方法交叉验证：设 \(A_j\) 为整个过程中在第 \(j\) 段上尝试过桥的期望次数。每次到达第 \(j+1\) 岛都来自第 \(j\) 段的一次成功，故 \(A_{j+1}=\tfrac12 A_j\)，从而 \(A_j=2^{\,j-1}A_1\)；而回到 1 号岛的次数给出 \(A_1=1+\tfrac12\sum_j A_j\)，解得 \(A_1=2^{N-1}\)，总次数 \(\sum_{j=1}^{N-1}A_j=2^{N-1}(2-2^{-(N-2)})=2^N-2\)。两条路一致。</p>
+              <p><b>检验。</b>小情形枚举：\(N=2\) 时代入公式得 2——一段桥、几何等待 \(\tfrac{1}{1/2}=2\)，正确；\(N=3\) 得 6。指数增长来自「越到后面的岛，失败一次要重走的路越长」，这与例题 3 的「越来越难的尾巴」同构。对照变式：若坏桥只是让你留在原岛（不回起点），则每段独立几何、每段期望 2，总期望 \(2(N-1)\)，线性增长——两种规则差一个指数，面试时必须先问清规则。</p>
+              <p><b>面试怎么讲。</b>先复述规则确认「失败回起点」，然后设状态变量写递推，解出 \(2^N-2\)；主动对比「失败原地不动则只有 \(2(N-1)\)」，这一个对比就能体现出你对建模细节的敏感。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 7：袋里有 3 红 3 蓝共 6 颗糖，每次随机摸一颗：摸到红的就吃掉，摸到蓝的放回袋中。问把红糖全部吃光平均要摸多少次？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>红糖单调减少、蓝糖数量不变，过程自然分阶段：当袋中还剩 \(k\) 颗红糖时，每次摸中红糖的概率 \(p_k=\tfrac{k}{6}\)，摸中蓝糖则原地放回、状态不变。于是每个阶段是参数 \(p_k\) 的几何等待，与优惠券收集同型（只是方向相反：这里目标越来越稀有）。</p>
+              <p><b>推导。</b>剩 \(k\) 颗红糖时吃掉下一颗红糖的期望摸糖次数为 \(\tfrac{1}{p_k}=\tfrac{6}{k}\)。从 \(k=3\) 走到 \(k=0\)：</p>
+              <div class="math-display">\[E=\frac{6}{3}+\frac{6}{2}+\frac{6}{1}=2+3+6=11.\]</div>
+              <p><b>检验。</b>量级与结构：最后一颗红糖阶段独占 6 次（此时袋中 1 红 3 蓝单次成功率仅 \(\tfrac16\)），与例题 3 的尾巴效应一致。小情形核对：若只有 1 红 1 蓝，\(E=\tfrac21=2\)；若 1 红 0 蓝，\(E=1\)，都直接可验。推广：\(r\) 红 \(b\) 蓝时 \(E=(r+b)\sum_{k=1}^{r}\tfrac1k\)。</p>
+              <p><b>面试怎么讲。</b>点出「放回蓝糖 = 失败不改状态，吃掉红糖 = 进入下一阶段」，每阶段几何、期望 \(\tfrac6k\)，求和报 11；主动给一般式 \((r+b)H_r\)，把一道具体题升级成一个公式。</p>
+            </div>
+          </div>
+
+          <h3 id="s-014-7"><a class="anchor-link" href="#s-014-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>最常见的四个错误</b><p>一，忽略条件化：轮盘题里直接用 \(\tfrac13\) 比较两个选项，忘了「不转」分支必须以存活为条件（\(\tfrac14\)）。二，倒数的期望陷阱：\(E[\tfrac1K]\ne\tfrac{1}{E[K]}\)，例题 4 中 \(\tfrac16\) 与 \(\tfrac{\ln 6}{5}\) 差了一倍多；凸函数时 Jensen 不等式给出方向。三，回退规则不问清：过桥题「失败回起点」是 \(2^N-2\)、「失败原地不动」是 \(2(N-1)\)，差一个指数量级。四，递推漏项：首步方程右侧的「1」是当前这一步的耗时，漏掉它方程整体偏小。</p></div>
+          <div class="intuition-box"><b>考官追问的三个变式</b><p>一，把「等第一个 6」改成「等第一个 6 或 1」：成功概率变 \(\tfrac26\)，期望 3——测试你是否会改 \(p\) 而不是死记 6。二，把过桥题的成功概率改成 \(\tfrac13\)：递推结构不变，答案变为 \(\tfrac{3^N-3}{2}\) 量级的几何级数，考察通式迁移。三，把射箭改成三人轮流：仍然是「一轮回到开局」的递推，但方程多一个分支，考察多分支首步分解的熟练度。</p></div>
+
+          <h3 id="s-014-8"><a class="anchor-link" href="#s-014-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能对任何「独立重复、等首次成功」的问题当场写出 \(E=1+(1-p)E\) 并解出 \(\tfrac1p\)。</li>
+            <li>我能在拿到新信息（如「第一枪存活」）后立刻改用条件概率，而不是沿用先验值。</li>
+            <li>我能识别优惠券收集结构，写出 \(nH_n\) 并算出 \(6H_6=14.7\)。</li>
+            <li>我能处理 \(E[\tfrac1K]\) 型期望：写出级数、认出 \(-\ln(1-x)\)、用 Jensen 不等式做方向性检验。</li>
+            <li>我能为「失败回起点」类问题设多个状态变量列线性方程组，并解释结果为何指数增长。</li>
+            <li>我能把「目标越来越稀有」的过程切成分段几何，逐段求 \(\tfrac{1}{p_k}\) 再求和（吃糖题、收集题通用）。</li>
+            <li>我能在给结论前主动声明建模假设（子弹位置、回退规则），并说明假设变化时结论如何反转。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="013.html">← 013. 经典脑题 III：毒酒、四和、帽子与信封</a><a href="015.html">015. 概率二：序列等待与 n 连正 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

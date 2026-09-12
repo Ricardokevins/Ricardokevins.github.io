@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>015. 概率二：序列等待与 n 连正 - 量化面试通用题解手册</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css">
+  <link rel="stylesheet" href="../../assets/notes-shell.css">
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="Notes navigation">
+    <a class="notes-sitebar__brand" href="../../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-kicker">Chapter 015</div>
+        <div class="brand-title">概率二：序列等待与 n 连正</div>
+        <div class="brand-meta">以已匹配长度为状态建状态机，用自重叠结构解释 HH 与 HT 的差异并统算任意模式。</div>
+      </div>
+      <nav class="toc-group" aria-label="本章小节">
+        <div class="toc-group-title">本章小节</div>
+        <a class="toc-link" href="#s-015-1">学习目标：从等一个面到等一段序列</a><a class="toc-link" href="#s-015-2">工具一：以已匹配长度为状态的状态机</a><a class="toc-link" href="#s-015-3">工具二：自重叠、border 与康威公式</a><a class="toc-link" href="#s-015-4">例题详解 I：HH 与 HT 的不对称</a><a class="toc-link" href="#s-015-5">例题详解 II：n 连正的通项</a><a class="toc-link" href="#s-015-6">例题详解 III：HTH、HHHH 与 HTTH</a><a class="toc-link" href="#s-015-7">误区与边界</a><a class="toc-link" href="#s-015-8">检查清单</a>
+      </nav>
+      <nav id="toc" aria-label="全部章节">
+<!--SIDEBAR-->
+      </nav>
+    </aside>
+    <main class="content">
+
+      <article class="chapter-page">
+        <section class="chapter" data-category="probability" data-title="概率二：序列等待与 n 连正">
+          <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>015. 概率二：序列等待与 n 连正</h2>
+          <aside class="chapter-orientation"><b>阅读定位</b><p>这一章处理「等一段特定序列第一次出现」的期望掷数：等两个正面、等 HTH、等连续 n 个正面。核心工具是状态机（以已匹配长度为状态）与自重叠（border）结构；覆盖等 HH、HT、HTH、HHHH、HTTH 与 n 连正通式等源题。单个目标的几何等待在 <a href="014.html">014 章</a>已经解决。</p></aside>
+          <figure class="visual-lead"><img src="../assets/probability-core.svg" alt="概率核心工具地图：期望递推、序列等待、贝叶斯更新与假设检验四大板块"></figure>
+
+          <h3 id="s-015-1"><a class="anchor-link" href="#s-015-1" aria-label="跳转到本节">#</a>学习目标：从等一个面到等一段序列</h3>
+          <p>等第一个正面是几何等待，期望 2；等「连续两个正面」期望却跳到 6；等「先正后反」只要 4。为什么同样由两次掷硬币组成的目标，等待时间差这么多？原因在于<b>序列有内部结构</b>：掷到一半失败时，已匹配的部分不一定全部作废——HH 匹配了一个 H 之后再来一个 T，进度清零；HT 匹配了一个 H 之后再来一个 H，进度却完整保留。等待时间由「失败损失多少进度」决定，这正是本章要量化的东西。</p>
+          <p>方法上是 <a href="014.html">014 章</a>首步递推的升级版：单变量方程不够了，因为「已匹配长度」是一个会被部分保留、部分清零的状态。我们给每个可能的匹配进度设一个变量，联立求解；对高度规整的目标（如 n 连正）可以归纳出通项；对任意目标，康威（Conway）的 border 公式一步给出答案。</p>
+          <div class="concept-grid">
+            <div class="concept-card"><b>状态机</b><p>状态 = 当前已匹配的目标前缀长度；每次掷硬币按「新后缀匹配到多长」转移，列线性方程组。</p></div>
+            <div class="concept-card"><b>自重叠</b><p>目标的前缀等于自己的后缀（border）时，失败会「打折保留」进度；border 越多，等待越长。</p></div>
+            <div class="concept-card"><b>通式</b><p>n 连正期望 \(2^{n+1}-2\)；无自重叠的长度 \(m\) 模式期望恰为 \(2^m\)；一般情形是 border 对应的 \(2^\ell\) 之和。</p></div>
+          </div>
+
+          <h3 id="s-015-2"><a class="anchor-link" href="#s-015-2" aria-label="跳转到本节">#</a>工具一：以已匹配长度为状态的状态机</h3>
+          <p>设目标是模式 \(T=t_1t_2\cdots t_m\)（如 HTH）。掷了若干次后，与目标相关的全部信息是：当前序列末尾与 \(T\) 的某个前缀匹配的最长长度 \(j\)（即末尾 \(j\) 个字母恰好是 \(t_1\cdots t_j\)）。这个 \(j\in\{0,1,\cdots,m\}\) 就是状态；\(j=m\) 意味着目标出现、过程结束。转移规则：掷出新字母 \(x\) 后，新状态是「\(t_1\cdots t_jx\) 的最长真后缀中仍是 \(T\) 前缀的那个长度」——这正是字符串匹配里 KMP 算式的失配指针。</p>
+          <p>设 \(e_j\) 为从状态 \(j\) 出发到完成的期望掷数。首步递推对每个状态写一条方程：</p>
+          <div class="math-display">\[e_j=1+\sum_{x\in\{H,T\}}\tfrac12\,e_{\mathrm{next}(j,x)},\qquad e_m=0.\]</div>
+          <p>怎么读：花一次投掷，按掷出的字母跳到下一个状态，方程右侧是后继状态的期望按转移概率的加权。\(m\) 个未知数、\(m\) 条线性方程，解之即得 \(e_0\)。以 HT 为例：状态 0（无进度）掷出 H 进状态 1、掷出 T 留在 0；状态 1 掷出 T 完成、掷出 H 仍算「末尾是 H」留在状态 1：</p>
+          <div class="math-display">\[e_0=1+\tfrac12e_1+\tfrac12e_0,\qquad e_1=1+\tfrac12e_1\quad\Longrightarrow\quad e_1=2,\ e_0=4.\]</div>
+          <div class="intuition-box"><b>状态设对，方程就不难</b><p>常见错误是把状态设成「最近几次的结果」或「已经掷了多少次」——前者状态爆炸，后者根本不构成马尔可夫状态。正确的极简刻画只有一个量：当前末尾与目标前缀匹配的最长长度。先在纸上写出目标的所有前缀，对每个前缀问「后面接 H 去哪、接 T 去哪」，转移表就齐了。</p></div>
+
+          <h3 id="s-015-3"><a class="anchor-link" href="#s-015-3" aria-label="跳转到本节">#</a>工具二：自重叠、border 与康威公式</h3>
+          <p>模式 \(T\) 的 <b>border</b> 是一个长度 \(\ell\)（\(1\le \ell\le m\)），使得 \(T\) 的前 \(\ell\) 个字母与后 \(\ell\) 个字母完全相同（整个模式自己是天然的 border）。HH 的 border 是 \(\{1,2\}\)；HT 只有 \(\{2\}\)；HHHH 是 \(\{1,2,3,4\}\)；HTH 是 \(\{1,3\}\)；HTTH 是 \(\{1,4\}\)。对公平硬币，等待任意模式的期望掷数有一个惊人的封闭形（康威公式）：</p>
+          <div class="math-display">\[E[\text{等待 }T]=\sum_{\ell\in \mathrm{borders}(T)}2^{\ell}.\]</div>
+          <p>怎么读：把每个 border 长度对应的 \(2^\ell\) 加起来。HH 是 \(2+4=6\)，HT 是 \(4\)，HHHH 是 \(2+4+8+16=30\)，HTH 是 \(2+8=10\)，HTTH 是 \(2+16=18\)。特别地，<b>没有自重叠</b>的模式（border 只有全长 \(m\)）期望恰为 \(2^m\)；\(n\) 连正的 border 是所有长度，求和 \(2+4+\cdots+2^n=2^{n+1}-2\)。</p>
+          <p>这个公式可以用「赌徒团队」论证推出：从第 1 次投掷前开始，每一掷前有一名新赌徒进场，押 1 元赌「接下来这串结果正好是 \(T\)」的第一个字母；押中就把全部身家继续押第二个字母，如此复利滚下去（公平硬币下每一步翻倍是公平的）。当 \(T\) 首次在时刻 \(\tau\) 完成时，进场于 \(\tau-m+1\) 的赌徒赢到 \(2^m\)；此外每个 border \(\ell\) 对应一名「进场于 \(\tau-\ell+1\)、押中了前 \(\ell\) 个字母」的赌徒，赢到 \(2^\ell\)。所有赌徒共投入 \(\tau\) 元（每掷 1 元），公平赌局下期望收支相抵：</p>
+          <div class="math-display">\[E[\tau]=E[\text{庄家赔付}]=\sum_{\ell\in\mathrm{borders}(T)}2^{\ell}.\]</div>
+          <p>这一论证同时给出了直觉：自重叠的模式「完成的那一瞬」要同时兑付多个赌徒的中奖，成本高，等待自然更长；等价地说，自重叠让你在失败时损失更多有效进度。</p>
+
+          <h3 id="s-015-4"><a class="anchor-link" href="#s-015-4" aria-label="跳转到本节">#</a>例题详解 I：HH 与 HT 的不对称</h3>
+          <div class="worked-example">
+            <p><b>例题 1：公平硬币，平均要掷多少次才能得到连续两个正面（HH）？多少次才能得到先正后反（HT）？不计算的话，能否直接判断哪个更长？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两个目标都是长度 2 的模式，用匹配进度状态机。等 HH：状态 0（无进度）、状态 1（末尾是单个 H）。等 HT：同样两个状态。分别列首步方程。</p>
+              <p><b>推导。</b>等 HH：</p>
+              <div class="math-display">\[e_0=1+\tfrac12e_1+\tfrac12e_0,\qquad e_1=1+\tfrac12\cdot 0+\tfrac12e_0\quad\Longrightarrow\quad e_0=6,\ e_1=4.\]</div>
+              <p>（状态 1 掷出 H 直接完成，掷出 T 回到状态 0。）等 HT：</p>
+              <div class="math-display">\[e_0=1+\tfrac12e_1+\tfrac12e_0,\qquad e_1=1+\tfrac12\cdot 0+\tfrac12e_1\quad\Longrightarrow\quad e_1=2,\ e_0=4.\]</div>
+              <p>（状态 1 掷出 T 完成，掷出 H 末尾仍是 H、停留在状态 1。）所以等 HH 要 6 次，等 HT 只要 4 次。</p>
+              <p><b>检验。</b>用康威公式核对：HH 的 border 为 \(\{1,2\}\)，\(2+4=6\)；HT 的 border 只有 \(\{2\}\)，得 4。两条独立路线一致。「不计算」的判断：等 HT 时，一旦掷出一个 H，它就<b>永远不会作废</b>——再掷 H 仍在等那个 T，掷 T 立刻完成；而等 HH 时，拿到一个 H 之后一个 T 就把进度清零。进度更保值，等待更短，HT 应该更快，与计算吻合。</p>
+              <p><b>面试怎么讲。</b>先给不对称的直觉（「HT 的 H 是不可没收的存款，HH 的 H 会被 T 清零」），再用状态机算出 6 与 4，最后用 border 公式 \(2^1+2^2\) 与 \(2^2\) 收尾。三步走完，这道题就从一个答案变成一段完整的论证。</p>
+            </div>
+          </div>
+
+          <h3 id="s-015-5"><a class="anchor-link" href="#s-015-5" aria-label="跳转到本节">#</a>例题详解 II：n 连正的通项</h3>
+          <div class="worked-example">
+            <p><b>例题 2：公平硬币，连续掷出 3 个正面平均要多少次？连续 5 个正面呢？给出连续 n 个正面的通用公式并推导。</b></p>
+            <div class="solution">
+              <p><b>建模。</b>目标 \(H^n\)。状态天然取「当前连续正面的个数」\(j\in\{0,1,\cdots,n\}\)：掷出 H 从 \(j\) 到 \(j+1\)，掷出 T 从任何 \(j\) 直接跌回 0。设 \(x_j\) 为已有 \(j\) 连正时到完成的期望追加掷数，\(x_n=0\)。</p>
+              <p><b>推导。</b>首步方程：</p>
+              <div class="math-display">\[x_j=1+\tfrac12\,x_{j+1}+\tfrac12\,x_0,\qquad j=0,1,\cdots,n-1.\]</div>
+              <p>断言解为 \(x_j=2^{\,n+1}-2^{\,j+1}\)。验证：\(x_n=2^{n+1}-2^{n+1}=0\) 成立；代入方程右侧 \(1+\tfrac12\big(2^{n+1}-2^{j+2}\big)+\tfrac12\big(2^{n+1}-2\big)=1+2^{n+1}-2^{j+1}-1=2^{n+1}-2^{j+1}\)，与左侧一致。归纳成立，于是从零开始：</p>
+              <div class="math-display">\[x_0=2^{\,n+1}-2.\]</div>
+              <p>代入具体值：\(n=3\) 得 \(2^4-2=14\)；\(n=5\) 得 \(2^6-2=62\)。</p>
+              <p><b>检验。</b>与康威公式一致：\(H^n\) 的 border 是全部长度 \(1,\cdots,n\)，\(\sum_{\ell=1}^{n}2^{\ell}=2^{n+1}-2\)。量级感受：\(n\) 每加 1，期望翻倍——连正的难度指数式上升，这与「连续 5 正已经要 62 次」的生活直觉相符。小情形 \(n=1\) 退化成几何等待 \(2^2-2=2\)，与 <a href="014.html">014 章</a>「第一个正面期望 2」衔接。</p>
+              <p><b>面试怎么讲。</b>先报通式 \(2^{n+1}-2\)，再给状态机归纳证明（断言—验证两行即可），报出 14 与 62；主动提一句「连正长度每加一，等待翻倍，赌场压『连开』的赔付也该按 2 的幂定」，把公式和场景连起来。</p>
+            </div>
+          </div>
+
+          <h3 id="s-015-6"><a class="anchor-link" href="#s-015-6" aria-label="跳转到本节">#</a>例题详解 III：HTH、HHHH 与 HTTH</h3>
+          <div class="worked-example">
+            <p><b>例题 3：公平硬币，平均要掷多少次才能首次得到序列 HTH？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>目标 HTH，前缀有 H、HT。状态：\(e_0\)（无进度）、\(e_1\)（末尾匹配 H）、\(e_2\)（末尾匹配 HT）。转移要小心「跨状态」的情形：已匹配 HT 后掷出 H 直接完成；掷出 T 时序列末尾是 HTT，它的任何非空后缀都不是 HTH 的前缀，回 \(e_0\)；已匹配 H 后掷出 H，末尾仍是 H，停在 \(e_1\)。</p>
+              <p><b>推导。</b>三条方程：</p>
+              <div class="math-display">\[e_0=1+\tfrac12e_1+\tfrac12e_0,\quad e_1=1+\tfrac12e_1+\tfrac12e_2,\quad e_2=1+\tfrac12\cdot 0+\tfrac12e_0.\]</div>
+              <p>化简：\(e_0=2+e_1\)，\(e_1=2+e_2\)，\(e_2=1+\tfrac12e_0\)。回代：\(e_1=2+1+\tfrac12e_0=3+\tfrac12e_0\)，\(e_0=2+3+\tfrac12e_0\)，解得</p>
+              <div class="math-display">\[e_0=10,\qquad e_1=8,\qquad e_2=6.\]</div>
+              <p><b>检验。</b>康威公式：HTH 的 border 是长度 1（前 H = 后 H）与长度 3（自身），\(2^1+2^3=10\)，与状态机一致。对比无自重叠的长度 3 模式（如 HTT）只需 \(2^3=8\)：中间那个 H 既帮你在最后一步完成、又会在失败时留半截进度坑你，自重叠的代价是 +2。</p>
+              <p><b>面试怎么讲。</b>强调最容易错的一条转移：匹配了 HT 之后掷 T 不是回到状态 1 而是回到 0（HTT 的后缀里没有 H 开头的前缀）。写出三方程、报 10，再用 border 公式一行复核。</p>
+            </div>
+          </div>
+          <div class="worked-example">
+            <p><b>例题 4：平均要掷多少次才能首次得到 HHHH？HTTH 呢？</b></p>
+            <div class="solution">
+              <p><b>建模。</b>两个长度 4 的模式，直接用康威公式 \(E=\sum_{\ell\in\mathrm{borders}}2^{\ell}\)，并用状态机抽查其一以示推导能力。</p>
+              <p><b>推导。</b>HHHH 的 border：长度 1、2、3、4（H 的 k 次幂的前后缀显然相同）：</p>
+              <div class="math-display">\[E[HHHH]=2^1+2^2+2^3+2^4=2+4+8+16=30.\]</div>
+              <p>HTTH 的 border：长度 1（首字母 H 与末字母 H 相同）；长度 2 的前缀 HT 与后缀 TH 不同；长度 3 的前缀 HTT 与后缀 TTH 不同；长度 4 是自身：</p>
+              <div class="math-display">\[E[HTTH]=2^1+2^4=2+16=18.\]</div>
+              <p>用状态机验证 HTTH：状态 \(e_0,e_1(\mathrm{H}),e_2(\mathrm{HT}),e_3(\mathrm{HTT})\)，其中从 \(e_2\) 掷 H 得 HTH，其后缀 H 是前缀，落 \(e_1\)；从 \(e_3\) 掷 H 完成、掷 T 回 \(e_0\)：</p>
+              <div class="math-display">\[e_0=2+e_1,\quad e_1=2+e_2,\quad e_2=1+\tfrac12e_1+\tfrac12e_3,\quad e_3=1+\tfrac12e_0.\]</div>
+              <p>回代解得 \(e_1=16\)、\(e_0=18\)，与 border 公式一致。</p>
+              <p><b>检验。</b>排序合理性：同为长度 4，HHHH（30）&gt; HTTH（18）&gt; 无重叠模式（16）。越「贪心」于自身前缀的模式越难等；纯连正是最难的长模式。数值上 30 恰是例题 2 通式 \(2^{4+1}-2\)，体系自洽。</p>
+              <p><b>面试怎么讲。</b>先把两个模式的 border 划出来（在纸上把前缀后缀对齐划线，非常直观），套 \(2^\ell\) 求和报 30 与 18；被要求证明时用赌徒团队论证或状态机抽查一个。主动指出「长度相同不代表难度相同，结构比长度重要」，这句话是本章的点题。</p>
+            </div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>目标模式</th><th>border 长度集合</th><th>期望掷数</th></tr></thead><tbody>
+          <tr><td>H</td><td>{1}</td><td>2</td></tr>
+          <tr><td>HH</td><td>{1, 2}</td><td>6</td></tr>
+          <tr><td>HT</td><td>{2}</td><td>4</td></tr>
+          <tr><td>HHH</td><td>{1, 2, 3}</td><td>14</td></tr>
+          <tr><td>HTH</td><td>{1, 3}</td><td>10</td></tr>
+          <tr><td>HHHH</td><td>{1, 2, 3, 4}</td><td>30</td></tr>
+          <tr><td>HTTH</td><td>{1, 4}</td><td>18</td></tr>
+          <tr><td>HHHHH</td><td>{1, 2, 3, 4, 5}</td><td>62</td></tr>
+          </tbody></table></div>
+
+          <h3 id="s-015-7"><a class="anchor-link" href="#s-015-7" aria-label="跳转到本节">#</a>误区与边界</h3>
+          <div class="intuition-box"><b>三个高频错误</b><p>一，「三次独立、概率 \(\tfrac18\)，所以期望 8」：这只对无自重叠模式凑巧接近（\(2^3=8\) 恰是 HTT 的答案），对 HHH 差了一倍多——期望不是 \(\tfrac{1}{P(\text{特定三连})}\)，因为失败会保留或清零部分进度。二，转移表画错：最常见的是「已匹配 HT 再掷 T」想当然地回到状态 1；正确做法是机械地检查新序列末尾的最长可匹配前缀。三，把「从零开始等」与「已有部分进度时再等」混为一谈：\(e_0\) 与 \(e_j\) 是不同的量，面试官常故意问「已经连出 3 个正面了，再等到 5 连正还要几次」来考这一点。</p></div>
+          <div class="intuition-box"><b>考官追问的变式</b><p>一，偏硬币下的 n 连正：状态机不变、转移概率换成 \(p\) 与 \(1-p\)，通式不再有 \(2^{n+1}\) 的简洁形状，但方程组照解。二，康威对弈（Penney's game）：双方各选一个等长模式赛跑，后选者可利用非传递性克制对方（如对方选 HHH，你选 THH 即占优）——等待时间长不代表对弈必输，因为比的是「谁先出现」，border 结构在两模式的交叉重叠里起作用。三，掷骰子版「等 66」：把 2 换成 6，公式变为 \(\sum_{\ell\in\mathrm{borders}}6^{\ell}\)，等 66 要 \(6+36=42\) 次，检验你是否会迁移公式底数。</p></div>
+
+          <h3 id="s-015-8"><a class="anchor-link" href="#s-015-8" aria-label="跳转到本节">#</a>检查清单</h3>
+          <ul class="checkpoint-list">
+            <li>我能为任意目标模式画出「已匹配长度」状态机，并逐条写出失配后的落点。</li>
+            <li>我能用状态机从零算出等 HH 要 6 次、等 HT 要 4 次，并解释两者差异的进度直觉。</li>
+            <li>我能推导 n 连正的通项 \(2^{n+1}-2\)（断言—归纳验证），并报出 3 连正 14、5 连正 62。</li>
+            <li>我能定义 border（前缀 = 后缀的长度），并套康威公式 \(\sum_{\ell}2^{\ell}\) 秒出 HTH=10、HHHH=30、HTTH=18。</li>
+            <li>我能复述赌徒团队论证，说清「自重叠模式完成时要兑付多个赌徒」与「等待更长」的等价性。</li>
+            <li>我能指出「期望 = \(\tfrac{1}{P(\text{模式})}\)」何时恰好成立（无自重叠模式）以及为何一般不成立。</li>
+            <li>我能在被追问偏硬币、骰子或 Penney 对弈变式时，说明哪些结论可迁移、哪些要重解方程组。</li>
+          </ul>
+        </section>
+      </article>
+      <nav class="chapter-nav"><a href="014.html">← 014. 概率一：期望递推与首达时间</a><a href="016.html">016. 概率三：骰子重掷、协方差与最大值 →</a></nav>
+      <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+    </main>
+  </div>
+  <script src="../assets/quant-bank.js"></script>
+</body>
+</html>

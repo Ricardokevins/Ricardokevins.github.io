@@ -11,7 +11,8 @@ NOTE_TEMPLATE = File.join(NOTES_ROOT, "NOTE_TEMPLATE.md")
 
 BOOK_INDEX_URLS = {
   "/notes/llm-interview-question-bank/index.html" => "/notes/llm-interview-question-bank/",
-  "/notes/math-interview-question-bank/index.html" => "/notes/math-interview-question-bank/"
+  "/notes/math-interview-question-bank/index.html" => "/notes/math-interview-question-bank/",
+  "/notes/quant-interview-question-bank/index.html" => "/notes/quant-interview-question-bank/"
 }.freeze
 
 ASSET_EXTENSIONS = /\.(?:css|js|png|jpe?g|gif|webp|svg|pdf|txt|md|json|woff2?|ttf|eot)\z/i
@@ -47,11 +48,13 @@ CONTENT_TEXT_TAGS = /<[^>]+>/m
 CONTENT_WARNING_MIN_CHARS = 4_500
 CONTENT_WARNING_MIN_HEADINGS = 5
 LLM_BANK_CHAPTER_PATH = %r{\Anotes/llm-interview-question-bank/chapters/[^/]+\.html\z}
-MATH_BANK_CHAPTER_PATH = %r{\Anotes/math-interview-question-bank/chapters/[^/]+\.html\z}
-BANK_CHAPTER_PATH = %r{\Anotes/(?:llm-interview-question-bank|math-interview-question-bank)/chapters/[^/]+\.html\z}
+MATH_BANK_CHAPTER_PATH = %r{\Anotes/(?:math-interview-question-bank|quant-interview-question-bank)/chapters/[^/]+\.html\z}
+QUANT_BANK_CHAPTER_PATH = %r{\Anotes/quant-interview-question-bank/chapters/[^/]+\.html\z}
+BANK_CHAPTER_PATH = %r{\Anotes/(?:llm-interview-question-bank|math-interview-question-bank|quant-interview-question-bank)/chapters/[^/]+\.html\z}
 BOOK_CHAPTER_INDEXES = {
   "notes/llm-interview-question-bank" => File.join(NOTES_ROOT, "llm-interview-question-bank", "index.html"),
-  "notes/math-interview-question-bank" => File.join(NOTES_ROOT, "math-interview-question-bank", "index.html")
+  "notes/math-interview-question-bank" => File.join(NOTES_ROOT, "math-interview-question-bank", "index.html"),
+  "notes/quant-interview-question-bank" => File.join(NOTES_ROOT, "quant-interview-question-bank", "index.html")
 }.freeze
 CHAPTER_SECTION = /<section\b[^>]*class=["'][^"']*\bchapter\b[^"']*["'][^>]*>/i
 CHAPTER_ORIENTATION = /class=["'][^"']*\bchapter-orientation\b[^"']*["']/i
@@ -244,9 +247,10 @@ note_html_files.each do |html_path|
     chapter_headings = chapter_heading_texts(content)
 
     if relative.match?(MATH_BANK_CHAPTER_PATH)
-      warnings << "#{relative}: math chapter audit short article text (#{chapter_text.length} chars)" if chapter_text.length < MATH_CHAPTER_MIN_CHARS
-      warnings << "#{relative}: math chapter audit few h2/h3/h4 sections (#{chapter_headings.size})" if chapter_headings.size < MATH_CHAPTER_MIN_HEADINGS
-      warnings << "#{relative}: math chapter audit missing formula/example/boundary signals" unless chapter_text.match?(MATH_CHAPTER_SIGNAL_TEXT) || chapter_headings.any? { |heading| heading.match?(MATH_CHAPTER_SIGNAL_TEXT) }
+      audit_label = relative.match?(QUANT_BANK_CHAPTER_PATH) ? "quant" : "math"
+      warnings << "#{relative}: #{audit_label} chapter audit short article text (#{chapter_text.length} chars)" if chapter_text.length < MATH_CHAPTER_MIN_CHARS
+      warnings << "#{relative}: #{audit_label} chapter audit few h2/h3/h4 sections (#{chapter_headings.size})" if chapter_headings.size < MATH_CHAPTER_MIN_HEADINGS
+      warnings << "#{relative}: #{audit_label} chapter audit missing formula/example/boundary signals" unless chapter_text.match?(MATH_CHAPTER_SIGNAL_TEXT) || chapter_headings.any? { |heading| heading.match?(MATH_CHAPTER_SIGNAL_TEXT) }
     elsif relative.match?(LLM_BANK_CHAPTER_PATH)
       warnings << "#{relative}: llm chapter audit short article text (#{chapter_text.length} chars)" if chapter_text.length < LLM_CHAPTER_MIN_CHARS
       warnings << "#{relative}: llm chapter audit few h2/h3/h4 sections (#{chapter_headings.size})" if chapter_headings.size < LLM_CHAPTER_MIN_HEADINGS
