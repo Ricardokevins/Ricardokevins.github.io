@@ -30,6 +30,25 @@
 - 手册 index 与 001 导读章已链接站内《小红书量化面试题库 3–54》，形成「量化面试」专题互链。
 - 本提交为首批：骨架 + 001 导读 + 已完成章节；其余章节由并行子任务生成中，后续批次提交补齐，完成后做全量 QA（validate 脚本 + Jekyll 构建 + 公式裸符号扫描）。
 
+## 2026-09-07 Jump / 九坤题解教学化重写（已写回 Downloads）
+
+- 根据用户反馈，修正“只报 Welford / DP / Markov 等术语、未解释背景”和“题干缺条件却直接给答案”的问题；原位重写 `jump-ubiquant-interview-solutions.html` 的 32 个核心小节，而不是只在文末追加补丁。
+- Welford 小节现含总体/样本方差定义、两遍法与单遍朴素公式、灾难性消减数值例、`n/mean/M2` 每步含义、`[2,4,4]` 手算、Python 实现、分块合并公式及 NaN、滚动窗口、极端动态范围等失效边界。
+- 旅行票小节明确原始面经摘要缺票价，不能仅凭旅行日得到唯一金额；使用标注的 `[2,7,15]` 教学票价给出题意、逐日 DP 表、`d-7` 状态含义、最优方案、代码与稀疏日期优化。
+- 同步扩写等相关矩阵、停止时刻、四球 Markov 链、订单簿、内存分配、小缓冲优化，以及九坤 12 球、Coupon Collector、锐角三角形、鸡蛋掉落、LRU、GIL、虚拟内存、最大回撤等背景和推导。
+- 数值复核：朴素单遍方差在 `[10^9,10^9+1,10^9+2]` 上错误得到 `0`，Welford 得 `2/3`；票价例得 `13`；2 蛋 100 层得 `14`；`54H_54≈247.073241262`。HTML 唯一 ID、32 个核心节最小解释长度、写回文件字节一致性通过。
+- 可复现修订脚本保存在 `research/quant-interview-notes/expand_core_sections.py`；未提交、未推送，仓库其他既有改动未触碰。
+
+## 2026-09-07 本地量化面试指南扩充（已写回；静态与数值检查完成）
+
+- 按用户指定原位更新 Downloads 中 `quant-interview-research-guide.html` 及绿皮书、Jump/九坤、聚宽、大模型四份既有专题 HTML；专题新增 134 个学习小节，总索引补逐节入口，没有另建站内笔记、提交或发布。
+- 补充明确题设、逐步推导、例子、算法状态/复杂度/边界；为原题缺条件条目提供标注的练习版本与缺失信息清单，不把题名或岗位概括冒充完整真题。
+- 修正集牌期望为 247.073241、海盗半数/严格多数规则混用、两球复制/翻转机制、方差分段 DP 复杂度、尾零算式；补齐12球决策树、锐角概率和几何积分。
+- 绿皮书提供版本识别、公开入口、文字 PDF 提取、扫描 OCR 和逐页覆盖核对方法；本次未获得具体书本 PDF，未声称全书逐题覆盖。HowToQuant 当前公开目录为170项，与旧题名/版本存在差异；公司历史招聘信息未全部重新核实。
+- 验证：五页唯一 ID、内部链接、HTML结构、Python片段语法与内联JS语法通过；12球24态、冒泡n=1～8穷举、鸡蛋DP对照、LRU随机操作、日期库对照、票价例子、HTH竞赛与四球方程通过；几何概率模拟交叉检查通过。五份最终文件与验证稿逐字节一致，临时备份已保存。
+- 限制：浏览器本地文件预览被URL安全策略阻止，未进行截图验收；本机无PyTorch，MHA/DPO仅语法与NumPy/标量数学检查，未执行完整PyTorch/GPU测试。原页面在线MathJax依赖保留。
+
+
 ## 2026-08-20 Debate Training / RLAIF 奖励黑客深读（已完成；已验证，已推送）
 
 ### 目标、材料边界与关键判断
@@ -80,8 +99,8 @@
 - [x] 核心判断：Recirculation 能免训练不是因为任意高层激活都能当底层输入，而是因为 residual stream 跨层近似共享语义基底，并把干预限制为经范数匹配的小幅 residual correction；Full-bandwidth 把反馈变成强制的新 layer-0 输入接口，因此必须训练新增 gate、状态可复用性和长程稳定性。
 - [x] `ruby scripts/validate_notes_index.rb` 通过：301 条索引与 301 个顶层 HTML 一一对应；目标页约 11,164 个可见非空白字符，唯一 `title` / `H1` / `main` / evidence appendix，无重复 ID、公式裸标签、占位文本、公开过程噪声或未包裹表格；`git diff --check` 通过。
 - [x] 使用隔离输出目录完成 Jekyll build；仅出现仓库既有的 Faraday 可选组件与 GitHub Metadata 未认证提示，静态产物成功生成。
-- [x] 使用独立 headless 系统 Chrome 完成 1440×1000 桌面和 390×844 手机整页渲染。两种视口均等待 MathJax 成功，HAR 各 7 个请求且无 4xx/5xx，截图目检无标题、公式、表格、卡片错位或页面级横向溢出。
-- [x] 最终提交仅包含本任务笔记、共享索引与 Progress 中的本任务 hunk；保留所有并行任务、题库、语音手册、PDF、脚本、缓存和日志改动。
+- [x] Playwright skill 的包装脚本因依赖包未暴露 `playwright-cli` 失败；改用同一 Playwright 发行版与独立 headless 系统 Chrome 完成 1440×1000 桌面和 390×844 手机整页渲染。两种视口均等待 MathJax 成功，HAR 各 7 个请求且无 4xx/5xx，截图目检无标题、公式、表格、卡片错位或页面级横向溢出。
+- [ ] 仅提交并推送本任务笔记、共享索引与 Progress 中的本任务 hunk，保留所有并行任务、题库、语音手册、PDF、脚本、缓存和日志改动。
 
 ## 2026-08-20 Internalized Visual Thinking / Proactive Video Reasoning 深读（已完成；已验证，待提交）
 
@@ -100,30 +119,22 @@
 - [x] 使用隔离无头 Chromium 检查 1440px 桌面与 390px 手机页面：两者均 HTTP 200，页面宽度严格等于视口宽度，图片和 MathJax 正常，无坏锚点、控制台错误、页面异常或失败请求；手机宽表与公式只在局部容器内滚动，截图目检无重叠、截断或不可读结构。
 - [x] 只提交本任务笔记、资产及共享文件中的本任务 hunk；内容提交 `c86c69a` 已推送至 `origin/main`，远端与本地同步。现有语音手册、其他论文笔记、题库、脚本、PDF、缓存和日志改动保持未纳入。
 
-## 2026-08-20 Open-MOPD 多教师能力整合深读
+## 2026-08-16 语音大模型双工与架构入门手册（已完成；已验证，未提交）
 
-### 任务与材料边界
+### 内容设计与证据边界
 
-- 用户通过 `$deep` 指定 Xiuyu Li 的 X 发布帖 `2090320049370439680`；主帖只承担发布导航，实质材料是 arXiv:2608.19098、项目页、官方代码仓库以及 Hugging Face 五个模型与训练/评测数据。
-- 本轮完整读取论文 22 页正文、附录与 TeX 源文件，核对公开实现中多教师硬路由、token-share loss 权重、gap 方向、reward refresh 与定向测试，并复算主表 integration gap 和 RouteRL headroom recovery。
-- 论文训练结果仍属于发布方报告；本轮没有 8×A100 环境做端到端重训。本地 Python 缺少 PyTorch，定向测试在收集阶段因依赖缺失停止，因此静态实现核对与动态复现严格分开。
+- [x] 新增 `notes/tech-analysis/speech-llm-duplex-architecture-handbook.html`，面向没有读过相关论文的读者，先按技术演进讲清级联式语音助手、audio encoder + adapter、统一离散语音 token、流式 speech-to-speech、Thinker–Talker 和原生双流/多流全双工模型，再进入结构化架构比较。
+- [x] 将单工、半双工、全双工从通信概念落到语音产品时间轴，明确区分传输层全双工、产品级持续监听/打断和模型原生全双工；补充 AEC、NS/AGC、VAD、语义 EOU、barge-in、streaming decoder、jitter buffer 与被打断后的会话状态截断。
+- [x] 以 SpeechGPT、AudioPaLM、SALMONN、Qwen2-Audio、Mini-Omni、GLM-4-Voice、Qwen2.5-Omni、Moshi、BayLing-Duplex、DuplexSLA、DuplexChat、Full-Duplex-Bench 及商业 Realtime/Live API 的公开论文、官方仓库和接口说明建立架构地图；商业模型只记录公开行为，不反推未披露内部结构。
+- [x] 增加双工时间线、五类架构数据流、产品级打断伪代码、训练数据/阶段、评测矩阵、工程选型和七个面试高频追问；核心判断是“模型架构与双工能力是两条正交轴”，流式或端到端本身都不等于原生全双工。
 
-### 关键判断与完成变更
+### 索引与验证
 
-- 论文最重要的贡献是把“多教师互相干扰”改写成可观测的优化预算问题：数学 / 代码 / IF prompt 约占 39.8% / 39.8% / 20.3%，但有效 token 约占 49.7% / 49.3% / 0.99%；prompt 平衡并不等于更新平衡。
-- 三项机制逐项对应三种失衡：token-share balancing 修复长度偏差；gap-following allocation 让预算追随尚未蒸馏完的 teacher-student gap，并避免倒数权重在第 74 步形成正反馈崩溃；reward refresh 复用 actor forward 更新当前学生项，但不声称修复旧 trajectory 的 state staleness。
-- 独立复算确认 Naive M-OPD 的 headroom recovery 为 `(28.05-25.67)/(32.35-25.67)=35.63%`，Open-MOPD 为 `83.38%`；对 RouteOPD 的整合缺口由 `31.55-28.05=3.50` 降到 `31.55-31.24=0.31`。
-- 对消融口径做了修正：最终 `+3.19` 包含从 `K=1` 切到 `K=4` 的同设置收益；相对匹配的 `K=4` control，share+gap 为 `+1.15`，refresh 再为 `+0.81`，三项机制合计约 `+1.96`。
-- 公开资产确实包括五个可访问模型、数据和实现，但“完全可复现”仍有文档缺口：当前 `scripts/local/mt_opd.sh` 示例默认未打开 target share、gap multiply/alpha 与 reward refresh；公开 eval README 的 AIME/LCB repeats 与论文主表不一致，并引用部分当前仓库不存在的构建入口。
-- 新增 `notes/paper-reviews/open-mopd-capability-budget-balance.html`，按两遍讲解先完整重建论文，再给出证据审计、代码/发布边界、四条独立 insight 与工程建议；同步在 `_data/notes.yml` 增加入口。
-
-### 验证结果与发布边界
-
-- [x] `ruby scripts/validate_notes_index.rb` 通过：297 条索引与 297 个顶层 HTML 一一对应；目标页约 14,234 个可见非空白字符，唯一 `main`、唯一文末 evidence appendix、无公开生成痕迹、本地路径、替换字符、空图片 alt 或占位文本；`git diff --check` 通过。
-- [x] 隔离 Jekyll 构建成功，耗时约 13.1 秒；仅出现仓库既有的 Faraday 可选组件提示与 GitHub Metadata 未认证 warning，不影响静态产物。
-- [x] Playwright CLI wrapper 在本机缺少 `playwright-cli` 可执行文件，改用同一套工作区 Playwright 库与独立 headless 系统 Chrome 完成等价检查，未绑定或操作前台浏览器。
-- [x] 1440×1000 桌面与 390×844 手机均返回 HTTP 200，`scrollWidth == innerWidth`，30 个 MathJax 容器正常渲染；两张宽表在手机端只在各自容器内滚动，无断锚、重复 ID、失败请求、console error 或 runtime error，整页截图目检未见重叠、裁切或竖排压缩。
-- [x] 最终提交仅包含本任务笔记、索引 hunk 和本节 Progress 记录；其他并行任务、题库、PDF、脚本、缓存与日志改动不纳入本任务提交。
+- [x] 更新 `_data/notes.yml`，新增 `Tech Handbook` 条目；`ruby scripts/validate_notes_index.rb` 通过，当前 296 条索引与 296 个顶层 HTML 一一对应。新页面有唯一 title/H1/main、12 个主体章节、唯一文末 evidence appendix，约 14,564 个可见非空白字符。
+- [x] 运行 `git diff --check`、公式裸标签、公开过程噪声、HTML ID/结构与表格容器检查；无命中错误，3 张表均位于可横向滚动容器，2 个展示公式正常加载。
+- [x] 补齐仓库锁定的 Jekyll 依赖并完成全站构建；构建成功，仅出现仓库既有的 Faraday 可选依赖和 GitHub Metadata 未认证提示。
+- [x] 使用隔离无头浏览器检查 1440px 桌面与 390px 手机页面：两者均 HTTP 200，页面宽度分别严格等于视口宽度，无控制台错误、页面异常、失败请求或页面级横向溢出；视觉检查未见标题、卡片、代码、公式和宽表错位。
+- [x] 本次未提交或推送；仓库中已有的题库、脚本、PDF、日志及缓存改动保持原状，不纳入本任务。
 
 ## 2026-08-10 Zhang Xiaojun Podcast #86、#85、#83 source-first 深读（已完成；已验证，已清理，已推送）
 
@@ -8256,3 +8267,55 @@ bundle exec jekyll build               # done in 7.6s, 仅 NOTE_TEMPLATE.md 模�
 - 26,259 条 SFT 样本由完整解和进化轨迹组成，并经过去重及评测集隔离；RL 使用自适应奖励范围、上尾熵优势、异步 rollout 和状态感知的父节点选择。
 - 在同一 OpenMLE-Evo harness 下，Frontis-MA1-35B 相对 Qwen3.6-35B-A3B 的 Medal Average 为 39.39%→60.61%；加入跨任务先验与异步搜索的 OpenMLE-Evo-Max 后为 71.21%。后者是端到端系统增益，不是纯模型增益。
 - NatureBench Lite 的 10 任务受控迁移为：固定框架换模型 50%→70% Match-SOTA，固定模型换框架 20%→50%；证据支持迁移，但不足以宣称一般科学自主研究或完整 RSI。
+## 2026-08-20 Open-MOPD 多教师能力整合深读
+
+### 任务与材料边界
+
+- 用户通过 `$deep` 指定 Xiuyu Li 的 X 发布帖 `2090320049370439680`；主帖只承担发布导航，实质材料是 arXiv:2608.19098、项目页、官方代码仓库以及 Hugging Face 五个模型与训练/评测数据。
+- 本轮完整读取论文 22 页正文、附录与 TeX 源文件，核对公开实现中多教师硬路由、token-share loss 权重、gap 方向、reward refresh 与定向测试，并复算主表 integration gap 和 RouteRL headroom recovery。
+- 论文训练结果仍属于发布方报告；本轮没有 8×A100 环境做端到端重训。本地 Python 缺少 PyTorch，定向测试在收集阶段因依赖缺失停止，因此静态实现核对与动态复现严格分开。
+
+### 关键判断与完成变更
+
+- 论文最重要的贡献是把“多教师互相干扰”改写成可观测的优化预算问题：数学 / 代码 / IF prompt 约占 39.8% / 39.8% / 20.3%，但有效 token 约占 49.7% / 49.3% / 0.99%；prompt 平衡并不等于更新平衡。
+- 三项机制逐项对应三种失衡：token-share balancing 修复长度偏差；gap-following allocation 让预算追随尚未蒸馏完的 teacher-student gap，并避免倒数权重在第 74 步形成正反馈崩溃；reward refresh 复用 actor forward 更新当前学生项，但不声称修复旧 trajectory 的 state staleness。
+- 独立复算确认 Naive M-OPD 的 headroom recovery 为 `(28.05-25.67)/(32.35-25.67)=35.63%`，Open-MOPD 为 `83.38%`；对 RouteOPD 的整合缺口由 `31.55-28.05=3.50` 降到 `31.55-31.24=0.31`。
+- 对消融口径做了修正：最终 `+3.19` 包含从 `K=1` 切到 `K=4` 的同设置收益；相对匹配的 `K=4` control，share+gap 为 `+1.15`，refresh 再为 `+0.81`，三项机制合计约 `+1.96`。
+- 公开资产确实包括五个可访问模型、数据和实现，但“完全可复现”仍有文档缺口：当前 `scripts/local/mt_opd.sh` 示例默认未打开 target share、gap multiply/alpha 与 reward refresh；公开 eval README 的 AIME/LCB repeats 与论文主表不一致，并引用部分当前仓库不存在的构建入口。
+- 新增 `notes/paper-reviews/open-mopd-capability-budget-balance.html`，按两遍讲解先完整重建论文，再给出证据审计、代码/发布边界、四条独立 insight 与工程建议；同步在 `_data/notes.yml` 增加入口。
+
+### 验证结果与发布边界
+
+- [x] `ruby scripts/validate_notes_index.rb` 通过：297 条索引与 297 个顶层 HTML 一一对应；目标页约 14,234 个可见非空白字符，唯一 `main`、唯一文末 evidence appendix、无公开生成痕迹、本地路径、替换字符、空图片 alt 或占位文本；`git diff --check` 通过。
+- [x] 隔离 Jekyll 构建成功，耗时约 13.1 秒；仅出现仓库既有的 Faraday 可选组件提示与 GitHub Metadata 未认证 warning，不影响静态产物。
+- [x] Playwright CLI wrapper 在本机缺少 `playwright-cli` 可执行文件，改用同一套工作区 Playwright 库与独立 headless 系统 Chrome 完成等价检查，未绑定或操作前台浏览器。
+- [x] 1440×1000 桌面与 390×844 手机均返回 HTTP 200，`scrollWidth == innerWidth`，30 个 MathJax 容器正常渲染；两张宽表在手机端只在各自容器内滚动，无断锚、重复 ID、失败请求、console error 或 runtime error，整页截图目检未见重叠、裁切或竖排压缩。
+- [x] 最终提交仅包含本任务笔记、索引 hunk 和本节 Progress 记录；其他并行任务、题库、PDF、脚本、缓存与日志改动不纳入本任务提交。
+
+## 2026-09-07 小红书量化面试题库 3–54 全量盘点
+
+### 任务与材料边界
+
+- 重新核对已登录的小红书公开主页；当前主页从此前的第3–49题更新为第3–54题，共52道公开题目。第1、2题在当前主页没有出现，不凭空补写。
+- 逐题读取题面，并沿账号“下一篇公布上一题答案”的结构交叉核对第3–54题的作者短答案；对评论区已经暴露的歧义保留条件说明。
+- 新增独立站内笔记 notes/tech-analysis/xiaohongshu-quant-interview-question-bank.html，内容覆盖题库重建、52题答案总览、逐题推导、术语、边界与可迁移的面试方法。
+
+### 关键校正
+
+- 第31题必须按原题的随机搬运规则使用势函数；若把目的盒误读为“只能放入已有球的盒子”，会错误得到确定性答案。
+- 第33题是圆内随机两点与圆心构成钝角三角形，答案为3/4，不是仅比较圆心角的1/2。
+- 第42题阈值为√2−1，初始最优价值为(√2−1)e^(√2−1)；第46题严格期望约5.99178；第50题是调和数；第51–54题分别是模3后手必胜、奇偶不变量不可能、环上覆盖期望n(n−1)/2、3n−2次比较。
+- 第43题的13/27依赖“至少一个周三男孩”的抽样机制；若指定某个孩子为周三男孩，答案为1/2。
+
+### 验证结果与边界
+
+- [x] ruby scripts/validate_notes_index.rb 通过：302条索引与302个顶层HTML一一对应；新增页面包含52个题目块、唯一main和唯一evidence appendix。
+- [x] git diff --check 通过；新增页面无控制字符、无工具名、无本地路径、无临时目录痕迹。
+- [x] 独立静态浏览器页面返回HTTP 200；桌面视口检查到标题、导航、唯一main、52个题目块和证据附录均存在，页面宽度没有超出视口；窄屏布局由页面自身的单列媒体规则控制。
+- [ ] 隔离Jekyll构建：当前环境没有jekyll可执行文件，bundle exec jekyll build在构建入口处停止；这属于环境依赖边界，不是笔记结构或内容校验失败。
+
+### 2026-09-07 深入解答补强
+
+- 在同一篇笔记中新增第3–54题的逐题“深入推导”章节，保留原短答案作为速查层，再补充模型识别、关键推导、边界条件和面试易错点。
+- 新增52个深入题目块，页面共104个题目块；保持唯一main、唯一terms、唯一limits、唯一insight和唯一evidence appendix。
+- 再次通过 ruby scripts/validate_notes_index.rb 与 git diff --check；控制字符扫描为0。
