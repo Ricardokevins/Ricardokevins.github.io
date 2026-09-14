@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>042. Jump Trading / 九坤（Ubiquant）公开原题与题解 - 量化面试通用题解手册</title>
+<script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+<script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link href="../assets/quant-bank.css" rel="stylesheet"/>
+<link href="../../assets/notes-shell.css" rel="stylesheet"/>
+<style>
+      .update{margin:0 0 20px;padding:14px 18px;border-left:4px solid #c15f3c;background:#f7ece4}
+      .toplinks{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+      .toplinks a{padding:4px 10px;border:1px solid #dcd6c8;border-radius:999px;background:#fffdf8}
+      .answer{margin:14px 0;padding:14px 18px;border-left:4px solid #276148;background:#edf6f0}
+      .warning{border-left-color:#b45309;background:#fdf3e7}
+      .tag{display:inline-block;margin:2px 5px 2px 0;padding:2px 8px;border:1px solid #aac0cd;border-radius:999px;background:#eef3fb;font-size:12px}
+      .math{max-width:100%;overflow-x:auto}
+      mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
+    </style></head>
+<body class="notes-shell-page">
+<nav aria-label="Notes navigation" class="notes-sitebar">
+<a class="notes-sitebar__brand" href="../../"><span aria-hidden="true" class="notes-sitebar__mark"></span><span>Notes</span></a>
+<span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+</nav>
+<div class="layout">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-kicker">Chapter 042</div>
+<div class="brand-title">Jump Trading / 九坤（Ubiquant）公开原题与题解</div>
+<div class="brand-meta">公司原题 · Jump / 九坤</div>
+</div>
+<nav aria-label="本章小节" class="toc-group"><div class="toc-group-title">本章小节</div><a class="toc-link" href="#1-jump-trading-概率与数学原题">1. Jump Trading：概率与数学原题</a><a class="toc-link" href="#1-0-2025-2026-新增候选人记录" style="padding-left:18px">1.0 2025–2026 新增候选人记录</a><a class="toc-link" href="#1-0-1-leetcode-60-第-k-个排列" style="padding-left:18px">1.0.1 LeetCode 60：第 k 个排列</a><a class="toc-link" href="#1-1-n-个随机变量两两相关均为-c-求-c-的范围" style="padding-left:18px">1.1 n 个随机变量两两相关均为 c，求 c 的范围</a><a class="toc-link" href="#1-2-独立标准正态-x-y-p-x-5y" style="padding-left:18px">1.2 独立标准正态 X,Y，$P(X&gt;5Y)$</a><a class="toc-link" href="#1-3-公平骰子直到出现连续-6-个-6-期望次数" style="padding-left:18px">1.3 公平骰子直到出现连续 6 个 6，期望次数</a><a class="toc-link" href="#1-4-u_i-sim-u-0-1-累计和首次超过-1-的项数-n-求-e-n" style="padding-left:18px">1.4 $U_i\sim U(0,1)$，累计和首次超过 1 的项数 N，求 $E[N]$</a><a class="toc-link" href="#1-5-掷-n-次骰子的最大值期望" style="padding-left:18px">1.5 掷 n 次骰子的最大值期望</a><a class="toc-link" href="#1-6-四个球两黑两白-每次随机选两个-把第二个染成第一个颜色-多久同色" style="padding-left:18px">1.6 四个球两黑两白：每次随机选两个，把第二个染成第一个颜色，多久同色？</a><a class="toc-link" href="#1-7-5-个未知数-已知-10-个两两和-如何恢复" style="padding-left:18px">1.7 5 个未知数，已知 10 个两两和，如何恢复</a><a class="toc-link" href="#1-8-4-4-矩阵要求逆矩阵也是整数矩阵" style="padding-left:18px">1.8 4×4 矩阵要求逆矩阵也是整数矩阵</a><a class="toc-link" href="#2-jump-trading-算法-系统原题">2. Jump Trading：算法 / 系统原题</a><a class="toc-link" href="#2-1-单遍计算标准差-如何优化-何时失败" style="padding-left:18px">2.1 单遍计算标准差，如何优化，何时失败</a><a class="toc-link" href="#2-2-订单簿管理系统" style="padding-left:18px">2.2 订单簿管理系统</a><a class="toc-link" href="#2-3-二维数组交换循环顺序为何影响性能" style="padding-left:18px">2.3 二维数组交换循环顺序为何影响性能</a><a class="toc-link" href="#2-4-在-char-数组上实现-malloc-free" style="padding-left:18px">2.4 在 char 数组上实现 malloc/free</a><a class="toc-link" href="#2-5-小于-10-个元素放栈上-否则放堆上的-vector" style="padding-left:18px">2.5 小于 10 个元素放栈上，否则放堆上的 vector</a><a class="toc-link" href="#2-6-旅行日-1-2-3-4-5-11-12-25-1-7-30-日票最小成本" style="padding-left:18px">2.6 旅行日 [1,2,3,4,5,11,12,25]，1/7/30 日票最小成本</a><a class="toc-link" href="#3-九坤-2023-策略组合管理笔试-9-题">3. 九坤 2023 策略组合管理笔试：9 题</a><a class="toc-link" href="#3-0-2026-risk-analyst-新增一组完整项目追问" style="padding-left:18px">3.0 2026 Risk Analyst：新增一组完整项目追问</a><a class="toc-link" href="#3-1-bisect-查找与插入复杂度" style="padding-left:18px">3.1 bisect 查找与插入复杂度</a><a class="toc-link" href="#3-2-两孩问题" style="padding-left:18px">3.2 两孩问题</a><a class="toc-link" href="#3-3-12-球轻重未知" style="padding-left:18px">3.3 12 球轻重未知</a><a class="toc-link" href="#3-4-float32-哪个小数可精确表示-0-1-0-3-0-8-0-5" style="padding-left:18px">3.4 float32 哪个小数可精确表示：0.1 / 0.3 / 0.8 / 0.5</a><a class="toc-link" href="#3-5-残缺棋盘多米诺" style="padding-left:18px">3.5 残缺棋盘多米诺</a><a class="toc-link" href="#3-6-摩托车协作最远距离" style="padding-left:18px">3.6 摩托车协作最远距离</a><a class="toc-link" href="#3-7-54-张牌-coupon-collector" style="padding-left:18px">3.7 54 张牌 Coupon Collector</a><a class="toc-link" href="#3-8-三个均匀长度组成三角形-锐角三角形" style="padding-left:18px">3.8 三个均匀长度组成三角形 / 锐角三角形</a><a class="toc-link" href="#3-9-鸡蛋掉落-k-100-n-10⁴" style="padding-left:18px">3.9 鸡蛋掉落 k≤100、n≤10⁴</a><a class="toc-link" href="#4-九坤量化实现工程师-两轮公开原题">4. 九坤量化实现工程师：两轮公开原题</a><a class="toc-link" href="#4-1-lru-cache-移动语义" style="padding-left:18px">4.1 LRU Cache + 移动语义</a><a class="toc-link" href="#4-2-stl-allocator-原理" style="padding-left:18px">4.2 STL allocator 原理</a><a class="toc-link" href="#4-3-虚拟内存-缓存命中-伪共享-aos-vs-soa" style="padding-left:18px">4.3 虚拟内存、缓存命中、伪共享、AoS vs SoA</a><a class="toc-link" href="#4-4-日期类支持相减" style="padding-left:18px">4.4 日期类支持相减</a><a class="toc-link" href="#4-5-python-装饰器与计时器" style="padding-left:18px">4.5 Python 装饰器与计时器</a><a class="toc-link" href="#4-6-gil-与-python-并行" style="padding-left:18px">4.6 GIL 与 Python 并行</a><a class="toc-link" href="#4-7-最大回撤" style="padding-left:18px">4.7 最大回撤</a><a class="toc-link" href="#4-8-3l-与-5l-杯量出-4l" style="padding-left:18px">4.8 3L 与 5L 杯量出 4L</a><a class="toc-link" href="#5-准备优先级">5. 准备优先级</a><a class="toc-link" href="#6-来源与边界">6. 来源与边界</a><a class="toc-link" href="#7-我的判断">7. 我的判断</a><a class="toc-link" href="#study-6122f21bb5">8. 数学题补全与原题条件审计</a><a class="toc-link" href="#study-e223f27b65" style="padding-left:18px">8.1 四球染色与四球翻色：两个过程分别求解</a><a class="toc-link" href="#study-854b430650" style="padding-left:18px">8.2 一轮冒泡后有序的概率</a><a class="toc-link" href="#study-9c3a61c170" style="padding-left:18px">8.3 两两和恢复五个数：从猜测到验证</a><a class="toc-link" href="#study-3068fe100d" style="padding-left:18px">8.4 心算四题与勾股整数题</a><a class="toc-link" href="#study-9d33998150" style="padding-left:18px">8.5 日历题：2078年元旦和月初星期一</a><a class="toc-link" href="#study-80a1ef09ca" style="padding-left:18px">8.6 飞机座位与红牌停止</a><a class="toc-link" href="#study-30ac50e4d3" style="padding-left:18px">8.7 加到N、猜平均数、换牌博弈</a><a class="toc-link" href="#study-228d07439d" style="padding-left:18px">8.8 麦乐鸡与猴子搬香蕉</a><a class="toc-link" href="#study-a593e315d8">9. 编程题：状态、过程、复杂度和边界</a><a class="toc-link" href="#study-72c3148278" style="padding-left:18px">9.1 鸡蛋掉落：可执行的反向 DP</a><a class="toc-link" href="#study-73f5b43d68" style="padding-left:18px">9.2 方差最小切分：一刀 O(n)，k段 O(kn²)</a><a class="toc-link" href="#study-b2f9e9b0d5" style="padding-left:18px">9.3 RPN、DUP/POP 栈机与中缀转换</a><a class="toc-link" href="#study-4da07a45ca" style="padding-left:18px">9.4 两数交错、数字重排、大数相加</a><a class="toc-link" href="#study-6a92f259ff" style="padding-left:18px">9.5 第k排列与下一排列</a><a class="toc-link" href="#study-4c67aea567" style="padding-left:18px">9.6 背包礼物与股票预算</a><a class="toc-link" href="#study-3df6f8b7a9" style="padding-left:18px">9.7 等价分数、非零 AND 最大子集</a><a class="toc-link" href="#study-a06b4ac1c6" style="padding-left:18px">9.8 LIS 长度与重建</a><a class="toc-link" href="#study-5bdb325492" style="padding-left:18px">9.9 合并区间、区间并长度、矩形并面积</a><a class="toc-link" href="#study-00745ada7a" style="padding-left:18px">9.10 第k小数对距离、k种字符滑窗、双模式匹配</a><a class="toc-link" href="#study-8f97caac97" style="padding-left:18px">9.11 快速倍增 Fibonacci 与广义递推</a><a class="toc-link" href="#study-22291d11df" style="padding-left:18px">9.12 链表：反转、节点交换、两数相加</a><a class="toc-link" href="#study-743e434972" style="padding-left:18px">9.13 多数元素、第k高频、a+b=c、零计数</a><a class="toc-link" href="#study-b985a06933" style="padding-left:18px">9.14 Kruskal、池塘、4×4通路和数独</a><a class="toc-link" href="#study-4ad076750b" style="padding-left:18px">9.15 LCS、编辑距离、最长有效括号、接雨水</a><a class="toc-link" href="#study-7c29662d13" style="padding-left:18px">9.16 九坤专场：通讯稿、数字默契、筹码游戏</a><a class="toc-link" href="#study-b669f7b086" style="padding-left:18px">9.17 任务依赖调度：原例矛盾不能掩盖</a><a class="toc-link" href="#study-1d119d71d5" style="padding-left:18px">9.18 文件同步、权限与 workflow parser</a><a class="toc-link" href="#study-aea8250332">10. 系统与语言：从名词到可实现设计</a><a class="toc-link" href="#study-24d70e32b5" style="padding-left:18px">10.1 订单簿、撮合引擎、TWAP</a><a class="toc-link" href="#study-a1568c04db" style="padding-left:18px">10.2 mutex、懒汉 singleton、跨线程内存</a><a class="toc-link" href="#study-e58f428bac" style="padding-left:18px">10.3 small vector、allocator、虚析构与对象切片</a><a class="toc-link" href="#study-59d27dd5bb" style="padding-left:18px">10.4 智能指针、forward、RAII</a><a class="toc-link" href="#study-f52bb7dbf6" style="padding-left:18px">10.5 Python with、属性、生成器、GIL</a><a class="toc-link" href="#study-2fa87860df" style="padding-left:18px">10.6 NumPy随机置零、标准差合并、数据聚合</a><a class="toc-link" href="#study-c62ca30a95" style="padding-left:18px">10.7 Redis锁与幂等表</a><a class="toc-link" href="#study-a152b1845c" style="padding-left:18px">10.8 网络、共享内存、对时与FPGA</a><a class="toc-link" href="#study-d1c2f9b9bb" style="padding-left:18px">10.9 前端与数据岗位的附加题怎么答</a><a class="toc-link" href="#study-dfa65ade2d">11. 待补原文的题名：明确还缺什么</a><a class="toc-link" href="#study-afa1d7586f">12. 手写与交易直觉的最后一组补题</a><a class="toc-link" href="#study-b3292a081d" style="padding-left:18px">12.1 LRU：可运行教学实现与淘汰过程</a><a class="toc-link" href="#study-d63a451d75" style="padding-left:18px">12.2 日期类与票价DP：把边界补成代码</a><a class="toc-link" href="#study-9e11c99e01" style="padding-left:18px">12.3 Trie、非递归后序、FizzBuzz与交换</a><a class="toc-link" href="#study-3485742013" style="padding-left:18px">12.4 Straddle、delta decay与报价后验</a><a class="toc-link" href="#study-0435313faa" style="padding-left:18px">12.5 金融事件题：应解释传导链而不是背年份</a></nav>
+<nav aria-label="全部章节" id="toc">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 导读</div>
+<a class="toc-link" data-category="roadmap" href="001.html">001. 如何使用这本量化面试题解手册</a>
+</div>
+<div class="toc-group" data-phase="dsa">
+<div class="toc-group-title">1. 数据结构与算法</div>
+<a class="toc-link" data-category="dsa" href="002.html">002. 数据结构 I：动态数组、链表、栈与队列</a>
+<a class="toc-link" data-category="dsa" href="003.html">003. 数据结构 II：哈希表与二叉搜索树</a>
+<a class="toc-link" data-category="dsa" href="004.html">004. 数据结构 III：堆、优先队列与 Trie</a>
+<a class="toc-link" data-category="dsa" href="005.html">005. 图论 I：图的表示、BFS 与 DFS</a>
+<a class="toc-link" data-category="dsa" href="006.html">006. 图论 II：拓扑排序、环检测与连通性</a>
+<a class="toc-link" data-category="dsa" href="007.html">007. 排序算法：稳定性、归并、快排与堆排</a>
+<a class="toc-link" data-category="dsa" href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>
+<a class="toc-link" data-category="dsa" href="009.html">009. 组合枚举与位运算：排列、子集与符号数</a>
+<a class="toc-link" data-category="dsa" href="010.html">010. 进阶概念：外部排序与 NP 完全</a>
+</div>
+<div class="toc-group" data-phase="brainteaser">
+<div class="toc-group-title">2. 脑筋急转弯</div>
+<a class="toc-link" data-category="brainteaser" href="011.html">011. 经典脑题 I：标签、投资与过桥</a>
+<a class="toc-link" data-category="brainteaser" href="012.html">012. 经典脑题 II：地球灌水与 2 的幂</a>
+<a class="toc-link" data-category="brainteaser" href="013.html">013. 经典脑题 III：毒酒、四和、帽子与信封</a>
+</div>
+<div class="toc-group" data-phase="probability">
+<div class="toc-group-title">3. 概率</div>
+<a class="toc-link" data-category="probability" href="014.html">014. 概率一：期望递推与首达时间</a>
+<a class="toc-link" data-category="probability" href="015.html">015. 概率二：序列等待与 n 连正</a>
+<a class="toc-link" data-category="probability" href="016.html">016. 概率三：骰子重掷、协方差与最大值</a>
+<a class="toc-link" data-category="probability" href="017.html">017. 概率四：硬币公平性与偏币检验</a>
+<a class="toc-link" data-category="probability" href="018.html">018. 概率五：贝叶斯判别偏币</a>
+<a class="toc-link" data-category="probability" href="019.html">019. 概率六：假设检验与置信区间</a>
+<a class="toc-link" data-category="probability" href="020.html">020. 概率七：条件概率与对称性</a>
+<a class="toc-link" data-category="probability" href="021.html">021. 概率八：期望计算进阶</a>
+<a class="toc-link" data-category="probability" href="022.html">022. 概率九：随机过程与灭绝</a>
+<a class="toc-link" data-category="probability" href="023.html">023. 概率十：杂题精选</a>
+</div>
+<div class="toc-group" data-phase="gametheory">
+<div class="toc-group-title">4. 博弈论</div>
+<a class="toc-link" data-category="gametheory" href="024.html">024. 博弈一：策略与期望值</a>
+<a class="toc-link" data-category="gametheory" href="025.html">025. 博弈二：破产、复注与下注尺度</a>
+</div>
+<div class="toc-group" data-phase="statistics">
+<div class="toc-group-title">5. 统计与数学</div>
+<a class="toc-link" data-category="statistics" href="026.html">026. 统计一：OLS 与两个方向的回归</a>
+<a class="toc-link" data-category="statistics" href="027.html">027. 统计二：岭回归、Lasso 与模型选择</a>
+<a class="toc-link" data-category="statistics" href="028.html">028. 统计三：MLE 与贝叶斯估计</a>
+<a class="toc-link" data-category="statistics" href="029.html">029. 统计四：多元高斯与相关系数</a>
+<a class="toc-link" data-category="statistics" href="030.html">030. 统计五：杂题与费米估算</a>
+</div>
+<div class="toc-group" data-phase="coding">
+<div class="toc-group-title">6. 编程实战</div>
+<a class="toc-link" data-category="coding" href="031.html">031. 编程一：最大子数组与子序列</a>
+<a class="toc-link" data-category="coding" href="032.html">032. 编程二：花束、跳跃与拆分 DP</a>
+<a class="toc-link" data-category="coding" href="033.html">033. 编程三：滑动窗口与前缀和</a>
+<a class="toc-link" data-category="coding" href="034.html">034. 编程四：字符串与栈</a>
+<a class="toc-link" data-category="coding" href="035.html">035. 编程五：二分、开方与蒙特卡洛</a>
+<a class="toc-link" data-category="coding" href="036.html">036. 编程六：数据结构设计题</a>
+</div>
+<div class="toc-group" data-phase="finance">
+<div class="toc-group-title">7. 金融直觉</div>
+<a class="toc-link" data-category="finance" href="037.html">037. 金融一：夏普比率专题</a>
+<a class="toc-link" data-category="finance" href="038.html">038. 金融二：期权入门</a>
+<a class="toc-link" data-category="finance" href="039.html">039. 金融三：市场微观结构</a>
+<a class="toc-link current" data-category="finance" href="040.html">040. 金融四：组合构建与回测</a>
+</div>
+<div class="toc-group" data-phase="company"><div class="toc-group-title">公司原题</div><a class="toc-link current" data-category="company" href="042.html">042. Jump Trading / 九坤（Ubiquant）公开原题与题解</a></div></nav>
+</aside>
+<main class="content">
+<article class="chapter-page"><section class="chapter" data-category="company" data-title="Jump Trading / 九坤（Ubiquant）公开原题与题解"><h2 id="top"><a aria-label="跳转到本节" class="anchor-link" href="#top">#</a>042. Jump Trading / 九坤（Ubiquant）公开原题与题解</h2><aside class="chapter-orientation"><b>阅读定位</b><p>按 QR、Quant Dev、策略组合和量化实现工程师拆分公开题目。每道题先补完整题意和概念，再给推导、代码、复杂度、边界；题干缺失处不擅自补成真题。</p></aside><aside class="next-step"><b>下一步建议</b><p>概率工具见 <a href="014.html">014</a>–<a href="023.html">023</a>，系统题见 <a href="036.html">036</a>、<a href="039.html">039</a>；九坤 Agent 的大模型面经在 LLM 题库。</p></aside>
+<blockquote>
+<p>本页只收录可回溯的候选人回忆题，并给出能在面试中口述的解法。重复题合并；只有题型没有题干的材料不伪造成原题。</p>
+</blockquote>
+<p><span class="tag">Jump Trading</span><span class="tag">九坤 Ubiquant</span><span class="tag">原题题解</span></p>
+<h2 id="1-jump-trading-概率与数学原题">1. Jump Trading：概率与数学原题</h2>
+<h3 id="1-0-2025-2026-新增候选人记录">1.0 2025–2026 新增候选人记录</h3>
+<p>最新 Glassdoor 样本补出了此前题库没有的轮次信息：</p>
+<ul>
+<li><strong>London QR（2025-10 面，2026-05 发布）</strong>：连续 3 小时，分别是 1 小时 Python / 数据结构与解题、1 小时市场微观结构 / HFT 策略 / 回测、1 小时条件概率与统计。</li>
+<li><strong>London QR（2026-01 发布）</strong>：HR → 技术电话 → onsite 四轮（3 技术 + 1 技术/行为），明确出现 LeetCode Medium 动态规划。</li>
+<li><strong>Graduate QR（2025-08 面）</strong>：三轮通常在 coding 与 probability 之间切换，末轮深挖项目和金融知识。</li>
+<li><strong>Hong Kong Quantitative Developer（2026-07 面）</strong>：120 分钟三题：LeetCode 60、滑动窗口模式匹配、调试结构化文本解析器中的隐藏 bug。</li>
+</ul>
+<p>这些是候选人实际报告；“滑动窗口模式匹配”和“结构化文本解析”仍只有题型概括，没有完整输入输出，本文不会补造题干。</p>
+<h3 id="1-0-1-leetcode-60-第-k-个排列">1.0.1 LeetCode 60：第 k 个排列</h3>
+<p>这是 2026 香港 Quantitative Developer 新出现的明确题号。对 n 个数，固定首位后每一块有 $(n-1)!$ 个排列。把 $k-1$ 写成阶乘数制：每一步用 <code>index, k = divmod(k, (remaining-1)!)</code> 选择当前未使用数字中的第 index 个。</p>
+<pre><code class="language-python">from math import factorial
+
+def get_permutation(n: int, k: int) -&gt; str:
+    pool = list(map(str, range(1, n + 1)))
+    k -= 1
+    out = []
+    for remaining in range(n, 0, -1):
+        block = factorial(remaining - 1)
+        idx, k = divmod(k, block)
+        out.append(pool.pop(idx))
+    return "".join(out)
+</code></pre>
+<p>列表中间 <code>pop</code> 使总复杂度 $O(n^2)$；若 n 很大可用 Fenwick tree 做第 k 小选择降到 $O(n\log n)$。</p>
+<h3 id="1-1-n-个随机变量两两相关均为-c-求-c-的范围">1.1 n 个随机变量两两相关均为 c，求 c 的范围</h3>
+<p><strong>完整题意。</strong>有 <em>n</em> 个随机变量，每个变量的方差都非零，并且任意两个不同变量的相关系数都等于同一个数 <em>c</em>。问：<em>c</em> 最小和最大可以是多少？为什么？</p>
+<h4>先补背景：相关系数与相关矩阵是什么</h4>
+<p>相关系数衡量两个变量“共同线性变化”的程度，范围看似都是 [-1,1]。但本题不能对每一对变量分别判断，因为所有两两关系必须能<strong>同时存在</strong>。把这些关系放进矩阵：</p>
+<pre><code>       X1   X2   X3  ...
+X1      1    c    c
+X2      c    1    c
+X3      c    c    1
+...</code></pre>
+<p>这就是相关矩阵 R。任何相关矩阵都必须是半正定的，直观原因是：对任意权重 a，组合 Y=ΣaᵢXᵢ 的方差不能为负，即 Var(Y)=aᵀRa≥0。</p>
+<h4>一步步求范围</h4>
+<p>矩阵可写成 R=(1-c)I+c·11ᵀ。它有两类方向：</p>
+<ol><li>沿全 1 向量方向，特征值是 1+(n-1)c；</li><li>与全 1 向量垂直的 n-1 个方向，特征值都是 1-c。</li></ol>
+<p>半正定要求这两类特征值都不小于 0，所以：</p>
+<p>1-c≥0 ⇒ c≤1；1+(n-1)c≥0 ⇒ c≥-1/(n-1)。</p>
+<div class="answer"><strong>答案：</strong>-1/(n-1) ≤ c ≤ 1。</div>
+<h4>最小数值例子</h4>
+<p>n=3 时，c 不能小于 -1/2。可以构造三个和恒等于 0 的标准化变量；一个上涨时另外两个必须合计下跌，于是两两相关恰为 -1/2。三个变量不可能两两都是 -1，因为“X2=-X1、X3=-X1”会推出 X2=X3，二者相关反而为 +1。</p>
+<p><strong>面试追问：</strong>为什么单独的 c∈[-1,1] 不够？因为 pairwise 合法不代表整个联合协方差结构合法。</p>
+<h3 id="1-2-独立标准正态-x-y-p-x-5y">1.2 独立标准正态 X,Y，$P(X&gt;5Y)$</h3>
+<p><strong>完整题意。</strong>X、Y 相互独立，且都服从标准正态分布 N(0,1)。求 P(X&gt;5Y)。</p>
+<h4>背景：标准正态和线性组合</h4>
+<p>N(0,1) 表示均值为 0、方差为 1 的钟形对称分布。独立正态变量的线性组合仍是正态变量：aX+bY 的均值是 0，方差是 a²+b²。</p>
+<p>把不等式移到一边：X-5Y&gt;0。令 Z=X-5Y，则 Z~N(0,1+25)=N(0,26)。Z 的方差大小只决定曲线宽窄，不影响它关于 0 对称。因此一半概率在 0 左边，一半在右边。</p>
+<div class="answer"><strong>答案：</strong>P(X&gt;5Y)=P(Z&gt;0)=1/2。</div>
+<p><strong>常见误区：</strong>看到系数 5 就试图做二维积分。这个 5 只改变方差；只要均值仍为 0，符号概率就是 1/2。若 X、Y 均值不为 0，才需要标准化后查正态分布函数。</p>
+<h3 id="1-3-公平骰子直到出现连续-6-个-6-期望次数">1.3 公平骰子直到出现连续 6 个 6，期望次数</h3>
+<p><strong>完整题意。</strong>不断独立掷公平六面骰，直到第一次出现“连续六次都是 6”为止。问总投掷次数的期望。</p>
+<h4>为什么不能答 6⁶</h4>
+<p>某个固定的六连窗口全为 6 的概率确实是 1/6⁶，但相邻窗口会重叠，失败后也可能保留部分进度。例如已经连续出了五个 6，下一次再出 6 就结束；不能把每 6 次当成一次互不重叠的尝试。</p>
+<h4>状态怎么定义</h4>
+<p>令 Eᵢ 表示“当前末尾已经连续出现 i 个 6，还要掷多少次”的期望，i=0,…,6，且 E₆=0。对于 i&lt;6：</p>
+<p>Eᵢ = 1 + (1/6)Eᵢ₊₁ + (5/6)E₀。</p>
+<p>原因是下一次若为 6，连续进度加一；否则连续串断掉，回到状态 0。把六个方程从后向前代回可得：</p>
+<div class="answer"><strong>答案：</strong>E₀=(6⁷-6)/5=55,986 次。</div>
+<p><strong>检查：</strong>若只要求连续一个 6，公式给 (6²-6)/5=6，符合几何分布；若要求连续两个 6，得到 42，而不是 36，这正是重叠效应。</p>
+<h3 id="1-4-u_i-sim-u-0-1-累计和首次超过-1-的项数-n-求-e-n">1.4 $U_i\sim U(0,1)$，累计和首次超过 1 的项数 N，求 $E[N]$</h3>
+<p><strong>完整题意。</strong>U₁,U₂,… 独立且均匀分布在 (0,1)。不断相加，定义 N 为累计和第一次严格超过 1 时所用的项数。求 E[N]。</p>
+<h4>背景：U(0,1)、停止时刻与尾和公式</h4>
+<p>U(0,1) 表示 0 到 1 之间每个等长区间出现概率相同。N 不是固定次数的和，而是一个“什么时候停”的随机变量。对任意取正整数的 N：</p>
+<p>E[N]=P(N&gt;0)+P(N&gt;1)+P(N&gt;2)+…</p>
+<p>这叫尾和公式。直观上，如果 N=4，那么它对 N&gt;0、N&gt;1、N&gt;2、N&gt;3 这四项各贡献一个 1。</p>
+<h4>把概率变成几何体积</h4>
+<p>N&gt;n 等价于前 n 个数的和仍不超过 1，即 U₁+…+Uₙ≤1。在 n 维单位立方体里，这个区域是单纯形，体积为 1/n!：</p>
+<ul><li>n=1：线段长度 1；</li><li>n=2：单位正方形里 x+y≤1 的三角形，面积 1/2；</li><li>n=3：单位立方体中的四面体，体积 1/6。</li></ul>
+<p>因此 E[N]=1+1+1/2!+1/3!+…=e。</p>
+<div class="answer"><strong>答案：</strong>E[N]=e≈2.71828。</div>
+<p><strong>易错点：</strong>第一项 P(N&gt;0)=1，P(N&gt;1)=1，因为一个小于等于 1 的数不可能单独让和严格大于 1（等于 1 的概率为 0）。</p>
+<h3 id="1-5-掷-n-次骰子的最大值期望">1.5 掷 n 次骰子的最大值期望</h3>
+<p><strong>完整题意。</strong>独立掷公平六面骰 n 次，M 是所有结果中的最大值。求 E[M]。</p>
+<h4>为什么用“至少达到 k”更简单</h4>
+<p>M 只取 1,…,6。对正整数变量，E[M]=ΣₖP(M≥k)。而 M&lt;k 意味着每次都落在 1,…,k-1，概率是 ((k-1)/6)ⁿ。因此：</p>
+<p>E[M]=Σₖ₌₁⁶[1-((k-1)/6)ⁿ]。</p>
+<p>n=2 时逐项为 1、35/36、32/36、27/36、20/36、11/36，相加得到 161/36≈4.4722。</p>
+<p><strong>检查：</strong>n=1 得 3.5；n→∞ 时最大值趋近 6。</p>
+<h3 id="1-6-四个球两黑两白-每次随机选两个-把第二个染成第一个颜色-多久同色">1.6 四个球两黑两白：每次随机选两个，把第二个染成第一个颜色，多久同色？</h3>
+<p><strong>先补全随机机制。</strong>盒中有 2 个黑球、2 个白球。每一步均匀无放回抽取一个<strong>有序对</strong>（先抽到的是第一个球），再把第二个球染成第一个球的颜色；两球放回。重复直到四球同色。求期望步数。</p>
+<h4>为什么这是 Markov 状态题</h4>
+<p>下一步只取决于当前黑球数量 i，而不取决于更早的历史，所以状态可压缩为 i∈{0,1,2,3,4}。0、4 已经全同色，是吸收状态。</p>
+<p>当前有 i 个黑球时：黑→白会让黑球数减少 1，概率 i(4-i)/(4·3)；白→黑会增加 1，概率相同；抽到同色则状态不变。</p>
+<p>令 Eᵢ 为从 i 个黑球出发的剩余期望步数。由对称性 E₁=E₃，且 E₀=E₄=0。对 i=2：</p>
+<p>E₂=1+(1/3)E₁+(1/3)E₃+(1/3)E₂。</p>
+<p>对 i=1：E₁=1+(1/4)E₂+(1/2)E₁，剩余 1/4 直接到 E₀。</p>
+<p>联立得 E₁=11/2，E₂=7。</p>
+<div class="answer"><strong>答案：</strong>从两黑两白开始，期望 7 步。</div>
+<p><strong>机制变化会改答案：</strong>若题目是“抽两个球后同时翻转两球颜色”，从两黑两白出发每步以 1/3 概率直接全同色，期望是 3。面试第一件事就是确认“染色”还是“翻色”。</p>
+<h3 id="1-7-5-个未知数-已知-10-个两两和-如何恢复">1.7 5 个未知数，已知 10 个两两和，如何恢复</h3>
+<p><strong>完整题意。</strong>有 5 个未知实数，只给出它们 10 个两两和，而且这些和没有标签。怎样恢复原来的 5 个数？要考虑重复值和非唯一解。</p>
+<h4>一个有标签时的暖身</h4>
+<p>若知道 s₁₂=x₁+x₂、s₁₃=x₁+x₃、s₂₃=x₂+x₃，则 x₁=(s₁₂+s₁₃-s₂₃)/2。难点在于实际只得到一个无标签多重集合，不知道哪个和对应哪一对。</p>
+<h4>排序 + 枚举 + 验证</h4>
+<p>假设 x₁≤…≤x₅。最小和必是 x₁+x₂，次小必是 x₁+x₃；但第三小不一定是 x₂+x₃，也可能是 x₁+x₄。因此枚举某个候选 t 作为 x₂+x₃，先算 x₁=(s₁+s₂-t)/2。</p>
+<p>固定 x₁ 后，剩余和中最小者应是 x₁ 与下一个未知数之和，于是恢复下一个数；每恢复一个数，就从 Counter 中删掉它与已有每个数的和。删不掉就否决该分支。得到 5 个数后重新生成全部 10 个和，与输入多重集合完全比较。</p>
+<p><strong>例子：</strong>原数 [1,2,4,7,10] 的和为 [3,5,6,8,9,11,11,12,14,17]。取 3、5、6 得 x₁=1，再依次恢复 2、4、7、10。必须用多重集合，因为 11 出现两次。</p>
+<h3 id="1-8-4-4-矩阵要求逆矩阵也是整数矩阵">1.8 4×4 矩阵要求逆矩阵也是整数矩阵</h3>
+<p><strong>完整题意。</strong>构造一个所有元素都是整数的 4×4 可逆矩阵，并要求它的逆矩阵元素也全是整数；再说明一般条件。</p>
+<h4>背景：逆矩阵为什么通常会出现分数</h4>
+<p>A⁻¹=adj(A)/det(A)。伴随矩阵在 A 为整数矩阵时也是整数，但还要除以 det(A)。若 det(A)=2，通常就会出现 1/2。要保证逆仍为整数，最自然的条件是 det(A)=±1，这类矩阵叫 unimodular matrix（幺模矩阵）。</p>
+<p>最简单答案是单位矩阵。若面试官不接受过于平凡的例子，可以给对角为 1 的整数上三角矩阵：</p>
+<pre><code>1 1 0 0
+0 1 1 0
+0 0 1 1
+0 0 0 1</code></pre>
+<p>它的行列式为 1，逆矩阵可通过有限次整数初等行变换得到，元素仍是整数。</p>
+<div class="answer"><strong>一般结论：</strong>整数方阵的逆也是整数矩阵，当且仅当 det(A)=±1。</div>
+<h2 id="2-jump-trading-算法-系统原题">2. Jump Trading：算法 / 系统原题</h2>
+<h3 id="2-1-单遍计算标准差-如何优化-何时失败">2.1 单遍计算标准差，如何优化，何时失败</h3>
+<p><strong>完整题意。</strong>数据不是一次性全放在内存里，而是像行情一样一个数一个数流入。要求只扫描一遍、只保存常数个状态，最后计算均值和标准差。还要解释普通公式什么时候会因为浮点误差失败，以及多机器分块时如何合并。</p>
+<h4>第一步：方差和标准差到底是什么</h4>
+<p>对数据 x₁,…,xₙ，均值 μ 是中心位置；方差是每个数到均值距离平方的平均，标准差是方差开平方，因此又回到原数据单位。</p>
+<ul><li>总体方差：σ²=Σ(xᵢ-μ)²/n；</li><li>样本方差：s²=Σ(xᵢ-x̄)²/(n-1)，用 n-1 做无偏修正；</li><li>标准差：σ 或 s 是对应方差的平方根。</li></ul>
+<h4>朴素方案为什么有问题</h4>
+<p>两遍算法很直观：第一遍求均值，第二遍求平方离差，数值稳定但需要保存数据或重新读取。为了单遍，有人展开成 Var(X)=E[X²]-E[X]²，同时累计 sum(x) 和 sum(x²)。问题是两个非常大的近似数相减会丢掉有效位。</p>
+<p><strong>最小例子：</strong>数据约为 10⁹、10⁹+1、10⁹+2，真实方差只有约 0.667，但 E[X²] 和 E[X]² 都约为 10¹⁸。有限精度浮点数先把末尾小差异舍入，再相减，可能得到 0，甚至一个不可能的负方差。这叫灾难性消减。</p>
+<h4>Welford 是什么</h4>
+<p>Welford 不是一个库，而是一套在线更新公式。它始终保存三个量：</p>
+<ul><li>n：已经看过多少个数；</li><li>mean：这 n 个数的当前均值；</li><li>M2：平方离差和 Σ(xᵢ-mean)²。名称 M2 指二阶中心矩的未归一化累计量。</li></ul>
+<p>新数 x 到来时：</p>
+<pre><code>n      = n + 1
+delta  = x - mean_old
+mean   = mean_old + delta / n
+delta2 = x - mean_new
+M2     = M2 + delta * delta2</code></pre>
+<p>最后总体方差=M2/n；样本方差=M2/(n-1)。为何乘的是 delta·delta2？新均值向 x 移动后，旧数据的中心也变化，这个乘积恰好同时补上“新点贡献”和“均值移动对旧点的影响”。全程不需要两个约 10¹⁸ 的数相减。</p>
+<h4>用 [2,4,4] 手算一遍</h4>
+<table><thead><tr><th>读入</th><th>n</th><th>旧均值</th><th>新均值</th><th>M2</th></tr></thead><tbody>
+<tr><td>2</td><td>1</td><td>0</td><td>2</td><td>0</td></tr>
+<tr><td>4</td><td>2</td><td>2</td><td>3</td><td>0+(2)(1)=2</td></tr>
+<tr><td>4</td><td>3</td><td>3</td><td>10/3</td><td>2+(1)(2/3)=8/3</td></tr>
+</tbody></table>
+<p>总体方差=(8/3)/3=8/9；样本方差=(8/3)/2=4/3。直接按定义计算完全一致。</p>
+<h4>可直接写出的 Python</h4>
+<pre><code>from math import sqrt
+
+def online_std(values, sample=True):
+    n = 0
+    mean = 0.0
+    m2 = 0.0
+    for x in values:
+        n += 1
+        delta = x - mean
+        mean += delta / n
+        delta2 = x - mean
+        m2 += delta * delta2
+    if n == 0 or (sample and n &lt; 2):
+        raise ValueError("not enough observations")
+    variance = m2 / (n - 1 if sample else n)
+    return mean, sqrt(max(variance, 0.0))</code></pre>
+<p>max 只用于清理理论上为 0、实际因舍入变成极小负数的情况；不能用它掩盖明显负值或数据错误。</p>
+<h4>“如何优化”有三层答案</h4>
+<ol><li><strong>内存：</strong>从保存全部数据降为 O(1) 状态；</li><li><strong>流式：</strong>每个新值 O(1) 更新，不必重读历史；</li><li><strong>并行：</strong>每个分块各算 (n,mean,M2)，再用稳定合并公式归并，而不是把分块方差简单平均。</li></ol>
+<p>两块 A、B 的样本数 n₁,n₂，均值 μ₁,μ₂，M2 为 M₂₁,M₂₂。令 δ=μ₂-μ₁、n=n₁+n₂，则：</p>
+<p>μ=μ₁+δ·n₂/n；M2=M₂₁+M₂₂+δ²n₁n₂/n。</p>
+<h4>何时仍会失败或需要额外定义</h4>
+<ul><li>数据含 NaN/Inf：必须约定跳过、报错还是传播；</li><li>样本标准差只有 1 个点：分母 n-1 为 0，不能返回正常数；</li><li>权重、滚动窗口或删除旧点：普通 Welford 不直接适用，要用加权/可逆更新或维护窗口结构；</li><li>极端长流和巨大动态范围：仍有累计舍入误差，可结合分块、pairwise merge 或补偿求和；</li><li>分布式合并：不能平均各机器标准差；样本数和均值差必须进入合并公式；</li><li>整数溢出：若先在整数类型里算 x*x，再转浮点，可能已经溢出。</li></ul>
+<div class="answer"><strong>面试版一句话：</strong>Welford 用 (n,mean,M2) 在线维护中心化平方和，避免 E[X²]-E[X]² 的灾难性消减；它单遍 O(n)、额外空间 O(1)，并能用同类公式稳定合并分块。</div>
+<h3 id="2-2-订单簿管理系统">2.2 订单簿管理系统</h3>
+<p><strong>完整题意。</strong>设计一个限价订单簿，能接收新增、撤单、改量和成交消息，随时查询最佳买价/卖价，并能序列化为快照、再结合增量消息恢复一致状态。</p>
+<h4>背景：订单簿是什么</h4>
+<p>买单 bid 表示“最多愿意以这个价格买”，价格越高越优先；卖单 ask 表示“最低愿意以这个价格卖”，价格越低越优先。同一价格下通常按时间优先。比如 bid 有 100元×10股、99元×30股，ask 有 101元×8股，则 best bid=100，best ask=101，价差 spread=1。</p>
+<h4>先定义操作和不变量</h4>
+<ul><li>ADD(order_id, side, price_tick, qty, sequence)；</li><li>CANCEL(order_id)；</li><li>MODIFY(order_id,new_qty)，若改价通常视为撤旧加新并失去时间优先；</li><li>TRADE(order_id,filled_qty)；</li><li>QUERY_BBO() 返回最佳买卖价及该档总量。</li></ul>
+<p>价格不要用 float，使用整数 tick，例如 100.25 元、最小变动 0.01 元存成 10025，避免浮点判等和排序异常。</p>
+<h4>数据结构</h4>
+<p>side→有序 price levels：bid 降序、ask 升序；每个 level 内是订单双向队列并维护总量；另有 order_id→(side,price,节点迭代器) 哈希索引。这样新增/撤单平均 O(1) 加上档位树 O(log P)，最佳价 O(1) 或 O(log P)，P 是价格档数。</p>
+<p><strong>为什么不能只有 price→总量？</strong>因为撤销某个 order_id、部分成交和时间优先都需要订单级信息。为什么不能只有订单哈希表？因为每次找最佳价会扫描全部订单。</p>
+<h4>序列化与恢复</h4>
+<p>快照要包含订单或完整档位、最后应用的 sequence number 和版本。增量日志每条带单调序号。恢复时先加载快照，再从 last_sequence+1 重放；发现序号断档就停止并请求重传/新快照，不能静默跳过。重复消息要按序号或 event_id 幂等处理。</p>
+<p><strong>面试追问：</strong>若题目要求撮合，还要定义价格—时间优先、部分成交、主动单穿多档、自成交保护；若只要求 market-data order book，就不能擅自把它扩成交易所撮合器。</p>
+<h3 id="2-3-二维数组交换循环顺序为何影响性能">2.3 二维数组交换循环顺序为何影响性能</h3>
+<p><strong>完整题意。</strong>两个二重循环都访问二维数组的每个元素，只是 i、j 的内外顺序交换。渐进复杂度都为 O(rows·cols)，实际速度为什么可能差很多？</p>
+<h4>背景：行主序与 cache line</h4>
+<p>C/C++ 的普通二维数组通常按行连续存储。CPU 不会每次只从内存取一个 int，而是一次搬入一整条 cache line（常见 64 字节，即 16 个 4 字节 int）。访问 a[i][0],a[i][1],… 会连续利用同一条 cache line；访问 a[0][j],a[1][j],… 每次跨过一整行，刚搬入的大部分数据没用就被丢掉。</p>
+<pre><code>// 行主序友好：内层访问连续地址
+for (int i=0; i&lt;R; ++i)
+  for (int j=0; j&lt;C; ++j) sum += a[i][j];
+
+// 若 C 很大，步长为 C*sizeof(int)
+for (int j=0; j&lt;C; ++j)
+  for (int i=0; i&lt;R; ++i) sum += a[i][j];</code></pre>
+<p>第二种会增加 cache miss、TLB miss，并使硬件预取更困难。两者 big-O 相同，但内存访问常是瓶颈。若语言是 Fortran/Matlab 的列主序，结论反过来；若数组很小全部进缓存，差异可能不明显。</p>
+<h3 id="2-4-在-char-数组上实现-malloc-free">2.4 在 char 数组上实现 malloc/free</h3>
+<p><strong>完整题意。</strong>给定一块固定的 char buffer，不调用系统 malloc，在其中实现 my_malloc(size) 和 my_free(ptr)。考点不是背 API，而是你如何记录哪些字节已用、处理对齐、切分与合并。</p>
+<h4>最小内存布局</h4>
+<p>把缓冲区切成若干 block。每块前面有不可见 header，记录 payload 大小、是否空闲以及前后块信息；header 后面才是返回给调用者的 payload。初始整块都是一个大空闲块。</p>
+<ol><li>malloc：把请求大小向 8/16 字节对齐；在空闲链表中 first-fit 找到足够块；若剩余足够放 header+最小 payload，就 split；返回 payload 指针。</li><li>free：由 payload 指针向前找到 header，标记空闲；若物理相邻块也空闲就 coalesce，避免外部碎片。</li></ol>
+<p><strong>必须讨论的边界：</strong>size=0、对齐、重复 free、非本 allocator 指针、整数溢出、内部/外部碎片、线程安全。面试的安全教学实现可以 assert/报错；真实 malloc 的行为和性能策略远复杂得多。</p>
+<h3 id="2-5-小于-10-个元素放栈上-否则放堆上的-vector">2.5 小于 10 个元素放栈上，否则放堆上的 vector</h3>
+<p><strong>完整题意。</strong>实现一个类似 vector 的容器：元素不超过 10 个时使用对象内部的小缓冲区，超过后才动态分配堆内存。这叫 Small Buffer Optimization（小缓冲优化）。</p>
+<p>“放栈上”不是容器偷偷申请另一块栈，而是对象内部直接含有一段对齐的原始字节 storage；如果对象本身在栈上，这段缓冲区自然也在栈上。核心字段：size、capacity、data 指针、inline_storage[10]。</p>
+<ol><li>初始 data 指向 inline_storage，capacity=10；</li><li>第 11 个元素到来时，在堆上分配更大空间；</li><li>对旧元素逐个 move-construct 到新空间；成功后销毁旧元素并切换 data；</li><li>析构时销毁有效元素；只有 data 不指向内部缓冲区时才释放堆。</li></ol>
+<p>难点是非平凡类型的构造/析构、对齐、异常安全、复制/移动构造和迭代器失效。不能对任意 T 直接 memcpy；只有 trivially copyable 类型才安全。</p>
+<h3 id="2-6-旅行日-1-2-3-4-5-11-12-25-1-7-30-日票最小成本">2.6 旅行日 [1,2,3,4,5,11,12,25]，1/7/30 日票最小成本</h3>
+<p><strong>先把题目补完整。</strong>你计划在一年中的若干天旅行。例如 days=[1,2,3,4,5,11,12,25]。有三种通票：</p>
+<ul><li>1 日票：从购买当天起覆盖当天，价格 c₁；</li><li>7 日票：覆盖购买当天到第 7 天（共 7 个自然日），价格 c₇；</li><li>30 日票：覆盖连续 30 个自然日，价格 c₃₀。</li></ul>
+<p>可以在任意旅行日买票，要求所有旅行日都有有效票，求最低总成本。原始面经摘要没有公开票价，所以<strong>不存在只凭 days 就能算出的唯一金额</strong>。为了讲算法，采用明确标注的练习票价 costs=[2,7,15]；此时答案是 13。</p>
+<h4>为什么是动态规划</h4>
+<p>第 d 天的最优购买会影响未来 1/7/30 天，但“覆盖到第 d 天的最低成本”只依赖更早的最优结果，具有最优子结构。定义 dp[d]：保证第 1…d 天中所有旅行日均已覆盖的最低费用。</p>
+<ul><li>若 d 不是旅行日，不需新买票：dp[d]=dp[d-1]；</li><li>若 d 是旅行日，最后一张票有三种可能：</li></ul>
+<p>dp[d]=min(dp[d-1]+c₁, dp[max(0,d-7)]+c₇, dp[max(0,d-30)]+c₃₀)。</p>
+<p>为什么 7 日票回看 d-7？如果在某天购买的 7 日票覆盖到 d，那么它负责的区间可视为 d-6…d；更早的 1…d-7 必须已经被 dp[d-7] 覆盖。</p>
+<h4>手算练习例子</h4>
+<table><thead><tr><th>旅行日</th><th>买 1 日票</th><th>用 7 日票结束覆盖</th><th>用 30 日票</th><th>dp</th></tr></thead><tbody>
+<tr><td>1</td><td>0+2=2</td><td>0+7=7</td><td>0+15=15</td><td>2</td></tr>
+<tr><td>2</td><td>2+2=4</td><td>7</td><td>15</td><td>4</td></tr>
+<tr><td>3</td><td>4+2=6</td><td>7</td><td>15</td><td>6</td></tr>
+<tr><td>4</td><td>6+2=8</td><td>7</td><td>15</td><td>7</td></tr>
+<tr><td>5</td><td>7+2=9</td><td>7</td><td>15</td><td>7</td></tr>
+<tr><td>11</td><td>7+2=9</td><td>dp[4]+7=14</td><td>15</td><td>9</td></tr>
+<tr><td>12</td><td>9+2=11</td><td>dp[5]+7=14</td><td>15</td><td>11</td></tr>
+<tr><td>25</td><td>11+2=13</td><td>dp[18]+7=18</td><td>15</td><td>13</td></tr>
+</tbody></table>
+<p>最优方案：第 1 天买 7 日票覆盖 1–5 日，11、12、25 日各买一张 1 日票，总价 7+2+2+2=13。</p>
+<h4>可运行代码</h4>
+<pre><code>def min_ticket_cost(days, costs):
+    if len(costs) != 3:
+        raise ValueError("costs must be [1-day, 7-day, 30-day]")
+    if not days:
+        return 0
+    travel = set(days)
+    last = max(days)
+    dp = [0] * (last + 1)
+    for d in range(1, last + 1):
+        if d not in travel:
+            dp[d] = dp[d - 1]
+        else:
+            dp[d] = min(
+                dp[d - 1] + costs[0],
+                dp[max(0, d - 7)] + costs[1],
+                dp[max(0, d - 30)] + costs[2],
+            )
+    return dp[last]
+
+assert min_ticket_cost([1,2,3,4,5,11,12,25], [2,7,15]) == 13</code></pre>
+<p><strong>复杂度：</strong>按自然日 DP 是 O(D) 时间和 O(D) 空间，D 为最后旅行日；只需前 30 天可压到 O(30) 空间。若日期跨度巨大但旅行日很少，可只在旅行日上 DP，并用双指针/二分找到 7 天或 30 天票覆盖后的下一个旅行日，做到 O(n log n) 或 O(n)。</p>
+<p><strong>常见误区：</strong>把 7 日票误解为覆盖 7 个旅行日；它覆盖的是连续自然日。没给 costs 就报 13；这不是解题，是补造条件。</p>
+<h2 id="3-九坤-2023-策略组合管理笔试-9-题">3. 九坤 2023 策略组合管理笔试：9 题</h2>
+<h3 id="3-0-2026-risk-analyst-新增一组完整项目追问">3.0 2026 Risk Analyst：新增一组完整项目追问</h3>
+<p><strong>这不是一道题，而是一组围绕同一个量化项目的连续追问。</strong>面试官希望判断：你是否真的完成过“想法→因子→验证→组合→实盘边界”的研究闭环，而不是只会报一个漂亮 Sharpe。</p>
+<h4>八个问题的完整含义</h4>
+<ol>
+<li><strong>因子设计逻辑：</strong>你认为哪个可观察变量能预测未来收益？经济或行为机制是什么？</li>
+<li><strong>策略核心逻辑：</strong>信号如何变成持仓，何时交易，承担了哪些风险暴露？</li>
+<li><strong>表现：</strong>收益率、波动率、Sharpe、最大回撤分别是多少，统计区间和成本口径是什么？</li>
+<li><strong>稳健性：</strong>换时间、换股票池、换参数、加入成本后是否仍成立？</li>
+<li><strong>实现困难：</strong>数据时点、复权、停牌涨跌停、计算性能或线上口径出了什么问题？</li>
+<li><strong>预测力：</strong>因子值高的股票未来收益是否系统更高？</li>
+<li><strong>过拟合：</strong>训练集表现好是否只是记住噪声；验证集是否也因反复调参被间接“看过”？</li>
+<li><strong>多重共线性：</strong>多个因子是否在重复描述同一风险/信息，使回归系数不稳定？</li>
+</ol>
+<h4>术语最小解释</h4>
+<ul>
+<li><strong>Sharpe：</strong>(平均收益-无风险收益)/收益波动，表示每承担一单位波动得到多少超额收益；频率和年化方式必须说明。</li>
+<li><strong>最大回撤：</strong>净值从历史峰值到随后谷值的最大跌幅，是路径风险，不是普通波动。</li>
+<li><strong>IC / RankIC：</strong>某期股票因子值与下一期收益的相关；RankIC 先把两者变成排名，更抗极端值。</li>
+<li><strong>ICIR：</strong>IC 的均值除以 IC 的时间波动，衡量预测关系是否稳定。</li>
+<li><strong>OOS：</strong>out-of-sample，模型选择时没有使用的时间段。反复根据 OOS 结果改模型后，它事实上已变成验证集。</li>
+<li><strong>VIF/条件数：</strong>诊断特征间线性依赖；数值大意味着系数可能对微小噪声剧烈变化。</li>
+</ul>
+<h4>建议回答顺序</h4>
+<p>先讲机制和信息何时可得；再讲清洗、中性化和标签；然后展示 RankIC、分组单调性、滚动样本外与不同子样本；最后落到换手、冲击成本、容量、回撤和与现有因子的相关性。显著不等于可交易：每天极弱但稳定的信号可能有用，统计显著但换手极高的信号可能净收益为负。</p>
+<h3 id="3-1-bisect-查找与插入复杂度">3.1 bisect 查找与插入复杂度</h3>
+<p><strong>完整题意。</strong>Python 已排序 list 中，`bisect_left/right` 找插入位置的时间复杂度是多少？`insort_left/right` 保持有序地插入又是多少？</p>
+<p>`bisect` 用二分查找，每次把候选区间减半，所以比较次数是 O(log n)。但 Python list 是连续的指针数组，在中间插入必须把后面约 n 个元素整体向右移动；因此 `insort` 虽然找位置只需 O(log n)，总成本由搬移主导，是 O(n)。</p>
+<p><strong>例子：</strong>[1,3,3,7] 插入 3，`bisect_left` 返回第一个 3 的位置 1，`bisect_right` 返回最后一个 3 之后的位置 3。两者区别是重复值放左还是放右，不改变复杂度。</p>
+<p><strong>追问：</strong>大量动态插入不应继续用 list；可考虑平衡树、跳表或分块结构。只读多查少写时，排序数组的连续内存和二分仍可能更快。</p>
+<h3 id="3-2-两孩问题">3.2 两孩问题</h3>
+<p><strong>标准题意。</strong>一个家庭有两个孩子，假设每个孩子独立、男女性别等概率。你只得到信息“至少有一个男孩”。问两个都是男孩的概率。</p>
+<p>把有顺序的四种等可能情况写出：男男、男女、女男、女女。条件“至少一个男孩”排除女女，剩下三种，其中只有男男满足两个都是男孩，所以答案 1/3。</p>
+<div class="answer"><strong>标准答案：</strong>1/3。</div>
+<p><strong>为什么有人答 1/2？</strong>如果信息生成方式变成“随机指一个孩子，告诉你这个孩子是男孩”，那另一个仍独立，概率才是 1/2。条件概率不只依赖听到的话，还依赖这句话是如何被选择和报告的。原回忆帖作者写 0.5，但在通常题意下不正确。</p>
+<h3 id="3-3-12-球轻重未知">3.3 12 球轻重未知</h3>
+<p><strong>完整题意。</strong>A～L 共 12 个外观相同的球，恰有一个异常，但不知道它偏重还是偏轻。只有无砝码天平，要求同时找出异常球并判断轻重，最少称几次？</p>
+<p>共有 12×2=24 种假设。每次天平只有左重、平衡、右重三种结果；两次最多区分 3²=9 种，不够，三次最多 27 种，所以至少三次。但信息量只证明“可能够”，还需构造。</p>
+<p><strong>第一次：</strong>ABCD 对 EFGH。</p>
+<table><thead><tr><th>第一次</th><th>第二次</th><th>第二次结果</th><th>第三次</th></tr></thead><tbody>
+<tr><td>平衡：异常在 IJKL</td><td>IJK 对 ABC（ABC均正常）</td><td>平衡</td><td>L 对 A，判断 L 轻重</td></tr>
+<tr><td>平衡</td><td>IJK 对 ABC</td><td>左重/左轻</td><td>I 对 J；较重/较轻者异常，平衡则 K</td></tr>
+<tr><td>左重</td><td>ABE 对 CFI</td><td>左重</td><td>A 对 B；重者异常，平衡则 F 轻</td></tr>
+<tr><td>左重</td><td>ABE 对 CFI</td><td>左轻</td><td>C 对 I；C 重则 C 重，平衡则 E 轻</td></tr>
+<tr><td>左重</td><td>ABE 对 CFI</td><td>平衡</td><td>G 对 H；轻者异常，平衡则 D 重</td></tr>
+</tbody></table>
+<p>第一次右重时，把左右组和轻重逻辑镜像即可。学习重点不是背球名，而是每次称量把剩余“球×轻重”假设均匀分到三种结果中。</p>
+<div class="answer"><strong>答案：</strong>3 次。</div>
+<h3 id="3-4-float32-哪个小数可精确表示-0-1-0-3-0-8-0-5">3.4 float32 哪个小数可精确表示：0.1 / 0.3 / 0.8 / 0.5</h3>
+<p><strong>完整题意。</strong>在 0.1、0.3、0.8、0.5 中，哪个能被 IEEE-754 float32 精确表示？</p>
+<h4>背景：二进制小数</h4>
+<p>十进制里 1/3 写成 0.333…无限循环，因为分母含十进制基数 10 没有的因子；同理，二进制有限小数约分后的分母必须是 2 的幂。0.5=1/2=0.1₂，能精确表示。0.1=1/10、0.3=3/10、0.8=4/5 的分母都含因子 5，二进制展开无限循环，只能舍入到附近的 float。</p>
+<div class="answer"><strong>答案：</strong>0.5。</div>
+<p><strong>追问：</strong>`0.1 + 0.2 != 0.3` 的根源也是表示误差。金融价格通常用整数分/tick 或 decimal，而不是直接用二进制 float 判等。</p>
+<h3 id="3-5-残缺棋盘多米诺">3.5 残缺棋盘多米诺</h3>
+<p><strong>完整题意。</strong>10×10 方格棋盘去掉左上角和右下角各一格，能否用 1×2 多米诺恰好铺满？</p>
+<p>先黑白交替染色。每块相邻的 1×2 多米诺永远覆盖一黑一白。偶数边长棋盘原来 50 黑 50 白，而两个对角角格是同色；删掉后变成 48:50。无论怎样放，多米诺覆盖的黑白数必须相等，因此不可能。</p>
+<div class="answer"><strong>答案：</strong>不能。</div>
+<p><strong>学习点：</strong>剩余面积 98 是偶数只是一条必要条件，不足以证明能铺。染色不变量给出更强的不可行证据。</p>
+<h3 id="3-6-摩托车协作最远距离">3.6 摩托车协作最远距离</h3>
+<p><strong>先明确题设。</strong>每辆摩托满油可独立行驶 100 km；n 人从同一点同向出发，行驶中可以无损互相转油，可以有人中途退出且不要求返程。问至少让一人最远到多远。</p>
+<p>n 辆车一起前进时，每走 1 km 总共消耗 n 辆车的油。为了从“n 辆满油”过渡到“n-1 辆满油、1 辆空油退出”，总共可消耗一箱油，能共同前进 100/n km。接下来 n-1 辆重复。</p>
+<p>总距离=100/n+100/(n-1)+…+100=100Hₙ。</p>
+<p>两人：先一起走 50 km，总共耗掉一箱；一人把剩余 50 km 油转给另一人，使其重新满箱，再走 100 km，总计 150 km。100 人时约 100(ln100+γ+1/200)≈518.7 km。</p>
+<p><strong>边界：</strong>若退出者必须回到起点、转油有损耗或油箱不能部分转移，公式全部改变。</p>
+<h3 id="3-7-54-张牌-coupon-collector">3.7 54 张牌 Coupon Collector</h3>
+<p><strong>完整题意。</strong>54 种不同的牌，每次有放回地等概率抽一张。直到 54 种牌都至少出现一次，所需抽取次数的期望是多少？</p>
+<h4>什么是 Coupon Collector</h4>
+<p>“集齐卡片/优惠券”问题。开始时任何一张都是新品，越到最后越难：只差最后一种时，每次成功概率只有 1/54，单这一阶段平均就要等 54 次。</p>
+<p>已有 k 种时，下次抽到新种类的概率是 (54-k)/54。成功概率为 p 的几何等待时间期望是 1/p，所以从 k 种到 k+1 种平均要 54/(54-k) 次。逐阶段相加：</p>
+<p>E[T]=54/54+54/53+…+54/1=54H₅₄≈247.07。</p>
+<div class="answer"><strong>答案：</strong>约 247.07 次。</div>
+<p><strong>纠错：</strong>早期版本写过约 278.7，这是数值计算错误；公式 54H₅₄ 对应约 247.07。若无放回抽取一副实体牌，则恰好 54 次，完全不是同一问题。</p>
+<h3 id="3-8-三个均匀长度组成三角形-锐角三角形">3.8 三个均匀长度组成三角形 / 锐角三角形</h3>
+<p><strong>完整题意。</strong>独立从 (0,1) 均匀抽三个数作为三条边。问：(1) 能组成三角形的概率；(2) 组成锐角三角形的概率。</p>
+<p>三角形失败当且仅当最大边不小于另外两边之和。指定 x 为失败的最大边，单位立方体中区域 x≥y+z 的体积是 1/6；三条边对称且三种失败事件除零测边界外互斥，总失败概率 3×1/6=1/2，所以成三角形概率 1/2。</p>
+<p>锐角要求最大边 z 满足 x²+y²&gt;z²。固定 z 后，x,y∈(0,z) 的正方形里，满足条件的是半径 z 的四分之一圆之外，面积 z²(1-π/4)。最大边可为三者任一个：</p>
+<p>P(锐角)=3∫₀¹z²(1-π/4)dz=1-π/4≈0.21460。</p>
+<p>若问“已经组成三角形的条件下为锐角”，还要除以 1/2，得到 2-π/2≈0.42920。</p>
+<p><strong>易混题：</strong>如果是把一根棍随机截成三段，三边总和固定，样本空间不同，不能套上述答案。</p>
+<h3 id="3-9-鸡蛋掉落-k-100-n-10⁴">3.9 鸡蛋掉落 k≤100、n≤10⁴</h3>
+<p><strong>完整题意。</strong>有 k 枚完全相同的鸡蛋和 n 层楼。存在临界层 f：高于 f 扔下会碎，f 及以下不会。每次可以选择任一层测试，碎掉的蛋不能再用。要求在最坏情况下确定 f，最少需要几次？范围 k≤100、n≤10⁴。</p>
+<h4>为什么传统 DP 可能超时</h4>
+<p>传统定义 dp[k][n] 并枚举第一次从哪层扔，转移里又扫描 n 个落点，约 O(kn²)。更好的思路反过来问：给定 m 次机会和 k 个蛋，最多能覆盖多少层？</p>
+<p>令 cover[m][k] 为覆盖层数。最后增加一次投掷：碎了可覆盖下方 cover[m-1][k-1] 层；不碎可覆盖上方 cover[m-1][k] 层；再加当前层：</p>
+<p>cover[m][k]=cover[m-1][k-1]+cover[m-1][k]+1。</p>
+<pre><code>def egg_drop(k, n):
+    cover = [0] * (k + 1)
+    moves = 0
+    while cover[k] &lt; n:
+        moves += 1
+        for eggs in range(k, 0, -1):
+            cover[eggs] = cover[eggs] + cover[eggs-1] + 1
+    return moves</code></pre>
+<p>必须倒序更新 eggs，确保右侧读的是上一轮 m-1 的状态。2 蛋 100 层时，m 次最多覆盖 m(m+1)/2 层；13 次只有 91，14 次 105，所以答案 14。</p>
+<h2 id="4-九坤量化实现工程师-两轮公开原题">4. 九坤量化实现工程师：两轮公开原题</h2>
+<h3 id="4-1-lru-cache-移动语义">4.1 LRU Cache + 移动语义</h3>
+<p><strong>完整题意。</strong>设计固定容量缓存，`get(key)` 命中后该键变为“最近使用”；`put` 超容量时淘汰最久未使用的键；两操作要求均摊 O(1)。面试还追问测试用例和 C++ 移动语义。</p>
+<p>只用哈希表能 O(1) 找键，却不知道谁最久没用；只用链表能维护新旧顺序，却要 O(n) 找键。组合：哈希表 `key→双向链表节点`，链表头最旧、尾最新。访问时 O(1) 把节点 splice 到尾部；淘汰头节点并从哈希表删除。</p>
+<p><strong>例：</strong>容量 2：put(1,A)、put(2,B) 顺序 [1,2]；get(1) 变 [2,1]；put(3,C) 淘汰 2，剩 [1,3]。</p>
+<p><strong>测试：</strong>容量 0/1、更新已有键、get 刷新顺序、连续淘汰、合法值恰为 -1 时接口不能把它与 miss 混淆。C++ 移动后源对象必须仍可安全析构；容器、哈希中保存的迭代器和自定义指针关系要验证。</p>
+<h3 id="4-2-stl-allocator-原理">4.2 STL allocator 原理</h3>
+<p><strong>先区分三件事。</strong>容器决定何时扩容和搬元素；allocator 负责申请/释放未构造的原始存储；元素的构造/析构是对象生命周期。它不是“vector 的扩容算法”。</p>
+<p>现代 C++ 容器通过 `allocator_traits` 调用 allocate(n) 获得能容纳 n 个 T 的对齐存储，再用 construct/`construct_at` 在指定地址建立对象；销毁后 deallocate。若第 k 个元素构造抛异常，必须销毁已经成功构造的前 k-1 个并释放新存储，原容器保持有效，这叫异常安全。</p>
+<p><strong>常见追问：</strong>对齐、rebind 的历史用途、propagate_on_container_move_assignment、`std::pmr` 的 polymorphic allocator、arena/pool 为什么能减少频繁小分配。回答时不要把旧版 SGI STL 的二级内存池说成 C++ 标准强制实现。</p>
+<h3 id="4-3-虚拟内存-缓存命中-伪共享-aos-vs-soa">4.3 虚拟内存、缓存命中、伪共享、AoS vs SoA</h3>
+<p>这其实是四个独立问题：</p>
+<ol>
+<li><strong>虚拟内存：</strong>进程看到连续虚拟地址，页表把虚拟页映射到物理页；TLB 缓存近期映射。页不在内存触发缺页，可能从磁盘或文件装入。好处是隔离、权限、共享页和按需分配。</li>
+<li><strong>缓存命中：</strong>CPU 以 cache line 搬数据。连续访问、较小工作集和可预测步长更容易命中；随机大范围访问会增加 cache/TLB miss。</li>
+<li><strong>伪共享：</strong>线程 A 写变量 x、线程 B 写变量 y，逻辑上互不共享，但 x、y 落在同一 cache line，缓存一致性仍让这条线在核间来回失效。用 padding/alignment、每线程分片后汇总可缓解。</li>
+<li><strong>AoS vs SoA：</strong>`struct Point{x,y,z}` 数组是 AoS，适合逐点使用全部字段；三个独立 x[]/y[]/z[] 是 SoA，适合只批量算某字段、SIMD 和 GPU coalescing。</li>
+</ol>
+<p>面试最好画内存布局并结合访问模式回答，没有脱离 workload 的绝对优胜者。</p>
+<h3 id="4-4-日期类支持相减">4.4 日期类支持相减</h3>
+<p><strong>完整题意。</strong>实现公历 Date(y,m,d)，两个日期相减返回相隔天数。不能通过一天一天循环。</p>
+<p>把每个合法日期映射到从固定纪元起的序号：之前完整年份贡献 365·(y-1)，再加闰日数 `prev//4-prev//100+prev//400`，然后加本年前面月份天数和 d。两日期序号相减即可，O(1)。</p>
+<p>闰年规则：能被 4 整除且不能被 100 整除，或能被 400 整除。因此 1900 不是闰年，2000 是。测试跨月、跨年、2月28/29、负差、非法 2023-02-29。先明确是否包含起止日；通常日期差 2024-01-02 - 2024-01-01 = 1。</p>
+<h3 id="4-5-python-装饰器与计时器">4.5 Python 装饰器与计时器</h3>
+<p><strong>背景。</strong>Python 函数是一等对象。装饰器接收一个函数，返回包装后的新函数；`@timed` 等价于 `f = timed(f)`。</p>
+<pre><code>from functools import wraps
+from time import perf_counter
+
+def timed(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        start = perf_counter()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            elapsed = perf_counter() - start
+            print(f"{fn.__name__}: {elapsed:.6f}s")
+    return wrapper</code></pre>
+<p>`*args/**kwargs` 透传任意参数；`wraps` 保留原函数名字、文档和签名元数据；`finally` 保证被测函数抛异常也能记录时长；`perf_counter` 是测持续时间的单调高精度时钟，不应使用可能被系统校时跳变的 wall clock。异步函数需写 `async def wrapper` 并 `await fn(...)`。</p>
+<h3 id="4-6-gil-与-python-并行">4.6 GIL 与 Python 并行</h3>
+<p><strong>GIL 是什么。</strong>在传统 CPython 的一个解释器进程里，全局解释器锁使同一时刻通常只有一个线程执行 Python 字节码，简化对象引用计数和解释器内部状态同步。</p>
+<p>这不等于“Python 不能并行”：I/O 等待时线程会释放 GIL；NumPy/BLAS 等原生代码可在释放 GIL 后多核运行；CPU 密集纯 Python 可用多进程、原生扩展，或支持自由线程的新版构建。多进程代价是序列化、进程内存和 IPC；线程的共享内存也带来竞态。</p>
+<p><strong>答题方式：</strong>先问 workload。I/O 密集用线程/async；CPU 密集纯 Python 用进程；大量数组运算优先让 NumPy/向量化原生内核处理。不要机械说“线程没用”。</p>
+<h3 id="4-7-最大回撤">4.7 最大回撤</h3>
+<p><strong>定义。</strong>对净值 Vₜ，先维护截至 t 的历史峰值 Pₜ=maxₛ≤ₜVₛ；当前回撤 Dₜ=1-Vₜ/Pₜ；最大回撤 MDD=maxₜDₜ。</p>
+<p><strong>例子：</strong>净值 [100,120,90,110,80,130]。到 120 时峰值为 120；90 的回撤 25%，80 的回撤 33.33%；最终最大回撤是从 120 到 80 的 33.33%，不是相邻两天最大跌幅。</p>
+<p>一遍扫描维护 peak 和最大值即可 O(n)。还应记录峰值日、谷值日和恢复到旧峰值所需时间。最大回撤依赖路径：两个策略终值和波动率相同，回撤仍可能不同。</p>
+<h3 id="4-8-3l-与-5l-杯量出-4l">4.8 3L 与 5L 杯量出 4L</h3>
+<p><strong>完整题意。</strong>有无刻度的 3L 杯和 5L 杯，水源无限，可装满、倒空或从一杯倒入另一杯直到源空/目标满。如何精确得到 4L？</p>
+<ol><li>5L 杯装满，倒入 3L 杯，5L 杯剩 2L；</li><li>倒空 3L 杯，把剩余 2L 倒入 3L 杯；</li><li>再次装满 5L 杯，向已有 2L 的 3L 杯倒水；3L 杯只差 1L，倒完后 5L 杯恰剩 4L。</li></ol>
+<p><strong>一般背景：</strong>用容量 a、b 的杯子能量出 gcd(a,b) 的整数倍（不超过最大可用范围）。3 与 5 互质，所以所有整数升数 1…5 都可构造。若不允许倒空或没有无限水源，状态图会改变。</p>
+<h2 id="5-准备优先级">5. 准备优先级</h2>
+<table>
+<thead>
+<tr>
+<th>目标</th>
+<th>第一优先</th>
+<th>第二优先</th>
+<th>第三优先</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jump QR/QT</td>
+<td>概率期望、绿皮、心算</td>
+<td>统计与项目深挖</td>
+<td>Python/数据</td>
+</tr>
+<tr>
+<td>Jump SWE</td>
+<td>C++ 内存/并发/缓存</td>
+<td>订单簿与数据结构</td>
+<td>概率基础</td>
+</tr>
+<tr>
+<td>九坤 QR/策略</td>
+<td>概率、DP、统计</td>
+<td>因子/模型答辩</td>
+<td>双机位笔试模拟</td>
+</tr>
+<tr>
+<td>九坤量化实现</td>
+<td>C++ 对象/内存/缓存</td>
+<td>Python 与金融基础</td>
+<td>算法手撕与测试</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6-来源与边界">6. 来源与边界</h2>
+<ul>
+<li>Jump 53 题聚合：<a href="https://www.thewallstreetquants.com/interview-questions/jump-trading">The Wall Street Quants</a>。其中存在重复题，已合并。</li>
+<li>Jump 2025–2026 QR / Quant Developer 新记录：<a href="https://www.glassdoor.com/Interview/Jump-Trading-Interview-Questions-E251744.htm?filter.jobTitleExact=Quantitative+Researcher+%28%29">Glassdoor QR 专页</a> 与 <a href="https://www.glassdoor.co.uk/Interview/Jump-Trading-Interview-Questions-E251744.htm">Glassdoor 公司面经页</a>。</li>
+<li>九坤 2023 暑期笔试回忆：<a href="https://blog.csdn.net/a_beatiful_knife/article/details/130834869">CSDN 原帖</a>。作者答案不一定正确，本文重新推导。</li>
+<li>九坤量化实现两轮面经：<a href="https://www.nowcoder.com/discuss/798223058384191488">牛客原帖</a>。</li>
+<li>九坤 2026 Risk Analyst 项目追问：<a href="https://www.glassdoor.com/Interview/Ubiquant-Investment-Interview-Questions-E2242143.htm">Ubiquant Investment Glassdoor</a>。</li>
+<li>百度文库/原创力/“63 道通用题”近期出现了以公司名命名的文档，但题目过于通用、无候选人来源或格式疑似自动生成，未纳入公司真题。</li>
+<li>题目公开回忆并不意味着每一届、每个组都会复用；答案用于掌握方法，不用于假定题库固定。</li>
+</ul>
+<h2 id="7-我的判断">7. 我的判断</h2>
+<p>Jump 与九坤的重叠处非常明显：概率题看能否快速识别结构，工程题看能否把复杂度、内存布局和异常边界说完整。真正区分候选人的通常是第二层追问：为什么 $6^6$ 不对、为什么相关矩阵必须半正定、为什么同为 $O(n)$ 的数组遍历差很多、为什么离线模型指标不能直接等价于策略收益。准备时应把每道题练成“主解 + 假设 + 反例 + 变式”四件套。</p>
+<div id="new-explanations"></div><h2 id="study-6122f21bb5">8. 数学题补全与原题条件审计</h2>
+<p>以下推导以明确写出的题设为准。只有标题的商业题库条目使用标准练习版本，不据此认定公司实际问过该变体。概率题的完整基础推导另见<a href="../../math-interview-question-bank/chapters/021.html">绿皮书扩充</a>。</p>
+<h3 id="study-e223f27b65">8.1 四球染色与四球翻色：两个过程分别求解</h3>
+<p><strong>复制颜色。</strong> 从四球均匀无放回选有序对，把第二球染成第一球。黑球数i每步加/减1的概率各$i(4-i)/12$。设a=E₁=E₃，b=E₂，方程为$a=1+b/4+a/2$、$b=1+2a/3+b/3$，化为a=2+b/2、b=3/2+a，得b=7，a=11/2。</p>
+<p><strong>同时翻转两个球。</strong> 从四球均匀选一对，两者黑白都取反，从2黑2白出发。六种对中，两个黑或两个白共2种立即全同色；异色4种翻后仍2黑2白。因此T为成功概率1/3的几何分布，<strong>E[T]=3</strong>。若允许有放回选到同一球、若同色时跳过，转移概率又会变化。</p>
+<h3 id="study-854b430650">8.2 一轮冒泡后有序的概率</h3>
+<p><strong>题设。</strong> n个不同数等概率随机排列，按从左到右执行一轮相邻比较交换，求最终完全升序的概率。一次扫描中，大数可一路右移，但小数最多左移一位。</p>
+<p>更直接用最大值n的位置j计数：扫描到n后，n向右一直走，后面的元素只是依序左移，因此它后面的元素必须已经是最终最大的n−j个数并按序排列；n前面j−1个数必须自己能一轮排好。设成功排列数aₙ，a₀=1，则$a_n=\sum_{k=0}^{n-1}a_k$，故a₁=1，n≥1时$a_n=2^{n-1}$。概率为 <strong>$2^{n-1}/n!$</strong>。</p>
+<p>例n=3有123、132、213、312四种成功，共6种，概率2/3。若扫描从右往左且仍以相同顺序定义比较，计数可由对称性映射；若“一轮”指反复扫描直到无交换，那当然概率1，须确认定义。</p>
+<h3 id="study-9c3a61c170">8.3 两两和恢复五个数：从猜测到验证</h3>
+<p>排序未知数x₁≤…≤x₅，输入是10个无标签两两和的多重集合。最小s₁=x₁+x₂，次小s₂=x₁+x₃；第三小未必x₂+x₃，因为x₁+x₄可能更小。枚举集合中某个t作为x₂+x₃，得到$x_1=(s_1+s_2-t)/2$。</p>
+<p>固定x₁后，从剩余和中最小值m推下一个未知数x=m−x₁，把x与每个已恢复数的和各删一次；缺少任一和就否决该分支。恢复五个数且集合正好空时，重新生成十个和与输入比较。这一步验证防止“前几个数看着对”却遗漏重数。</p>
+<p>例未知1、2、4、7、10，和集合3、5、6、8、9、11、11、12、14、17；s₁=3、s₂=5，选t=6得x₁=1，然后依次恢复2、4、7、10。必须用Counter而非set，因为11出现两次；若要求所有解，不能找到第一组就宣称唯一。</p>
+<h3 id="study-3068fe100d">8.4 心算四题与勾股整数题</h3>
+<p>3375末位5提示立方根末位5；10³=1000、20³=8000，试15：15²×15=225×15=3375。127×43拆为127×(40+3)=5080+381=<strong>5461</strong>。$(3/7)/(9/14)=(3/7)(14/9)=2/3$。7/13=0.538461…，四位有效数字为<strong>0.5385</strong>，不是截断成0.5384。</p>
+<p>勾股题a²+b²=c²、a+b+c=40，设a≤b，c=40−a−b，展开得$80(a+b)-2ab=1600$，等价$(40-a)(40-b)=800$。正边且c最大限制候选，因子对20×40导致零边，25×32给a=15、b=8（交换后8、15、17），检验64+225=289，总和40。也可用Euclid参数$a=k(m^2-n^2),b=2kmn,c=k(m^2+n^2)$解$2km(m+n)=40$。</p>
+<h3 id="study-9d33998150">8.5 日历题：2078年元旦和月初星期一</h3>
+<p>公历400年含146097天，恰为20871周，星期分布每400年重复。<strong>2078-01-01是星期六</strong>：以2000-01-01星期六为基准，跨78个平年基数78天，2000～2077闰年20个，共98天，模7为0。</p>
+<p>“一个月第一天为周一概率”须说明怎么抽月份。若在完整400年周期4800个月均匀抽，周一月初有684个，概率684/4800=<strong>0.1425</strong>，并非严格1/7。若只在某一年12个月抽，要逐月统计；若把起始星期当独立均匀随机变量，才是1/7。</p>
+<h3 id="study-80a1ef09ca">8.6 飞机座位与红牌停止</h3>
+<p><strong>飞机座位。</strong> n≥2，第一人随机坐，后续若自己座位空则坐自己，否则在空座里均匀选。关键只是谁先坐到1号或n号：1号先被占，错位链结束，最后一人能坐自己；n号先被占则失败。两个特殊座位对称，答案1/2。n=1为1。不能将每一位后续乘客都当作独立随机选座。</p>
+<p><strong>红牌停止标准版本。</strong> r红b黑无放回，观察已发牌后可宣布“下一张红”，若不立即宣布必须继续观察，最终须在牌耗尽前下注一次。设V(r,b)最优成功率，立即停的值r/(r+b)，继续值$[rV(r-1,b)+bV(r,b-1)]/(r+b)$，边界V(r,0)=1、V(0,b)=0。归纳V(r,b)=r/(r+b)，因此26红26黑起点的最优胜率仍<strong>1/2</strong>。任何依赖历史的停止规则都不能凭空提高期望；若题目改成累计红赚1黑亏1并可保留累计收益，Bellman边界和答案完全不同。</p>
+<h3 id="study-30ac50e4d3">8.7 加到N、猜平均数、换牌博弈</h3>
+<p><strong>加数练习。</strong> 从0起轮流加1～m，先到N赢，不准超过N。将对手留在距离终点为m+1倍数的位置；对手加x，你补m+1−x。若N不是m+1倍数，首步加N mod(m+1)后保持不变量；否则先手在最优对弈下败。先到50、每次1～3时先加2，再每轮补到4。若“达到或超过”或“到达者输”，需重设终止态。</p>
+<p><strong>猜平均数练习。</strong> n人选0～100，目标是平均数的2/3，理性共同知识下，任何超过66.67的数先被排除，再排除44.44以上，如此迭代趋零，均衡全0。现实有限轮推理的人不一定如此；面试应把数学均衡与经验预测分开。</p>
+<p><strong>重抽 vs 换牌。</strong> 原索引没有牌面分布、谁先选、能否看牌和支付规则，无法给唯一均衡。先定义玩家行动与收益表u(a,b)，纯策略均衡须同时是最佳回应；若2×2无纯均衡，令对方混合概率p，使自己两行动期望收益相等，再反向求另一人的混合概率。标准硬币匹配练习收益±1得到双方各1/2混合。这里提供解题框架，不冒充缺失的付费原题答案。</p>
+<h3 id="study-228d07439d">8.8 麦乐鸡与猴子搬香蕉</h3>
+<p><strong>6、9、20包装最大凑不出的量。</strong> 43若用0个20则不能被3整除；用1个余23也不被3整除；用2个余3无法由6、9凑成。44=20+4×6，45=5×9，46=2×20+6，47=20+3×9，48=8×6，49=2×20+9。连续六个量均可行，之后逐次加6全可行，故最大不可行为<strong>43</strong>。三种面额不能直接套两种互素面额ab−a−b公式。</p>
+<p><strong>搬香蕉标准练习。</strong> 3000根、一次最多1000根、每走1km吃1根、目的地1000km，可沿途暂存。剩余货物&gt;2000时需三趟前进两趟返回，每推进1km吃5根，先走200km消耗1000根；剩2000到1000阶段每km吃3根，再走1000/3km；最后1000根单趟前进剩1400/3km，送达<strong>1600/3≈533.33根</strong>。允许连续分割的模型；整数根、不能暂存或返程吃法改变时需离散DP。</p>
+<h2 id="study-a593e315d8">9. 编程题：状态、过程、复杂度和边界</h2>
+<h3 id="study-72c3148278">9.1 鸡蛋掉落：可执行的反向 DP</h3>
+<p>定义cover[e]为当前次数、e枚蛋可覆盖的楼层数。再增加一次尝试，以当前落点分出“碎了”的e−1蛋子问题和“没碎”的e蛋子问题，加当前楼层1。必须倒序更新，确保读取上一轮状态。</p>
+<pre><code class="language-python">def egg_drop(k, n):
+    if k &lt; 1 or n &lt; 0:
+        raise ValueError("k &gt;= 1 and n &gt;= 0 required")
+    cover = [0] * (k + 1)
+    moves = 0
+    while cover[k] &lt; n:
+        moves += 1
+        for e in range(k, 0, -1):
+            cover[e] = min(n, cover[e] + cover[e-1] + 1)
+    return moves
+</code></pre>
+<p>例2蛋100层：m次最多m(m+1)/2层，13次91不足、14次105足，答案14。1蛋10层需10次。复杂度O(km)、空间O(k)，不是O(kn²)。截到n避免无用大整数增长。</p>
+<h3 id="study-73f5b43d68">9.2 方差最小切分：一刀 O(n)，k段 O(kn²)</h3>
+<p><strong>目标。</strong> 有序序列划成连续非空段，每段用一个常数代表，最小化平方误差。固定一段的代表c，对Σ(x−c)²求导，最优c为均值。用前缀和S和平方和Q，半开区间[l,r)的代价为 $C(l,r)=Q_r-Q_l-(S_r-S_l)^2/(r-l)$。</p>
+<p>一刀枚举i=1～n−1，算C(0,i)+C(i,n)，每刀O(1)，合计O(n)。k段定义dp[g][j]为前j项分g段最小代价，$dp[g][j]=\min_{g-1\le i&lt;j}(dp[g-1][i]+C(i,j))$，边界dp[0][0]=0，其余不可达∞。<strong>普通实现O(kn²)</strong>，原索引O(nk²)写反。</p>
+<p>例[1,2,10,11]在2后切，两段误差各0.5，总1；在1后切，右段均值23/3，误差明显更大。数值大而方差小时前缀平方差会消减，应中心化或采用稳定累计方法。题目与LC410“最小化最大段和”只是分段结构相似，目标函数不同。</p>
+<h3 id="study-b2f9e9b0d5">9.3 RPN、DUP/POP 栈机与中缀转换</h3>
+<p><strong>RPN。</strong> 输入必须是token序列，如["2","1","+","4","*"]；遇数字压栈，遇运算符先弹右操作数b，再弹左a，压a op b，最后恰一个值。上述过程[2]→[2,1]→[3]→[3,4]→[12]。减法与除法不能倒置；整数除法须确认向零还是向下取整，零除与栈下溢需报错。单次扫描O(n)，栈O(n)。</p>
+<p><strong>DUP/POP。</strong> DUP复制栈顶，POP弹出；先校验非空，算术还检查数值范围。旧字符串“12+4<em>7</em>→84”若逐字符解读是(1+2)×4×7；若12是一个token则表达式缺操作数。必须先定义词法规则。</p>
+<p><strong>RPN转中缀。</strong> 栈元素改为表达式树节点，运算时建立以op为根、a和b为左右子树的节点。后序输入一次O(n)建树，再中序输出时按优先级加括号；最简单安全版每个二元节点都括起来，不会因减法结合性输出错误表达式。</p>
+<h3 id="study-4da07a45ca">9.4 两数交错、数字重排、大数相加</h3>
+<p><strong>交错练习。</strong> A="123"、B="45"按位交错得"14253"；双指针取各自剩余首位，某串耗尽后接另一串。复杂度O(n+m)，前导零是否保留、负号如何处理须确认。</p>
+<p><strong>重排整数各位最大。</strong> 非负整数统计0～9次数，从9到0输出；时间O(d+10)。负整数若求数值最大，应使绝对值尽量小：最小非零数字放首位，接零，再升序剩余，最后加负号。若输入是一组整数拼接而非一个整数的数位，比较器要比ab与ba，例如9应在34前，不能简单按数值排序。</p>
+<p><strong>字符串大数相加。</strong> 从末尾对齐，两位和加进位，输出sum mod10、carry=sum//10，最后反转。例如999+1从尾得到0、0、0和剩余1，得1000。O(max(n,m))，不把整个字符串转机器整数；空串、前导零、负数支持范围先说明。</p>
+<h3 id="study-6a92f259ff">9.5 第k排列与下一排列</h3>
+<p>第k排列采用0基k−1，首位每块有(n−1)!种，整除确定选第几小，余数留给后续。n=3,k=4：k−1=3，首位选索引1即2，余1；余下[1,3]首位选3，结果231。列表删除总O(n²)，需校验1≤k≤n!。</p>
+<p>下一排列（常见Narayana算法）从右找第一处a[i]&lt;a[i+1]，右侧是非增后缀；在后缀找最右且大于a[i]的数交换，再反转后缀，使增加幅度最小。例1,3,2→2,1,3。若找不到上升点，已最大排列，整体反转为最小。O(n)时间O(1)额外空间。</p>
+<h3 id="study-4c67aea567">9.6 背包礼物与股票预算</h3>
+<p>0/1背包每件至多一次，dp[b]表示容量不超过b的最大价值。遍历物品(w,v)，容量b从预算降到w，更新max(dp[b],dp[b−w]+v)。倒序防止同件重复使用；完全背包允许重复才正序。例预算5、物品(2,3),(3,4)，最优7。</p>
+<p>股票练习若每只只买0或1股、已知固定期末价值，可将成本当重量、净收益当价值；但现实价格未知，且交易限制并不天然是背包。若要求恰好花满，初始化dp[0]=0而其他为−∞。复杂度O(nB)为伪多项式；B是金额数值，巨大预算不能直接按分开数组。</p>
+<h3 id="study-3df6f8b7a9">9.7 等价分数、非零 AND 最大子集</h3>
+<p>分数a/b先保证b≠0，将分母调整正，除以gcd(|a|,|b|)，用约分后的(a,b)作哈希键。0统一为0/1。每读一个键计数递增，最大计数就是最频分数；避免转float，1/3与近似小数不能安全判等。约分O(log M)，总O(n log M)。</p>
+<p>对非负定宽整数，子集AND非零意味着至少某一位在所有成员中都是1。逐位统计1的个数，最大频数即最大子集大小；反过来把拥有最频位的数全选就构造出可行解。例[5(101),3(011),7(111)]各位最大频数2，答案2。O(nW)。负数需明确补码位宽，Python无限符号扩展不能直接套。</p>
+<h3 id="study-a06b4ac1c6">9.8 LIS 长度与重建</h3>
+<p>维护tails[len−1]为长度len递增子序列的最小末尾。对x用lower_bound找第一项≥x并替换，找不到则追加。例[3,1,2,5,4]，tails依次[3]、[1]、[1,2]、[1,2,5]、[1,2,4]，长度3。</p>
+<p>tails的各元素未必来自同一条合法路径；要重建必须保存每个长度的末尾索引tail_idx，以及每个位置的前驱prev。将x放入位置p时令prev[i]=tail_idx[p−1]，最后从最长末尾反向沿prev恢复。严格递增用lower_bound，允许相等用upper_bound。时间O(n log n)，空间O(n)。</p>
+<h3 id="study-5bdb325492">9.9 合并区间、区间并长度、矩形并面积</h3>
+<p>区间按左端排序，维护当前[l,r]；下一区间起点≤r则扩展r，否则结算r−l并开新区间。例[1,4],[2,6],[8,9]合并为[1,6],[8,9]，连续长度6。若区间是整数闭区间点数，则单段计r−l+1，不能与几何长度混用。O(n log n)。</p>
+<p>矩形并面积用x扫描线，每个矩形在x₁产生y区间+1事件、x₂产生−1事件。相邻事件横距Δx乘当前y覆盖总长，累加；同x事件统一处理。y坐标压缩后线段树维护覆盖计数与实际覆盖长度，更新O(log n)，总O(n log n)。不能简单Σ矩形面积减所有两两交叠，因为三重交叠会算错。</p>
+<h3 id="study-00745ada7a">9.10 第k小数对距离、k种字符滑窗、双模式匹配</h3>
+<p><strong>数对距离。</strong> 排序数组，对猜测距离d用双指针计有多少i&lt;j满足a[j]−a[i]≤d；j每前进一步收缩i，新增j−i对。该计数关于d单调，二分最小使count≥k的d。例[1,3,1]排序[1,1,3]，距离0、2、2，第1为0。O(n log n+n log R)。</p>
+<p><strong>至多k种字符。</strong> 右指针扩展，频数字典种类&gt;k时移动左指针直到合法，更新最长长度。每字符进出一次，O(n)；k=0返回0。别把“至多”写成“恰好”。</p>
+<p><strong>父串双模式。</strong> 缺题干时先问两模式是否须同起点、相距≤k、是否允许重叠。标准“找A出现位置且附近有B”可分别KMP得有序出现位置，再双指针或二分匹配距离，O(n+|A|+|B|)加位置合并。直接逐位置切片比较会增加模式长度因子。</p>
+<h3 id="study-8f97caac97">9.11 快速倍增 Fibonacci 与广义递推</h3>
+<p>若已知a=F(k)、b=F(k+1)，恒等式给F(2k)=a(2b−a)，F(2k+1)=a²+b²；递归只计算k=n//2，按奇偶返回相邻两项。n=10由(F₅,F₆)=(5,8)得F₁₀=55。O(log n)次大整数运算，不能把大整数乘法成本忽略后声称位复杂度O(log n)。</p>
+<p>比值F(n+1)/F(n)的极限若存在满足r=1+1/r，正根$(1+\sqrt5)/2$；用通解的另一根绝对值&lt;1证明收敛，而不只解方程。</p>
+<p>“广义线性递推成员判定”只有题名无法唯一作答。若aₙ严格递增且快速计算，可指数搜索找到范围再二分；若含负系数导致非单调，该方法不成立。已知阶数r时用r×r伴随矩阵快速幂求第n项，但这解决求值，未自动解决集合成员判定。</p>
+<h3 id="study-22291d11df">9.12 链表：反转、节点交换、两数相加</h3>
+<p>反转保存next，令cur.next=prev，再推进prev、cur；不保存next就丢失余下链。递归法先反转head.next，再设head.next.next=head、head.next=None；O(n)时间，但递归额外O(n)栈，不是O(1)。</p>
+<p>交换第k与第2k个节点需先求两节点及前驱，用dummy处理头节点，分相邻/非相邻重接；如果只交换值，要问是否允许。倒数第2k个用快慢指针先拉开2k间距，不足返回约定错误。</p>
+<p>链表数字相加（低位在前）同时遍历两链与carry，逐节点生成余数，任一链耗尽当0，carry仍有则继续。例(2→4→3)+(5→6→4)得到7→0→8，代表342+465=807。两链时间O(n+m)，新输出空间O(max(n,m))。</p>
+<h3 id="study-743e434972">9.13 多数元素、第k高频、a+b=c、零计数</h3>
+<p>多数元素若保证频率&gt;n/2，用Boyer–Moore消去不同元素对，剩余候选必为多数；无保证时第二遍数候选确认。第k高频（通常指前k高频元素）先哈希计数，再大小k最小堆O(n+u log k)；同频如何破局需定义。</p>
+<p>a+b=c若求不同下标三元组，排序后枚举c并用两指针找剩余两数和，O(n²)；重复值是否只输出唯一数值组须决定，并注意c在中间位置时排除其索引。负数存在时不能假设c必为最大元素。零计数直接扫描O(n)；若输入排序可二分0的左右边界O(log n)，不能在无序数组上凭空二分。</p>
+<h3 id="study-b985a06933">9.14 Kruskal、池塘、4×4通路和数独</h3>
+<p>Kruskal按边权升序，若边两端属于不同连通分量便选并合并，用并查集；选满V−1条即树，图不连通只能得最小生成森林。正确性来自割性质，不能只说“贪心”。O(E log E)。</p>
+<p>池塘用BFS/DFS或并查集，先确认邻接是四向还是八向；扫描时只查右、下、左下、右下只是避免重复遍历<strong>八向无向边</strong>，不是说池塘只四向连通。对角相邻两个水格是最小区分用例。</p>
+<p>十进制转16位网格，先确认高位先填还是低位先填以及起终点；按位移填4×4，0格作可通行节点，BFS求最少步，DFS只能判可达；若格有不同成本改Dijkstra。</p>
+<p>Valid Sudoku检查每个非空数字是否已在行、列、3×3宫的集合出现，出现即false；它只检查当前冲突，不保证盘面可解。完整解数独则回溯，优先选候选最少格减少分支。</p>
+<h3 id="study-4ad076750b">9.15 LCS、编辑距离、最长有效括号、接雨水</h3>
+<p>LCS dp[i][j]表示前i、j字符最长公共子序列，末位相等取dp[i−1][j−1]+1，否则max(dp[i−1][j],dp[i][j−1])；例abcde与ace得3，O(nm)，滚动行O(m)。</p>
+<p>编辑距离同样以前缀为状态，末位不等取删除dp[i−1][j]+1、插入dp[i][j−1]+1、替换dp[i−1][j−1]+1的最小；空串边界dp[i][0]=i。不能把LCS直接当替换成本1的编辑距离。</p>
+<p>最长有效括号用栈初始[-1]保存边界，遇(压索引，遇)弹栈，空则压当前索引为新边界，否则长度i−stack[-1]。例")()())"得到4。O(n)。</p>
+<p>接雨水每格水高为min(左最高,右最高)−本格，取非负。双指针维护两侧最高，每次处理较小最高的一侧，因为另一侧至少足够挡水；O(n)时间O(1)额外空间。例[2,0,2]积2，单调数组积0。</p>
+<h3 id="study-7c29662d13">9.16 九坤专场：通讯稿、数字默契、筹码游戏</h3>
+<p>通讯稿等式移项成 $a_i-\operatorname{rev}(a_i)=a_j-\operatorname{rev}(a_j)$，维护键频数，每遇新项增加已有同键数，再计数加1，O(n·位数)。注意反转的是nums[i]，不是下标i。</p>
+<p>数字默契的<strong>标准操作版</strong>若每步可把一个数乘2或3，目标让所有数相等：先剥除每个数中的2、3因子，剩余部分必须相同；不是要求原始数本身只能含2、3。例如10与15剩余都5，可以各乘3、2变30。设指数为aᵢ,bᵢ，目标指数取各自最大，操作数Σ(maxa−aᵢ)+Σ(maxb−bᵢ)。若原题操作规则不是乘法，此解不能直接复用。</p>
+<p>筹码游戏只有概要，核心模板是把每堆当前筹码数排序，等价状态合并，设E(s)为剩余步数。若一次抽取不改变状态概率p₀，则$E(s)=1+p_0E(s)+\sum_{s'\ne s}p(s'|s)E(s')$，移项得$[1+\sum pE(s')]/(1-p_0)$。终态E=0。先写清抽到满堆是重抽、浪费一步还是可重定向，才能计算p₀；该部分不伪造唯一数值。</p>
+<h3 id="study-b669f7b086">9.17 任务依赖调度：原例矛盾不能掩盖</h3>
+<p>旧索引一方面称“单机同时只能一个任务”，另一方面无依赖例输出1、1、3、3、3，未给每个任务耗时，也出现同时完成。这不足以确定题目语义，不能直接用“拓扑＋堆”宣称解完。</p>
+<p><strong>明确练习A：无限并行、已知耗时。</strong> DAG上最早完成$E(v)=d_v+\max_{u\to v}E(u)$，无前驱取dᵥ，拓扑序DP，O(V+E)，有环报依赖错误。</p>
+<p><strong>明确练习B：单机、单位耗时、给截止期和依赖。</strong> 一次排一个可用任务，拓扑保证依赖，但只按当前最早截止期贪心未必保证有依赖时最优；若要求最小最大延迟，可采用Lawler的逆序调度思路，在当前无后继任务中挑最大截止期放最后。具体题型仍须以原文补齐，不能将两版本混为一题。</p>
+<h3 id="study-1d119d71d5">9.18 文件同步、权限与 workflow parser</h3>
+<p><strong>文件同步。</strong> 明确输入是路径清单、内容还是操作日志。先将相对路径规范化，按路径比较缺失/新增/内容变更；大小和mtime只能快速筛选，可靠内容判等需要hash或字节比较。结果为add/delete/update计划，先临时写再原子替换，删除需处理重命名、符号链接与失败恢复。若要求最短文本diff，才转LCS/Myers，不是同一个问题。</p>
+<p><strong>权限。</strong> 先定义角色、资源树、allow/deny优先级及继承。例如默认拒绝、显式deny覆盖allow，沿节点向祖先累计，返回可解释命中规则；读只读标志不等于判断用户权限。目录循环、路径穿越和缓存失效需要测试。</p>
+<p><strong>嵌套parser。</strong> 先写文法如workflow:=task | '(' workflow* ')'，词法阶段产token和位置；语法阶段用栈或递归下降，遇开括号入层、闭括号出层，结束检查栈只剩根。hidden bug常见：空块、转义括号、多位数字、文件末尾漏提交token、深嵌套栈溢出。先报最小失败输入与位置，再修规则，不能以eval处理不可信表达式。</p>
+<h2 id="study-aea8250332">10. 系统与语言：从名词到可实现设计</h2>
+<h3 id="study-24d70e32b5">10.1 订单簿、撮合引擎、TWAP</h3>
+<p>订单簿记录状态，撮合引擎执行成交。每方向用价格树，价格层内时间优先双向队列，订单ID映射到节点。新买单价格≥最优卖价时取最早卖单，成交量min(剩买,剩卖)，更新两者；卖单耗尽删除，买单剩余继续，否则未成交部分按规则入簿。价格和数量用整数tick/lot。</p>
+<p>例卖100有5手、卖101有3手，买限101共6手，先成交100×5，再101×1，留下卖101×2。要明确成交价采用被动单价，此处是练习规则，实际以交易所规则为准。撤单不仅删除哈希项，还要从价格层删节点；撤空价格层须更新树，不能笼统声称完整撤单总是O(1)。</p>
+<p>TWAP将总量Q在时间窗切成n片，目标每片Q/n；用已成交量反馈补欠量，限制追价、参与率与风控。原始TWAP不是保证均价也不是套利。验证应包括同价FIFO、部分成交、重复订单ID、超量撤单、序号缺口和重放一致性。</p>
+<h3 id="study-a1568c04db">10.2 mutex、懒汉 singleton、跨线程内存</h3>
+<p>最简单自旋锁用atomic_flag.test_and_set(acquire)循环，unlock用clear(release)，保证互斥且临界区写入对下个持锁者可见；但不保证公平，线程被抢占时可能浪费CPU，不能等同完整阻塞mutex。阻塞锁还需原子检查与等待队列/futex配合防丢失唤醒。</p>
+<p>C++11起函数局部static的初始化有并发保证，<code>static Instance x; return x;</code>通常足够；不要手写没有内存序的double-checked locking。实例后续可变状态仍需同步，初始化安全不代表所有方法线程安全。</p>
+<p>跨线程分配/释放要避免一线程只向自己的free list归还别的线程的块。简单正确设计使用线程安全全局allocator；需优化时加所属arena与远程释放队列，分配线程批量回收。先查峰值内存、争用和尾延迟证据，再引入复杂内存池。</p>
+<h3 id="study-e58f428bac">10.3 small vector、allocator、虚析构与对象切片</h3>
+<p>小缓冲vector的缓冲区在<strong>对象内部</strong>，对象在堆上时缓冲区也在堆上，所以不应绝对称“小于10一定栈上”。储存必须按T对齐；allocate只拿原始内存，construct才开始对象生命周期；扩容依次构造新元素，成功后销毁旧元素并释放旧内存，异常时清理已构造部分。</p>
+<p>通过基类指针delete派生对象时基类应有虚析构，否则通常是未定义行为。<code>Base b=derived</code>按值复制只保存基类部分，产生对象切片；<code>Base&amp; b=derived</code>保留动态类型，虚函数可分派到派生实现。vector<base/>存值会切片，不能靠把函数声明virtual补救。</p>
+<h3 id="study-59d27dd5bb">10.4 智能指针、forward、RAII</h3>
+<p>unique_ptr表示独占，不能复制可移动；shared_ptr引用计数共有，环引用会使计数不归零，回指用weak_ptr，访问时lock得到临时shared_ptr并检查过期。引用计数线程安全并不表示被指对象线程安全。</p>
+<p>std::move只是转成可被移动的右值表达式，不执行搬运；std::forward在模板转发引用中保留调用者原本的值类别。RAII把资源获取与对象生命周期绑定，析构释放，异常路径也能清理；不仅用于内存，也用于锁、文件描述符与事务守卫。</p>
+<h3 id="study-f52bb7dbf6">10.5 Python with、属性、生成器、GIL</h3>
+<p>with调用__enter__获取资源，代码块结束无论正常/异常都调用__exit__；后者返回真会吞掉异常，因此不能无意返回True。价格类可用property setter校验价格为正且符合tick，但对一组bid/ask更新需事务式检查，防半更新状态。</p>
+<p>list可变，tuple不可变仅指容器槽位，tuple里仍可含可变对象。generator在yield处保存执行状态，按需产出，不能把迭代器第二次已耗尽当成空数据正确结果。</p>
+<p>传统带GIL的CPython中，同一解释器通常只有一个线程执行Python字节码；阻塞I/O和某些原生扩展可释放GIL。CPU密集纯Python可用进程；自由线程构建须检查解释器与扩展兼容，不能泛称所有Python版本已无GIL。<a href="https://docs.python.org/3/library/threading.html">Python threading文档</a>。</p>
+<h3 id="study-2fa87860df">10.6 NumPy随机置零、标准差合并、数据聚合</h3>
+<p>“随机20%置零”分两种：每项独立以0.2概率置零，可用rng.random(shape)&lt;0.2，数量随机；精确选floor(0.2×size)项则用rng.choice(size,k,replace=False)。先约定是否原地、是否排除原本为零的值、非连续视图如何写回，固定seed复现。</p>
+<p>Welford分块合并：两块(n₁,μ₁,M₂₁)、(n₂,μ₂,M₂₂)，δ=μ₂−μ₁，n=n₁+n₂，μ=μ₁+δn₂/n，$M_2=M_{2,1}+M_{2,2}+\delta^2n_1n_2/n$。新项可视为n₂=1、M₂₂=0，所以在线算法是合并公式的特例。</p>
+<p>时间序列tuple合并若都是按时间排序，双指针O(n+m)，相同时间选择相加、覆盖或保留两条由语义决定。若作金融特征as-of join，只能拿决策时刻以前可见的记录，不能从未来最近点补齐。</p>
+<h3 id="study-c62ca30a95">10.7 Redis锁与幂等表</h3>
+<p>SET key unique_token NX PX ttl防重复获取，但A超时后B获得同key，A再直接DEL会误删B的锁。释放应原子比较token相同再删除；即便如此租约过期后旧持有者还可能继续写，关键资源还需fencing token或等效版本校验。</p>
+<p>幂等表以请求ID为唯一键记录状态、参数摘要、结果。同一ID同参数返回原结果，不同参数拒绝；唯一约束或事务解决两个请求同时查不到再双写的竞态。还需处理“业务提交了但幂等结果没写”的崩溃窗口，尽可能同事务，跨系统则用outbox/状态机补偿。这里只讲设计推理，具体产品API以所用版本文档为准。</p>
+<h3 id="study-a152b1845c">10.8 网络、共享内存、对时与FPGA</h3>
+<p>TCP提供有序可靠字节流，没有消息边界；应用需长度头或分隔符，处理粘包半包。UDP是独立数据报，应用要自行处理丢包、重复、乱序。WebSocket在握手后提供双向消息帧，但重连后的业务序号、去重与回放仍要自己设计。</p>
+<p>共享内存减少进程间复制，但可见不等于同步，需要协议、原子或进程共享锁；进程各自虚拟地址不同，共享结构不宜直接保存普通绝对指针。对时使用NTP/PTP等机制需要估计偏移与网络延迟；假设往返延迟对称时可用双向时间戳估偏移，非对称路径带来不可辨认误差。测持续时间用单调时钟，不能用可能跳变的墙上时间。</p>
+<p>Verilog阻塞赋值<code>=</code>在当前过程按顺序更新；非阻塞<code>&lt;=</code>先计算右值，再在同一时步后续更新，用于建模同时触发的时序寄存器。例如时钟沿a&lt;=b;b&lt;=a交换旧值；用阻塞a=b;b=a会把两个都变成旧b。组合逻辑与时序逻辑分别说明，不能简单以“一个快一个慢”回答。</p>
+<h3 id="study-d1c2f9b9bb">10.9 前端与数据岗位的附加题怎么答</h3>
+<p>CSS优先级先看层叠来源/important/层，再比选择器权重；BFC建立独立块格式化上下文，常用于避免margin折叠或包含浮动，具体触发需按display/overflow规则判断。原型链是对象属性查找沿[[Prototype]]向上，不是类的复制。十万行渲染用虚拟列表只渲染可见窗口，稳定key、估计行高和滚动偏移，分页只能减少加载，不自动解决DOM过多。</p>
+<p>React状态更新应视为调度的快照变更，当前闭包仍看到当前render值；连续依赖前值用函数式更新。HTTP缓存强缓存直接复用未过期响应，协商缓存请求服务器验证可得304；跨域是浏览器同源限制下的访问规则，服务端CORS配置与代理解决的层面不同，不能让前端自行“放开”。Vue2/3生命周期、hooks等只有类别没有明确题干，本页不把一个版本的机制说成所有框架通用。</p>
+<p>数据接入分全量快照与带游标/水位的增量，支持去重重放；维表若需历史正确性可保存valid_from/valid_to，用事件时点关联历史版本。原始层保留输入，明细层统一口径，汇总层聚合指标；校验同时覆盖输入schema、明细唯一性和汇总守恒，而非只在最末一层看总数。表达式求值用tokenizer→AST→白名单运算，拒绝任意代码执行。</p>
+<h2 id="study-dfa65ade2d">11. 待补原文的题名：明确还缺什么</h2>
+<p>以下条目不能靠标题推导唯一答案；已经提供适用框架的也不标成“原题已完全解答”。</p>
+<table>
+<thead>
+<tr>
+<th>题名/回忆</th>
+<th>还缺的条件</th>
+<th>拿到后如何求解</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>对称Rademacher矩阵特征值矩</td>
+<td>对角是否随机、归一化、求几阶矩</td>
+<td>用tr(A^k)=Σλᵢ^k展开闭合路径；独立均值零使出现奇数次的边期望为0</td>
+</tr>
+<tr>
+<td>抽球直到剩两色</td>
+<td>每色数量、是否放回、停止含义</td>
+<td>状态记各色剩余数，写吸收DP；两色边界E=0</td>
+</tr>
+<tr>
+<td>三色球匹配步数</td>
+<td>配对后移除还是改色、抽取方式</td>
+<td>建状态转移与吸收条件，不能照抄四球7步</td>
+</tr>
+<tr>
+<td>随机对半加增量收敛</td>
+<td>增量分布、是否独立、求均值/方差/分布</td>
+<td>若Xₙ₊₁=Xₙ/2+εₙ，独立平稳时均值2Eε，方差4Varε/3</td>
+</tr>
+<tr>
+<td>两骰特定模式</td>
+<td>目标点数组合、先后和重叠</td>
+<td>有效后缀自动机＋线性方程</td>
+</tr>
+<tr>
+<td>Move-to-Zero / bit subset目标</td>
+<td>一步允许的操作和胜负规则</td>
+<td>明确合法转移后逆推胜负；位题先找独立位或借位耦合</td>
+</tr>
+<tr>
+<td>精确时点股票买卖</td>
+<td>次数、持仓限制、费用、价格是否已知</td>
+<td>定义现金/持仓状态，禁止同一时刻使用未来状态</td>
+</tr>
+<tr>
+<td>网格金币最短路</td>
+<td>路径代价、金币数量要求、能否回访</td>
+<td>无权BFS；带收集约束加mask；有权Dijkstra</td>
+</tr>
+<tr>
+<td>一组“组合/优化”标题</td>
+<td>目标函数、约束、分布</td>
+<td>无法定位成具体题，需补原题</td>
+</tr>
+<tr>
+<td>模拟/DP/证明题但未披露</td>
+<td>完整输入输出和范围</td>
+<td>仅作为题型目录，不能伪造真题</td>
+</tr>
+</tbody>
+</table>
+<p>本轮把缺条件本身也视为学习内容：面试里先补齐数学模型，比对着一个模糊题名报出漂亮数字更可靠。</p>
+<h2 id="study-afa1d7586f">12. 手写与交易直觉的最后一组补题</h2>
+<h3 id="study-b3292a081d">12.1 LRU：可运行教学实现与淘汰过程</h3>
+<p>语义：get命中使键变成最近使用；put已有键更新并刷新位置；超容量淘汰最久未使用。Python教学版用OrderedDict展示结构，C++手撕应实现unordered_map＋list，而不是换成遍历数组。</p>
+<pre><code class="language-python">from collections import OrderedDict
+
+class LRU:
+    def __init__(self, capacity):
+        if capacity &lt; 0:
+            raise ValueError("negative capacity")
+        self.capacity = capacity
+        self.data = OrderedDict()
+
+    def get(self, key):
+        if key not in self.data:
+            return -1
+        self.data.move_to_end(key)
+        return self.data[key]
+
+    def put(self, key, value):
+        if self.capacity == 0:
+            return
+        self.data[key] = value
+        self.data.move_to_end(key)
+        if len(self.data) &gt; self.capacity:
+            self.data.popitem(last=False)
+</code></pre>
+<p>容量2：put(1,A)、put(2,B)顺序[1,2]；get(1)变[2,1]；put(3,C)淘汰2，剩[1,3]。均摊O(1)操作、空间O(capacity)。缺失返回−1会和合法值−1混淆，若业务允许任意值应返回可区分sentinel或抛异常，接口先约定。</p>
+<h3 id="study-d63a451d75">12.2 日期类与票价DP：把边界补成代码</h3>
+<p>公历正年份日期转序号，先统计之前整年，再累加本年之前月份：</p>
+<pre><code class="language-python">def ordinal(y, m, d):
+    if y &lt; 1 or not 1 &lt;= m &lt;= 12:
+        raise ValueError("invalid date")
+    leap = y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)
+    lengths = [31, 29 if leap else 28, 31, 30, 31, 30,
+               31, 31, 30, 31, 30, 31]
+    if not 1 &lt;= d &lt;= lengths[m-1]:
+        raise ValueError("invalid day")
+    prev = y - 1
+    return 365*prev + prev//4 - prev//100 + prev//400 + sum(lengths[:m-1]) + d
+
+def ticket_cost(days, costs):
+    if len(costs) != 3 or any(c &lt; 0 for c in costs):
+        raise ValueError("three nonnegative ticket prices required")
+    if not days:
+        return 0
+    if min(days) &lt; 1:
+        raise ValueError("travel days must be positive")
+    travel = set(days)
+    dp = [0] * (max(days) + 1)
+    for day in range(1, len(dp)):
+        dp[day] = dp[day-1] if day not in travel else min(
+            dp[max(0, day-length)] + price
+            for length, price in zip((1,7,30), costs))
+    return dp[-1]
+</code></pre>
+<p>日期差就是序号差，可为负；1900不是闰年，2000是。票价练习[2,7,15]配原旅行日答案<strong>13</strong>：前5天用7天票7元，第11、12、25天各2元。题干不给票价就无法断言13。按最大日D写DP为O(D)，若日期跨度很大改按旅行日索引。</p>
+<h3 id="study-9e11c99e01">12.3 Trie、非递归后序、FizzBuzz与交换</h3>
+<p>Trie每节点保存字符→子节点和终止标志；insert逐字符建边，search走完还要看终止标志，startsWith只需路径存在。插入"app"和"apple"后search("ap")假、startsWith("ap")真。O(字符串长度)，删除要减少引用或只删不再共享的路径。</p>
+<p>树的非递归后序用栈保存(node,visited)：首次弹出压(node,true)，再压右、左；visited时输出。图还需要颜色/访问集合处理环，不能把树算法直接用于任意图。若要求DAG依赖后序，灰色回边提示环。</p>
+<p>FizzBuzz先判同时被3和5整除（或先判15），再单独判3、5，否则输出数；否则15可能只被打印Fizz。交换Python变量可写a,b=b,a；C++通常用std::swap。加减法交换可能整数溢出，XOR交换同一存储位置会清零，面试应解释技巧的限制，不为省一个临时量牺牲正确性。</p>
+<h3 id="study-3485742013">12.4 Straddle、delta decay与报价后验</h3>
+<p>同执行价同到期的多头straddle=call＋put，终值支付|S_T−K|，盈亏还要减两份权利金及资金成本。它通常正gamma、正vega、负theta，但要明确头寸方向。delta decay若指时间推移导致delta变化，需讨论charm与价内/价外、持仓方向；不能说“所有期权delta都随时间降”。</p>
+<p>报价题“价值48～52且80%置信”不足以唯一决定bid/ask。还缺库存、风险偏好、成交信息结构和费用。可以先给示例模型：价值为48或52先验各半，知情买家概率α，只在高价值买，其余噪声交易买卖各半，则看到买单后高价值后验$(1+\alpha)/2$，条件期望50+2α。卖方报价需覆盖该条件价值和成本，这解释买单为何可能使你上调估值，而非把80%区间直接当买卖价。</p>
+<h3 id="study-0435313faa">12.5 金融事件题：应解释传导链而不是背年份</h3>
+<p>2007量化危机可用于讨论相似头寸拥挤、杠杆与同步去杠杆；2010闪崩讨论流动性撤离、订单流反馈与市场相互连接；2020特定原油期货合约负价讨论临近交割、储存与实物交割约束。答题时区分事件机制假说和具体历史事实，不能把“油价负数”泛指所有期限或现货。本次未进行三起事件的逐份报告核验，因此这里是分析提纲，不能作为精确历史归因的已核实答案。</p>
+<p>ES与SPY也先比较合约性质：前者期货，后者ETF；再核对乘数、交易时段、保证金、分红与跟踪误差、结算制度。旧指南未提供具体合约日期和交易所文档，本次不编造当前规格。面试中可解释现金与期货价格的持有成本关系，再用指定合约的官方资料填数。</p>
+</section></article>
+<nav class="chapter-nav"><a href="041.html">← 041. 聚宽投资（JoinQuant）公开面经与题解</a></nav>
+<footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
+</main>
+</div>
+<script src="../assets/quant-bank.js"></script>
+</body>
+</html>

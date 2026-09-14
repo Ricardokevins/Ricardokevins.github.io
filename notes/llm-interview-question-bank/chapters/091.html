@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>091. 九坤 Agent 大模型面经：架构、SFT、DPO 与 OPD - 量化面试通用题解手册</title>
+<script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+<script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link href="../assets/question-bank.css" rel="stylesheet"/>
+<link href="../../assets/notes-shell.css" rel="stylesheet"/>
+<style>
+      .update{margin:0 0 20px;padding:14px 18px;border-left:4px solid #c15f3c;background:#f7ece4}
+      .toplinks{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+      .toplinks a{padding:4px 10px;border:1px solid #dcd6c8;border-radius:999px;background:#fffdf8}
+      .answer{margin:14px 0;padding:14px 18px;border-left:4px solid #276148;background:#edf6f0}
+      .warning{border-left-color:#b45309;background:#fdf3e7}
+      .tag{display:inline-block;margin:2px 5px 2px 0;padding:2px 8px;border:1px solid #aac0cd;border-radius:999px;background:#eef3fb;font-size:12px}
+      .math{max-width:100%;overflow-x:auto}
+      mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
+    </style></head>
+<body class="notes-shell-page">
+<nav aria-label="Notes navigation" class="notes-sitebar">
+<a class="notes-sitebar__brand" href="../../"><span aria-hidden="true" class="notes-sitebar__mark"></span><span>Notes</span></a>
+<span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../../">All Notes</a><a class="notes-sitebar__link" href="../../../">Home</a></span>
+</nav>
+<div class="layout">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-kicker">Chapter 091</div>
+<div class="brand-title">九坤 Agent 大模型面经：架构、SFT、DPO 与 OPD</div>
+<div class="brand-meta">公司原题 · 九坤 Agent / LLM</div>
+</div>
+<nav aria-label="本章目录" class="toc-group"><div class="toc-group-title">本章小节</div><a class="toc-link" href="#1-先分清两条赛道">1. 先分清两条赛道</a><a class="toc-link" href="#2-面试全貌">2. 面试全貌</a><a class="toc-link" href="#3-agent-产品与架构-题-1-9">3. Agent 产品与架构：题 1–9</a><a class="toc-link" href="#3-1-你了解哪些常见-agent-架构-项目为什么选择-workflow-agent" style="padding-left:18px">3.1 你了解哪些常见 Agent 架构？项目为什么选择 Workflow Agent？</a><a class="toc-link" href="#3-2-为什么做这个-agent-产品-主要解决什么问题" style="padding-left:18px">3.2 为什么做这个 Agent 产品？主要解决什么问题？</a><a class="toc-link" href="#3-3-通用-agent-还是垂直-agent-核心竞争力是什么" style="padding-left:18px">3.3 通用 Agent 还是垂直 Agent？核心竞争力是什么？</a><a class="toc-link" href="#3-4-主要竞品有哪些-相比竞品有什么优势" style="padding-left:18px">3.4 主要竞品有哪些？相比竞品有什么优势？</a><a class="toc-link" href="#3-5-你在整个-agent-项目中负责什么-与其他模块如何协作" style="padding-left:18px">3.5 你在整个 Agent 项目中负责什么？与其他模块如何协作？</a><a class="toc-link" href="#3-6-为什么想从-workflow-agent-进一步转向-agentic-rl" style="padding-left:18px">3.6 为什么想从 Workflow Agent 进一步转向 Agentic RL？</a><a class="toc-link" href="#3-7-agent-主模型-memory-模型和多模态模型分别如何选型" style="padding-left:18px">3.7 Agent 主模型、Memory 模型和多模态模型分别如何选型？</a><a class="toc-link" href="#3-8-系统是否有-fallback-embedding-和-rerank-如何平衡效果-延迟与成本" style="padding-left:18px">3.8 系统是否有 fallback、Embedding 和 Rerank？如何平衡效果、延迟与成本？</a><a class="toc-link" href="#3-9-为什么用后训练小模型替换商业大模型" style="padding-left:18px">3.9 为什么用后训练小模型替换商业大模型？</a><a class="toc-link" href="#4-sft-与实体消歧-题-10-12">4. SFT 与实体消歧：题 10–12</a><a class="toc-link" href="#4-1-介绍日历信息抽取任务-以及为什么只用-sft" style="padding-left:18px">4.1 介绍日历信息抽取任务，以及为什么只用 SFT</a><a class="toc-link" href="#4-2-实体消歧任务的输入-输出和数据集怎样设计" style="padding-left:18px">4.2 实体消歧任务的输入、输出和数据集怎样设计？</a><a class="toc-link" href="#4-3-为什么实体消歧模型-sft-后仍过于保守" style="padding-left:18px">4.3 为什么实体消歧模型 SFT 后仍过于保守？</a><a class="toc-link" href="#5-dpo-题-13-15">5. DPO：题 13–15</a><a class="toc-link" href="#5-1-为什么-sft-后继续-dpo-dpo-数据如何构造" style="padding-left:18px">5.1 为什么 SFT 后继续 DPO？DPO 数据如何构造？</a><a class="toc-link" href="#5-2-写出-dpo-loss-解释-chosen-rejected-reference-model-与-β" style="padding-left:18px">5.2 写出 DPO loss，解释 chosen、rejected、reference model 与 β</a><a class="toc-link" href="#5-3-chosen-loss-和-rejected-loss-同时下降-如何分析" style="padding-left:18px">5.3 chosen loss 和 rejected loss 同时下降，如何分析？</a><a class="toc-link" href="#6-on-policy-distillation-题-16-18">6. On-Policy Distillation：题 16–18</a><a class="toc-link" href="#6-1-什么是-on-policy-distillation-训练流程是什么" style="padding-left:18px">6.1 什么是 On-Policy Distillation？训练流程是什么？</a><a class="toc-link" href="#6-2-opd-与传统知识蒸馏-teacher-生成数据做-sft-有什么区别" style="padding-left:18px">6.2 OPD 与传统知识蒸馏、Teacher 生成数据做 SFT 有什么区别？</a><a class="toc-link" href="#6-3-商业模型-api-不提供-logits-还能否做标准-opd-替代方案" style="padding-left:18px">6.3 商业模型 API 不提供 logits，还能否做标准 OPD？替代方案？</a><a class="toc-link" href="#7-多智能体-rl-与研究方向-题-19-20">7. 多智能体 RL 与研究方向：题 19–20</a><a class="toc-link" href="#7-1-多智能体强化学习中的信用分配是什么-为什么要分配全局奖励" style="padding-left:18px">7.1 多智能体强化学习中的信用分配是什么？为什么要分配全局奖励？</a><a class="toc-link" href="#7-2-为什么选择当前论文方向-实验室方向与-agent-岗有什么关系" style="padding-left:18px">7.2 为什么选择当前论文方向？实验室方向与 Agent 岗有什么关系？</a><a class="toc-link" href="#8-jump-ai-team-公开流程与唯一高频追问">8. Jump AI team：公开流程与唯一高频追问</a><a class="toc-link" href="#9-面试验收清单">9. 面试验收清单</a><a class="toc-link" href="#10-来源与证据边界">10. 来源与证据边界</a><a class="toc-link" href="#11-我的判断">11. 我的判断</a><a class="toc-link" href="#study-2c72a3b251">12. 从回答框架到完整演算：八道大模型技术题</a><a class="toc-link" href="#study-670fedbe1c" style="padding-left:18px">12.1 手写 Multi-Head Attention：形状如何一步步变化</a><a class="toc-link" href="#study-000784b703" style="padding-left:18px">12.2 DPO：目标、梯度、completion mask</a><a class="toc-link" href="#study-1f384fa95c" style="padding-left:18px">12.3 MoE 通信开销：先算数据量再算时间</a><a class="toc-link" href="#study-40928fa33a" style="padding-left:18px">12.4 PagedAttention 与投机解码解决不同瓶颈</a><a class="toc-link" href="#study-cbd94bde85" style="padding-left:18px">12.5 DSpark 类题：如何解释接受率感知调度</a><a class="toc-link" href="#study-d41f1e53d0" style="padding-left:18px">12.6 KV Cache：MHA、GQA、MLA怎样计算</a><a class="toc-link" href="#study-a4a7a80bd5" style="padding-left:18px">12.7 多模态视觉原语：怎样定义训练目标</a><a class="toc-link" href="#study-687408371c" style="padding-left:18px">12.8 无辅助损失的负载均衡</a><a class="toc-link" href="#study-2b95a212ca">13. 九坤 AI Infra 六问：用测量回答性能</a><a class="toc-link" href="#study-a44ddd31b2" style="padding-left:18px">13.1 动态量化 vs 静态量化</a><a class="toc-link" href="#study-dbbf59587e" style="padding-left:18px">13.2 算子融合究竟省在哪里</a><a class="toc-link" href="#study-db46cb4a88" style="padding-left:18px">13.3 Shared Memory 与 Bank Conflict</a><a class="toc-link" href="#study-25eb0b07bb" style="padding-left:18px">13.4 slicing 会不会增加显存：沿对象与算子追踪</a><a class="toc-link" href="#study-9e54fd44b7" style="padding-left:18px">13.5 Nsight 指标：Memory Frequency 不等于带宽利用率</a><a class="toc-link" href="#study-a41267dfd8" style="padding-left:18px">13.6 为什么 QKV 一起 GEMM，而不三个 Stream</a><a class="toc-link" href="#study-8922ded46a">14. Agent 二十问：逐题给可落地的解答过程</a><a class="toc-link" href="#study-b24cb86d19" style="padding-left:18px">14.1 架构与为何选 Workflow Agent</a><a class="toc-link" href="#study-594a905a6d" style="padding-left:18px">14.2 产品解决什么问题</a><a class="toc-link" href="#study-5c698df6b3" style="padding-left:18px">14.3 通用还是垂直，竞争力是什么</a><a class="toc-link" href="#study-9d67c7750d" style="padding-left:18px">14.4 竞品比较如何避免空谈</a><a class="toc-link" href="#study-96e79f6ed0" style="padding-left:18px">14.5 个人职责如何说清</a><a class="toc-link" href="#study-7a18ca5e19" style="padding-left:18px">14.6 为什么从 Workflow 转 Agentic RL</a><a class="toc-link" href="#study-220df095cb" style="padding-left:18px">14.7 主模型、Memory、多模态如何选</a><a class="toc-link" href="#study-de850e9201" style="padding-left:18px">14.8 fallback、Embedding、Rerank 的权衡</a><a class="toc-link" href="#study-9636278338" style="padding-left:18px">14.9 小模型替换商业模型</a><a class="toc-link" href="#study-07c03fc48c" style="padding-left:18px">14.10 日历抽取为何只做SFT</a><a class="toc-link" href="#study-18e348395c" style="padding-left:18px">14.11 实体消歧怎样构造数据</a><a class="toc-link" href="#study-9a2661f74d" style="padding-left:18px">14.12 SFT后过度保守怎么诊断</a><a class="toc-link" href="#study-73e9479eac" style="padding-left:18px">14.13 为何继续DPO，偏好对怎样造</a><a class="toc-link" href="#study-79fb04e448" style="padding-left:18px">14.14 手写DPO要说明哪些变量</a><a class="toc-link" href="#study-67c0fff9ea" style="padding-left:18px">14.15 chosen loss与rejected loss同降</a><a class="toc-link" href="#study-1f34ce8f22" style="padding-left:18px">14.16 On-Policy Distillation怎样训练</a><a class="toc-link" href="#study-3998365dc5" style="padding-left:18px">14.17 OPD、传统KD、教师SFT区别</a><a class="toc-link" href="#study-78b6367dc1" style="padding-left:18px">14.18 API无logits怎么办</a><a class="toc-link" href="#study-4b1c6c0288" style="padding-left:18px">14.19 多Agent信用分配</a><a class="toc-link" href="#study-1d403445c5" style="padding-left:18px">14.20 论文方向与Agent岗位关系</a><a class="toc-link" href="#study-9e6b4ded75">15. Jump AI：如何把研究接到交易反馈</a></nav>
+<nav aria-label="全部章节" id="toc">
+<div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
+<div class="toc-group" data-phase="entry">
+<div class="toc-group-title">0. 入口与面试方法</div>
+<a class="toc-link" data-category="overview" href="001.html">01. 这份调研回答什么问题</a>
+<a class="toc-link" data-category="overview" href="003.html">03. 总体结论</a>
+<a class="toc-link" data-category="overview" href="004.html">04. 题目全景地图</a>
+<a class="toc-link" data-category="overview" href="030.html">30. 高频追问题 Top 15</a>
+<a class="toc-link" data-category="overview" href="031.html">31. 笔试题最常见的 6 种题型</a>
+<a class="toc-link" data-category="overview" href="032.html">32. 面试题最常见的 5 种追问方式</a>
+<a class="toc-link" data-category="overview" href="033.html">33. 回答大模型面试题的通用模板</a>
+<a class="toc-link" data-category="overview" href="034.html">34. 按岗位准备的建议</a>
+<a class="toc-link" data-category="overview" href="063.html">63. 一句话备考建议</a>
+</div>
+<div class="toc-group" data-phase="core-map">
+<div class="toc-group-title">1. 十个核心模块地图</div>
+<a class="toc-link" data-category="core" href="005.html">05. 一、基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="006.html">06. 二、Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="007.html">07. 三、预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="008.html">08. 四、SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="009.html">09. 五、推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="010.html">10. 六、RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="011.html">11. 七、Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="012.html">12. 八、评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="013.html">13. 九、多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="014.html">14. 十、系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-answers">
+<div class="toc-group-title">2. 核心题完整答案</div>
+<a class="toc-link" data-category="core" href="038.html">38. 模块一：基础与 Transformer 架构</a>
+<a class="toc-link" data-category="core" href="039.html">39. 模块二：Tokenizer、Embedding、位置编码与上下文窗口</a>
+<a class="toc-link" data-category="core" href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展</a>
+<a class="toc-link" data-category="core" href="041.html">41. 模块四：SFT、PEFT 与对齐训练</a>
+<a class="toc-link" data-category="engineering" href="042.html">42. 模块五：推理优化、Serving 与部署工程</a>
+<a class="toc-link" data-category="core" href="043.html">43. 模块六：RAG、检索、重排与知识增强</a>
+<a class="toc-link" data-category="core" href="044.html">44. 模块七：Agent、工具调用、工作流编排与协议</a>
+<a class="toc-link" data-category="core" href="045.html">45. 模块八：评测、幻觉、安全与可观测性</a>
+<a class="toc-link" data-category="core" href="046.html">46. 模块九：多模态（图文音视频）</a>
+<a class="toc-link" data-category="core" href="047.html">47. 模块十：系统设计、业务落地与成本权衡</a>
+</div>
+<div class="toc-group" data-phase="core-index">
+<div class="toc-group-title">3. 核心知识点索引</div>
+<a class="toc-link" data-category="answers" href="048.html">48. 核心 120 题知识点索引总入口</a>
+<a class="toc-link" data-category="answers" href="049.html">49. 模块一：基础与 Transformer 架构知识点</a>
+<a class="toc-link" data-category="answers" href="050.html">50. 模块二：Tokenizer、Embedding、位置编码与上下文窗口知识点</a>
+<a class="toc-link" data-category="answers" href="051.html">51. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展知识点</a>
+<a class="toc-link" data-category="answers" href="052.html">52. 模块四：SFT、PEFT 与对齐训练知识点</a>
+<a class="toc-link" data-category="answers" href="053.html">53. 模块五：推理优化、Serving 与部署工程知识点</a>
+<a class="toc-link" data-category="answers" href="054.html">54. 模块六：RAG、检索、重排与知识增强知识点</a>
+<a class="toc-link" data-category="answers" href="055.html">55. 模块七：Agent、工具调用、工作流编排与协议知识点</a>
+<a class="toc-link" data-category="answers" href="056.html">56. 模块八：评测、幻觉、安全与可观测性知识点</a>
+<a class="toc-link" data-category="answers" href="057.html">57. 模块九：多模态（图文音视频）知识点</a>
+<a class="toc-link" data-category="answers" href="058.html">58. 模块十：系统设计、业务落地与成本权衡知识点</a>
+</div>
+<div class="toc-group" data-phase="architecture-compute">
+<div class="toc-group-title">4. 架构、位置编码、算力与手撕代码</div>
+<a class="toc-link" data-category="core" href="015.html">15. 十一、模型架构专项题库</a>
+<a class="toc-link" data-category="core" href="021.html">21. 十五、最新架构面试最爱怎么问</a>
+<a class="toc-link" data-category="core" href="016.html">16. 十二、RoPE 与位置编码专项题库</a>
+<a class="toc-link" data-category="core" href="084.html">84. 长上下文外推技术专项强化题库（第十四批：PI、NTK-aware、YaRN、LongRoPE）</a>
+<a class="toc-link" data-category="engineering" href="017.html">17. 十三、参数量估算、复杂度与算力题专项</a>
+<a class="toc-link" data-category="engineering" href="018.html">18. 十三点五、参数量计算深度解析（新增：完整推导与复杂场景）</a>
+<a class="toc-link" data-category="engineering" href="022.html">22. 十六、参数量、显存与复杂度快算口诀</a>
+<a class="toc-link" data-category="engineering" href="019.html">19. 十四、手撕代码题专项</a>
+<a class="toc-link" data-category="engineering" href="020.html">20. 十四点五、手撕代码完整参考实现（新增）</a>
+<a class="toc-link" data-category="engineering" href="023.html">23. 十七、手撕代码专项的复习顺序</a>
+</div>
+<div class="toc-group" data-phase="systems">
+<div class="toc-group-title">5. 训练、推理与系统工程</div>
+<a class="toc-link" data-category="engineering" href="024.html">24. 十八、分布式训练、并行策略与显存优化专项题库</a>
+<a class="toc-link" data-category="engineering" href="028.html">28. 十八点五、ZeRO 与 3D 并行深度解析（新增：显存定量分析与组合策略）</a>
+<a class="toc-link" data-category="answers" href="029.html">29. 分布式与系统标准答案</a>
+<a class="toc-link" data-category="answers" href="025.html">25. 训练系统标准答案速查</a>
+<a class="toc-link" data-category="engineering" href="026.html">26. 训练系统长答案模板</a>
+<a class="toc-link" data-category="engineering" href="027.html">27. 训练系统备考顺序</a>
+<a class="toc-link" data-category="engineering" href="088.html">88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a>
+<a class="toc-link current" data-category="engineering" href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析）</a>
+</div>
+<div class="toc-group" data-phase="reasoning">
+<div class="toc-group-title">6. 数学、优化器、RL 与 Reasoning</div>
+<a class="toc-link" data-category="reasoning" href="072.html">72. 数学基础专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="073.html">73. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="074.html">74. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="075.html">75. 三、高阶追问补强（第二组 20 题）</a>
+<a class="toc-link" data-category="reasoning" href="076.html">76. 四、高频高阶问题速览</a>
+<a class="toc-link" data-category="answers" href="077.html">77. 五、逐题详细解答（高阶补强）</a>
+<a class="toc-link" data-category="reasoning" href="068.html">68. 优化器专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="069.html">69. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="070.html">70. 二、逐题详细解答</a>
+<a class="toc-link" data-category="reasoning" href="071.html">71. 优化器深度解析附录（新增：设计动机、数学推导与系统对比）</a>
+<a class="toc-link" data-category="reasoning" href="065.html">65. RL 算法专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="066.html">66. 一、PPO 与 RLHF 高频题</a>
+<a class="toc-link" data-category="reasoning" href="067.html">67. 二、GRPO 与偏好优化高频题</a>
+<a class="toc-link" data-category="reasoning" href="078.html">78. Reasoning 后训练专项总入口</a>
+<a class="toc-link" data-category="reasoning" href="079.html">79. 一、高频问题速览</a>
+<a class="toc-link" data-category="answers" href="080.html">80. 二、逐题详细解答</a>
+</div>
+<div class="toc-group" data-phase="frontier">
+<div class="toc-group-title">7. 多模态、Agent 协议、合成数据与代码模型</div>
+<a class="toc-link" data-category="frontier" href="082.html">82. VLM 与多模态大模型专项强化题库（第十二批：视觉语言模型架构、对齐与任务设计）</a>
+<a class="toc-link" data-category="frontier" href="087.html">87. 音频/视频大模型专项强化题库（第十七批：Audio LLM、Video Understanding、VLA）</a>
+<a class="toc-link" data-category="frontier" href="083.html">83. 模型压缩与轻量化专项强化题库（第十三批：剪枝、稀疏化与知识蒸馏）</a>
+<a class="toc-link" data-category="frontier" href="086.html">86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a>
+<a class="toc-link" data-category="frontier" href="085.html">85. MCP / A2A / Tool Schema 专项强化题库（第十五批：Agent 协议与工具调用设计）</a>
+<a class="toc-link" data-category="frontier" href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程）</a>
+</div>
+<div class="toc-group" data-phase="appendix">
+<div class="toc-group-title">8. 系统基础、DeepSeek、速查与来源附录</div>
+<a class="toc-link" data-category="engineering" href="059.html">59. 操作系统基础题库总入口</a>
+<a class="toc-link" data-category="engineering" href="060.html">60. 一、操作系统高频笔试题</a>
+<a class="toc-link" data-category="engineering" href="061.html">61. 二、操作系统高频面试题</a>
+<a class="toc-link" data-category="overview" href="064.html">64. DeepSeek 专项调研：笔试、面试、面经与经验贴</a>
+<a class="toc-link" data-category="reference" href="035.html">35. 历史速查：高频标准答案</a>
+<a class="toc-link" data-category="reference" href="036.html">36. 历史速查：训练/推理/底层工程</a>
+<a class="toc-link" data-category="reference" href="037.html">37. 核心十模块完整答案总入口</a>
+<a class="toc-link" data-category="reference" href="062.html">62. 专项遗漏问题补答区（第七批：架构、RoPE、复杂度与训练系统）</a>
+<a class="toc-link" data-category="reference" href="081.html">81. 参考入口</a>
+<a class="toc-link" data-category="reference" href="002.html">02. 信息来源与作用</a>
+</div>
+<div class="toc-group" data-phase="company"><div class="toc-group-title">公司原题</div><a class="toc-link current" data-category="frontier" href="091.html">091. 九坤 Agent 大模型面经：架构、SFT、DPO 与 OPD</a></div></nav>
+</aside>
+<main class="content">
+<article class="chapter-page"><section class="chapter" data-category="frontier" data-title="九坤 Agent 大模型面经：架构、SFT、DPO 与 OPD"><h2 id="top"><a aria-label="跳转到本节" class="anchor-link" href="#top">#</a>091. 九坤 Agent 大模型面经：架构、SFT、DPO 与 OPD</h2><aside class="chapter-orientation"><b>阅读定位</b><p>九坤公开 Agent 实习面经的 20 道题解：前半是 Agent 产品与系统，后半是实体消歧、SFT、DPO、On-Policy Distillation 和多智能体强化学习。</p></aside><aside class="next-step"><b>下一步建议</b><p>模型基础见 <a href="005.html">Transformer</a>、<a href="008.html">SFT/对齐</a>、<a href="011.html">Agent</a>；本章只把九坤公开题目放回实际面试语境。</p></aside>
+<blockquote>
+<p>本页对应“量化公司内部主要做大模型”的岗位，不与传统 QR 的概率/因子题混在一起。核心题源是九坤大模型 Agent 应用实习一面的 5 张公开配图；20 道题已逐张核对。Jump AI team 只补充有候选人证据的流程和研究落地追问。</p>
+</blockquote>
+<p><span class="tag">九坤 Agent</span><span class="tag">LLM 后训练</span><span class="tag">DPO / OPD</span><span class="tag">多智能体 RL</span></p>
+<h2 id="1-先分清两条赛道">1. 先分清两条赛道</h2>
+<table>
+<thead>
+<tr>
+<th>赛道</th>
+<th>产出</th>
+<th>面试主轴</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>用大模型做量化</td>
+<td>文本/事件信号、Agent 投研流程、交易或组合决策</td>
+<td>金融数据闭环、无泄漏评估、策略增量、成本与风险</td>
+</tr>
+<tr>
+<td>量化公司的大模型团队</td>
+<td>通用/垂直 Agent、后训练、预训练数据、模型/系统</td>
+<td>模型与数据机制、训练目标、系统权衡、开放研究能力</td>
+</tr>
+</tbody>
+</table>
+<p>本次九坤 Agent 面经虽发生在量化公司，但 20 题中大部分是产品 Agent 与后训练机制，明显偏第二条；只有“业务价值、Agentic RL、信用分配”处开始与真实应用闭环连接。</p>
+<h2 id="2-面试全貌">2. 面试全貌</h2>
+<p>候选人总结：开放讨论和项目深挖为主，没有手撕代码；主要考 Agent 产品理解、模型选型与后训练基础。前半偏产品/架构，后半集中追问简历里的 SFT、DPO、On-Policy Distillation。</p>
+<p>下面保留原题顺序，答案按可口述方式展开。</p>
+<h2 id="3-agent-产品与架构-题-1-9">3. Agent 产品与架构：题 1–9</h2>
+<h3 id="3-1-你了解哪些常见-agent-架构-项目为什么选择-workflow-agent">3.1 你了解哪些常见 Agent 架构？项目为什么选择 Workflow Agent？</h3>
+<p>常见形态可按控制权划分：</p>
+<ul>
+<li><strong>Workflow / graph</strong>：流程由人预定义，模型在节点内做分类、抽取、生成或路由；</li>
+<li><strong>ReAct / tool-use loop</strong>：模型在观察—思考—行动循环中自主选工具；</li>
+<li><strong>Planner–Executor</strong>：规划器分解任务，执行器逐步完成并反馈；</li>
+<li><strong>Multi-agent</strong>：不同角色协作、辩论或交叉验证；</li>
+<li><strong>Memory-augmented</strong>：额外维护情节、语义或程序记忆；</li>
+<li><strong>Agentic RL</strong>：让策略在交互轨迹上由奖励学习决策，而非只靠提示词编排。</li>
+</ul>
+<p>选择 Workflow Agent 的合理理由：任务边界稳定、步骤可枚举、合规和可审计要求高、失败成本高，且希望对延迟与调用成本做确定预算。它牺牲部分开放探索能力，换来可控性、可测性和故障定位。</p>
+<p>高分答案还要说明“什么时候不该用”：如果任务空间开放、工具选择和步骤数无法预定义，Workflow 会产生大量 brittle branches，应转向 planner/executor 或混合架构。</p>
+<h3 id="3-2-为什么做这个-agent-产品-主要解决什么问题">3.2 为什么做这个 Agent 产品？主要解决什么问题？</h3>
+<p>不要回答“因为 Agent 很火”。用四层闭环：</p>
+<ol>
+<li>用户原来如何完成任务，瓶颈在时间、准确率还是协作成本；</li>
+<li>Agent 替代的是哪个决策/操作环节；</li>
+<li>为什么普通检索、规则或单轮 LLM 不够；</li>
+<li>用任务成功率、人工接管率、端到端时延、单位任务成本与严重错误率衡量。</li>
+</ol>
+<p>面试官要确认产品是不是“套壳聊天机器人”，以及你是否有真实失败样本。</p>
+<h3 id="3-3-通用-agent-还是垂直-agent-核心竞争力是什么">3.3 通用 Agent 还是垂直 Agent？核心竞争力是什么？</h3>
+<p>通用 Agent 追求跨任务迁移，难点是长尾工具、稳定性与成本；垂直 Agent 用领域数据、工具、评价器和流程约束换更高可靠性。</p>
+<p>核心竞争力通常不只是模型权重，而是：独占/高质量交互数据、领域环境和工具接入、可自动验证的奖励、故障恢复机制、持续评测与数据飞轮。模型可替换，闭环数据和执行系统更难复制。</p>
+<h3 id="3-4-主要竞品有哪些-相比竞品有什么优势">3.4 主要竞品有哪些？相比竞品有什么优势？</h3>
+<p>先定义竞品层级：人工流程、规则系统、单轮大模型、同类 Agent、平台型 Agent。比较维度应是同一任务上的成功率、严重错误、人工接管、p95 时延、成本、权限/审计，而非罗列品牌。</p>
+<p>如果没有真实 benchmark，应说“目前只验证了 A/B 两种基线，不能声称全面领先”，再给出下一轮公平比较方案。</p>
+<h3 id="3-5-你在整个-agent-项目中负责什么-与其他模块如何协作">3.5 你在整个 Agent 项目中负责什么？与其他模块如何协作？</h3>
+<p>按接口而非名词回答：输入/输出 schema、你拥有的指标、上下游 SLA、失败如何回传。举例：我负责实体解析与路由，输入是用户请求和上下文，输出是标准实体与置信度；低置信度进入 clarification，上游提示词版本和下游工具错误都进入同一 trace 以便归因。</p>
+<h3 id="3-6-为什么想从-workflow-agent-进一步转向-agentic-rl">3.6 为什么想从 Workflow Agent 进一步转向 Agentic RL？</h3>
+<p>合理动机是 Workflow 在长程、开放状态下规则爆炸，局部最优提示无法优化最终任务成功。Agentic RL 能直接对轨迹级目标优化策略选择、工具顺序和恢复行为。</p>
+<p>但必须先满足：可交互环境、可重复 reset、可信 reward/verifier、成本可控、离线/在线安全约束。否则 RL 只会放大奖励漏洞。一个稳妥迁移路径是先收集 Workflow 轨迹做行为克隆/SFT，再做离线偏好或 outcome RL，最后在沙盒中小流量 on-policy。</p>
+<h3 id="3-7-agent-主模型-memory-模型和多模态模型分别如何选型">3.7 Agent 主模型、Memory 模型和多模态模型分别如何选型？</h3>
+<p>不要一律选最大模型。</p>
+<ul>
+<li>主模型：工具调用准确率、长程规划、结构化输出、可控性；</li>
+<li>Memory：embedding 的召回、领域覆盖、时间/实体敏感性，reranker 的排序质量；</li>
+<li>多模态：目标视觉/音频任务的真实 benchmark、输入分辨率、时延和 token 成本；</li>
+<li>系统层：上下文长度、并发、吞吐、部署方式、数据合规和 vendor lock-in。</li>
+</ul>
+<p>用级联路由：小模型处理高频确定任务，复杂/低置信样本升级大模型。</p>
+<h3 id="3-8-系统是否有-fallback-embedding-和-rerank-如何平衡效果-延迟与成本">3.8 系统是否有 fallback、Embedding 和 Rerank？如何平衡效果、延迟与成本？</h3>
+<p>一个成熟链路：query rewrite → embedding recall → metadata/filter → rerank → context packing → generation → verifier/fallback。</p>
+<p>关键不是模块越多越好，而是测每层边际收益：Recall@k、NDCG/MRR、最终任务成功率，以及 p50/p95 时延与成本。可以按置信度跳过 rerank、动态调整 k、缓存稳定查询；fallback 包括模型降级、规则兜底、澄清提问和人工接管。高风险场景优先正确性，低风险高频场景优先成本。</p>
+<h3 id="3-9-为什么用后训练小模型替换商业大模型">3.9 为什么用后训练小模型替换商业大模型？</h3>
+<p>成立的条件：任务分布窄且稳定、可以收集高质量标签/偏好、需要更低成本/延迟或本地合规。总成本要包括训练、评测、部署、漂移维护，不是只比较单次 token 价格。</p>
+<p>替换策略应是分层而非一次性：蒸馏/后训练小模型覆盖 easy cases，置信度或 verifier 失败时升级商业模型。验收看任务成功率和严重错误，不只看离线 loss。</p>
+<h2 id="4-sft-与实体消歧-题-10-12">4. SFT 与实体消歧：题 10–12</h2>
+<h3 id="4-1-介绍日历信息抽取任务-以及为什么只用-sft">4.1 介绍日历信息抽取任务，以及为什么只用 SFT</h3>
+<p>任务可定义为：输入自然语言请求及当前日期/时区/联系人上下文，输出结构化事件 JSON，例如 title、start/end、timezone、participants、recurrence、location、confidence。</p>
+<p>只用 SFT 的理由：输出有明确 gold schema，主要学习语义映射和格式遵循；高质量监督数据足够，错误可逐字段评估，尚不需要通过偏好或长程奖励解决。如果存在多解、澄清策略或执行后反馈，才考虑 preference/RL。</p>
+<h3 id="4-2-实体消歧任务的输入-输出和数据集怎样设计">4.2 实体消歧任务的输入、输出和数据集怎样设计？</h3>
+<p>输入：mention、局部上下文、候选实体及属性、用户/时间上下文。输出：实体 ID 或 NIL、置信度、必要时证据跨度。</p>
+<p>数据必须包含 hard negatives（同名、别名、同领域相似实体）、长尾/NIL、时间变化和真实线上歧义；按实体或时间切分，避免同一实体模板泄漏到验证集。评价用 accuracy/F1、Recall@k、NIL 检测、校准与严重误链率。</p>
+<h3 id="4-3-为什么实体消歧模型-sft-后仍过于保守">4.3 为什么实体消歧模型 SFT 后仍过于保守？</h3>
+<p>可能原因：NIL/拒答样本比例过高、错误链接惩罚远大于漏链、训练分布 hard negative 过强、解码阈值或系统提示偏保守、teacher 自身拒答偏置、置信度未校准。</p>
+<p>排查顺序：分解 link/NIL 混淆矩阵 → 看不同置信区间校准 → 检查采样和 loss 权重 → 区分模型概率与外部阈值 → 在固定 precision 下比较 recall。</p>
+<h2 id="5-dpo-题-13-15">5. DPO：题 13–15</h2>
+<h3 id="5-1-为什么-sft-后继续-dpo-dpo-数据如何构造">5.1 为什么 SFT 后继续 DPO？DPO 数据如何构造？</h3>
+<p>SFT 学“像示范”，但不能直接表达同一 prompt 下多个可接受输出的相对偏好。DPO 用 $(x,y_w,y_l)$：prompt、chosen、rejected。数据可来自人工 pairwise、规则/verifier 排序、线上成功/失败轨迹或多模型采样；要控制长度、格式等捷径，避免 chosen 仅因为更长被偏好。</p>
+<h3 id="5-2-写出-dpo-loss-解释-chosen-rejected-reference-model-与-β">5.2 写出 DPO loss，解释 chosen、rejected、reference model 与 β</h3>
+<p>$$\mathcal L_{DPO}=-\mathbb E\log\sigma\left(\beta\left[\log\frac{\pi_\theta(y_w|x)}{\pi_{ref}(y_w|x)}-\log\frac{\pi_\theta(y_l|x)}{\pi_{ref}(y_l|x)}\right]\right).$$</p>
+<ul>
+<li>chosen $y_w$：偏好输出；rejected $y_l$：较差输出；</li>
+<li>reference：通常是 SFT checkpoint，锚定策略，避免无约束漂移；</li>
+<li>$\beta$：控制相对 reference 的偏好强度/隐含 KL 权衡。实践中只对 completion token 累加 log-prob，并正确 mask padding。</li>
+</ul>
+<h3 id="5-3-chosen-loss-和-rejected-loss-同时下降-如何分析">5.3 chosen loss 和 rejected loss 同时下降，如何分析？</h3>
+<p>先澄清这里是 token NLL 还是 DPO pair loss。若 chosen/rejected 的 NLL 都下降，模型可能同时提高两者概率，只是从其他输出拿走质量；DPO 真正关心的是相对 margin 是否增大：</p>
+<p>$$m=(\log\pi_\theta(y_w)-\log\pi_{ref}(y_w))-(\log\pi_\theta(y_l)-\log\pi_{ref}(y_l)).$$</p>
+<p>检查 preference accuracy、margin 分布、隐含 KL、长度分桶和 held-out pair；若 rejected 也显著变好但 margin 不增，训练没有学到偏好。还要检查符号、label 反转、prompt mask、reference 是否冻结和 chosen/rejected 是否近重复。</p>
+<h2 id="6-on-policy-distillation-题-16-18">6. On-Policy Distillation：题 16–18</h2>
+<h3 id="6-1-什么是-on-policy-distillation-训练流程是什么">6.1 什么是 On-Policy Distillation？训练流程是什么？</h3>
+<p>核心是让 student 在<strong>自己的当前策略分布</strong>上产生轨迹，再由 teacher 对这些 student-visited states 提供 token 分布、动作建议或评价，student 随即更新。循环为：student rollout → teacher annotate/soft target → distillation update → 新 student rollout。</p>
+<p>它缓解传统离线蒸馏的分布错配：student 真正犯错的状态会进入训练，而不是永远模仿 teacher 自己生成的理想轨迹。</p>
+<h3 id="6-2-opd-与传统知识蒸馏-teacher-生成数据做-sft-有什么区别">6.2 OPD 与传统知识蒸馏、Teacher 生成数据做 SFT 有什么区别？</h3>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>训练状态来自谁</th>
+<th>监督信号</th>
+<th>主要风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>离线 KD</td>
+<td>固定数据/teacher 分布</td>
+<td>teacher logits/soft labels</td>
+<td>student 部署分布错配</td>
+</tr>
+<tr>
+<td>Teacher SFT</td>
+<td>teacher 完整输出</td>
+<td>hard token target</td>
+<td>丢失暗知识；暴露偏差</td>
+</tr>
+<tr>
+<td>OPD</td>
+<td>student 当前策略</td>
+<td>teacher 对 student 状态的 soft/hard 反馈</td>
+<td>在线调用贵、不稳定、teacher 纠错边界</td>
+</tr>
+</tbody>
+</table>
+<p>OPD 与 DAgger 思想相近：针对 learner 实际访问状态不断补监督。</p>
+<h3 id="6-3-商业模型-api-不提供-logits-还能否做标准-opd-替代方案">6.3 商业模型 API 不提供 logits，还能否做标准 OPD？替代方案？</h3>
+<p>不能做严格的 token-level KL 蒸馏，因为缺 teacher 全分布。但可做：</p>
+<ul>
+<li>sequence-level distillation：teacher 生成/改写 student 轨迹，SFT；</li>
+<li>pairwise preference：teacher 对多个候选排序，DPO/IPO；</li>
+<li>scalar/process reward：teacher 评分，做 rejection sampling 或 RL；</li>
+<li>top-k/logprob（若 API 局部提供）近似 KL；</li>
+<li>verifier-based self-training：用可执行结果筛选。</li>
+</ul>
+<p>必须说明 API judge 会有偏置、位置偏好和自偏好，需要少量人工 gold 校准。</p>
+<h2 id="7-多智能体-rl-与研究方向-题-19-20">7. 多智能体 RL 与研究方向：题 19–20</h2>
+<h3 id="7-1-多智能体强化学习中的信用分配是什么-为什么要分配全局奖励">7.1 多智能体强化学习中的信用分配是什么？为什么要分配全局奖励？</h3>
+<p>团队只得到最终全局奖励时，很难判断哪个 agent 的哪个动作产生贡献，导致高方差、搭便车和错误归因。方法包括：</p>
+<ul>
+<li>centralized critic / CTDE；</li>
+<li>difference reward：比较有/无某 agent 行为的反事实；</li>
+<li>COMA counterfactual advantage；</li>
+<li>value decomposition（VDN/QMIX）；</li>
+<li>step/process reward 或可验证子目标；</li>
+<li>因果/贡献估计，但要防 reward hacking。</li>
+</ul>
+<p>全局奖励保证优化团队目标；局部 shaping 改善学习信号。若只给局部奖励，agent 可能各自最优但整体失败。</p>
+<h3 id="7-2-为什么选择当前论文方向-实验室方向与-agent-岗有什么关系">7.2 为什么选择当前论文方向？实验室方向与 Agent 岗有什么关系？</h3>
+<p>回答必须有因果链：研究问题解决了 Agent 系统的哪个瓶颈 → 你具体掌握了什么机制/实验能力 → 如何在岗位里形成最小验证。不要把“都是 AI”当关联。</p>
+<p>例如做偏好优化：可迁移的是数据对构造、reward misspecification、策略漂移与评测，而不是声称已经做过长程 Agent RL。明确可迁移与缺口，可信度更高。</p>
+<h2 id="8-jump-ai-team-公开流程与唯一高频追问">8. Jump AI team：公开流程与唯一高频追问</h2>
+<p>公开候选人流程：HR → CV 电话 → 约 3 周 take-home → 项目讨论 → 终面 3 技术 + 1 文化；中央 AI team 公开负责人包含 LLM R&amp;D 与 ML Engineering。可核的关键追问是：<strong>“How would you apply your research to trading?”</strong></p>
+<p>回答不要硬贴金融名词。先抽象你的研究带来的能力（更稳的长程规划、更低成本推理、更可靠 verifier），再选交易研究链路中的具体环节，定义输入/输出、离线 benchmark、泄漏边界、上线反馈和失败成本。若没有证据，只提出最小实验，不声称能产生 alpha。</p>
+<h2 id="9-面试验收清单">9. 面试验收清单</h2>
+<ul>
+<li>能白板推导 DPO loss，并解释 reference 和 β；</li>
+<li>能区分 NLL 同降与 preference margin；</li>
+<li>能画出 OPD 数据流并解释 distribution shift；</li>
+<li>能给无 logits API 的三种替代监督；</li>
+<li>能把 Agent 选型落到任务成功率、严重错误、p95 延迟和成本；</li>
+<li>能明确 Workflow → Agentic RL 的前置条件，不把 RL 当万能升级；</li>
+<li>能说清自己项目接口、个人贡献和失败样本。</li>
+</ul>
+<h2 id="10-来源与证据边界">10. 来源与证据边界</h2>
+<ul>
+<li><a href="https://www.xiaohongshu.com/explore/6a523ec7000000000f007c2c">九坤大模型 Agent 应用实习生一面（小红书）</a>：20 题来自公开配图逐张读取；正文称开放讨论与项目深挖为主。</li>
+<li>Jump AI team：公司 AI/ML 官方页面、Glassdoor/Blind 候选人流程。公开材料主要是流程与研究落地追问，没有泄露 take-home 完整题。</li>
+<li>本文的“答案”是机制级答题框架，不代表候选人原答，也不暗示这些题会重复使用。</li>
+</ul>
+<h2 id="11-我的判断">11. 我的判断</h2>
+<p>这 20 题的结构很有辨识度：前半验证候选人是不是只会拼 Agent 框架，后半用 DPO/OPD 追问判断是否真正做过训练。最难的不是背 loss，而是把产品选择、训练分布和反馈闭环连起来：为什么 Workflow 到了瓶颈、为什么 SFT 让模型保守、为什么 preference margin 比两个 NLL 更重要、为什么没有 logits 就不能假装做标准 KD。这个岗位要的是能在系统层和训练层来回走的人，而非单纯的 Prompt Engineer。</p>
+<div id="new-explanations"></div><h2 id="study-2c72a3b251">12. 从回答框架到完整演算：八道大模型技术题</h2>
+<p>本节是针对原指南列出技术主题的独立教学解答。第三方面经是否真实来自某公司仍未独立确认，不能因为题目技术上成立就称“已核实原卷”。先掌握可运行的基础版本，再回答性能追问。</p>
+<h3 id="study-670fedbe1c">12.1 手写 Multi-Head Attention：形状如何一步步变化</h3>
+<p>输入X为[B,T,D]，H个头，d=D/H。先做线性投影Q、K、V各为[B,T,D]；reshape为[B,T,H,d]后交换T和H得到[B,H,T,d]。QKᵀ得到[B,H,T,T]，每一行是一个query对所有key的相关分数。除√d是因为独立单位方差分量的点积方差约d，让logit量级随头维度稳定。</p>
+<p>因果mask将j&gt;i的位置设−∞，softmax沿最后一维归一化；再乘V得到[B,H,T,d]，拼头回[B,T,D]，最后输出投影Wₒ。softmax应内部减行最大值；全被mask的行会产生NaN，padding须单独处理或确保每行至少一个合法key。</p>
+<pre><code class="language-python">import math
+import torch
+from torch import nn
+
+class CausalMHA(nn.Module):
+    # 教学版：输入不含padding，至少一个token，无KV cache。
+    def __init__(self, dim, heads):
+        super().__init__()
+        if dim &lt;= 0 or heads &lt;= 0 or dim % heads:
+            raise ValueError("positive dim divisible by positive heads required")
+        self.heads = heads
+        self.qkv = nn.Linear(dim, 3 * dim)
+        self.out = nn.Linear(dim, dim)
+
+    def forward(self, x):
+        b, t, d = x.shape
+        if t == 0:
+            raise ValueError("nonempty sequence required")
+        q, k, v = self.qkv(x).chunk(3, dim=-1)
+        q, k, v = [z.reshape(b, t, self.heads, d // self.heads)
+                    .transpose(1, 2) for z in (q, k, v)]
+        scores = (q @ k.transpose(-1, -2)).float() / math.sqrt(d // self.heads)
+        future = torch.ones(t, t, device=x.device, dtype=torch.bool).triu(1)
+        scores = scores.masked_fill(future, float("-inf"))
+        weights = scores.softmax(dim=-1).to(v.dtype)
+        y = (weights @ v).transpose(1, 2).contiguous().reshape(b, t, d)
+        return self.out(y)
+</code></pre>
+<p>B=2、T=4、D=8、H=2时，scores为[2,2,4,4]。测试不能只检查输出shape：改变第4个token，前3个输出应不变；与相同权重的参考attention结果比对；检查反向梯度有限。基础版显式分数内存O(BHT²)，QK/AV计算O(BT²D)。FlashAttention通过分块和在线softmax减少HBM读写，不是把数学attention近似成线性复杂度。GQA减少KV头数，Q头仍保留；RoPE在Q、K上注入位置相关旋转，不等于额外一份V位置向量。</p>
+
+<h3 id="study-000784b703">12.2 DPO：目标、梯度、completion mask</h3>
+<p>记同一prompt下chosen、rejected的策略序列对数概率为ℓw、ℓl，参考模型为ℓw⁰、ℓl⁰。令$m=(\ell_w-\ell_l)-(\ell_w^0-\ell_l^0)$，DPO损失$L=-\log\sigma(\beta m)$。偏好概率来自奖励差模型，KL约束最优策略关系将奖励差改写为策略相对参考模型的log比差；同prompt常数抵消。<a href="https://arxiv.org/html/2305.18290v2">原论文</a>。</p>
+<p><strong>亲自算一次。</strong> ℓw=−2、ℓl=−4、ℓw⁰=−3、ℓl⁰=−4，m=1，β=0.1，则L≈0.644397。对ℓw的导数为−βσ(−βm)≈−0.04750，对ℓl相反。梯度下降倾向提高chosen相对rejected的概率；共享参数使实际序列概率变化互相耦合。</p>
+<pre><code class="language-python">import torch.nn.functional as F
+
+def dpo_loss(policy_chosen, policy_rejected, ref_chosen, ref_rejected, beta=0.1):
+    margin = (policy_chosen - policy_rejected) - (ref_chosen - ref_rejected)
+    return -F.logsigmoid(beta * margin).mean()
+</code></pre>
+<p>输入应为每条completion的<strong>token logprob之和</strong>，prompt和padding不计；预测位置要把logits与下一token标签对齐，reference冻结。按长度取平均是不同目标，不能偷偷替换。β既改变相对reference约束含义也缩放梯度，不能机械解释成“越大越偏好chosen”。</p>
+<h3 id="study-1f384fa95c">12.3 MoE 通信开销：先算数据量再算时间</h3>
+<p>设一次路由N个token，隐层D，top-k专家，激活每元素b字节。每个token复制到k个专家，dispatch有效载荷约NkDb，combine返回同量，合计<strong>2NkDb</strong>；这是全局逻辑payload，跨设备比例为f时跨设备约2fNkDb，未计索引、权重、padding与协议。不要同时把发送和接收再算一遍，除非明确统计的是收发总计数器。</p>
+<p>练习N=4096、D=4096、k=2、b=2：单向64MiB，往返128MiB。均匀路由到E个专家，每专家均值Nk/E；capacity factor c意味着预留约ceil(cNk/E)容量。负载偏斜会出现尾部专家拖慢整轮、token drop或padding浪费。</p>
+<p>时间下界用跨设备字节/有效带宽，再加集体通信启动延迟，真实值取决于拓扑、rank数量、重叠和最慢rank。要比较不同方案须统一batch、top-k、专家数与硬件，不可只数FLOPs判断MoE一定便宜。</p>
+<h3 id="study-40928fa33a">12.4 PagedAttention 与投机解码解决不同瓶颈</h3>
+<p>PagedAttention将逻辑连续的KV序列映射到物理块，按需分配并可共享前缀，减少预留和碎片浪费；attention kernel通过块表读取。它不会让每token理论KV元素数消失，收益来自更有效的内存管理和服务调度。<a href="https://arxiv.org/abs/2309.06180">PagedAttention论文</a>。</p>
+<p>投机解码让便宜草稿模型q先提出多个token，再由目标p批量验证。随机采样版对提案x以min(1,p(x)/q(x))接受；拒绝后从归一化的正部[p−q]₊重采样，从而恢复目标分布。必须使用同一前缀下、应用相同采样变换后的分布；只检查argmax相同属于贪心验证，不能替代随机采样证明。<a href="https://arxiv.org/html/2211.17192v2">原算法</a>。</p>
+<p>例p=(0.6,0.4)，q=(0.8,0.2)：提A接受0.75，提B接受1；拒绝只发生在A，剩余质量全给B，最终A概率0.8×0.75=0.6，B为0.2+0.2=0.4。工程还要回滚被拒前缀后的KV和草稿状态。</p>
+<h3 id="study-cbd94bde85">12.5 DSpark 类题：如何解释接受率感知调度</h3>
+<p>公开材料将DSpark描述为半自回归草稿与置信调度，具体机制应以<a href="https://arxiv.org/abs/2607.05147">论文</a>和所用实现为准，旧指南没有给出题目的模型配置。</p>
+<p><strong>可迁移的成本分析。</strong> 长度γ的草稿若各步条件接受率近似α，期望接受的草稿数为$\sum_{j=1}^{\gamma}\alpha^j$；加额外目标token需视验证算法而定。提长草稿会增加验证工作，但后部存活概率αʲ下降。比较单位时间有效token：$E[\text{本轮输出长度}]/(t_\text{draft}+t_\text{verify}+t_\text{sync})$。</p>
+<p>例如α=0.5、γ从4增到8，期望接受数只由0.9375增到0.9961，额外四个候选价值很小。半自回归减少草稿串行依赖，仍要看目标batch、验证吞吐和接受率变化。验收同时报告接受长度分布、端到端tokens/s、尾延迟与输出分布一致性，不能把草稿器更快等同整体更快。</p>
+<h3 id="study-d41f1e53d0">12.6 KV Cache：MHA、GQA、MLA怎样计算</h3>
+<p>常规每层每token保存K与V，各Hkv个头、头维d，L层、batch B、长度T、每元素b字节：$M=2LBTH_{kv}db$。例L=32、B=1、T=4096、Hkv=32、d=128、b=2，约<strong>2GiB</strong>。换成Hkv=8的GQA约0.5GiB，其他条件相同。</p>
+<p>MLA把可共享的KV内容压到latent维r，并另外保留位置相关部分；常见估算$M\approx LBT(r+d_\text{rope})b$，具体以缓存实现为准。并非简单“把所有KV投影小再每步还原”，高效实现会利用权重吸收避免重复物化大KV。<a href="https://arxiv.org/abs/2405.04434">DeepSeek-V2</a>。</p>
+<p>例同样L、T、b，r=512、drope=64，估约144MiB。还应加块表、量化scale、padding和分配碎片。低比特KV引入量化误差；减少保留token会改变可用上下文，不能与精确存储布局优化混为一类。</p>
+<h3 id="study-a4a7a80bd5">12.7 多模态视觉原语：怎样定义训练目标</h3>
+<p>以“找出图中红杯”为自拟练习，输出先有类型token BOX，再给归一化(x₁,y₁,x₂,y₂)，可跟类别与置信度；point用(x,y)，mask可用编码序列或独立解码头。统一序列并不意味着所有输出都应只用同一个交叉熵。</p>
+<p>离散坐标可量化成0～Q−1做CE，连续坐标可用L1＋IoU类损失，mask用逐像素BCE与Dice等；总目标$L=\lambda_tL_\text{text}+\lambda_bL_\text{box}+\lambda_mL_\text{mask}$，对没有相应标注的样本mask掉损失。坐标增强须同步变换标签，例如水平翻转后x₁'=1−x₂、x₂'=1−x₁。</p>
+<p>测试应包含越界框、x₁&gt;x₂、空目标、多对象排序和文本实体对应关系。只报告文本token准确率可能掩盖位置完全错误；分别报告定位和语义指标，再看端到端任务成功率。</p>
+<h3 id="study-687408371c">12.8 无辅助损失的负载均衡</h3>
+<p>router给token对专家的亲和分数sᵢ，选专家时加入可调整bias bᵢ；过载专家降低bias，欠载专家提高bias。这样改变离散top-k选择机会，而不是把负载均衡项直接加到主任务loss里。<a href="https://arxiv.org/abs/2408.15664">方法论文</a>。</p>
+<p>练习四专家理想各25次，实测[40,30,20,10]，则前两者bias下调，后两者上调，再观察下一批负载；步长过大会振荡，太小跟踪慢。需区分“用于选择的偏置分数”和“用于专家输出加权的原亲和分数”，以及是否还使用其他序列级约束；不能泛称模型完全没有辅助目标。</p>
+<h2 id="study-2b95a212ca">13. 九坤 AI Infra 六问：用测量回答性能</h2>
+<h3 id="study-a44ddd31b2">13.1 动态量化 vs 静态量化</h3>
+<p>量化把实数近似为整数q：q=round(x/s)+z，恢复约s(q−z)。静态激活量化先用校准数据确定s,z；动态激活量化在运行时根据当前输入确定，适应分布变化但多一步统计成本。权重量化与激活量化要分开，动态不表示权重每次重新训练。</p>
+<p>例对称int8取s=max|x|/127，若极少离群值把s拉大，中间小值分辨率变差；可按通道或分组计算尺度，但增加scale元数据和kernel复杂度。比较需固定校准集、精度、batch和硬件，并记录任务误差与延迟，不以“8bit内存减半”推断延迟必减半。</p>
+<h3 id="study-dbbf59587e">13.2 算子融合究竟省在哪里</h3>
+<p>假设y=GELU(xW+b)。未融合可能先写矩阵乘结果到HBM，读回加bias又写，再读作激活。融合epilogue让中间值留在寄存器内处理，减少读写与kernel启动。代价是寄存器占用可能上升、occupancy下降，图中共享中间结果也可能限制融合。</p>
+<p>测量先从kernel时间和显存流量定位瓶颈，固定形状比较融合前后，warm-up并同步后计时。若大GEMM计算占绝大多数，省几个小kernel的收益可能有限。Roofline强度I=FLOPs/字节，对应性能上界min(峰值算力,带宽×I)，用它解释为何某优化有效。<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/">CUDA指南</a>。</p>
+<h3 id="study-db46cb4a88">13.3 Shared Memory 与 Bank Conflict</h3>
+<p>共享内存由多个bank服务，一个warp的不同线程若访问同一bank的不同地址，可能分批服务。教学例按32个bank、每32位字映射bank=index mod32：线程t读a[t][0]，若一行32个float，则地址索引32t全部映到bank0；把第二维填成33使索引33t mod32=t，可分散冲突。</p>
+<p>所有线程读同一地址可能走广播，不应误判为同样冲突；真实bank宽度与指令访问模式还受架构、数据类型影响。padding会增加共享内存占用，所以应以profiling确认收益。<a href="https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/">CUDA指南</a>。</p>
+<h3 id="study-25eb0b07bb">13.4 slicing 会不会增加显存：沿对象与算子追踪</h3>
+<p>基本切片通常创建共享storage的view，只增加少量元数据；高级索引通常产生新tensor。非连续view后续若contiguous/clone，才可能分配新storage。即使切片很小，只要保留view，原大storage就可能一直活着。<a href="https://docs.pytorch.org/docs/2.14/tensor_view.html">PyTorch Tensor Views</a>。</p>
+<p>实验先记录shape、stride、storage_offset、storage指针，再看allocated与reserved的区别；比较x[:,::2]、x[:,indices]、view.contiguous()。缓存分配器reserved不降并不证明tensor仍存活。定位源码时按所装版本查Python operator→dispatcher schema→ATen native实现→设备kernel，不能只在GitHub搜到同名函数就说是实际执行路径。</p>
+<h3 id="study-9e54fd44b7">13.5 Nsight 指标：Memory Frequency 不等于带宽利用率</h3>
+<p>先确认测的是哪一个kernel和输入，关注duration、实际DRAM流量、吞吐占可达峰值、SM活动和occupancy。Memory Frequency是时钟信息，不是“利用率”。带宽吞吐约读写字节/耗时，warp stalled可能说明等内存，也可能是依赖、同步或资源不足。</p>
+<p>改进流程：拿基线→定位耗时占比→假设一次少读多少字节→改一处→同样输入重复测→确认数值一致。异步GPU计时必须用事件或同步，不能只量CPU发起kernel的时间。</p>
+<h3 id="study-a41267dfd8">13.6 为什么 QKV 一起 GEMM，而不三个 Stream</h3>
+<p>Q=XWq、K=XWk、V=XWv可以把W拼为[Wq,Wk,Wv]，一次乘得到三者。可能节省launch和调度成本、提高较小GEMM的尺寸利用率，并改善X数据复用。但实际读X几次取决于缓存与kernel，不能绝对说三个stream一定从HBM读三次。</p>
+<p>若单个GEMM已经占满设备，三个stream不能创造额外算力；较小或形状不平衡时并发可能有利。实验应分prefill大T和decode小T，固定dtype与布局，报告整体延迟、吞吐和X流量；以profiling而不是“Memory Bound”标签下结论。</p>
+<h2 id="study-8922ded46a">14. Agent 二十问：逐题给可落地的解答过程</h2>
+<p>下面所有业务和数字均为<strong>教学案例</strong>，不是你的真实简历成果。面试时用真实数据替换，不能照抄成个人经历。</p>
+<h3 id="study-b24cb86d19">14.1 架构与为何选 Workflow Agent</h3>
+<p>以“邮件转日历”为例，步骤可明确为解析→时区归一→冲突查询→生成草案→用户确认→写入，工作流更容易回放、测试和限制写权限。ReAct适合下一步工具由观察动态决定，plan-and-execute适合较长目标拆解，多Agent只有在职责、工具或上下文确有隔离需要时再引入。证明选择正确要比较完成率、人工修改率、工具调用数与失败恢复，而非只画架构图。</p>
+<h3 id="study-594a905a6d">14.2 产品解决什么问题</h3>
+<p>先定义用户和触发：用户从长邮件里手填会议信息，痛点是耗时和时区错误；输出是可确认的结构化日历草案。基线是人工填写或规则抽取；评估字段精确率、关键字段漏填、时区错误和每次处理耗时。没有观测到节约时间前，只能称产品假设，不报虚构提升百分比。</p>
+<h3 id="study-5c698df6b3">14.3 通用还是垂直，竞争力是什么</h3>
+<p>垂直场景可固定schema、工具与评估集，例如日历比“全能助理”更容易定义成功；通用能力覆盖广但评估复杂。优势应落在专用数据、领域校验、恢复流程或真实使用闭环，并做消融：把自研模块替换通用prompt，差多少。若换成同一基座就无差异，不该把模型本身当自有壁垒。</p>
+<h3 id="study-9d67c7750d">14.4 竞品比较如何避免空谈</h3>
+<p>先固定任务包和评分标准，对相同输入盲评：成功率、漏项、误操作、P95延迟和成本。记录竞品版本/测试时间；失败例要包含输入和可验证输出，而不凭官网功能表。原材料没给具体竞品名称，这里提供测试方法，不捏造最新竞品排名。</p>
+<h3 id="study-96e79f6ed0">14.5 个人职责如何说清</h3>
+<p>用输入—输出接口界定自己负责的模块，再给独立完成的设计、提交、实验和事故。例如“我负责实体消歧，接收候选列表与上下文，输出ID或拒识及证据；数据接入由同事负责”。接着解释一个自己的取舍和一次失败修复。团队指标与个人贡献分开，不能把所有效果归自己。</p>
+<h3 id="study-7a18ca5e19">14.6 为什么从 Workflow 转 Agentic RL</h3>
+<p>先证明瓶颈是序贯决策而非抽取错误：例如何时检索、何时追问、何时停止存在长程收益权衡。定义state为当前上下文/工具结果，action为工具选择和参数，reward为最终任务成功减成本与违规惩罚；工作流作为基线。只有可靠环境与奖励才能训练，先离线回放评估，避免把任意任务都套RL。</p>
+<h3 id="study-220df095cb">14.7 主模型、Memory、多模态如何选</h3>
+<p>按角色分别测：主模型看规划与工具调用；Memory首先是存取机制，需评估写入准确性、过期与冲突处理，不一定另训“记忆模型”；多模态看图表/截图任务。用相同端到端任务测组合，不把独立benchmark最高的模型直接相加。关键数据按实体和时间隔离，避免把测试答案写进memory。</p>
+<h3 id="study-de850e9201">14.8 fallback、Embedding、Rerank 的权衡</h3>
+<p>检索先Embedding高召回找候选，再Rerank精排，最后主模型引用；若无证据、schema失败或超时，转重试、更强模型或人工。逐段报告Recall@k、排序质量、生成准确率和延迟：召回缺失时换reranker没用；召回足够但排序差才优化rerank。设重试上限和总deadline，防fallback链条无限放大成本。</p>
+<h3 id="study-9636278338">14.9 小模型替换商业模型</h3>
+<p>先固定任务分布，用商业模型产候选但人工/规则复核，划分保留测试集，再SFT小模型。对比关键错误与拒识率，难例路由大模型，估混合成本：$C=(1-f)C_s+f(C_s+C_l)$，其中f为升级比例，包含先调用小模型的花费。节省成本必须包括失败重试与人工修复。</p>
+<h3 id="study-07c03fc48c">14.10 日历抽取为何只做SFT</h3>
+<p>输入邮件＋用户时区，输出固定JSON：title/start/end/timezone/attendees；有明确标注且只是一次映射，用SFT学习条件概率最直接。评价不仅JSON能解析，还要跨午夜、夏令时、相对日期和缺字段。若失败是缺少明确时间，正确动作是追问而不是加强训练让模型猜；没有多步策略优化需求时RL没有天然必要。</p>
+<h3 id="study-18e348395c">14.11 实体消歧怎样构造数据</h3>
+<p>输入mention、上下文、候选实体ID与描述，输出一个ID或NIL及证据位置。训练包含别名、同名不同实体、过期别名、候选全错和跨语种；按实体/时间拆分防记忆泄漏。例“苹果发布财报”应对应公司，“买两个苹果”通常不是公司；难负例必须语义相近，而非随机无关实体。</p>
+<h3 id="study-9a2661f74d">14.12 SFT后过度保守怎么诊断</h3>
+<p>先看混淆矩阵：应匹配却NIL与应NIL却误匹配分开，再按实体频率、候选质量、上下文长度切片。检查训练NIL占比、拒识模板、检索漏召回与解码阈值。若候选根本没有真ID，降低拒识只会制造错误；先修候选召回，再通过代价敏感数据或校准阈值调整精确率/召回率。</p>
+<h3 id="study-73e9479eac">14.13 为何继续DPO，偏好对怎样造</h3>
+<p>有了可执行输出但存在可比较的质量差，例如两个结构都合法，一个正确消歧、另一个过度拒识，可用同prompt偏好对训练。chosen/rejected由规则证据和人工复核定，不按模型自信程度定。控制长度、格式和实体难度分布，保留NIL确实正确的对，防训练成永不拒绝。若标签本身错，DPO会把错误强化。</p>
+<h3 id="study-79fb04e448">14.14 手写DPO要说明哪些变量</h3>
+<p>完整公式和数值梯度见12.2。口述时先定义同一输入x下两个回答，再说明policy可训练、reference冻结；logprob仅completion求和，β调尺度，logsigmoid保证数值稳定。最小检查：policy=reference时margin=0，每对loss=log2；交换chosen/rejected应翻转margin。loss正确不代表数据偏好正确。</p>
+<h3 id="study-67c0fff9ea">14.15 chosen loss与rejected loss同降</h3>
+<p>若这里指负logprob，两者同降说明两类回答都更可能，不能直接判DPO失效。看相对reference的margin：例如chosen从5降3、rejected从6降5，chosen相对改善2而rejected改善1，margin提高；若chosen仅降0.2而rejected降2，则可能更差。还要区分token平均NLL与序列和、长度变化、共享前缀与真正偏好准确率。</p>
+<h3 id="study-1f34ce8f22">14.16 On-Policy Distillation怎样训练</h3>
+<p>学生先从当前策略生成自己的前缀，教师在这些前缀上给分布或监督，学生更新，再重新采样。on-policy关键在<strong>状态/前缀来自当前学生</strong>，而不是简单“教师在线调用”。如果用逐token正向KL，$L=\sum_vp_T(v|s)\log[p_T(v|s)/p_S(v|s)]$；教师概率不反传，学生softmax交叉熵得到梯度pS−pT。必须记录采样策略版本和温度。</p>
+<h3 id="study-3998365dc5">14.17 OPD、传统KD、教师SFT区别</h3>
+<p>比较两个轴：前缀谁产生，监督是完整分布还是采样文本。固定语料前缀上的软标签KD不接触学生自己常犯错的轨迹；教师生成完整优质回答再SFT只学教师轨迹；学生rollout再教师指导能覆盖学生访问状态，但这些状态可能荒谬、教师标签也需校验。不能只用“在线/离线”一个轴把所有蒸馏定义混掉。</p>
+<h3 id="study-78b6367dc1">14.18 API无logits怎么办</h3>
+<p>拿不到教师全词表概率，就不能精确计算上述全分布KL。可让教师在学生前缀上采样续写，做样本级CE；在足够样本下可估教师交叉熵，但单条文本不是完整软标签。也可要求教师纠错、偏好排序或生成SFT数据，分别称纠错蒸馏、偏好训练、序列蒸馏。教师top-k logprobs若有，也有尾部质量与词表对齐问题。</p>
+<h3 id="study-4b1c6c0288">14.19 多Agent信用分配</h3>
+<p>团队最终成功奖励R如果平均给所有Agent，坏行动也被奖励。可用集中critic估V(s)，每个行动优势Q(s,a)−baseline；反事实baseline将该Agent动作替换其他可能动作而固定队友，估该行动贡献。自拟例：检索者给对证据、执行者写错日期，分阶段校验能定位责任。反事实估计有额外成本和模型误差，不能把每个子任务局部成功相加当最终成功。</p>
+<h3 id="study-1d403445c5">14.20 论文方向与Agent岗位关系</h3>
+<p>按“论文解决的机制→岗位对应瓶颈→最小验证实验”回答。例如研究长程RL，映射到工具链错误累积；提出在固定任务集上比较工作流、短程RL、长程RL，控制模型、工具和预算，记录成功率与每步失败位置。不要仅列论文术语，最后说明方法在当前任务可能不适用的条件。</p>
+<h2 id="study-9e6b4ded75">15. Jump AI：如何把研究接到交易反馈</h2>
+<p>先定义研究产物是预测、数据清洗还是研究效率工具，再定义信息何时可用。新闻抽取案例：发布时间不是到达系统时间；保留原文时间戳、接收时间和模型处理完成时间，只有处理完成后才可交易。训练集和推理memory都不能包含未来财报结论。</p>
+<p>离线先测抽取事实准确率，再测净掉行业/市场暴露后的增量预测力，再测成本后模拟收益与容量；只在单一回测提高不能称产生alpha。内部编码Agent则可测研究任务完成率、人工复核耗时与错误率，不必硬包装成价格预测模型。take-home答辩应能演示一个可复现基线、一项真正有效改进和一个已知失败案例。</p>
+</section></article>
+<nav class="chapter-nav"><a href="090.html">← 090. 投机解码进阶专项强化题库</a><a href="072.html">72. 数学基础专项总入口 →</a></nav>
+<footer class="footer">
+<p>本页已按新的学习顺序接入题库导航。最近整理：2026-05-14。</p>
+</footer>
+</main>
+</div>
+</body>
+</html>
