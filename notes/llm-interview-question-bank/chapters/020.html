@@ -33,11 +33,13 @@
       </div>
       <nav class="toc-group" aria-label="本章目录">
         <div class="toc-group-title">本章小节</div>
-        <a class="toc-link" href="#h-0168">参考实现 1：手写 Multi-Head Attention（PyTorch）</a>
+        <a class="toc-link" href="#h-0174">面试主线：NumPy Multi-Head Attention</a>
+<a class="toc-link" href="#h-0173">参考实现 0：纯 Python Attention 与 Decoder-only Transformer</a>
+<a class="toc-link" href="#h-0168">参考实现 1：手写 Multi-Head Attention（PyTorch API 对照）</a>
 <a class="toc-link" href="#h-0169" style="padding-left:18px">面试官追问要点</a>
 <a class="toc-link" href="#h-0170">参考实现 2：手写简化 PPO 算法（PyTorch）</a>
 <a class="toc-link" href="#h-0171" style="padding-left:18px">手撕 PPO 的面试官评分 checklist</a>
-<a class="toc-link" href="#h-0172">参考实现 3：极简 Attention（5 分钟版）</a>
+<a class="toc-link" href="#h-0172">参考实现 3：极简 Attention（PyTorch API 对照）</a>
       </nav>
       <nav id="toc" aria-label="全部章节">
 <div class="toc-group"><div class="toc-group-title"><a href="../index.html">← 返回总目录</a></div></div>
@@ -166,9 +168,79 @@
         <section class="chapter" id="section-h-0167" data-category="engineering" data-title="十四点五、手撕代码完整参考实现（新增）">
 <h2 id="h-0167"><a class="anchor-link" href="#h-0167" aria-label="跳转到本节">#</a>十四点五、手撕代码完整参考实现（新增）</h2>
 <aside class="chapter-orientation"><b>阅读定位</b><p>把结构题、RoPE/长上下文、参数量估算和手写代码放在一起读。它们共同考察“能否把模型结构落到公式、显存和实现”。</p></aside>
-<p>前面列出了手撕代码的题单和评分要点，但面试准备时"知道考什么"和"能手写出来"之间还有一段距离。下面给出两道最高频手撕题的<strong>完整可运行参考实现</strong>，每一行都标注了 shape 变化、关键设计意图和常见踩坑点。建议先自己尝试写，再对照参考实现查漏补缺。</p>
+<p>前面列出了手撕代码的题单和评分要点，但面试准备时“知道考什么”和“能手写出来”之间还有一段距离。本轮分成两条线：先用一个<strong>最小 NumPy Multi-Head Attention</strong> 对齐判题机的输入、权重、mask 和输出；再把它扩展到完整 Transformer。面试主线只使用 NumPy 的数组运算，不调用现成 Attention 层；后面的标准库版本和框架代码作为对照。</p>
 <hr>
-<h3 id="h-0168"><a class="anchor-link" href="#h-0168" aria-label="跳转到本节">#</a>参考实现 1：手写 Multi-Head Attention（PyTorch）</h3>
+<h3 id="h-0174"><a class="anchor-link" href="#h-0174" aria-label="跳转到本节">#</a>面试主线：NumPy Multi-Head Attention</h3>
+<p><strong>完整实现：</strong><a href="../code/mha_interview.py">mha_interview.py</a>；<strong>测试：</strong><a href="../code/test_mha_interview.py">test_mha_interview.py</a>。这才是面试现场应该先写的版本：输入和输出统一为 <code>(B, T, D)</code>，<code>W_q/W_k/W_v/W_o</code> 由调用方传入，避免随机初始化掩盖公式，也方便判题机用同一组权重做数值对照。</p>
+<h4>面试实现的固定契约</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>对象</th><th>形状</th><th>实现约定</th></tr></thead>
+<tbody>
+<tr><td><code>X</code></td><td><code>(B, T, D)</code></td><td>batch-first；当前实现是 self-attention。</td></tr>
+<tr><td><code>W_q/W_k/W_v/W_o</code></td><td><code>(D, D)</code></td><td>按 <code>[out_features][in_features]</code> 存储，等价于 <code>x @ W.T + b</code>。</td></tr>
+<tr><td>拆头后</td><td><code>(B, H, T, d)</code></td><td><code>d = D / H</code>，每个 head 独立计算。</td></tr>
+<tr><td>attention mask</td><td><code>(B, T)</code></td><td><code>True</code> 表示该 key 可读；causal mask 另行禁止未来位置。</td></tr>
+<tr><td>输出</td><td><code>(B, T, D)</code></td><td>合并 heads 后经过 <code>W_o</code> 和 <code>b_o</code>。</td></tr>
+</tbody></table></div>
+<pre><code class="language-python">Q = linear(X, W_q, b_q)
+K = linear(X, W_k, b_k)
+V = linear(X, W_v, b_v)
+
+Q = reshape_to_heads(Q)  # (B, H, T, d)
+K = reshape_to_heads(K)
+V = reshape_to_heads(V)
+
+scores = Q @ transpose(K, -2, -1) / sqrt(d)
+scores = apply_causal_and_padding_mask(scores)
+weights = stable_softmax(scores, dim=-1)
+heads = weights @ V
+
+heads = merge_heads(heads)  # (B, T, D)
+output = linear(heads, W_o, b_o)</code></pre>
+<p><strong>和参考实现一致的必要条件：</strong>必须使用同一组投影权重和 bias、同一 batch-first/layout、同一缩放维度、同一 mask 语义、关闭 dropout，并在相同精度下比较。具体 Hugging Face 模型还可能增加 RoPE、GQA/MQA、RMSNorm 等模块，不能只拿基础 MHA 去对齐整个模型输出。</p>
+<hr>
+<h3 id="h-0173"><a class="anchor-link" href="#h-0173" aria-label="跳转到本节">#</a>参考实现 0：纯 Python Attention 与 Decoder-only Transformer</h3>
+<p><strong>完整代码：</strong><a href="../code/transformer_from_scratch.py">transformer_from_scratch.py</a>；<strong>回归测试：</strong><a href="../code/test_transformer_from_scratch.py">test_transformer_from_scratch.py</a>。运行测试：<code>python3 -m unittest discover -s notes/llm-interview-question-bank/code -p 'test_*.py'</code>。实现的核心数值依赖只来自标准库中的 <code>math</code> 和 <code>random</code>；它的目标是让数据流可读，不追求生产级矩阵 kernel 的速度。</p>
+<h4>先把每一步的 shape 说清楚</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>步骤</th><th>张量 / 列表形状</th><th>发生了什么</th></tr></thead>
+<tbody>
+<tr><td>输入</td><td><code>(B, T)</code></td><td>每个 batch 是一串 token id。</td></tr>
+<tr><td>Embedding</td><td><code>(B, T, D)</code></td><td>每个 token id 查表得到 hidden vector。</td></tr>
+<tr><td>Q/K/V 投影</td><td>各为 <code>(B, T, D)</code></td><td>同一份 hidden state 通过三张不同的线性映射得到 query、key、value。</td></tr>
+<tr><td>拆头</td><td><code>(B, H, T, d)</code></td><td><code>D = H × d</code>；每个 head 独立计算关系。</td></tr>
+<tr><td>分数</td><td><code>(B, H, T, T)</code></td><td>每个 query 位置和每个 key 位置做缩放点积。</td></tr>
+<tr><td>加权聚合</td><td><code>(B, H, T, d)</code></td><td>softmax 后沿 key 维加权求和 V。</td></tr>
+<tr><td>合头 / 输出投影</td><td><code>(B, T, D)</code></td><td>拼回 hidden 维度，再经过 <code>W_o</code>。</td></tr>
+<tr><td>LM head</td><td><code>(B, T, V)</code></td><td>每个位置输出整个词表的 logits，训练时预测下一个 token。</td></tr>
+</tbody></table></div>
+<h4>Attention 的核心不是一张相似度表，而是一个受 mask 约束的信息路由器</h4>
+<p>对第 \(i\) 个 query，先计算 \(s_{ij}=q_i\cdot k_j/\sqrt{d}\)，再对允许读取的位置做稳定 softmax，最后计算 \(o_i=\sum_j a_{ij}v_j\)。代码中的 <code>allowed</code> 列表同时承载两种约束：causal attention 要求 \(j\leq i\)，padding mask 要求 key 位置是真实 token。被禁止的位置权重直接为 0，而不是让它们参与归一化。</p>
+<pre><code class="language-python">def one_query_attention(query, keys, values, query_position):
+    scores = []
+    allowed = []
+    for key_position, key in enumerate(keys):
+        scores.append(dot(query, key) / sqrt(head_dim))
+        allowed.append(key_position &lt;= query_position)  # causal mask
+
+    weights = stable_softmax(scores, allowed)  # 减最大值，避免 exp 溢出
+    output = [
+        sum(weights[j] * values[j][dimension] for j in range(len(values)))
+        for dimension in range(head_dim)
+    ]
+    return output, weights</code></pre>
+<p>这里的代码块只展示逻辑骨架，完整版本把 <code>dot</code>、<code>sqrt</code>、稳定 softmax、矩阵乘法和多头循环全部展开。注意：<code>sqrt(d)</code> 只控制 logits 尺度，不会让 causal mask 自动出现；mask 必须显式构造。</p>
+<h4>一个 Transformer block 如何串起来</h4>
+<p>实现采用常见的 pre-norm 路径：<code>x → LayerNorm → Self-Attention → residual add → LayerNorm → GELU FFN → residual add</code>。Attention 在 token 维度混合信息，FFN 对每个 token 独立做非线性变换；两次 residual 让新分支只需学习“如何修正旧表示”。多个 block 叠起来后，最后的 LayerNorm 和词表投影才产生 logits。</p>
+<p>代码还提供了一个最小的 greedy <code>generate</code>。它每生成一个 token 都重新跑当前上下文，因此是教学上最直观的 \(O(T^2)\) 路径；生产实现会保存历史 K/V，避免重复计算。这个差异正是“会写 Attention”与“理解 Transformer 推理系统”的连接点。</p>
+<h4>这份实现的边界</h4>
+<ul>
+<li>权重是随机初始化的，所以输出只用于检查 shape 和信息流，不代表模型已经学会语言。</li>
+<li>没有反向传播、优化器、dropout、量化、KV cache 或高性能 kernel；下一步如果要继续手撕训练，应该先实现一个小损失和有限差分/反向传播，而不是直接跳到完整训练框架。</li>
+<li>这里实现的是 decoder-only self-attention。Encoder-decoder 的 cross-attention 只需把 Q 来自 decoder hidden state、K/V 改为 encoder 输出，并使用相应的 padding mask；核心缩放点积不变。</li>
+</ul>
+<hr>
+<h3 id="h-0168"><a class="anchor-link" href="#h-0168" aria-label="跳转到本节">#</a>参考实现 1：手写 Multi-Head Attention（PyTorch API 对照）</h3>
 <p><strong>题目要求</strong>：给定 <code>Q/K/V</code> 三个张量，实现 Scaled Dot-Product Attention + Multi-Head 拆分与合并，支持 <code>padding mask</code> 和 <code>causal mask</code>，并保证数值稳定性。</p>
 <pre><code class="language-python">import torch
 import torch.nn as nn
@@ -181,8 +253,8 @@ class MultiHeadAttention(nn.Module):
     面试评分点对应：
     1. shape 是否正确流转                    -&gt; 每步都有 shape 注释
     2. 是否记得除以 sqrt(d_k)                -&gt; scaled_dot_product_attention 内
-    3. causal mask 方向是否正确               -&gt; apply_mask 内，上三角为 -inf
-    4. 数值稳定性（softmax 前减最大值）        -&gt; 不需要，因为除以 sqrt(d_k) 已控制量级
+    3. causal mask 方向是否正确               -&gt; scaled_dot_product_attention 内，上三角填 -1e9
+    4. 数值稳定性（softmax 前减最大值）        -&gt; scaled_dot_product_attention 内
     5. 多头拆分与合并的维度操作是否正确         -&gt; view + transpose / transpose + view
     """
 
@@ -249,7 +321,11 @@ class MultiHeadAttention(nn.Module):
             causal_mask = torch.triu(torch.ones(T, T, device=scores.device, dtype=torch.bool), diagonal=1)
             scores = scores.masked_fill(causal_mask.unsqueeze(0).unsqueeze(0), -1e9)
 
-        attn_weights = torch.softmax(scores, dim=-1)
+        # 除以 sqrt(d_k) 只控制尺度，不能替代减最大值；torch.softmax 内部已做这一步，
+        # 这里显式写出，对应手写 exp / sum 时必须先减每行最大值
+        attn_weights = torch.softmax(
+            scores - scores.amax(dim=-1, keepdim=True), dim=-1
+        )
         attn_weights = self.dropout(attn_weights)
 
         # 加权求和: (B, H, T, T) @ (B, H, T, d_k) -&gt; (B, H, T, d_k)
@@ -291,7 +367,7 @@ if __name__ == "__main__":
 <ol>
 <li><strong>为什么除以 <code>sqrt(d_k)</code>？</strong> 假设 Q、K 元素独立同分布 N(0,1)，则点积方差为 <code>d_k</code>。除以 <code>sqrt(d_k)</code> 把方差拉回 1，避免 softmax 输入过大导致梯度消失。
 </li>
-<li><strong>为什么 <code>masked_fill</code> 填 -1e9 而不是 <code>-inf</code>？</strong> 某些硬件上 <code>-inf</code> 经过 softmax 可能产生 NaN（整行被 mask 时）。<code>-1e9</code> 足够小又安全。
+<li><strong>为什么 <code>masked_fill</code> 填 -1e9 而不是 <code>-inf</code>？</strong> 当一整行都被 mask 时，<code>-inf</code> 会让 softmax 在减最大值时出现 <code>-inf - (-inf)</code>，整行变成 NaN，并沿反向传播污染梯度；这与硬件无关。<code>-1e9</code> 只是避免了 NaN：整行都是 <code>-1e9</code> 时 softmax 退化成均匀分布，仍会读到 padding，所以全屏蔽的 query 行还要在输出端清零。另外 fp16 下 <code>-1e9</code> 会溢出成 <code>-inf</code>，半精度实现通常改用 <code>torch.finfo(dtype).min</code>。
 </li>
 <li><strong>为什么 transpose 后要 <code>contiguous()</code>？</strong> PyTorch 的 <code>view</code> 要求张量内存连续。<code>transpose</code> 只改变 strides 不复制数据，所以必须 <code>contiguous()</code> 后再 <code>view</code>。
 </li>
@@ -440,7 +516,7 @@ class PPOTrainer:
 </tr>
 </tbody></table></div>
 <hr>
-<h3 id="h-0172"><a class="anchor-link" href="#h-0172" aria-label="跳转到本节">#</a>参考实现 3：极简 Attention（5 分钟版）</h3>
+<h3 id="h-0172"><a class="anchor-link" href="#h-0172" aria-label="跳转到本节">#</a>参考实现 3：极简 Attention（PyTorch API 对照）</h3>
 <pre><code class="language-python">import torch, math
 def attention(q, k, v, mask=None):
     scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.size(-1))
@@ -448,7 +524,7 @@ def attention(q, k, v, mask=None):
         scores = scores.masked_fill(mask == 0, float('-inf'))
     attn = torch.softmax(scores, dim=-1)
     return torch.matmul(attn, v), attn</code></pre>
-<p><strong>追问点</strong>：causal mask 怎么加？为什么除以 sqrt(D)？多头在哪里拆？</p>
+<p><strong>追问点</strong>：causal mask 怎么加？为什么除以 sqrt(d_k)？多头在哪里拆？如果某一行的 key 全部被屏蔽，softmax 会输出什么？这里用 <code>-inf</code> 填充会得到 NaN；参考实现 1 用 <code>-1e9</code> 覆盖整行则会变成均匀分布，悄悄读到 padding。面试主线的 NumPy 版本因此对全屏蔽行单独返回全 0。</p>
 <hr>
 </section>
       </article>
