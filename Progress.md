@@ -1,5 +1,33 @@
 # Ricardokevins.github.io Progress
 
+## 2026-09-30 未提交笔记深度梳理与发布（已完成；已验证，已推送）
+
+### 盘点与关键发现
+
+- 工作区在 `main` 上积压三项“已完成、未提交”的历史任务：语音双工手册（2026-08-16）、第 20 章手撕 Attention / Transformer 与 4 个 Python 文件（2026-08-04）、主页论文一句话摘要（2026-09-01）；另有量化题库导入脚本、`__pycache__`、空日志和 3 个个人文件。开始时所有 `codex/*` 分支均已合并进 `main`，本地与远端同步。
+- 语音双工手册的 `_data/notes.yml` 条目已在 `f2455f3` 随小红书题库上线，但 HTML 本体从未提交，线上 Notes 索引存在一个指向 404 的条目；本次发布后修复。
+- `research/quant-interview-notes/` 是一次性导入工具，硬编码 `/private/tmp`、Downloads、本机 runtime 等路径，并含一份已转成 041/042/021/091 正式章节的草稿 HTML；本地 Jekyll 构建会把它原样发布，因此不提交，改为在 `.gitignore` 的临时脚本段落中忽略，文件保留在本地。
+
+### 内容复核与修改
+
+- 语音双工手册：按 arXiv 摘要与正文逐项核对 Moshi（160/200 ms、双流、Inner Monologue）、GLM-4-Voice（12.5 Hz 单 codebook）、Qwen2.5-Omni（双轨 Talker、滑窗 DiT）、Mini-Omni、SALMONN、BayLing-Duplex（三流按块交错 + 四个对话状态 token，从 GLM-4-Voice 出发）、DuplexSLA（160 ms 共享时钟、三通道）与 DuplexChat（播客说话人分离）。Full-Duplex-Bench v1.5 已修订到第 4 版：场景名改为 user backchannel / talking to others / background speech，原文“主观质量”实为 UTMOSv2 预测 MOS；已按正文改写，并补充 responsive 与 floor-holding 的权衡（GPT-4o 平均停止延迟约 0.23 s，但对“用户跟旁人说话”和背景语音误响应；Nova Sonic、Gemini 停止延迟超过 2 s）及评测接口版本边界。
+- 手册新增打断截断的接口证据：Gemini Live 在 VAD 检测到打断后丢弃进行中的生成、只保留已发送到客户端的内容；OpenAI Realtime 的 `conversation.item.truncate` 按 `audio_end_ms` 截断音频并删除对应转写。修正 FAQ 中的中英混写；证据附录补充复核范围及 DuplexSLA、BayLing-Duplex、SDK 事件定义链接。外链检查：arXiv / GitHub 均 200，OpenAI 页面为 Cloudflare 403（地址保留），Google 文档经外部抓取确认可访问。
+- 第 20 章：docstring 中不存在的 `apply_mask` 改为实际位置（`scaled_dot_product_attention` 内填 `-1e9`）；softmax 注释改为“`torch.softmax` 内部已减最大值，显式写出对应手写 exp/sum”；重写“为什么填 -1e9 而不是 -inf”：整行 `-inf` 必然得到 NaN、与硬件无关，`-1e9` 会让全屏蔽行退化为均匀分布，fp16 下 `-1e9` 溢出为 `-inf`（三点均已实测）；参考实现 3 的追问点补充全屏蔽行问题。跨章节重复 heading ID 是题库既有情况（47 个），未重新编号。
+- 主页：四条论文摘要逐条对照 arXiv 摘要；R-PRM 一条前后矛盾（论文用少量人工步骤级标签筛选种子数据，原句却写 no step-level human labels needed），改为 no additional step-level labels needed；+8.5 与摘要“over 8.5 points”一致，保留。
+- `.gitignore`：新增 `__pycache__/`、`*.py[cod]`、`*.log` 与 `/research/quant-interview-notes/`。
+
+### 验证
+
+- [x] `ruby scripts/validate_notes_index.rb`：304 条索引与 304 个顶层 HTML 对应；`git diff --check`、行尾空白与公开过程噪声扫描无命中；题库代码 12 项单测通过。
+- [x] 两份改动 HTML 标签全部闭合、无重复 ID，页内锚点与本地代码链接均有效。
+- [x] 按仓库锁定依赖完成隔离 Jekyll 构建（10.6 秒，仅既有 Faraday / GitHub Metadata 提示）；主页 `> 💡` 渲染为各 `<li>` 内的 blockquote，手册进入构建后的 Notes 索引。
+- [x] 内置浏览器检查手册（1440 / 390 宽度）、第 20 章与主页：布局、表格容器与公式渲染正常。控制台有 3 条 MathJax 配置报错（`[tex]/ams`、`[tex]/noundefined` 缺版本信息，MathJax 3 不支持 `chtml.linebreaks`），来自 `notes/NOTE_TEMPLATE.md` 骨架、影响所有按模板生成的笔记，不影响渲染，本次未批量修改。
+
+### 提交
+
+- [x] `83dc0b7` 发布语音双工手册；`f7a7b19` 第 20 章与代码；`2e9031c` 主页摘要；`b6410d6` `.gitignore`；已推送到 `origin/main`（`5dea70b..b6410d6`）。
+- [ ] 未纳入：`files/sheshuaijie_CV_260716.pdf`（从未被 `cv.md` 引用的中间版简历）、`scripts/mha.py`（NumPy 因果注意力参考解）、`scripts/mha_self.py`（未完成的练习模板，顶层含调试 `print` / `exit()`），保持未跟踪，待用户决定。
+
 ## 2026-09-15 小红书量化题库举一反三配套笔记：全面扩展（已完成；视觉验收受浏览器安全策略限制）
 
 - 用户反馈：上一版5个方法簇、21道练习仍偏像示范版；本轮要求尽量全面，覆盖原题库中的主要解题工具。
