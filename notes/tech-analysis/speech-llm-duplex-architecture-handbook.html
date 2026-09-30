@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>语音大模型入门手册：从半双工、全双工到主流架构</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f0e8;
+      --surface: #fffdf8;
+      --ink: #20282a;
+      --muted: #5f6b6d;
+      --line: #d9d5c9;
+      --accent: #176b68;
+      --accent-soft: #e7f2ef;
+      --accent-2: #a85a32;
+      --accent-2-soft: #f8ebe2;
+      --info: #315f8d;
+      --info-soft: #eaf0f7;
+      --shadow: 0 14px 40px rgba(35, 52, 52, .07);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(23,107,104,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(60,70,66,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: 46px 46px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    header, main { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+    header { padding: clamp(38px, 6vw, 74px) 0 28px; }
+    .kicker { color: var(--accent); font-size: 13px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
+    h1 { max-width: 950px; margin: 10px 0 0; font: 760 clamp(34px, 5vw, 58px)/1.13 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+    main { display: grid; gap: 30px; padding-bottom: 72px; }
+    section { padding-top: 31px; border-top: 1px solid var(--line); }
+    h2, h3, h4 { line-height: 1.28; }
+    h2 { margin: 0 0 13px; font-size: clamp(25px, 3.2vw, 35px); }
+    h3 { margin: 27px 0 9px; color: var(--accent); font-size: 21px; }
+    h4 { margin: 18px 0 7px; font-size: 16px; }
+    p { margin: 11px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    code { padding: 2px 6px; border-radius: 5px; background: #e5e7de; color: #175c59; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 17px; overflow-x: auto; border-radius: var(--radius); background: #172524; color: #edf3ef; line-height: 1.62; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    .small { color: var(--muted); font-size: 14px; }
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+    .card h3, .card h4 { margin: 0 0 7px; color: var(--accent); font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .callout { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 18px 0; }
+    .flow > div { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: 14px; }
+    .flow strong { display: block; margin-bottom: 3px; color: var(--accent); }
+    .lanes { display: grid; gap: 10px; margin: 19px 0; }
+    .lane { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: center; }
+    .lane-label { color: var(--muted); font-weight: 700; }
+    .timeline { display: grid; grid-template-columns: repeat(8, minmax(55px, 1fr)); gap: 5px; overflow-x: auto; padding-bottom: 5px; }
+    .slot { min-height: 42px; padding: 8px 6px; border-radius: 7px; background: #e7e4da; color: var(--muted); text-align: center; font-size: 12px; }
+    .slot.speak { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+    .slot.overlap { background: var(--accent-2-soft); color: var(--accent-2); font-weight: 700; }
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .table-wrap { max-width: 100%; margin: 16px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14.25px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: var(--accent-soft); font-weight: 750; }
+    tr:nth-child(even) td { background: rgba(20,55,50,.018); }
+    .math-display { max-width: 100%; margin: 16px 0; padding: 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    @media (max-width: 780px) {
+      header, main { width: calc(100% - 24px); }
+      .grid-2, .grid-3, .flow { grid-template-columns: 1fr; }
+      .def-list > div, .lane { grid-template-columns: 1fr; gap: 5px; }
+      .timeline { grid-template-columns: repeat(8, 74px); }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Tech Handbook · Speech LLM / Realtime Dialogue</div>
+    <h1>语音大模型入门手册：从半双工、全双工到主流架构</h1>
+    <p class="lede">一套语音助手为什么会“等你说完再回答”，另一套却能边听边说、被打断后立即让出话权？本文沿技术演进讲清级联、音频编码器接入、离散语音 token、Thinker–Talker 与原生双流模型，并把模型架构、流式推理和双工交互分开讨论。</p>
+  </header>
+
+  <main>
+    <section id="source-reconstruction">
+      <h2>第一遍：语音大模型是怎样从“会听写”走到“会对话”的</h2>
+      <p>“语音大模型”并不是一个单一结构。它可以指接收语音、输出文字的音频理解模型，也可以指语音输入、语音输出的 spoken dialogue model；有些模型只在用户说完后工作，有些则持续接收音频，并在自己发声时仍然建模用户声音。为了避免把产品演示、传输协议和模型论文混成一件事，下面先按技术演进重建主线，再进入结构化比较。</p>
+
+      <h3>第一阶段：ASR、文本 LLM、TTS 串成一条可靠流水线</h3>
+      <p>最常见的语音助手把问题拆成三件成熟任务：自动语音识别（ASR）把波形变成文字，文本大模型理解并生成回复，文本转语音（TTS）再把回复读出来。前面通常还有声学回声消除、降噪和语音活动检测，后面还有音频缓冲与播放。每一段都能单独替换、打日志和评估，所以客服、会议助手、车载命令与企业 Agent 至今大量采用这种级联。</p>
+      <div class="flow" aria-label="级联语音助手数据流">
+        <div><strong>音频前端</strong>AEC / 降噪 / 增益</div>
+        <div><strong>ASR</strong>波形变 transcript</div>
+        <div><strong>文本 LLM</strong>推理、记忆、工具调用</div>
+        <div><strong>TTS</strong>文本变可播放语音</div>
+        <div><strong>会话控制</strong>播放、打断、状态提交</div>
+      </div>
+      <p>代价也很明确：延迟逐段相加；ASR 一旦把实体或数字听错，后面的 LLM 看不到原始证据；语调、哭声、笑声、犹豫与说话人特征很容易在 transcript 这道窄门里消失。系统可以把声学特征作为旁路元数据补回去，但它仍不是原生的音频推理。</p>
+
+      <h3>第二阶段：给文本 LLM 接上一双“耳朵”</h3>
+      <p>SALMONN、Qwen2-Audio 一类模型使用预训练 speech/audio encoder 提取音频表示，再通过 Q-Former、projector 或 adapter 把它们映射到 LLM 的输入空间。SALMONN 甚至并用 Whisper speech encoder 与 BEATs audio encoder，试图区分语音内容、一般声响与音乐。它们的核心价值是让 LLM 不必先依赖外部 ASR 文本，也能完成音频问答、情绪识别、声学事件理解和音乐描述。</p>
+      <p>但“能听懂音频”不等于“能原生说话”。Qwen2-Audio 的公开架构主要是 audio/text input 到 text output；给它接一个 TTS，产品也能语音聊天，却仍然是理解模型加语音合成器。这个类别最适合把音频当作需要分析的材料，而不是要求模型持续控制一场自然对话。</p>
+
+      <h3>第三阶段：把语音也变成 LLM 能预测的离散 token</h3>
+      <p>SpeechGPT、AudioPaLM、GLM-4-Voice 等工作推进了另一条路线：先用神经音频 codec 或语音 tokenizer，把连续波形压缩成离散符号；随后扩展 LLM 词表，让同一个自回归模型同时学习文本 token 与语音 token。SpeechGPT 用跨模态预训练和 instruction tuning 建立 speech-to-text、text-to-speech、speech-to-speech 能力；AudioPaLM 把文本语言知识与 AudioLM 的语音建模结合；GLM-4-Voice 则用 12.5 Hz、单 codebook 的低码率语音 token，配合流式语音 decoder。</p>
+      <p>这类模型开始保留说话人、韵律和情绪，也能减少显式 ASR/TTS 边界。不过离散化制造了新的矛盾：token 太密，序列很长、推理昂贵；token 太稀，细节会丢失。语义 token 容易承载“说了什么”，多层声学 codebook 更擅长重建“怎么说”，但会增加每个时间步的预测负担。因此许多架构用一个大 temporal transformer 建模时间，再用较小 depth transformer 处理同一时刻的多个 codec codebook。</p>
+
+      <h3>第四阶段：流式 speech-to-speech 不再等待整句</h3>
+      <p>Mini-Omni、GLM-4-Voice、Qwen2.5-Omni 等系统把音频编码和解码做成流式：输入以 block/chunk 到达，输出语音 token 也能边生成边解码。Qwen2.5-Omni 的 Thinker–Talker 很有代表性：Thinker 负责多模态理解和文本生成；Talker 直接读取 Thinker 的隐藏表示，用双轨自回归结构生成音频 token；滑窗 DiT 再把 token 流解码成音频。这种分工保留了文本推理骨干，同时避免必须等完整文字答案结束后才启动 TTS。</p>
+      <p>这里最容易出现误读：<strong>流式输入、流式输出、同时生成文字与语音，仍不自动等于原生全双工。</strong>如果系统必须等待外部 VAD 判断“用户已经说完”，然后才允许 assistant 开始，它仍是流式半双工。流式解决的是分块计算和首包延迟；双工解决的是同一时间轴上谁在听、谁在说、重叠时做什么。</p>
+
+      <h3>第五阶段：把两个人的声音放到同一条时间线上</h3>
+      <p>Moshi 的关键不是单纯 audio-in/audio-out，而是同时建模两条平行音频流：一条是用户正在说什么，一条是模型自己正在说什么；模型还生成与自身语音对齐的文本“内在独白”。因此用户讲话、模型讲话、停顿、插话和重叠不再需要先切成严格轮次。论文报告的理论延迟为 160 ms、实践可低至约 200 ms，但更重要的是它把 turn-taking 从外部规则移进了生成分布。</p>
+      <p>2026 年出现的 BayLing-Duplex、DuplexSLA 又把这条路线向前推。BayLing-Duplex 从 turn-based GLM-4-Voice 出发，通过多通道交错序列和少量对话状态 token，让单个自回归 LLM 决定听、说和停止；DuplexSLA 则把用户音频、assistant 音频与结构化 action channel 对齐到同一个 160 ms chunk 时钟，使模型在说话过程中仍可规划和发出工具调用。与此同时，DuplexChat 这类数据工作开始从播客中构建说话人分离的双流语料，因为单声道“混在一起的对话”无法直接教模型哪条声音属于谁。</p>
+      <p class="small">以上按主题重建了公开论文与官方说明的技术演进。下面开始把双工概念、系统组件、架构选择、训练和评测抽象成一套可复用框架。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>核心判断：架构与双工是两条正交轴</h2>
+      <div class="grid-3">
+        <div class="card"><h3>端到端不等于全双工</h3><p>一个统一 speech-to-speech 模型仍可能等用户说完；“没有显式 ASR/TTS”只描述模态接口。</p></div>
+        <div class="card"><h3>链路全双工不等于模型全双工</h3><p>WebRTC 能同时收发音频，但如果播放时停止识别或模型只做轮次推理，交互仍是半双工。</p></div>
+        <div class="card"><h3>真正瓶颈是时间轴策略</h3><p>系统必须判断停顿、犹豫、插话、附和、旁人说话和回声，而不是只追求更低的 WER。</p></div>
+      </div>
+      <div class="callout"><b>一句话记忆</b>语音大模型架构回答“声音怎样进入和离开模型”；双工回答“用户和模型能否在同一时间说话，以及重叠时系统如何行动”。</div>
+    </section>
+
+    <section id="duplex">
+      <h2>单工、半双工、全双工：先从时间轴理解</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>模式</th><th>通信含义</th><th>语音助手表现</th><th>优点</th><th>主要问题</th></tr></thead>
+        <tbody>
+          <tr><td>单工 Simplex</td><td>信息只朝一个方向传输</td><td>语音播报、单向听写、广播式 TTS</td><td>最简单、最稳定</td><td>不能形成对话</td></tr>
+          <tr><td>半双工 Half-duplex</td><td>双方都能发送，但不能同时发送</td><td>按键说话，或用户说完后模型再回答</td><td>边界清楚、易转写、易审计</td><td>停顿显得机械，长回答难打断</td></tr>
+          <tr><td>全双工 Full-duplex</td><td>双方可以同时发送和接收</td><td>模型说话时仍持续听，能处理打断、附和和重叠</td><td>低等待感，更接近人类对话</td><td>回声、误打断、状态回滚和评测都更难</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="lanes" aria-label="半双工与全双工时间线对比">
+        <div class="lane"><div class="lane-label">半双工 · 用户</div><div class="timeline"><div class="slot speak">讲话</div><div class="slot speak">讲话</div><div class="slot speak">讲话</div><div class="slot">等待</div><div class="slot">等待</div><div class="slot">等待</div><div class="slot speak">讲话</div><div class="slot speak">讲话</div></div></div>
+        <div class="lane"><div class="lane-label">半双工 · 模型</div><div class="timeline"><div class="slot">等待</div><div class="slot">等待</div><div class="slot">等待</div><div class="slot speak">回答</div><div class="slot speak">回答</div><div class="slot speak">回答</div><div class="slot">停止</div><div class="slot">等待</div></div></div>
+        <div class="lane"><div class="lane-label">全双工 · 用户</div><div class="timeline"><div class="slot speak">讲话</div><div class="slot speak">讲话</div><div class="slot">停顿</div><div class="slot">听</div><div class="slot overlap">嗯</div><div class="slot overlap">插话</div><div class="slot speak">纠正</div><div class="slot">听</div></div></div>
+        <div class="lane"><div class="lane-label">全双工 · 模型</div><div class="timeline"><div class="slot">听</div><div class="slot">听</div><div class="slot overlap">预判</div><div class="slot speak">回答</div><div class="slot speak">继续</div><div class="slot overlap">让出</div><div class="slot">听</div><div class="slot speak">重答</div></div></div>
+      </div>
+
+      <h3>三个层次不要混用</h3>
+      <ol>
+        <li><strong>传输层全双工：</strong>麦克风上行和扬声器下行可以同时传输，例如 WebRTC 会话。它只证明网络通道能双向工作。</li>
+        <li><strong>产品级全双工：</strong>播放期间仍运行 AEC、VAD/ASR；用户开口时客户端停止或淡出音频，取消当前生成，把已听到的部分提交给会话。它可以由多个模块拼出来。</li>
+        <li><strong>模型原生全双工：</strong>模型在共享时间轴上联合建模用户流与自身输出流，自己学会何时继续、附和、暂停、停止或回答，不依赖外部“轮次已经结束”开关。</li>
+      </ol>
+      <p>产品文案中的“支持打断”通常只能证明第二层的一部分。真正的原生全双工还要处理非指向系统的旁人说话、背景电视、用户的“嗯嗯”附和、句中自我修正，以及模型是否应该在用户长停顿时抢话。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>一套实时语音系统实际由什么组成</h2>
+      <div class="def-list">
+        <div><b>AEC</b><span>Acoustic Echo Cancellation，声学回声消除。用系统正在播放的参考信号，从麦克风输入中减去扬声器回声，否则模型可能把自己的声音当成用户的新问题。</span></div>
+        <div><b>NS / AGC</b><span>Noise Suppression 与 Automatic Gain Control，分别抑制稳定噪声并调整音量。处理过强会损伤弱辅音、情绪和远场语音。</span></div>
+        <div><b>VAD</b><span>Voice Activity Detection，只判断当前是否像人声；它不知道用户在说“我想订一张……”后是否已经表达完语义。</span></div>
+        <div><b>Endpoint / EOU</b><span>End of Utterance 或 turn endpointing，结合静音长度、ASR 文本、句法和语义判断“这一轮是否真的结束”。Semantic VAD 本质上是在 VAD 之上估计继续说话概率。</span></div>
+        <div><b>Barge-in</b><span>用户在模型发声时插话。系统要快速停止可听输出、取消未完成生成，并确保上下文只保留用户实际听到的部分。</span></div>
+        <div><b>Audio tokenizer</b><span>把连续波形压成离散 token。语义 token 更像内容摘要；声学 token/codebook 负责音色、韵律和细节。</span></div>
+        <div><b>Streaming decoder</b><span>收到一小段 speech token 就开始合成波形，而不是等待整段 token。首包更快，但跨 chunk 韵律连续性更难。</span></div>
+        <div><b>Jitter buffer</b><span>吸收网络包到达时间的波动。缓冲越大越稳定，端到端延迟也越高。</span></div>
+      </div>
+
+      <h3>端到端延迟为什么不能只报“模型首 token”</h3>
+      <div class="math-display">\[
+        T_{\mathrm{voice}} = T_{\mathrm{endpoint}} + T_{\mathrm{uplink}} + T_{\mathrm{encode}} + T_{\mathrm{reason}} + T_{\mathrm{audio\ first\ chunk}} + T_{\mathrm{playout}}
+      \]</div>
+      <p>半双工系统经常把最大延迟花在 <em>endpoint</em>：为了不抢话，必须等几百毫秒静音；全双工模型可以更早形成假设，却要承担误判和回滚。一个模型即使推理只要 150 ms，如果端点检测等 800 ms、网络和播放缓冲再加 300 ms，用户仍会感到迟钝。</p>
+
+      <h3>产品级打断的最小状态机</h3>
+      <pre><code class="language-python">state = LISTENING
+
+for audio_chunk in microphone_stream:
+    clean_chunk = aec(audio_chunk, playback_reference)
+    input_stream.append(clean_chunk)          # 始终持续接收
+
+    if user_speech_started(clean_chunk):
+        if state == SPEAKING:
+            playback.fade_out()
+            generation.cancel()
+            conversation.truncate_to_heard_audio()
+        state = LISTENING
+
+    if semantic_end_of_turn(input_stream):
+        generation.start(input_stream)
+        state = THINKING
+
+    if generation.has_audio_chunk():
+        playback.enqueue(generation.pop_audio_chunk())
+        state = SPEAKING</code></pre>
+      <p>真正困难的不是调用 <code>cancel()</code>，而是回答被截断后的状态一致性。假设模型生成了十句话，用户只听到前三句，服务端却把十句话全部写进历史，那么下一轮模型会误以为用户知道后七句。可靠系统需要记录播放进度，截断未听内容，同时取消工具副作用或明确其已不可撤销。</p>
+      <p>主流实时接口已经把这一步写进协议。Gemini Live API 的说明是：VAD 检测到用户打断后，正在进行的生成会被取消并丢弃，会话历史只保留已经发送到客户端的内容。但“已发送”仍可能多于“已播放”：服务端生成音频的速度快于实时播放，客户端缓冲区里常常还有没播出去的部分。OpenAI Realtime API 为此提供 <code>conversation.item.truncate</code> 事件，客户端报告 assistant 音频实际播放到第几毫秒（<code>audio_end_ms</code>），服务端据此截断音频并删除对应的文字转写，保证上下文里不存在用户没有听到的内容。换句话说，截断必须以播放进度为准；当音频以快于实时的速度推给客户端时，只有播放端才知道用户实际听到了哪里。</p>
+    </section>
+
+    <section id="architecture">
+      <h2>目前常见的五类语音大模型架构</h2>
+
+      <h3>A. 级联式：ASR → LLM → TTS</h3>
+      <div class="grid-2">
+        <div class="card"><h4>适合</h4><p>企业客服、强工具调用、合规审计、多供应商替换、领域词表和错误定位。</p></div>
+        <div class="card"><h4>不适合</h4><p>强情绪保真、声学推理、极低延迟自然闲聊，以及重叠语音的原生建模。</p></div>
+      </div>
+      <p><strong>优势：</strong>模块成熟；transcript 天然可观察；ASR、LLM、TTS 可独立迭代；文本模型的推理和工具生态最完整。<strong>弱点：</strong>错误传播和延迟累加；paralinguistic information 容易丢；跨模块状态与取消逻辑复杂。</p>
+
+      <h3>B. Audio encoder + adapter + 文本 LLM</h3>
+      <div class="flow" aria-label="音频理解大模型架构">
+        <div><strong>Waveform</strong>语音、音乐、环境声</div>
+        <div><strong>Audio encoder</strong>Whisper / BEATs / Conformer</div>
+        <div><strong>Adapter</strong>Projector / Q-Former</div>
+        <div><strong>Text LLM</strong>跨模态理解与推理</div>
+        <div><strong>Text output</strong>必要时另接 TTS</div>
+      </div>
+      <p>代表思路包括 SALMONN、Qwen2-Audio。它不要求 LLM 学会生成高频音频 token，因此训练和推理更轻，适合“听一段录音后分析”。但语音输出不是模型的原生动作；如果外接 TTS，声音风格与内容推理之间仍存在接口。</p>
+
+      <h3>C. 统一离散 token 的 speech-to-speech LM</h3>
+      <p>把文本和 speech codec token 放进同一个自回归词表，通过 next-token prediction 学习多种模态转换。SpeechGPT、AudioPaLM、GLM-4-Voice 属于这一大类的不同实现。它能直接生成语音单位，并更容易保留声音身份和韵律；难点是音频 token 率、多个 codebook 的组合爆炸、长上下文成本，以及文本能力在语音继续预训练中退化。</p>
+      <div class="callout info"><b>为什么常要语义层和声学层</b>低频语义 token 负责“下一句话是什么”，高频声学 token 负责“每几十毫秒具体发出什么声音”。让一个大模型逐个预测所有细节会很慢，所以常见做法是大模型预测时间/语义骨架，小模型或 decoder 补声学细节。</div>
+
+      <h3>D. Thinker–Talker / 文本隐状态驱动的双头架构</h3>
+      <p>Qwen2.5-Omni 是典型例子：Thinker 保留强文本、多模态推理能力；Talker 读取 Thinker hidden states，并以流式方式生成 speech token。它不是传统“先生成完文字，再调用独立 TTS”，因为 Talker 可以随着 Thinker 的表示同步工作；但它仍保留清晰的“想”和“说”分工，便于训练不同目标。</p>
+      <p>这种架构的工程意义是避免两个极端：既不让主 LLM 承担全部高频声学预测，也不把语音完全降级成句后 TTS。代价是双模块调度、隐藏状态接口、文本与语音时序对齐，以及 Talker 是否过度依赖显式语言骨架。</p>
+
+      <h3>E. 原生双流 / 多流全双工模型</h3>
+      <p>Moshi 把 user audio 和 system audio 作为平行流；BayLing-Duplex 用交错多通道序列和 dialogue-state token 让一个 LLM 学习听说控制；DuplexSLA 再加入 action stream。它们共同把问题从“收到一句语音，生成一句语音”改写为：</p>
+      <div class="math-display">\[
+        p\!\left(y^{\mathrm{assistant}}_{t},\ a^{\mathrm{action}}_{t}\mid x^{\mathrm{user}}_{\le t},\ y^{\mathrm{assistant}}_{\lt t},\ a^{\mathrm{action}}_{\lt t}\right)
+      \]</div>
+      <p>也就是说，每个时间片都同时观察用户到当前的声音、自身已经发出的声音和已有动作，再决定下一块 assistant 音频与工具动作。这更接近真实互动，却需要双声道/说话人分离数据、因果流式编码、共享时钟、特殊的 overlap 训练和在线评测。</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>模型 / 系统</th><th>主要架构定位</th><th>输入 → 输出</th><th>双工边界</th><th>应学到的架构点</th></tr></thead>
+        <tbody>
+          <tr><td>SALMONN / Qwen2-Audio</td><td>音频 encoder 接文本 LLM</td><td>audio + text → text</td><td>本身不是 speech-output 全双工模型</td><td>“听懂声音”和“生成声音”可分开建设</td></tr>
+          <tr><td>SpeechGPT / AudioPaLM</td><td>文本与离散语音 token 统一建模</td><td>text/audio → text/audio</td><td>主要是 turn-based 跨模态生成</td><td>离散 token 让 LLM 获得原生语音接口</td></tr>
+          <tr><td>GLM-4-Voice</td><td>低码率 tokenizer + GLM + streaming decoder</td><td>speech/text → speech/text</td><td>流式、实时，但公开基础架构仍以轮次为主</td><td>单 codebook 低 token rate 降低语言模型负担</td></tr>
+          <tr><td>Mini-Omni</td><td>并行生成文本与语音 token</td><td>speech → streaming speech</td><td>实时 speech-to-speech 不自动证明原生双工</td><td>用文本监督约束语音生成质量</td></tr>
+          <tr><td>Qwen2.5-Omni</td><td>Thinker–Talker + streaming DiT decoder</td><td>多模态 → text + speech</td><td>支持流式输入输出；是否同时听说要看会话控制</td><td>推理表示与高频 speech generation 解耦</td></tr>
+          <tr><td>Moshi</td><td>双音频流 + inner monologue + codec</td><td>continuous user speech ↔ assistant speech</td><td>论文原生 full-duplex</td><td>把重叠、插话和停顿作为时间序列学习</td></tr>
+          <tr><td>BayLing-Duplex</td><td>单 AR LLM + 多通道交错 + 状态 token</td><td>user stream → assistant stream</td><td>原生听说控制，不依赖外部 VAD 划轮次</td><td>可从 turn-based checkpoint 低成本改造成 duplex</td></tr>
+          <tr><td>DuplexSLA</td><td>user audio + assistant audio + action channel</td><td>continuous speech → speech + tool action</td><td>全双工并支持说话中规划/工具调用</td><td>语音 Agent 需要把 action 也对齐到实时钟</td></tr>
+          <tr><td>GPT-4o / Realtime、Gemini Live</td><td>商业原生音频/实时 API</td><td>audio/text/video → audio/text</td><td>API 支持实时音频与打断；完整内部结构未公开</td><td>产品能力证据不能替代可审计架构细节</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="training">
+      <h2>这些模型怎样训练：数据比模型名字更决定双工能力</h2>
+      <h3>四类数据分别教不同能力</h3>
+      <ol>
+        <li><strong>语音–文本配对：</strong>ASR、TTS、speech translation 数据建立内容对齐，但天然偏向完整句子和清晰轮次。</li>
+        <li><strong>无标注音频：</strong>用 next-token prediction 学声音连续性、说话人和声学结构；需要高质量 tokenizer，计算量也大。</li>
+        <li><strong>语音 instruction 数据：</strong>教模型听懂命令、回答问题、控制情绪/语速/方言，并维持文本 LLM 的指令能力。</li>
+        <li><strong>说话人分离的双流对话：</strong>保留精确重叠、停顿、附和和打断时间，是 native duplex 的关键。DuplexChat 的意义正在于把播客单声道转成每位说话人独立声道。</li>
+      </ol>
+      <p>如果训练集把所有重叠都清理掉，模型不会凭架构自动学会打断；如果所有对话都是 TTS 合成的严格一问一答，它可能在语义问答上很好，却无法应对真实口吃、假启动、背景说话和设备回声。全双工首先是数据分布变化，其次才是特殊层或 token。</p>
+
+      <h3>常见训练阶段</h3>
+      <div class="flow" aria-label="语音大模型训练阶段">
+        <div><strong>Tokenizer / Encoder</strong>学可压缩声学表示</div>
+        <div><strong>Modality adaptation</strong>让 LLM 识别 speech token</div>
+        <div><strong>Cross-modal pretrain</strong>语音、文本相互预测</div>
+        <div><strong>Instruction tuning</strong>建立问答与声音控制</div>
+        <div><strong>Duplex alignment</strong>重叠、状态、偏好与安全</div>
+      </div>
+      <p>训练时还要保护文本能力：一种办法是混合大量文本数据；另一种是保留 Thinker 或 text teacher，用蒸馏约束 speech student。部署时则要保证训练的 chunk size、codec frame rate 和服务端批处理策略不会破坏实时性。离线 benchmark 很好的模型，如果必须积累长 block 才编码，仍然做不好低延迟对话。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>怎样评测：WER 和 MOS 都不够</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>层面</th><th>代表指标</th><th>它回答什么</th><th>不能证明什么</th></tr></thead>
+        <tbody>
+          <tr><td>内容理解</td><td>WER/CER、QA accuracy、任务成功率</td><td>听懂了多少字、是否完成问题</td><td>不证明对话节奏自然</td></tr>
+          <tr><td>语音输出</td><td>MOS、可懂度、说话人相似度、情绪/韵律一致性</td><td>声音是否自然、清楚、符合指令</td><td>不证明回复正确或及时</td></tr>
+          <tr><td>实时性能</td><td>端点延迟、首音频延迟、RTF、停止延迟</td><td>多久开始说、多久能停下来</td><td>低延迟可能来自抢话</td></tr>
+          <tr><td>轮次行为</td><td>打断成功率、误打断率、backchannel、pause handling</td><td>是否理解“嗯”、犹豫、插话和沉默</td><td>单个静态音频不能覆盖多轮反馈</td></tr>
+          <tr><td>重叠鲁棒性</td><td>对旁人说话（talking to others）、背景语音（background speech）、重叠时的回应行为</td><td>能否区分用户指令与旁人/背景声</td><td>实验室音频不等于真实房间声学</td></tr>
+          <tr><td>Agent 能力</td><td>工具成功率、取消一致性、副作用恢复</td><td>说话中是否能安全执行真实动作</td><td>语音自然不代表行动正确</td></tr>
+          <tr><td>系统稳定性</td><td>echo leakage、packet loss、jitter、GPU memory、长会话漂移</td><td>真实网络和设备下能否持续工作</td><td>单轮模型榜单无法替代端到端压测</td></tr>
+        </tbody>
+      </table></div>
+      <p>Full-Duplex-Bench v1.5 把重叠语音拆成四类场景：用户打断（user interruption）、用户附和（user backchannel）、用户对旁人说话（talking to others，早期版本称 side conversation）和背景语音（background speech，早期版本称 ambient speech）。对每类场景，它分别统计模型的对话行为类别、停止与回应延迟，以及语速、音高、音强和预测 MOS（UTMOSv2）在重叠前后的变化。这比只问“能不能被打断”更接近真实风险：模型不该把每个“嗯”都当成抢话，也不该对电视里的声音执行工具。</p>
+      <p>作者评测了 Freeze-Omni、Moshi、Gemini Live、Amazon Nova Sonic 与 GPT-4o Realtime 五个系统，发现“快速让出话轮”和“稳健守住话轮”之间存在稳定权衡。GPT-4o 代表 responsive 策略：真实打断时停得最快（平均停止延迟约 0.23 s），却会系统性地对“用户在跟旁人说话”和背景语音误响应；Nova Sonic 与 Gemini 代表 floor-holding 策略：最能分辨用户是不是在对系统说话，但面对真实打断过于保守，停止延迟超过 2 s。这说明打断成功率和误打断率必须成对报告，单看其中一个指标会奖励某种极端策略。需要注意，这些结果对应论文评测时的具体接口版本（如 2024 年 12 月的 GPT-4o Realtime 预览版和 Gemini 2.0 Flash Live），不能直接外推到之后的模型版本。</p>
+    </section>
+
+    <section id="selection">
+      <h2>工程选型：什么时候不该追求原生全双工</h2>
+      <div class="grid-3">
+        <div class="card"><h3>优先级联</h3><p>银行、医疗记录、强审计客服、复杂 tool agent。文字中间层有利于实体校验、规则拦截和复盘。</p></div>
+        <div class="card"><h3>优先端到端 S2S</h3><p>陪伴、语言学习、角色对话、声音创作。音色、情绪、笑声和快速响应本身就是产品价值。</p></div>
+        <div class="card"><h3>优先 native duplex</h3><p>高频协作、实时翻译、车载对话、具身 Agent。用户需要自然插话，模型也必须持续感知环境。</p></div>
+      </div>
+      <p>实际生产最可能长期存在的是混合架构：原生音频模型负责自然交互与 turn-taking，旁路 ASR 提供 transcript 和审计；高风险实体交给文本校验器；工具调用走结构化 action channel；复杂回答可切到更强但更慢的文本 reasoning model。统一模型减少接口损失，模块化系统提供可控边界，两者不是非此即彼。</p>
+      <div class="callout warn"><b>全双工不等于“越爱抢话越聪明”</b>在报身份证号、法律告知、医疗说明或执行不可逆工具时，系统应主动退化到显式轮次确认。好的 duplex policy 是知道何时允许重叠，也知道何时必须半双工。</div>
+    </section>
+
+    <section id="faq">
+      <h2>面试高频追问</h2>
+      <h3>1. 流式 ASR + 流式 TTS 是全双工吗？</h3>
+      <p>不一定。流式只说明数据按 chunk 增量处理。若模型发声时关闭上行识别，或仍要等 VAD 宣布用户轮次结束才生成，就是流式半双工。产品级全双工至少需要持续监听、AEC、打断和状态截断；模型原生全双工还要联合学习听说时间轴。</p>
+
+      <h3>2. VAD 和 EOU detection 有什么区别？</h3>
+      <p>VAD 判断“现在有没有人声”；EOU 判断“用户的意思是否说完”。“帮我查一下明天……”后面停顿 500 ms，VAD 可能判定 silence，语义 EOU 却应继续等待。反过来，“谢谢”虽然很短，语义上却已经完整。</p>
+
+      <h3>3. 为什么端到端模型仍保留文本 token 或 inner monologue？</h3>
+      <p>文本数据规模大、语义密度高，适合承载推理和知识；纯音频 token 很长，容易在语言内容上退化。文本中间状态不必等于外部 ASR transcript，它可以是与输出音频同步的内部语义骨架，为高频声学生成提供约束。</p>
+
+      <h3>4. 单 codebook 和多 codebook 怎么选？</h3>
+      <p>单 codebook token rate 低、对 LLM 友好，但重建细节压力大；多 codebook 可以分层保存音质，却需要处理同一帧多个 token 的依赖。常见折中是 semantic codebook 由主模型预测，其余 acoustic codebook 由 depth model 或专用 decoder 生成。</p>
+
+      <h3>5. 打断时为什么要 truncate conversation？</h3>
+      <p>因为服务端生成的内容不等于用户听到的内容。若用户在第三句打断，历史里却保存十句完整回答，后续上下文就与用户真实认知不一致。应根据播放时间截断音频与 transcript，并单独处理已经触发的工具副作用。</p>
+
+      <h3>6. 怎样判断模型是真全双工，还是产品外壳模拟？</h3>
+      <p>看它是否在 assistant 输出期间持续消费用户音频；turn-taking 是否依赖外部 VAD；训练/推理是否有独立 user/assistant time-aligned streams；是否能区分 backchannel、interruption、side speech；benchmark 是否测 stop latency、false interruption 与动态多轮，而不只是 demo。</p>
+
+      <h3>7. 语音大模型最难的不是 ASR 吗？</h3>
+      <p>ASR 是基础，但自然对话的难点已经转向交互控制：同一句“不是”可能是纠正、反对，也可能对旁人说；同一个静音可能代表思考或轮次结束。模型要把声学、语义、会话历史、播放状态和动作风险放在一个时间决策里。</p>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险</h2>
+      <ul>
+        <li>“端到端”“原生音频”“实时”“全双工”在不同论文和产品中的口径并不统一；本文只在有明确持续听说或双流建模证据时称为模型原生全双工。</li>
+        <li>商业模型可验证的是公开接口行为，不足以还原内部 tokenizer、训练数据、模块边界和推理图；产品能力不能反推论文级架构。</li>
+        <li>论文给出的理论/实验延迟依赖硬件、网络、chunk、codec、batch 与实现，不能直接当作手机、车机或跨地域 API 的端到端体验。</li>
+        <li>说话人分离和合成 duplex 数据能扩大规模，但 separation artifact、TTS 韵律与真实对话分布可能让模型学到伪线索。</li>
+        <li>全双工扩大了安全面：模型可能听到旁人隐私、把背景声当命令、在被打断后留下未对齐状态，或在说话时悄然执行工具。</li>
+      </ul>
+    </section>
+
+    <section id="insight">
+      <h2>独立判断：下一代语音模型是在学习“共享时间”，不只是声音</h2>
+      <p>文本聊天把世界离散成一条条 message：用户提交后模型才开始，边界由 UI 免费提供。语音对话没有这项免费条件。停顿、重叠、拖长音、笑声、呼吸、背景说话和播放进度都在连续变化；模型每几十或几百毫秒都要决定继续听、开始说、简短附和、让出话权，还是执行动作。</p>
+      <p>因此 native duplex 的真正贡献不是把两个音频通道接到 Transformer，而是让模型获得一种共享时钟上的策略。它同时包含感知问题、语言问题和控制问题。越接近 Agent，action 也必须进入这条时钟：模型可能一边说“我正在查”，一边调用搜索；用户说“算了”时，系统必须知道工具是否还能取消。</p>
+      <p>这也说明生产路线不会简单地从 cascade 一步跳到单体 omni model。级联的可观察性、文本生态和安全闸门仍然重要；原生音频模型提供自然 turn-taking 和副语言理解；结构化 action channel 负责可靠执行。更可能的终局是一套分层系统：底层连续听说，中层维护可审计语义状态，上层按风险选择快速回应、深度推理或确认后行动。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文以截至 2026 年 8 月 16 日公开的论文、官方仓库和实时接口说明为基础。2026 年 9 月 30 日复核了全部论文条目与链接：Full-Duplex-Bench v1.5 已修订到第 4 版（2026 年 4 月），场景命名和评测结论按该版正文更新；打断后的会话截断语义依据 Gemini Live API 文档与 OpenAI Realtime 的 <code>conversation.item.truncate</code> 事件定义补充。论文数字属于发布方报告，商业系统只按公开行为和文档描述，不推断未披露内部结构。</p>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2305.11000">SpeechGPT: Empowering Large Language Models with Intrinsic Cross-Modal Conversational Abilities</a></li>
+        <li><a href="https://arxiv.org/abs/2306.12925">AudioPaLM: A Large Language Model That Can Speak and Listen</a></li>
+        <li><a href="https://arxiv.org/abs/2310.13289">SALMONN: Towards Generic Hearing Abilities for Large Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2407.10759">Qwen2-Audio Technical Report</a></li>
+        <li><a href="https://arxiv.org/abs/2408.16725">Mini-Omni: Language Models Can Hear, Talk While Thinking in Streaming</a></li>
+        <li><a href="https://arxiv.org/abs/2410.00037">Moshi: a speech-text foundation model for real-time dialogue</a>；<a href="https://github.com/kyutai-labs/moshi">官方实现</a></li>
+        <li><a href="https://arxiv.org/abs/2412.02612">GLM-4-Voice: Towards Intelligent and Human-Like End-to-End Spoken Chatbot</a>；<a href="https://github.com/THUDM/GLM-4-Voice">官方实现</a></li>
+        <li><a href="https://arxiv.org/abs/2503.20215">Qwen2.5-Omni Technical Report</a></li>
+        <li><a href="https://arxiv.org/abs/2507.23159">Full-Duplex-Bench v1.5: Evaluating Overlap Handling for Full-Duplex Speech Models</a>；<a href="https://github.com/DanielLin94144/Full-Duplex-Bench">持续更新的 benchmark 仓库</a></li>
+        <li><a href="https://arxiv.org/abs/2605.20755">DuplexSLA: A Full-Duplex Spoken Language Model with Synchronized Speech, Language, and Action</a>；<a href="https://github.com/hyzhang24/DuplexSLA">项目页与 DuplexSLA-Bench</a></li>
+        <li><a href="https://arxiv.org/abs/2606.14528">BayLing-Duplex: Native Full-Duplex Speech Dialogue with a Single Autoregressive LLM</a>；<a href="https://github.com/BayLing-Models/BayLing-Duplex">官方实现</a></li>
+        <li><a href="https://arxiv.org/abs/2607.04941">DuplexChat: Constructing Speaker-Separated Full-Duplex Dialogue Speech at Scale</a></li>
+        <li><a href="https://openai.com/index/hello-gpt-4o/">OpenAI: Hello GPT-4o</a>；<a href="https://platform.openai.com/docs/api-reference/realtime">Realtime API reference</a>；<a href="https://github.com/openai/openai-python/blob/main/src/openai/types/realtime/conversation_item_truncate_event.py">官方 SDK 中 <code>conversation.item.truncate</code> 的事件定义</a></li>
+        <li><a href="https://ai.google.dev/gemini-api/docs/live-api/capabilities">Google Gemini Live API capabilities</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
