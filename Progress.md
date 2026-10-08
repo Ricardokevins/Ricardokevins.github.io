@@ -1,6 +1,6 @@
 # Ricardokevins.github.io Progress
 
-## 2026-10-08 主页精选论文间距收紧与求职说明（已完成；未提交）
+## 2026-10-08 主页精选论文间距收紧与求职说明（已完成；已推送）
 
 ### 根因
 
@@ -9,7 +9,7 @@
 ### 完成变更
 
 - `assets/css/main.scss` 新增 `.page__content li > blockquote`，只把上下外边距改为 `0.5em / 1em`，保留左边框、斜体与水平边距。扫描构建后全部 37 个使用主题样式的页面：只有首页存在列表项内直接嵌 blockquote 的结构（正好 4 条摘要），其他页面不受影响。
-- `_pages/about.md` 个人介绍后新增英文求职段落：以用户给定的 self-supervised / general post-training 句子开头（补主语为 “I focus on”），说明正在找工作，列出 RL、Recursive Self-Improvement (RSI)、Reasoning、Agentic AI、Post-Training 等方向，结尾邀请大厂、初创与量化团队联系（用户嫌原先逐项罗列公司类型的句子生硬，已改为 “If your team is hiring in these areas — whether at a big tech company, a startup, or a quant firm — I'd love to chat!”）；“chat” 链接到侧栏同一邮箱。
+- `_pages/about.md` 个人介绍后新增英文求职段落：以用户给定的 self-supervised / general post-training 句子开头（补主语为 “I focus on”），说明正在找工作，列出 RL、Recursive Self-Improvement (RSI)、Reasoning、Agentic AI、Post-Training 等方向，结尾邀请大厂、初创与量化团队联系（用户嫌原先逐项罗列公司类型的句子生硬，已改为 “If your team is hiring in these areas — whether at a big tech company, a startup, or a quant firm — I'd love to chat!”）；“chat” 链接到侧栏同一邮箱。用户提交前又自行调整了结尾措辞与加粗，以仓库当前版本为准。
 - 用户随后要求用气泡或方框突出求职段落：在段落后加 kramdown 标记 `{: .notice--info}`，复用主题自带的浅蓝圆角提示框（`_sass/_notices.scss`），未新增 CSS。
 
 ### 验证
@@ -19,7 +19,7 @@
 - [x] 内置浏览器同视口测量：徽章行到摘要 28px → 7px，条目之间 28px → 14px，Selected Publications 区块高度 929px → 795px（−134px）；无头 Chrome 1440px 截图确认双栏布局效果一致。
 - [x] 提示框：构建后段落渲染为 `<p class="notice--info">`；1440px 桌面截图正常。无头 Chrome 布局宽度最小被限制为 500px，直接用 390px 窗口截图会被裁切，改用同源 390px iframe 截图，确认框在手机宽度下正常换行、无横向溢出。
 - [x] `git diff --check` 通过。
-- [ ] 未提交或推送。
+- [x] 用户以 `8562ccc` 提交并推送。线上 `main.css` 已含 `.page__content li>blockquote` 规则，线上首页仍是 4 条列表项内 blockquote；无缓存的无头 Chrome 渲染线上页面，间距已收紧。用户截图仍显示大间距，原因是浏览器缓存了旧 `main.css`（GitHub Pages 返回 `cache-control: max-age=600`，普通刷新只重新验证 HTML），强制刷新即可。
 
 ## 2026-09-30 未提交笔记深度梳理与发布（已完成；已验证，已推送）
 

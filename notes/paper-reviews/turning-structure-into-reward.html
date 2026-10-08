@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>把结构变成奖励：迈向可靠的自监督强化学习</title>
+  <meta name="description" content="没有标准答案，不等于没有参照。DuPO、MAPO 与 CoP 分别从任务对偶、模型能力差异和输入—输出关系中构造无需新增标注的奖励。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="把结构变成奖励：迈向可靠的自监督强化学习">
+  <meta property="og:description" content="没有标准答案，不等于没有参照。DuPO、MAPO 与 CoP 分别从任务对偶、模型能力差异和输入—输出关系中构造无需新增标注的奖励。">
+  <meta property="og:url" content="https://ricardokevins.github.io/notes/paper-reviews/turning-structure-into-reward.html">
+  <meta property="og:image" content="https://ricardokevins.github.io/notes/paper-reviews/turning-structure-into-reward-assets/dupo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="alternate" hreflang="en" href="turning-structure-into-reward-en.html">
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true, packages: { '[+]': ['ams', 'noerrors', 'noundefined'] } },
+      chtml: { matchFontHeight: false, mtextInheritFont: true, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme:light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#5f686f; --line:#dcd6c8; --accent:#c15f3c; --accent-soft:#f7ece4; --accent-2:#986023; --accent-2-soft:#f8eee2; --info:#50668f; --info-soft:#edf1f8; --fig-blue:#3f5f96; --fig-plum:#9b2a63; --shadow:0 16px 44px rgba(31,37,40,.08); --radius:10px; --max:920px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; background:linear-gradient(90deg,rgba(193,95,60,.045) 1px,transparent 1px),linear-gradient(180deg,rgba(120,105,85,.03) 1px,transparent 1px),var(--paper); background-size:44px 44px; color:var(--ink); font-family:var(--sans); line-height:1.78; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header,main { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(36px,6vw,72px) 0 22px; }
+    .kicker { margin-bottom:12px; color:var(--accent-2); font:800 13px/1.3 var(--sans); letter-spacing:.07em; text-transform:uppercase; }
+    h1 { margin:0; font:760 clamp(30px,4.8vw,50px)/1.16 var(--serif); }
+    .h1-sub { display:inline-block; }
+    .lede { margin:18px 0 0; color:var(--muted); font-size:clamp(17px,2vw,19px); }
+    .lang-switch { display:inline-block; margin-top:16px; padding:3px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); font-size:14px; text-decoration:none; }
+    main { display:grid; gap:26px; padding-bottom:64px; }
+    section { padding-top:28px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3 { margin:0 0 12px; line-height:1.3; }
+    h2 { font:740 clamp(23px,3vw,30px)/1.3 var(--serif); }
+    h3 { margin-top:22px; font-size:18px; color:var(--accent); }
+    p { margin:12px 0; } ul,ol { padding-left:1.25rem; } li { margin:6px 0; }
+    .small { color:var(--muted); font-size:14px; }
+    .toc { padding:12px 18px; border:1px solid var(--line); border-radius:var(--radius); background:rgba(255,253,248,.92); box-shadow:var(--shadow); }
+    .toc-links { display:flex; flex-wrap:wrap; gap:6px 16px; } .toc a { font-size:14px; text-decoration:none; }
+    .grid-2,.grid-3 { display:grid; gap:14px; margin:18px 0; } .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card { min-width:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3 { margin:0 0 6px; font-size:16.5px; color:var(--ink); } .card p { margin:0; color:var(--muted); font-size:14.5px; line-height:1.65; }
+    .overview .card { display:flex; flex-direction:column; gap:4px; }
+    .tag { color:var(--accent-2); font:800 12.5px/1.4 var(--sans); letter-spacing:.05em; }
+    .num { margin-top:auto; padding-top:10px; border-top:1px dashed var(--line); color:var(--fig-plum); font-size:14px; font-weight:700; }
+    .num a { color:inherit; font-weight:600; }
+    figure { margin:20px 0; padding:10px; border:1px solid var(--line); border-radius:var(--radius); background:#fff; box-shadow:var(--shadow); }
+    figure img { display:block; width:100%; height:auto; border-radius:6px; }
+    figcaption { margin:10px 4px 2px; color:var(--muted); font-size:14px; line-height:1.6; }
+    ol.steps { list-style:none; counter-reset:step; display:grid; gap:10px; margin:16px 0; padding:0; }
+    ol.steps li { counter-increment:step; position:relative; margin:0; padding-left:42px; }
+    ol.steps li::before { content:counter(step); position:absolute; left:0; top:1px; width:28px; height:28px; border-radius:50%; background:var(--fig-blue); color:#fff; font:700 15px/28px var(--sans); text-align:center; }
+    ol.steps b { margin-right:6px; }
+    .math-display { margin:14px 0; padding:10px 14px; font-size:1.1em; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    .result { margin:16px 0; padding:14px 18px; border:1px solid var(--line); border-left:4px solid var(--info); border-radius:var(--radius); background:var(--info-soft); }
+    .result > b { display:block; margin-bottom:4px; color:var(--info); }
+    .result ul { margin:0; } .result .links { margin:8px 0 0; font-size:14px; }
+    details.more { margin:16px 0 0; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    details.more > summary { cursor:pointer; padding:11px 16px; color:var(--accent-2); font-weight:700; list-style:none; }
+    details.more > summary::-webkit-details-marker { display:none; }
+    details.more > summary::before { content:"+"; display:inline-block; width:18px; font-weight:800; }
+    details.more[open] > summary::before { content:"−"; }
+    details.more > div { padding:2px 18px 10px; border-top:1px solid var(--line); }
+    details.more li { margin:9px 0; }
+    .ext .card p { margin:8px 0 0; }
+    .badge { display:inline-block; margin-right:6px; padding:0 8px; border-radius:999px; font-size:12px; font-weight:700; line-height:21px; }
+    .badge.ok { background:#e3eee9; color:#25675f; } .badge.idea { background:#f4e5ed; color:var(--fig-plum); }
+    figure > a { position:relative; display:block; }
+    @media(max-width:760px){ header,main { width:min(100% - 24px,var(--max)); } .grid-2,.grid-3 { grid-template-columns:1fr; } figure { padding:6px; } figure > a::after { content:"点按查看大图"; position:absolute; right:6px; bottom:6px; padding:1px 9px; border-radius:999px; background:rgba(32,36,42,.72); color:#fff; font-size:12px; line-height:20px; } }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+  <header id="top">
+    <div class="kicker">Research Note · 自监督强化学习</div>
+    <h1>把结构变成奖励：<span class="h1-sub">迈向可靠的自监督强化学习</span></h1>
+    <p class="lede">模型需要掌握的任务越来越多，为每个任务提供人工指导——标注答案、编写验证器、请更强的模型评审——成本太高，因此我们希望模型能自己提供监督，持续改进自己。这种监督必须可靠，能分辨好坏；也必须可规模化，不随任务数量增加人工。</p>
+    <a class="lang-switch" href="turning-structure-into-reward-en.html" hreflang="en" lang="en">English version →</a>
+  </header>
+  <main>
+    <nav class="toc" aria-label="本文目录"><div class="toc-links"><a href="#overview">30 秒总览</a><a href="#dupo">DuPO</a><a href="#mapo">MAPO</a><a href="#cop">CoP</a><a href="#recipe">共同配方</a><a href="#next">下一步</a><a href="#sources">论文与代码</a></div></nav>
+
+    <section id="overview">
+      <h2>30 秒总览：没有标准答案，不等于没有参照</h2>
+      <p>人工反馈、模型评审和可验证奖励，都要求有人或更强的模型事先知道“什么是对的”。但许多任务即使没有标准答案，结构里也藏着参照：输入的一部分、同一模型在强项上的输出、原文本身。只要错误的输出和参照对不上，就能据此给出奖励。我们的三项工作分别利用了三种结构：</p>
+      <div class="grid-3 overview">
+        <div class="card"><span class="tag">任务对偶 · DuPO</span><h3>藏起一部分输入，让输出把它找回来</h3><p>输出若正确，就能和已知部分一起，反推出被藏起的部分。</p><span class="num">Qwen3-4B 数学竞赛平均 +6.4</span></div>
+        <div class="card"><span class="tag">能力差异 · MAPO</span><h3>弱项向强项看齐</h3><p>用同一模型在强任务上的输出，为它在弱任务上的输出打分。</p><span class="num">域外测试 +16.2（m-RFT +7.5）</span></div>
+        <div class="card"><span class="tag">输入—输出关系 · CoP</span><h3>同一输出，换个条件再打一次分</h3><p>加入额外信息后概率变化越大，内容越可能没有原文支持。</p><span class="num">零样本 F1 63.72（直接用概率 59.25）</span></div>
+      </div>
+    </section>
+
+    <section id="dupo">
+      <h2>DuPO：藏起一部分输入，让输出把它找回来</h2>
+      <p>对偶学习用翻译与回译这类互逆任务互相检查：好译文应当能译回原文。但多数任务不可逆——只看答案 8，无法知道原题是 3 + 5 还是 10 − 2。DuPO 因此只要求还原输入的一部分：把输入拆成已知部分 \(x_k\) 和留出的未知部分 \(x_u\)，用输出 \(y\) 和 \(x_k\) 反推 \(x_u\)，再与留出值比较。</p>
+      <figure>
+        <a href="turning-structure-into-reward-assets/dupo.png"><img src="turning-structure-into-reward-assets/dupo.png" width="2002" height="1402" alt="DuPO 示意图：题目 3 + 5 拆成已知部分 3 + _ 与留出的 5；模型采样候选 8 和 7；对偶任务分别反推出 5 和 4，与留出值比对得到奖励 1 和 0；下方是距离函数可替换的奖励公式。"></a>
+        <figcaption>图 1｜DuPO 的三步：拆分与作答、构造对偶题、比对给奖励。下方是奖励的一般形式，距离 \(d\) 可按任务替换。</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><b>拆分与作答</b>题目 3 + 5 中，“3 + _”是已知部分，5 被留出。模型看到完整题目，采样出候选 8 和 7。</li>
+        <li><b>构造对偶题</b>模板“3 + ? = {y}”里没有 5。代入 8，解出 ? = 5；代入 7，解出 ? = 4。</li>
+        <li><b>比对给奖励</b>5 与留出值一致，奖励为 1；4 不一致，奖励为 0。模型按奖励更新。</li>
+      </ol>
+      <p>写成一般形式：</p>
+      <div class="math-display">\[ r(x,y)\;\propto\;\exp\!\big(-\lambda\cdot d\big(x_u,\;T_{cd}(y,\,x_k)\big)\big) \]</div>
+      <p>其中 \(T_{cd}\) 是只反推 \(x_u\) 的对偶任务，\(d\) 是衡量反推结果与留出值差距的距离或评分函数，可以按任务替换：数学用精确匹配或验证器，翻译用回译 BLEU，开放生成还可以用留出真值的 teacher-forcing 困惑度（这一项论文没有做实验）。</p>
+      <p><b>为什么可靠：</b>错误答案会把被藏起的量推到错误的值上。已知部分提供锚点，把“由答案还原整道题”缩小成约束充分的反推，降低了对偶任务的难度。</p>
+      <div class="result">
+        <b>结果</b>
+        <ul>
+          <li>Qwen3-4B 在 AMC23、AIME24、AIME25 上的平均准确率从 77.2% 提高到 83.6%，其中 AIME24 从 70.0% 提高到 83.3%。</li>
+          <li>Seed-X-7B 覆盖 28 种语言、756 个翻译方向，COMET 从 86.96 提高到 89.09；在这项评测的 BLEU、COMET、BLEURT 三项指标上均超过 Qwen3-235B-A22B。</li>
+          <li>不训练、只在推理时用它重排候选，Qwen3-4B 在 AIME24/25 上的平均准确率从 68.4% 提高到 77.7%。</li>
+        </ul>
+        <p class="links">论文：<a href="https://arxiv.org/abs/2508.14460">DuPO（ICLR 2026）</a></p>
+      </div>
+      <details class="more">
+        <summary>细节与边界：对偶题怎样自动生成，长文翻译怎样防止奖励被钻空子</summary>
+        <div><ul>
+          <li><b>自动生成。</b>程序把题目里的一个数字换成变量（跳过下标、不等式约束等位置），套用“已知答案为 {answer}，求 {variable}”的模板。约 32 万道原题派生出约 106 万道对偶题。</li>
+          <li><b>筛选。</b>同一道题的候选里，必须至少一个、至多一个能把变量反推正确，奖励才能区分候选。去掉这一步，1.5B 与 4B 模型的平均准确率分别下降 3.6 和 5.4 点。</li>
+          <li><b>真实案例。</b>一道几何题（外接圆半径 13、内切圆半径 6，答案 468）分别藏起 13 和 6。候选 468 的反推正确率为 69.1%，错误候选 108 和 312 为 0%。反推本身也有噪声，正确答案并不是每次都能反推成功。</li>
+          <li><b>长文翻译（LongDu，ACL 2026）。</b>整篇文档时 \(x_k\) 为空，直接奖励回译相似度会被钻空子：抄写原文、夹杂源语言，都能让回译更像原文。LongDu 按窗口检测语言，不属于目标语言的片段超过 5% 就直接给 −1，再加流畅度约束。只用 0.5K–2K token 的单语文档训练，Qwen3-4B-Instruct 的平均 BLEU 从 49.21 提高到 55.10，在训练长度之外的 8K–16K 文档上同样有提升。为检验信息是否在翻译中丢失，LongDu 让固定的问答模型基于“翻译再译回”的文档回答原文的问题，答错的比例从 2.18% 降到 1.03%。</li>
+          <li><b>边界。</b>论文验证了数学推理与翻译，模型规模为 1.5B–8B。开放式写作等任务尚未验证，对偶题筛选也要额外花算力。</li>
+        </ul></div>
+      </details>
+    </section>
+
+    <section id="mapo">
+      <h2>MAPO：让弱项向同一模型的强项看齐</h2>
+      <p>同一个模型在相关任务上的能力往往不均衡。MAPO 让强任务提供参照、弱任务接受优化：用模型在强任务上的输出，奖励它在弱任务上与之对齐的输出。论文用多语言数学推理验证这一点：训练数据以英文为主，模型用英文解题明显强于用孟加拉语、泰语或斯瓦希里语。</p>
+      <figure>
+        <a href="turning-structure-into-reward-assets/mapo.png"><img src="turning-structure-into-reward-assets/mapo.png" width="2002" height="1202" loading="lazy" alt="MAPO 示意图：同一模型对同一道题写出英文推理 182 + 166 = 348 作为强任务输出，以及三条中文候选；冻结的翻译模型给每条候选打分排序，最像英文推理的候选排第一；排序作为偏好或奖励优化模型。"></a>
+        <figcaption>图 2｜MAPO 的三步：两侧采样、对齐打分、对齐即奖励。右下列出两类收益：能力迁移与域外泛化。</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><b>两侧采样</b>对同一道题，同一个模型用英文写一条推理 \(\bar{y}\)，再用弱势语言写多条候选 \(y_A, y_B, y_C\)。</li>
+        <li><b>对齐打分</b>冻结的翻译模型计算 \(s_i=\log P(\bar{y}\mid y_i)\)，即英文推理有多像候选 \(y_i\) 的译文。</li>
+        <li><b>对齐即奖励</b>按 \(s_i\) 排序得到偏好 \(y_C\succ y_B\succ y_A\)，用 DPO 训练；也可以把 \(s_i\) 直接作为 PPO 的奖励。</li>
+      </ol>
+      <p>论文里的例子：182 名学生建议加土豆泥，建议加培根的比他们多 166 人，问建议培根的有多少人。英文推理写出 182 + 166 = 348。对齐前，中文推理把多少关系读反，写成 182 − 166 = 16；对齐后改为 182 + 166 = 348。</p>
+      <p><b>为什么可靠：</b>翻译模型不需要会解题，只需判断两段推理是否在说同一件事。中文推理一旦用了不同的数字或运算，英文推理就很难被看成它的译文。因此一个 6 亿参数的翻译模型，就能为 70 亿、130 亿参数的推理模型打分。</p>
+      <div class="result">
+        <b>结果（MathOctopus-7B，十种语言的平均准确率）</b>
+        <ul>
+          <li><b>弱项变强：</b>在没有参与训练的 MSVAMP 上，从 41.2% 提高到 57.4%（+16.2）；用答案正确性筛选自采样推理再训练的 m-RFT 只提高 7.5。孟加拉语、泰语分别提高 21.1 和 19.3。</li>
+          <li><b>强项也更强、更稳：</b>偏好数据里没有英文，英文准确率仍在 MSVAMP 上从 46.4% 提高到 58.4%。在原监督微调数据所在的 MGSM 上，m-RFT 平均下降 5.1，MAPO 提高 2.1。</li>
+        </ul>
+        <p class="links">论文：<a href="https://aclanthology.org/2024.acl-long.539/">MAPO（ACL 2024）</a> · <a href="https://github.com/NJUNLP/MAPO">代码</a></p>
+      </div>
+      <details class="more">
+        <summary>细节与边界：为什么不直接翻译训练数据，对齐又有哪些局限</summary>
+        <div><ul>
+          <li><b>翻译数据的局限。</b>把英文推理翻译成其他语言再做监督微调，数学推理难译、易错，规模有限；模型学到的又是这批数据的特定写法，换一个测试集就容易失效。MAPO 不给“正确答案”，只告诉模型哪类输出更好，作者认为这是它泛化更好的原因。</li>
+          <li><b>衡量器可以替换。</b>论文默认用 NLLB-200-distilled-600M；换成 mBART、M2M 或更大的 NLLB，提升依然成立。</li>
+          <li><b>对齐不等于正确。</b>英文参照由模型自己生成。参照出错，或两种语言犯同一个错误时，对齐分数会奖励错误。</li>
+          <li><b>英文并非处处提升。</b>MathOctopus-7B 在 MGSM 上的英文准确率从 52.0% 降到 45.6%（m-RFT 为 43.2%）。</li>
+          <li><b>前提。</b>模型需要先具备初步的多语言推理能力；论文只在 7B、13B 模型的多语言数学推理上做了验证。</li>
+        </ul></div>
+      </details>
+    </section>
+
+    <section id="cop">
+      <h2>CoP：同一输出，换一个条件再打一次分</h2>
+      <p>摘要模型常写出流畅却与原文不符的句子。直接用生成概率检测并不可靠：概率既反映原文是否支持这句话，也反映模型的语言与知识先验，流畅的编造照样能拿高分。CoP 让同一个冻结的模型对同一份摘要打两次分，用差值抵消先验。</p>
+      <figure>
+        <a href="turning-structure-into-reward-assets/cop.png"><img src="turning-structure-into-reward-assets/cop.png" width="2002" height="1290" loading="lazy" alt="CoP 示意图：冻结的生成模型对同一份待评摘要打两次分，一次只给原文 X，一次额外加入 T；两次逐词对数概率之差小表示 T 与原文一致，差大表示冲突；下方列出可替换的额外输入及其检查维度。"></a>
+        <figcaption>图 3｜CoP 的三步：准备输入、两次打分、作差。替换额外输入 \(T\)，就能换检查的维度。</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><b>常规打分</b>只给原文 \(X\)，逐词计算摘要的对数概率 \(P_1=\log P(y\mid X)\)。</li>
+        <li><b>加条件再打分</b>给原文加上额外输入 \(T\)（基础版本中就是摘要本身），再算一次 \(P_2=\log P(y\mid X,T)\)。</li>
+        <li><b>作差</b>\(\Delta=P_2-P_1\)。\(\Delta\) 越大，这个词越可能没有原文支持。</li>
+      </ol>
+      <p><b>为什么可靠：</b>原文已经支持的词，\(T\) 只是重复信息，概率几乎不动；原文不支持的词，只有 \(T\) 能解释它，加入后概率明显上升。语言先验在两次打分里都存在，作差后大体抵消。</p>
+      <p><b>\(T\) 决定检查什么：</b>在摘要后追加从摘要中抽出的实体列表，检测更侧重实体错误；加入指代消解的结果，更侧重指代错误。两种做法都不需要训练。</p>
+      <div class="result">
+        <b>结果</b>
+        <ul>
+          <li>在 XSum 幻觉标注数据上，零样本逐词检测的 F1 为 63.72，直接用生成概率打分为 59.25。</li>
+          <li>冻结模型、只训练 0.08M 参数的提示向量，用 300 条标注达到 66.56，超过用约 2K 条标注训练的 DAE（65.00）。</li>
+        </ul>
+        <p class="links">论文：<a href="https://ojs.aaai.org/index.php/AAAI/article/view/26589">CoP（AAAI 2023）</a> · <a href="https://github.com/NJUNLP/CoP">代码</a></p>
+      </div>
+      <details class="more">
+        <summary>细节与边界：整句分数、和遮盖原文的方法有何不同、哪些用法尚未验证</summary>
+        <div><ul>
+          <li><b>输出形式。</b>CoP 给每个词一个分数，设阈值即可标出可疑的词，也可以汇总成整句分数。在 QAGS 与 FRANK 的四个整句级数据集上，它与人工判断的相关性都高于 BARTScore 等基线。</li>
+          <li><b>与遮盖原文的方法相比。</b>此前的 CoCo 遮掉部分原文再打分，但遮盖后的原文本身不通顺，仍受先验干扰，也很难决定该遮哪些词；CoP 加入的是通顺的额外输入。</li>
+          <li><b>边界。</b>论文研究的是检测与评价，没有把它用作强化学习的奖励。逐词差分能否作为训练奖励或拒答信号，用任务约束检查指令遵循，都还有待验证。</li>
+        </ul></div>
+      </details>
+    </section>
+
+    <section id="recipe">
+      <h2>共同配方：把结构变成奖励</h2>
+      <p>三个方法利用的结构不同，做法可以归结为四条：</p>
+      <div class="grid-2">
+        <div class="card"><h3>1. 参照不必是标准答案</h3><p>留出的输入、强项上的输出、原文本身，都与正确输出存在稳定关系，错误输出会破坏这种关系；而且都不需要新增标注。</p></div>
+        <div class="card"><h3>2. 检查要比原任务容易</h3><p>已知部分为反推提供锚点；翻译模型只比较两段推理；两次打分作差抵消先验。检查者不必整体更强，只需在检查的那个维度上可靠。</p></div>
+        <div class="card"><h3>3. 方向要明确</h3><p>参照来自更可靠的一侧，被优化的是候选。MAPO 中强任务给参照、弱任务被优化；DuPO 的留出值只用于比对，不出现在对偶题里。</p></div>
+        <div class="card"><h3>4. 用独立指标验收</h3><p>奖励上升不等于模型变好，模型可能钻空子。三项工作都在训练奖励之外验证：未参与训练的测试集、往返翻译后的问答测试、人工标注。</p></div>
+      </div>
+      <p><b>和自进化的关系：</b>DuPO 与 LongDu 中，作答和反推由同一个模型完成；MAPO 的参照也来自模型自己。模型变强后，参照和检查也可能随之变强，训练因此有机会随模型一起推进，而不受限于一个固定的外部评审。代价是生成者和检查者可能共享盲点，这是下面的开放问题之一。</p>
+    </section>
+
+    <section id="next">
+      <h2>下一步：从已验证的实例到可能的拓展</h2>
+      <p>每个方法都有一个可以替换的部件，换掉它就能迁移到新任务：</p>
+      <div class="grid-3 ext">
+        <div class="card"><span class="tag">DuPO · 换留出部分与距离 \(d\)</span><p><span class="badge ok">已验证</span>数学推理、翻译、长文翻译。</p><p><span class="badge idea">可能拓展</span>代码（藏起需求中的一个参数）、Agent 与长程任务（藏起目标或状态的一部分）、多模态。</p></div>
+        <div class="card"><span class="tag">MAPO · 换强弱任务对与衡量器</span><p><span class="badge ok">已验证</span>英文推理带动其他语言的推理。</p><p><span class="badge idea">可能拓展</span>跨任务（数学 → 代码）、跨模态（文本 → 语音、视觉）、跨资产标的；关键是找到可靠的对齐衡量器。</p></div>
+        <div class="card"><span class="tag">CoP · 换额外输入 \(T\)</span><p><span class="badge ok">已验证</span>摘要本身、实体与指代信息。</p><p><span class="badge idea">可能拓展</span>用任务约束检查指令遵循；把逐词差分用作训练奖励。</p></div>
+      </div>
+      <h3>开放问题</h3>
+      <ol>
+        <li><b>自动发现结构：</b>哪些输入值得留出、哪些任务之间存在稳定的强弱关系，目前靠人工设计。能否让模型自己提出并筛选？</li>
+        <li><b>共同盲点：</b>生成者和检查者同源时，怎样发现两者一起犯的错？</li>
+        <li><b>验证算力怎么花：</b>反推、回译和多次打分都要算力，能否集中到最可能改变候选排序的地方？</li>
+      </ol>
+      <p>如果你在别的任务里也找到了可用的结构，欢迎交流。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>论文、代码与数字口径</h2>
+      <ul>
+        <li>DuPO: Enabling Reliable Self-Verification via Dual Preference Optimization. ICLR 2026. <a href="https://arxiv.org/abs/2508.14460">arXiv</a> · <a href="https://openreview.net/forum?id=SD8Z231C45">OpenReview</a></li>
+        <li>MAPO: Advancing Multilingual Reasoning through Multilingual-Alignment-as-Preference Optimization. ACL 2024. <a href="https://aclanthology.org/2024.acl-long.539/">论文</a> · <a href="https://github.com/NJUNLP/MAPO">代码</a></li>
+        <li>CoP: Factual Inconsistency Detection by Controlling the Preference. AAAI 2023. <a href="https://ojs.aaai.org/index.php/AAAI/article/view/26589">论文</a> · <a href="https://arxiv.org/abs/2212.01611">arXiv</a> · <a href="https://github.com/NJUNLP/CoP">代码</a></li>
+        <li>LongDu: Improving Long-Context Translation via Self-Supervised Dual Learning. ACL 2026. <a href="https://aclanthology.org/2026.acl-long.1257/">论文</a></li>
+      </ul>
+      <p class="small">文中数字均为论文报告值，未独立复现。DuPO 的数字取自 arXiv v1，正式版的基准组合与小数位可能略有不同。图 1–3 是示意图，3 + 5 与图中的中文候选是简化例子，182 / 166 与几何题来自论文案例。图中的“零标注”指不新增答案、推理或偏好标注，不是不需要训练数据：例如 MAPO 的基础模型已经做过多语言推理的监督微调，CoP 用的是在摘要数据上训练过的模型。</p>
+    </section>
+  </main>
+</body>
+</html>
