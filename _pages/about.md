@@ -10,6 +10,9 @@ redirect_from:
 
 I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. My research focuses on LLM Reasoning, RL, and Multi-Modal LLM. Concurrently, I am a research intern at ByteDance Seed.
 
+I focus on constructing **self-supervised** learning signals and exploring **general post-training strategies** across tasks, striving toward more **general** and **scalable** LLMs. **I am currently looking for job opportunities**, and I am excited about a wide range of interesting and challenging directions, including **RL, Recursive Self-Improvement (RSI), Reasoning, Agentic AI, and Post-Training**. If your team is hiring — whether at a **Tech company, a Startup, or a Quantitative Trading** — I'd love to [chat](mailto:shesj@smail.nju.edu.cn)!
+{: .notice--info}
+
 ⭐ News
 ==========
 **\[2026-04-10\]** Our two new papers got accepted to ACL 2026.

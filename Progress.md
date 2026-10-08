@@ -1,5 +1,26 @@
 # Ricardokevins.github.io Progress
 
+## 2026-10-08 主页精选论文间距收紧与求职说明（已完成；未提交）
+
+### 根因
+
+- 用户反馈主页 Selected Publications 行间距过大。构建产物中每条为 `li > div(标题) + p(作者与徽章) + blockquote(💡 摘要)`；主题 `_sass/_base.scss` 的 blockquote 外边距是 `2em 1em 2em 0`，正文 14px 下约 28px，而段落与列表项下边距只有 `0.5em`（7px），所以摘要上下各空出约 28px，明显比 Published Papers 稀疏。
+
+### 完成变更
+
+- `assets/css/main.scss` 新增 `.page__content li > blockquote`，只把上下外边距改为 `0.5em / 1em`，保留左边框、斜体与水平边距。扫描构建后全部 37 个使用主题样式的页面：只有首页存在列表项内直接嵌 blockquote 的结构（正好 4 条摘要），其他页面不受影响。
+- `_pages/about.md` 个人介绍后新增英文求职段落：以用户给定的 self-supervised / general post-training 句子开头（补主语为 “I focus on”），说明正在找工作，列出 RL、Recursive Self-Improvement (RSI)、Reasoning、Agentic AI、Post-Training 等方向，结尾邀请大厂、初创与量化团队联系（用户嫌原先逐项罗列公司类型的句子生硬，已改为 “If your team is hiring in these areas — whether at a big tech company, a startup, or a quant firm — I'd love to chat!”）；“chat” 链接到侧栏同一邮箱。
+- 用户随后要求用气泡或方框突出求职段落：在段落后加 kramdown 标记 `{: .notice--info}`，复用主题自带的浅蓝圆角提示框（`_sass/_notices.scss`），未新增 CSS。
+
+### 验证
+
+- [x] 按锁定依赖分别构建改动前后版本，并用临时配置把 `url` 覆盖为本地端口（默认 CSS 走线上绝对地址，会让本地对比失真）；构建仅有既有 Faraday / GitHub Metadata 提示。
+- [x] 编译后的 `main.css` 含新规则；首页 HTML 含新段落与 mailto 链接。
+- [x] 内置浏览器同视口测量：徽章行到摘要 28px → 7px，条目之间 28px → 14px，Selected Publications 区块高度 929px → 795px（−134px）；无头 Chrome 1440px 截图确认双栏布局效果一致。
+- [x] 提示框：构建后段落渲染为 `<p class="notice--info">`；1440px 桌面截图正常。无头 Chrome 布局宽度最小被限制为 500px，直接用 390px 窗口截图会被裁切，改用同源 390px iframe 截图，确认框在手机宽度下正常换行、无横向溢出。
+- [x] `git diff --check` 通过。
+- [ ] 未提交或推送。
+
 ## 2026-09-30 未提交笔记深度梳理与发布（已完成；已验证，已推送）
 
 ### 盘点与关键发现
@@ -8412,3 +8433,41 @@ bundle exec jekyll build               # done in 7.6s, 仅 NOTE_TEMPLATE.md 模�
 - [x] git diff --check 通过；目标页面无Unicode替换字符、NUL字节、本地路径、工具日志或公开生成痕迹。
 - [x] 隔离Jekyll构建成功，目标源文件与构建产物SHA-256一致；仅有仓库既有的Faraday可选依赖与GitHub Metadata未认证提示，不影响静态页面。
 - [ ] 浏览器自动化包装器受用户npm缓存权限问题阻断；复用缓存中的Playwright与无头Chromium后，浏览器仍在当前macOS沙箱启动/退出阶段挂起。没有操作前台Chrome；页面级验收以构建成功、结构计数及锚点/ID审计替代。
+
+## 2026-10-03 量化题库第4–6题理解补充
+
+### 完成变更
+
+- 原位扩写 notes/tech-analysis/xiaohongshu-quant-interview-question-bank.html 的第4–6题卡片，保留完整题面、答案、原自测和页面结构。
+- 第4题补充赔率3的净收益与正期望门槛、循环胜率和大于1的逐项比较，并加入“单笔可为负、三笔合计为正”的数值例子。
+- 第5题从布朗运动的位置和增量讲起，解释标准正态分布函数 Φ、反射原理中概率翻倍的路径对应，以及如何对随机起点取平均得到1/2；单独说明零点局部聚集依赖布朗运动的局部振荡性质。
+- 第6题用5、11的余数分类直观推出39，再解释互质两面额公式 pq−p−q 的余数覆盖证明，最后回到奇偶拆分与111。
+
+### 验证结果
+
+- [x] HTML5 解析无错误；第4–6题各保留一个题目卡片与折叠自测。
+- [x] ruby scripts/validate_notes_index.rb 通过。
+- [x] git diff --check 通过。
+- [x] 仅改动目标题库页面与本进度记录；未提交或推送。
+
+## 2026-10-04 量化题库第13题随机游走推导补充
+
+- 原位扩写题库第13题，定义首次到达3前对−2的访问次数，并从两侧边界命中概率的线性递推推出赌徒破产公式。
+- 将总次数拆为先命中−2的概率3/5与命中后含首次访问的条件期望10；说明从−3返回−2的概率为1、从−1返回−2的概率为4/5，并用更新方程G=1+(9/10)G得到总访问期望6。
+- 保留原题面、自测与页面结构；未提交或推送。
+
+## 2026-10-04 量化题库第10题从头讲解补充
+
+### 完成变更
+
+- 原位扩写第10题卡片，按“停止次数 → 单纯形概率 → 尾和求期望次数 → Wald求停止总和”重排解释，不新增重复页面。
+- 加入二维单位正方形中的三角形、三维固定首抽值后的截面解释和 x=0.4 数值例子；明确剩余两个抽样仍在整个单位正方形中随机，收缩的是合格区域。
+- 用逐层切片推导 m 维体积 Vₘ(t)=t^m/m!，解释 (k−1)! 来自剩余维度、再积分除以 k；展示 k=3 积分展开与 k=4 的核对例子。
+- 从 N 的指示变量展开解释尾和公式；再按“是否抽第i次在看到第i个数之前已决定”推导本题的 Wald 关系与 e/2。
+
+### 验证结果
+
+- [x] HTML5 解析无错误；52个题目卡片与52个折叠自测均保留。
+- [x] ruby scripts/validate_notes_index.rb 通过。
+- [x] git diff --check 通过。
+- [x] 未提交或推送。
