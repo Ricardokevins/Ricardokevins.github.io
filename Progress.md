@@ -1,5 +1,12 @@
 # Ricardokevins.github.io Progress
 
+## 2026-10-08 「把结构变成奖励」笔记（讨论中；未由 agent 提交）
+
+- 文件：`notes/paper-reviews/turning-structure-into-reward.html`，配图 `notes/paper-reviews/turning-structure-into-reward-assets/{dupo,mapo,cop}.png`（来自 structure-reward `simple-figures/` v4，定稿后直接覆盖），`_data/notes.yml` 顶部一条 Paper Note。
+- 当前为第二版：以自监督与自进化的思考为主线（核心论点 → 三个实例 → “参照 + 关系 + 检查”模板与可靠性要求 → 自进化 → 换到新任务的三个问题），论文只作例证与阅读入口。第一版按论文逐篇展开，被用户否定。
+- 第一版中文稿曾被 557e675 带上并推送，当次 deploy 工作流因缺索引条目在“Validate notes index”失败；现已补条目，本地校验通过（305 条，仅“正文较短”警告）。
+- 英文版暂缓：旧英文稿已删除，中文定稿后再写。
+
 ## 2026-10-08 主页精选论文间距收紧与求职说明（已完成；已推送）
 
 ### 根因

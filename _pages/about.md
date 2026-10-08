@@ -8,7 +8,9 @@ redirect_from:
   - /about.html
 ---
 
-I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. Concurrently, I am a research intern at ByteDance Seed. I focus on constructing **self-supervised** learning signals and exploring **general post-training strategies** across tasks, striving toward more **general** and **scalable** LLMs. 
+I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. Concurrently, I am a research intern at **ByteDance Seed**. 
+
+I focus on constructing **self-supervised** learning signals and exploring **general post-training strategies** across tasks, striving toward more **general** and **scalable** LLMs. 
 
  **I am currently looking for job opportunities** and am excited about a wide range of interesting and challenging research directions, including but not limited to reinforcement learning (RL), recursive self-improvement (RSI), reasoning, agentic post-training, and full-duplex interaction with AI agents. If your team is hiring—whether at a **Tech company**, **Startup**, or **quantitative trading firm**—I’d love to [connect](mailto:shesj@smail.nju.edu.cn) and learn more.
 {: .notice--info}
@@ -35,20 +37,20 @@ I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.n
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;Tech Report&nbsp;</span> 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters</div>
 **ByteDance Seed Team**
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2507.13618)
-[![citation](https://img.shields.io/badge/citation-20-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
+[![citation](https://img.shields.io/badge/citation-23-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Seed-X%3A-Building-Strong-Multilingual-Translation-7B-Cheng-Bao/60faf6805c50cd71e8414b0e795966ebed525d46)
 > 💡 **Multilingual Translation · CoT Reasoning · RL** — An open-source 7B translation LLM family (instruct + reasoning) covering 28 languages; CoT fine-tuning plus RL pushes translation quality to the level of leading closed-source models like Gemini-2.5 and GPT-4o.
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;EMNLP 2025&nbsp;</span> R-PRM: Reasoning-Driven Process Reward Modeling</div>
 **Shuaijie She**\*, Junxiao Liu\*, Yifeng Liu, Jiajun Chen, Xin Huang, Shujian Huang
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2503.21295)
-[![citation](https://img.shields.io/badge/citation-48-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
+[![citation](https://img.shields.io/badge/citation-50-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/R-PRM%3A-Reasoning-Driven-Process-Reward-Modeling-She-Liu/e275d6715064db3054d175f45a9930c219db5a21)
 > 💡 **Process Reward Model · Step-Level Evaluation · Inference-Time Scaling** — Turns step-level evaluation itself into a reasoning process: bootstraps comprehensive per-step judgments from limited annotations, further strengthened by preference optimization and inference-time scaling — no additional step-level labels needed (+11.9 F1 on ProcessBench, +8.5 avg. accuracy across six math benchmarks).
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2024&nbsp;</span> MAPO: Advancing Multilingual Reasoning through Multilingual-Alignment-as-Preference Optimization </div>
 **Shuaijie She** , Wei Zou , Shujian Huang , Wenhao Zhu,
 Xiang Liu, Xiang Geng, Jiajun Chen
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.06838)
-[![citation](https://img.shields.io/badge/citation-99-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
+[![citation](https://img.shields.io/badge/citation-101-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/MAPO%3A-Advancing-Multilingual-Reasoning-through-She-Huang/e360eb07461f2741793f99ece8b97a6c04fb2b68)
 > 💡 **Multilingual Reasoning · Alignment-as-Preference** — Reframes multilingual alignment as preference optimization: an off-the-shelf translator measures the consistency between reasoning in dominant and non-dominant languages as the preference signal (DPO/PPO), aligning non-dominant-language reasoning with English (MSVAMP +16.2%, MGSM +6.1%).
 
 # Published Papers
@@ -61,12 +63,12 @@ Hao Zhou, Tianhao Li, Zhijun Wang, **Shuaijie She**, Linjuan Wu, Hao-Ran Wei, Ba
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;AAAI 2026&nbsp;</span> How does Alignment Enhance LLMs' Multilingual Capabilities? A Language Neurons Perspective</div>
 Shimao Zhang, Zhejian Lai, Xiang Liu, **Shuaijie She**, Xiao Liu, Yeyun Gong, Shujian Huang, Jiajun Chen
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2505.21505)
-[![citation](https://img.shields.io/badge/citation-5-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
+[![citation](https://img.shields.io/badge/citation-8-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/How-does-Alignment-Enhance-LLMs'-Multilingual-A-Zhang-Lai/8474b2282df5775c42fa0b0e77c5f13f032b0259)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2024&nbsp;</span> Question Translation Training for Better Multilingual Reasoning</div>
 Wenhao Zhu, Shujian Huang, Fei Yuan, **Shuaijie She**, Jiajun Chen, Alexandra Birch
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2401.07817)
-[![citation](https://img.shields.io/badge/citation-64-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
+[![citation](https://img.shields.io/badge/citation-71-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/Question-Translation-Training-for-Better-Reasoning-Zhu-Huang/e7bbfb2eb08cce711fd39f2081d116d7e760651e)
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;NAACL 2024&nbsp;</span> Exploring the Factual Consistency in Dialogue Comprehension of Large Language Models</div>
 **Shuaijie She**, Shujian Huang, Xingyun Wang, Yanke Zhou, Jiajun Chen
