@@ -1575,7 +1575,7 @@ def render():
 <link rel="stylesheet" href="../assets/notes-shell.css?v=20261018"><link rel="stylesheet" href="book.css"></head>
 <body class="notes-shell-page">
 <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
-<header id="top"><p class="kicker">Interview Practice · Python 3</p><h1>LeetCode Hot 100<br>用模式压缩记忆，用不变量解释代码</h1><p class="lede">100 道题、17 个模式类别。先学每类为何能缩小搜索，再看同一思路怎样适应不同约束。每题都给出题意、推导、具体步骤、可实现的 Python 代码、复杂度与失败边界。</p><p><a class="download" href="https://github.com/Ricardokevins/Ricardokevins.github.io/releases/download/interview-notes-2026-10-18/leetcode-hot-100.pdf">离线 PDF</a> <a href="../interview-offline/">面试教材下载中心</a></p></header>
+<header id="top"><p class="kicker">Interview Practice · Python 3</p><h1>LeetCode Hot 100<br>用模式压缩记忆，用不变量解释代码</h1><p class="lede">100 道题、17 个模式类别。先学每类为何能缩小搜索，再看同一思路怎样适应不同约束。每题都给出题意、推导、具体步骤、可实现的 Python 代码、复杂度与失败边界。</p><p><a href="../interview-offline/">面试学习总入口</a></p></header>
 <div class="book-layout"><aside class="book-toc"><h2>模式目录</h2><nav aria-label="模式目录"><a href="#basics">00 · 从零补基础</a>NAV</nav></aside><main>
 BASICS
 <section class="intro" id="how-to"><h2>如何最快建立可迁移的解题能力</h2><p>例如 LC 1 的暴力解要为每个数在其余数里寻找补数，哈希将这段重复搜索压成一次查询。LC 560 表面换成“连续区间和”，本质仍是找补数，只是被查询对象变成旧的前缀和，而且需要记录次数。学习时把这个映射讲出来，比记两段代码更有用。</p>
