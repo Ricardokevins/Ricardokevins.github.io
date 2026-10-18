@@ -21,9 +21,9 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-  <link rel="stylesheet" href="../assets/quant-bank.css">
-  <link rel="stylesheet" href="../../assets/notes-shell.css">
+  <script defer src="../../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css?v=20261018">
+  <link rel="stylesheet" href="../../assets/notes-shell.css?v=20261018">
 </head>
 <body class="notes-shell-page">
   <nav class="notes-sitebar" aria-label="Notes navigation">
@@ -116,6 +116,8 @@
         <section class="chapter" data-category="finance" data-title="金融四：组合构建与回测">
           <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>040. 金融四：组合构建与回测</h2>
           <aside class="chapter-orientation"><b>阅读定位</b><p>手册最后一章把前三章的零件装成一台完整的机器：用 beta/alpha 分解构造市场中性组合，用最小方差与相关矩阵配权，用再平衡讨论路径收益，最后面对回测与实盘的鸿沟。覆盖源题 F1–F3、F9–F12、F18、F19、F24、F27、F35，并统一解答统计源题 S26。</p></aside>
+<section class="foundation-bridge"><h3 id="first-small-example">先用一个小例走通</h3><p>预测明天涨1%并不等于赚1%：若只配置20%资金，毛收益贡献约0.2%；再扣建仓与平仓费用、滑点才得净收益。Beta度量对某个市场因子的线性敏感度，alpha是指定因子模型解释后留下的平均收益；改变基准因子，alpha也可改变。组合构建把预测变权重，回测再验证这些权重在真实可用信息下如何成交。</p></section>
+
           <figure class="visual-lead"><img src="../assets/finance-map.svg" alt="金融直觉板块知识地图：组合构建与回测主题汇总夏普、期权与微观结构三条主线"></figure>
 
           <h3 id="s-040-1"><a class="anchor-link" href="#s-040-1" aria-label="跳转到本节">#</a>学习目标：从信号到实盘的完整链条</h3>
@@ -166,7 +168,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>组合方差（%² 单位）：\(\sigma_p^2=(36/49)\cdot 400+(1/49)\cdot 900+2\cdot 0.5\cdot(6/49)\cdot 600=18900/49\approx 385.7\)，\(\sigma_p\approx 19.6\%\lt 20\%=\min(\sigma_A,\sigma_B)\)——加入一只更高波的股票反而降了波动，分散化的直接证据。边界自查：\(\rho\to-1\) 时 \(w_A\to\sigma_B/(\sigma_A+\sigma_B)\)（零方差组合，权重反比于波动）；\(\rho\to 0\) 时 \(w_A\to\sigma_B^2/(\sigma_A^2+\sigma_B^2)\)（逆方差加权，inverse-variance weighting），两个极端都对。</p>
               <p><b>面试怎么讲。</b>「最小方差只看协方差：通用解 \(w\propto\Sigma^{-1}\mathbf{1}\)，两资产时代入公式得 6/7 与 1/7，组合波动 19.6%，低于两者各自。注意它对 \(\Sigma\) 的估计误差极其敏感，实务要加收缩或正则。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-01"><p><b>推导补全与自检。</b>带权重和1约束，拉格朗日L=wᵀΣw−λ(1ᵀw−1)，一阶条件2Σw=λ1，归一化得Σ^{-1}1/(1ᵀΣ^{-1}1)。本例权重6/7与1/7。该闭式要求Σ正定、无卖空和仓位限制；若Σ奇异用伪逆仍需检查约束是否可行，不能简单把逆替换为伪逆就断言所有情况都成立。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 2（源题 F11）：组合 X 对市场的暴露为 c。如何降低暴露？分别按交易次数、交易金额的绝对值、交易金额的平方作为成本函数，给出成本最小的削减方式（用直觉与拉格朗日两种方式）。设第 i 只股票的 beta 为 \(\beta_i\)，交易额（占组合比例）为 \(x_i\)。</b></p>
@@ -178,7 +180,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>三类解的一致性：L1 与 L0 都集中（线性成本不奖励分散），L2 强制分散（平方成本惩罚大单）；现实的市场冲击近似平方根律，最优解落在 L1 的「集中」与 L2 的「均摊」之间。</p>
               <p><b>面试怎么讲。</b>「成本函数的曲率决定答案：数次数与线性金额下，交易集中在最高 beta 名义最省；平方金额下拉格朗日给出 \(x_i\propto\beta_i\) 的均摊解。一句话：线性成本挑工具，二次成本摊着来。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-02"><p><b>推导补全与自检。</b>降暴露约束βᵀx=−Δ。L2最小成本由Cauchy–Schwarz给x*=−Δβ/(βᵀβ)，最小平方金额Δ²/‖β‖²；L1最小成本下界|Δ|/max|β_i|，把全部交易放在绝对beta最大的一只可达。按交易笔数计且无单笔上限，只需任一非零beta股票一笔；实际成交上限、费用与风险约束会改变解。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 3（源题 F24）：两只股票可能日度正相关、而年度负相关吗？</b></p>
@@ -190,7 +192,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>直觉复核：两家公司每天被同一个市场/板块噪声推着同涨同跌（日正相关），但一家在缓慢赢得份额、另一家在缓慢失去份额，一年下来股价反向（年负相关）——趋势与噪声分离的典型形态。另一机制是 lead-lag 与均值回复：B 对 A 的滞后反向跟随，短期看是同向跟随、长期看是回归。</p>
               <p><b>面试怎么讲。</b>「相关性是频率依赖的统计量。日度窗口里共同噪声说了算，年度窗口里缓慢分化的随机趋势说了算——构造『当天回吐的共同噪声 + 缓慢反向的随机趋势』就能同时得到日正、年负。提醒：这在实务里意味着用日度相关矩阵去管年度风险是错配的。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-03"><p><b>推导补全与自检。</b>期间聚合收益协方差含所有跨日项：Cov(∑a_t,∑b_s)=∑_t∑_sCov(a_t,b_s)。日度正相关只约束t=s项，跨期项可为负并在长期主导，所以年度可负相关。若所有跨日协方差都0且各日同分布，则年度相关不会仅靠相加反号；要构造反号必须展示跨期结构，不能只说“时间尺度不同”。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 4（源题 F35）：股票在 t=1 时价格 100，t=n 时回到 100。你维持一个恒定 100 的组合（涨了就卖、跌了就买）。这个策略最终收益为正吗？</b></p>
@@ -202,7 +204,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>两个视角互证：① AM-GM：\(\frac1n\sum(1+r_t)\ge\bigl(\prod(1+r_t)\bigr)^{1/n}=1\)，算术平均不小于几何平均，策略把「算术路径」变现；② 波动率拖累（volatility drag）的对偶：买入持有的对数收益 \(\sum\ln(1+r_t)\approx\sum r_t-\frac12\sum r_t^2\)，拖累项正是策略的利润来源。这个策略就是恒定比例组合（constant mix）的波动率收割（volatility harvesting），与 Shannon 的恶魔、<a href="038.html">038 章</a>对冲组合的 gamma 损益 \(\tfrac12\Gamma S^2\sigma_r^2\) 同构——都是赚已实现方差。</p>
               <p><b>面试怎么讲。</b>「正收益，近似 \(50\sum r_t^2\)：恒定敞口等价于机械地高抛低吸，把波动率拖累反向兑现。但要补风险边界：下跌期需要不断追加现金、股票趋零时摊低无底（需止损/融资约束），它不是免费午餐，是路径风险的补偿。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-04"><p><b>推导补全与自检。</b>价格回到原点给∏(1+r_t)=1且每期gross return&gt;0。AM–GM给平均gross return≥1，所以∑r_t≥0，零融资成本、无交易费用、每期再平衡为100股票市值时现金累计盈亏100∑r_t≥0。路径100→110→100，收益10%与−9.0909%，盈利约0.9091；扣掉交易成本或加资金利息后未必为正。</p></div></div>
 
           <h3 id="s-040-5"><a class="anchor-link" href="#s-040-5" aria-label="跳转到本节">#</a>例题详解二：波动率估计与研究口径</h3>
 
@@ -221,7 +223,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>子问（回归与正则化）。</b>OLS 闭式解 \(\hat{\beta}=(X^{\top}X)^{-1}X^{\top}y\)；不可逆出现在 \(X^{\top}X\) 奇异时——特征数超过样本数（\(p\gt n\)）或特征共线。岭回归闭式解 \(\hat{\beta}_{ridge}=(X^{\top}X+\lambda I)^{-1}X^{\top}y\)：谱的视角，\(X^{\top}X\) 的特征值 \(\lambda_i\) 整体右移为 \(\lambda_i+\lambda\)，全部严格为正，条件数 \((\lambda_{\max}+\lambda)/(\lambda_{\min}+\lambda)\) 变小——求逆从病态变良态；Lasso 的 \(\ell_1\) 惩罚使目标不可微、无闭式解，用坐标下降或次梯度法求解，其条件数讨论与收敛细节见 <a href="027.html">027 章</a>。</p>
               <p><b>面试怎么讲。</b>「先按信息量排估计器：收盘-收盘无偏但低效，Parkinson、Garman-Klass 用高低开收效率翻倍但怕隔夜跳空，realized vol 一致但怕微观结构噪声。检验永远是样本外预测问题：MZ 回归加 QLIKE。回归子问一句话：\(X^{\top}X\) 奇异时 OLS 无解，岭把谱整体右移 \(\lambda\) 恢复可逆。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-05"><p><b>推导补全与自检。</b>收盘收益平方、Parkinson高低价、Garman–Klass开收高低都有各自无漂移、连续路径、无跳空等假设。所谓“效率更高”通常是在该模型下方差更小，不代表遇到跳跃也更准确。评估预测波动时选独立未来区间并处理估计噪声，可比较QLIKE；模型训练、预测目标和年化口径必须一致。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 6（源题 F2）：描述你的研究主题。如何计算策略的 alpha？用到哪些数学模型？什么条件触发交易信号？策略表现是否满意？</b></p>
@@ -239,7 +241,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>自检三问：每个环节能否被追问两层（信号的统计性质、成本的敏感性）？alpha 与夏普是否做过样本外？如果答案是「满意」，有没有量化对照（不满意也能讲：指出衰减与容量瓶颈更显成熟）。</p>
               <p><b>面试怎么讲。</b>按模板七步走，每步一句话；主动把「信号 → 组合 → 成本 → 归因」的链条说完整，最忌只讲信号不讲成本与容量。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-06"><p><b>推导补全与自检。</b>策略alpha回归R_p−r_f=α+βᵀF+ε，α取决于因子集合、频率、样本与成本口径。正截距可能来自遗漏风险、样本选择或执行偏差，不能单独证明研究能力。描述项目时给“信号生成时可用数据→仓位决策→成交假设→成本后结果”，并用样本外与失效场景限定结论；不以未运行的设想冒充实绩。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 7（源题 F3）：系统化策略在回测环境与实盘交易中的主要差异是什么？哪些效应只在实盘发生、回测无法复现？实盘的自动交易如何审计？</b></p>
@@ -249,7 +251,7 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>健康度指标：实盘/回测夏普比若长期低于 0.5，先怀疑成本模型而非市场；滑点分布若有厚尾，检查是否集中在开盘与事件时段。</p>
               <p><b>面试怎么讲。</b>「回测的三个隐含假设——不冲击市场、按看到的价成交、结构不变——在实盘全部失效。我把差异归为成交类（排队、部分成交、冲击、滑点）与环境类（borrow、regime、拥挤），审计靠逐笔对账、全链路日志、影子运行和 kill switch。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="040-07"><p><b>推导补全与自检。</b>回测可模拟队列、冲击、拒单与延迟，但模型精度受数据与反馈效应限制；这些不是逻辑上永远无法复现。实盘审计应对每个意图记录订单ID、发送/确认/成交时戳、状态变更、撤单与重试、资金仓位核对，验证幂等与恢复。净PnL要能从逐笔成交和费用独立重算，而不只依赖策略日志中的汇总数字。</p></div></div>
 
           <h3 id="s-040-6"><a class="anchor-link" href="#s-040-6" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>常见误区</b><p>① 「市场中性 = 没有风险」——beta 归零只是搬走了一个因子，残差波动、行业暴露与拥挤风险都还在；② 最小方差解对 \(\Sigma\) 的估计误差极度敏感——样本协方差在维度高时近乎噪声，实务必须收缩（与 <a href="027.html">027 章</a>岭回归同一逻辑）；③ beta 用哪个窗口都对/都不对——它是时变量，报告 beta 必须带窗口与置信区间；④ 例题 4 的再平衡收益不是套利——它需要承担路径风险并提供下跌期的追加资金；⑤ 回测里最大的偏差往往不是漏了成本，而是多重检验：试了一百个信号后留下的最好者，样本外衰减是必然（检验口径见 <a href="019.html">019 章</a>）；⑥ 日度相关矩阵不能直接回答年度风险问题（例题 3）。</p></div>
@@ -272,6 +274,6 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
       <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
     </main>
   </div>
-  <script src="../assets/quant-bank.js"></script>
+  <script src="../assets/quant-bank.js?v=20261018"></script>
 </body>
 </html>

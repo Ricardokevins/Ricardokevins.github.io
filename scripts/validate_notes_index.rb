@@ -12,7 +12,10 @@ NOTE_TEMPLATE = File.join(NOTES_ROOT, "NOTE_TEMPLATE.md")
 BOOK_INDEX_URLS = {
   "/notes/llm-interview-question-bank/index.html" => "/notes/llm-interview-question-bank/",
   "/notes/math-interview-question-bank/index.html" => "/notes/math-interview-question-bank/",
-  "/notes/quant-interview-question-bank/index.html" => "/notes/quant-interview-question-bank/"
+  "/notes/quant-interview-question-bank/index.html" => "/notes/quant-interview-question-bank/",
+  "/notes/leetcode-hot-100/index.html" => "/notes/leetcode-hot-100/",
+  "/notes/quant-foundations/index.html" => "/notes/quant-foundations/",
+  "/notes/interview-offline/index.html" => "/notes/interview-offline/"
 }.freeze
 
 ASSET_EXTENSIONS = /\.(?:css|js|png|jpe?g|gif|webp|svg|pdf|txt|md|json|woff2?|ttf|eot)\z/i
@@ -35,7 +38,7 @@ MATHJAX_MARKERS = [
 IGNORED_FOR_MATH_SCAN = %r{<(script|style|pre|code)\b[^>]*>.*?</\1>}im
 QUALITY_WARNING_PATTERNS = {
   "generation artifact" => /Generated locally|HTML generated|本地 HTML 生成|本地 HTML 报告生成|本 HTML 报告|本报告生成|报告生成日期|生成日期：20\d{2}-\d{2}-\d{2}|\d{4}-\d{2}-\d{2}\s*生成/i,
-  "local temporary path" => %r{/Users/xxx|/tmp/|/Users/bytedance/Downloads|/Users/|Downloads|results/}i,
+  "local temporary path" => %r{/Users/xxx|/tmp/|/Users/bytedance/Downloads|/Users/|(?<![/\w])Downloads\b|results/}i,
   "tool or command trace" => /\bOpenCLI\b|\bopencli\b|mcp-router|pdftotext|pdfinfo|curl\s+-|browser-backed read|X 线程公开读取|网页公开读取/i,
   "download artifact wording" => /最终 HTML 路径|最终文件路径|文件位置：|报告文件：|本地参考文件位于|本地路径|下载 PDF/i
 }.freeze
@@ -146,6 +149,17 @@ end
 
 errors = []
 warnings = []
+mathjax_root = File.join(NOTES_ROOT, "assets", "mathjax-3.2.2")
+if Dir.exist?(mathjax_root)
+  %w[LICENSE es5/tex-chtml.js es5/input/tex/extensions/ams.js es5/input/tex/extensions/noerrors.js es5/input/tex/extensions/noundefined.js].each do |asset|
+    errors << "Missing self-hosted MathJax asset: #{asset}" unless File.file?(File.join(mathjax_root, asset))
+  end
+  fonts = Dir.glob(File.join(mathjax_root, "es5/output/chtml/fonts/woff-v2/*.woff"))
+  errors << "MathJax 3.2.2 requires 23 bundled WOFF fonts; found #{fonts.length}" unless fonts.length == 23
+  fonts.each do |font|
+    errors << "Invalid MathJax WOFF font: #{File.basename(font)}" unless File.binread(font, 4) == "wOFF"
+  end
+end
 notes = YAML.load_file(NOTES_YAML)
 chapter_orders = book_chapter_orders
 errors << "#{NOTES_YAML} must contain a YAML list" unless notes.is_a?(Array)

@@ -58,3 +58,23 @@ searchInputs.forEach(input => {
     applyFilters();
   });
 });
+
+// Native details keeps the full directory available without making readers
+// scroll through two TOCs before reaching a chapter on a phone.
+const sidebar = document.querySelector('.sidebar');
+if (sidebar) {
+  const navigation = Array.from(sidebar.children).filter(el => el.tagName === 'NAV');
+  if (navigation.length) {
+    const directory = document.createElement('details');
+    directory.className = 'book-directory';
+    const summary = document.createElement('summary');
+    summary.textContent = '目录与章节';
+    directory.append(summary);
+    navigation[0].before(directory);
+    navigation.forEach(nav => directory.append(nav));
+    const mobile = window.matchMedia('(max-width: 980px)');
+    const updateDirectory = () => { directory.open = !mobile.matches; };
+    updateDirectory();
+    mobile.addEventListener('change', updateDirectory);
+  }
+}

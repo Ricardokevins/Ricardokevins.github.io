@@ -21,9 +21,9 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-  <link rel="stylesheet" href="../assets/quant-bank.css">
-  <link rel="stylesheet" href="../../assets/notes-shell.css">
+  <script defer src="../../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css?v=20261018">
+  <link rel="stylesheet" href="../../assets/notes-shell.css?v=20261018">
 </head>
 <body class="notes-shell-page">
   <nav class="notes-sitebar" aria-label="Notes navigation">
@@ -116,6 +116,8 @@
         <section class="chapter" data-category="dsa" data-title="排序算法：稳定性、归并、快排与堆排">
           <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>007. 排序算法：稳定性、归并、快排与堆排</h2>
           <aside class="chapter-orientation"><b>阅读定位</b><p>本章解决排序类面试题的三类考点：稳定性是什么、什么场景必须稳定；归并、快排、堆排三大 \(O(n \log n)\) 排序的推导与手写；以及「实践上为什么快排最快」这类工程取舍题。源题库编程第 31 题（归并与快排的复杂度问答）在本章覆盖。</p></aside>
+<section class="foundation-bridge"><h3 id="first-small-example">先用一个小例走通</h3><p>两条记录(代码A,时间1)、(代码A,时间2)原先按时间排好；再按代码排序，若它们仍按1、2顺序，就是稳定。稳定描述相等键的相对位置，和“每次运行都同样快”无关。复杂度O(n log n)只描述输入变大时成本增长：将1000项扩大约2倍，成本大约略多于2倍，不是每轮都执行log n次的固定承诺。</p></section>
+
           <aside class="next-step"><b>下一步建议</b><p>读完本章后进入 <a href="008.html">008. 查找与选择：二分查找与第 K 小元素</a>，快排的 partition 会在 QuickSelect 里再次出场。</p></aside>
           <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法板块核心知识地图：排序、查找选择、组合枚举与进阶概念"></figure>
 
@@ -178,7 +180,7 @@
               <p><b>数值对照。</b>对 \(n = 10^6\)：\(n \log_2 n \approx 2 \times 10^7\)，而 \(n^2 = 10^{12}\)——最坏与平均差了五个数量级，这就是随机化必须写的原因。</p>
               <p><b>面试怎么讲。</b>先各用一句话给结论，再主动补三点：快排最坏的触发与补救（随机基准、三数取中、三路划分压重复、introsort 深度超限切堆排）；归并为什么三档一致（切分与输入无关）；最后一句工程口径——「std::sort 是 introsort：快排打底、递归过深换堆排、小区间换插入排序，所以它有 \(O(n \log n)\) 的最坏保证还有接近快排的平均速度」。能把 std::sort 的实现策略讲出来，这题就从及格变成加分。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="007-01"><p><b>推导补全与自检。</b>归并递归树高度约 log₂n，每层所有合并区间长度总和 n，因此 O(n log n)。快排若每次只分走一个元素，则 T(n)=T(n−1)+Θ(n)，求和为 Θ(n²)；随机枢轴只给期望 O(n log n)，并未消除最坏。比较排序的 Ω(n log n) 下界基于 n! 个可能次序，非比较的计数排序不受该下界限制。</p></div></div>
           <div class="worked-example">
             <p><b>例题 2：一张成交记录表已按时间升序排好。现在要求整体按股票代码升序、同一代码内仍按时间升序，只允许再做一次排序，怎么做？</b></p>
             <div class="solution">
@@ -195,7 +197,7 @@
               <p>按代码稳定排序后：AAPL 09:30、AAPL 09:35、GOOG 09:36、MSFT 09:31、MSFT 09:40——每只代码内部时间序完好。若改用快排或堆排，输出可能是 AAPL 09:35、AAPL 09:30、…，时间序被打乱。</p>
               <p><b>面试怎么讲。</b>一句话点名机制：「稳定排序保证相等键的相对次序不变，所以先按次要键排好、再按主键稳定排一次，等价于按复合键排序」。再补一个反向追问的答案：如果只能用不稳定排序，就必须把两个键拼成复合比较函数（代码相等时比时间），或者排完后对同代码段再排一次时间。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="007-02"><p><b>推导补全与自检。</b>记录按时间依次为 (B,1)、(A,2)、(B,3)、(A,4)，稳定地按代码排序得到 (A,2)、(A,4)、(B,1)、(B,3)。时间本来有序，稳定性恰好保留同代码内部的旧序。若算法不稳定，只有显式比较 (代码,时间) 两关键字才能保证结果；这时不应再把正确性归功于稳定性。</p></div></div>
 
           <h3 id="s-007-6"><a class="anchor-link" href="#s-007-6" aria-label="跳转到本节">#</a>例题详解 II：手写归并、快排与堆排</h3>
           <div class="worked-example">
@@ -221,7 +223,7 @@ void mergeSort(vector&lt;int&gt;&amp; a, int l, int r, vector&lt;int&gt;&amp; tm
               <p><b>边界。</b>空数组与单元素在第一行被 \(r - l \le 1\) 拦下；全相等数组走满递归树，仍是 \(O(n \log n)\)；负数、大数不受影响（只做比较）。追问延伸：把「取右半时」计数左半剩余元素个数，即得逆序对数目。</p>
               <p><b>面试怎么讲。</b>写完立刻自报家门：「区间是左闭右开，合并相等取左所以稳定，临时数组可以提到外层只分配一次」。主动提这两点，比等面试官抓 bug 印象分高得多。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="007-03"><p><b>推导补全与自检。</b>合并 [2左,4] 与 [2右,3] 时，应先取左侧 2，才能保留两个相等键的原始次序。归纳证明：左右递归结果稳定，合并时同侧次序不变、跨侧相等先左，因此整体稳定。临时缓冲应复用一个长度 n 的数组；每层分配并复制仍能保持同一渐近界，但会增加分配与常数开销。</p></div></div>
           <div class="worked-example">
             <p><b>例题 4：手写快速排序：Lomuto partition 加随机化，并给出处理大量重复元素的三路版本；说明有序输入为什么退化。</b></p>
             <div class="solution">
@@ -263,7 +265,7 @@ void quickSort(vector&lt;int&gt;&amp; a, int lo, int hi) {
               <p><b>复杂度与边界。</b>平均 \(O(n \log n)\)、最坏 \(O(n^2)\)；全相等数组对三路版本是一次 \(O(n)\) 划分即结束，对两路版本是 \(O(n^2)\)。栈深最坏 \(O(n)\)（可先递归小半边、对大半边改循环，把栈压到 \(O(\log n)\)）。边界：空区间、单元素由 \(lo \ge hi\) 拦截；负数无影响；快排不稳定，需要稳定时换归并。</p>
               <p><b>面试怎么讲。</b>先声明「随机基准必须写，否则有序输入直接平方级」，写完 partition 后用手样例 [3, 1, 2] 走一遍 i、j 的移动。追问 std::sort 时答 introsort：快排 + 深度超 \(2\log_2 n\) 切堆排 + 小区间插入排序。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="007-04"><p><b>推导补全与自检。</b>三路划分维护 [lo,lt)&lt;pivot、[lt,i)=pivot、(gt,hi]&gt;pivot；遇到 &gt;pivot 交换 a[i] 与 a[gt] 后只减 gt，不加 i，因为换回来的值尚未分类。全相等数组三路划分一轮就结束，O(n)；Lomuto 若总把相等元素放一侧会退化。随机数生成与 pivot 选择不能每层重复固定种子。</p></div></div>
           <div class="worked-example">
             <p><b>例题 5：手写堆排序，要求原地 \(O(1)\) 空间；解释建堆为什么是 O(n)、以及它实践上为什么常输给快排。</b></p>
             <div class="solution">
@@ -292,7 +294,7 @@ void heapSort(vector&lt;int&gt;&amp; a) {
               <p><b>为什么实践常输给快排。</b>两点：一是访问模式——孩子下标 \(2i+1\)、\(2i+2\) 每步跨半个数组，缓存命中率远低于快排的顺序扫描；二是常数——每层最多比较两次、且大量交换。快排平均要快数倍。但堆排有两个不可替代的时刻：需要<b>最坏 \(O(n \log n)\) 保证</b>，或只允许 \(O(1)\) 额外空间。堆结构本身（优先队列）的用法见 <a href="004.html">004 章</a>。</p>
               <p><b>面试怎么讲。</b>强调「建堆 O(n) + n 次 \(O(\log n)\) 下沉」，这两个数分开说，很多候选人误把建堆也当成 \(O(n \log n)\)。被问「那 std::sort 为什么不用堆排」时，答缓存与常数，再带出 introsort 的组合策略。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="007-05"><p><b>推导补全与自检。</b>建堆只用 O(n) 不代表堆排整体 O(n)：取出 n 个元素仍需累计 O(n log n)。原地的 O(1) 空间要求 sift-down 迭代实现；若写递归下沉，调用栈会占 O(log n)。缓存局部性和分支预测影响常数，因此平均性能快慢不能仅由渐近复杂度推出。验证时还应检查重复键的相对顺序，堆排序没有稳定性保证。</p></div></div>
 
           <h3 id="s-007-7"><a class="anchor-link" href="#s-007-7" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>五个高频错误</b><p>一，「快排稳定」——错，长距离交换必然破坏相等元素次序，稳定的是归并/插入/冒泡。二，「堆排要 \(O(n)\) 或 \(O(\log n)\) 额外空间」——错，堆在原数组上就地构建，空间严格 \(O(1)\)。三，比较快排与归并的空间时忘算递归栈：快排原地但期望仍有 \(O(\log n)\) 栈帧，归并是 \(O(n)\) 数组加 \(O(\log n)\) 栈。四，只答「快排 \(O(n \log n)\)」不说最坏，被追问有序输入就卡壳——平均与最坏必须分开说。五，手写归并时丢掉「相等取左」，稳定性悄悄丢了；手写堆排时忘记建堆从 \(n/2 - 1\) 开始、或下沉时孩子越界。</p></div>
@@ -315,6 +317,6 @@ void heapSort(vector&lt;int&gt;&amp; a) {
       <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
     </main>
   </div>
-  <script src="../assets/quant-bank.js"></script>
+  <script src="../assets/quant-bank.js?v=20261018"></script>
 </body>
 </html>

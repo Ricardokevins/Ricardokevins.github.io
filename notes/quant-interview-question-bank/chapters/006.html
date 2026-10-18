@@ -21,9 +21,9 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-  <link rel="stylesheet" href="../assets/quant-bank.css">
-  <link rel="stylesheet" href="../../assets/notes-shell.css">
+  <script defer src="../../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css?v=20261018">
+  <link rel="stylesheet" href="../../assets/notes-shell.css?v=20261018">
 </head>
 <body class="notes-shell-page">
   <nav class="notes-sitebar" aria-label="Notes navigation">
@@ -116,6 +116,8 @@
         <section class="chapter" data-category="dsa" data-title="图论 II：拓扑排序、环检测与连通性">
           <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>006. 图论 II：拓扑排序、环检测与连通性</h2>
           <aside class="chapter-orientation"><b>阅读定位</b><p>本章覆盖源题提纲的 Topological Sort、Detect cycle in an undirected graph、Detect a cycle in a directed graph、Count connected components、Find strongly connected components 与 Dijkstra（只讲思想、不要求实现）五项，全部建立在 <a href="005.html">005 章</a>的 BFS/DFS 骨架之上。</p></aside>
+<section class="foundation-bridge"><h3 id="first-small-example">先用一个小例走通</h3><p>A修完才能修B，画箭头A→B；B的入度是指向它的箭头数，这里为1。先取入度0的A，删去A→B后，B入度变0，才可安排B。这就是拓扑排序：把所有“先做”关系满足的顺序。若再有B→A，两者都要等对方，形成有向环，已经没有合法的第一步。</p></section>
+
           <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法知识地图：线性结构、树与哈希、图算法、排序查找范式四大板块与面试口径"></figure>
 
           <h3 id="s-006-1"><a class="anchor-link" href="#s-006-1" aria-label="跳转到本节">#</a>学习目标</h3>
@@ -206,7 +208,7 @@ bool canFinish(int numCourses,
               <p><b>边界。</b>无先修（全部入度 0，恒真）；自环先修 [a,a]（a 入度含自环削不掉，正确判假）；n = 1。方向别建反：边的方向只影响「入度」记在谁头上，链路语义要一致。</p>
               <p><b>面试怎么讲。</b>先把「能否修完 ⇔ 有向无环 ⇔ Kahn 能排满」这三个等价讲成一句话，再写代码；主动说明队列为空时的剩余顶点恰是「环上或依赖环」的顶点，判环原理就交代清楚了。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="006-01"><p><b>推导补全与自检。</b>先修 [1,0] 表示边 0→1，因此 indegree[1] 加 1。例 0→1、1→2 时依次弹出 0、1、2；再加 2→1，则处理完 0 后队列为空而仍有两门课，判定失败。证明关键是：DAG 的任何非空子图必有入度零点，否则不断沿入边回溯最终重复顶点而成环。重复边若保留，入度与删边次数必须一致。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 2：课程表 II。同上题设，返回任意一个合法修课顺序；不可能则返回空数组。</b></p>
@@ -246,7 +248,7 @@ std::vector&lt;int&gt; findOrder(int n,
               <p><b>边界。</b>有环时中途返回空数组，order 里残留的半成品必须丢弃；n 门课全部无先修时输出任意排列（如 [0,1,...,n-1]）都合法；递归深度最坏 \(\Theta(V)\)，深图可改 Kahn 或显式栈。与例题 1 的关系：把本例「返回空数组」改成「返回 false」就是课程表 I 的 DFS 解，两题同型、仅输出要求不同。</p>
               <p><b>面试怎么讲。</b>讲清 DFS 解的关键不变量「灰色顶点都在当前递归路径上」，以及「最先完成的是汇点、所以完成序要反转」；能同时把 Kahn 与 DFS 两版口径说全，拓扑排序这一节就无懈可击。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="006-02"><p><b>推导补全与自检。</b>DFS 灰色表示正在递归链上，指向灰点是回边；黑色表示已完成，指向黑点不构成环。0→1、0→2、1→2 中，访问完 1 再遇到黑色 2 是合法的。完成时间收集的是逆拓扑序，必须最后反转。输出后可逐边验证 pos[b]&lt;pos[a]，这是不依赖具体唯一序列的合理检验。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 3：无向图判环。给定 n 个顶点与边列表，判断无向图是否含环。</b></p>
@@ -285,7 +287,7 @@ bool hasCycleUndirected(int n,
               <p><b>边界。</b>自环 [v,v]：邻接表里 v 出现两次，其中一次会以非父身份命中已访问，正确判环；平行边 [[0,1],[0,1]]：第二条边让 0 在访问 1 后再遇到已访问的 1（父只跳一次），同样正确判环——若声明无重边可省心；空图与单顶点返回 false。并查集变式：逐边 union 前 find，若两端已同集合即环，动态加边场景更顺手。</p>
               <p><b>面试怎么讲。</b>先讲为什么必须跳父节点（无向边天然双向），再给「已访问且非父 ⇔ 两点间已有另一条路 ⇔ 环」这条逻辑链；主动对比有向图三色法，说明「访问过」在两种图里含义不同。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="006-03"><p><b>推导补全与自检。</b>简单无向图中跳过父节点即可；若允许两条平行边，第二条连向父亲的边本身构成长度 2 的多重图环，应按边编号只跳过“来时那条边”，不能跳过所有父节点邻接。自环 u→u 也应当立刻判环。并查集版本在加入边 (u,v) 前若 find(u)=find(v)，同样检出已有路径加新边形成的环。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 4：连通分量计数，并延伸到强连通分量（SCC）的求法。</b></p>
@@ -323,7 +325,7 @@ int countComponents(int n,
               <p><b>边界。</b>孤立顶点自身是一个连通分量（也是平凡的 SCC）；自环不影响分量划分；n = 0 返回 0。Kosaraju 的易错点在「栈顶先弹」的顺序与「反图上也要查 vis」两处。</p>
               <p><b>面试怎么讲。</b>计数版先讲「启动次数 = 分量数」这一句；SCC 版按「正图记完成序、反图收割」的节奏讲，落点是「缩点后是 DAG，于是可以拓扑/DP」——把 SCC 的用途讲出来，比背算法步骤更能体现理解。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="006-04"><p><b>推导补全与自检。</b>孤立点也算一个连通分量，只有遍历边会漏计它们。有向图里“忽略方向能连通”不等于强连通：0→1 有一个弱连通块、两个 SCC。Kosaraju 第一遍的完成序应覆盖全部顶点，第二遍在反图按完成时间递减启动；将多个 SCC 缩成点后得到 DAG，可作为结构核验。</p></div></div>
 
           <h3 id="s-006-7"><a class="anchor-link" href="#s-006-7" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>拓扑序不唯一</b><p>同一 DAG 通常有多个合法拓扑序（ Kahn 中队列里同时有多个零入度顶点时任选）。「拓扑序唯一」当且仅当任意时刻零入度顶点至多一个，等价于图中存在哈密顿路径。题目要「字典序最小拓扑序」时把队列换小顶堆（<a href="004.html">004 章</a>）即可。</p></div>
@@ -348,6 +350,6 @@ int countComponents(int n,
       <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
     </main>
   </div>
-  <script src="../assets/quant-bank.js"></script>
+  <script src="../assets/quant-bank.js?v=20261018"></script>
 </body>
 </html>

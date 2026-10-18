@@ -21,9 +21,9 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-  <link rel="stylesheet" href="../assets/quant-bank.css">
-  <link rel="stylesheet" href="../../assets/notes-shell.css">
+  <script defer src="../../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css?v=20261018">
+  <link rel="stylesheet" href="../../assets/notes-shell.css?v=20261018">
 </head>
 <body class="notes-shell-page">
   <nav class="notes-sitebar" aria-label="Notes navigation">
@@ -116,6 +116,8 @@
         <section class="chapter" data-category="dsa" data-title="组合枚举与位运算：排列、子集与符号数">
           <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>009. 组合枚举与位运算：排列、子集与符号数</h2>
           <aside class="chapter-orientation"><b>阅读定位</b><p>本章解决组合枚举的「怎么走遍不迷路」与整数的「同一串比特两种解释」两类问题：全排列与子集的回溯模板（含重复元素去重）、字典序意义的 next_permutation 原理与手写、位掩码子集枚举与 lowbit 技巧，以及源题库提纲点名的「difference btw Unsigned vs signed numbers」——补码表示、无符号环绕、有符号溢出未定义行为与 INT_MIN 陷阱。</p></aside>
+<section class="foundation-bridge"><h3 id="first-small-example">先用一个小例走通</h3><p>对[1,2]列子集，可逐个选“取/不取”，得到[]、[1]、[2]、[1,2]。回溯就是先作选择、递归后撤销选择，重新试另一支；不是把之前路径直接丢掉。位掩码用一位代表一个选择：二进制10表示只取第二项，11表示两项都取，按位与&只留下两边共同为1的位置。</p></section>
+
           <aside class="next-step"><b>下一步建议</b><p>读完本章后进入 <a href="010.html">010. 进阶概念：外部排序与 NP 完全</a>——枚举的复杂度上界（\(n!\) 与 \(2^n\)）恰好引出「指数之外怎么办」的两个话题：数据放不进内存、问题本身 NP 难。</p></aside>
           <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法板块核心知识地图：组合枚举与位运算所处的位置"></figure>
 
@@ -258,7 +260,7 @@ void backtrackPerm(vector&lt;int&gt;&amp; a) {          // 模板一：全排列
               <p><b>复杂度与边界。</b>单次最坏 \(O(n)\)、均摊 \(O(1)\)（全枚举期望扫描 \(e - 1 \approx 1.72\) 位，s-009-3 已推导）；空间 \(O(1)\)，纯原地。边界：单元素（i 初始为 −1，直接翻回自身，正确）；全相等元素（同理，只产生一个排列）；已是最大（返回 false 语义要向调用方说明）；重复元素由严格比较自动折叠，无需额外去重代码。</p>
               <p><b>面试怎么讲。</b>先讲进位类比：「找最后一个还能进位的位置，用最小的幅度进位，其余部分重置为最小」。写完代码立刻用 [1,2,3] 走一圈验证，再主动补均摊分析——「枚举全圈的期望扫描长度是 \(e - 1\)，均摊 O(1)」是让考官记住你的那一句。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="009-01"><p><b>推导补全与自检。</b>[1,3,2] 的最右升序对为 1&lt;3，pivot 是 1；从后往前找首个比它大的 2，交换得 [2,3,1]，反转后缀成 [2,1,3]。最右 pivot 保留最长前缀，最小可增值保证增加幅度最小，降序后缀反转则变成最小后缀。全降序时不存在 pivot，直接整体反转。每一步都必要，单纯交换一次不是通解。</p></div></div>
 
           <h3 id="s-009-7"><a class="anchor-link" href="#s-009-7" aria-label="跳转到本节">#</a>例题详解 II：含重复元素的全排列去重</h3>
           <div class="worked-example">
@@ -291,7 +293,7 @@ void backtrackDup(vector&lt;int&gt;&amp; a) {
               <p><b>复杂度与边界。</b>时间 \(O(n \cdot k)\)，其中 \(k = \frac{n!}{\prod_j c_j!}\) 是相异排列数（输出敏感）；空间 \(O(n)\) 递归深度加 used。边界：全相等元素（\(k = 1\)，剪枝保证只输出一次）；空数组（返回仅含空排列或空集，按题意定义）；必须先排序，否则剪枝条件失效；swap 型排列写法配去重极易出错（需要按值去重的集合判定），面试别冒险。</p>
               <p><b>面试怎么讲。</b>先画 [1,1,2] 的两层树指出重复分支，再给剪枝条件并强调「规定同值元素的入选次序」这一不变量；最后补一句对照——「也可以排序后反复调用 next_permutation，重复元素自动折叠」，展示你把 s-009-3 与 s-009-2 串成了一条线。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="009-02"><p><b>推导补全与自检。</b>排序后 [1a,1b,2]，同一层若 1a 未使用却选择 1b，会重复 1a 分支；因此跳过相等且前一个未使用的候选。若 1a 已在当前前缀里，1b 是下一层合法选择，不能无条件去重。结果数应为 3!/2!=3，分别 [1,1,2]、[1,2,1]、[2,1,1]；输出本身需要 Ω(n×结果数) 时间。</p></div></div>
 
           <h3 id="s-009-8"><a class="anchor-link" href="#s-009-8" aria-label="跳转到本节">#</a>例题详解 III：位运算三件套</h3>
           <div class="worked-example">
@@ -322,7 +324,7 @@ void enumerateSubmasks(uint32_t x) {    // (c) x 的全部子集（含 0 与 x�
               <p><b>复杂度与边界。</b>(a) \(O(1)\)；(b) \(O(\mathrm{popcount})\)；(c) \(O(2^{\mathrm{popcount}(x)})\)，全部 x 的子集总枚举量 \(3^n\)。边界：x = 0（(c) 只访问空集一次即退出）；n 较大时掩码用 <code>1ull &lt;&lt; n</code> 或 unsigned long long（<code>1 &lt;&lt; 31</code> 在 int 上已是负数）；(a) 的类型口径（int 还是 unsigned）先声明再作答。</p>
               <p><b>面试怎么讲。</b>三题共用一句话开场：「2 的幂、位 1 计数、子集枚举都是对『最低位的 1』做文章——清它、数它、或借它减一」。lowbit 与清最低位的表达式顺手写出补码解释（\(-x = \sim x + 1\)），把 s-009-5 的知识与位技巧焊在一起。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="009-03"><p><b>推导补全与自检。</b>x=12 的二进制为 1100，x&amp;(x−1)=1000，恰消去最右侧的 1；重复到零所需轮数就是 popcount。判 2 的幂还要 x&gt;0，否则零也满足位运算等式。枚举子掩码使用 s=(s−1)&amp;x，s=0 后必须退出，否则无符号下溢又回到 x。含空集时总数为 2^{popcount(x)}。</p></div></div>
 
           <h3 id="s-009-9"><a class="anchor-link" href="#s-009-9" aria-label="跳转到本节">#</a>例题详解 IV：无符号溢出追踪实例</h3>
           <div class="worked-example">
@@ -356,7 +358,7 @@ bool unsignedAddOverflows(unsigned a, unsigned b) {  // 无符号：环绕良定
               <p><b>边界与工具。</b>涉及可能过界的中间量，统一升宽（int → long long、unsigned → unsigned long long）后再算；测试期开 UBSan（<code>-fsanitize=undefined</code>）让有符号溢出当场报错；审阅重点盯三类位置——反向循环的下界、size() 参与的减法、对任意输入取负/求绝对值。</p>
               <p><b>面试怎么讲。</b>开口先立框架：「无符号是模 \(2^w\) 的良定义环绕，有符号溢出是 UB，混算先转无符号」，然后逐个报数：4e9 + 5e8 = 205,032,704；−1 转 unsigned 后比较为 false；−INT_MIN 是 UB。最后给守门三件套：升宽、先判后算、UBSan。能把三件事用「同一串比特、两种契约」串起来，就是满分结构。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="009-04"><p><b>推导补全与自检。</b>32 位无符号结果是 4,500,000,000−4,294,967,296=205,032,704。通常 int 与 unsigned int 同宽时，−1 会转为 UINT_MAX，因此 −1&lt;1u 为假；结论依赖实际类型宽度与整型提升规则。检测 a+b 前先比较 a&gt;MAX−b 或 a&lt;MIN−b，不应先算出已溢出的和再检查符号。INT_MIN 的正数相反数在同型中不可表示。</p></div></div>
 
           <h3 id="s-009-10"><a class="anchor-link" href="#s-009-10" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>五个高频错误</b><p>一，掩码循环写 <code>mask &lt; (1 &lt;&lt; n)</code> 且 n 可达 31：<code>1 &lt;&lt; 31</code> 在 int 上是负数（UB 或 INT_MIN），循环直接不执行，应写 <code>1u &lt;&lt; n</code> 或限 n 至 30 并用 64 位。二，子集枚举 <code>s = (s-1) &amp; x</code> 忘记空集终点判断，s 到 0 后下一步又回到 x，死循环。三，去重不先排序，剪枝条件失效；或把全排列的 used 剪枝写成子集的 start 剪枝，两类问题的「层」定义不同。四，<code>abs(INT_MIN)</code>、<code>-INT_MIN</code>、反转整数时的中间乘法——有符号边界上的经典 UB 三连。五，用有符号变量接收 size() 差值或与 unsigned 混比，<code>-1 &lt; 1u</code> 为 false、空容器 <code>size()-1</code> 得 SIZE_MAX。</p></div>
@@ -379,6 +381,6 @@ bool unsignedAddOverflows(unsigned a, unsigned b) {  // 无符号：环绕良定
       <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
     </main>
   </div>
-  <script src="../assets/quant-bank.js"></script>
+  <script src="../assets/quant-bank.js?v=20261018"></script>
 </body>
 </html>

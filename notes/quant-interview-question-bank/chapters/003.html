@@ -21,9 +21,9 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-  <link rel="stylesheet" href="../assets/quant-bank.css">
-  <link rel="stylesheet" href="../../assets/notes-shell.css">
+  <script defer src="../../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css?v=20261018">
+  <link rel="stylesheet" href="../../assets/notes-shell.css?v=20261018">
 </head>
 <body class="notes-shell-page">
   <nav class="notes-sitebar" aria-label="Notes navigation">
@@ -116,6 +116,8 @@
         <section class="chapter" data-category="dsa" data-title="数据结构 II：哈希表与二叉搜索树">
           <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>003. 数据结构 II：哈希表与二叉搜索树</h2>
           <aside class="chapter-orientation"><b>阅读定位</b><p>本章覆盖源题提纲的 Hash Tables、Binary Search Tree 与 Tree Traversals 三项：哈希的冲突处理、装载因子与最坏反例，BST 的中序有序性质与退化，以及四种遍历的递归加迭代双实现——这是提纲里明确要求「Recursive and Iterative」的一节。</p></aside>
+<section class="foundation-bridge"><h3 id="first-small-example">先用一个小例走通</h3><p>把键17存进5个桶，若规则是键除5取余，它进入2号桶；22也进2号桶，这就叫哈希冲突。用链表把两项都挂在2号桶下仍能区分它们。二叉搜索树采用另一种组织：[5的左边3、右边8]靠大小分流；它承诺有序关系，哈希表承诺的是桶号定位，两者快的原因不同。</p></section>
+
           <figure class="visual-lead"><img src="../assets/dsa-core.svg" alt="数据结构与算法知识地图：线性结构、树与哈希、图算法、排序查找范式四大板块与面试口径"></figure>
 
           <h3 id="s-003-1"><a class="anchor-link" href="#s-003-1" aria-label="跳转到本节">#</a>学习目标</h3>
@@ -241,7 +243,7 @@ private:
               <p><b>边界。</b>负键：先转无符号再乘，避免有符号溢出的未定义行为；键覆盖（同键 put 更新而非重复插入）；开放寻址若改为本解必须处理删除（墓碑标记或周期性重建），链地址法无此负担——这也是教学实现选链地址的原因。</p>
               <p><b>面试怎么讲。</b>先写 \(\alpha = n/m\) 与「期望链长 \(\alpha\)」，再讲链地址与开放寻址的取舍，最后主动给最坏反例（同桶退化 O(n)）与工程对策（随机种子、链转红黑树）。这一套讲完，哈希表部分基本无可追问。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="003-01"><p><b>推导补全与自检。</b>桶从 B 扩为 2B 后，必须对每个旧键重算桶号，不能原样拷贝链表。重复 put 已有键只改值，不增加 size，否则装载因子和后续扩容都错误。均匀散列假设下单次期望 O(1)，但所有键撞进同桶时 get 为 O(n)；容量翻倍让扩容成本均摊，不会自动消除恶意碰撞。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 2：验证二叉搜索树。给定二叉树根节点，判断它是否是合法 BST（键互异）。</b></p>
@@ -278,7 +280,7 @@ bool check(TreeNode* node, long long lo, long long hi) {
               <p><b>边界。</b>键取到 INT_MIN/INT_MAX 时解法二用 int 边界会误判，必须用 long long（或改传「前驱指针」从根上规避）；空树与单节点是合法 BST；相等键（重复值）按本题口径非法，比较必须用严格大于/小于。</p>
               <p><b>面试怎么讲。</b>先主动给出「只比孩子」的反例，展示你知道陷阱在哪，再写任一解法；说一句「中序有序是 BST 的充要条件」，把性质与算法连起来。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="003-02"><p><b>推导补全与自检。</b>反例根 10，右孩子 15，右孩子的左孩子 6：6&lt;15 的局部关系成立，却违反祖先给出的 6&gt;10。上下界递归到该节点时应是开区间 (10,15)，因此能查出错误。若键允许 INT_MIN、INT_MAX，界限用更宽整数或“可空界”，不能拿合法键值充当不可取哨兵。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 3：二叉树的中序遍历，迭代实现（不使用递归）。</b></p>
@@ -308,7 +310,7 @@ std::vector&lt;int&gt; inorderTraversal(TreeNode* root) {
               <p><b>边界。</b>空树直接返回空；只有右链（一直不下沉直接弹出）与只有左链（一直下沉）是两个极端对拍用例。后序的迭代版可由「根右左再反转」得到：把本解的 left/right 交换得到根右左序，最后 reverse 一次。</p>
               <p><b>面试怎么讲。</b>讲不变量：「内层 while 负责下沉到最左，弹出即访问，然后去右子树」——三句话讲完循环结构再写代码，写错率最低。若被追问 Morris 遍历（线索化，\(O(1)\) 空间），能说出「用空闲右指针回指后继」的思想即可。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="003-03"><p><b>推导补全与自检。</b>对树 2(左1、右3)：压栈 2、1；弹 1 输出，右空；弹 2 输出，再压 3 并输出。显式栈保存的是尚未完成“访问自己与右支”的节点；弹出后必须转向该节点的右子树。循环条件为 curr 非空或栈非空，缺少后一项会在左链尽头提前结束。空间为 O(h)，偏斜树可达 O(n)。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 4：已知一棵键互异二叉树的前序遍历与中序遍历，重建这棵树。</b></p>
@@ -339,7 +341,7 @@ TreeNode* buildTree(const std::vector&lt;int&gt;&amp; pre, const std::vector&lt;
               <p><b>边界。</b>两数组必须同长且为同一棵树的有效遍历对（面试可声明此为前置条件，fail-fast 校验长度）；键必须互异，否则哈希映射歧义；只有左链或只有右链的树对应「左长度为 0」或「右长度为 0」的极端切分。顺带的知识点：后序 + 中序同样可重建（后序末元素是根），但前序 + 后序<b>不能</b>唯一重建——只有一个孩子的节点无法区分左右，这是高频追问。</p>
               <p><b>面试怎么讲。</b>先讲「前序定根、中序切左右」这一句核心，再讲用哈希把找根降到 O(1)，最后主动提「前序+后序不唯一」的反例，题目就完整了。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="003-04"><p><b>推导补全与自检。</b>前序 [3,9,20,15,7]、中序 [9,3,15,20,7]：根 3 在中序下标 1，左子树大小 1；前序后 1 个元素 [9] 属左支，其余 [20,15,7] 属右支。每层按大小切区间而不拷贝数组，才能保住 O(n)。若允许重复键，值到唯一位置的映射不再成立，两遍遍历也不保证唯一重建。</p></div></div>
 
           <h3 id="s-003-6"><a class="anchor-link" href="#s-003-6" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>「哈希表是 O(1)」是偷懒说法</b><p>正确口径：简单均匀假设下平均 \(\Theta(1)\)，最坏 \(\Theta(n)\)（同桶/聚集），再哈希单次 \(\Theta(n)\) 均摊 \(\Theta(1)\)。另外哈希表无序——「输出按序」「找最接近键」这类需求哈希天然做不了，要用 std::map 的 lower_bound。</p></div>
@@ -364,6 +366,6 @@ TreeNode* buildTree(const std::vector&lt;int&gt;&amp; pre, const std::vector&lt;
       <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
     </main>
   </div>
-  <script src="../assets/quant-bank.js"></script>
+  <script src="../assets/quant-bank.js?v=20261018"></script>
 </body>
 </html>

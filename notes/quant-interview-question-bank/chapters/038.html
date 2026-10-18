@@ -21,9 +21,9 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-  <link rel="stylesheet" href="../assets/quant-bank.css">
-  <link rel="stylesheet" href="../../assets/notes-shell.css">
+  <script defer src="../../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/quant-bank.css?v=20261018">
+  <link rel="stylesheet" href="../../assets/notes-shell.css?v=20261018">
 </head>
 <body class="notes-shell-page">
   <nav class="notes-sitebar" aria-label="Notes navigation">
@@ -116,6 +116,8 @@
         <section class="chapter" data-category="finance" data-title="金融二：期权入门">
           <h2 id="top"><a class="anchor-link" href="#top" aria-label="跳转到本节">#</a>038. 金融二：期权入门</h2>
           <aside class="chapter-orientation"><b>阅读定位</b><p>本章建立期权的三层直觉：定价需要哪些输入、欧式与美式差在哪里、隐含波动率如何成为交易对象。覆盖源题 F6、F13、F14、F15、F31、F32、F33，并覆盖编程源题 C15 的 d/e/f 子问（Black-Scholes、对冲组合、swap 曲线 bootstrap）的面试口径。</p></aside>
+<section class="foundation-bridge"><h3 id="first-small-example">先用一个小例走通</h3><p>买入执行价100的看涨期权，支付3元权利金：到期股价110可得10元，净赚7；到期90则权利放弃，净亏3。欧式只在到期行权，美式在到期前也可行权。隐含波动率是把市场价格代回定价模型反解出的参数；不是已经观察到的未来波动。Delta是价格对股价变化的局部敏感度，vega则对波动率变化敏感。</p></section>
+
           <figure class="visual-lead"><img src="../assets/finance-map.svg" alt="金融直觉板块知识地图：期权主题与夏普、微观结构、组合构建的衔接关系"></figure>
 
           <h3 id="s-038-1"><a class="anchor-link" href="#s-038-1" aria-label="跳转到本节">#</a>学习目标：六个输入与一个不可观测的量</h3>
@@ -168,7 +170,7 @@
               <p><b>检验（反例自查）。</b>「长期限更贵」并非铁律，两个经典反例：① 欧式深度实值 put + 高利率：价值逼近 \(Ke^{-rT}-S\)，\(T\) 越大贴水越深，长期限反而便宜；② 欧式 call 若在 \(T_1\) 之后不久有一次大额分红，长期限的标的被除权下砸，远期 \(Se^{(r-q)T}\) 更低，长期限 call 可能更便宜。能举出反例是这道题的满分线。</p>
               <p><b>面试怎么讲。</b>结构：「美式 = 欧式 + 提前行使权 → 不便宜；无分红 call 取等号（利息 + 时间价值双重惩罚）；期限长的权利更多 → 通常更贵，但欧式 put 的贴现反例与大分红反例说明这不是公理。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="038-01"><p><b>推导补全与自检。</b>美式可选择等到到期才行权，所以同标的、执行价、到期与其他条款下价值≥欧式。不同到期的两欧式不拥有相同可行行权日期集合，不能仅以“多时间”直接证明；非分红看涨且非负利率常随期限增值，欧式看跌在特定利率与深度实值条件下可能不单调。先注明股息、利率和看涨/看跌，再谈期限。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 2（源题 F13）：期权定价函数需要哪些参数？已知同一到期日的欧式期权价格，如何为美式期权定价？</b></p>
@@ -178,19 +180,14 @@
               <p><b>检验。</b>溢价为正符合「美式 \(\ge\) 欧式」；把利率改为 0 重算，下行节点行使价值与持有价值相等（20 vs 20），溢价缩小——与「提前行使的主要动力是 K 的利息」一致。树步数加密后值收敛（收敛速度 \(O(1/n)\)）。</p>
               <p><b>面试怎么讲。</b>口径：「同一到期日时，美式 = 欧式 + 提前行使溢价；欧式部分我用 BS/树的欧式公式，溢价部分我在树上每个节点做 \(\max(\text{内在价值},\text{持有价值})\) 回溯。无分红 call 两者相等，不用另算。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="038-02"><p><b>推导补全与自检。</b>风险中性二叉树每个节点先算continuation=贴现后下一步期望，再将美式值设max(内在价值,continuation)；欧式只留continuation。由终端相同值向前归纳，美式≥欧式逐节点成立。仅给同一期限欧式价格不能唯一推出整个美式提前行权价值，还依赖路径动态、股息与利率等；一份欧式价格不是完整价格过程模型。</p></div></div>
 
           <h3 id="s-038-6"><a class="anchor-link" href="#s-038-6" aria-label="跳转到本节">#</a>例题详解二：波动率交易与曲线构建</h3>
 
           <div class="worked-example">
             <p><b>例题 3（源题 F31）：股票 A、B 价格相同。你预期 A 将实现 25% 的波动率、B 将实现 35%，而两者的隐含波动率分别为 20% 与 30%。买入并持有哪一个 straddle 的损益更高？</b></p>
-            <div class="solution">
-              <p><b>建模。</b>长 straddle 的损益来自「实现与隐含的差」。两只股票的差都是 5 个 vol 点（25−20 与 35−30），一阶看是平局，决定胜负的是二阶口径。</p>
-              <p><b>推导。</b>一阶（vega 口径）：期望损益 \(\approx\text{vega}\times(\sigma_r-\sigma_i)\)。同价同期权平值 vega \(\approx 0.4\,S\sqrt{T}\) 相同，两边同得 \(0.4S\sqrt{T}\times 5\%\)，打平。二阶（对冲组合 gamma 口径）：由 \(\mathrm{dPnL}=\tfrac{1}{2}\Gamma S^2(\sigma_r^2-\sigma_i^2)\mathrm{d}t\)，损益按<b>方差差</b>结算：A 的边际为 \(0.25^2-0.20^2=0.0225\)，B 为 \(0.35^2-0.30^2=0.0325\)——每单位 gamma B 多 44%。修正项：平值 \(\Gamma\propto 1/(\sigma\sqrt{T})\)，B 的初始 gamma 略低（\(0.0325/0.30\approx 0.108\) 对 A 的 \(0.0225/0.20=0.1125\)），几乎抵消；但 B 的实现波动更大、路径把期权更多时间推入高 gamma 的活跃区，做市商的标准口径按方差差结算。<b>答案：B</b>。</p>
-              <p><b>检验。</b>反向口径自查：若按权利金收益率（ROI）比较，edge/权利金 \(\propto(\sigma_r-\sigma_i)/\sigma_i\)，A 为 25%、B 为 16.7%，A 反超——所以这题的完整答案要说明比较口径；题库答案 B 采用的是绝对损益、方差差结算的做市口径。</p>
-              <p><b>面试怎么讲。</b>分三层：① 一阶 vega 口径平局（都是 5 个点）；② 损益真正按 \(\sigma^2\) 结算，\(0.0325\gt 0.0225\)，B 胜；③ 主动指出 ROI 口径会翻向 A——展示你理解「vol 点数相同不等于损益相同」，这是本题真正的考点。</p>
-            </div>
-          </div>
+            <div class="solution"><p><b>先区分持有与对冲。</b>买入并持有到期的 straddle 支付为 \(|S_T-K|\)，净损益为该支付减权利金。仅给“预期实现波动率”和隐含波动率，未给到期、执行价、价格终值分布、漂移和成本，无法唯一排序 A、B。更不能仅以 B 的方差差更大就断言 B 必胜。</p><p><b>同一简单模型下怎样比较。</b>额外假设两者同价 S、同到期 T、K=S、零利率无股息、真实终值为同均值对数正态，并把给出的实现波动率当作真实模型的固定波动率。平值跨式期望支付函数为：</p><div class="math-display">\[F(\sigma)=2S\left[2\Phi\!\left(\frac{\sigma\sqrt T}{2}\right)-1\right].\]</div><p>A、B 的预期期权净损益分别为 \(F(0.25)-F(0.20)\) 与 \(F(0.35)-F(0.30)\)。因为正波动率区间中 \(F'(\sigma)=2S\sqrt T\,\phi(\sigma\sqrt T/2)\) 随 σ 下降，同为增加 0.05 时，A 的绝对期望利润在该模型下略高。一阶小波动近似将两者看成相同；这不支持“B 一定更高”。</p><p><b>若进行 delta 对冲。</b>理想连续对冲的漂移损益常写为 \(\tfrac12\Gamma_tS_t^2(\sigma_{r,t}^2-\sigma_{i,t}^2)\,dt\)。比较需要整个路径上的 Gamma、价格、隐波与成本。A 的方差差为 0.0225，B 为 0.0325，但 Gamma 并不相同，不能只比较两个方差差。跨式 vega 是两腿之和，近平值约 \(0.8S\sqrt T\)，不是单腿的 \(0.4S\sqrt T\)。</p></div>
+          <div class="derivation-supplement" data-derivation="038-03"><p><b>推导补全与自检。</b>买入持有到期的平值straddle净收益为|S_T−K|−权利金，不能仅靠两个波动率数字直接比较。若假设零利率、无股息、同K=S、同T、终值为同均值对数正态，期望绝对收益差可由BS平值跨式价格2S[2Φ(σ√T/2)−1]分别按真实σ与隐含σ相减计算。做delta对冲时积分还含动态Gamma；比较裸方差差0.0325与0.0225不足以证明B更优。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 4（源题 F32）：一个一个月期平值 straddle，若 5 天后过去、标的价格不变，其 vega 如何变化？</b></p>
@@ -202,7 +199,7 @@
               <p><b>检验。</b>极限自检：到期日 \(T\to 0\)，平值 vega \(\to 0\)，与「最后一秒波动率观点无法再变现」一致；对比 gamma：平值 gamma \(\propto 1/\sqrt{T}\) 随到期<b>上升</b>——vega 在缩水、gamma 在变大，两者不矛盾（gamma 是每单位价格变动的对冲收益，vega 是每单位隐含波动的敞口）。</p>
               <p><b>面试怎么讲。</b>「平值 vega 正比 \(\sqrt{T}\)，5/21 天后乘 \(\sqrt{16/21}\approx 0.87\)；短端 vega 衰减最快，这也是临近到期 theta 最痛、gamma 最肥的原因。」一句话把 vega、theta、gamma 的期限结构串起来。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="038-04"><p><b>推导补全与自检。</b>平值单腿vega约Sφ(0)√T≈0.399S√T，跨式两腿合计约0.798S√T。21交易日剩16日、标的与隐波不变时比值约√(16/21)=0.8729。若使用自然日或遇周末，要按同一模型的年化日计数处理；标的不变也不保证仍严格远期平值，利率股息会改变d₁。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 5（源题 F33）：一周后到期的欧式期权，你的系统给出的隐含波动率高于 Bloomberg。可能的原因有哪些？</b></p>
@@ -212,7 +209,7 @@
               <p><b>检验。</b>内部一致性检验：用 put-call parity 反推合成远期 \(Se^{-qT}=C-P+Ke^{-rT}\)，若合成远期与现货币种偏离，说明数据/假设有错而非市场异象。</p>
               <p><b>面试怎么讲。</b>「差异 ≠ 套利。我先分数据、模型、市场三层排查：报价新鲜度、曲面插值、分红与利率假设、然后才是事件溢价。最后用 parity 做一致性检验。」展现的是排查框架而不是背清单。</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="038-05"><p><b>推导补全与自检。</b>先把期权价格、标的价格、时间戳、执行价、call/put和到期时刻完全对齐，再比较输入利率、股息及日计数。短期限或深度实值期权vega很小，微小价格差就导致很大隐波差；用δσ≈δPrice/vega能诊断量级。若价格超出无套利界，反解隐波可能根本无解，不能把数值迭代输出当有效市场波动率。</p></div></div>
 
           <div class="worked-example">
             <p><b>例题 6（编程源题 C15.f）：什么是 swap 曲线的 bootstrapping？请用一个两期数值例子说明。</b></p>
@@ -222,7 +219,7 @@
               <p><b>检验。</b>零利率 6.03% 高于两个 par 利率、且高于 1 年期——由贴现因子单调性自洽；若解出的 \(DF\) 不单调递减或出现负利率，说明输入 par 利率本身存在套利，应先清洗数据。</p>
               <p><b>面试怎么讲。</b>「bootstrapping 是把一串平价利率逐段换成贴现因子的机械算法：第 \(n\) 期的方程里只有 \(DF_n\) 未知，前面的都已解出，代入即可。它与期权无关、无模型风险，swap 曲线因此成为衍生品定价的贴现基准。」</p>
             </div>
-          </div>
+          <div class="derivation-supplement" data-derivation="038-06"><p><b>推导补全与自检。</b>在单曲线、面值1、年度付息的简化模型，平价swap满足K∑_{i=1}^nD_i=1−D_n，整理D_n=(1−K∑_{i&lt;n}D_i)/(1+K)。先用短端已知D₁再解D₂，才能叫逐期限bootstrap。现代多曲线中贴现曲线与预测浮息曲线可不同，简单恒等式不再自动适用；需保留原例的单曲线假设。</p></div></div>
 
           <h3 id="s-038-7"><a class="anchor-link" href="#s-038-7" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>常见误区</b><p>① 「波动率微笑证明 BS 错」——更准确的说法是：BS 的对数正态假设与市场隐含分布不一致，但每个行权价各自的隐含波动率让 BS 价格始终等于市场价格，模型「错得有用」；② parity 套利在现实中有摩擦：借贷利率不同、卖空成本、中间保证金，价差小于这些成本就搬不动；③ 美式期权没有闭式解，二叉树收敛慢（\(O(1/n)\)），实务用控制变量或 Barone-Adesi-Whaley 近似；④ 隐含波动率是市场出清价不是预测——它是「贵不贵」的标尺，是否值得买还要与自己的 realized 预期比较（F31 的逻辑）；⑤ 短期限期权对分红日期极度敏感，「隐含波动率异常」先查除息日。</p></div>
@@ -245,6 +242,6 @@
       <footer class="footer"><p>量化面试通用题解手册 · 章节内容按知识讲解、例题详解与面试追问组织。</p></footer>
     </main>
   </div>
-  <script src="../assets/quant-bank.js"></script>
+  <script src="../assets/quant-bank.js?v=20261018"></script>
 </body>
 </html>

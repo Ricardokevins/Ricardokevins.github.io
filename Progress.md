@@ -1,5 +1,29 @@
 # Ricardokevins.github.io Progress
 
+## 2026-10-18 面试教材补全、手机布局修复与离线 PDF（本地完成，发布核验中）
+
+- [x] 修复公共样式覆盖题库手机侧栏高度的问题；量化目录改为手机端默认折叠，保留桌面展开和无脚本回退；修复窄屏行内公式的 inline 盒无法滚动、撑宽页面的问题。
+- [x] 原地补全量化手册 44 章：401 道例题/拓展题补充推导，041/042 两章另补 125 处具体走查；52 题与 61 题专项也逐题增补。
+- [x] 整理 LeetCode Hot 100：100 题、17 类模式，DP 分四类；逐题思路/Python/复杂度/易错点，20 道难题逐状态演示。
+- [x] 调研 Jane Street/Citadel 官方能力指南，结合 MIT/Stanford/ISL 等一手课程，编写概率统计 24 节、ML 理论 20 节；区分能力方向与未经证实的出题频率。
+- [x] 根据用户补充要求做基础可读性审校：量化 001 的数学工具起步、42 章桥接例子、041/042 岗位术语；Hot 100 六节入门；理论两书数学先修、44 节术语解释及 16 处计算补步；专项题补必要符号说明。
+- [x] 生成六本完整 PDF：主手册 419 页、52 题 60 页、61 题 44 页、Hot 100 100 页、概率统计 29 页、ML 26 页；统一入口 `notes/interview-offline/`，PDF 通过固定 GitHub Release 附件链接分发，本地完整副本保留在 `notes/downloads/`。
+- [ ] 校验索引、构建、手机截图、PDF 抽样与链接；仅提交本任务改动、推送并核验线上发布。
+
+设计取舍：保持既有量化正文和页面设计，优先增补步骤；新教材采用静态正文与分类锚点，避免必须联网或依赖筛选才能阅读。PDF 与网页从同一正文导出，减少两份内容漂移。用户已授权并行工作，分别分配量化增补、Hot 100、理论教材三个子任务；主线程负责布局、整合、PDF 和发布。
+
+关键修正：修复 023 的 MathJax JS 括号错误、043/044 缺失目录脚本；纠正严格最小博弈、拆分贪心、删零夏普倍率、跨式期权比较、条件二项匹配率等结论；52 题密码探测分支通过枚举修正。PDF 导出按章节统一 MathJax 定界符，避免末章使用 `$…$` 却未随全书配置渲染。48 个面试教材页面改用站内固定 MathJax 3.2.2 脚本与字体（28 个资源含许可证），消除已观测到的第三方 CDN 连接失败。索引校验区分公开 `downloads/` 链接与本地 Downloads 路径，保留真实本地路径检测。
+
+验证证据：
+
+- `python3 notes/leetcode-hot-100/test_solutions.py`：100/100 题，3201 次断言，含随机/穷举对照。
+- `python3 notes/quant-interview-question-bank/code/verify_derivations.py`：401 处增补覆盖；精确计数、等待状态、二项检验与夏普倍率通过；拆分贪心独立对比 780 组；实际 C++ 代码严格编译及样例通过。
+- `scripts/check_interview_layout.cjs`：91 项独立 headless 浏览器检查手机/桌面宽度、目录、正文可达、公式横向滑动、图片及 Hot 100 搜索后完整打印；未连接用户工作浏览器。
+- `scripts/check_interview_pdfs.py`：六本 PDF 的章节/讲解/代码文本覆盖、字体嵌入、目录、无本地链接验证通过；主书 8100 处公式已排版；PDF 目录 1898 个目标全部落在有效页面。已目视抽样检查代码、MLE、正则化、长推导与目录页面。
+- 52 个本任务 HTML 页的唯一 ID、本地链接和锚点检查通过（3751 条）。`ruby scripts/validate_notes_index.rb`：310/310，通过；只保留既有无关 poster 短文警告。`git diff --check` 通过。Jekyll 完整构建通过，仅有既有 Faraday/GitHub Metadata 环境提示。
+- 重导方式：设置 `NODE_PATH` 指向含 Playwright 的运行时、`CHROME_PATH` 指向独立 Chrome 后运行 `node scripts/export_interview_pdfs.cjs`；公式默认使用站内固定版本（可用 `MATHJAX_PATH` 覆盖），PDF 在临时目录排版，最终六个文件写入 `notes/downloads/`。
+- 发布路径调整：Git 整包上传及 Git Blob 大 JSON 上传在本机网络反复超时；改用 GitHub Release 二进制附件通道，完整主手册已上传成功，其余五本同通道同步。生成的 PDF 不再进入 Git 代码历史，避免后续网站更新被大包阻塞；代码与正文通过 Git Data API 校验树哈希后发布。共享样式和量化脚本添加版本参数，避免手机继续使用旧缓存。
+
 ## 2026-10-08 「把结构变成奖励」笔记（讨论中；未由 agent 提交）
 
 - 文件：`notes/paper-reviews/turning-structure-into-reward.html`，配图 `notes/paper-reviews/turning-structure-into-reward-assets/{dupo,mapo,cop}.png`（来自 structure-reward `simple-figures/` v4，定稿后直接覆盖），`_data/notes.yml` 顶部一条 Paper Note。

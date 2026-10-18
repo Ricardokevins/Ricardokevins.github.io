@@ -62,6 +62,10 @@
 
 ## Notes Authoring Standard
 
+- 笔试面试教材按题型/方法组织：先讲类别核心思路、适用条件与易错点，再逐题解释步骤、推导和代码；补全既有教材时以增补为主，避免无关重写。
+- 面试教材面向可能未学过或忘记基础的读者：关键符号与术语首次出现时给出解释，抽象方法配能逐步跟算的具体例子；不让未解释的术语链或推导跳步阻断阅读，也避免重复铺陈。
+- 笔试面试教材同时提供可离线阅读的完整 PDF，公式、代码和章节均须保留；普通博客不默认导出 PDF。交付前验证手机端正文可达、目录不占满屏幕，以及 PDF 的分页和文字完整性。
+
 - 新建、导入、清理或审计站内笔记时，先读取并遵循 repo-local skill：`.agent/skills/notes-authoring/SKILL.md`。
 - 新建站内笔记前先读取并复用 `notes/NOTE_TEMPLATE.md`，不要从旧报告随意复制过时头尾。
 - 独立 HTML 笔记必须加载 `notes/assets/notes-shell.css`，`body` 必须包含 `notes-shell-page`，页面顶部必须有 `Notes / All Notes / Home` 返回条。
