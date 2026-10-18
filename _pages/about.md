@@ -8,7 +8,7 @@ redirect_from:
   - /about.html
 ---
 
-I am a fourth-year PhD student advised by Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. Concurrently, I am a research intern at **ByteDance Seed**. 
+I am a fifth-year (last year) PhD student advised by Professor [Shujian Huang](http://nlp.nju.edu.cn/huangsj) at Nanjing University. Concurrently, I am a research intern at **ByteDance Seed**. 
 
 I focus on constructing **self-supervised** learning signals and exploring **general post-training strategies** across tasks, striving toward more **general** and **scalable** LLMs. 
 
