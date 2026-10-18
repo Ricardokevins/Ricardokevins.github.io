@@ -47,13 +47,13 @@ for i, x in enumerate(nums):
 <h3>代码约定与复杂度记法</h3><p>代码使用 Python 3 标准库，采用普通函数便于离线练习。提交平台时将函数放进 <code>class Solution</code> 并添加首参数 <code>self</code>；LC 48 的 <code>rotateImage</code>、LC 240 的 <code>searchMatrixII</code> 应分别改回题目要求的 <code>rotate</code>、<code>searchMatrix</code>。内部递归函数引用外层函数时也要相应改成 <code>self.method(...)</code>；辅助局部函数不变。四道设计题直接提供类。</p><p><code>ListNode(val=0,next=None)</code>、<code>TreeNode(val=0,left=None,right=None)</code> 和随机链表的 <code>Node(val,next=None,random=None)</code> 使用平台定义；所有结点比较都指对象身份。复杂度默认按整数运算 O(1) 的面试模型；Python 大整数、字符串复制、排序和输出开销在相关题中单独说明。递归树题的栈深度是树高，极深输入可改迭代，不能用“理论正确”忽略运行时限制。</p>
 <p>本书正文默认全部展开，可直接连续阅读与打印。搜索只帮助定位；打印会自动恢复全部题目。PDF 适合离线通读，在线版方便按锚点跳转。</p>
 <div class="search-tools"><label for="problem-search">定位题号、题名或思路</label><input type="search" id="problem-search" placeholder="例如：416、背包、回溯、前缀和"><output id="match-count" aria-live="polite">100 道题</output><button type="button" id="show-all">显示全部</button></div></section>
-<section class="category" id="hash"><h2>01 · 哈希：把搜索换成查询</h2><p class="category-foundation"><b>先把这类话说懂：</b>先把名字译成操作：哈希表就是按键快速查询的字典；“补数”是使和达到目标还缺的那一个数，如目标9、当前7，补数就是2。“规范键”是为同类对象生成同一个表示，例如eat与tea都排序成aet。</p><p class="lesson">先问“我重复搜索的是什么？”两数之和存补数，异位词存规范表示，连续序列存成员关系。字典/集合的查询平均 O(1)，最坏情形取决于散列；遍历时明确表里是当前项之前的数据，还是完整数据。</p><p class="question-links"><a href="#lc-1">1 两数之和</a> · <a href="#lc-49">49 字母异位词分组</a> · <a href="#lc-128">128 最长连续序列</a></p>
+<section class="category" id="hash"><h2>01 · 哈希：把搜索换成查询</h2><p class="category-foundation"><b>先把这类话说懂：</b>先把名字译成操作：哈希表就是按键快速查询的字典；“补数”是使和达到目标还缺的那一个数，如目标9、当前7，补数就是2。“规范键”是为同类对象生成同一个表示，例如eat与tea都排序成aet。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>先用最直白的办法解[2,7,11]找和9：固定2，再检查7与11；固定7，又可能重查2与11。慢在每读一个数，都把“以前有没有某个数”重新找一遍，不慢在加法本身。</li><li>读到2时，还缺9-2=7，但以前没有7，便把“见过2，下标0”存为seen[2]=0。读到7时，还缺9-7=2，直接查seen[2]就得到0；当前下标1与旧下标0组成答案。这里字典替代的是内层逐项寻找，不是改变了题意。</li><li>存什么由输出决定：两数之和要返回位置，所以存下标；连续序列只问数在不在，用集合；和为k的区间可能有多个旧前缀匹配，所以存次数。先写“我要查什么、查到后要取什么”，再选容器；不能把所有题都一律塞进set。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>先问“我重复搜索的是什么？”两数之和存补数，异位词存规范表示，连续序列存成员关系。字典/集合的查询平均 O(1)，最坏情形取决于散列；遍历时明确表里是当前项之前的数据，还是完整数据。</p><p class="question-links"><a href="#lc-1">1 两数之和</a> · <a href="#lc-49">49 字母异位词分组</a> · <a href="#lc-128">128 最长连续序列</a></p>
 <article class="problem" id="lc-1" data-search="1 两数之和 固定当前数 x 后，唯一需要寻找的是 target-x；用字典保存此前数值到下标。 01 · 哈希：把搜索换成查询">
 <h3><span class="number">LC 1</span> 两数之和</h3>
 <p><b>题意：</b>返回数组中两个不同下标，使对应数之和等于 target。题目保证恰有一解。</p>
 <p><b>推导与核心思路：</b>固定当前数 x 后，唯一需要寻找的是 target-x；用字典保存此前数值到下标。</p>
 <p class="example"><b>走一遍：</b>[2,7,11,15], target=9 → [0,1]；读到 7 时，字典已有 2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>先把[2,7,11]配对看：2+7=9、2+11=13、7+11=18，答案来自第一对。但数组长时重复枚举各对很慢；读到某数x后，只需要知道此前是否有9-x，不需要再看以前的所有配对。</li><li>字典初始{}。i=0、x=2，查7不存在，存{2:0}；i=1、x=7，查2存在，取出旧下标0，与当前1返回[0,1]。对[3,3]目标6，第一项先查再存，第二项才配到它，保证两个位置不同。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从左到右枚举 i,x</li><li>先查询 target-x，存在就返回两个下标</li><li>查询后才存 x，确保不会用同一个元素两次</li></ol>
 <h4>Python 实现</h4><pre><code>def twoSum(nums, target):
     seen = {}
@@ -70,7 +70,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>把只因字母排列不同的字符串放在同一组，组的顺序不限。</p>
 <p><b>推导与核心思路：</b>把字符串排序成同一个规范键；相同键对应相同的字母多重集合。</p>
 <p class="example"><b>走一遍：</b>[&quot;eat&quot;,&quot;tea&quot;,&quot;tan&quot;,&quot;ate&quot;] → [[&quot;eat&quot;,&quot;tea&quot;,&quot;ate&quot;],[&quot;tan&quot;]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>逐个两两比较哪些词同字母会重复核对。换一个能直接归组的标签：eat排序后是aet，tea也为aet，tan为ant。因此标签相同便放同一组，不再让每个新词重新和此前每个词比较。</li><li>输入[eat,tea,tan,ate]：空字典读eat得到{aet:[eat]}；读tea把它追加到aet列表；读tan新开ant列表；读ate再追加aet。最后取字典的两个列表就是[[eat,tea,ate],[tan]]，原单词没有被排序改写。</li></ol></div>
 <h4>具体步骤</h4><ol><li>为每个单词建立排序后字符串键</li><li>把原单词加入该键的列表</li><li>最后取所有组</li></ol>
 <h4>Python 实现</h4><pre><code>def groupAnagrams(strs):
     groups = {}
@@ -87,7 +87,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>无序整数数组中，求数值连续序列的最长长度，不要求原数组相邻。</p>
 <p><b>推导与核心思路：</b>只有没有前驱 x-1 的数才是序列起点；从起点扩张，每个唯一元素只被向后扫描一次。</p>
 <p class="example"><b>走一遍：</b>[100,4,200,1,3,2] → 4；只从 1 开始扫描 1,2,3,4。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[100,4,200,1,3,2]，若从1找2、3、4，又从2重找3、4，会重复扫描。注意2有前驱1、3有前驱2、4有前驱3；它们都可以把这条完整链的统计交给最左端1。</li><li>集合中100没有99，向后只走100，长1；4有3所以跳过，200独成1；1没有0，令y依次1→2→3→4→5，5不在集合停止，长度y-x=5-1=4。之后2、3各因有前驱跳过，整条链不会再扫一次。</li></ol></div>
 <h4>具体步骤</h4><ol><li>去重成集合</li><li>枚举集合中的 x，若 x-1 存在则跳过</li><li>否则从 x 不断找 x+1 并更新长度</li></ol>
 <h4>Python 实现</h4><pre><code>def longestConsecutive(nums):
     values = set(nums)
@@ -104,13 +104,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/longest-consecutive-sequence/">官方题面 · LC 128</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="pointers"><h2>02 · 双指针：利用顺序排除候选</h2><p class="category-foundation"><b>先把这类话说懂：</b>这里“指针”通常只是一个下标变量，不是必须掌握的底层内存地址。相向指针从两端向中间走，例如l=0、r=5；同向指针都朝右，一个负责读取、一个负责写入。一次移动必须能说明：被丢掉的候选为什么不会更好。</p><p class="lesson">相向指针依赖一个能证明的排除规则，而不是“两个指针看起来快”。同向指针维护已处理区间。排序常把三数问题降为两数问题；但排序会改变原下标，不能无条件用于返回下标的题。</p><p class="question-links"><a href="#lc-283">283 移动零</a> · <a href="#lc-11">11 盛最多水的容器</a> · <a href="#lc-15">15 三数之和</a> · <a href="#lc-42">42 接雨水</a></p>
+<section class="category" id="pointers"><h2>02 · 双指针：利用顺序排除候选</h2><p class="category-foundation"><b>先把这类话说懂：</b>这里“指针”通常只是一个下标变量，不是必须掌握的底层内存地址。相向指针从两端向中间走，例如l=0、r=5；同向指针都朝右，一个负责读取、一个负责写入。一次移动必须能说明：被丢掉的候选为什么不会更好。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>盛水容器最慢可枚举所有两条线。拿高度[1,8,6,2,5,4,8,3,7]，先选两端，下标0和8，宽8、短边1，面积1×8=8。若还保留下标0这条高1的线，另一端向内换成哪条，宽只会更短、容器高度最多仍1，因此不可能超过这8。</li><li>于是丢掉下标0、将左端改成1并不会错过更好的“以0为端点”的容器。现在两端高8与7、宽7，面积7×7=49；短边是右侧7，所以接着动右端。移动哪一边是由这段排除证明决定的，不能随机移动或总移动较高一侧。</li><li>换成移动零，两指针含义完全不同：读位置i每次都前进，写位置w仅读到非零时前进。例如[0,4,0,2]先把4写槽0，再把2写槽1，最后把槽2、3填0。两个变量都叫指针，但一个题在排除候选，一个题在整理已读前缀，要先说清各自职责。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>相向指针依赖一个能证明的排除规则，而不是“两个指针看起来快”。同向指针维护已处理区间。排序常把三数问题降为两数问题；但排序会改变原下标，不能无条件用于返回下标的题。</p><p class="question-links"><a href="#lc-283">283 移动零</a> · <a href="#lc-11">11 盛最多水的容器</a> · <a href="#lc-15">15 三数之和</a> · <a href="#lc-42">42 接雨水</a></p>
 <article class="problem" id="lc-283" data-search="283 移动零 写指针 w 之前恰好是已经扫描到的全部非零元素。 02 · 双指针：利用顺序排除候选">
 <h3><span class="number">LC 283</span> 移动零</h3>
 <p><b>题意：</b>原地把 0 移到末尾，非零元素相对顺序不变。</p>
 <p><b>推导与核心思路：</b>写指针 w 之前恰好是已经扫描到的全部非零元素。</p>
 <p class="example"><b>走一遍：</b>[0,1,0,3,12] → 原数组变成 [1,3,12,0,0]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[0,4,0,2]设w=0。读0不写；读4写nums[0]=4，w变1，数组暂为[4,4,0,2]；读0不写；读2写nums[1]=2，w变2，数组暂为[4,2,0,2]。重复的旧值暂时存在，没有问题。</li><li>到扫描结束，w=2之前正好是按原顺序遇到的两个非零数4、2，后半都可以覆盖。把位置2、3写0，得到[4,2,0,0]。由于w从不超过读位置，只覆盖已读过的旧元素，不会把尚未读到的2提前冲掉。</li></ol></div>
 <h4>具体步骤</h4><ol><li>扫描每个 x，非零就写到 nums[w] 并推进 w</li><li>扫描后把 [w,n) 填 0</li></ol>
 <h4>Python 实现</h4><pre><code>def moveZeroes(nums):
     w = 0
@@ -129,7 +129,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>选两条竖线，与横轴组成容器，求最大容量；中间的线不影响容量。</p>
 <p><b>推导与核心思路：</b>面积由较短边和距离决定。固定短边、缩短距离不可能变好，所以舍弃短边是安全的。</p>
 <p class="example"><b>走一遍：</b>[1,8,6,2,5,4,8,3,7] → 49，由下标 1 和 8 的线组成。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>以[1,8,6,2,5,4,8,3,7]开始，l=0、r=8：短边1、宽8，面积8，best=8。保留左边1只往内换右边，宽会缩小而高最多1，故这些候选全不超过8，安全地令l=1。</li><li>现在左高8、右高7，宽7，面积49，best=49；右边短，r降到7。新右高3、宽6，面积18，best仍49，再动右边。循环每次记录当前对的面积，再删除所有以较短端为固定端而不可能更好的候选；最终保留49。</li></ol></div>
 <h4>具体步骤</h4><ol><li>左右端初始化</li><li>计算 min(height[l],height[r])*(r-l)</li><li>移动较短的一端并重复</li></ol>
 <h4>Python 实现</h4><pre><code>def maxArea(height):
     l, r, best = 0, len(height) - 1, 0
@@ -149,7 +149,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>返回和为 0 的不重复三元组，三元组内部顺序不限。</p>
 <p><b>推导与核心思路：</b>排序后固定第一个数，剩余两数和可用相向指针，数值过小左移大、过大右移小。</p>
 <p class="example"><b>走一遍：</b>[-1,0,1,2,-1,-4] → [[-1,-1,2],[-1,0,1]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>排序[-1,0,1,2,-1,-4]得到[-4,-1,-1,0,1,2]。固定-4时剩下两数最大也只1+2=3，双指针最终无解；固定第一个-1，l在下一个-1、r在2，三数和0，记录[-1,-1,2]。</li><li>命中后l跳过这个-1来到0，r跳过2来到1，再得[-1,0,1]；两指针交错则这一首数结束。外层遇第二个-1直接跳过，因为用同一个首值得到的数值三元组已全部处理。和太小时仅左移l，是因为排序后这才可能增加和。</li></ol></div>
 <h4>具体步骤</h4><ol><li>排序并枚举 i，跳过重复首数</li><li>在 i+1 到末尾双指针求 -nums[i]</li><li>命中时记录并越过两端重复值</li></ol>
 <h4>Python 实现</h4><pre><code>def threeSum(nums):
     nums = sorted(nums)
@@ -181,7 +181,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>每根柱宽为 1，下雨后所有凹槽共能积多少水。</p>
 <p><b>推导与核心思路：</b>某位置水量是两侧最高墙较小者减自身高度；维护两端已见最高墙，较小的最高墙一侧可以立刻结算。</p>
 <p class="example"><b>走一遍：</b>[4,2,0,3,2,5] → 9；各内部位置水量为 2,4,1,2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用[3,0,2,0,4]更容易看高度差。初始l=0,r=4，left=3,right=4。左侧已知最高3较小，当前位置最多被左墙限制，累加3-3=0，l前进；位置1高度0，仍按左墙3结算，增加3。</li><li>位置2高2，增加3-2=1；位置3高0，再加3；最后位置4自身是4，增加0。总水量0+3+1+3+0=7。较小已见墙那边可以结算，是因为另一侧至少已经有更高墙；更远处墙再高也不会使这一边越过较低墙。</li></ol></div>
 <h4>具体步骤</h4><ol><li>初始化左右指针和最高墙</li><li>更新左右最高墙</li><li>较小墙那侧累加墙高减柱高，并向内推进</li></ol>
 <h4>Python 实现</h4><pre><code>def trap(height):
     l, r = 0, len(height) - 1
@@ -201,13 +201,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/trapping-rain-water/">官方题面 · LC 42</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="window"><h2>03 · 窗口、前缀和与单调队列</h2><p class="category-foundation"><b>先把这类话说懂：</b>窗口是一段连续位置，例如s[2:5]含下标2、3、4；滑动是每次增删两端少量元素。前缀和是从开头累加的和，例如[2,-1,3]的前缀为0、2、1、4，整段之外的一段可用两个前缀相减。单调队列是让候选值按一个方向排好、两端均可删除的队列。</p><p class="lesson">窗口用于连续区间，但能否收缩取决于可维护的条件。含负数的和不单调，不能照搬正数窗口；改用前缀和差。固定窗维护增删，覆盖窗在满足条件后尽量缩短，极值窗删除永远不可能再最优的候选。</p><p class="question-links"><a href="#lc-3">3 无重复字符的最长子串</a> · <a href="#lc-438">438 找到字符串中所有字母异位词</a> · <a href="#lc-560">560 和为 K 的子数组</a> · <a href="#lc-239">239 滑动窗口最大值</a> · <a href="#lc-76">76 最小覆盖子串</a></p>
+<section class="category" id="window"><h2>03 · 窗口、前缀和与单调队列</h2><p class="category-foundation"><b>先把这类话说懂：</b>窗口是一段连续位置，例如s[2:5]含下标2、3、4；滑动是每次增删两端少量元素。前缀和是从开头累加的和，例如[2,-1,3]的前缀为0、2、1、4，整段之外的一段可用两个前缀相减。单调队列是让候选值按一个方向排好、两端均可删除的队列。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>找无重复最长子串，暴力会从每个起点再把后面字符读一遍。对&quot;abba&quot;，已经读到ab时，整个窗口合法；新读到第二个b，只需丢掉它上次出现及更早的部分，窗口变为后一个b。我们复用了此前读过的信息，没有从头重查全部字符。</li><li>这样做之前必须问“哪一侧移动能改善条件”。无重复时删左字符只可能解除重复；含负数的区间和却不同：[2,-3,4]的和依次2、-1、3，右扩不保证增大，左缩也不保证减小。所以和为k不能靠和过大就缩窗，而改存从头累加的前缀。</li><li>前缀为0、2、-1、3。读完4时总和3，若目标1，便找旧前缀3-1=2，扣掉第一项2，剩[-3,4]恰为1。固定窗最大值又用另一种信息：保留仍可能当最大值的数，较小且更早到的数可删。连续区间题共享“两端”的外形，但并不共享同一个更新理由。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>窗口用于连续区间，但能否收缩取决于可维护的条件。含负数的和不单调，不能照搬正数窗口；改用前缀和差。固定窗维护增删，覆盖窗在满足条件后尽量缩短，极值窗删除永远不可能再最优的候选。</p><p class="question-links"><a href="#lc-3">3 无重复字符的最长子串</a> · <a href="#lc-438">438 找到字符串中所有字母异位词</a> · <a href="#lc-560">560 和为 K 的子数组</a> · <a href="#lc-239">239 滑动窗口最大值</a> · <a href="#lc-76">76 最小覆盖子串</a></p>
 <article class="problem" id="lc-3" data-search="3 无重复字符的最长子串 窗口 [left,right] 始终无重复；新字符重复时把 left 跳到其上次位置后一位。 03 · 窗口、前缀和与单调队列">
 <h3><span class="number">LC 3</span> 无重复字符的最长子串</h3>
 <p><b>题意：</b>求字符串中不含重复字符的最长连续子串长度。</p>
 <p><b>推导与核心思路：</b>窗口 [left,right] 始终无重复；新字符重复时把 left 跳到其上次位置后一位。</p>
 <p class="example"><b>走一遍：</b>&quot;abba&quot; → 2；窗口先 ab，再 ba。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>s=&quot;abba&quot;，初始left=0,last={}。读i=0的a，旧位置-1，left=max(0,0)=0，长度1；读i=1的b，窗口ab长2。读i=2的b，上次位置1，left=max(0,2)=2，窗口缩成新b，长度1。</li><li>读i=3的a，上次位置0，候选新左端1，但left已是2，必须取max保留2；否则窗口会错误地变成bba含重复。现在窗口ba长2，答案仍2。last记最后见到的位置，left记合法窗口左端，两者不是同一个变量。</li></ol></div>
 <h4>具体步骤</h4><ol><li>记录每字符最后下标</li><li>令 left=max(left,last[c]+1)</li><li>更新长度和 last[c]</li></ol>
 <h4>Python 实现</h4><pre><code>def lengthOfLongestSubstring(s):
     last = {}
@@ -226,7 +226,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>在小写字母字符串 s 中，返回所有长度为 len(p)、且字符计数等于 p 的窗口起点。</p>
 <p><b>推导与核心思路：</b>固定窗口长度后，只需维护 26 个计数，无需每个窗口重新排序。</p>
 <p class="example"><b>走一遍：</b>s=&quot;cbaebabacd&quot;, p=&quot;abc&quot; → [0,6]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用s=&quot;abac&quot;、p=&quot;ab&quot;，目标计数a=1,b=1，窗口长2。读下标0的a后窗只有1项不检查答案；读1的b后计数与目标相同，记起点1-2+1=0。</li><li>读下标2的a，先加入后a临时有2个，窗口超长，删掉下标0的a，剩ba仍与目标相同，记起点1；读下标3的c，再删下标1的b，剩ac不符。答案[0,1]。每轮只有一个新字符加入、最多一个旧字符移出，26个计数槽位无需重排字符串。</li></ol></div>
 <h4>具体步骤</h4><ol><li>建立目标计数</li><li>右端加入新字符，窗口过长时删左侧字符</li><li>窗口足长且计数相等时记录起点</li></ol>
 <h4>Python 实现</h4><pre><code>def findAnagrams(s, p):
     need, window = [0] * 26, [0] * 26
@@ -319,13 +319,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/minimum-window-substring/">官方题面 · LC 76</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="array"><h2>04 · 数组与矩阵：状态、原地标记、几何变换</h2><p class="category-foundation"><b>先把这类话说懂：</b>数组在本书中用Python列表表示，矩阵是“列表里再放每一行”。m行n列中的matrix[i][j]先取第i行，再取第j列。原地修改是直接改变输入对象；前缀是当前位置前面的部分，后缀是后面的部分；几何变换则是把旧坐标算成新坐标。</p><p class="lesson">数组题先区分是否必须原地、能否排序、输出是否包含自身。前后缀可把“排除自身”分成两部分。原地哈希把值 x 放到下标 x-1；矩阵题用边界或坐标变换，不能把行列写反。</p><p class="question-links"><a href="#lc-53">53 最大子数组和</a> · <a href="#lc-56">56 合并区间</a> · <a href="#lc-189">189 轮转数组</a> · <a href="#lc-238">238 除了自身以外数组的乘积</a> · <a href="#lc-41">41 缺失的第一个正数</a> · <a href="#lc-73">73 矩阵置零</a> · <a href="#lc-54">54 螺旋矩阵</a> · <a href="#lc-48">48 旋转图像</a> · <a href="#lc-240">240 搜索二维矩阵 II</a></p>
+<section class="category" id="array"><h2>04 · 数组与矩阵：状态、原地标记、几何变换</h2><p class="category-foundation"><b>先把这类话说懂：</b>数组在本书中用Python列表表示，矩阵是“列表里再放每一行”。m行n列中的matrix[i][j]先取第i行，再取第j列。原地修改是直接改变输入对象；前缀是当前位置前面的部分，后缀是后面的部分；几何变换则是把旧坐标算成新坐标。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>先把限制读成能执行的要求。原地不是“把变量名改掉”：给nums=[1,2]，写nums=[2,1]仅让本地变量指向新列表；写nums[0],nums[1]=nums[1],nums[0]才改变调用者手中的同一个对象。矩阵中的matrix[i][j]同样直接修改某行某列。</li><li>例如[1,2,3,4]每项之外的乘积，暴力对每项都重新乘其余三数。计算到3时，左边1×2已与上一个位置高度重复；先把“左边积”记成[1,1,2,6]，再乘上按位置对齐的右边积[24,12,4,1]，输出[24,12,8,6]。右边积可以从右向左边算边乘，用一个变量保存，不必再建整张表。</li><li>矩阵置零则不能一看到0立刻清整行：新写入的0会被误当原始0扩散。先记录哪些行列原本需要清零，再改内容，是把“观察”和“执行”分成两轮。其余矩阵题逐个画坐标，确认原坐标会去哪里，再考虑能否复用原表。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>数组题先区分是否必须原地、能否排序、输出是否包含自身。前后缀可把“排除自身”分成两部分。原地哈希把值 x 放到下标 x-1；矩阵题用边界或坐标变换，不能把行列写反。</p><p class="question-links"><a href="#lc-53">53 最大子数组和</a> · <a href="#lc-56">56 合并区间</a> · <a href="#lc-189">189 轮转数组</a> · <a href="#lc-238">238 除了自身以外数组的乘积</a> · <a href="#lc-41">41 缺失的第一个正数</a> · <a href="#lc-73">73 矩阵置零</a> · <a href="#lc-54">54 螺旋矩阵</a> · <a href="#lc-48">48 旋转图像</a> · <a href="#lc-240">240 搜索二维矩阵 II</a></p>
 <article class="problem" id="lc-53" data-search="53 最大子数组和 end 表示必须以当前位置结尾的最优和；前面的 end 为负时，接上它只会更差。 04 · 数组与矩阵：状态、原地标记、几何变换">
 <h3><span class="number">LC 53</span> 最大子数组和</h3>
 <p><b>题意：</b>非空整数数组中，求非空连续子数组的最大和。</p>
 <p><b>推导与核心思路：</b>end 表示必须以当前位置结尾的最优和；前面的 end 为负时，接上它只会更差。</p>
 <p class="example"><b>走一遍：</b>[-2,1,-3,4,-1,2,1,-5,4] → 6，对应 [4,-1,2,1]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用[-2,1,-3,4,-1,2,1]。end专指“必须以当前项结尾”的最好和，best才是全局最好。首项end=best=-2；读1时比较单独1与旧end+1=-1，选1，所以丢弃负前缀-2；读-3时比较-3与1-3=-2，end=-2，best仍1。</li><li>读4时比较4与-2+4=2，重新从4开始，end=4,best=4；接着-1使end=3，2使end=5、best=5，1使end=6、best=6。负数本身不一定该删：4,-1,2,1里的-1虽然降低局部和，却连接起后面的好区间。</li></ol></div>
 <h4>具体步骤</h4><ol><li>首元素初始化 end 和 best</li><li>对新 x 取 end=max(x,end+x)</li><li>用 end 更新全局 best</li></ol>
 <h4>Python 实现</h4><pre><code>def maxSubArray(nums):
     end = best = nums[0]
@@ -343,7 +343,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>把所有有交集的闭区间合并，返回互不重叠的区间。</p>
 <p><b>推导与核心思路：</b>按左端点排序，当前区间只可能与最后一个已合并区间相交。</p>
 <p class="example"><b>走一遍：</b>[[1,3],[2,6],[8,10]] → [[1,6],[8,10]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>输入[[8,10],[2,6],[1,3]]先按左端排成[[1,3],[2,6],[8,10]]。取[1,3]作当前已合并末段；下一段起点2不大于末端3，二者重叠，末端改max(3,6)=6，得到[1,6]。</li><li>下一段起点8大于6，说明与当前末段分开，另追加[8,10]。不用再和更早段比较，是因为那些段右端不超过当前末段边界，且起点排好后不会重新倒回。嵌套[1,10]、[2,3]必须保留末端10，所以用max而非直接把末端改3。</li></ol></div>
 <h4>具体步骤</h4><ol><li>按起点排序</li><li>若新起点大于末区间终点则另开一段</li><li>否则更新末区间终点为两者较大值</li></ol>
 <h4>Python 实现</h4><pre><code>def merge(intervals):
     ans = []
@@ -362,7 +362,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>原地把数组向右移动 k 位。</p>
 <p><b>推导与核心思路：</b>整体反转会交换两段的位置，再分别反转两段恢复各自顺序。</p>
 <p class="example"><b>走一遍：</b>[1,2,3,4,5,6,7], k=3 → [5,6,7,1,2,3,4]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用[1,2,3,4,5]右移2，目标是把尾段[4,5]搬到前面且保持内部顺序。先反转全部得[5,4,3,2,1]：两段位置交换了，但两段内部也反了。</li><li>再反转前2项得[4,5,3,2,1]，反转余下3项得[4,5,1,2,3]。reverse(l,r)每次交换两端后l加1、r减1，直到相遇；k先对长度取模，例如右移7与右移2相同。</li></ol></div>
 <h4>具体步骤</h4><ol><li>令 k 对 n 取模</li><li>反转整个数组</li><li>反转前 k 个和剩余 n-k 个元素</li></ol>
 <h4>Python 实现</h4><pre><code>def rotate(nums, k):
     if not nums:
@@ -385,7 +385,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>不用除法，返回每个位置之外所有元素的乘积。</p>
 <p><b>推导与核心思路：</b>答案等于左侧全部乘积乘右侧全部乘积；输出数组先存左积，再用一个变量乘入右积。</p>
 <p class="example"><b>走一遍：</b>[1,2,3,4] → [24,12,8,6]；[0,2,3] → [6,0,0]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>输入[1,2,3,4]，第一轮prefix从1开始：位置0先写1再乘自身1；位置1先写1再乘2；位置2写2再乘3；位置3写6，输出暂存[1,1,2,6]，每格都只含它左边的积。</li><li>第二轮从右走，suffix=1：位置3乘1仍6，然后suffix乘4变4；位置2的2乘4得8，suffix再乘3变12；位置1的1乘12得12，suffix变24；位置0乘24得24。最终[24,12,8,6]；每次先用suffix再乘当前数，正是为了排除自身。</li></ol></div>
 <h4>具体步骤</h4><ol><li>左到右把前缀积写入 ans[i]</li><li>右到左维护 suffix</li><li>令 ans[i] 乘 suffix 后再把 nums[i] 乘入 suffix</li></ol>
 <h4>Python 实现</h4><pre><code>def productExceptSelf(nums):
     ans, prefix = [], 1
@@ -427,7 +427,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>若某元素为 0，将其整行整列原地置 0。</p>
 <p><b>推导与核心思路：</b>第一行和第一列作标记，另用两个布尔值记下它们原本是否含 0。</p>
 <p class="example"><b>走一遍：</b>[[1,1,1],[1,0,1],[1,1,1]] → [[1,0,1],[0,0,0],[1,0,1]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>矩阵[[1,1,1],[1,0,1],[1,1,1]]，首行首列原本都无0，所以row0=col0=False。内部发现(1,1)=0，就把(1,0)与(0,1)标成0，表示整行1、整列1将来要清。</li><li>第二轮内部每格检查自己的行首或列首：行1全部清0，列1全部清0；其余保持1。最后因首行、首列原始标记均False，只保留其中原先作标记的位置0，得到[[1,0,1],[0,0,0],[1,0,1]]。若首行原本含0，最后还要整行清，不能让标记引起的0冒充原始状态。</li></ol></div>
 <h4>具体步骤</h4><ol><li>先记录首行首列原始状态</li><li>扫描内部，把需要清零的行列写入首列首行</li><li>根据标记清内部，最后处理首行首列</li></ol>
 <h4>Python 实现</h4><pre><code>def setZeroes(matrix):
     m, n = len(matrix), len(matrix[0])
@@ -456,7 +456,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>按顺时针由外向内输出矩阵元素。</p>
 <p><b>推导与核心思路：</b>维护尚未访问的上、下、左、右四条边，每走完一条就收缩对应边界。</p>
 <p class="example"><b>走一遍：</b>[[1,2,3],[4,5,6],[7,8,9]] → [1,2,3,6,9,8,7,4,5]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[[1,2,3],[4,5,6],[7,8,9]]，边界top=0,bottom=2,left=0,right=2。先沿top读1,2,3后top=1；沿right从新top往下读6,9后right=1；沿bottom反向读8,7后bottom=1；沿left向上读4后left=1。</li><li>此时未读区域只剩行1列1，再沿上边读5，top变2，区域空而结束。单行[[1,2,3]]第一边已读尽全部，top超过bottom；后面若不再检查边界，就会把3,2,1又反向读一遍。</li></ol></div>
 <h4>具体步骤</h4><ol><li>依次走上边、右边</li><li>确认仍有行后走下边</li><li>确认仍有列后走左边，再循环</li></ol>
 <h4>Python 实现</h4><pre><code>def spiralOrder(matrix):
     top, bottom, left, right = 0, len(matrix) - 1, 0, len(matrix[0]) - 1
@@ -486,7 +486,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>将 n×n 矩阵顺时针旋转 90°，要求原地修改。</p>
 <p><b>推导与核心思路：</b>顺时针坐标变换 (i,j)→(j,n-1-i)，可分解为主对角线转置后逐行反转。</p>
 <p class="example"><b>走一遍：</b>[[1,2],[3,4]] → [[3,1],[4,2]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[[1,2],[3,4]]，顺时针后原(0,0)的1应去(0,1)，原(0,1)的2去(1,1)。先只交换对角线两侧的(0,1)与(1,0)，得到[[1,3],[2,4]]，这一步叫转置。</li><li>再把每行倒序，第一行[1,3]变[3,1]，第二行[2,4]变[4,2]，得到目标[[3,1],[4,2]]。内循环j从i+1起，是为了让每对对称格只交换一次；若上下两半都换，会把刚转置的内容再换回去。</li></ol></div>
 <h4>具体步骤</h4><ol><li>只交换主对角线上方元素与其对称点</li><li>逐行原地 reverse</li></ol>
 <h4>Python 实现</h4><pre><code>def rotateImage(matrix):
     n = len(matrix)
@@ -504,7 +504,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>每行从左到右、每列从上到下递增，判断 target 是否存在。</p>
 <p><b>推导与核心思路：</b>右上角同时具有本行最大、本列最小的性质，一次比较可以排除一整行或一整列。</p>
 <p class="example"><b>走一遍：</b>[[1,4,7],[2,5,8],[3,6,9]], target=6 → True。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>矩阵[[1,4,7],[2,5,8],[3,6,9]]找6，右上(0,2)=7太大；这一列下面8、9只会更大，所以排除整列，j减到1。现在4太小，这一行左边1也更小，所以排除整行，i加到1。</li><li>到5仍太小，i到2；读到6返回True。每轮只丢整行或整列，所以最多m+n次。不能从左上随意走：左上比目标小时，右边与下边都可能有答案，无法保证只丢一侧。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从右上角开始</li><li>当前值大于目标则左移</li><li>当前值小于目标则下移</li></ol>
 <h4>Python 实现</h4><pre><code>def searchMatrixII(matrix, target):
     if not matrix or not matrix[0]:
@@ -524,13 +524,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/search-a-2d-matrix-ii/">官方题面 · LC 240</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="linked"><h2>05 · 链表：先保存后断链，虚拟头统一边界</h2><p class="category-foundation"><b>先把这类话说懂：</b>链表没有列表那样按下标直接跳到第i项的能力，只能顺着next走。虚拟头dummy是在真正头结点前临时放一个空结点，使“删第一个”也能写成“改前一个的next”。快慢指针是每轮分别走两步与一步的两个结点引用；归并是反复取两条有序链较小的头。</p><p class="lesson">链表操作的单位是结点身份，不是数值。dummy 虚拟头可统一删除首结点与中间结点。修改 next 前先保存还要访问的结点；快慢指针解决中点和环，归并把有序链拆成能复用的原语。下面 Node、ListNode、TreeNode 由评测平台提供，离线测试中有等价定义。</p><p class="question-links"><a href="#lc-160">160 相交链表</a> · <a href="#lc-206">206 反转链表</a> · <a href="#lc-234">234 回文链表</a> · <a href="#lc-141">141 环形链表</a> · <a href="#lc-142">142 环形链表 II</a> · <a href="#lc-21">21 合并两个有序链表</a> · <a href="#lc-2">2 两数相加</a> · <a href="#lc-19">19 删除链表的倒数第 N 个结点</a> · <a href="#lc-24">24 两两交换链表中的节点</a> · <a href="#lc-25">25 K 个一组翻转链表</a> · <a href="#lc-138">138 随机链表的复制</a> · <a href="#lc-148">148 排序链表</a> · <a href="#lc-23">23 合并 K 个升序链表</a> · <a href="#lc-146">146 LRU 缓存</a></p>
+<section class="category" id="linked"><h2>05 · 链表：先保存后断链，虚拟头统一边界</h2><p class="category-foundation"><b>先把这类话说懂：</b>链表没有列表那样按下标直接跳到第i项的能力，只能顺着next走。虚拟头dummy是在真正头结点前临时放一个空结点，使“删第一个”也能写成“改前一个的next”。快慢指针是每轮分别走两步与一步的两个结点引用；归并是反复取两条有序链较小的头。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>列表第i项可直接读，链表要从head逐结点顺着next找；所以不要把“反转列表切片”照搬过来。画1→2→3，cur指1、prev为None。若立刻把1.next改为None而未记原后继，变量cur就无法再顺着原链接找到2。</li><li>因此一轮按次序做：nxt=cur.next先保存2；cur.next=prev让1指None；prev=cur记住新链头1；cur=nxt继续处理2。下一轮把2.next指1，得到2→1；再一轮得到3→2→1。每个赋值都对应图上一条箭头或一个变量的位置变化。</li><li>dummy只是站在真实头前的辅助结点，例如dummy→1→2。删除1与删除2都能写成“让前一结点越过待删结点”，不再为head另开一套逻辑。快慢指针和递归也都只在移动或返回结点引用，不能因为两个val相等就说是同一个位置。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>链表操作的单位是结点身份，不是数值。dummy 虚拟头可统一删除首结点与中间结点。修改 next 前先保存还要访问的结点；快慢指针解决中点和环，归并把有序链拆成能复用的原语。下面 Node、ListNode、TreeNode 由评测平台提供，离线测试中有等价定义。</p><p class="question-links"><a href="#lc-160">160 相交链表</a> · <a href="#lc-206">206 反转链表</a> · <a href="#lc-234">234 回文链表</a> · <a href="#lc-141">141 环形链表</a> · <a href="#lc-142">142 环形链表 II</a> · <a href="#lc-21">21 合并两个有序链表</a> · <a href="#lc-2">2 两数相加</a> · <a href="#lc-19">19 删除链表的倒数第 N 个结点</a> · <a href="#lc-24">24 两两交换链表中的节点</a> · <a href="#lc-25">25 K 个一组翻转链表</a> · <a href="#lc-138">138 随机链表的复制</a> · <a href="#lc-148">148 排序链表</a> · <a href="#lc-23">23 合并 K 个升序链表</a> · <a href="#lc-146">146 LRU 缓存</a></p>
 <article class="problem" id="lc-160" data-search="160 相交链表 各走完 A+B 与 B+A，总路程相同，较长链的长度差自动抵消。 05 · 链表：先保存后断链，虚拟头统一边界">
 <h3><span class="number">LC 160</span> 相交链表</h3>
 <p><b>题意：</b>两条无环单链表若共享同一个尾部结点，返回第一个共享结点，否则返回 None。</p>
 <p><b>推导与核心思路：</b>各走完 A+B 与 B+A，总路程相同，较长链的长度差自动抵消。</p>
 <p class="example"><b>走一遍：</b>A=1→共享结点 8→9，B=2→3→同一个 8→9 → 返回共享的 8 结点。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>设A是1→共享8→9，B是2→3→共享8→9。a,b起于1与2；逐轮位置为(8,3)、(9,8)、(None,9)、(B的2,None)、(B的3,A的1)、(共享8,共享8)，此时相遇，返回同一个8结点。</li><li>a走A再走B，b走B再走A，两者都把较长独有前缀与较短独有前缀走过一次，长度差被抵消。没有交点时，两者最终都会走完A+B后一起成为None；两条链各有一个数值8而非共享对象时，绝不会仅因数值相等提前停。</li></ol></div>
 <h4>具体步骤</h4><ol><li>两个指针各从一条链出发</li><li>到尾后转到另一条链头</li><li>当两个指针身份相同时返回</li></ol>
 <h4>Python 实现</h4><pre><code>def getIntersectionNode(headA, headB):
     a, b = headA, headB
@@ -547,7 +547,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>原地反转单链表并返回新的头结点。</p>
 <p><b>推导与核心思路：</b>prev 是已反转前缀的头，cur 是还未处理的后缀头。</p>
 <p class="example"><b>走一遍：</b>1→2→3→None → 3→2→1→None。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>1→2→3，初始prev=None、cur=1。一轮先保存nxt=2，再令1.next=None，然后prev=1、cur=2；已翻部分是1→None，未处理部分是2→3。</li><li>第二轮保存3，令2.next=1，prev=2、cur=3；第三轮保存None，令3.next=2，prev=3、cur=None。while结束，返回prev这个新头3；返回cur会只得到None。</li></ol></div>
 <h4>具体步骤</h4><ol><li>先保存 cur.next</li><li>令 cur.next 指向 prev</li><li>将 prev、cur 向前推进</li></ol>
 <h4>Python 实现</h4><pre><code>def reverseList(head):
     prev, cur = None, head
@@ -565,7 +565,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>判断单链表的结点值序列是否为回文。</p>
 <p><b>推导与核心思路：</b>快慢指针定位后半段；反转后半段后，两端即可同时向中间比较。</p>
 <p class="example"><b>走一遍：</b>1→2→2→1 → True；比较后仍保持原链。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>链1→2→2→1，slow与fast都从头起。第一轮slow到第二项2、fast到第三项2；fast再走两步会越尾，因此停止，slow是前半尾。反转slow.next起的后半，得到1→2。</li><li>a从原头、b从后半新头同步比：1对1、2对2均相等，所以为回文。比较完把后半1→2再反转成2→1，重新挂到slow.next，原链恢复。奇数链1→2→1时后半仅最后一个1，中间2不参与左右比较。</li></ol></div>
 <h4>具体步骤</h4><ol><li>快指针每次两步、慢指针一步</li><li>原地反转慢指针后的半段</li><li>比较，最后再反转回来恢复链表</li></ol>
 <h4>Python 实现</h4><pre><code>def isPalindrome(head):
     if not head or not head.next:
@@ -597,7 +597,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>判断单链表中是否存在环。</p>
 <p><b>推导与核心思路：</b>有环时快指针每轮比慢指针多走一步，相对距离会模环长循环，必然相遇。</p>
 <p class="example"><b>走一遍：</b>1→2→3→2（回到第二结点）→ True；普通 1→2→None → False。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>以结点A→B→C→D→B为例。slow每轮一步、fast两步，起点(A,A)；移动后分别(B,C)、(C,B)、(D,D)，在D相遇，说明快者在环里追上慢者。先移动再比较，才能避免把刚初始化同在A当作有环。</li><li>若是A→B→C→None，第一轮后(B,C)，接着fast.next为空，while不再进入，返回False。访问fast.next.next前先检查fast和fast.next，正是为了让这种无环尾部安全结束。</li></ol></div>
 <h4>具体步骤</h4><ol><li>两个指针从头出发</li><li>每轮慢一步快两步</li><li>相遇返回 True，快指针遇到 None 则无环</li></ol>
 <h4>Python 实现</h4><pre><code>def hasCycle(head):
     slow = fast = head
@@ -615,7 +615,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>有环则返回入环的第一个结点，无环返回 None。</p>
 <p><b>推导与核心思路：</b>相遇时若入环前长 a、慢指针在环内走 b，则 a+b 是环长的整数倍；一个从头、一个从相遇点同步走会在入口相遇。</p>
 <p class="example"><b>走一遍：</b>3→2→0→-4→回到结点 2 → 返回 2 所在结点。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>仍用A→B→C→D→B：相遇点D不是入口B，不能直接返回D。把entry放回A，slow留D；两者同时一步后都到B，才返回B。</li><li>原因可用距离说明：入口前长度a，入口到相遇处长度b，环长c。相遇时快者比慢者多走整圈，所以a+b是c的整数倍；从相遇处再走a步恰绕到入口，从起点走a步也恰到入口。没有相遇则无环，返回None。</li></ol></div>
 <h4>具体步骤</h4><ol><li>先按快慢指针找到相遇点</li><li>一个指针重置 head</li><li>两者每次走一步直到再次相遇</li></ol>
 <h4>Python 实现</h4><pre><code>def detectCycle(head):
     slow = fast = head
@@ -636,7 +636,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>把两个非降序链表合并为一个非降序链表。</p>
 <p><b>推导与核心思路：</b>当前最小值一定在两个头结点之一；不断把较小头接到答案尾部。</p>
 <p class="example"><b>走一遍：</b>1→2→4 与 1→3→4 → 1→1→2→3→4→4。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>合并1→4与2→3。dummy后还没元素，比较两头1和2，接1并让第一链头移到4；再比较4和2接2，第二链头到3；比较4和3接3，第二链空。</li><li>一链空后直接把剩下4接到tail.next，得到1→2→3→4。tail每次移到刚接的结点，不再从头找尾。每条输入自己已排序，所以每轮全局剩余最小必在两个头之一，后面的内部结点无需重查。</li></ol></div>
 <h4>具体步骤</h4><ol><li>建 dummy 与 tail</li><li>比较两头并接上较小者</li><li>一边耗尽后直接接剩余后缀</li></ol>
 <h4>Python 实现</h4><pre><code>def mergeTwoLists(list1, list2):
     dummy = tail = ListNode(0)
@@ -657,7 +657,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>两个非负整数以逆序链表存储，每结点一位；返回和的逆序链表。</p>
 <p><b>推导与核心思路：</b>逐位相加并保留进位，长短不同的链用 0 补齐。</p>
 <p class="example"><b>走一遍：</b>2→4→3 表示 342，5→6→4 表示 465；输出 7→0→8 表示 807。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>链9→9代表99，链1代表1。个位total=0+9+1=10，divmod(10,10)给carry=1、digit=0，输出第一个0；两指针推进后，第二链已空，空位按0补。</li><li>十位total=1+9+0=10，再输出0、保留进位1；两链都空但carry仍1，循环还要一轮，total=1输出1，进位清0。最终0→0→1代表100；漏掉while中的or carry就会错丢最高位。</li></ol></div>
 <h4>具体步骤</h4><ol><li>循环条件包含任一链非空或 carry 非零</li><li>计算本位总和并 divmod 10</li><li>追加余数位并推进指针</li></ol>
 <h4>Python 实现</h4><pre><code>def addTwoNumbers(l1, l2):
     dummy = tail = ListNode(0)
@@ -679,7 +679,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>删除倒数第 n 个结点并返回头；保证 n 有效。</p>
 <p><b>推导与核心思路：</b>前后指针相隔 n 个结点；前指针到尾时，后指针恰好在待删除结点前。</p>
 <p class="example"><b>走一遍：</b>1→2→3→4→5, n=2 → 1→2→3→5。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>链1→2→3→4→5删倒数第2，dummy在1之前。fast先从dummy走2步到2，slow仍dummy；随后两者同步移，依次(slow=1,fast=3)、(2,4)、(3,5)。</li><li>fast.next为空时，slow正站在待删4的前一个3；令slow.next=slow.next.next，把3直接连5。若删倒数第5，fast先到5而slow还在dummy，直接越过1，返回dummy.next便自动得到新头2。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从 dummy 出发让 fast 先走 n 步</li><li>当 fast.next 非空时两指针同步前进</li><li>令 slow.next 跳过一个结点</li></ol>
 <h4>Python 实现</h4><pre><code>def removeNthFromEnd(head, n):
     dummy = ListNode(0, head)
@@ -699,7 +699,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>交换每一对相邻结点，不能仅交换数值。</p>
 <p><b>推导与核心思路：</b>保存一对结点 a、b，重连 prev→b→a→后缀，再将 prev 移到 a。</p>
 <p class="example"><b>走一遍：</b>1→2→3→4→5 → 2→1→4→3→5。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>dummy→1→2→3，prev=dummy，a=1、b=2。先令a.next=b.next，让1连3；再b.next=a，让2连1；最后prev.next=b，让dummy连2，形成dummy→2→1→3。</li><li>现在prev应移到a也就是1，它是换后这一对的尾部；若移到b会重复处理已经交换过的结点。下一轮发现1后只剩3一个，保持3不动；整个过程没有互换val，而是真正重接结点。</li></ol></div>
 <h4>具体步骤</h4><ol><li>使用 dummy</li><li>只要后面至少有两结点就交换</li><li>不足两个时保持剩余后缀</li></ol>
 <h4>Python 实现</h4><pre><code>def swapPairs(head):
     dummy = ListNode(0, head)
@@ -720,7 +720,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>每 k 个结点原地翻转，不满 k 个的尾段保留。</p>
 <p><b>推导与核心思路：</b>每轮先确认整组存在，再以组后结点为 prev 反转这一组，最后连接组前结点。</p>
 <p class="example"><b>走一遍：</b>1→2→3→4→5, k=3 → 3→2→1→4→5。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>链1→2→3→4→5，k=3，before=dummy。先走足3步找到kth=3，保存after=4；prev先指4，cur指1。依次把1.next改4、2.next改1、3.next改2，到cur=4就停。</li><li>这一组新链为3→2→1→4，before.next改指3；旧头1现在是组尾，因此下一组before=1。再试走3步，只找到4、5后遇None，说明尾段不足，立即返回，保留4→5原顺序。先数够再翻转避免最后还得把不够长的尾段还原。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从组前结点向后走 k 步定位 kth</li><li>保存 after=kth.next</li><li>反转到 after，再把组前 next 指向 kth，下一轮组前变为旧组头</li></ol>
 <h4>Python 实现</h4><pre><code>def reverseKGroup(head, k):
     dummy = ListNode(0, head)
@@ -749,7 +749,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>深拷贝带 next 和 random 指针的链表；新旧结点不能共享。</p>
 <p><b>推导与核心思路：</b>先建立原结点→新结点的映射，第二遍才能同时正确连接向前或向后的 random。</p>
 <p class="example"><b>走一遍：</b>两结点 7→13，13.random 指向 7；复制后新 13 指向新 7，不能指回旧 7。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>原链A(val=7)→B(val=13)，A.random=None、B.random=A。第一遍只造新A与新B，字典记录{None:None,A:新A,B:新B}；这时还不用猜某个random目标的新结点是否已建立。</li><li>第二遍处理A：新A.next=copies[B]=新B，random=copies[None]=None；处理B：新B.next=None、random=copies[A]=新A。结果没有任何指回旧A/旧B的箭头；若两个旧结点val同为7，它们仍是不同字典键，不能按val合并。</li></ol></div>
 <h4>具体步骤</h4><ol><li>第一遍创建所有新结点</li><li>映射 None 到 None</li><li>第二遍按映射填 next 与 random</li></ol>
 <h4>Python 实现</h4><pre><code>def copyRandomList(head):
     copies = {None: None}
@@ -772,7 +772,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>将链表升序排序。</p>
 <p><b>推导与核心思路：</b>链表没有随机访问，用快慢指针分半、递归排序、线性归并，得到 O(n log n)。</p>
 <p class="example"><b>走一遍：</b>4→2→1→3 → 1→2→3→4。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>4→2→1→3先用快慢找到左半尾2，保存右头1，再断开2.next，于是得到4→2与1→3。两半各再拆到单结点：4与2归并成2→4，1与3归并成1→3。</li><li>最后归并两条有序链：比较2和1取1；比较2和3取2；比较4和3取3；接剩余4，返回1→2→3→4。若忘断slow.next，左递归仍拿到完整原链、问题不缩小，会不停递归而非自动切成两段。</li></ol></div>
 <h4>具体步骤</h4><ol><li>长度 0 或 1 时返回</li><li>快慢指针找左半尾并断开</li><li>递归两半，双指针合并</li></ol>
 <h4>Python 实现</h4><pre><code>def sortList(head):
     if not head or not head.next:
@@ -801,7 +801,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>合并 k 条有序链，设所有结点总数为 N。</p>
 <p><b>推导与核心思路：</b>最小堆只保存每条链的当前头，堆顶就是全局下一个最小结点。</p>
 <p class="example"><b>走一遍：</b>[1→4→5, 1→3→4, 2→6] → 1→1→2→3→4→4→5→6。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>三链A:1→4、B:1→3、C:2→6，堆先放每条链头。两个1相同，用递增serial让元组仍可比较，不让Python去比较ListNode对象。先弹A的1，输出它，补入A后继4；再弹B的1，补入B后继3。</li><li>此时候选为2、3、4，取2再补6，然后依次取3、4、6，输出1→1→2→3→4→6。每条链内部早已有序，后继不可能比尚未取出的本链头更小，所以堆只存每链一个头就不会漏掉全局最小。</li></ol></div>
 <h4>具体步骤</h4><ol><li>将各非空头入堆</li><li>弹出最小结点接入输出</li><li>把它的 next 放入堆，直到堆空</li></ol>
 <h4>Python 实现</h4><pre><code>def mergeKLists(lists):
     import heapq
@@ -877,13 +877,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/lru-cache/">官方题面 · LC 146</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="tree"><h2>06 · 树：递归返回值与全局答案分开</h2><p class="category-foundation"><b>先把这类话说懂：</b>树高是根到最远叶结点的结点数；直径则是任意两结点间最长路径的边数。“遍历”指按某种顺序访问每个结点：中序是左子树→根→右子树，前序是根→左→右，后序是左→右→根；层序则先根，再其孩子，再孙子。BST即前文的二叉搜索树。</p><p class="lesson">每道树题先写出递归函数“返回什么”。深度返回一条向下路径，直径/最大路径和却在当前结点把左右贡献合并；合并结果更新全局答案，不能继续向父结点返回分叉路径。层序遍历用队列按层处理；BST 的中序是递增序列。h 表示树高，最坏可等于 n。</p><p class="question-links"><a href="#lc-94">94 二叉树的中序遍历</a> · <a href="#lc-104">104 二叉树的最大深度</a> · <a href="#lc-226">226 翻转二叉树</a> · <a href="#lc-101">101 对称二叉树</a> · <a href="#lc-543">543 二叉树的直径</a> · <a href="#lc-102">102 二叉树的层序遍历</a> · <a href="#lc-108">108 将有序数组转换为二叉搜索树</a> · <a href="#lc-98">98 验证二叉搜索树</a> · <a href="#lc-230">230 二叉搜索树中第 K 小的元素</a> · <a href="#lc-199">199 二叉树的右视图</a> · <a href="#lc-114">114 二叉树展开为链表</a> · <a href="#lc-105">105 从前序与中序遍历序列构造二叉树</a> · <a href="#lc-437">437 路径总和 III</a> · <a href="#lc-236">236 二叉树的最近公共祖先</a> · <a href="#lc-124">124 二叉树中的最大路径和</a></p>
+<section class="category" id="tree"><h2>06 · 树：递归返回值与全局答案分开</h2><p class="category-foundation"><b>先把这类话说懂：</b>树高是根到最远叶结点的结点数；直径则是任意两结点间最长路径的边数。“遍历”指按某种顺序访问每个结点：中序是左子树→根→右子树，前序是根→左→右，后序是左→右→根；层序则先根，再其孩子，再孙子。BST即前文的二叉搜索树。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>先不急着写递归。对根2、左孩子1、右孩子3，问高度：如果有人能告诉你左树高1、右树高1，根的答案就是1+max(1,1)=2。我们便把height(node)约定成“只返回以node为根的高度”，空孩子返回0。</li><li>真实执行从根进入左孩子1，再进入它的空孩子返回0，另一个空孩子也返回0，所以结点1算出1交回；随后右孩子3同样交回1，根最后算2。父函数不是跳过过程直接知道孩子答案，而是暂停着等每个小问题返回。这也是为什么代码需要空结点出口、递归栈深度等于当前祖先链长度。</li><li>直径与最大路径和多问了一件事：在某结点把左右接起来是否是全局最佳。但要继续连接到父亲，只能交回左或右其中一支，否则一条路径会长出三条岔。分开记录“这次调用给父亲什么”和“整棵树目前见过什么最好答案”，就能从高度题平滑推到困难题。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>每道树题先写出递归函数“返回什么”。深度返回一条向下路径，直径/最大路径和却在当前结点把左右贡献合并；合并结果更新全局答案，不能继续向父结点返回分叉路径。层序遍历用队列按层处理；BST 的中序是递增序列。h 表示树高，最坏可等于 n。</p><p class="question-links"><a href="#lc-94">94 二叉树的中序遍历</a> · <a href="#lc-104">104 二叉树的最大深度</a> · <a href="#lc-226">226 翻转二叉树</a> · <a href="#lc-101">101 对称二叉树</a> · <a href="#lc-543">543 二叉树的直径</a> · <a href="#lc-102">102 二叉树的层序遍历</a> · <a href="#lc-108">108 将有序数组转换为二叉搜索树</a> · <a href="#lc-98">98 验证二叉搜索树</a> · <a href="#lc-230">230 二叉搜索树中第 K 小的元素</a> · <a href="#lc-199">199 二叉树的右视图</a> · <a href="#lc-114">114 二叉树展开为链表</a> · <a href="#lc-105">105 从前序与中序遍历序列构造二叉树</a> · <a href="#lc-437">437 路径总和 III</a> · <a href="#lc-236">236 二叉树的最近公共祖先</a> · <a href="#lc-124">124 二叉树中的最大路径和</a></p>
 <article class="problem" id="lc-94" data-search="94 二叉树的中序遍历 显式栈模拟递归：先把所有左子孙压栈，弹出的结点就是下一个中序结点。 06 · 树：递归返回值与全局答案分开">
 <h3><span class="number">LC 94</span> 二叉树的中序遍历</h3>
 <p><b>题意：</b>按左子树、根、右子树输出结点值。</p>
 <p><b>推导与核心思路：</b>显式栈模拟递归：先把所有左子孙压栈，弹出的结点就是下一个中序结点。</p>
 <p class="example"><b>走一遍：</b>根 1、右子 2、2 的左子 3 → [1,3,2]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用根2、左1、右3的树。cur=2先压栈2，再沿left压1，cur到None；弹出1访问它，输出[1]，cur转到1.right=None。此时栈里还有2，所以不能结束。</li><li>接着弹2，输出[1,2]，cur转到右孩子3；压3后左边为空，再弹3，输出[1,2,3]。cur与栈都空才结束。这正好把“左边全部处理完再访问根，再处理右边”的顺序拆成实际动作。</li></ol></div>
 <h4>具体步骤</h4><ol><li>沿 left 一直入栈</li><li>弹栈访问</li><li>转向其 right 再重复</li></ol>
 <h4>Python 实现</h4><pre><code>def inorderTraversal(root):
     stack, ans, cur = [], [], root
@@ -904,7 +904,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>求从根到最远叶结点路径上的结点数。</p>
 <p><b>推导与核心思路：</b>空树深度 0；非空树深度等于左右最大深度加 1。</p>
 <p class="example"><b>走一遍：</b>根 3，左子 9，右子 20 且 20 有两孩子 → 3。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树根2、左1、右3。进入maxDepth(2)时要先等maxDepth(1)：1的两个孩子都是None，各返回0，于是1返回1+max(0,0)=1；3同样返回1。根2得到左右两个1，返回1+max(1,1)=2。</li><li>若3还有孩子4，则4先返回1、3返回2、根返回3。每次返回值只表示“从该结点往下还能经过几个结点”，不把兄弟树的高度相加；相加会变成路径长度而不是从根出发的深度。</li></ol></div>
 <h4>具体步骤</h4><ol><li>空结点返回 0</li><li>递归计算左右深度</li><li>取最大并加 1</li></ol>
 <h4>Python 实现</h4><pre><code>def maxDepth(root):
     if root is None:
@@ -919,7 +919,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>交换每个结点的左右子树。</p>
 <p><b>推导与核心思路：</b>每个子树都执行同一交换，递归结构与问题一致。</p>
 <p class="example"><b>走一遍：</b>[4,2,7,1,3,6,9] → [4,7,2,9,6,3,1]（层序）。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树2的左孩子1、右孩子3。先调用invertTree(原右3)：它两边为空，返回仍是结点3；再调用invertTree(原左1)，返回结点1。平行赋值把这两个结果设为root.left=3、root.right=1，得到2左3右1。</li><li>多层树也是先翻各自内部，再交换两棵翻好的子树。函数最终返回原root对象，只是它内部链接改过；只把1与3的val互换，在更深树里无法正确翻整棵结构。</li></ol></div>
 <h4>具体步骤</h4><ol><li>空结点返回 None</li><li>递归翻转原左右子树并交换赋值</li><li>返回 root</li></ol>
 <h4>Python 实现</h4><pre><code>def invertTree(root):
     if root:
@@ -934,7 +934,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>判断二叉树是否以根为中心镜像对称。</p>
 <p><b>推导与核心思路：</b>比较两个结点时，需要 a.left 对 b.right、a.right 对 b.left，而非同方向。</p>
 <p class="example"><b>走一遍：</b>[1,2,2,3,4,4,3] → True；[1,2,2,None,3,None,3] → False。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树层序[1,2,2,3,4,4,3]，mirror首先比左右两个2，值相等；接着比左2的左孩子3与右2的右孩子3，再比左2的右4与右2的左4，全部相等，各自空孩子也成对为空，返回True。</li><li>若左边有一个3而右边对应位置None，mirror(3,None)立即False，不必再比数值。两个空指针都为None才True；一空一非空时不能因为这一层剩余值看起来一样就忽略形状。</li></ol></div>
 <h4>具体步骤</h4><ol><li>两者都空则真</li><li>恰一个空或值不同则假</li><li>递归比较两组镜像孩子</li></ol>
 <h4>Python 实现</h4><pre><code>def isSymmetric(root):
     def mirror(a, b):
@@ -952,7 +952,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>求任意两个结点之间最长路径的边数，路径可以不经过根。</p>
 <p><b>推导与核心思路：</b>左右子树高度之和就是经过当前结点的最长路径边数；递归返回值只保留一边高度。</p>
 <p class="example"><b>走一遍：</b>[1,2,3,4,5] → 3，路径 4→2→1→3。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树1的左子2带孩子4、5，右子3。叶4与5各返回高度1；结点2用left+right=1+1=2更新直径，向父亲仅返回1+max(1,1)=2。右叶3返回1。</li><li>根1将左右高度2与1接起来，直径候选2+1=3条边，对应4→2→1→3或5→2→1→3，更新best=3。根向上返回高度3，但整个函数返回的是best这个边数，不是height(root)这个结点数。</li></ol></div>
 <h4>具体步骤</h4><ol><li>后序取得 left/right 高度</li><li>更新 best=max(best,left+right)</li><li>返回 1+max(left,right)</li></ol>
 <h4>Python 实现</h4><pre><code>def diameterOfBinaryTree(root):
     best = 0
@@ -974,7 +974,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>逐层从左到右输出结点值，每层单独一个列表。</p>
 <p><b>推导与核心思路：</b>处理本层前固定队列长度，新加入孩子留给下一层。</p>
 <p class="example"><b>走一遍：</b>[3,9,20,None,None,15,7] → [[3],[9,20],[15,7]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树根3，孩子9与20，20又有15与7。队列起始[3]，本轮固定len=1，只弹3并加入9、20，收集本层[3]；新来的两个孩子不能在这同一层顺手处理。</li><li>下一轮固定len=2，弹9无孩子，弹20加入15、7，本层[9,20]；第三轮弹15、7得到[15,7]。队列空结束，输出[[3],[9,20],[15,7]]。固定轮初长度，才使一层不会吞掉下一层。</li></ol></div>
 <h4>具体步骤</h4><ol><li>根入队</li><li>每轮读取 len(queue) 次</li><li>出队记录值并按左右顺序入队孩子</li></ol>
 <h4>Python 实现</h4><pre><code>def levelOrder(root):
     from collections import deque
@@ -1000,7 +1000,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>把严格递增数组转为高度平衡 BST。</p>
 <p><b>推导与核心思路：</b>中点作根，将左右半区分别转为左右子树，保证排序性质和高度平衡。</p>
 <p class="example"><b>走一遍：</b>[-10,-3,0,5,9] → 根可为 0，左右分别由两个半区构建。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[-10,-3,0,5,9]，区间[0,5)取mid=2、值0作根。左半[0,2)取mid=1、值-3，左孩子再由[0,1)建-10，右半[2,2)空；因此左子树是-3左接-10。</li><li>右半[3,5)取mid=4、值9，左孩子由[3,4)建5，右边空。全树中序仍为-10,-3,0,5,9，左右半每轮规模约减半，所以高度平衡；用下标区间避免每层都切片复制数字。</li></ol></div>
 <h4>具体步骤</h4><ol><li>递归区间 [l,r)</li><li>空区间返回 None</li><li>取中点建根并递归两个半区</li></ol>
 <h4>Python 实现</h4><pre><code>def sortedArrayToBST(nums):
     def build(l, r):
@@ -1021,7 +1021,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>判断每个结点的左子树全部小于它、右子树全部大于它。</p>
 <p><b>推导与核心思路：</b>祖先传下来的上下界必须同时满足，不能只比较直接孩子。</p>
 <p class="example"><b>走一遍：</b>[2,1,3] → True；[2,2,3] → False。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对根5、左1、右4，4又有左3右6的树，根允许范围(-∞,+∞)。左1继承(-∞,5)，合法；右4必须继承(5,+∞)，但4不大于5，立即失败，即使它自己的左3右6都满足局部大小。</li><li>每往左走一次就把上界收紧为当前值，往右走就把下界收紧；较远祖先的限制因其仍在另一个边界中而不会遗失。重复值[2,2,3]也不合法，所以条件必须是low&lt;val&lt;high，不含等号。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从 (-∞,+∞) 开始</li><li>检查 low&lt;val&lt;high</li><li>左子树收紧 high，右子树收紧 low</li></ol>
 <h4>Python 实现</h4><pre><code>def isValidBST(root):
     def valid(node, low, high):
@@ -1040,7 +1040,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>合法 BST 中返回第 k 小的值，k 从 1 开始且有效。</p>
 <p><b>推导与核心思路：</b>BST 的中序遍历是升序，第 k 次弹栈即答案，无需遍历全部结点。</p>
 <p class="example"><b>走一遍：</b>[3,1,4,None,2], k=2 → 2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>BST根3、左1（右孩子2）、右4，找k=2。先压3再压1，弹1时k从2减1，不返回；转向1右孩子2，压入并弹2，k减到0，返回2。</li><li>不必继续访问3、4，因为中序顺序已证明从小到大，第二次访问的位置就是第2小。k按“已访问多少个结点”递减，不是比较数值与2；若数值为100、200也照样按访问次数选。</li></ol></div>
 <h4>具体步骤</h4><ol><li>按中序栈模板压左链</li><li>每次访问令 k 减一</li><li>k=0 时返回值</li></ol>
 <h4>Python 实现</h4><pre><code>def kthSmallest(root, k):
     stack, cur = [], root
@@ -1062,7 +1062,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>从右侧能看到的每层最右结点值。</p>
 <p><b>推导与核心思路：</b>层序遍历每层最后一个结点就是可见结点，右侧没有孩子时也可能由左子树贡献。</p>
 <p class="example"><b>走一遍：</b>[1,2,3,None,5,None,4] → [1,3,4]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用根1，左2带右5，右3不带孩子。第1层只弹1，最后值1；第2层按左到右弹2、3，最后值3；2的5被放进下一层，第3层最后值5。因此右视图[1,3,5]。</li><li>代码每层循环后读取最后一次node.val，利用队列左右次序得到最右者。若只沿root.right走，只能看见1、3，会漏掉右子树终止后仍能从左子树露出的5。</li></ol></div>
 <h4>具体步骤</h4><ol><li>每层固定长度</li><li>按左再右入队</li><li>记录每层最后一次出队的值</li></ol>
 <h4>Python 实现</h4><pre><code>def rightSideView(root):
     from collections import deque
@@ -1086,7 +1086,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>原地把树按前序顺序展开，所有 left 置空，right 指向下一结点。</p>
 <p><b>推导与核心思路：</b>存在左子树时，把原右子树接到左子树最右结点，再把左子树搬到右边。</p>
 <p class="example"><b>走一遍：</b>[1,2,5,3,4,None,6] → right 链 1→2→3→4→5→6。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树1的左子2带3、4，右子5带右6。cur=1时，左子树最右结点是4；先把4.right接上原右子树5，再让1.right=2、1.left=None。前序所需的“左子树完了才接原右子树”现在已接好。</li><li>cur沿right到2，它仍有左3、右4；把3.right接4，再让2.right=3、2.left=None。之后cur依次3、4、5、6，均无left，不再调整；最终1→2→3→4→5→6且所有left为空，结点都是原来的对象。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从根沿 right 扫描</li><li>找左子树最右结点</li><li>接上旧 right，再将 left 搬到 right 并清空 left</li></ol>
 <h4>Python 实现</h4><pre><code>def flatten(root):
     cur = root
@@ -1108,7 +1108,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>给定值互不重复的前序和中序序列，重建原树。</p>
 <p><b>推导与核心思路：</b>前序下一个元素是根；它在中序的位置将左右子树分开，按左后右消费前序。</p>
 <p class="example"><b>走一遍：</b>前序 [3,9,20,15,7]、中序 [9,3,15,20,7] → 根 3，左 9，右 20。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>前序[3,9,20,15,7]说明先访问根3；中序[9,3,15,20,7]中3在下标1，所以左子树只含[9]，右子树含[15,20,7]。前序迭代器下一项9便用于先建左子树。</li><li>左树建完后迭代器下一项20作右树根，中序把它分成左[15]与右[7]，依次消费前序15、7建孩子。递归只传中序区间，前序的“下一项”由同一个迭代器记住；若先递归建右再建左，会把下一项9误当右根。</li></ol></div>
 <h4>具体步骤</h4><ol><li>建立中序值到下标映射</li><li>递归维护中序半开区间</li><li>取前序下一个根并先构左子树再构右子树</li></ol>
 <h4>Python 实现</h4><pre><code>def buildTree(preorder, inorder):
     positions = {x: i for i, x in enumerate(inorder)}
@@ -1132,7 +1132,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>统计所有从某结点向下延伸、和值为 targetSum 的非空路径，不要求从根开始。</p>
 <p><b>推导与核心思路：</b>根到当前结点的前缀和减某祖先前缀和等于目标，复用一维前缀和计数。</p>
 <p class="example"><b>走一遍：</b>[10,5,-3,3,2,None,11,3,-2,None,1], target=8 → 3。</p>
-<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>沿10→5→3这一支，前缀和依次10、15、18。目标8时，到结点3便查询18-8=10；祖先前缀10出现过一次，减掉它，留下5→3这一条和8的路径。counts={0:1}中的空前缀使“从根就开始”的路径也能被同样规则统计。</li><li>退出结点3时把counts[18]减回去，再去兄弟分支。字典应只记录“当前结点的祖先链”，不是此前访问过的所有结点；否则另一支某个前缀恰好差8，会被错误地拼成跨树枝路径。递归返回的是该子树中合格路径的条数，不是前缀和本身。</li></ol></div>
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>沿10→5→3这一支，前缀和依次10、15、18。目标8时，到结点3便查询18-8=10；祖先前缀10出现过一次，减掉它，留下5→3这一条和8的路径。counts={0:1}中的空前缀使“从根就开始”的路径也能被同样规则统计。</li><li>退出结点3时把counts[18]减回去，再去兄弟分支。字典应只记录“当前结点的祖先链”，不是此前访问过的所有结点；否则另一支某个前缀恰好差8，会被错误地拼成跨树枝路径。递归返回的是该子树中合格路径的条数，不是前缀和本身。</li><li>再完整跑一棵很小的树：根1，左右各一个1，目标2。根前缀1查-1无，存{0:1,1:1}；左孩子前缀2查0有一次，得1条，退出时撤销2。右孩子同样前缀2查0再得1条，退出也撤销2；根把左右条数相加返回2，不会把两个孩子拼成一条穿过根再向上的非法路径。</li></ol></div>
 <h4>具体步骤</h4><ol><li>维护当前递归路径的前缀计数，初始 {0:1}</li><li>到结点先查询 total-target</li><li>加入当前前缀，递归左右，退出时减回</li></ol>
 <h4>Python 实现</h4><pre><code>def pathSum(root, targetSum):
     counts = {0: 1}
@@ -1155,7 +1155,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>给定两个确实存在且不同的结点 p、q，返回最近公共祖先。</p>
 <p><b>推导与核心思路：</b>递归返回当前子树找到的目标或公共祖先；若左右各找到一个，当前根就是交汇点。</p>
 <p class="example"><b>走一遍：</b>根 3，左右子树分别含 5、1；p=5,q=1 → 3。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>树根3、左5、右1，p=5、q=1。递归到5时因它正是p，直接返回该结点；到1时返回q；根拿到左右都非空，说明两个目标分居两侧，因此返回根3。</li><li>若p=5，q在5的后代，进入5就返回5也正确，因为5已经是两者共同祖先而不可能再往下同时包含它自己。若仅一侧找到目标或共同祖先，就把这一侧结果向上交；上层不能因为“找到一个值”就随意替换成自己。</li></ol></div>
 <h4>具体步骤</h4><ol><li>空结点或根等于 p/q 时返回它</li><li>递归左右</li><li>两边非空返回根，否则返回非空一边</li></ol>
 <h4>Python 实现</h4><pre><code>def lowestCommonAncestor(root, p, q):
     if root is None or root is p or root is q:
@@ -1193,13 +1193,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/binary-tree-maximum-path-sum/">官方题面 · LC 124</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="graph"><h2>07 · 图与前缀树：可达、最短层数、依赖</h2><p class="category-foundation"><b>先把这类话说懂：</b>图由“点”和“边”组成，边表示可走通道或先后依赖。DFS（深度优先）沿一条路尽量走到底再回头；BFS（广度优先）先走完一步可达点，再两步可达点。连通块是一组能互相走到的点；入度是指向某点的依赖边数量；拓扑序是让所有先修任务都排在后修任务之前的顺序。Trie叫前缀树，单词共享的开头只存一份路径。</p><p class="lesson">DFS/栈找连通块；多源 BFS 把所有起点同时入队，层数就是最短传播时间；有向依赖用入度消除，剩余结点意味着环。访问标记在入队时设置，避免重复入队。Trie 则把共享字符串前缀压成路径，末尾标记区分完整单词与前缀。</p><p class="question-links"><a href="#lc-200">200 岛屿数量</a> · <a href="#lc-994">994 腐烂的橘子</a> · <a href="#lc-207">207 课程表</a> · <a href="#lc-208">208 实现 Trie（前缀树）</a></p>
+<section class="category" id="graph"><h2>07 · 图与前缀树：可达、最短层数、依赖</h2><p class="category-foundation"><b>先把这类话说懂：</b>图由“点”和“边”组成，边表示可走通道或先后依赖。DFS（深度优先）沿一条路尽量走到底再回头；BFS（广度优先）先走完一步可达点，再两步可达点。连通块是一组能互相走到的点；入度是指向某点的依赖边数量；拓扑序是让所有先修任务都排在后修任务之前的顺序。Trie叫前缀树，单词共享的开头只存一份路径。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>先从走格子理解：陆地A与B相邻，B又连C，从A出发不断走未见邻居，会把同一座岛全部标记；下一次在外层枚举时遇到它们便跳过，不必再把同一岛算一遍。栈选择最新找到的邻居先探索，队列选择最早找到的先探索，两者都能解决单纯“能否走到”。</li><li>若问腐烂用了几分钟，顺序就重要。两个初始腐烂点必须一起放进队列；第1轮只处理这批点，所感染的邻居留到下一轮，所以第1轮代表1分钟、第2轮代表2分钟。若沿一条路一直走到底再回来，会把同步传播误算成串行时间。</li><li>先修课可转成另一张图：0先于1、1先于2，先统计每门还欠几条依赖[0,1,1]。欠0条的0先完成，删除0→1后1也欠0条，再完成1与2。若0、1互相等待，就没有任何欠0条的起点。字典树虽然名字有树，做的则是逐字走孩子路径；下面单独用app与apple演示它。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>DFS/栈找连通块；多源 BFS 把所有起点同时入队，层数就是最短传播时间；有向依赖用入度消除，剩余结点意味着环。访问标记在入队时设置，避免重复入队。Trie 则把共享字符串前缀压成路径，末尾标记区分完整单词与前缀。</p><p class="question-links"><a href="#lc-200">200 岛屿数量</a> · <a href="#lc-994">994 腐烂的橘子</a> · <a href="#lc-207">207 课程表</a> · <a href="#lc-208">208 实现 Trie（前缀树）</a></p>
 <article class="problem" id="lc-200" data-search="200 岛屿数量 每遇到尚未标记的陆地就新开一个连通块，用栈把整座岛淹掉。 07 · 图与前缀树：可达、最短层数、依赖">
 <h3><span class="number">LC 200</span> 岛屿数量</h3>
 <p><b>题意：</b>字符网格中 1 为陆地、0 为水，四方向相连算一座岛，求岛数。</p>
 <p><b>推导与核心思路：</b>每遇到尚未标记的陆地就新开一个连通块，用栈把整座岛淹掉。</p>
 <p class="example"><b>走一遍：</b>[[&quot;1&quot;,&quot;1&quot;,&quot;0&quot;],[&quot;0&quot;,&quot;1&quot;,&quot;0&quot;],[&quot;0&quot;,&quot;0&quot;,&quot;1&quot;]] → 2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>网格110/010/001。外层从(0,0)见1，岛数从0加到1，立刻把它改0再压栈。弹它时找到邻格(0,1)，改0入栈；再弹(0,1)，找到(1,1)，也改0。三个格被同一次搜索吃完，就是同一座岛。</li><li>外层继续扫描这些格时已是0，不重计；到(2,2)仍为1，再开第二次搜索，所以结果2。标记放在入栈时而非出栈时，避免同一格在还没被处理前由两个邻居反复加入。</li></ol></div>
 <h4>具体步骤</h4><ol><li>枚举格子，遇 1 则计数加一并改 0 入栈</li><li>不断处理四邻居</li><li>邻居入栈时立刻标记</li></ol>
 <h4>Python 实现</h4><pre><code>def numIslands(grid):
     if not grid:
@@ -1228,7 +1228,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>每分钟腐烂橘子使四邻新鲜橘子腐烂；返回全部腐烂的最少分钟，无法全部腐烂则 -1。</p>
 <p><b>推导与核心思路：</b>所有初始腐烂点同时做 BFS，传播层数等于最近腐烂源距离。</p>
 <p class="example"><b>走一遍：</b>[[2,1,1],[1,1,0],[0,1,1]] → 4。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[[2,1,1],[1,1,0],[0,1,1]]，初始腐烂(0,0)入队，fresh=6。第1分钟只处理它，感染(1,0)、(0,1)，fresh=4；第2分钟处理这一批，感染(1,1)、(0,2)，fresh=2。</li><li>第3分钟从这批感染(2,1)，fresh=1；第4分钟感染(2,2)，fresh=0，返回4。感染时立即把1改2，即使同一格接触两个来源也只减少一次fresh；若初始无1，while不进入，直接返回0而不是1。</li></ol></div>
 <h4>具体步骤</h4><ol><li>初始所有 2 入队并统计 1</li><li>每轮处理当前层并感染邻居、减少 fresh</li><li>fresh 归零时停止，队列空仍有 fresh 则 -1</li></ol>
 <h4>Python 实现</h4><pre><code>def orangesRotting(grid):
     from collections import deque
@@ -1319,13 +1319,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/implement-trie-prefix-tree/">官方题面 · LC 208</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="backtrack"><h2>08 · 回溯：选择、约束、撤销</h2><p class="category-foundation"><b>先把这类话说懂：</b>回溯就是试一个选择，继续往下试，再撤销这个选择试另一条路。全排列问不同的摆放顺序；组合只问选了哪些数，不区分[2,3]与[3,2]；剪枝是发现这条路已不可能合法后立即停止，而不是把所有结果生成后再删。</p><p class="lesson">回溯是在一棵隐含决策树中枚举合法结果。排列维护“哪些位置已用”；组合维护起点避免不同顺序重复；路径每次修改后都要恢复。先用状态定义解释为什么不漏不重，再谈剪枝。输出规模常为指数，复杂度必须计入复制答案的代价。</p><p class="question-links"><a href="#lc-46">46 全排列</a> · <a href="#lc-78">78 子集</a> · <a href="#lc-17">17 电话号码的字母组合</a> · <a href="#lc-39">39 组合总和</a> · <a href="#lc-22">22 括号生成</a> · <a href="#lc-79">79 单词搜索</a> · <a href="#lc-131">131 分割回文串</a> · <a href="#lc-51">51 N 皇后</a></p>
+<section class="category" id="backtrack"><h2>08 · 回溯：选择、约束、撤销</h2><p class="category-foundation"><b>先把这类话说懂：</b>回溯就是试一个选择，继续往下试，再撤销这个选择试另一条路。全排列问不同的摆放顺序；组合只问选了哪些数，不区分[2,3]与[3,2]；剪枝是发现这条路已不可能合法后立即停止，而不是把所有结果生成后再删。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>要列[1,2,3]的所有排列，最直白是：先挑第一个，再挑第二个，最后填剩下的数。先选1后，可选2或3；选1→2便得到[1,2,3]，回来改成1→3便得到[1,3,2]。这个“回来”必须真的删掉刚选的2，并取消它的已用标记，否则下一条路会被错误限制。</li><li>path=[1]不是答案，只是做到一半的草稿；长度达到3才保存path.copy()。保存原path本身会让所有答案都指向同一张不断修改的草稿。保存后只退出这次小调用，外层循环继续试其他选择，所以return不等于停止搜索全部排列。</li><li>组合总和不区分[2,3]与[3,2]，于是限定后一次只能从上次所选位置及其后面选，避免把同一组合换序再输出。若选一个数可无限用，递归仍从i开始；只能用一次就从i+1开始。括号、单词搜索、皇后也都遵循“试选→检查→继续→撤销”，只是各自的合法条件要具体推。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>回溯是在一棵隐含决策树中枚举合法结果。排列维护“哪些位置已用”；组合维护起点避免不同顺序重复；路径每次修改后都要恢复。先用状态定义解释为什么不漏不重，再谈剪枝。输出规模常为指数，复杂度必须计入复制答案的代价。</p><p class="question-links"><a href="#lc-46">46 全排列</a> · <a href="#lc-78">78 子集</a> · <a href="#lc-17">17 电话号码的字母组合</a> · <a href="#lc-39">39 组合总和</a> · <a href="#lc-22">22 括号生成</a> · <a href="#lc-79">79 单词搜索</a> · <a href="#lc-131">131 分割回文串</a> · <a href="#lc-51">51 N 皇后</a></p>
 <article class="problem" id="lc-46" data-search="46 全排列 每一层决定下一个位置选哪个尚未使用的原下标。 08 · 回溯：选择、约束、撤销">
 <h3><span class="number">LC 46</span> 全排列</h3>
 <p><b>题意：</b>对值互不相同的数组，返回所有排列。</p>
 <p><b>推导与核心思路：</b>每一层决定下一个位置选哪个尚未使用的原下标。</p>
 <p class="example"><b>走一遍：</b>[1,2,3] → 6 种排列；固定首位 1 后递归排列 [2,3]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[1,2,3]，path=[]、used全False。选下标0的1，标used[0]=True；下一层跳过已用1，选2，再选3，path长度3，保存[1,2,3]的副本并返回上一层。</li><li>上一层先pop删3、used[2]=False；这一层无别的可选后返回，再pop删2、used[1]=False，path回到[1]。现在首位仍1，第二位改选3，第三位便能选2，得到[1,3,2]。同理最终把首位换2、3，恰好6种。</li></ol></div>
 <h4>具体步骤</h4><ol><li>维护 path 和 used</li><li>枚举没用过的下标并标记、追加</li><li>递归后撤销，长度 n 时复制答案</li></ol>
 <h4>Python 实现</h4><pre><code>def permute(nums):
     ans, path, used = [], [], [False] * len(nums)
@@ -1351,7 +1351,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>返回互不相同元素数组的所有子集，包括空集。</p>
 <p><b>推导与核心思路：</b>每个元素只有选与不选两种决定；逐轮将已有子集各复制一份并加上新元素。</p>
 <p class="example"><b>走一遍：</b>[1,2]：先 [[]]，加入 1 得 [[],[1]]，加入 2 得 [[],[1],[2],[1,2]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[1,2]，初始ans=[[]]，空集必须保留。处理1时，给当前唯一子集[]加1得到[1]，追加后ans=[[],[1]]。处理2时，先计算给现有两子集各加2得到[[2],[1,2]]，再整体追加。</li><li>最后[[],[1],[2],[1,2]]；每个旧子集对应“不选新数”的版本与“选新数”的版本，两者不重。列表推导在ans+=之前完成，所以不会把刚加的[2]又立刻加一个2，误变成无限循环。</li></ol></div>
 <h4>具体步骤</h4><ol><li>初始 [[]]</li><li>枚举 x</li><li>将当前每个子集加 x 后追加</li></ol>
 <h4>Python 实现</h4><pre><code>def subsets(nums):
     ans = [[]]
@@ -1367,7 +1367,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>输入仅含 2..9 的数字串，返回电话按键可能对应的全部字母串；空输入返回空列表。</p>
 <p><b>推导与核心思路：</b>每一层对一个数字选择一个字母，结果是各按键候选集合的笛卡尔积。</p>
 <p class="example"><b>走一遍：</b>&quot;23&quot; → [&quot;ad&quot;,&quot;ae&quot;,&quot;af&quot;,&quot;bd&quot;,&quot;be&quot;,&quot;bf&quot;,&quot;cd&quot;,&quot;ce&quot;,&quot;cf&quot;]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>digits=&quot;23&quot;。初始ans=[&quot;&quot;]，空字符串表示尚未选任何字母的一种前缀。读2时，给该前缀分别接a,b,c，得到[a,b,c]；读3时，分别给a接d,e,f，给b接d,e,f，给c接d,e,f。</li><li>结果ad,ae,af,bd,be,bf,cd,ce,cf，共3×3=9个。每轮新列表完全替代旧的短前缀列表，长度恰增加1；若输入本身为空，题目要求没有组合[]，要在这个初始[&quot;&quot;]之前单独返回。</li></ol></div>
 <h4>具体步骤</h4><ol><li>建立数字到字母映射</li><li>初始前缀为一个空串</li><li>逐位把每个前缀扩展为所有候选字母</li></ol>
 <h4>Python 实现</h4><pre><code>def letterCombinations(digits):
     if not digits:
@@ -1386,7 +1386,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>给定互不相同的正整数候选，每个可用无限次，返回和为 target 的不重复组合。</p>
 <p><b>推导与核心思路：</b>只选择下标不小于 start 的元素保证组合顺序固定；重复使用允许递归仍从 i 开始。</p>
 <p class="example"><b>走一遍：</b>[2,3,6,7], target=7 → [[2,2,3],[7]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>候选[2,3,6,7]、目标7。先选2剩5，递归仍允许从2开始；再选2剩3，再选2剩1后最小候选2也太大，返回撤销；此时path=[2,2]，改选3刚好剩0，保存[2,2,3]。</li><li>回到只选[2]的层，尝试3后剩2，但下次起点仍在3，不能退回选2，这避免把同一组写成[2,3,2]再输出一次。最终顶层选7得[7]。排序后x一旦大于remain，后面的值更大，可break整段循环而不只是跳当前值。</li></ol></div>
 <h4>具体步骤</h4><ol><li>候选排序</li><li>枚举 i≥start，x 超过剩余目标即可 break</li><li>加入 x 递归 dfs(i,remain-x)，回来撤销</li></ol>
 <h4>Python 实现</h4><pre><code>def combinationSum(candidates, target):
     values = sorted(candidates)
@@ -1413,7 +1413,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>生成 n 对括号构成的所有合法字符串。</p>
 <p><b>推导与核心思路：</b>任意前缀中，右括号数不能多于左括号数；左括号总数不能超过 n。</p>
 <p class="example"><b>走一遍：</b>n=3 → [&quot;((()))&quot;,&quot;(()())&quot;,&quot;(())()&quot;,&quot;()(())&quot;,&quot;()()()&quot;]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>n=2，初始左0右0，只能放(；到&quot;(&quot;时左1右0，可再放(得到&quot;((&quot;，随后左已满，只能补))得到&quot;(())&quot;。退回&quot;(&quot;改放)得到&quot;()&quot;，左1右1，不能再放右括号，只能放(再放)，得到&quot;()()&quot;。</li><li>right&lt;left不是最后才统计数量，而是每个前缀都检查“目前右括号不能比左括号多”。一旦出现&quot;)(&quot;，第一步已无可配左括号，后面再补也救不回；提前禁止便不需先生成16个长度4串再筛。</li></ol></div>
 <h4>具体步骤</h4><ol><li>left&lt;n 时可以加左括号</li><li>right&lt;left 时可以加右括号</li><li>长度 2n 时收集</li></ol>
 <h4>Python 实现</h4><pre><code>def generateParenthesis(n):
     ans = []
@@ -1461,7 +1461,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>把字符串切成若干非空段，返回每段均为回文的全部切分方案。</p>
 <p><b>推导与核心思路：</b>先用区间 DP 预计算 s[i:j+1] 是否回文，回溯时只枚举合法切割终点。</p>
 <p class="example"><b>走一遍：</b>&quot;aab&quot; → [[&quot;a&quot;,&quot;a&quot;,&quot;b&quot;],[&quot;aa&quot;,&quot;b&quot;]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对&quot;aab&quot;先填pal：单字符a、a、b都True；区间[0,1]是aa，两端相等且长度2，所以True；ab与aab端点不同，为False。i倒序是为了算较长区间前，内部[ i+1,j-1 ]已完成。</li><li>从start=0先切第一个a，下一层start=1切a，start=2切b，到3收集[a,a,b]；回到0再试终点1，aa合法，接b收集[aa,b]；终点2的aab不合法不递归。每次返回pop掉刚切的一段，才不会把上一条切法混进下一条。</li></ol></div>
 <h4>具体步骤</h4><ol><li>i 倒序、j 正序计算 pal[i][j]</li><li>从 start 枚举 pal 为真的终点</li><li>切到 n 时收集路径</li></ol>
 <h4>Python 实现</h4><pre><code>def partition(s):
     n = len(s)
@@ -1490,7 +1490,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>在 n×n 棋盘放 n 个皇后，任意两个不同行、同列、同对角线；返回全部棋盘。</p>
 <p><b>推导与核心思路：</b>逐行放一个，自然保证不同行；列 c、主对角 r-c、副对角 r+c 三个集合判断冲突。</p>
 <p class="example"><b>走一遍：</b>n=4 → 两种棋盘，列号序列 [1,3,0,2] 与 [2,0,3,1]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>先理解约束：每行恰放一个，不同行自动成立；同列c相同会冲突；对角线上r-c或r+c恒定，所以用三集合查这些值是否已出现。n=4的一条成功路线是列号[1,3,0,2]。</li><li>逐行放(0,1)，记录列1、差-1、和1；放(1,3)，记录列3、差-2、和4；放(2,0)，记录列0、差2、和2；放(3,2)，记录列2、差1、和5，均未碰旧记录，生成四行棋盘。</li><li>与此不同，若首行先放(0,0)，下一行试列1会因r-c=0冲突而跳过；某分支后续无列可放便返回，必须从三个集合都移除刚才的皇后，再试其他列。集合记的是当前棋盘，不是曾经尝试过的全部位置。</li></ol></div>
 <h4>具体步骤</h4><ol><li>每层枚举列</li><li>未占用就加入三个集合并记录列号</li><li>递归下一行后撤销，放满 n 行时构造棋盘</li></ol>
 <h4>Python 实现</h4><pre><code>def solveNQueens(n):
     cols, diag1, diag2 = set(), set(), set()
@@ -1514,13 +1514,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/n-queens/">官方题面 · LC 51</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="binary"><h2>09 · 二分：明确要找的边界</h2><p class="category-foundation"><b>先把这类话说懂：</b>二分查找是在有序或能判断答案落在哪半边的候选中，每轮排除一半。区间[l,r)含l、不含r；[l,r]两端都含。lower_bound是“第一个大于等于目标的位置”，没有这样元素时返回n。旋转排序数组如[4,5,1,2,3]，来自把递增数组前面一段挪到末尾。</p><p class="lesson">二分压缩的是答案区间，不只是“数组有序”。lower_bound 找第一个大于等于目标的位置，答案可等于 n。旋转数组要先判断哪一半有序；中位数则在较短数组上二分分割点，使左右数量平衡且左最大不超过右最小。</p><p class="question-links"><a href="#lc-35">35 搜索插入位置</a> · <a href="#lc-74">74 搜索二维矩阵</a> · <a href="#lc-34">34 在排序数组中查找元素的第一个和最后一个位置</a> · <a href="#lc-33">33 搜索旋转排序数组</a> · <a href="#lc-153">153 寻找旋转排序数组中的最小值</a> · <a href="#lc-4">4 寻找两个正序数组的中位数</a></p>
+<section class="category" id="binary"><h2>09 · 二分：明确要找的边界</h2><p class="category-foundation"><b>先把这类话说懂：</b>二分查找是在有序或能判断答案落在哪半边的候选中，每轮排除一半。区间[l,r)含l、不含r；[l,r]两端都含。lower_bound是“第一个大于等于目标的位置”，没有这样元素时返回n。旋转排序数组如[4,5,1,2,3]，来自把递增数组前面一段挪到末尾。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>在[1,3,5,6]找2，顺序扫描要先看1、再看3。二分利用有序：候选位置先设[l,r)=[0,4)，mid=2的值5已大于等于2，因此第一个不小于2的位置不会在mid右边，保留[0,2)；mid=1值3仍不小于2，留[0,1)；mid=0值1太小，只留[1,1)，答案1。</li><li>为什么大于等于时r=mid而不是mid-1？因为mid本身可能正是第一个满足者，必须留作答案。为什么小于时l=mid+1？因为mid已确定太小，可以删掉。l==r时没有未决定候选，l就是插入边界；目标比所有项大时答案为n也合法。</li><li>旋转数组并非整体有序，所以不能按nums[mid]与target大小直接删半边；先找哪半仍递增，再看目标是否在该半的数值范围。两数组中位数更进一步：二分对象不是目标数，而是短数组左侧取几项；下面以四个边界值检验切分，不靠背一段看不懂的代码。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>二分压缩的是答案区间，不只是“数组有序”。lower_bound 找第一个大于等于目标的位置，答案可等于 n。旋转数组要先判断哪一半有序；中位数则在较短数组上二分分割点，使左右数量平衡且左最大不超过右最小。</p><p class="question-links"><a href="#lc-35">35 搜索插入位置</a> · <a href="#lc-74">74 搜索二维矩阵</a> · <a href="#lc-34">34 在排序数组中查找元素的第一个和最后一个位置</a> · <a href="#lc-33">33 搜索旋转排序数组</a> · <a href="#lc-153">153 寻找旋转排序数组中的最小值</a> · <a href="#lc-4">4 寻找两个正序数组的中位数</a></p>
 <article class="problem" id="lc-35" data-search="35 搜索插入位置 寻找第一个 nums[i]≥target 的下标，使用半开区间 [l,r)。 09 · 二分：明确要找的边界">
 <h3><span class="number">LC 35</span> 搜索插入位置</h3>
 <p><b>题意：</b>有序无重复数组中，返回 target 所在位置，不存在则返回保持有序的插入位置。</p>
 <p><b>推导与核心思路：</b>寻找第一个 nums[i]≥target 的下标，使用半开区间 [l,r)。</p>
 <p class="example"><b>走一遍：</b>[1,3,5,6], target=2 → 1；target=7 → 4。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[1,3,5,6]找2，初始[l,r)=[0,4)，mid=2值5不小于2，r=2；mid=1值3不小于2，r=1；mid=0值1小于2，l=1。现在l=r=1，没有未决定位置，返回1，插在1和3之间。</li><li>找7时同样从[0,4)开始，mid=2值5太小，l=3；mid=3值6太小，l=4，返回4表示插在末尾。使用右端不包含的区间，r可等于len(nums)，但只有l&lt;r时才读取mid，故不会实际访问nums[4]。</li></ol></div>
 <h4>具体步骤</h4><ol><li>设 l=0,r=n</li><li>若 nums[mid]&lt;target 则 l=mid+1，否则 r=mid</li><li>结束返回 l</li></ol>
 <h4>Python 实现</h4><pre><code>def searchInsert(nums, target):
     l, r = 0, len(nums)
@@ -1540,7 +1540,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>每行递增，且下一行第一个数大于上一行最后一个数，判断目标是否存在。</p>
 <p><b>推导与核心思路：</b>矩阵按行展开后整体有序；逻辑下标 mid 对应行 mid//n、列 mid%n。</p>
 <p class="example"><b>走一遍：</b>[[1,3,5],[7,9,11]], target=9 → True。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>矩阵[[1,3,5],[7,9,11]]每行3项，展开位置0..5为1,3,5,7,9,11。找9，l=0,r=5，mid=2；mid//3=0、mid%3=2，所以实际读matrix[0][2]=5，太小，令l=3。</li><li>接着mid=(3+5)//2=4，映回行1列1，读9命中返回True。仅在逻辑位置上二分，并没有真的生成一个长列表；如果只保证各行各列递增而不保证跨行有序，就不能作这段展开，应改第240题的排除行列法。</li></ol></div>
 <h4>具体步骤</h4><ol><li>在 0..mn-1 上常规闭区间二分</li><li>计算矩阵值</li><li>按与 target 比较排除半边</li></ol>
 <h4>Python 实现</h4><pre><code>def searchMatrix(matrix, target):
     if not matrix or not matrix[0]:
@@ -1566,7 +1566,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>非降序数组中返回 target 首末下标，不存在则 [-1,-1]；要求 O(log n)。</p>
 <p><b>推导与核心思路：</b>首位置是第一个 ≥target，末位置是第一个 &gt;target 再减 1。</p>
 <p class="example"><b>走一遍：</b>[5,7,7,8,8,10], target=8 → [3,4]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[5,7,7,8,8,10]找8。先找第一个≥8：区间[0,6)，mid=3值8保留左半r=3；mid=1值7太小l=2；mid=2仍7，l=3，返回first=3。</li><li>再找第一个&gt;8：同样从[0,6)，mid=3值8也要跳过，l=4；mid=5值10，r=5；mid=4值8再跳，l=5，返回5。最后位置是5-1=4，结果[3,4]。若首边界越界或值不等目标，直接[-1,-1]，不能让“插入位置”冒充存在性。</li></ol></div>
 <h4>具体步骤</h4><ol><li>写 boundary(strict)</li><li>strict=False 时找 ≥target，True 时找 &gt;target</li><li>检查首位置是否越界或不相等</li></ol>
 <h4>Python 实现</h4><pre><code>def searchRange(nums, target):
     def boundary(strict):
@@ -1619,7 +1619,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>无重复递增数组旋转后，找最小值。</p>
 <p><b>推导与核心思路：</b>与右端点比较：mid 更大则最小值一定在右边；否则 mid 仍可能是最小值。</p>
 <p class="example"><b>走一遍：</b>[3,4,5,1,2] → 1；[1,2,3] → 1。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>数组[3,4,5,1,2]，l=0,r=4，mid=2的5大于右端2，说明从mid走到右端跨过了旋转断点，最小值在mid右，l=3。再mid=3值1不大于右端2，mid自己就可能最小，r=3。</li><li>l=r=3时返回nums[3]=1；这个分支不能r=mid-1，否则会把1本身删掉。若本来有序[1,2,3]，mid值不大于右端，会一直保留左侧直到下标0；同一规则自然处理没有旋转的情况。</li></ol></div>
 <h4>具体步骤</h4><ol><li>l=0,r=n-1</li><li>若 nums[mid]&gt;nums[r] 则 l=mid+1</li><li>否则 r=mid，结束取 nums[l]</li></ol>
 <h4>Python 实现</h4><pre><code>def findMin(nums):
     l, r = 0, len(nums) - 1
@@ -1666,13 +1666,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/median-of-two-sorted-arrays/">官方题面 · LC 4</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="stack"><h2>10 · 栈：嵌套结构与最近更优者</h2><p class="category-foundation"><b>先把这类话说懂：</b>栈是后进先出的待办列表，append入栈、pop出栈。单调栈额外要求栈内对应数值总是递增或递减，例如待解温度[75,71,69]递减；遇到72便可处理并弹出69和71。保存的是下标时，还可算两天距离或矩形宽度。</p><p class="lesson">普通栈保存尚未闭合的语法或上下文；单调栈保存尚未找到答案的候选。温度题中弹出结点时确定“右侧第一个更高”；柱状图中弹出高度时确定其最远横向范围。栈存下标通常比只存数值更有用。</p><p class="question-links"><a href="#lc-20">20 有效的括号</a> · <a href="#lc-155">155 最小栈</a> · <a href="#lc-394">394 字符串解码</a> · <a href="#lc-739">739 每日温度</a> · <a href="#lc-84">84 柱状图中最大的矩形</a></p>
+<section class="category" id="stack"><h2>10 · 栈：嵌套结构与最近更优者</h2><p class="category-foundation"><b>先把这类话说懂：</b>栈是后进先出的待办列表，append入栈、pop出栈。单调栈额外要求栈内对应数值总是递增或递减，例如待解温度[75,71,69]递减；遇到72便可处理并弹出69和71。保存的是下标时，还可算两天距离或矩形宽度。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>括号&quot;([])&quot;的嵌套最适合用后进先出：左括号(先放，随后[放在它上面；遇]必须先配最近的[，再遇)配(。如果只数左右数量，([)]数量也相等却错误；栈记录的是尚未完成的先后层次。</li><li>每日温度若逐天往后找更热日，会反复扫描后缀。对[73,71,74]，先把下标0、1存为“尚未找到更高温”；读到2的74时，71的答案确定为2-1=1天，弹出1；73的答案也确定为2-0=2天，弹出0。新下标2入栈继续等未来。</li><li>这时栈对应温度从下到上递减，因为比新温度低的都已经被解决掉。柱状图复用弹栈，但触发条件反过来：遇更矮柱，旧高度再向右就撑不住，其最大宽度才确定。弹栈只是共同动作，弹出时算等待天数还是矩形面积必须各自解释。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>普通栈保存尚未闭合的语法或上下文；单调栈保存尚未找到答案的候选。温度题中弹出结点时确定“右侧第一个更高”；柱状图中弹出高度时确定其最远横向范围。栈存下标通常比只存数值更有用。</p><p class="question-links"><a href="#lc-20">20 有效的括号</a> · <a href="#lc-155">155 最小栈</a> · <a href="#lc-394">394 字符串解码</a> · <a href="#lc-739">739 每日温度</a> · <a href="#lc-84">84 柱状图中最大的矩形</a></p>
 <article class="problem" id="lc-20" data-search="20 有效的括号 每个右括号必须匹配最近的未闭合左括号，后进先出正好用栈。 10 · 栈：嵌套结构与最近更优者">
 <h3><span class="number">LC 20</span> 有效的括号</h3>
 <p><b>题意：</b>只含 ()[]{} 的字符串，判断是否正确嵌套且全部闭合。</p>
 <p><b>推导与核心思路：</b>每个右括号必须匹配最近的未闭合左括号，后进先出正好用栈。</p>
 <p class="example"><b>走一遍：</b>&quot;()[]{}&quot; → True；&quot;([)]&quot; → False。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>输入&quot;([])&quot;，读左圆括号后栈为[&quot;(&quot;]，读左方括号后为[&quot;(&quot;,&quot;[&quot;]；读]时配对表告诉我们应取[，实际pop得到[，吻合；最后)取出(吻合，栈空返回True。后出现的左括号更靠近当前右括号，所以必须先匹配它。</li><li>输入&quot;([)]&quot;，读到)时栈顶是[，并非需要的(，立刻False；不允许先越过[去找更深的(，那会造成交叉而非嵌套。右括号遇空栈也失败；遍历完仍有未配左括号则返回False。</li></ol></div>
 <h4>具体步骤</h4><ol><li>左括号入栈</li><li>右括号检查栈非空且栈顶匹配</li><li>最后栈必须为空</li></ol>
 <h4>Python 实现</h4><pre><code>def isValid(s):
     pair = {&#x27;)&#x27;: &#x27;(&#x27;, &#x27;]&#x27;: &#x27;[&#x27;, &#x27;}&#x27;: &#x27;{&#x27;}
@@ -1693,7 +1693,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>支持 push、pop、top、getMin，全部 O(1)，查询和弹出时栈非空。</p>
 <p><b>推导与核心思路：</b>每个栈元素同时存当前值与加入后栈的最小值；删除时历史最小值自动恢复。</p>
 <p class="example"><b>走一遍：</b>push(-2),push(0),push(-3) 后最小 -3；pop 后最小恢复 -2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>push(-2)存元组(-2,-2)，两个字段分别是本值与“到此为止的最小值”；push(0)比较0与旧最小-2，存(0,-2)；push(-3)存(-3,-3)，此时getMin读栈顶第二字段-3。</li><li>pop删除(-3,-3)，新的栈顶(0,-2)自动恢复当时最小-2，不需遍历查找。若连续push两个-3，每一层各自保存最小，删一个后另一个仍在，因此不会因重复最小值而错误恢复更大的数。</li></ol></div>
 <h4>具体步骤</h4><ol><li>push 时取新值与上一个最小值较小者</li><li>pop 直接移除元组</li><li>top/getMin 分别读取两个字段</li></ol>
 <h4>Python 实现</h4><pre><code>class MinStack:
     def __init__(self):
@@ -1720,7 +1720,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>将 k[内容] 展开为重复 k 次的内容，允许嵌套和多位数字，输入合法。</p>
 <p><b>推导与核心思路：</b>遇 [ 保存外层已解码前缀和重复次数，转入新层；遇 ] 把内层结果乘次数再接回外层。</p>
 <p class="example"><b>走一遍：</b>&quot;3[a2[c]]&quot; → &quot;accaccacc&quot;。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>读&quot;3[a2[c]]&quot;：number读3变3，遇[把(外层text=&quot;&quot;,次数3)压栈，text清空；读a后text=&quot;a&quot;，读2后number=2，再遇[把(&quot;a&quot;,2)压栈并清text。现在新层仅收集c。</li><li>第一个]弹(&quot;a&quot;,2)，把内层&quot;c&quot;重复两次接回外前缀，text=&quot;acc&quot;；第二个]弹(&quot;&quot;,3)，得到&quot;accaccacc&quot;。读多位数12时按number=旧number×10+新位，把1再读2算成12，而不能每位分别当重复次数。</li></ol></div>
 <h4>具体步骤</h4><ol><li>连续数字累积 count=count*10+digit</li><li>遇 [ 入栈并清空局部状态</li><li>遇 ] 弹出并组合，普通字母追加</li></ol>
 <h4>Python 实现</h4><pre><code>def decodeString(s):
     stack, text, number = [], &#x27;&#x27;, 0
@@ -1745,7 +1745,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>对每一天，返回要等待几天才能遇到更高温度，没有则为 0。</p>
 <p><b>推导与核心思路：</b>单调递减栈保存尚未找到更高日的下标；新温度更高时，弹出日的答案已确定。</p>
 <p class="example"><b>走一遍：</b>[73,74,75,71,69,72,76,73] → [1,1,4,2,1,1,0,0]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>temperatures=[73,71,74]，下标0的73先入栈等待；下标1的71更低，不能回答73何时更暖，只压1，栈[0,1]。下标2的74大于71，弹1、答案ans[1]=2-1=1天。</li><li>74还大于新栈顶73，再弹0、ans[0]=2-0=2天；最后压2，后面没更暖日，ans[2]保持0，返回[2,1,0]。相等温度不算更暖，所以while用严格小于；一次新温度可同时替多天结算，但每天下标只会被弹一次。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从左到右遍历</li><li>当当前温度大于栈顶日时弹出并记 i-j</li><li>当前日入栈</li></ol>
 <h4>Python 实现</h4><pre><code>def dailyTemperatures(temperatures):
     ans = [0] * len(temperatures)
@@ -1765,7 +1765,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>柱子宽为 1，求全部柱子围成区域内最大的矩形面积。</p>
 <p><b>推导与核心思路：</b>单调递增高度栈中，遇到更矮柱时，弹出柱的右边界确定；新栈顶给左侧更矮边界。</p>
 <p class="example"><b>走一遍：</b>[2,1,5,6,2,3] → 10，来自高度 5、宽度 2。</p>
-<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>在[2,1,5,6,2,3]中，栈起始[-1]，-1是不存在的左边界。读下标0高度2入栈；下标1高度1使2出栈，弹后左界-1，宽1-(-1)-1=1，面积2。继续入1，然后下标2的5、下标3的6依次入栈。</li><li>下标4高度2比6矮：弹下标3，左界为2，宽4-2-1=1，面积6；还比5矮，再弹下标2，左界变1，宽4-1-1=2，面积5×2=10。正是弹完后剩余的栈顶告诉我们，向左还能延伸到哪里。</li><li>末尾补0会把仍在等“右边更矮柱子”的高度全部结算；否则单调上升输入[1,2,3]会一直压栈、漏算答案。一次弹出就确定一个高度的最大宽度，不必枚举所有左右端点。</li></ol></div>
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>在[2,1,5,6,2,3]中，栈起始[-1]，-1是不存在的左边界。读下标0高度2入栈；下标1高度1使2出栈，弹后左界-1，宽1-(-1)-1=1，面积2。继续入1，然后下标2的5、下标3的6依次入栈。</li><li>下标4高度2比6矮：弹下标3，左界为2，宽4-2-1=1，面积6；还比5矮，再弹下标2，左界变1，宽4-1-1=2，面积5×2=10。正是弹完后剩余的栈顶告诉我们，向左还能延伸到哪里。</li><li>末尾补0会把仍在等“右边更矮柱子”的高度全部结算；否则单调上升输入[1,2,3]会一直压栈、漏算答案。一次弹出就确定一个高度的最大宽度，不必枚举所有左右端点。</li><li>继续把上述6根柱走完：下标4的2入栈，随后下标5的3也入栈。补零下标6触发清算：3的宽1面积3；2的左界为1，宽6-1-1=4、面积8；1的左界为-1，宽6、面积6，均不超过已记录10。最后返回best=10，而不是返回最后一次弹出的面积6。</li></ol></div>
 <h4>具体步骤</h4><ol><li>给末尾加高度 0 清栈</li><li>栈初始 -1 作为左边界</li><li>弹出高度 h 时宽为 i-stack[-1]-1</li></ol>
 <h4>Python 实现</h4><pre><code>def largestRectangleArea(heights):
     values = heights + [0]
@@ -1781,13 +1781,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/largest-rectangle-in-histogram/">官方题面 · LC 84</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="heap"><h2>11 · 堆：只维护需要的极值边界</h2><p class="category-foundation"><b>先把这类话说懂：</b>堆是一种能快速拿出当前最小或最大元素的结构，只保证顶端极值，不保证整个列表已排序。最小堆顶是最小值；每次插入或取出后用约log n步恢复这一性质。前k大若保留[4,5,6]，最小堆顶4正是这三名里最弱的一名，新来7才值得替换它。</p><p class="lesson">前 k 大用大小 k 的最小堆，堆顶是入选集合最弱的一项；中位数用两个堆把数据分成较小一半和较大一半。堆并不保证整体有序，只保证堆顶是极值。Python heapq 是最小堆，最大堆可存负数。</p><p class="question-links"><a href="#lc-215">215 数组中的第 K 个最大元素</a> · <a href="#lc-347">347 前 K 个高频元素</a> · <a href="#lc-295">295 数据流的中位数</a></p>
+<section class="category" id="heap"><h2>11 · 堆：只维护需要的极值边界</h2><p class="category-foundation"><b>先把这类话说懂：</b>堆是一种能快速拿出当前最小或最大元素的结构，只保证顶端极值，不保证整个列表已排序。最小堆顶是最小值；每次插入或取出后用约log n步恢复这一性质。前k大若保留[4,5,6]，最小堆顶4正是这三名里最弱的一名，新来7才值得替换它。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>从[3,2,1,5,6,4]求第2大，排序得到[1,2,3,4,5,6]后取5很好理解，但我们根本不需要保留全部排名。只留目前前2大：先[2,3]，来1不够大跳过，来5替换较弱的2，留下[3,5]，来6替换3，留下[5,6]，来4跳过，较弱的5就是最终第2大。</li><li>最小堆负责让这2名中的较弱者始终放顶端；堆内部无须从小到大排整齐。heappush加入一个数，heappop取出最小数，heapreplace在确定新数值得进入时替换最小数。保留k项时，维护这一个极值边界比把n项全排序省工作。</li><li>中位数是把全部数据分为小一半与大一半：小半最大值、大半最小值就是中间两项。Python最小堆不能直接拿最大值，可将小半都取负数，例如[1,3]存[-1,-3]时顶端-3取反就是3。两堆要同时维护数量平衡与小半不超过大半，不能只顾一项。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>前 k 大用大小 k 的最小堆，堆顶是入选集合最弱的一项；中位数用两个堆把数据分成较小一半和较大一半。堆并不保证整体有序，只保证堆顶是极值。Python heapq 是最小堆，最大堆可存负数。</p><p class="question-links"><a href="#lc-215">215 数组中的第 K 个最大元素</a> · <a href="#lc-347">347 前 K 个高频元素</a> · <a href="#lc-295">295 数据流的中位数</a></p>
 <article class="problem" id="lc-215" data-search="215 数组中的第 K 个最大元素 保留当前最大的 k 个数，最小堆堆顶就是第 k 大。 11 · 堆：只维护需要的极值边界">
 <h3><span class="number">LC 215</span> 数组中的第 K 个最大元素</h3>
 <p><b>题意：</b>找排序意义下第 k 大元素，重复值分别计数。</p>
 <p><b>推导与核心思路：</b>保留当前最大的 k 个数，最小堆堆顶就是第 k 大。</p>
 <p class="example"><b>走一遍：</b>[3,2,1,5,6,4], k=2 → 5。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>求[3,2,1,5,6,4]第2大，先把前2项建成最小堆，内容为2与3、顶是2。读1小于顶，说明它连当前第2名都进不了；读5大于2，替换2，留下3与5；读6替换3，留下5与6。</li><li>最后4小于堆顶5被忽略，顶端5就是保留两名里较小者，也就是全局第2大。重复值仍分别占名次，例如[3,3,2]的第2大是3，并非第2个不同值2；因此这里保留元素而不先set去重。</li></ol></div>
 <h4>具体步骤</h4><ol><li>先用前 k 项 heapify</li><li>扫描余下元素，比堆顶大才 heapreplace</li><li>最后返回堆顶</li></ol>
 <h4>Python 实现</h4><pre><code>def findKthLargest(nums, k):
     import heapq
@@ -1806,7 +1806,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>返回出现次数最高的 k 个不同元素，保证答案唯一，顺序不限。</p>
 <p><b>推导与核心思路：</b>先计频，再按频次用大小 k 的堆选取。</p>
 <p class="example"><b>走一遍：</b>[1,1,1,2,2,3], k=2 → [1,2]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>输入[1,1,1,2,2,3]先Counter得到{1:3,2:2,3:1}，键是原数值，值才是频次。k=2时若逐个挑候选，先保留(频次3,数1)与(频次2,数2)，最弱入选频次2；数3的频次1进不了。</li><li>nlargest(k,counts,key=counts.get)的“比较用的数”明确设为频次，所以返回原键[1,2]，不是频次[3,2]，也不是数值最大的[3,2]。这条库函数把挑选工作封装了，理解时仍按“保留当前最好的k个”看其用途。</li></ol></div>
 <h4>具体步骤</h4><ol><li>Counter 得到 value→count</li><li>nlargest 以 counts.get 为排序键</li><li>返回 k 个键</li></ol>
 <h4>Python 实现</h4><pre><code>def topKFrequent(nums, k):
     from collections import Counter
@@ -1822,7 +1822,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>支持持续插入整数和随时查询中位数。</p>
 <p><b>推导与核心思路：</b>小半区用最大堆 low，大半区用最小堆 high；保持 low 元素数等于 high 或多 1，且 low 最大≤high 最小。</p>
 <p class="example"><b>走一遍：</b>插入 1,2 → 1.5；再插入 3 → 2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>先插1：low先放-1，把low最大值1搬到high；high比low多，于是再把1搬回low。最终小半{1}、大半空，奇数个，中位数1。插2后小半{1}、大半{2}，各一个，取(1+2)/2=1.5。</li><li>插3时先经low转到high，high暂为{2,3}、low为{1}；大半数量更多，就把high最小的2转回low，得到小半{1,2}、大半{3}。小半多1项，顶端最大2就是中位数。两个堆的内部排列不必排序，但所有小半值都不得超过大半值。</li></ol></div>
 <h4>具体步骤</h4><ol><li>新数先入 low，再将 low 最大转入 high</li><li>若 high 更大，再把 high 最小转回 low</li><li>奇数读 low，偶数取两顶平均</li></ol>
 <h4>Python 实现</h4><pre><code>class MedianFinder:
     def __init__(self):
@@ -1844,13 +1844,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/find-median-from-data-stream/">官方题面 · LC 295</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="greedy"><h2>12 · 贪心：证明局部选择不损失未来</h2><p class="category-foundation"><b>先把这类话说懂：</b>贪心是每步立即作一个局部选择，不回头枚举所有组合；正确前提是这个选择不会挡住某个更优答案。“支配”指一个候选在所有后续情况下都不差于另一个；“交换论证”是把最优方案的第一步换成贪心这一步，证明总结果不变差。</p><p class="lesson">贪心能省掉 DP 状态，但必须有支配或交换论证。股票只需此前最低价；跳跃只需最远可达范围；最少跳跃按可达区间分层；字母区间只有收集完当前出现字母的最后位置才可切分。</p><p class="question-links"><a href="#lc-121">121 买卖股票的最佳时机</a> · <a href="#lc-55">55 跳跃游戏</a> · <a href="#lc-45">45 跳跃游戏 II</a> · <a href="#lc-763">763 划分字母区间</a></p>
+<section class="category" id="greedy"><h2>12 · 贪心：证明局部选择不损失未来</h2><p class="category-foundation"><b>先把这类话说懂：</b>贪心是每步立即作一个局部选择，不回头枚举所有组合；正确前提是这个选择不会挡住某个更优答案。“支配”指一个候选在所有后续情况下都不差于另一个；“交换论证”是把最优方案的第一步换成贪心这一步，证明总结果不变差。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>对股票[7,1,5,3,6]，暴力枚举所有先买后卖组合。假定今天在6卖，只要知道此前最低买价1，其他7、5、3买价都更差，可以不保留；扫描过程中更新最低价，再用今日价格减它。最低价是能证明“其余买价再也不用考虑”的压缩。</li><li>对跳跃[2,3,1,1,4]，起点0最多到2，不必逐条列0→1与0→2的所有后续。从已知能到的0..2扫描，位置1又能把范围扩到4；因为每项允许跳不超过最大步数，覆盖区间中间没有洞。只记录最远reach足以回答能不能到。</li><li>若还要最少跳数，就不能每读一项都计一次跳；一跳能到的整段是同一层，扫完这段后才加一次并扩展下一层。贪心能用的原因必须落到这种“其他选择不会更好”的证明；遇到零钱[1,3,4]凑6时，先拿最大4会用4+1+1三枚，而3+3只两枚，就应改用逐金额比较答案。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>贪心能省掉 DP 状态，但必须有支配或交换论证。股票只需此前最低价；跳跃只需最远可达范围；最少跳跃按可达区间分层；字母区间只有收集完当前出现字母的最后位置才可切分。</p><p class="question-links"><a href="#lc-121">121 买卖股票的最佳时机</a> · <a href="#lc-55">55 跳跃游戏</a> · <a href="#lc-45">45 跳跃游戏 II</a> · <a href="#lc-763">763 划分字母区间</a></p>
 <article class="problem" id="lc-121" data-search="121 买卖股票的最佳时机 固定卖出日，最优买入价是此前的最低价。 12 · 贪心：证明局部选择不损失未来">
 <h3><span class="number">LC 121</span> 买卖股票的最佳时机</h3>
 <p><b>题意：</b>最多完成一次先买后卖交易，返回最大利润，允许不交易。</p>
 <p><b>推导与核心思路：</b>固定卖出日，最优买入价是此前的最低价。</p>
 <p class="example"><b>走一遍：</b>[7,1,5,3,6,4] → 5，在 1 买、6 卖。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>prices=[7,1,5,3,6,4]。读7，low从无穷降7，当天差7-7=0；读1，low改1、利润仍0；读5，今天卖可赚5-1=4，best=4；读3只赚2，不改best。</li><li>读6赚6-1=5，best改5；读4赚3，答案仍5。low只来自已经看过的日子，所以没有用未来买价配过去卖价；全下降时所有差都不正，允许不交易的收益0自然留下。</li></ol></div>
 <h4>具体步骤</h4><ol><li>遍历时更新最低价格</li><li>计算当前价格减最低价</li><li>更新从 0 开始的最优利润</li></ol>
 <h4>Python 实现</h4><pre><code>def maxProfit(prices):
     low, best = float(&#x27;inf&#x27;), 0
@@ -1867,7 +1867,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>nums[i] 是从 i 最远可跳的步数，判断从 0 能否到末尾。</p>
 <p><b>推导与核心思路：</b>在已可达区域内，维护能扩展的最远位置；若当前下标已超过最远位置则不可达。</p>
 <p class="example"><b>走一遍：</b>[2,3,1,1,4] → True；[3,2,1,0,4] → False。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[2,3,1,1,4]，reach=0。i=0能到，最大扩到0+2=2；i=1≤2能到，再扩到1+3=4；后面每个位置都不超过reach，所以能走到末尾。只要一个可达位置能继续覆盖更远，中间各点也能选较短步数到达。</li><li>换[3,2,1,0,4]：位置0扩到3，位置1、2、3都没法超过3；走到i=4时4&gt;reach，说明这位置根本无法抵达，立即False。不是看末尾的4够不够大，因为无法先站到那里就不能利用它。</li></ol></div>
 <h4>具体步骤</h4><ol><li>reach=0</li><li>枚举 i，先判断 i&gt;reach</li><li>可达则更新 reach=max(reach,i+nums[i])</li></ol>
 <h4>Python 实现</h4><pre><code>def canJump(nums):
     reach = 0
@@ -1885,7 +1885,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>保证能到末尾，求最少跳跃次数。</p>
 <p><b>推导与核心思路：</b>当前跳数可到达的区间是一层，扫描整层后选择下一层最远边界，相当于压缩后的 BFS。</p>
 <p class="example"><b>走一遍：</b>[2,3,1,1,4] → 2，可按 0→1→4 跳。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[2,3,1,1,4]，end=0、farthest=0、jumps=0。读i=0更新farthest=2，恰到当前层边界end=0，因此记第1跳，下一层边界end=2。这表示一跳能落在1或2，不是在此时已选定跳到2。</li><li>扫描i=1，能把下一层最远扩到4；i=2还在同一层，farthest保持4。直到i=2==end才计第2跳、end=4。循环不再处理末尾4，最后jumps=2，避免已经到目的地后虚增一跳。</li></ol></div>
 <h4>具体步骤</h4><ol><li>end 表示当前层右边界、farthest 表示下一层最远</li><li>扫描除末尾外的下标</li><li>走到 end 时 jump 加一并扩展 end</li></ol>
 <h4>Python 实现</h4><pre><code>def jump(nums):
     end = farthest = jumps = 0
@@ -1904,7 +1904,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>把字符串切成尽可能多段，使每个字符只出现在一段中，返回每段长度。</p>
 <p><b>推导与核心思路：</b>段内任意字符最后出现的位置都必须包含；不断扩展当前段终点，扫描点到达终点时才能切。</p>
 <p class="example"><b>走一遍：</b>&quot;ababcbacadefegdehijhklij&quot; → [9,7,8]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用s=&quot;abaccb&quot;，末次位置是a:2、b:5、c:4。i=0遇a把end扩到2；i=1遇b再扩到5；i=2仍是a，不能在2切，因为段里已出现的b还会在5再出现。</li><li>i=3、4的c只把范围要求到4，不超过当前5；到i=5才满足“本段每个字母的最后出现都已经过”，记录长度6。如果后接&quot;de&quot;，d、e各自只出现一次，便又各形成长度1的段；总是到最早安全端点就切，才能分最多段。</li></ol></div>
 <h4>具体步骤</h4><ol><li>预先记录每字符最后位置</li><li>遍历更新 end=max(end,last[c])</li><li>i=end 时记录段长并开启下一段</li></ol>
 <h4>Python 实现</h4><pre><code>def partitionLabels(s):
     last = {c: i for i, c in enumerate(s)}
@@ -1921,13 +1921,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/partition-labels/">官方题面 · LC 763</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="dp-linear"><h2>13 · DP 一：线性递推与有限状态</h2><p class="category-foundation"><b>先把这类话说懂：</b>DP是前文的动态规划；线性指按一排位置从前向后计算。有限状态指每个位置只需几种含义明确的数字，例如“以这里结尾的最大乘积/最小乘积”，而非记住此前所有子数组。“互斥选择”就是每个答案只属于一种分支，不重复相加。</p><p class="lesson">动态规划先写状态的中文含义，再列最后一步的互斥选择，最后写初始化和计算顺序。爬楼梯按最后一步分解；打家劫舍按最后一家是否偷分解；乘积最大子数组需要最大和最小两个状态，因为乘负数会交换大小。滚动数组只在理解完整状态依赖后使用。</p><p class="question-links"><a href="#lc-70">70 爬楼梯</a> · <a href="#lc-118">118 杨辉三角</a> · <a href="#lc-198">198 打家劫舍</a> · <a href="#lc-152">152 乘积最大子数组</a> · <a href="#lc-32">32 最长有效括号</a></p>
+<section class="category" id="dp-linear"><h2>13 · DP 一：线性递推与有限状态</h2><p class="category-foundation"><b>先把这类话说懂：</b>DP是前文的动态规划；线性指按一排位置从前向后计算。有限状态指每个位置只需几种含义明确的数字，例如“以这里结尾的最大乘积/最小乘积”，而非记住此前所有子数组。“互斥选择”就是每个答案只属于一种分支，不重复相加。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>用爬4阶开始。最后一步若走1阶，此前必须已经到3阶；若走2阶，此前必须到2阶。这两组最后一步不同，互不重复，也包含所有可能，所以到4阶的种数=到3阶种数+到2阶种数。不是看到题名就先背“斐波那契”。</li><li>先给最小答案：不走的空过程是一种，f[0]=1；到1阶只走1，f[1]=1。于是f[2]=1+1=2、f[3]=2+1=3、f[4]=3+2=5。代码a,b分别保存前两项，每轮用旧a+b算新值，再把窗口向前移；不要先覆盖旧值再计算。</li><li>打家劫舍同样按最后一家选不选拆：不偷它，可沿用前一家最优；偷它，必须跳过相邻一家，接前两家最优再加本家金额。乘积题则不能只保留最大，因为旧的最负数乘一个负数可能反成最大；要同时保留最大与最小。每增加一个状态，都应回答它保住了哪个会在未来翻转的候选。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>动态规划先写状态的中文含义，再列最后一步的互斥选择，最后写初始化和计算顺序。爬楼梯按最后一步分解；打家劫舍按最后一家是否偷分解；乘积最大子数组需要最大和最小两个状态，因为乘负数会交换大小。滚动数组只在理解完整状态依赖后使用。</p><p class="question-links"><a href="#lc-70">70 爬楼梯</a> · <a href="#lc-118">118 杨辉三角</a> · <a href="#lc-198">198 打家劫舍</a> · <a href="#lc-152">152 乘积最大子数组</a> · <a href="#lc-32">32 最长有效括号</a></p>
 <article class="problem" id="lc-70" data-search="70 爬楼梯 到第 i 阶的最后一步要么从 i-1 走 1 阶，要么从 i-2 走 2 阶，两类不重叠，所以 f[i]=f[i-1]+f[i-2]。 13 · DP 一：线性递推与有限状态">
 <h3><span class="number">LC 70</span> 爬楼梯</h3>
 <p><b>题意：</b>每次可走 1 或 2 阶，问到达第 n 阶有多少种不同走法。</p>
 <p><b>推导与核心思路：</b>到第 i 阶的最后一步要么从 i-1 走 1 阶，要么从 i-2 走 2 阶，两类不重叠，所以 f[i]=f[i-1]+f[i-2]。</p>
 <p class="example"><b>走一遍：</b>n=4：f0=1,f1=1,f2=2,f3=3,f4=5；最后一步分成 3+2 种。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>到第2阶，最后1步来自第1阶（只有[1]一种）加1，得到[1,1]；最后2步来自第0阶的空方案，得到[2]，所以2种。到第3阶，来自第2阶的两种各加1，再加第1阶的一种后接2，共3种。</li><li>到第4阶同理3+2=5。代码初始a=f[0]=1,b=f[1]=1；第一轮(a,b)由(1,1)变(1,2)，第二轮变(2,3)，第三轮变(3,5)，返回b。a,b始终是相邻两个阶数的方案数，不是已走的步长。</li></ol></div>
 <h4>具体步骤</h4><ol><li>定义 f[0]=1 表示不走也是一种完整前缀，f[1]=1</li><li>按 i 从 2 到 n 递推</li><li>只依赖前两项，可用 a,b 滚动</li></ol>
 <h4>Python 实现</h4><pre><code>def climbStairs(n):
     a, b = 1, 1
@@ -1943,7 +1943,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>返回杨辉三角前 numRows 行，每行两端为 1，中间等于上一行相邻两项之和。</p>
 <p><b>推导与核心思路：</b>状态 row[i][j] 表示第 i 行第 j 项，转移只依赖上一行 j-1 与 j。</p>
 <p class="example"><b>走一遍：</b>5 行 → [[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1]]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>第0行先建[1]；第1行建[1,1]，没有内部位置要填。第2行先[1,1,1]，唯一内部j=1读取上一行的0与1位：1+1=2，变[1,2,1]。</li><li>第3行内部j=1读上一行1+2=3，j=2读2+1=3，得到[1,3,3,1]；第4行接着变[1,4,6,4,1]。row每轮新建，所以写第4行不会反过来改已存好的第3行。</li></ol></div>
 <h4>具体步骤</h4><ol><li>每行先初始化为全 1</li><li>内部位置填上一行相邻两项之和</li><li>将整行加入结果</li></ol>
 <h4>Python 实现</h4><pre><code>def generate(numRows):
     ans = []
@@ -1962,7 +1962,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>一排房屋各有非负金额，不能偷相邻两家，求最多金额。</p>
 <p><b>推导与核心思路：</b>设 f[i] 为前 i 家最优。最后一家不偷得 f[i-1]；偷则前一家不能偷，得 f[i-2]+nums[i-1]。</p>
 <p class="example"><b>走一遍：</b>[2,7,9,3,1]：逐步最优 2,7,11,11,12，最终选 2+9+1。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[2,7,9,3,1]，开始prev2=prev1=0，代表空前缀。看2时“不偷=0，偷=0+2=2”，选2；看7时“不偷=2，偷=0+7=7”，选7；看9时“不偷=7，偷=2+9=11”，选11。</li><li>看3时比较11与7+3=10，保持11；看1时比较11与11+1=12，选12，对应2、9、1三家。prev2指处理本家前的“前两家之内最佳”，并非前一家没偷时金额；同时赋值保证加x时还读到旧prev2。</li></ol></div>
 <h4>具体步骤</h4><ol><li>空前缀收益 0</li><li>逐家计算 new=max(prev1,prev2+x)</li><li>滚动更新前两项</li></ol>
 <h4>Python 实现</h4><pre><code>def rob(nums):
     prev2 = prev1 = 0
@@ -1978,7 +1978,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>非空整数数组中求非空连续子数组的最大乘积。</p>
 <p><b>推导与核心思路：</b>必须以当前数结尾的最大积 hi 与最小积 lo 同时维护；负数乘 lo 可变成最大正数。</p>
 <p class="example"><b>走一遍：</b>[-2,3,-4]：读 3 后 hi=3,lo=-6；再乘 -4 得 hi=24。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[-2,3,-4]，首项hi=lo=best=-2。读3时，可能单独从3开头，或把旧最大-2/旧最小-2接上，候选3、-6、-6，所以hi=3、lo=-6、best=3。</li><li>读-4时，候选-4、旧hi×-4=-12、旧lo×-4=24，故hi=24、lo=-12，best改24。最大的24恰来自此前最小-6；若只保存hi就永远看不见它。右侧先同时算出两个候选再赋值，不能让新hi污染lo计算。</li></ol></div>
 <h4>具体步骤</h4><ol><li>以首数初始化 hi,lo,best</li><li>对新数 x，同步比较 x、旧 hi*x、旧 lo*x</li><li>更新全局最大</li></ol>
 <h4>Python 实现</h4><pre><code>def maxProduct(nums):
     hi = lo = best = nums[0]
@@ -1996,7 +1996,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>只含左右括号的字符串，求最长合法连续子串长度。</p>
 <p><b>推导与核心思路：</b>dp[i] 为以 i 结尾的最长合法段。仅 s[i] 为右括号才可能非零；跳过紧邻合法段后，检查前一个字符能否与当前配对。</p>
 <p class="example"><b>走一遍：</b>&quot;)()())&quot; → 4；&quot;()(())&quot; 末位跨过内部 () 后匹配，再接左边 ()，得 6。</p>
-<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>以&quot;()(())&quot;的下标0..5走到i=4时，子串s[3:5]是()，所以dp[4]=2。到i=5又见右括号，先跨过这段已配好的2项，j=5-dp[4]-1=2；s[2]恰为左括号，可以包成(())。</li><li>先得内部2+新一对2=4；而j前面下标1已有一段()，dp[1]=2，继续接上，最终dp[5]=2+2+2=6。若只加新括号不接dp[j-1]，会误得4；若j&lt;0不先判断，Python负下标会从尾部读字符，制造不存在的配对。</li><li>这里dp[i]一定要求有效段“恰在i结尾”，不能存前i项见过的最大长度；全局最大由best单独记录。正因为结尾条件严格，才能用dp[i-1]知道要向左跳过多少个已经配好的字符。</li></ol></div>
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>以&quot;()(())&quot;的下标0..5走到i=4时，子串s[3:5]是()，所以dp[4]=2。到i=5又见右括号，先跨过这段已配好的2项，j=5-dp[4]-1=2；s[2]恰为左括号，可以包成(())。</li><li>先得内部2+新一对2=4；而j前面下标1已有一段()，dp[1]=2，继续接上，最终dp[5]=2+2+2=6。若只加新括号不接dp[j-1]，会误得4；若j&lt;0不先判断，Python负下标会从尾部读字符，制造不存在的配对。</li><li>这里dp[i]一定要求有效段“恰在i结尾”，不能存前i项见过的最大长度；全局最大由best单独记录。正因为结尾条件严格，才能用dp[i-1]知道要向左跳过多少个已经配好的字符。</li><li>把同一例子的前几轮也补全：i=1是右括号，j=0-0=0，配s[0]得到dp[1]=2；i=2、3都是左括号，dp仍0；i=4时j=4-dp[3]-1=3，配s[3]得到dp[4]=2。到i=5才使用前段走查中的j=2，最终dp=[0,2,0,0,2,6]，best依次见过2、2、6。</li></ol></div>
 <h4>具体步骤</h4><ol><li>令 j=i-dp[i-1]-1</li><li>若 j≥0 且 s[j] 为左括号，则 dp[i]=dp[i-1]+2</li><li>再加 j 左侧紧接的合法段 dp[j-1]</li></ol>
 <h4>Python 实现</h4><pre><code>def longestValidParentheses(s):
     dp = [0] * len(s)
@@ -2013,13 +2013,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/longest-valid-parentheses/">官方题面 · LC 32</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="dp-bag"><h2>14 · DP 二：容量、完全背包、0/1 背包与切分</h2><p class="category-foundation"><b>先把这类话说懂：</b>背包只是把限制想成容量：有目标金额6，每选一个值2便占去2容量。完全背包允许同一个元素用多次，0/1背包只允许每个输入元素选或不选一次。可行性只问能否做到，用True/False；最优化问最少几次，用min；计数则把所有不同方案相加。</p><p class="lesson">容量 DP 问“恰好达到状态 i 时，最少几步/是否可行”。完全背包允许重复选择，金额从小到大；0/1 背包每项最多一次，压缩后容量倒序。单词拆分把每个可匹配单词视为一条从前缀 j 到 i 的边。区分求最小值、求可行性和求方案数，初始化与聚合运算不同。</p><p class="question-links"><a href="#lc-279">279 完全平方数</a> · <a href="#lc-322">322 零钱兑换</a> · <a href="#lc-416">416 分割等和子集</a> · <a href="#lc-139">139 单词拆分</a></p>
+<section class="category" id="dp-bag"><h2>14 · DP 二：容量、完全背包、0/1 背包与切分</h2><p class="category-foundation"><b>先把这类话说懂：</b>背包只是把限制想成容量：有目标金额6，每选一个值2便占去2容量。完全背包允许同一个元素用多次，0/1背包只允许每个输入元素选或不选一次。可行性只问能否做到，用True/False；最优化问最少几次，用min；计数则把所有不同方案相加。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>用面额[2,3]凑7，直接枚举取几枚2和几枚3当然可做，但凑7可能反复问“凑4最少多少枚”“凑5最少多少枚”。设dp[s]只回答“恰好凑s的最少枚数”，若最后取3，就接已经凑4的最少枚数再加1；若最后取2就接凑5，两者取较小。</li><li>从dp[0]=0开始，dp[1]不可达，dp[2]=1，dp[3]=1，dp[4]=dp[2]+1=2，dp[5]=2，dp[6]=2，dp[7]=3。金额正数保证每次读dp[s-coin]时读的是更小、已经算完的金额。允许重复硬币，所以dp[4]完全可以沿用已经用过一次2的dp[2]。</li><li>只允许每个输入位置用一次时不同。目标4、只看一个数2：如果在同一张表先更新dp[2]=True，再顺着往后更新dp[4]=dp[2]，就把这个2用了两次。改从4倒着到2，读dp[2]时它仍是加入本元素之前的False，故不会误判。循环方向不是口诀，是为了控制读到的是上一批答案还是本批刚更新的答案。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>容量 DP 问“恰好达到状态 i 时，最少几步/是否可行”。完全背包允许重复选择，金额从小到大；0/1 背包每项最多一次，压缩后容量倒序。单词拆分把每个可匹配单词视为一条从前缀 j 到 i 的边。区分求最小值、求可行性和求方案数，初始化与聚合运算不同。</p><p class="question-links"><a href="#lc-279">279 完全平方数</a> · <a href="#lc-322">322 零钱兑换</a> · <a href="#lc-416">416 分割等和子集</a> · <a href="#lc-139">139 单词拆分</a></p>
 <article class="problem" id="lc-279" data-search="279 完全平方数 dp[i] 为凑成 i 的最少数量；最后选 j²，则来自 dp[i-j²]+1，对所有平方数取最小。 14 · DP 二：容量、完全背包、0/1 背包与切分">
 <h3><span class="number">LC 279</span> 完全平方数</h3>
 <p><b>题意：</b>正整数 n，求和为 n 的完全平方数的最少数量，平方数可重复使用。</p>
 <p><b>推导与核心思路：</b>dp[i] 为凑成 i 的最少数量；最后选 j²，则来自 dp[i-j²]+1，对所有平方数取最小。</p>
 <p class="example"><b>走一遍：</b>n=12：最大平方贪心 9+1+1+1 共 4 个，DP 找到 4+4+4 共 3 个。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>设dp[i]为凑出i最少几个平方数。dp[0]=0；dp[1]=1，dp[2]=2，dp[3]=3；i=4时可最后取1，来自dp[3]+1=4，或最后取4，来自dp[0]+1=1，所以dp[4]=1。</li><li>到i=8时，候选dp[7]+1=5与dp[4]+1=2，得2（4+4）；到12时最后可取1、4、9，分别接dp[11]+1=4、dp[8]+1=3、dp[3]+1=4，选3。金额逐渐变大，所有被引用的小金额都已算完；所以允许多次用4而不需另记“4用过没”。</li></ol></div>
 <h4>具体步骤</h4><ol><li>dp[0]=0，其余设无穷</li><li>金额 i 从 1 到 n</li><li>枚举 j²≤i 更新</li></ol>
 <h4>Python 实现</h4><pre><code>def numSquares(n):
     dp = [0] + [float(&#x27;inf&#x27;)] * n
@@ -2056,7 +2056,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>正整数数组能否分成两个元素和相等的子集，每元素恰用一次。</p>
 <p><b>推导与核心思路：</b>总和必须为偶数；问题化为 0/1 背包能否恰好装满 total/2。dp[s] 表示使用已扫描元素能否凑出 s。</p>
 <p class="example"><b>走一遍：</b>[1,5,11,5] → True；一组 [11]，另一组 [1,5,5]。</p>
-<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用[2,3,3]，总和8、目标4看“每个位置只用一次”。初始只有dp[0]=True。处理第一个2，容量从4向2倒着看：s=4时dp[2]仍是False，所以dp[4]不变；到s=2才把dp[2]设True，表示用了这个唯一的2。</li><li>若错误地正序，先在s=2设True，再在s=4读到刚改的dp[2]，就会误判2+2可达，等于把同一元素偷用了两次。[2,3,3]实际无法凑4，应False；它与完全背包中[2]凑4可重复使用形成直接对照。</li><li>外层每处理一个x，就表示“现在允许使用的输入位置多了一个”；倒序只是让这一层在原地写入时仍读取上一层答案。两枚数值相同但位置不同的3仍可各用一次，不是按数值全局去重。</li></ol></div>
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用[2,3,3]，总和8、目标4看“每个位置只用一次”。初始只有dp[0]=True。处理第一个2，容量从4向2倒着看：s=4时dp[2]仍是False，所以dp[4]不变；到s=2才把dp[2]设True，表示用了这个唯一的2。</li><li>若错误地正序，先在s=2设True，再在s=4读到刚改的dp[2]，就会误判2+2可达，等于把同一元素偷用了两次。[2,3,3]实际无法凑4，应False；它与完全背包中[2]凑4可重复使用形成直接对照。</li><li>外层每处理一个x，就表示“现在允许使用的输入位置多了一个”；倒序只是让这一层在原地写入时仍读取上一层答案。两枚数值相同但位置不同的3仍可各用一次，不是按数值全局去重。</li><li>把这个反例处理到结束：只用2后，容量0..4的表为[True,False,True,False,False]；加入第一个3后，3由空前缀变True，4仍因4-3=1不可达而False；第二个3也是如此，最终表[True,False,True,True,False]，返回dp[4]=False。它明确展示了每轮数字从哪张旧表来。</li></ol></div>
 <h4>具体步骤</h4><ol><li>奇数总和直接 False</li><li>dp[0]=True</li><li>每个 x 让容量 s 从 target 倒序到 x，dp[s] |= dp[s-x]</li></ol>
 <h4>Python 实现</h4><pre><code>def canPartition(nums):
     total = sum(nums)
@@ -2095,7 +2095,7 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/word-break/">官方题面 · LC 139</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="dp-sequence"><h2>15 · DP 三：序列、区间与二维对齐</h2><p class="category-foundation"><b>先把这类话说懂：</b>子串必须连续，例如abcde中的bcd；子序列可以跳字符但不能换顺序，例如ace。LIS是“最长严格递增子序列”，LCS是“两串的最长公共子序列”。区间DP把一段起终点作为状态；二维前缀DP用“第一串前i项、第二串前j项”作状态，依赖较短前缀的答案。</p><p class="lesson">连续子串不能跳字符，子序列允许跳。LIS 用“长度相同，末尾越小越容易续接”的支配关系压缩状态；最长回文子串按内部区间递推；LCS 和编辑距离按两个前缀对齐。二维 DP 先明确 dp[i][j] 对应前 i 个/前 j 个元素，避免状态下标和字符下标混淆。</p><p class="question-links"><a href="#lc-300">300 最长递增子序列</a> · <a href="#lc-5">5 最长回文子串</a> · <a href="#lc-1143">1143 最长公共子序列</a> · <a href="#lc-72">72 编辑距离</a></p>
+<section class="category" id="dp-sequence"><h2>15 · DP 三：序列、区间与二维对齐</h2><p class="category-foundation"><b>先把这类话说懂：</b>子串必须连续，例如abcde中的bcd；子序列可以跳字符但不能换顺序，例如ace。LIS是“最长严格递增子序列”，LCS是“两串的最长公共子序列”。区间DP把一段起终点作为状态；二维前缀DP用“第一串前i项、第二串前j项”作状态，依赖较短前缀的答案。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>比较&quot;ab&quot;与&quot;acb&quot;时，若要“能跳字的公共子序列”，答案ab长度2；若要“连续公共子串”，a与b不能隔着c拼在一起。这一步先分清允许删除字符还是必须紧挨，决定后面为何能保留左格或上格答案。</li><li>LCS建表，每格dp[i][j]回答“第一串前i字与第二串前j字，最多共同保留几个字”。空前缀整行列都是0。a对a同字，沿左上角加1；ab对acb末字b相同，又沿a对ac的1加1得2。末字不同就试去掉一边末字，在上格、左格之间选较大。</li><li>编辑距离仍用两前缀，但格子存最少操作数；删第一串末字来自上格，插入目标末字来自左格，替换来自左上格，各加1。LIS则只有一排数：按长度保留最小结尾，[2,3]比[2,5]更容易接将来的4，所以相同长度只留较小末尾不会损失最佳长度。每一种表的数字含义都不同，不能只背“取max/min”。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>连续子串不能跳字符，子序列允许跳。LIS 用“长度相同，末尾越小越容易续接”的支配关系压缩状态；最长回文子串按内部区间递推；LCS 和编辑距离按两个前缀对齐。二维 DP 先明确 dp[i][j] 对应前 i 个/前 j 个元素，避免状态下标和字符下标混淆。</p><p class="question-links"><a href="#lc-300">300 最长递增子序列</a> · <a href="#lc-5">5 最长回文子串</a> · <a href="#lc-1143">1143 最长公共子序列</a> · <a href="#lc-72">72 编辑距离</a></p>
 <article class="problem" id="lc-300" data-search="300 最长递增子序列 基础 DP：f[i]=1+max(f[j])，其中 j&lt;i 且 nums[j]&lt;nums[i]。优化保存 tails[len-1] 为该长度递增序列的最小结尾；新 x 替换第一个≥x 的结尾。 15 · DP 三：序列、区间与二维对齐">
 <h3><span class="number">LC 300</span> 最长递增子序列</h3>
 <p><b>题意：</b>求严格递增子序列的最长长度，不要求连续。</p>
@@ -2122,7 +2122,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>求最长的连续回文子串，若并列可返回任意一个。</p>
 <p><b>推导与核心思路：</b>区间 DP 定义 pal[l][r]=(s[l]=s[r]) 且（长度≤2 或 pal[l+1][r-1]）。等价的中心扩展从单字符和字符间隙出发，省去整张表。</p>
 <p class="example"><b>走一遍：</b>&quot;babad&quot; → &quot;bab&quot; 或 &quot;aba&quot;；&quot;cbbd&quot; → &quot;bb&quot;，必须考虑偶数中心。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>用&quot;cbbd&quot;，只把某个字符当中心会得到c、b、b、d几个单字；最长bb的中心实际在下标1与2之间，所以代码每个i都试(i,i)与(i,i+1)两种中心。</li><li>到i=1的偶中心，l=1,r=2，两端都是b，向外变l=0,r=3；此时c≠d停止，最后合法范围是l+1=1到r之前，也就是s[1:3]=&quot;bb&quot;，长度r-l-1=2。函数保存最长区间的起点与长度，不把已经越出去的c、d算进答案。</li></ol></div>
 <h4>具体步骤</h4><ol><li>枚举每个位置的奇数中心 (i,i) 与偶数中心 (i,i+1)</li><li>只要两端相等就扩展</li><li>更新最长合法区间</li></ol>
 <h4>Python 实现</h4><pre><code>def longestPalindrome(s):
     start = length = 0
@@ -2185,13 +2185,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/edit-distance/">官方题面 · LC 72</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="dp-grid"><h2>16 · DP 四：网格上的路径计数与最优值</h2><p class="category-foundation"><b>先把这类话说懂：</b>网格DP把每格的答案写在同尺寸表里。只能右走或下走意味着不会走回已处理行列，依赖不会形成环。二维表可逐行压成一行，更新前的dp[j]还是上面格子的值，更新后的dp[j-1]则是左边格子的值；计数相加，路径代价则先取min再加本格。</p><p class="lesson">网格只能向右或向下时，依赖图无环，每格只由上方和左方转移。计数题用加法，最短代价用 min 后加当前权重。滚动行中 dp[j] 更新前是上方，dp[j-1] 更新后是左方；循环方向就是状态语义的一部分。</p><p class="question-links"><a href="#lc-62">62 不同路径</a> · <a href="#lc-64">64 最小路径和</a></p>
+<section class="category" id="dp-grid"><h2>16 · DP 四：网格上的路径计数与最优值</h2><p class="category-foundation"><b>先把这类话说懂：</b>网格DP把每格的答案写在同尺寸表里。只能右走或下走意味着不会走回已处理行列，依赖不会形成环。二维表可逐行压成一行，更新前的dp[j]还是上面格子的值，更新后的dp[j-1]则是左边格子的值；计数相加，路径代价则先取min再加本格。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>3×3位置网格从左上到右下，只能右走或下走。到中间格(1,1)的最后一步要么从(0,1)下走，要么从(1,0)右走；两类起点不同，所以路径数相加。第一行只能一直向右、第一列只能一直向下，答案都为1。</li><li>整张表从首行[1,1,1]开始，第二行左格固定1，中格取上方1+左方1=2，右格取上方1+刚算出的左方2=3，得到[1,2,3]；第三行同理[1,3,6]。每个数都只用上、左两个更早完成的格，不会循环依赖。</li><li>只保留一行时，更新dp[1]前它是上方1，dp[0]已是本行左格1，二者相加变2；接着dp[2]旧值1加本行dp[1]新值2变3。这正是从左往右循环的理由。若求最小代价，把相加两个来源改为选更便宜的一个再加当前格，不是让所有来源的费用都加进同一路线。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>网格只能向右或向下时，依赖图无环，每格只由上方和左方转移。计数题用加法，最短代价用 min 后加当前权重。滚动行中 dp[j] 更新前是上方，dp[j-1] 更新后是左方；循环方向就是状态语义的一部分。</p><p class="question-links"><a href="#lc-62">62 不同路径</a> · <a href="#lc-64">64 最小路径和</a></p>
 <article class="problem" id="lc-62" data-search="62 不同路径 到 (i,j) 的最后一步只有从上或从左两种，故 ways[i][j]=ways[i-1][j]+ways[i][j-1]。首行首列各只有 1 条路。 16 · DP 四：网格上的路径计数与最优值">
 <h3><span class="number">LC 62</span> 不同路径</h3>
 <p><b>题意：</b>m×n 网格从左上走到右下，每步只能向右或向下，求路径条数。</p>
 <p><b>推导与核心思路：</b>到 (i,j) 的最后一步只有从上或从左两种，故 ways[i][j]=ways[i-1][j]+ways[i][j-1]。首行首列各只有 1 条路。</p>
 <p class="example"><b>走一遍：</b>m=3,n=3：首行 [1,1,1]，第二行 [1,2,3]，第三行 [1,3,6]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>m=3,n=3，首行dp=[1,1,1]。第二行j=1更新旧dp[1]上方1+dp[0]本行左方1=2；j=2更新上方1+刚算左方2=3，得到[1,2,3]。</li><li>第三行j=1得上方2+左方1=3，j=2得上方3+左方3=6，返回6。dp[0]不更新，因为沿第一列只能一路向下，永远1条；从左往右才让dp[j-1]代表当前行，而不是还没更新的上一行。</li></ol></div>
 <h4>具体步骤</h4><ol><li>用全 1 一维数组表示第一行</li><li>从第二行开始，j 从 1 到 n-1</li><li>令 dp[j]+=dp[j-1]</li></ol>
 <h4>Python 实现</h4><pre><code>def uniquePaths(m, n):
     dp = [1] * n
@@ -2208,7 +2208,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>非负权重网格，只能右移或下移，求左上到右下的最小权重和，含起终点。</p>
 <p><b>推导与核心思路：</b>dp[i][j]=grid[i][j]+min(上方最优,左方最优)，最优子结构来自最后一步只有两个来源。</p>
 <p class="example"><b>走一遍：</b>[[1,3,1],[1,5,1],[4,2,1]] → 7，路径 1→3→1→1→1。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>grid=[[1,3,1],[1,5,1],[4,2,1]]。起点dp[0]=1，首行之后只能从左来：dp变[1,4,5]。第二行第0格只能从上方1来，加本格1得2；第1格比较上方4与左方2，取2加5得7；第2格比较上方5与左方7，取5加1得6。</li><li>第三行依次算2+4=6、min(7,6)+2=8、min(6,8)+1=7，返回7。上方与左方是两条可选路线，必须先min后加当前格；若把两条路线相加就会同时走两个来源，已不再是一条真实路径。</li></ol></div>
 <h4>具体步骤</h4><ol><li>dp 初始化无穷</li><li>起点设为自身</li><li>每格以旧 dp[j] 为上方、新 dp[j-1] 为左方更新</li></ol>
 <h4>Python 实现</h4><pre><code>def minPathSum(grid):
     n = len(grid[0])
@@ -2226,13 +2226,13 @@ for i, x in enumerate(nums):
 <p class="source-link"><a href="https://leetcode.cn/problems/minimum-path-sum/">官方题面 · LC 64</a> <a href="#top">返回导读 ↑</a></p>
 </article>
 </section>
-<section class="category" id="tricks"><h2>17 · 技巧：异或、投票、原地分区、置换与函数图</h2><p class="category-foundation"><b>先把这类话说懂：</b>异或^逐二进制位计算，同位相同为0、不同为1，所以x^x=0。投票通过配对抵消不同数，找数量超过一半的元素。分区是把数组划成几段、每段只放某类数；荷兰旗是0/1/2三段。字典序像查字典，从左找到第一个不同位置决定大小；函数图则把“下标i连到nums[i]”当成一条有向边。</p><p class="lesson">技巧不是背口令：异或抵消要求成对出现；投票要求多数元素确实存在；荷兰旗维护三个已分类区间；下一个排列只改变尽可能靠右的后缀；找重复数把数组下标看作函数图结点，重复值对应环入口。</p><p class="question-links"><a href="#lc-136">136 只出现一次的数字</a> · <a href="#lc-169">169 多数元素</a> · <a href="#lc-75">75 颜色分类</a> · <a href="#lc-31">31 下一个排列</a> · <a href="#lc-287">287 寻找重复数</a></p>
+<section class="category" id="tricks"><h2>17 · 技巧：异或、投票、原地分区、置换与函数图</h2><p class="category-foundation"><b>先把这类话说懂：</b>异或^逐二进制位计算，同位相同为0、不同为1，所以x^x=0。投票通过配对抵消不同数，找数量超过一半的元素。分区是把数组划成几段、每段只放某类数；荷兰旗是0/1/2三段。字典序像查字典，从左找到第一个不同位置决定大小；函数图则把“下标i连到nums[i]”当成一条有向边。</p><div class="method-lesson"><h3>方法课：从直接做法走到可以复用的信息</h3><ol><li>遇到技巧先试小例子寻找不会丢失答案的事实。只出现一次题里[4,1,2,1,2]，两个1、两个2都应抵消；逐位异或恰有x^x=0与0^x=x，因此不需知道它们挨不挨在一起。若别的数出现三次，这个抵消条件不再满足，不能继续照用。</li><li>多数元素[2,2,1]中，每取一对不同数消掉，相当于拿掉一个2和一个1；原来严格超过一半的2仍会比其他所有数总和多。代码count只记录当前候选还未被抵消的票，降到0再改候选，不是在精确计算候选总出现次数。</li><li>颜色分类把当前数组分成已确定0、已确定1、尚未处理、已确定2四段；遇2与尾部交换后，换来的数还未知，当前位置必须再看一遍。下一个排列则只改变尽量靠右的一小段，以保证“刚刚大一点”而不是任意更大。技巧的名字不构成理由，下面每题都用具体输入把所保留的事实走出来。</li></ol></div><p class="lesson"><b>学完以后再压缩成这几句：</b>技巧不是背口令：异或抵消要求成对出现；投票要求多数元素确实存在；荷兰旗维护三个已分类区间；下一个排列只改变尽可能靠右的后缀；找重复数把数组下标看作函数图结点，重复值对应环入口。</p><p class="question-links"><a href="#lc-136">136 只出现一次的数字</a> · <a href="#lc-169">169 多数元素</a> · <a href="#lc-75">75 颜色分类</a> · <a href="#lc-31">31 下一个排列</a> · <a href="#lc-287">287 寻找重复数</a></p>
 <article class="problem" id="lc-136" data-search="136 只出现一次的数字 异或满足 x^x=0、x^0=x、结合交换律，成对元素全部抵消。 17 · 技巧：异或、投票、原地分区、置换与函数图">
 <h3><span class="number">LC 136</span> 只出现一次的数字</h3>
 <p><b>题意：</b>除一个元素只出现一次外，其余均恰出现两次，找单个元素。</p>
 <p><b>推导与核心思路：</b>异或满足 x^x=0、x^0=x、结合交换律，成对元素全部抵消。</p>
 <p class="example"><b>走一遍：</b>[4,1,2,1,2] → 4，因为 1 与 2 各抵消一次。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>输入[4,1,2,1,2]，按二进制可看4=100、1=001、2=010。ans从000开始，依次异或后为100(4)、101(5)、111(7)、110(6)、100(4)，最后留下4。</li><li>中途5、7、6不是某种特殊候选，只是逐位抵消的暂存结果。相同数异或为0，所以那两个001与两个010最终各抵掉；只出现一次的100保留。顺序不重要，但“其余数恰好两次”不能省。</li></ol></div>
 <h4>具体步骤</h4><ol><li>ans=0</li><li>依次异或所有数</li><li>返回 ans</li></ol>
 <h4>Python 实现</h4><pre><code>def singleNumber(nums):
     ans = 0
@@ -2248,7 +2248,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>保证有一个元素出现次数大于 n/2，返回它。</p>
 <p><b>推导与核心思路：</b>Boyer–Moore 投票每次抵消一对不同元素，多数元素的剩余票不可能被全部抵消。</p>
 <p class="example"><b>走一遍：</b>[2,2,1,1,1,2,2] → 2，票数抵消后候选仍为 2。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[2,2,1,1,1,2,2]。开始count=0，取2为candidate、count=1；再2变2；遇1抵消一票变1，再1变0。此时此前已处理的四个数可以整批删掉，因为2与1各两票。</li><li>下一项1使candidate改1、count=1；再遇2变0；最后2重设candidate=2、count=1，返回2。若题目不保证多数存在，count非零也不证明超过一半，例如[1,2,3]仍会留候选3，必须额外数出现次数。</li></ol></div>
 <h4>具体步骤</h4><ol><li>count=0 时选当前值为候选</li><li>同候选加一、不同减一</li><li>最终候选就是多数元素</li></ol>
 <h4>Python 实现</h4><pre><code>def majorityElement(nums):
     candidate, count = None, 0
@@ -2266,7 +2266,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>只含 0、1、2 的数组，一趟原地排成 0 区、1 区、2 区。</p>
 <p><b>推导与核心思路：</b>维护 [0,low) 为 0，[low,i) 为 1，(high,n) 为 2，[i,high] 未知。</p>
 <p class="example"><b>走一遍：</b>[2,0,2,1,1,0] → [0,0,1,1,2,2]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[2,0,1]，low=i=0,high=2。读位置0的2，与high位置的1交换，得到[1,0,2]，high减到1，i仍0，因为新来的1没分类；再读1，只让i到1。</li><li>位置1的0与low=0处的1交换，得到[0,1,2]，low变1、i变2；i&gt;high结束。此时[0,low)都是0，[low,i)都是1，(high,n)都是2。遇2不能i立即加1的原因，正是那一项是从未知区域换来的。</li></ol></div>
 <h4>具体步骤</h4><ol><li>遇 0 与 low 交换，low 和 i 前进</li><li>遇 1 仅 i 前进</li><li>遇 2 与 high 交换，high 后退但 i 不动</li></ol>
 <h4>Python 实现</h4><pre><code>def sortColors(nums):
     low = i = 0
@@ -2290,7 +2290,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>原地改为字典序紧邻的下一个排列；若已最大则变为最小。</p>
 <p><b>推导与核心思路：</b>尽量保持左侧不变：从右找到首个上升对的左元素 pivot，以右侧刚好更大的数替换，再把降序后缀反转成最小。</p>
 <p class="example"><b>走一遍：</b>[1,3,2] → [2,1,3]；[3,2,1] → [1,2,3]。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>对[1,3,2]，从右找首个上升对：3≥2继续左看，1&lt;3，所以i=0、值1是必须增大的位置。右侧原来递减[3,2]，从最右找第一个比1大的数2，它就是可选的最小增大量；交换成[2,3,1]。</li><li>前缀2已刚刚增大，为让整串尽量小，把后缀[3,1]反转成[1,3]，得到[2,1,3]。若原来[3,2,1]一直找不到上升对，说明已是最大排列，i=-1后反转全串变最小[1,2,3]。</li></ol></div>
 <h4>具体步骤</h4><ol><li>从右找 nums[i]&lt;nums[i+1]</li><li>若存在，从右找首个 nums[j]&gt;nums[i] 并交换</li><li>反转 i+1..n-1</li></ol>
 <h4>Python 实现</h4><pre><code>def nextPermutation(nums):
     i = len(nums) - 2
@@ -2315,7 +2315,7 @@ for i, x in enumerate(nums):
 <p><b>题意：</b>长度 n+1 的数组，每项在 1..n，只有一个重复值但可多次出现；不改数组、O(1) 空间找它。</p>
 <p><b>推导与核心思路：</b>把 i→nums[i] 看成函数图。从 0 出发必入环；0 无入边，重复值对应路径进入环的结点，使用 Floyd 找入口。</p>
 <p class="example"><b>走一遍：</b>[1,3,4,2,2] → 函数路径 0→1→3→2→4→2，入口 2 即重复数。</p>
-
+<div class="state-walkthrough"><h4>把关键状态走完</h4><ol><li>nums=[1,3,4,2,2]，把数组值当下一位置，路径0→1→3→2→4→2循环。slow,fast初始0；逐轮为(1,3)、(3,4)、(2,4)、(4,4)，第一次相遇在下标4，并不是答案2。</li><li>entry回到0、slow留4，同速走：先(1,2)，再(3,4)，再(2,2)，在入口2相遇，返回2。位置2与4的值都指向2，所以2确实重复；使用下标作结点才可在不排序、不修改数组、不另建集合的条件下找到它。</li></ol></div>
 <h4>具体步骤</h4><ol><li>slow=fast=0，先移动至相遇</li><li>一个指针重回 0</li><li>两者同步一步直到相遇，返回下标值</li></ol>
 <h4>Python 实现</h4><pre><code>def findDuplicate(nums):
     slow = fast = 0

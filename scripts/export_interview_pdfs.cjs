@@ -39,6 +39,8 @@ pre { font-size: 8pt; line-height: 1.45; background: #f6f6f6 !important; color: 
 pre code { white-space: pre-wrap !important; overflow-wrap: anywhere !important; color: inherit !important; font-size: inherit !important; }
 code { overflow-wrap: anywhere; }
 .table-wrap, .table-container, .math-display, .formula, .equation, mjx-container { overflow: visible !important; max-width: 100% !important; }
+.math-display, .formula, .equation { break-inside: avoid !important; }
+mjx-container:not([display="true"]) { display: inline-block; vertical-align: middle; }
 table { min-width: 0 !important; width: 100% !important; table-layout: auto; font-size: 8.5pt; }
 thead { display: table-header-group; } tr { break-inside: avoid; }
 th, td { padding: 5pt; overflow-wrap: anywhere; }
@@ -144,6 +146,10 @@ async function exportBook(browser, key, book) {
       rootURL: pathToFileURL(root + path.sep).href });
     const temporaryHTML = path.join(temporary, 'book.html');
     await fs.writeFile(temporaryHTML, html);
+    // A4 minus 15mm margins is 680 CSS pixels. Typeset and measure formulas at
+    // the actual paper content width, rather than the default desktop viewport.
+    await page.setViewportSize({ width: 680, height: 990 });
+    await page.emulateMedia({ media: 'print' });
     await page.goto(pathToFileURL(temporaryHTML).href, { waitUntil: 'load', timeout: 180000 });
     await page.evaluate(async () => {
       if (document.querySelector('script[src*="mathjax"],script[src*="tex-chtml"],script[src*="tex-svg"]')) {
@@ -151,6 +157,7 @@ async function exportBook(browser, key, book) {
         await window.MathJax.startup.promise;
       }
       await document.fonts.ready;
+      if ([...document.fonts].some(font => font.status === 'error')) throw new Error('A PDF font failed to load');
       await Promise.all([...document.images].map(img => img.decode()));
       if (document.querySelector('mjx-merror, [data-mjx-error]')) throw new Error('MathJax formula error');
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -162,10 +169,10 @@ async function exportBook(browser, key, book) {
       }
     });
     await page.emulateMedia({ media: 'print' });
-    // Fit the rare wide display equation instead of clipping its right side.
-    await page.evaluate(() => document.querySelectorAll('mjx-container[display="true"]').forEach(el => {
+    // Fit wide inline as well as display equations within their paper column.
+    await page.evaluate(() => document.querySelectorAll('mjx-container').forEach(el => {
       const inner = el.querySelector('mjx-math, svg');
-      if (inner && inner.getBoundingClientRect().width > el.clientWidth) {
+      if (inner && el.clientWidth > 0 && inner.getBoundingClientRect().width > el.clientWidth) {
         el.style.fontSize = `${Math.floor(100 * el.clientWidth / inner.getBoundingClientRect().width)}%`;
       }
     }));

@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>机器学习理论：量化面试的 20 条主线</title><link rel="stylesheet" href="../assets/notes-shell.css?v=20261018"><link rel="stylesheet" href="foundations.css"><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEscapes:true},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script><script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script></head><body class="notes-shell-page"><nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../">Notes</a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav><header id="top"><p class="tag">量化面试 · 系统速学</p><h1>机器学习理论：量化面试的 20 条主线</h1><p class="lead">从损失函数与梯度推导，到树模型、PCA、时间验证与金融数据边界。重点是如何解释选择、检验假设，并把预测接到执行。</p><div class="chapter-links"><a href="index.html">学习总入口</a><a href="probability-statistics.html">概率统计</a><a href="machine-learning.html">机器学习</a><button class="print-button" onclick="window.print()">打印 / 保存 PDF</button></div></header><main><section id="math-prerequisites"><h2>开始前：从两个数的预测看懂矩阵与梯度</h2>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>机器学习理论：量化面试的 20 条主线</title><link rel="stylesheet" href="../assets/notes-shell.css?v=20261018"><link rel="stylesheet" href="foundations.css"><script>window.MathJax={chtml:{matchFontHeight:false,mtextInheritFont:true},tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEscapes:true},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script><script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script></head><body class="notes-shell-page"><nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../">Notes</a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav><header id="top"><p class="tag">量化面试 · 系统速学</p><h1>机器学习理论：量化面试的 20 条主线</h1><p class="lead">从损失函数与梯度推导，到树模型、PCA、时间验证与金融数据边界。重点是如何解释选择、检验假设，并把预测接到执行。</p><div class="chapter-links"><a href="index.html">学习总入口</a><a href="probability-statistics.html">概率统计</a><a href="machine-learning.html">机器学习</a><button class="print-button" onclick="window.print()">打印 / 保存 PDF</button></div></header><main><section id="math-prerequisites"><h2>开始前：从两个数的预测看懂矩阵与梯度</h2>
 <p>本书把“用输入算预测、衡量错多少、调整参数”反复用于不同模型。下面先用能手算的数把符号接起来；不需要先读线性代数教材。概率与平均的符号也在这里给出，读本书时无需依赖另一份PDF。</p>
 <h3 id="notation-basics">1. 加权平均、Σ、log与损失</h3>
 <p>Σ表示把下标指定的项相加，Π表示相乘。三个误差1、−2、0的平方和Σeᵢ²=1+4+0=5，平均平方误差为5/3。“损失”就是给一次预测错误打的罚分；平方损失把误差平方，所以错2的惩罚是错1的4倍。“期望”E是按发生概率加权的平均；Var是减去均值后平方的平均，衡量波动大小。P(Y=1|X=x)读作已知输入x时标签为1的概率。</p>
@@ -16,4 +16,565 @@
 <p>一维目标J(w)=(w−3)²。w从1增加一点h，变化率[J(1+h)−J(1)]/h=−4+h，h趋0得到导数−4。它表示w增大时损失正在减小。梯度下降沿导数相反方向走：学习率η=0.25时，w新=1−0.25×(−4)=2，损失从4降到1。学习率就是每次走多大步，符号∇表示梯度。</p>
 <p>两个参数时J=(w₁−1)²+(w₂−2)²，梯度是(2(w₁−1),2(w₂−2))。在(0,0)处为(−2,−4)，η=0.5的一步恰到(1,2)。每个分量都是“固定其他参数，只改变这一项”的偏导数。平滑内部最优点需要梯度为0，但这不是充分条件，例如w³在0导数为0却不是最小点；边界最优也未必梯度为0。</p>
 <p>链式法则负责串起中间步骤：若z=2w、L=z²，则dL/dw=(dL/dz)(dz/dw)=2z×2=8w；直接把L=4w²求导也为8w。反向传播就是在更大的计算链上重复这件事。若看到∫，读作把小贡献连续累加：∫₀²x dx等于底2、高2三角形面积2；它主要出现在概率加权与贝叶斯预测中。</p>
-</section><section id="source-reconstruction"><h2>从题目到模型：这本笔记怎样组织</h2><p>以“预测明天上涨概率”为例。先要确定今天何时作出预测；接着把此时可见的信息变成特征；逻辑回归通过伯努利似然得到交叉熵，优化器用梯度拟合参数；验证必须把未来隔开；最后上涨概率还需要结合收益幅度、交易成本与风险决定仓位。这条链中任意一步不成立，后面的模型精度就很难解释。</p><p>本书把知识压成七组：A组说明预测对象与基本模型；B组说明复杂度与优化；C组从单树推到集成；D组处理表示、几何与概率模型；E组处理真实数据验证；F组补齐神经网络、隐变量与泛化；G组把所有内容组装成一段完整的研究面试回答。先掌握线性和逻辑回归的手推，再看更复杂方法，能减少重复记忆。</p><p>符号约定：X通常是n行d列设计矩阵，y是n维标签，w或β是参数；L是单样本损失，R是总体期望风险。训练参数由训练集决定，超参数由验证选择；最终测试只用于完成选择后的评估。所有模型公式均是教学设定下的结论。</p></section><section id="takeaway"><h2>学习时把三个动作串起来</h2><p>先说清随机性或数据来自哪里，再手推一个最小例子，最后指出结论成立的条件。能复述公式只是第一步；能解释公式为什么在这道题里合法、换条件后哪里先失效，才是迁移能力。</p><p>下面每节均包含例子、推导、面试追问、易错点与关联方向。建议先遮住解答，用纸写出状态、目标和第一步；卡住时只看下一条推导，再自行继续。</p></section><nav class="toc" aria-label="本页目录"><strong>按方法学习 · 全文目录</strong><p><a href="#math-prerequisites">先看数学先修与符号读法</a></p><ol><li><a href="#risk">监督学习、经验风险与标签设计</a></li><li><a href="#linear">线性回归：几何、概率与数值解</a></li><li><a href="#logistic">逻辑回归：为什么交叉熵梯度这么简单</a></li><li><a href="#bias-variance">偏差方差分解与学习曲线</a></li><li><a href="#regularization">L2、L1与早停：如何让解稳定</a></li><li><a href="#optimization">梯度下降、SGD与条件数</a></li><li><a href="#trees">决策树：用局部划分拟合非线性</a></li><li><a href="#forest">Bagging与随机森林：去相关比堆树更关键</a></li><li><a href="#boosting">Gradient Boosting：在函数空间做梯度下降</a></li><li><a href="#pca">PCA、SVD与潜在因子</a></li><li><a href="#svm">SVM、间隔与核方法</a></li><li><a href="#generative">生成式、判别式与朴素贝叶斯</a></li><li><a href="#validation">时间验证、滚动窗口与标签重叠</a></li><li><a href="#leakage">预处理泄漏、幸存者偏差与可用时间</a></li><li><a href="#metrics">指标、概率校准与业务目标</a></li><li><a href="#shift">非平稳、漂移与模型更新</a></li><li><a href="#neural">神经网络与反向传播：链式法则复用中间量</a></li><li><a href="#clustering">K-means与EM：先分配再估参数</a></li><li><a href="#generalization">泛化界、模型选择与研究自由度</a></li><li><a href="#workflow">完整建模答题：从最小基线到决策结果</a></li></ol></nav><section id="risk" class="lesson"><p class="tag">A · 先定义预测时真正知道什么</p><h2>01 · 监督学习、经验风险与标签设计</h2><p class="term-bridge"><strong>这节先认清：</strong>“监督”表示训练数据有已知答案y；标签就是这个答案，特征是预测时输入x。“风险”在学习理论中指平均损失，未必是金融损失风险；经验风险用有限训练样本平均代替未知总体平均。下面先定义时间和标签，再决定怎样给预测错误打分。</p><div class="example"><strong>从一个例子开始</strong><p>在每天收盘时预测下一天收益，输入只能使用当天收盘时已发布的数据。若把“下一天全日最高价”做特征，即使线性模型也能获得虚假的好成绩。</p></div><h3>机制与推导步骤</h3><ol><li>定义预测时点t、特征Xₜ、目标Yₜ。例如Yₜ=(Pₜ₊₁−Pₜ)/Pₜ。每个特征都需有可用时间戳，不只是事件所属日期。</li><li>选择损失：平方损失对应条件均值，绝对损失对应条件中位数，对数损失对应条件概率。先说明下游需要什么，再选择目标。</li><li>总体风险R(f)=E[L(Y,f(X))]未知，用训练样本平均损失估计。但最小训练损失可能记住噪声，所以还需限制模型与独立验证。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>两种等概率标签y=1或3，若始终预测c=2，平均平方损失[(1−2)²+(3−2)²]/2=1；若预测c=1，损失为[0²+2²]/2=2。把一般目标[(1−c)²+(3−c)²]/2对c求导得2c−4，最小点c=2，说明平方损失为什么会把模型推向条件均值。</p><div class="math-display">\[R(f)=E[L(Y,f(X))],\qquad \hat R_n(f)=\frac1n\sum_{i=1}^nL(y_i,f(x_i))\]</div><h3>面试追问：用价格水平还是收益率作标签？</h3><p>取决于决策。价格水平往往带趋势且尺度跨资产差异大；收益率更接近单位资本损益。若关心相对横截面排序，可用去市场收益或排序目标，但要说明去除基准是否可在预测时得到。</p><div class="trap"><strong>易错点与边界</strong><p>标签定义中的未来区间可以是合法目标，但不能进入特征。把目标平滑到包含未来样本再当输入，是泄漏。观察到正式收盘价后，通常也不能再假设按同一收盘价无成本成交；需把实际可执行时点与标签起点对齐。</p></div><p><strong>识别线索与迁移：</strong>先完成预测时间→可用信息→标签区间→损失→决策的链路，再谈模型结构。</p></section><section id="linear" class="lesson"><p class="tag">A · 投影而不是背逆矩阵</p><h2>02 · 线性回归：几何、概率与数值解</h2><p class="term-bridge"><strong>这节先认清：</strong>普通最小二乘（OLS）就是让平方残差总和最小。设计矩阵X是把每条样本写成一行的输入表；参数β把各列按权重组合。残差y−Xβ是每条样本的预测错误。正规方程不是额外假设，而是平方损失每个参数的导数为0后得到的联立方程；投影的意思可用前面(2,0)投到(a,a)的例子核对。</p><div class="example"><strong>从一个例子开始</strong><p>数据点(x,y)=(1,2),(2,3),(3,5)，含截距的最小二乘拟合得到斜率1.5、截距1/3。预测并不逐点穿过，但残差与常数列、x列正交。</p></div><h3>机制与推导步骤</h3><ol><li>目标J(β)=||y−Xβ||²/2，其中X第一列全1表示截距。展开后梯度Xᵀ(Xβ−y)，置0得到正规方程。</li><li>若X列满秩，β̂=(XᵀX)⁻¹Xᵀy。几何上，Xβ̂是y到X列空间的正交投影，残差处于正交补。</li><li>若误差独立高斯N(0,σ²)，负log似然只比平方误差差一个正比例系数与常数，因此OLS也是MLE。实际计算可用lstsq等稳定最小二乘求解器，不必显式求逆。QR把列方向正交化后解三角方程，SVD按独立方向及放大倍数分解，都是为避免直接求逆放大数值误差的计算方法。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>一元例子的斜率也可不靠矩阵手算：x均值2，y均值10/3。斜率为Σ(x−2)(y−10/3)/Σ(x−2)²=(4/3+5/3)/2=1.5，截距为10/3−1.5×2=1/3。得到预测11/6、10/3、29/6，残差之和为0，与含截距时的正规方程一致。</p><div class="math-display">\[\nabla J=X^T(X\beta-y),\quad X^TX\hat\beta=X^Ty,\quad X^T(y-X\hat\beta)=0\]</div><h3>面试追问：两个特征完全共线会怎样？</h3><p>XᵀX奇异，系数不唯一；训练预测投影仍可能唯一。伪逆选最小范数解，ridge通过加入λI使非截距参数更稳定。应同时检查数据、共线性与数值条件数。</p><div class="trap"><strong>易错点与边界</strong><p>OLS点估计不要求误差正态；正态用于特定MLE解释和精确小样本推断。因果解释还需外生性。</p></div><p><strong>识别线索与迁移：</strong>链接到概率统计的回归推断、PCA与岭回归；面试能从损失推到梯度再说数值实现。</p></section><section id="logistic" class="lesson"><p class="tag">A · 概率模型直接决定损失</p><h2>03 · 逻辑回归：为什么交叉熵梯度这么简单</h2><p class="term-bridge"><strong>这节先认清：</strong>逻辑回归的“回归”指先用线性函数算分数z，再用sigmoid把任意实数压到0到1；z=0对应p=0.5。交叉熵在本节就是伯努利答案的负log概率，给真实标签很低概率时罚得重。Hessian记录二阶弯曲，PSD表示任意方向的二阶弯曲不向下。这样的损失是凸的，可理解为没有另外藏着更低谷底的碗形曲面；在定义域内部，梯度为0就达到全局最小。</p><div class="example"><strong>从一个例子开始</strong><p>预测上涨概率p=0.8，真实标签y=1，单样本交叉熵为−log0.8≈0.223。若实际y=0，损失−log0.2≈1.609，过度自信的错误惩罚更大。</p></div><h3>机制与推导步骤</h3><ol><li>令z=wᵀx+b，p=σ(z)=1/(1+e^(−z))，建模Y|X为Bernoulli(p)。</li><li>负log似然ℓ=−ylogp−(1−y)log(1−p)。对p求导，再乘dp/dz=p(1−p)，约去后得到∂ℓ/∂z=p−y。</li><li>链式法则得到∇wℓ=(p−y)x。Hessian为XᵀWX，其中W对角元素pᵢ(1−pᵢ)非负，所以损失凸；完全线性可分时无正则MLE参数可能发散。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>链式求导中被约掉的项是：∂ℓ/∂p=−y/p+(1−y)/(1−p)=(p−y)/[p(1−p)]，再乘dp/dz=p(1−p)，只剩p−y。若x=2、y=1、z=0，则p=0.5，参数梯度(p−y)x=−1；沿负梯度增加权重，会提高真实正类的预测概率。</p><div class="math-display">\[\ell(z,y)=\log(1+e^z)-yz,\qquad \nabla_w\ell=(\sigma(z)-y)x\]</div><h3>面试追问：分类阈值为什么未必是0.5？</h3><p>若假阳性成本C_FP，假阴性成本C_FN，预测正类的条件成本为C_FP(1−p)，负类为C_FN p，因此当p>C_FP/(C_FP+C_FN)时选正类。概率估计和决策阈值是两件事。</p><div class="trap"><strong>易错点与边界</strong><p>数值实现用logaddexp(0,z)−yz避免exp溢出；样本重加权会改变目标分布和校准。</p></div><p><strong>识别线索与迁移：</strong>广义线性模型、交叉熵、概率校准、成本敏感交易门槛。</p></section><section id="bias-variance" class="lesson"><p class="tag">B · 用误差形状决定下一步</p><h2>04 · 偏差方差分解与学习曲线</h2><p class="term-bridge"><strong>这节先认清：</strong>偏差是“反复训练得到的平均预测”与真实规律的距离；方差是每次换训练集后预测围绕这个平均怎样波动。不可约噪声是即便知道真实平均规律也无法预测的随机部分。比较训练/验证误差是在找这几类原因的线索，不能直接把一个误差数命名为偏差或方差。</p><div class="example"><strong>从一个例子开始</strong><p>用很深的树拟合20个带噪声样本，训练误差几乎0，但换一批样本预测大幅改变；这是高方差。只用常数预测又无法跟随真实曲线，是高偏差。</p></div><h3>机制与推导步骤</h3><ol><li>固定测试位置x，真实Y=f*(x)+ε，且E[ε|x]=0、Var(ε|x)=σ²。训练集D变化，使预测f̂_D(x)也变化。</li><li>加减E_D[f̂_D(x)]展开平方。噪声交叉项为0，得到测试MSE=偏差²+训练集引起的方差+不可约噪声。</li><li>若训练与验证误差都高，检查欠拟合、特征或标签质量；训练低验证高，检查复杂度、样本量、泄漏与分布差异。学习曲线只能诊断线索，还需对照实验。</li></ol><div class="math-display">\[E_{D,\epsilon}[(Y-\hat f_D(x))^2]=\left(f^*(x)-E_D\hat f_D(x)\right)^2+\operatorname{Var}_D(\hat f_D(x))+\sigma^2\]</div><h3>面试追问：模型越大测试误差一定越大吗？</h3><p>不一定。经典U形偏差方差图并非普遍规律；过参数化中可能出现双下降，优化、正则化和数据结构会改变趋势。实际用严格验证测量，而非仅从参数量推断。</p><div class="trap"><strong>易错点与边界</strong><p>分解是固定x并对训练集和测试噪声求期望；单次训练误差不能直接读出方差分量。</p></div><p><strong>识别线索与迁移：</strong>ridge减少估计方差、bagging平均噪声、更多数据何时有效。</p></section><section id="regularization" class="lesson"><p class="tag">B · 不同约束改变不同几何</p><h2>05 · L2、L1与早停：如何让解稳定</h2><p class="term-bridge"><strong>这节先认清：</strong>正则化是在原损失之外惩罚过大的参数。L2为平方和，L1为绝对值之和；惩罚强度λ越大，越愿意牺牲拟合来换稳定性。Ridge是L2回归，Lasso是L1回归；soft-threshold是每个坐标先减λ，不够λ就变0的操作，显式公式只在本节指定正交条件下成立。</p><div class="example"><strong>从一个例子开始</strong><p>两个高度相关因子都可解释收益，OLS系数可能一个很大一个很负，预测变化小但参数不稳。L2收缩整体幅度，L1更容易把部分系数压到0。</p></div><h3>机制与推导步骤</h3><ol><li>Ridge目标为||y−Xβ||²/2+λ||β||²/2，梯度置0得(XᵀX+λI)β=Xᵀy。λ&gt;0抬高小特征值，降低对噪声敏感性。</li><li>对已标准化且列正交的设计，L1目标的每个坐标是(βⱼ−zⱼ)²/2+λ|βⱼ|，在正负区间分段求导，得到soft-threshold。</li><li>早停限制优化时间，在某些线性梯度下降情形形成对不同奇异方向的收缩；它与L2有联系但一般不完全等价。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>先在单坐标、无相关的最简单情况看L1：目标是(β−z)²/2+λ|β|。假设β&gt;0，导数β−z+λ=0给β=z−λ；只有z&gt;λ时才符合β&gt;0。负半轴同理；|z|≤λ时两侧导数把最小点夹在0。z=2、λ=0.5得到1.5，z=0.2时得到0。</p><div class="math-display">\[\hat\beta_{\rm ridge}=(X^TX+\lambda I)^{-1}X^Ty,\quad \hat\beta_j^{\rm lasso}=\operatorname{sign}(z_j)(|z_j|-\lambda)_+\quad(X^TX=I)\]</div><h3>面试追问：为何正则化前要标准化？</h3><p>同一真实影响若因单位不同需要不同系数大小，统一惩罚会偏袒数值尺度大的特征。只用训练数据拟合均值和标准差；截距通常不惩罚，否则会不必要地收缩整体均值。</p><div class="trap"><strong>易错点与边界</strong><p>L1对相关特征的选择可能不稳定，非零系数不等于因果重要性。λ应在验证集选择，不能看测试结果反复调整。</p></div><p><strong>识别线索与迁移：</strong>MAP先验解释、共线性、软阈值交易成本模型；相同数学形状可能来自不同业务机制。</p></section><section id="optimization" class="lesson"><p class="tag">B · 收敛速度受曲率控制</p><h2>06 · 梯度下降、SGD与条件数</h2><p class="term-bridge"><strong>这节先认清：</strong>SGD是随机梯度下降：每次只抽一部分样本估计梯度；batch是这一小批样本。曲率是曲面弯得多急，特征值描述每个主要方向的曲率，条件数比较最陡与最缓方向。预条件化可理解为先把尺度扭得更均衡，再沿梯度走，避免在狭长谷底来回晃。</p><div class="example"><strong>从一个例子开始</strong><p>一维目标f(w)=aw²/2，梯度下降wₜ₊₁=(1−ηa)wₜ。只有0<η<2/a时迭代收敛；学习率过大将振荡发散。</p></div><h3>机制与推导步骤</h3><ol><li>对二次目标f(w)=wᵀHw/2，沿H的每个特征向量方向，更新倍率是1−ηλⱼ。</li><li>所有方向都稳定需η&lt;2/λ_max。若λ_min很小，最平缓方向下降极慢；条件数κ=λ_max/λ_min越大，统一步长越难兼顾。</li><li>SGD用小批梯度替代全梯度，正确抽样时无偏但有噪声；更大batch降低梯度方差却不保证更快到达同等泛化误差。标准化与预条件化有助于曲率。</li></ol><div class="math-display">\[w_{t+1}=w_t-\eta\nabla f(w_t),\qquad |1-\eta\lambda_j|&lt;1\quad\text{对每个正特征值}\]</div><h3>面试追问：Adam一定比SGD好吗？</h3><p>不一定。Adam利用一二阶梯度滑动平均调节坐标步长，常有好的初始进展，但泛化和稳定性依任务、超参而异。比较时对齐数据、训练预算、调参预算与最终目标，不能只比前100步损失。</p><div class="trap"><strong>易错点与边界</strong><p>凸不等于严格凸，严格凸也不等于数值条件好。训练损失下降不能排除验证集变差。</p></div><p><strong>识别线索与迁移：</strong>逻辑回归Hessian、特征缩放、ridge改善条件数、梯度检查。</p></section><section id="trees" class="lesson"><p class="tag">C · 选切分就是选损失下降</p><h2>07 · 决策树：用局部划分拟合非线性</h2><p class="term-bridge"><strong>这节先认清：</strong>叶子是停止继续切分的那一小组样本，叶预测用组内常数。SSE就是平方残差和；Gini和熵都在量化组内标签有多混：两类各半时混杂高，全为同类时都为0。“贪心”指每一步只选当前最优切分，并没有同时枚举整棵树。</p><div class="example"><strong>从一个例子开始</strong><p>4个样本x=1,2,3,4，标签y=0,0,1,1。在x=2.5切分后两侧纯净，分类树一次切分就能分开。若标签为连续收益，叶子预测该区间的均值。</p></div><h3>机制与推导步骤</h3><ol><li>回归树考虑候选特征j和阈值s，分成左右集合，各叶最优常数是组内均值，因为它最小化平方误差。</li><li>计算切分前后SSE之差，选下降最大的切分。分类树可用Gini=1−Σpₖ²或熵−Σpₖlogpₖ；准则不同但都衡量混杂程度。</li><li>递归直到深度、叶样本数或增益约束。树可表示特征交互，例如先按市场状态、再按成交量分区；但贪心切分不保证全局最优树。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>把前面四个标签0、0、1、1算到底：不切分时叶预测0.5，总SSE=4×0.5²=1。在x=2.5切开，两叶各只有0或1，SSE都0，因此增益1。树的“找到非线性”在这个例子里，就是发现一个阈值后分别用两个常数预测。</p><div class="math-display">\[\operatorname{gain}=\sum_i(y_i-\bar y)^2-\sum_{i\in L}(y_i-\bar y_L)^2-\sum_{i\in R}(y_i-\bar y_R)^2\]</div><h3>面试追问：树需要标准化吗？能否外推趋势？</h3><p>普通轴对齐树对严格单调特征变换通常保持可选顺序划分，所以一般不需要尺度标准化。回归树叶子给常数，超出训练特征范围常延用边界叶子，不能像线性模型那样自然外推。</p><div class="trap"><strong>易错点与边界</strong><p>叶子样本过少会记噪声；重要性基于训练增益可能偏向高基数特征，需独立验证。</p></div><p><strong>识别线索与迁移：</strong>随机森林降低方差，boosting顺序拟合剩余误差；先理解单棵树的偏差与方差。</p></section><section id="forest" class="lesson"><p class="tag">C · 平均降低哪部分误差</p><h2>08 · Bagging与随机森林：去相关比堆树更关键</h2><p class="term-bridge"><strong>这节先认清：</strong>Bagging是分别对重采样数据训练模型再平均；随机森林把它用于树，并进一步随机选择切分特征。误差相关指模型是否经常一起犯同方向的错，ρ越大，平均越难抵消。“袋外”是某棵树训练时没抽中的样本，可用来评估该树，但必须注意时间边界。</p><div class="example"><strong>从一个例子开始</strong><p>100棵树单棵误差方差为1，树间误差平均相关ρ=0.2。等权平均误差方差为0.2+0.8/100=0.208，并不是0.01。</p></div><h3>机制与推导步骤</h3><ol><li>设各模型误差方差σ²、两两协方差ρσ²。对平均值方差展开，共B个对角项和B(B−1)个非对角项。</li><li>得到σ²[ρ+(1−ρ)/B]。随着B变大，独立部分消失，相关部分保留。</li><li>Bagging对样本bootstrap后独立训练；随机森林再对每次切分随机抽特征，目的之一是降低树间相关。单树变弱但相关下降，平均后可能更好。</li></ol><div class="math-display">\[\operatorname{Var}\left(\frac1B\sum_{b=1}^B\epsilon_b\right)=\sigma^2\left(\rho+\frac{1-\rho}{B}\right)\]</div><h3>面试追问：袋外误差能直接评估金融时间序列吗？</h3><p>普通bootstrap/OOB混合时间，可能让未来样本训练后预测过去，且忽略标签重叠。应按时间设计样本外验证；OOB是IID场景下便利估计，不能替代时间约束。</p><div class="trap"><strong>易错点与边界</strong><p>更多树主要稳定平均，不会消除所有偏差。树间相关ρ是教学简化，实际不同树方差与协方差不完全相同。</p></div><p><strong>识别线索与迁移：</strong>投资组合分散化有同一协方差公式；集成模型要关注错误是否互补。</p></section><section id="boosting" class="lesson"><p class="tag">C · 下一棵树该拟合什么</p><h2>09 · Gradient Boosting：在函数空间做梯度下降</h2><p class="term-bridge"><strong>这节先认清：</strong>Boosting按顺序加模型，新模型专门修正当前整体模型的不足。Gradient boosting的“梯度”针对每个样本的当前预测F求导；负梯度给出损失最想下降的方向，树再近似这个方向。弱学习器只是每一步受限的小模型，不是保证比随机好多少的统一称号。</p><div class="example"><strong>从一个例子开始</strong><p>当前模型预测ŷ=2，真实y=5，平方损失的负梯度是y−ŷ=3。新树应学习残差3，再按学习率加到当前预测。</p></div><h3>机制与推导步骤</h3><ol><li>设当前模型Fₘ₋₁，计算每个样本上的负梯度rᵢ=−∂L(yᵢ,F(xᵢ))/∂F。</li><li>训练一棵小树hₘ拟合rᵢ，然后做Fₘ=Fₘ₋₁+ηhₘ。平方损失时负梯度恰好是残差；其他损失未必。</li><li>若使用二阶近似，叶内损失近似Σ(gᵢw+hᵢw²/2)+λw²/2，对w求导得到−Σg/(Σh+λ)。这是二阶树boosting的叶权公式，树复杂度还需单独惩罚。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>平方损失取L=(y−F)²/2，直接对当前预测F求导得到F−y，负梯度才是y−F。例子中F=2、y=5，新树给出h=3；η=0.1时新预测2+0.1×3=2.3，损失由4.5降到(5−2.3)²/2=3.645。树在近似下降方向，并非一次必须把误差全部拟合完。</p><div class="math-display">\[F_m=F_{m-1}+\eta h_m,\qquad w_{\rm leaf}^*=-\frac{\sum_{i\in\rm leaf}g_i}{\sum_{i\in\rm leaf}h_i+\lambda}\]</div><h3>面试追问：分类boosting拟合的也是y−概率吗？</h3><p>二元交叉熵且F为logit时，导数g=p−y，负梯度为y−p；二阶项h=p(1−p)。但最终加的是logit函数，不是直接把残差加到概率上。</p><div class="trap"><strong>易错点与边界</strong><p>learning rate、树数、深度相互作用；早停只看训练损失会偏向过拟合，应看按时间隔离的验证区间。</p></div><p><strong>识别线索与迁移：</strong>损失→导数→伪残差→弱学习器，是从回归迁移到分类和排序的主线。</p></section><section id="pca" class="lesson"><p class="tag">D · 最大方差方向不必有预测力</p><h2>10 · PCA、SVD与潜在因子</h2><p class="term-bridge"><strong>这节先认清：</strong>PCA把多列相关输入改写成少数线性组合。协方差矩阵S记录每两列一起波动的程度；单位向量约束||v||=1是防止单纯把权重放大来虚增方差。SVD把矩阵拆成输入方向、输出方向与放大倍数三部分；“秩k”表示只保留k个独立方向。</p><div class="example"><strong>从一个例子开始</strong><p>两列资产收益高度同步，可能大部分变化由一个市场方向解释。PCA找的是输入方差最大的线性组合，而不是最能预测未来收益的组合。</p></div><h3>机制与推导步骤</h3><ol><li>先在训练集中心化X，协方差S=XᵀX/n。找单位向量v最大化Var(Xv)=vᵀSv。</li><li>拉格朗日函数vᵀSv−λ(vᵀv−1)，求导得Sv=λv，故最大特征值对应第一主成分。其余在正交约束下依次选择。</li><li>SVD写X=UΣVᵀ，V列为主方向，奇异值平方/n为方差；取前k列给最优秩k平方重构。变量单位不同会改变结果，是否标准化需由问题决定。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>若两列中心化输入协方差S=diag(2,1)，单位方向v=(cosθ,sinθ)的方差为2cos²θ+sin²θ=1+cos²θ，最大在θ=0，第一主方向是(1,0)。一般矩阵里方向不再与坐标轴重合，特征向量方程就是把同一个方向搜索写成可计算形式。</p><div class="math-display">\[\max_{\|v\|=1}v^TSv,\quad Sv=\lambda v,\qquad X_k=U_k\Sigma_kV_k^T\]</div><h3>面试追问：解释99%输入方差就能保证保留预测信息吗？</h3><p>不能。若x₁为巨大但无关的噪声，x₂方差很小却决定y，PCA可能舍弃x₂。预测任务用验证比较降维前后结果，也可考虑有监督降维。</p><div class="trap"><strong>易错点与边界</strong><p>PCA即使不看标签也必须只在训练折拟合，因为测试特征分布也属于未来信息。主成分符号可翻转，不改变子空间。</p></div><p><strong>识别线索与迁移：</strong>协方差分解、因子模型、多重共线性、ridge谱收缩。</p></section><section id="svm" class="lesson"><p class="tag">D · 用几何控制复杂度</p><h2>11 · SVM、间隔与核方法</h2><p class="term-bridge"><strong>这节先认清：</strong>间隔是样本到分隔面的距离，支持向量是贴近边界、直接决定边界的样本。hinge损失在y·分数≥1时为0，否则为1−y·分数。核是“不显式列出新特征也能算它们内积”的函数，既是一种相似度，也必须满足相应正半定条件。</p><div class="example"><strong>从一个例子开始</strong><p>二维两类样本可被很多直线分开，硬间隔SVM选择距离最近样本最远的分隔面。对分隔面wᵀx+b=0，点到面的距离是|wᵀx+b|/||w||。</p></div><h3>机制与推导步骤</h3><ol><li>把标签记作y∈{−1,1}，缩放参数使最近点满足y(wᵀx+b)=1。此时几何间隔是1/||w||。</li><li>最大间隔等价于最小化||w||²/2并满足每点y(wᵀx+b)≥1。不可分时用hinge loss max(0,1−yz)加惩罚C。</li><li>对偶解只涉及样本内积，替换为满足正半定条件的核K(x,x′)=φ(x)ᵀφ(x′)，相当于在特征空间做线性分隔，无需显式生成φ。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>最简单的核例子K(x,z)=(xz+1)²。把新特征写成φ(x)=(x²,√2x,1)，内积φ(x)ᵀφ(z)=x²z²+2xz+1，恰等于K。算法因此能用一个核值代替显式三维内积；更复杂核也沿这一思路处理，但不是任意相似度都能这样表示。</p><div class="math-display">\[\min_{w,b}\frac12\|w\|^2+C\sum_i\max\{0,1-y_i(w^Tx_i+b)\}\]</div><h3>面试追问：RBF核的γ过大有什么问题？</h3><p>核只在极近样本间较大，决策边界更局部，可能记忆训练样本；γ过小则样本都相似，可能欠拟合。C和γ须联合验证，且特征尺度会改变距离。</p><div class="trap"><strong>易错点与边界</strong><p>任意相似度都不是合法核；SVM分数不是天然校准概率。核矩阵的存储计算也会限制大样本使用。</p></div><p><strong>识别线索与迁移：</strong>逻辑回归与hinge损失、L2正则、距离尺度、核ridge。</p></section><section id="generative" class="lesson"><p class="tag">D · 条件独立是一种模型选择</p><h2>12 · 生成式、判别式与朴素贝叶斯</h2><p class="term-bridge"><strong>这节先认清：</strong>“生成式”先描述每一类怎样产生输入；“判别式”直接描述输入属于哪类的概率。朴素贝叶斯的朴素之处是把给定类别后的特征依赖忽略。例如重复复制一个词特征，可能让同一证据被乘两次，从而产生过度自信。平滑是在计数上加少量先验权重。</p><div class="example"><strong>从一个例子开始</strong><p>判断消息是否属于类别c，生成式方法先建P(x|c)与P(c)，再用贝叶斯得到P(c|x)；逻辑回归直接建P(c|x)。它们回答同一分类问题，但建模对象不同。</p></div><h3>机制与推导步骤</h3><ol><li>朴素贝叶斯假设给定类别后各特征独立，所以P(x|c)=∏ⱼP(xⱼ|c)。</li><li>取对数后类别得分为logP(c)+ΣlogP(xⱼ|c)，避免大量小概率相乘下溢。</li><li>若离散特征某值从未在类别c中出现，MLE给0并使整项概率归0。加平滑相当于引入先验伪计数，使概率有限。</li></ol><div class="math-display">\[P(c\mid x)\propto P(c)\prod_jP(x_j\mid c),\qquad \hat p_j=\frac{N_j+\alpha}{N+K\alpha}\]</div><h3>面试追问：朴素贝叶斯条件独立假设错了为何仍可能分类不错？</h3><p>分类只依赖类别得分的相对次序；错误概率模型也可能保留正确边界。但重复相关特征会重复计算证据，造成过度自信，因此概率质量和分类正确率要分开评估。</p><div class="trap"><strong>易错点与边界</strong><p>“给定类别独立”不是“特征在总体独立”；不要从算法名字推断数据真有条件独立性。</p></div><p><strong>识别线索与迁移：</strong>贝叶斯更新、逻辑回归、概率校准、重复信号。</p></section><section id="validation" class="lesson"><p class="tag">E · 验证集必须模拟真实预测</p><h2>13 · 时间验证、滚动窗口与标签重叠</h2><p class="term-bridge"><strong>这节先认清：</strong>验证是拿没参与当前拟合的数据模拟未来预测；训练集求参数，验证集选超参数，测试集检查最终选择。walk-forward就是训练窗口和后续验证窗口一起向前滚动；purge删标签区间跨进验证的信息，gap是人为留的时间空档，两者并不总相同。</p><div class="example"><strong>从一个例子开始</strong><p>每天预测未来5日收益。训练最后一天为周五，验证第一天为下周一：周五标签要到下周五才知道，与验证区间重叠，因此只按日期排序切开仍可能泄漏。</p></div><h3>机制与推导步骤</h3><ol><li>先记录每行特征可用时点t和标签结束时点eₜ。做验证起点v时，训练样本的标签必须已在v前完成，删除eₜ≥v的训练记录。</li><li>使用walk-forward：过去窗口训练、后续窗口验证，多次向前滚动。扩展窗口利用全部过去，固定窗口更重近期，选择应依据稳定性与样本量。</li><li>隔离最终测试期，只在内层时间验证选择超参。gap是简单时间间隔；不规则或跨资产标签重叠时应按真实标签区间purge，而非只写固定天数就认为安全。</li></ol><div class="math-display">\[\mathcal D_{\rm train}(v)=\{(x_t,y_t):t&lt;v,\ e_t&lt;v\}\]</div><h3>面试追问：随机K折什么时候才合适？</h3><p>样本近似IID且部署目标同分布时可以。金融同资产时间序列通常不满足；横截面也常共享日期冲击，应按日期分组。要评估新资产迁移，还需按资产或实体分组。</p><div class="trap"><strong>易错点与边界</strong><p>TimeSeriesSplit只提供时间切分，不自动解决财报发布时间、幸存者偏差、重叠标签和跨实体重复。</p></div><p><strong>识别线索与迁移：</strong>先定义上线时哪些标签已经完成，再按相同信息边界切分。</p></section><section id="leakage" class="lesson"><p class="tag">E · 数据质量先于模型复杂度</p><h2>14 · 预处理泄漏、幸存者偏差与可用时间</h2><p class="term-bridge"><strong>这节先认清：</strong>“fit”表示从数据估计规则，如均值和标准差；“transform”表示用已定规则处理新数据。point-in-time意为按当时真正可知的信息取值；幸存者偏差是只看后来存活的公司而漏掉失败者。目标编码则用某类别历史标签均值表示类别，因此尤其需要避免把答案传回输入。</p><div class="example"><strong>从一个例子开始</strong><p>用全样本均值标准化，即使完全没看y，也让训练过程知道未来分布。又如用今天仍上市股票回测十年前，会排除当时后来退市的公司。</p></div><h3>机制与推导步骤</h3><ol><li>所有会从数据估计的步骤都在训练折fit：缺失填补、标准化、PCA、特征筛选、目标编码。验证/测试只transform。</li><li>建立point-in-time数据：按公开可用时间连接，而不是财务报告所属季度；修订数据应保留当时可见版本。</li><li>样本宇宙要反映当时可交易资产，保留退市、停牌与公司行动；重复样本和同事件多条记录应按组隔离。</li></ol><div class="math-display">\[\text{fit}(\mathcal D_{\rm train})\ \longrightarrow\ \text{transform}(\mathcal D_{\rm validation}),\qquad \mathrm{available\_at}\le\mathrm{prediction\_time}\]</div><h3>面试追问：目标编码为何尤其容易泄漏？</h3><p>把类别映射为该类别平均y，如果使用本行y或验证y，会把答案编码进输入。训练数据用out-of-fold编码，验证集用仅训练集拟合的映射；时间场景中还要确保编码只用过去已实现标签。</p><div class="trap"><strong>易错点与边界</strong><p>Pipeline可防止一部分预处理泄漏，但不会自动修复错误的时间戳、标签构造或样本宇宙。</p></div><p><strong>识别线索与迁移：</strong>每列都能回答“预测当时能否知道”是最有效的第一轮数据审计。</p></section><section id="metrics" class="lesson"><p class="tag">E · 好排名、好概率与好收益不同</p><h2>15 · 指标、概率校准与业务目标</h2><p class="term-bridge"><strong>这节先认清：</strong>MSE是平均平方误差，MAE是平均绝对误差。校准问“报60%的事件是否约60%发生”；AUC问正样本是否通常排在负样本前面；IC问信号与未来收益是否相关，三者不等价。PR看精确率与召回率的权衡，ROC看真阳性率与假阳性率。指标名之后必须接它回答的实际问题，而不是把这些缩写合成一个分数。</p><div class="example"><strong>从一个例子开始</strong><p>模型A把所有真实概率0.6的事件预测0.99，方向可能对得多，但概率严重过度自信。模型B预测0.6，分类准确率相同，却更适合仓位与风险决策。</p></div><h3>机制与推导步骤</h3><ol><li>回归用MSE/MAE取决于尾部敏感度；分类准确率依阈值且受类别比例影响，AUC衡量随机正例得分高于负例的概率，未必反映高精度区间表现。</li><li>对数损失与Brier分数评估概率；Brier为平均(p−y)²。校准要求预测0.6的一组长期约60%为正。可靠性图要报告每箱样本量。</li><li>投资排序可看横截面相关IC，但从IC到净收益仍经过持仓规则、风险约束、成交与费用。应在统一测试窗口比较，给分期与不确定性。</li></ol><div class="math-display">\[\operatorname{Brier}=\frac1n\sum_i(p_i-y_i)^2,\qquad \operatorname{IC}_t=\operatorname{Corr}(s_{t,i},r_{t+1,i})\]</div><h3>面试追问：AUC高于0.5是否足够证明交易赚钱？</h3><p>不够。AUC不看收益幅度、成本和容量。若模型只在不可交易小盘股上预测好，或优势小于成本，净收益仍可能为负。要把预测指标和完整执行链分开报告。</p><div class="trap"><strong>易错点与边界</strong><p>校准也必须在独立于拟合的样本上学习和评估；总体校准好不保证每个市场阶段都好。</p></div><p><strong>识别线索与迁移：</strong>逻辑回归成本阈值、统计检验、交易决策；选指标前先声明它服务哪个决定。</p></section><section id="shift" class="lesson"><p class="tag">E · 训练环境不会一直重复</p><h2>16 · 非平稳、漂移与模型更新</h2><p class="term-bridge"><strong>这节先认清：</strong>漂移是部署数据与训练数据的分布变了。“协变量”在这里就是输入X；条件分布P(Y|X)则描述同一种输入下答案怎样分布。重要性加权是让更像部署数据的训练样本占更大权重，但部署出现训练从未覆盖的输入时，权重无法补出缺失证据。</p><div class="example"><strong>从一个例子开始</strong><p>模型用高波动期训练，在低波动期部署。特征分布P(X)可能变，收益条件分布P(Y|X)也可能变；两者对策略影响不同。</p></div><h3>机制与推导步骤</h3><ol><li>区分协变量漂移P(X)变而P(Y|X)稳定、标签先验漂移P(Y)变、概念漂移P(Y|X)变。现实可同时发生。</li><li>在特定协变量漂移假设且支持域有重叠时，重要性权重w(x)=p_test(x)/p_train(x)可修正训练风险估计。权重极大使方差爆炸，不能凭重加权凭空补新区域。</li><li>监控分布、预测残差、校准、分期损益；选滚动重训、遗忘权重或模型停用应提前制定规则，并在历史回放中检验。</li></ol><div class="math-display">\[E_{\rm test}[L]=E_{\rm train}\left[\frac{p_{\rm test}(X)}{p_{\rm train}(X)}L\right]\quad\text{if }P_{\rm test}(Y\mid X)=P_{\rm train}(Y\mid X)\]</div><h3>面试追问：最近一周亏损是否应立即重训？</h3><p>先区分正常波动、执行异常、数据变化和模型失效。单周噪声可很大，频繁根据损益临时改模型会带来新的适应性过拟合。预设触发条件，保留基线并做受控比较。</p><div class="trap"><strong>易错点与边界</strong><p>漂移检测统计显著不代表业务重要；未检测到变化也不证明条件分布稳定。</p></div><p><strong>识别线索与迁移：</strong>时间序列、有效样本量、顺序检验、模型治理。</p></section><section id="neural" class="lesson"><p class="tag">F · 能手推一个网络再谈框架</p><h2>17 · 神经网络与反向传播：链式法则复用中间量</h2><p class="term-bridge"><strong>这节先认清：</strong>隐藏单元是先把输入算成中间数h，再用于输出；ReLU取max(a,0)，正半轴导数1、负半轴导数0。反向传播从损失向前逐层乘局部导数，就是数学先修中的链式法则；前向缓存是在反向时复用已算过的a、h，而不是重新猜它们。</p><div class="example"><strong>从一个例子开始</strong><p>一个单隐藏单元网络：a=wx+b，h=ReLU(a)，ŷ=vh+c，损失(ŷ−y)²/2。若x=2、w=1、b=0、v=3、c=0、y=5，则a=h=2、ŷ=6，误差为1。</p></div><h3>机制与推导步骤</h3><ol><li>从末端开始∂L/∂ŷ=ŷ−y=1；∂L/∂v=(ŷ−y)h=2，∂L/∂c=1。</li><li>回到隐藏层∂L/∂h=(ŷ−y)v=3；因为a&gt;0，ReLU导数为1，因此∂L/∂w=3x=6，∂L/∂b=3。</li><li>多层网络仍是同样的链式法则，反向传播缓存前向中间量并复用梯度。线性层接线性层若没有非线性，其复合仍是线性映射。</li></ol><div class="math-display">\[\frac{\partial L}{\partial w}=(\hat y-y)\,v\,\mathbf1\{wx+b&gt;0\}\,x\]</div><h3>面试追问：怎样检查自己写的梯度？</h3><p>小规模确定性输入上，用中心差分[f(w+ε)−f(w−ε)]/(2ε)对照解析梯度。避开ReLU的不可导点，关闭dropout等随机性，选择不过大或过小的ε并比较相对误差。</p><div class="trap"><strong>易错点与边界</strong><p>梯度存在不保证好优化；激活饱和、初始化、归一化与学习率会影响梯度尺度。训练集拟合更强也可能放大金融噪声。</p></div><p><strong>识别线索与迁移：</strong>逻辑回归是单层概率模型；链式法则连接所有可微损失与模型。</p></section><section id="clustering" class="lesson"><p class="tag">F · 隐变量使直接优化困难</p><h2>18 · K-means与EM：先分配再估参数</h2><p class="term-bridge"><strong>这节先认清：</strong>簇是相似样本的一组，中心是组内代表。隐变量Z是没直接观察到的类别；EM轮流做两件事：按当前参数估各点属于各类的概率，再按这些概率重新估参数。责任度rᵢₖ就是第i个点分给第k类的软权重，不是又一份真实标签。</p><div class="example"><strong>从一个例子开始</strong><p>一维数据0、1、9、10，设两个簇。若当前中心为0和10，先分配到近中心，再更新中心为0.5与9.5；类内平方和下降。</p></div><h3>机制与推导步骤</h3><ol><li>K-means最小化Σ||xᵢ−μ_zᵢ||²。固定中心时逐点选最近簇最优；固定分配时簇内均值最优。交替更新不会增加目标，但可停在局部解。</li><li>高斯混合模型把硬分配改成隐类别Z的概率。E步计算责任度rᵢₖ=P(Z=k|xᵢ,当前参数)；M步用责任度加权更新均值、协方差和混合权重。</li><li>EM通过对log似然建立在当前参数处紧的下界并最大化下界，保证似然不下降；并不保证全局最优。</li></ol><div class="math-display">\[r_{ik}=\frac{\pi_k\mathcal N(x_i\mid\mu_k,\Sigma_k)}{\sum_j\pi_j\mathcal N(x_i\mid\mu_j,\Sigma_j)},\qquad \mu_k^{\rm new}=\frac{\sum_i r_{ik}x_i}{\sum_i r_{ik}}\]</div><h3>面试追问：高斯混合似然为何可能无界？</h3><p>某个分量中心对准一个样本且协方差趋近0，会让该点密度无限大。实际需要协方差下界、正则或先验。多次初始化可减少坏局部解，但不证明全局最优。</p><div class="trap"><strong>易错点与边界</strong><p>市场状态簇是数据分组，不自动具有经济含义；在全期聚类再标注过去属于未来信息。</p></div><p><strong>识别线索与迁移：</strong>贝叶斯后验责任度、交替优化、状态分层统计。</p></section><section id="generalization" class="lesson"><p class="tag">F · 搜得越多越需要独立证据</p><h2>19 · 泛化界、模型选择与研究自由度</h2><p class="term-bridge"><strong>这节先认清：</strong>泛化问在新样本上会错多少；ε是允许训练平均与真实平均相差的幅度，δ是保证可能失败的概率。上界不是实际错误率预测，而是保守保证。“并集上界”说至少一个坏事件发生的概率不超过各坏事件概率之和，即便它们不独立也成立。</p><div class="example"><strong>从一个例子开始</strong><p>假设有100个完全无效模型，挑验证误差最小的一项。即使每个模型单独估计无偏，最小的那个也容易因为运气看起来更好，这就是选择后的乐观偏差。</p></div><h3>机制与推导步骤</h3><ol><li>对固定模型且独立有界损失，可用Hoeffding界约束经验风险与真实风险差异：单模型偏差超过ε的概率至多2exp(−2nε²)。</li><li>若候选集合H有限且在观察这批样本前已固定，对各模型失败事件用并集上界，得到2|H|exp(−2nε²)。令这个上界等于δ，两边取对数，移项得ε=√[log(2|H|/δ)/(2n)]。候选越多，需要更多样本。</li><li>真实研究包括特征、标签、窗口、资产池、损失与过滤规则等自由度，不能只统计最终保留的模型数。观察验证结果后不断创造新模型，再把最后模型数代入有限固定集合的界，论证并不成立。用嵌套验证和冻结测试集减少选择偏差。</li></ol><p class="worked-bridge"><strong>再把中间一步算开：</strong>用数字读这个界：事先固定100个候选、n=1000个独立样本、损失在[0,1]，希望失败概率δ≤0.05。解得ε=√[log(2×100/0.05)/(2×1000)]≈0.0644。这给约6.44个百分点的保守误差幅度，并不表示实际模型一定错这么多；假设不满足时也不能套数。</p><div class="math-display">\[P\left(\sup_{h\in\mathcal H}|R(h)-\hat R(h)|&gt;\epsilon\right)\le2|\mathcal H|e^{-2n\epsilon^2}\quad(L\in[0,1],\ \text{IID})\]</div><h3>面试追问：测试集看过一次后还能继续称为独立测试吗？</h3><p>若根据结果改变模型或研究方向，测试反馈已进入选择过程，独立性被消耗。可以保留结果作为开发证据，但最终可靠评估需新的冻结样本或严格的前瞻测试。</p><div class="trap"><strong>易错点与边界</strong><p>上述界通常保守，且IID与有界损失在金融数据中未必成立；它解释搜索代价，不给现实策略通用保证。</p></div><p><strong>识别线索与迁移：</strong>多重检验、回测过拟合、nested CV；研究记录应包含失败尝试与版本。</p></section><section id="workflow" class="lesson"><p class="tag">G · 把理论收敛成一套研究流程</p><h2>20 · 完整建模答题：从最小基线到决策结果</h2><p class="term-bridge"><strong>这节先认清：</strong>基线是最简单、可解释且验证合法的参照模型；样本外指这段数据没有参与当前拟合与选择。容量问资金加大后还能否按假设成交；PnL是最终损益。把这四个词放回“数据→预测→持仓→成交→净损益”的具体记录里，才有可检查的研究回答。</p><div class="example"><strong>从一个例子开始</strong><p>题目：“有五年股票价量数据，如何做下一日收益预测？”一个好答案先定义可交易时点、资产宇宙、标签和验证，再建立简单基线，随后讨论模型。</p></div><h3>机制与推导步骤</h3><ol><li>数据：按当时可用信息构造特征，处理复权、退市与缺失；标签区间与交易时间对齐。先画一条样本的时间线。</li><li>基线：历史均值、线性或ridge，报告严格walk-forward的预测误差/IC、分期稳定性。只在训练折拟合预处理。</li><li>改进：每次只改变一个主要因素，与同窗口同成本基线比较。选模型后再转持仓，模拟成交、滑点、费用、冲击和风险约束；冻结测试，保留全部尝试。</li></ol><div class="math-display">\[\text{data at time }t\to\hat r_{t+1}\to w_t\to\text{fills and costs}\to\operatorname{PnL}_{t+1}\]</div><h3>面试追问：给你一个高IC模型，下一步最先问什么？</h3><p>先核验它在预测当时可得、样本外且没有标签重叠泄漏；再问优势集中在哪些资产、时段、换手和成本水平，能否真正成交。若证据链不完整，继续加复杂模型不是首要动作。</p><div class="trap"><strong>易错点与边界</strong><p>好预测不等于好策略；回测盈利不等于未来盈利。每次结论都应说明输入版本、评估期间、模型、执行假设与不确定性。</p></div><p><strong>识别线索与迁移：</strong>概率统计负责不确定性，机器学习负责函数估计，执行决定预测优势能否兑现。</p></section><section id="review"><h2>闭卷复习：检验是否真正掌握</h2><ol><li>任选一节，只凭标题复原例子的计算，不能只背最终数字。</li><li>把独立改成相关、把已知参数改成未知、把固定样本量改成停止规则，说明哪一步需要重写。</li><li>给出一个反例：解释公式在什么情况下不能用，再说可用的替代方法。</li><li>用两分钟把题目讲给同事：设定 → 核心工具 → 推导 → 数值检查 → 边界。</li></ol></section><section id="sources" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>本套笔记是独立编写的教学路线和例题，不是公司真题转录，也不声称覆盖某家公司的所有题目。官方招聘材料只支持能力方向；每节的学习优先级是按概念依赖和迁移范围作出的教学判断，没有未经证实的考题频率排名。招聘流程与网页可能变化，适用范围以具体岗位与招聘方说明为准。</p><ul><li><a href="https://www.janestreet.com/probability-markets/">Jane Street · Probability &amp; Markets</a>：官方明确列出概率、期望与做市等基础准备方向；不等于每一道题都会考。</li><li><a href="https://www.janestreet.com/join-jane-street/interviewing/">Jane Street · Interviewing</a>：区分交易、研究与机器学习面试，研究与交易及工程能力交叉。</li><li><a href="https://www.citadel.com/careers/career-perspectives/candidate-faqs-quantitative-research/">Citadel · Quantitative Research FAQ</a>：明确概率统计、数据分析、预测模型与编程能力。</li><li><a href="https://www.citadel.com/careers/career-perspectives/our-quantitative-research-interview-process/">Citadel · QR interview process</a>：强调编程、研究、数据结构算法与解释解题过程。</li><li><a href="https://cs229.stanford.edu/main_notes.pdf">Stanford CS229 · Lecture Notes</a>：线性/逻辑回归、核方法、泛化、正则化、EM、PCA与深度学习的原始课程资料。这里的示例与步骤是独立编写，完整技术细节可继续查阅课程。</li><li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning · 作者官网</a>：回归、分类、重采样、正则化、树方法与无监督学习的章节导航。</li><li><a href="https://scikit-learn.org/stable/modules/cross_validation.html">scikit-learn · Cross-validation</a>：时间验证、分组验证与预处理边界。</li><li><a href="https://scikit-learn.org/stable/modules/ensemble.html">scikit-learn · Ensembles</a>：bagging、随机森林与gradient boosting的实现概念与边界。</li><li><a href="https://scikit-learn.org/stable/modules/decomposition.html">scikit-learn · Decomposition</a>：PCA/SVD与标准化注意事项。</li></ul><p>公式中的默认假设在各节列出。市场数据的非平稳、重尾、依赖与执行成本会破坏课堂模型；数学例题的正确不构成策略可盈利证据。</p></section></main><footer><a href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false">回到顶部</a> · <a href="index.html">量化基础总入口</a></footer></body></html>
+</section><section id="source-reconstruction"><h2>从题目到模型：这本笔记怎样组织</h2><p>以“预测明天上涨概率”为例。先要确定今天何时作出预测；接着把此时可见的信息变成特征；逻辑回归通过伯努利似然得到交叉熵，优化器用梯度拟合参数；验证必须把未来隔开；最后上涨概率还需要结合收益幅度、交易成本与风险决定仓位。这条链中任意一步不成立，后面的模型精度就很难解释。</p><p>本书把知识压成七组：A组说明预测对象与基本模型；B组说明复杂度与优化；C组从单树推到集成；D组处理表示、几何与概率模型；E组处理真实数据验证；F组补齐神经网络、隐变量与泛化；G组把所有内容组装成一段完整的研究面试回答。先掌握线性和逻辑回归的手推，再看更复杂方法，能减少重复记忆。</p><p>符号约定：X通常是n行d列设计矩阵，y是n维标签，w或β是参数；L是单样本损失，R是总体期望风险。训练参数由训练集决定，超参数由验证选择；最终测试只用于完成选择后的评估。所有模型公式均是教学设定下的结论。</p></section><section id="takeaway"><h2>学习时把三个动作串起来</h2><p>先说清随机性或数据来自哪里，再手推一个最小例子，最后指出结论成立的条件。能复述公式只是第一步；能解释公式为什么在这道题里合法、换条件后哪里先失效，才是迁移能力。</p><p>下面每节均包含例子、推导、面试追问、易错点与关联方向。建议先遮住解答，用纸写出状态、目标和第一步；卡住时只看下一条推导，再自行继续。</p></section><nav class="toc" aria-label="本页目录"><strong>按方法学习 · 全文目录</strong><p><a href="#math-prerequisites">先看数学先修与符号读法</a></p><ol><li><a href="#risk">监督学习、经验风险与标签设计</a></li><li><a href="#linear">线性回归：几何、概率与数值解</a></li><li><a href="#logistic">逻辑回归：为什么交叉熵梯度这么简单</a></li><li><a href="#bias-variance">偏差方差分解与学习曲线</a></li><li><a href="#regularization">L2、L1与早停：如何让解稳定</a></li><li><a href="#optimization">梯度下降、SGD与条件数</a></li><li><a href="#trees">决策树：用局部划分拟合非线性</a></li><li><a href="#forest">Bagging与随机森林：去相关比堆树更关键</a></li><li><a href="#boosting">Gradient Boosting：在函数空间做梯度下降</a></li><li><a href="#pca">PCA、SVD与潜在因子</a></li><li><a href="#svm">SVM、间隔与核方法</a></li><li><a href="#generative">生成式、判别式与朴素贝叶斯</a></li><li><a href="#validation">时间验证、滚动窗口与标签重叠</a></li><li><a href="#leakage">预处理泄漏、幸存者偏差与可用时间</a></li><li><a href="#metrics">指标、概率校准与业务目标</a></li><li><a href="#shift">非平稳、漂移与模型更新</a></li><li><a href="#neural">神经网络与反向传播：链式法则复用中间量</a></li><li><a href="#clustering">K-means与EM：先分配再估参数</a></li><li><a href="#generalization">泛化界、模型选择与研究自由度</a></li><li><a href="#workflow">完整建模答题：从最小基线到决策结果</a></li></ol></nav><section id="risk" class="lesson"><h2>01 · 监督学习：先弄清在什么时候预测什么</h2>
+<p>先做一个只有两个答案的任务。某个输入条件下，明天的需求量可能是1，也可能是3，两种情况各占一半。现在必须报一个预测数。报1、2还是3？暂时不谈神经网络，先约定“报错会怎样扣分”。这个约定会决定模型应当学习什么。</p>
+<h3>先给预测错误一个能计算的分数</h3>
+<p>如果按“误差的平方”扣分，预测为2时，实际为1会扣1分，实际为3也扣1分，所以平均扣1分。预测为1时，遇到1扣0分，遇到3扣4分，平均扣2分。预测为3同样平均扣2分。因此，虽然2从来不是真实答案，预测2仍优于永远预测1或3。</p>
+<div class="math-display">\[R(2)=\tfrac12(1-2)^2+\tfrac12(3-2)^2=1,\qquad R(1)=\tfrac12(1-1)^2+\tfrac12(3-1)^2=2.\]</div>
+<p>这里每次的扣分叫<strong>损失</strong>，按结果出现概率计算的平均损失叫<strong>风险</strong>。这个“风险”是学习理论的名称，并不是说需求量本身有投资风险。把预测写成任意数\(c\)，就不必挨个试所有候选数：</p>
+<div class="math-display">\[R(c)=\tfrac12(1-c)^2+\tfrac12(3-c)^2=(c-2)^2+1.\]</div>
+<p>最后一式可以直接验证：展开前式得到\(c^2-4c+5\)，再配方成\((c-2)^2+1\)。平方最小只能为0，因此\(c=2\)全局最优。这里完全不需要导数；若用导数，\(R'(c)=2(c-2)\)，在2处为0，且两侧都是上升的碗形。</p>
+<h3>为什么平方损失要预测平均值</h3>
+<p>刚才的2正好是答案的平均值\((1+3)/2\)。一般令未知答案为\(Y\)，平均值记\(\mu=E[Y]\)。把误差写成\(Y-c=(Y-\mu)+(\mu-c)\)，平方后有三项：</p>
+<div class="math-display">\[E[(Y-c)^2]=E[(Y-\mu)^2]+2(\mu-c)E[Y-\mu]+(\mu-c)^2.\]</div>
+<p>中间项为0，因为\(E[Y-\mu]=E[Y]-\mu=0\)。第一项是答案围绕平均值的随机波动，与选择\(c\)无关；第三项在\(c=\mu\)时最小。给定输入\(X=x\)后同样成立，只是所有平均都改成“在这个输入条件下平均”。因此平方损失学习的是条件均值\(E[Y\mid X=x]\)，而不是每条样本都能完全猜中。</p>
+<p>换一个损失，最优答案会改变。按绝对误差\(|Y-c|\)扣分时，最优目标是条件中位数；分类的负对数损失则要求预测条件概率。不能先随意选模型，最后才决定它的分数究竟应该代表均值、排序还是概率。</p>
+<h3>数据里的三个对象：输入、答案、规则</h3>
+<p><strong>特征</strong>是预测时能看到的输入，例如过去5日成交量；<strong>标签</strong>是事后拿来核对的答案，例如下一日收益；<strong>模型</strong>是把输入变成预测的规则\(f(x)\)。训练样本是若干对\((x_i,y_i)\)。“监督学习”的监督，就是训练时这些答案已经提供。</p>
+<p>真实世界的所有未来结果无法提前知道，因此总体风险通常算不出来。我们暂用训练样本的平均扣分代替：</p>
+<div class="math-display">\[\widehat R(f)=\frac1n\sum_{i=1}^n L(y_i,f(x_i)).\]</div>
+<p>这叫经验风险。\(n\)是样本数，\(L\)是已经定义的扣分规则。训练就是在允许的规则里找经验风险小的一个。但训练样本只是一批已见答案，模型可以记住它们；新数据上是否还好，需要独立验证，不能用同一份成绩重复证明自己。</p>
+<h3>放回量化任务：先把时间线画对</h3>
+<p>假设每天15:05才拿到完整收盘数据，却用当天15:00收盘价买入、下一天收盘价卖出的收益作目标。标签作为研究对象没有数学错误，但预测以后再回到15:00成交不可执行。应先规定真正可成交时刻，再定义进入到退出的收益；特征也必须在决策时刻已公布、已接收。标签用未来结果是正常的，把未来结果放进输入才是泄漏。</p>
+<p><strong>面试追问：</strong>训练误差很低，为什么不够？因为它只回答“这批已经见过的答案拟合得怎样”。还要说明新样本如何隔离、标签何时实现、是否反复根据测试结果挑模型，以及分数如何变成真实决策。<strong>边界：</strong>以上均方推导需要二阶矩有限；重尾到平方期望不存在时，目标本身也要重新考虑。</p>
+</section><section id="linear">
+<p class="tag">A · 先亲手拟合一条线，再理解矩阵</p>
+<h2>02 · 线性回归：从三个数据点一步步求出一条直线</h2>
+<p>这一节只解决一件事：给定一些输入和对应结果，怎样找到一条预测得比较好的直线。先不用矩阵，也不要求你记得求导。我们把三个点的计算做完，再说明矩阵、正交投影和概率解释其实在描述同一件事。</p>
+
+<h3>第一步：先说清楚输入、答案和要找的两个数</h3>
+<p>假设有三条记录：输入为 \(1\) 时结果为 \(2\)，输入为 \(2\) 时结果为 \(3\)，输入为 \(3\) 时结果为 \(5\)。把输入叫作 \(x\)，实际结果叫作 \(y\)，三对数据就是 \((1,2),(2,3),(3,5)\)。一对数据叫一条样本。</p>
+<p>我们尝试用同一个规则预测三条记录：</p>
+<div class="math-display">\[\widehat y=b+ax.\]</div>
+<p>符号 \(\widehat y\) 上的小帽子表示“预测值”，用来和已经知道的实际值 \(y\) 区分。\(a\) 是斜率：输入增加 \(1\)，预测就增加 \(a\)。\(b\) 是截距：输入为 \(0\) 时，直线给出的预测是 \(b\)。现在不是把 \(x,y\) 当未知数；数据已经给了它们。我们要找的是一组共同使用的 \(a,b\)。</p>
+<p>例如先试 \(a=1,b=1\)。依次代入三个输入，预测为 \(2,3,4\)：前两条恰好正确，第三条比实际的 \(5\) 少了 \(1\)。再试 \(a=2,b=0\)，预测变成 \(2,4,6\)，后两条各多了 \(1\)。这说明“画一条线”很容易，难点是怎样公平地比较不同的线。</p>
+
+<h3>第二步：把“预测得不好”变成可以计算的数</h3>
+<p>我们把“实际值减预测值”叫作残差，用 \(e\) 表示。第一种候选直线的残差为 \(0,0,1\)，第二种为 \(0,-1,-1\)。正残差表示预测偏低，负残差表示预测偏高。</p>
+<p>不能直接把残差相加作为好坏：一条记录错 \(1\)，另一条错 \(-1\)，和为 \(0\)，但两条其实都错了。先把每个残差平方再相加，可以避免正负抵消。对上面的两条候选线，平方误差总和分别为 \(0^2+0^2+1^2=1\) 和 \(0^2+(-1)^2+(-1)^2=2\)，第一条更好。</p>
+<p>对任意 \(a,b\)，三条记录的误差平方总和是：</p>
+<div class="math-display">\[
+S(a,b)=(2-b-a)^2+(3-b-2a)^2+(5-b-3a)^2.
+\]</div>
+<p>例如第一项中的 \(2\) 是第一条实际结果，\(b+a\) 是把 \(x=1\) 代进直线得到的预测。后两项同理。这就是普通最小二乘，英文缩写 OLS：“最小”是让 \(S\) 尽量小，“二乘”是把每个误差平方。它是一种明确选定的比较规则，不是所有场景唯一正确的规则；若改用绝对误差，解法和最优结果可能不同。</p>
+
+<h3>第三步：最优直线为什么必须满足“残差之和为零”</h3>
+<p>先固定斜率 \(a\)，只把截距增加一点 \(\delta\)。\(\delta\) 就表示一次小调整，可以是正数或负数。三个预测都增加 \(\delta\)，所以三个残差都从 \(e_i\) 变成 \(e_i-\delta\)。这里下标 \(i=1,2,3\) 只是在标记第几条记录。</p>
+<p>用平方展开式 \((u-v)^2=u^2-2uv+v^2\)，调整后的总误差是：</p>
+<div class="math-display">\[
+\begin{aligned}
+S_{\text{新}}
+&=(e_1-\delta)^2+(e_2-\delta)^2+(e_3-\delta)^2\\
+&=(e_1^2+e_2^2+e_3^2)
+ -2\delta(e_1+e_2+e_3)+3\delta^2\\
+&=S_{\text{旧}}-2\delta(e_1+e_2+e_3)+3\delta^2.
+\end{aligned}
+\]</div>
+<p>如果残差之和为正，就表示整体预测偏低。取一个足够小的正 \(\delta\)，中间的负项就能让总误差下降；若残差之和为负，反向调低截距也能改善。因此，当直线已经最好、不能再靠上下移动改善时，必须有：</p>
+<div class="math-display">\[
+e_1+e_2+e_3=0.
+\]</div>
+<p>把三个残差逐项代入：</p>
+<div class="math-display">\[
+(2-b-a)+(3-b-2a)+(5-b-3a)=0.
+\]</div>
+<p>常数相加为 \(2+3+5=10\)，三个 \(-b\) 合为 \(-3b\)，含斜率的项合为 \(-6a\)，所以第一条方程是：</p>
+<div class="math-display">\[
+10-3b-6a=0
+\quad\Longleftrightarrow\quad 3b+6a=10. \tag{1}
+\]</div>
+
+<h3>第四步：调整斜率，得到第二条方程</h3>
+<p>这次固定截距，只把斜率增加 \(\delta\)。因为预测为 \(b+ax\)，三条记录的预测分别增加 \(\delta,2\delta,3\delta\)，残差相应变成 \(e_1-\delta,e_2-2\delta,e_3-3\delta\)。</p>
+<div class="math-display">\[
+\begin{aligned}
+S_{\text{新}}
+&=S_{\text{旧}}
+ -2\delta(e_1+2e_2+3e_3)
+ +(1^2+2^2+3^2)\delta^2.
+\end{aligned}
+\]</div>
+<p>与上一步同样的道理，如果括号中的加权残差不为零，就仍能向某个方向小幅转动直线、降低误差。因此最好的一条线还必须满足 \(e_1+2e_2+3e_3=0\)。代入数据：</p>
+<div class="math-display">\[
+\begin{aligned}
+0&=(2-b-a)+2(3-b-2a)+3(5-b-3a)\\
+ &=2-b-a+6-2b-4a+15-3b-9a\\
+ &=23-6b-14a.
+\end{aligned}
+\]</div>
+<p>第二条方程就是：</p>
+<div class="math-display">\[
+6b+14a=23. \tag{2}
+\]</div>
+<p>如果已经学过导数，同一个过程可压写为 \(\partial S/\partial b=-2\sum_i e_i\)、\(\partial S/\partial a=-2\sum_i x_i e_i\)，再令它们为零。但这只是对上面两个调整过程的简称；不应该让这个简称代替推导。</p>
+
+<h3>第五步：把两条方程真正解出来</h3>
+<p>现在只有两个未知数和两条方程。把式(1)两边都乘 \(2\)，得到 \(6b+12a=20\)。再用式(2)减去它：</p>
+<div class="math-display">\[
+(6b+14a)-(6b+12a)=23-20
+\quad\Longrightarrow\quad 2a=3
+\quad\Longrightarrow\quad a=\frac32.
+\]</div>
+<p>把 \(a=3/2\) 代回式(1)：\(3b+6(3/2)=10\)，即 \(3b+9=10\)，所以 \(b=1/3\)。最终拟合直线为：</p>
+<div class="math-display">\[
+\boxed{\widehat y=\frac13+\frac32 x}.
+\]</div>
+<p>它不是题目一开始就给定的公式；它是由“让三条记录的误差平方和最小”一步步算出来的。</p>
+
+<h3>第六步：代回三条记录，检查解是否合理</h3>
+<div class="table-wrap"><table><thead><tr><th>输入 \(x\)</th><th>实际值 \(y\)</th><th>预测值 \(1/3+3x/2\)</th><th>残差 \(y-\widehat y\)</th><th>残差平方</th></tr></thead><tbody>
+<tr><td>\(1\)</td><td>\(2\)</td><td>\(11/6\approx1.8333\)</td><td>\(1/6\)</td><td>\(1/36\)</td></tr>
+<tr><td>\(2\)</td><td>\(3\)</td><td>\(10/3\approx3.3333\)</td><td>\(-1/3\)</td><td>\(1/9\)</td></tr>
+<tr><td>\(3\)</td><td>\(5\)</td><td>\(29/6\approx4.8333\)</td><td>\(1/6\)</td><td>\(1/36\)</td></tr>
+</tbody></table></div>
+<p>平方和为 \(1/36+1/9+1/36=6/36=1/6\)，小于前面两条候选线的 \(1\) 和 \(2\)。三个残差之和为 \(1/6-1/3+1/6=0\)；乘输入再相加也得到 \(1(1/6)+2(-1/3)+3(1/6)=0\)，两条求解条件都满足。</p>
+<figure><img src="assets/linear-regression-residuals.svg" alt="三个样本点与拟合直线，竖直虚线表示实际值减预测值的残差"><figcaption>横轴是输入x，纵轴是结果y。深蓝圆点是实际结果，红线及空心圆点是预测，绿色竖虚线是两者的差。这里最小化的是这些竖直误差的平方和；不是让这张二维图中“点到直线的最短距离”最小。下一段说的投影发生在另一个、由三条结果组成的三维空间。</figcaption></figure>
+<p>只比较两条候选线还不能证明它优于所有直线。更完整的检查是：把最优参数再改为 \(a+u,b+v\)。新残差为 \(e_i-u x_i-v\)，展开总平方和时，一次项包含的正是刚验证为零的 \(\sum e_i\) 和 \(\sum x_i e_i\)，所以：</p>
+<div class="math-display">\[
+S_{\text{新}}=\frac16+\sum_{i=1}^3(u x_i+v)^2\geq \frac16.
+\]</div>
+<p>平方不可能为负，因此任何调整都不会更好。也就是说，这两条调整条件得到的解，确实使误差在所有候选直线中最小，而不只是比前面举的两条候选线好。</p>
+
+<h3>第七步：矩阵只是把刚才的三行计算合在一起</h3>
+<p>把每条记录写成一行，第一列固定放 \(1\)，第二列放输入 \(x\)。第一列负责乘上截距 \(b\)。将两个参数按“截距在前、斜率在后”排成列：</p>
+<div class="math-display">\[
+X=\begin{bmatrix}1&1\\1&2\\1&3\end{bmatrix},
+\quad \beta=\begin{bmatrix}b\\a\end{bmatrix},
+\quad y=\begin{bmatrix}2\\3\\5\end{bmatrix}.
+\]</div>
+<p>这张三行两列的输入表叫<strong>设计矩阵</strong>。矩阵乘法在这里就是每行分别与参数做加权相加：第一行给 \(1b+1a\)，第二行给 \(1b+2a\)，第三行给 \(1b+3a\)。因此 \(\widehat y=X\beta\) 并没有引入新模型，仍是那三条直线预测。</p>
+<p>\(X^T\) 中的 \(T\) 表示转置，即把行与列交换。它的两行分别是 \((1,1,1)\) 和 \((1,2,3)\)。所以 \(X^Te\) 的两项恰好为 \(\sum e_i\) 和 \(\sum x_i e_i\)。我们前面得到的两条条件，现在合写成：</p>
+<div class="math-display">\[
+X^T(y-X\widehat\beta)=0
+\quad\Longleftrightarrow\quad
+X^TX\widehat\beta=X^Ty.
+\]</div>
+<p>这组方程叫<strong>正规方程</strong>。直接按行列相乘可算出：</p>
+<div class="math-display">\[
+X^TX=\begin{bmatrix}3&6\\6&14\end{bmatrix},
+\quad
+X^Ty=\begin{bmatrix}10\\23\end{bmatrix}.
+\]</div>
+<p>例如右下角的 \(14\) 来自 \(1^2+2^2+3^2\)，右端的 \(23\) 来自 \(1\cdot2+2\cdot3+3\cdot5\)。这两行正是之前手工解的 \(3b+6a=10\)、\(6b+14a=23\)。</p>
+<p>若矩阵可逆，逆矩阵记为 \((X^TX)^{-1}\)，它表示把右端再变回参数的运算。本例也可以手算：</p>
+<div class="math-display">\[
+\widehat\beta=
+\frac16\begin{bmatrix}14&-6\\-6&3\end{bmatrix}
+\begin{bmatrix}10\\23\end{bmatrix}
+=\frac16\begin{bmatrix}140-138\\-60+69\end{bmatrix}
+=\begin{bmatrix}1/3\\3/2\end{bmatrix}.
+\]</div>
+<p>逆矩阵公式是解同一组方程的另一种记法，不能反过来当作学习的起点。实际写程序也通常直接解最小二乘问题，不必显式算出逆矩阵。</p>
+
+<h3>第八步：“正交投影”到底在投影什么</h3>
+<p>现在把三条实际结果放在一起，看作一个三维点 \(y=(2,3,5)\)。任意候选直线给出的三个预测组成另一个三维点：</p>
+<div class="math-display">\[
+\widehat y=b(1,1,1)+a(1,2,3).
+\]</div>
+<p>改变 \(a,b\)，这个预测点只能在由两个固定方向 \((1,1,1)\)、\((1,2,3)\) 张成的平面上移动。“张成”在这里就是允许把这两个方向各乘一个数再相加；所有能得到的点构成的集合叫 \(X\) 的列空间。</p>
+<p>误差平方和 \(S\) 正是三维实际点与三维预测点之间的距离平方。因此寻找最小二乘解，就是在这个平面上找离 \(y\) 最近的点，这个最近点叫作正交投影。</p>
+<p>两个方向的点积是对应坐标相乘再相加；点积为零叫正交。最优残差 \(e=y-\widehat y\) 与刚才两个方向的点积都为零，已经在第六步实际验证。平面上其他方向都是这两个方向的加权和，所以它也与平面内的每个方向正交。“正交补”只是把所有这类垂直方向组成的集合起了一个名字，不是一个额外需要套用的公式。</p>
+
+<h3>第九步：为什么有时又说“最小二乘是最大似然”</h3>
+<p>前面求解完全没有用到概率。现在额外假设：实际结果是直线给出的平均水平，加上一点独立的随机噪声；噪声以零为中心，小偏差常见、大偏差少见，并服从标准的钟形分布——正态分布。</p>
+<div class="math-display">\[
+y_i=b+ax_i+\varepsilon_i,\qquad
+\varepsilon_i\ \text{彼此独立，且}\ \varepsilon_i\sim N(0,\sigma^2).
+\]</div>
+<p>\(\sigma^2\) 是噪声方差，控制结果通常散得多开。在给定参数时，第 \(i\) 条实际结果的概率密度与 \(\exp[-e_i^2/(2\sigma^2)]\) 成正比；这表示误差平方越大，观察到它就越不容易。连续变量的某个精确点本身概率为零，这里比较的是密度。</p>
+<p>三条噪声独立，联合密度相乘。把固定数据下随参数变化的这份联合密度叫<strong>似然</strong>，记为 \(L(a,b)\)：</p>
+<div class="math-display">\[
+\begin{aligned}
+L(a,b)
+&=\prod_{i=1}^3
+ \frac{1}{\sqrt{2\pi\sigma^2}}
+ \exp\!\left(-\frac{e_i^2}{2\sigma^2}\right)\\
+&=(2\pi\sigma^2)^{-3/2}
+ \exp\!\left(-\frac{e_1^2+e_2^2+e_3^2}{2\sigma^2}\right)\\
+&=(2\pi\sigma^2)^{-3/2}
+ \exp\!\left(-\frac{S(a,b)}{2\sigma^2}\right).
+\end{aligned}
+\]</div>
+<p>先把 \(\sigma^2>0\) 视作固定。前面的系数不随 \(a,b\) 变化；指数函数随括号里的数增加而增加，而括号中是 \(S\) 的负数。因此让似然最大，恰好等于让平方误差 \(S\) 最小。这就是 OLS 与最大似然估计（MLE）的联系。</p>
+<p>取自然对数只是把乘法变成加法、便于计算；对数严格递增，因此不会改变哪里取得最大值：</p>
+<div class="math-display">\[
+-\log L(a,b)
+=\frac32\log(2\pi\sigma^2)+\frac{S(a,b)}{2\sigma^2}.
+\]</div>
+<p>这句话有条件：独立、同方差的正态噪声让负对数似然变成平方误差加一个常数。没有正态假设仍然可以定义并计算 OLS，只是不能直接把它叫作这个概率模型的 MLE。这里“同方差”是说各条记录使用同一个噪声方差。如果各条噪声方差为不同的 \(\sigma_i^2\)，相同计算会得到 \(\sum_i e_i^2/\sigma_i^2\)：噪声更大的记录权重更小。这叫加权平方误差，不能继续不加区分地使用普通平方和。</p>
+
+<h3>选读：QR怎样把这个例子变成更容易解的方程</h3>
+<p>如果你现在只想掌握回归，前面已经完成求解。下面继续把求解器的名字与实际动作对应起来。两个向量“正交”表示点积为零；“单位长度”表示各坐标平方和为1。QR要做的，是把原来两个不垂直的输入列，改写成两个垂直、长度都为1的方向，同时记住它们怎样组合回原输入。</p>
+<p>第一列是 \(c_1=(1,1,1)^T\)，长度为 \(\sqrt{1+1+1}=\sqrt3\)。用每个坐标除以这个长度，就得到单位方向 \(q_1=(1,1,1)^T/\sqrt3\)。第二列是 \(c_2=(1,2,3)^T\)，先计算它沿第一方向的分量：</p>
+<div class="math-display">\[
+q_1^Tc_2=\frac{1+2+3}{\sqrt3}=2\sqrt3.
+\]</div>
+<p>这里的分量为什么是点积？令拿走的倍数为 \(t\)，要求余量与 \(q_1\) 正交，即 \(q_1^T(c_2-tq_1)=0\)。因为 \(q_1^Tq_1=1\)，移项就得到 \(t=q_1^Tc_2\)。把这一部分从 \(c_2\) 中拿走：\(c_2-(2\sqrt3)q_1=(1,2,3)^T-(2,2,2)^T=(-1,0,1)^T\)。剩下这条方向与 \(q_1\) 的点积为零，长度为 \(\sqrt2\)；除以长度后得到 \(q_2=(-1,0,1)^T/\sqrt2\)。所以原来两列可写成：</p>
+<div class="math-display">\[
+c_1=\sqrt3\,q_1,\qquad
+c_2=2\sqrt3\,q_1+\sqrt2\,q_2.
+\]</div>
+<p>把 \(q_1,q_2\) 放进矩阵 \(Q\) 的两列，把上面四个组合系数放进 \(R\)，就得到：</p>
+<div class="math-display">\[
+X=QR,\qquad
+R=\begin{bmatrix}\sqrt3&2\sqrt3\\0&\sqrt2\end{bmatrix}.
+\]</div>
+<p>\(R\) 左下角为0，称为上三角矩阵；这让我们可以从最后一行往回解。因为 \(Q\) 的列互相正交且长度为1，\(Q^TQ=I\)，其中 \(I\) 是对角线为1、其余为0的两行两列单位矩阵。最优残差与这两个方向的点积均为零，所以 \(Q^T(y-QR\beta)=0\)；展开并代入 \(Q^TQ=I\)，才得到 \(R\beta=Q^Ty\)。对本例，右端也逐项能算：</p>
+<div class="math-display">\[
+Q^Ty=\begin{bmatrix}(2+3+5)/\sqrt3\\(-2+5)/\sqrt2\end{bmatrix}
+=\begin{bmatrix}10/\sqrt3\\3/\sqrt2\end{bmatrix}.
+\]</div>
+<p>先解第二行 \(\sqrt2\,a=3/\sqrt2\)，两边乘 \(\sqrt2\) 得 \(2a=3\)，所以 \(a=3/2\)。再解第一行 \(\sqrt3\,b+2\sqrt3\,a=10/\sqrt3\)，两边除 \(\sqrt3\)，得到 \(b+2a=10/3\)，所以 \(b=1/3\)。结果与最开始的两条方程完全一致。</p>
+<p>为什么实现中喜欢这种方式？直接先算 \(X^TX\) 会把不同方向的尺度差异进一步放大；例如某一方向缩小为原来的 \(10^{-4}\)，形成 \(X^TX\) 后对应平方就变成 \(10^{-8}\)，更容易丢失数值精度。QR通过方向变换求同一个答案，不必先形成这个平方矩阵。更一般的SVD会把输入分成方向与放大倍数，第10节会用四个点把它实际乘出来。</p>
+<h3>最后：哪些情形会失效，计算机怎样求解</h3>
+<p>如果所有输入都为 \(1\)，模型每次只能看到 \(a+b\)：\(a=1,b=2\) 与 \(a=2,b=1\) 给出相同预测，不能唯一识别两个参数。矩阵语言称列不独立；“列满秩”表示各输入列没有这种精确重复关系。它是参数能否唯一确定的条件。</p>
+<p>数据中若有一个特别极端的错误值，平方会放大它的影响；若用过去数据预测未来，未来关系变化也不会被最小二乘自动解决。拟合误差小，不能单独证明样本外预测好。</p>
+<p>实际计算可调用 <code>numpy.linalg.lstsq(X, y, rcond=None)</code>。其中 <code>X</code> 就是上面的三行两列表，<code>y</code> 是三个结果；返回的参数顺序与列顺序一致，先截距、再斜率。QR的实际计算已经在上面的选读段逐步演示；SVD与降维的联系放到第10节，用同一组数据继续说明。</p>
+<div class="trap"><strong>读完后应当能自己重做的事</strong><p>遮住结果，重新写出三项平方误差；解释为什么两种小调整分别导出残差和为零、输入加权残差和为零；手解 \(a,b\) 并算出误差平方和 \(1/6\)；最后把两条方程译成矩阵。能做到这些，再记正规方程和投影的名称才有意义。</p></div>
+</section>
+<section id="logistic" class="lesson"><h2>03 · 逻辑回归：从一条概率预测手推到更新参数</h2>
+<p>任务是预测某事件明天会不会发生，答案只用\(y=1\)或\(y=0\)记录。我们希望输出概率：0.8表示在同样条件下，大约八成会发生，而不是“答案就是0.8”。普通线性函数可能输出−2或3，超出概率范围，所以先算一个没有范围限制的分数，再把它转成概率。</p>
+<h3>从分数到概率：先只看一个输入</h3>
+<p>输入\(x\)是一项特征，权重\(w\)决定它影响多大，截距\(b\)决定基础倾向。先计算\(z=wx+b\)。再使用下面这条固定转换规则，称为sigmoid：</p>
+<div class="math-display">\[p=\sigma(z)=\frac1{1+e^{-z}}.\]</div>
+<p>代入\(z=0\)，得到\(p=1/2\)；代入\(z=1\)，得到\(p\approx0.7311\)；\(z=-1\)时约0.2689。分数越大，概率越接近1，但不会超过1。这个式子也等价于\(p/(1-p)=e^z\)：事件发生与不发生的概率之比，随着分数按指数改变。取log后，这个概率比的log恰为线性分数\(z\)，这就是模型具体作出的假设。</p>
+<h3>为什么训练要用负log概率</h3>
+<p>真实标签为1时，模型分给它的概率是\(p\)；真实为0时，分给它的概率是\(1-p\)。若希望已观察答案尽可能容易出现，就要让这些真实答案的概率尽可能大。对独立样本，联合概率是各项相乘；取log后变成相加，再加负号转成最小化问题。</p>
+<div class="math-display">\[\ell(p,y)=-y\log p-(1-y)\log(1-p).\]</div>
+<p>这个统一写法没有隐藏步骤：\(y=1\)时第二项乘0消失，只剩\(-\log p\)；\(y=0\)时第一项消失，只剩\(-\log(1-p)\)。它叫二元交叉熵，也就是本模型的负log似然。若真实为1，预测0.8的损失为\(-\log0.8\approx0.2231\)，预测0.2则为1.6094；对真实答案越自信，罚分越小。</p>
+<h3>把导数每一层都乘出来</h3>
+<p>参数先影响\(z\)，\(z\)再影响\(p\)，\(p\)最后影响损失，因此要按链式法则逐层求变化率。先固定标签\(y\)，只对概率求导：</p>
+<div class="math-display">\[\frac{\partial\ell}{\partial p}=-\frac y p+\frac{1-y}{1-p}=\frac{-y(1-p)+(1-y)p}{p(1-p)}=\frac{p-y}{p(1-p)}.\]</div>
+<p>接着对sigmoid求导。把\(p=(1+e^{-z})^{-1}\)看成外层倒数、内层指数，导数为\(e^{-z}/(1+e^{-z})^2\)。另一方面，\(p(1-p)\)代入相同表达式也恰好得到它，因此\(\partial p/\partial z=p(1-p)\)。两层相乘，分母被约掉：</p>
+<div class="math-display">\[\frac{\partial\ell}{\partial z}=\frac{p-y}{p(1-p)}p(1-p)=p-y,\qquad \frac{\partial\ell}{\partial w}=(p-y)x,\quad \frac{\partial\ell}{\partial b}=p-y.\]</div>
+<p>最后两式来自\(z=wx+b\)：对\(w\)求导为\(x\)，对\(b\)为1。多个输入时，每个权重各乘自己那项输入；一批样本时再按既定损失的求和或平均方式汇总，不要少除或多除样本数。</p>
+<h3>真的更新一次，看损失是否下降</h3>
+<p>取\(x=2,y=1,w=0,b=0\)。为了只观察一个参数，本次固定\(b=0\)不更新。初始\(z=0,p=0.5\)，损失\(\log2\approx0.6931\)。权重导数\((0.5-1)\times2=-1\)，学习率取0.5，更新\(w_{\rm new}=0-0.5(-1)=0.5\)。新分数为1，概率0.7311，真实标签的损失降到约0.3133。</p>
+<p>导数是负数时，增加权重会局部降低损失；梯度下降中的减号正是选择这个方向。步长过大仍可能造成不稳定，因此“方向正确”不意味着任意学习率都正确。</p>
+<p><strong>面试追问：</strong>分类一定用0.5作阈值吗？若误报成本是漏报的9倍，预测正类的成本为\(9(1-p)\)，负类为\(p\)，只有\(9(1-p)\lt p\)，即\(p\gt0.9\)，才应判正。估概率与根据成本作决定是两步。<strong>边界：</strong>完全可分数据在无正则时可能让参数不断增大而没有有限MLE；计算中应使用稳定的log概率实现，避免先算巨大指数后溢出。</p>
+</section><section id="bias-variance" class="lesson"><h2>04 · 偏差与方差：用四种结果看懂平均预测误差</h2>
+<p>假设同一个输入对应的真实平均答案是2，但实际答案仍会随机为1或3，各占一半。即使已经知道平均数2，也不可能提前知道这次到底是1还是3。现在比较两种训练方法：第一种换一批训练数据后，可能预测1，也可能预测3；第二种总预测1.5。哪一种在新数据上平均更准？</p>
+<h3>先把“数据噪声”和“训练不稳定”分开</h3>
+<p>第一种方法预测1或3，各一半。新答案也独立地为1或3，因此有四种等概率组合。预测1遇答案1，误差平方0；预测1遇3，误差平方4；预测3遇1，误差平方4；预测3遇3，误差平方0。平均测试平方误差为\((0+4+4+0)/4=2\)。</p>
+<p>这个方法的平均预测是2，正好等于真实规律，所以没有系统偏离。但每次换训练集，它的预测会在1和3间晃动。第二种方法总预测1.5，平均测试平方误差是\([(1-1.5)^2+(3-1.5)^2]/2=1.25\)。它有系统偏离，却比第一种方法平均更准。这已经说明“无偏”不自动等于“误差最小”。</p>
+<h3>给刚才的三种误差来源命名</h3>
+<p>固定某个输入\(x\)，真实平均答案写为\(f^*(x)\)。实际答案\(Y=f^*(x)+\epsilon\)，其中\(\epsilon\)叫噪声，给定输入时平均为0，方差为\(\sigma^2\)。本例\(f^*=2\)，噪声取−1或1，因此\(\sigma^2=1\)。</p>
+<p>训练数据集用\(D\)表示，不同训练集产生不同预测\(\widehat f_D(x)\)。把反复换训练集后预测的平均记为\(m(x)=E_D[\widehat f_D(x)]\)。<strong>偏差</strong>是\(m-f^*\)，<strong>方差</strong>是预测围绕\(m\)的波动，<strong>不可约噪声</strong>是实际答案即使围绕真实平均也仍有的随机性。</p>
+<h3>不是背结论：展开误差为什么只剩三项</h3>
+<p>先在预测误差中加上再减去\(m\)，把它分成三份：</p>
+<div class="math-display">\[Y-\widehat f_D=(f^*-m)+(m-\widehat f_D)+\epsilon.\]</div>
+<p>平方后得到三个平方项和三个交叉项。第一份\(f^*-m\)在固定\(x\)时是常数；第二份对训练集求平均为0，因为\(E_D[m-\widehat f_D]=0\)。所以前两份交叉项的平均为0。再假定测试噪声与训练集独立、且噪声均值0，那么涉及噪声的两个交叉项也都为0。</p>
+<div class="math-display">\[E_{D,\epsilon}[(Y-\widehat f_D)^2]=(f^*-m)^2+E_D[(\widehat f_D-m)^2]+E[\epsilon^2].\]</div>
+<p>现在把第一种方法代回去：\(m=2\)，偏差平方0；预测围绕2的方差为\([(1-2)^2+(3-2)^2]/2=1\)；噪声为1，总和2。第二种方法\(m=1.5\)，偏差平方0.25，训练波动为0，噪声仍为1，总和1.25。两次都与直接列举完全一致。</p>
+<h3>怎样把分解用于真正训练</h3>
+<p>若模型简单到不管输入都报一个常数，复杂规律可能学不到，偏差就大；如果模型能把很小训练集的每个噪声点都穿过去，训练误差虽低，换一批数据边界却可能剧变，方差就大。增加数据、加参数惩罚、平均多个互补模型，主要是控制某些不稳定来源；增加模型表达能力则可能减少欠拟合，但也可能提高波动。</p>
+<p>学习曲线是把训练量逐步增大，分别画训练与验证误差。两边都高时先查任务、输入与模型是否表达不足；训练低验证高时，先查不稳定、泄漏和分布差异。它只提供诊断线索，不能从一张曲线精确读出三个分量。真正的偏差方差定义涉及反复训练的平均，不是把一次训练误差叫“偏差”、一次验证误差叫“方差”。</p>
+<p><strong>面试追问：</strong>模型越大测试误差一定越高吗？不一定，正则、优化、数据结构甚至过参数化现象都会改变趋势，必须用同样的验证过程比较。<strong>边界：</strong>上式是平方损失下、固定输入位置的分解；换成分类0/1损失不能原样照搬，训练与测试共享噪声时交叉项也未必为0。</p>
+</section><section id="regularization" class="lesson"><h2>05 · 正则化：为什么宁愿不完全拟合，也要让参数小一点</h2>
+<p>先只有一个要学的数\(\beta\)。训练数据建议它取4，因此原始损失为\((\beta-4)^2/2\)，显然在4处最小。如果训练样本很少、这个4可能受噪声影响，我们可以额外惩罚过大的参数，宁愿留一点训练误差，也不让估计过度追随这批数据。</p>
+<h3>L2惩罚先用一个数手算</h3>
+<p>给目标加上\(\lambda\beta^2/2\)，这就是L2正则。\(\lambda\)是惩罚强度，不是数据自动给出的真值；它通常通过训练之外的验证选择。本例先取\(\lambda=1\)：</p>
+<div class="math-display">\[J(\beta)=\tfrac12(\beta-4)^2+\tfrac12\beta^2.\]</div>
+<p>直接比较：取4时原误差为0，但惩罚为8，总目标8；取2时原误差为2、惩罚也为2，总目标4。因此新目标确实更喜欢2。要找精确最小点，对两项分别求导，得到\((\beta-4)+\lambda\beta=0\)，移项为\((1+\lambda)\beta=4\)。</p>
+<div class="math-display">\[\widehat\beta=\frac4{1+\lambda}.\]</div>
+<p>\(\lambda=0\)回到4；\(\lambda=1\)得到2；惩罚更大时继续向0收缩。这个最小例子说明了Ridge（岭回归）的动作：不是把模型输出随意变小，而是在“拟合训练答案”和“约束参数幅度”之间重新作选择。</p>
+<h3>为什么相关输入特别需要稳定性</h3>
+<p>假设两列输入完全一样，模型只通过\(w_1+w_2\)影响预测。只要求这个和为2时，\((2,0)\)、\((1,1)\)、\((100,-98)\)在训练上预测相同。最后一组系数虽然极大，却可以互相抵消；新输入哪怕有一点测量差，抵消就可能被打破。</p>
+<p>加入\(w_1^2+w_2^2\)惩罚后，在“和固定为2”的这些组合里，\((1,1)\)的平方和2，小于\((2,0)\)的4，更远小于\((100,-98)\)的19604。真正同时优化损失和惩罚时，总和也可能小于2，但“避免大系数互相抵消”的机制已经可以看见。</p>
+<p>一般线性模型的L2目标为\(\|y-X\beta\|^2/2+\lambda\|\beta\|^2/2\)。前一本节已经逐项解释最小二乘导数；增加的每个参数惩罚导数就是\(\lambda\beta_j\)，所以联立方程变为\((X^TX+\lambda I)\beta=X^Ty\)。这里\(I\)只在对角线上为1，把每个权重的平方惩罚加入自己那条方程，不会凭空混入其他权重。</p>
+<h3>L1为什么可以把参数真的压成0</h3>
+<p>现在改惩罚为\(\lambda|\beta|\)，称L1；用于线性回归时称Lasso。先看同一个单坐标问题，训练建议的值用\(z\)表示：</p>
+<div class="math-display">\[J(\beta)=\tfrac12(\beta-z)^2+\lambda|\beta|.\]</div>
+<p>必须分正负两侧，不能假装绝对值在0也有普通导数。若\(\beta\gt0\)，绝对值等于\(\beta\)，导数为\(\beta-z+\lambda\)，候选解\(z-\lambda\)只有在\(z\gt\lambda\)时才在这一侧。若\(\beta\lt0\)，绝对值为\(-\beta\)，导数为\(\beta-z-\lambda\)，候选解\(z+\lambda\)只在\(z\lt-\lambda\)时合法。</p>
+<p>如果\(-\lambda\le z\le\lambda\)，两边都不产生合法的非零最小点，最小值落在尖点0。例\(z=4,\lambda=1\)得到3；\(z=0.5,\lambda=1\)得到0。这叫软阈值：先减掉一个门槛，不够门槛就消失。多变量有相关时，不能把原始每一列独立套这个简式，通常需要迭代求解。</p>
+<h3>怎样用，怎样避免错误解释</h3>
+<p>特征单位改变会改变参数数值：同一影响用“元”和“万元”表示，所需权重不同。统一惩罚前要认真处理尺度；均值、标准差只能在训练集估计，再用于验证数据。截距通常单独处理，不和普通权重一样惩罚。早停是另一种限制拟合的方式：只训练有限步，先验证再决定何时停，并不是每种模型中都与L2完全等价。</p>
+<p><strong>面试追问：</strong>非零Lasso系数是否证明这个变量有因果作用？不证明，相关变量可能互相替代，选择也可能随样本变化。<strong>边界：</strong>正则可改善估计稳定性，但不能修复未来信息泄漏、错误标签或无法成交的交易假设；惩罚强度不能看着最终测试收益反复调。</p>
+</section><section id="optimization" class="lesson"><h2>06 · 梯度下降：方向对了，为什么还可能越走越远</h2>
+<p>训练模型可以先看成“找一个让损失小的数”。目标\(J(w)=w^2/2\)，最低点显然为0。当前\(w=1\)，导数\(J'(w)=w=1\)表示往右增加参数会提高损失，因此应往左走。梯度下降规定：把当前参数减去“步长×当前导数”。</p>
+<div class="math-display">\[w_{t+1}=w_t-\eta J'(w_t).\]</div>
+<p>\(t\)只是第几次更新，\(\eta\)叫学习率，决定每次走多大。这里\(w_{t+1}=(1-\eta)w_t\)。取\(\eta=0.5\)，从1变成0.5、0.25、0.125，平方损失依次下降；取\(\eta=1\)，一步就到0。但若取3，从1变成−2，再变4，再变−8，虽然每次都按负梯度方向走，却越来越远。</p>
+<h3>收敛条件不是经验口号，可以直接算</h3>
+<p>把目标改成\(J(w)=aw^2/2\)，\(a\gt0\)。\(a\)越大，曲面弯得越急；导数为\(aw\)，更新倍率为\(1-\eta a\)。要让距离不断缩小，必须让倍率的绝对值小于1：</p>
+<div class="math-display">\[|1-\eta a|\lt1\quad\Longleftrightarrow\quad -1\lt1-\eta a\lt1\quad\Longleftrightarrow\quad0\lt\eta\lt\frac2a.\]</div>
+<p>例如\(a=10\)，稳定步长应小于0.2。选0.05时倍率0.5，每次缩小一半；选0.3时倍率−2，符号来回翻且幅度翻倍。符号翻转本身未必坏，幅度是否收缩才决定这一简单模型是否收敛。</p>
+<h3>多个方向速度不同：理解“条件数”</h3>
+<p>现在有两个参数，目标\(J(u,v)=(100u^2+v^2)/2\)。第一项很陡，第二项很平。分别求偏导得到\((100u,v)\)。从\((1,1)\)出发，若统一步长为0.01，第一步\(u\)直接到0，\(v\)却只从1到0.99。第100步\(v=0.99^{100}\approx0.3660\)，仍没到0。</p>
+<p>想把\(v\)走快而把步长改成1，\(u\)方向的倍率就变−99，会剧烈发散。因此不能只说“学习率大一点更快”。这个例子的最大曲率是100、最小曲率是1，比值100叫条件数；更一般的二次问题用Hessian的最大、最小正特征值计算同一比值。Hessian是各参数二阶导数组成的表，特征方向表示互不混合的主要弯曲方向，本例正好就是两个坐标轴。</p>
+<p>缩放特征、合适的参数化或预条件化，目的之一是让各方向尺度更接近，避免一个步长被最陡方向限制。但“所有特征标准化后一定好优化”也不是定理，相关性和目标结构仍会影响曲率。应比较相同目标下的收敛与验证表现。</p>
+<h3>为什么只看一小批样本也能训练</h3>
+<p>总损失若是所有样本损失的平均，其梯度也是各样本梯度的平均。全量计算每一步都扫全部数据，代价高；随机梯度下降（SGD）每次随机选一个或一小批样本，用它们的平均梯度估计全量梯度。只要抽样机制正确，这个估计的平均方向与全量一致，但每步会有随机波动。</p>
+<p>用两个样本的当前梯度−3和1作例子，全量梯度是−1。随机等概率选一个，可能读到−3，也可能1，单步甚至会朝相反方向；但重复抽样的平均为\((-3+1)/2=-1\)。小批次不是每一步都使总损失下降的保证，它是用更便宜、更频繁的更新换取带噪声的方向信息。</p>
+<p>batch就是每次抽的样本数。更大batch一般能降低梯度估计噪声，但一次更新也更贵；应比较相同计算预算达到的验证结果，而不是只比较更新次数。Adam会跟踪梯度的一阶、二阶滑动统计量调坐标步长，其细节可后学；本节先掌握更新式、步长与曲率为何相关。</p>
+<p><strong>面试追问：</strong>损失一直下降是否表示模型越来越好？只证明训练目标在改善，新数据可能已开始变差。<strong>边界：</strong>上面的精确收敛区间针对正曲率二次目标；深网络不全是这种碗形，随机梯度也另有假设，不能把一维公式当作所有优化器的通用保证。</p>
+</section><section id="trees" class="lesson"><h2>07 · 决策树：逐个试一个切口，看看误差能少多少</h2>
+<p>任务是根据一个输入数\(x\)预测连续答案\(y\)。只有四条训练数据：\((1,1),(2,1),(3,5),(4,5)\)。如果必须用一个数预测全部样本，应该报什么？如果允许按输入大小分成两组，再分别报一个数，能否更准？这就是最简单回归树的起点。</p>
+<h3>不切分时，先算清基准误差</h3>
+<p>按平方损失，最佳常数是标签平均值\((1+1+5+5)/4=3\)。因此四条预测都为3，残差分别−2、−2、2、2，平方和为16。这里的平方残差和常缩写为SSE；它是本节比较切分的标准，不需要先引入额外概率模型。</p>
+<div class="math-display">\[\mathrm{SSE}_{\rm parent}=(1-3)^2+(1-3)^2+(5-3)^2+(5-3)^2=16.\]</div>
+<p>一棵树内部的分支是在问“输入是否不大于某个阈值”。走到不再继续分的组，称为叶子。回归叶子的预测就是该组标签均值，因为上一节已经证明均值使常数平方误差最小。</p>
+<h3>候选切口一个个算，而不是猜“这里看起来合适”</h3>
+<p>先试阈值2.5。左组输入1、2，标签都为1，所以预测1、组内SSE为0。右组输入3、4，标签都为5，预测5、SSE也为0。总误差从16降到0，改善16。</p>
+<p>再试1.5。左边只有标签1，误差0；右边标签1、5、5，平均为\(11/3\)。三个残差为\(-8/3,4/3,4/3\)，平方和如下：</p>
+<div class="math-display">\[\mathrm{SSE}_{\rm right}=\frac{64+16+16}{9}=\frac{32}{3},\qquad \mathrm{gain}=16-\frac{32}{3}=\frac{16}{3}.\]</div>
+<p>所以2.5比1.5更好。阈值3.5按对称性也只有\(16/3\)增益。在这个只有一个特征、四个不同输入的例子里，只需比较相邻输入之间的三个切口；切在1和2之间的任何位置都会产生同一分组，不必搜索无穷多个实数阈值。</p>
+<p>多个特征时，对每列分别枚举候选阈值，比较同一个损失下降量，选择当前最好的一项。切完之后再在左右子组内重复同样操作。每次只选眼前最优，不保证最后整棵树在所有可能树中全局最优，所以称为贪心算法。</p>
+<h3>分类树用“组内混杂程度”代替平方误差</h3>
+<p>若答案只有0、1，叶子可报告其中正类比例。四个标签为0、0、1、1时，父组两类各半，混杂程度高；按合适阈值分开后，每组只剩同一类，混杂为0。常用Gini指标为\(1-\sum_k p_k^2\)，其中\(p_k\)是组内第\(k\)类比例。</p>
+<p>两类各半时Gini为\(1-0.5^2-0.5^2=0.5\)；全为一类时为\(1-1^2-0^2=0\)。比较切分要按左右样本比例加权：左组占四分之一、右组三分之三时，不能把两组混杂程度不加权地直接平均。熵是另一种混杂指标，目标相似，但具体数值与切分选择可能不同。</p>
+<h3>为什么树很容易把噪声也切出来</h3>
+<p>如果不限制深度，继续切到每个叶子只有一条记录，叶预测就能等于该条标签，训练SSE变0。但这只是给每条已见记录单独分配答案；新样本所在叶子的预测可能主要由一个偶然噪声点决定。</p>
+<p>因此要控制最大深度、最小叶样本数、最小增益或进行剪枝，并在独立数据上选择参数。“更纯”只说明训练组更整齐，未必意味着未来预测更好。特别在金融噪声很大时，一片只含少数样本的叶子不足以证明稳定规律。</p>
+<p>树不需要先假设线性关系：它用不同区域里的常数近似整体形状，也能先按某特征分状态再按另一特征分层，表示特征交互。但普通回归树不会自然延伸一条训练范围外的直线；新输入超过最大训练值时，通常仍落在边界叶子，输出原来那组的常数。</p>
+<p><strong>面试追问：</strong>需要标准化输入吗？普通轴对齐树主要使用值的排序与阈值分组，严格单调变换通常不改变可实现的分组，所以通常不像距离模型那样依赖尺度。<strong>边界：</strong>类别高基数、缺失值处理、训练增益重要性都有额外问题；特征被频繁切分不等于它是因果变量。</p>
+</section><section id="forest" class="lesson"><h2>08 · Bagging与随机森林：为什么平均能变稳，也为什么不能无限变好</h2>
+<p>假设两个模型都围绕正确答案随机出错：误差各为−1或1，各一半，而且彼此独立。只看一模型，误差平方始终1；把两者预测平均以后，误差会怎样？先把四种情况列全，比直接记一个集成公式更清楚。</p>
+<h3>平均降低误差波动的最小例子</h3>
+<p>两误差\((-1,-1),(-1,1),(1,-1),(1,1)\)各概率1/4。平均误差分别为−1、0、0、1，因此均值0，方差为\((1+0+0+1)/4=1/2\)。两个模型如果错在不同方向，会互相抵消一部分。</p>
+<p>但如果两个模型永远同时为−1或同时为1，平均以后仍是−1或1，方差仍1。数量相同，结果完全不同；关键不只是模型数，还要看它们是否一起犯同样的错误。</p>
+<h3>把“共同犯错”写进公式</h3>
+<p>设每个模型误差均值为0、方差都为\(\sigma^2\)，任意两模型误差相关都为\(\rho\)，于是协方差为\(\rho\sigma^2\)。平均\(B\)个误差时，方差展开中有\(B\)个自身平方项，以及\(B(B-1)\)个不同模型的乘积项：</p>
+<div class="math-display">\[\operatorname{Var}\!\left(\frac1B\sum_{b=1}^B\epsilon_b\right)=\frac{B\sigma^2+B(B-1)\rho\sigma^2}{B^2}=\sigma^2\left(\rho+\frac{1-\rho}{B}\right).\]</div>
+<p>这只是把平方展开再取平均，没额外假定平均模型无敌。代\(B=100,\sigma^2=1,\rho=0.2\)，得到\(0.2+0.8/100=0.208\)。树数即使无限增加，公共误差那一部分仍留下0.2。若\(\rho=0\)，才有熟悉的\(1/B\)下降。</p>
+<p>这里各模型方差相同、两两相关相同是为了让公式易读。真实模型不完全对称时，就直接使用各自的方差和协方差相加；“误差互补比只看单模型分数更重要”的结论仍然成立。</p>
+<h3>Bagging怎样制造不同模型</h3>
+<p>Bagging从同一训练集有放回抽样，每次抽出与原集同样多的行，然后各自训练模型，最后平均。原集四条记录编号1、2、3、4，一次可能抽成2、2、4、1：第2条重复两次，第3条一次未出现。另一棵树可能抽成3、4、3、1，见到的样本权重就不同。</p>
+<p>单棵深树对样本变化很敏感，重采样会产生不同切分，平均能缓解部分不稳定。对本来很稳定、偏差很大的模型，重复抽样未必有同样大的收益；平均也不会自动纠正所有模型共有的错误标签或未来信息泄漏。</p>
+<p>随机森林再加一层随机性：每次找切分时，不允许所有特征都竞争，只从随机选的一部分特征中找。否则一个特别强的特征可能让每棵树都在同处先切，树彼此仍很像。限制候选特征会让单树有时变弱，却可能降低误差相关，整体平均反而更好。</p>
+<h3>怎样评估，避免把袋外样本当万能测试集</h3>
+<p>一棵树没有抽到的记录叫袋外样本，简称OOB。可以只用“未训练过该样本的树”预测它，形成方便的内部评估。但是这种评估依赖普通随机抽样的适用条件，不能替代所有部署验证。</p>
+<p>金融时间序列若把不同日期混在一起抽，某棵树可能用未来训练、再预测过去；标签还可能覆盖相同未来区间。即使某一行本身袋外，相关的另一行仍可能把答案信息带进来。因此要先按真实时间边界划分训练与验证，再在训练部分内部做随机森林；最终成绩来自严格留出的未来区间。</p>
+<p><strong>面试追问：</strong>增加到一万棵树是否必然更好？通常能稳定有限树数的随机波动，但收益会递减，计算开销也增大，不能消灭共同偏差。<strong>边界：</strong>上面的方差计算是误差波动的教学模型，不是对每个具体森林测试误差的保证；还需检查预测偏差、数据漂移及业务成本。</p>
+</section><section id="boosting" class="lesson"><h2>09 · Gradient Boosting：让下一棵树学习当前还错在哪里</h2>
+<p>只有两条数据：输入1对应答案3，输入2对应答案7。先不用树，给两条都预测平均值5。两项残差“真实减预测”分别为−2和2。现在允许加一个小模型，专门修正这两个方向相反的错误，这就是顺序提升模型的基本想法。</p>
+<h3>第一次加模型，完整算一次损失</h3>
+<p>定义总损失为两条平方误差和的一半：</p>
+<div class="math-display">\[J(F)=\frac12\sum_i(y_i-F(x_i))^2.\]</div>
+<p>初始模型\(F_0\)都报5，总损失为\((4+4)/2=4\)。现在训练一棵只有一次切分的小树：输入小于等于1.5报−2，大于1.5报2。注意这棵树的训练答案是<strong>残差</strong>，不是原来的3和7；它记为\(h_1\)。</p>
+<p>取学习率\(\eta=0.5\)，只采纳一半修正。新的预测为\(F_1=F_0+0.5h_1\)，于是两条变成4和6。残差缩为−1和1，新损失\((1+1)/2=1\)。再训练下一树拟合−1和1，仍只加一半，预测变3.5和6.5，损失变\((0.25+0.25)/2=0.25\)。每一步都把尚未修好的部分交给下一个小模型。</p>
+<h3>为什么“拟合残差”等于梯度下降</h3>
+<p>先把某条样本当前预测当作一个可调的数\(F_i\)。单条损失为\((y_i-F_i)^2/2\)。先对内部误差求导，再乘内部对\(F_i\)的导数−1：</p>
+<div class="math-display">\[\frac{\partial\ell_i}{\partial F_i}=(y_i-F_i)(-1)=F_i-y_i.\]</div>
+<p>负梯度为\(y_i-F_i\)，恰好就是残差。这表示：如果每条预测都能独立调整，损失希望它朝残差方向移动。但真实模型不能为每一条输入单独存任意答案，所以训练一棵受限制的小树去<strong>近似这些希望的调整量</strong>。再把它加进总体函数，就把普通“参数空间走一步”变成“预测函数加一小块”。</p>
+<div class="math-display">\[r_i^{(m)}=-\left.\frac{\partial L(y_i,F)}{\partial F}\right|_{F=F_{m-1}(x_i)},\qquad F_m(x)=F_{m-1}(x)+\eta h_m(x).\]</div>
+<p>上式每一项都有例子对应：\(r_i^{(1)}\)为−2和2，\(h_1\)是按1.5切分的修正树，\(F_m\)是已经加了\(m\)棵树的总预测。弱学习器就是每步使用的受限模型，例如浅树，并不是要求它自己一次解决完整任务。</p>
+<h3>换损失时，不要继续机械地写普通残差</h3>
+<p>分类若使用逻辑回归的交叉熵，整体函数\(F\)通常输出logit分数，而概率为\(p=\sigma(F)\)。前面的链式推导已得到对分数的导数\(p-y\)，所以修正目标为\(y-p\)。新树加到分数上，随后重新经sigmoid得到概率；不能把树输出直接加到概率上，否则可能得到超过1的“概率”。</p>
+<p>有些实现再使用二阶导数来估计一步该走多大。固定一个叶子，设它给所有叶内样本加同一个数\(w\)。当前各样本一阶导数为\(g_i\)、二阶导数为\(h_i\)，把损失在当前点作二阶近似，再加\(\lambda w^2/2\)惩罚，和\(w\)有关的部分是：</p>
+<div class="math-display">\[Q(w)=\Big(\sum_i g_i\Big)w+\frac12\Big(\sum_i h_i+\lambda\Big)w^2.\]</div>
+<p>对\(w\)求导得到\(\sum g_i+(\sum h_i+\lambda)w\)，令其为0，叶权为\(-\sum g_i/(\sum h_i+\lambda)\)。这不是额外神秘规则，只是一个一元二次函数求最小值；整棵树如何选结构还需比较切分增益和复杂度。</p>
+<p><strong>面试追问：</strong>学习率很小是不是一定不拟合噪声？不是，小步走很多棵树仍可能过拟合。应同时选择树深、树数和学习率，早停依据独立验证成绩。<strong>边界：</strong>上述两样本例子故意让小树能完美拟合残差；实际受限树可能只能部分修正，金融时间验证与成本评估仍不可省略。</p>
+</section><section id="pca" class="lesson"><h2>10 · PCA：用四个点看懂最大方差方向和信息压缩</h2>
+<p>四条二维记录分别为\((2,0),(-2,0),(0,1),(0,-1)\)。现在只能保留每条记录的一个数，之后再尽量还原原来的两个数。保留横坐标还是纵坐标？横向变化更大，丢掉它损失可能更严重。PCA就是把这个直觉推广到任意方向，而不局限于原坐标轴。</p>
+<h3>先中心化，再比较最简单的两个方向</h3>
+<p>中心化表示每一列减去该列平均。本例两列均值已经为0。沿横轴保留投影后，四个编码是2、−2、0、0，方差\((4+4+0+0)/4=2\)。沿纵轴保留则是0、0、1、−1，方差\((0+0+1+1)/4=0.5\)。</p>
+<p>这里用分母\(n=4\)定义样本矩阵的方差；改成\(n-1\)会把所有方向一起乘同一比例，不改变哪个方向最大。PCA先选横向，是为了保留更多输入变化，并没有用任何预测标签。</p>
+<h3>任意斜方向，编码到底怎样计算</h3>
+<p>取单位方向\(v=(\cos\theta,\sin\theta)\)，其长度为1。每个点\(x\)的编码是内积\(x^Tv\)：对\((2,0)\)为\(2\cos\theta\)，对\((-2,0)\)为\(-2\cos\theta\)，另两个为\(\pm\sin\theta\)。四个编码均值仍为0，因此方差为：</p>
+<div class="math-display">\[\frac{8\cos^2\theta+2\sin^2\theta}{4}=2\cos^2\theta+\frac12\sin^2\theta=\frac12+\frac32\cos^2\theta.\]</div>
+<p>因为\(\cos^2\theta\le1\)，最大值是2，在横轴方向达到。要求方向长度为1非常关键：否则把方向向量乘100，所有编码和方差都会被放大，比较就失去意义。</p>
+<h3>为什么会出现协方差矩阵与特征值</h3>
+<p>把四条中心化记录写成\(4\times2\)矩阵\(X\)。协方差矩阵\(S=X^TX/4\)的第一对角项是横坐标平方平均2，第二项是纵坐标平方平均0.5；非对角项是横纵乘积平均，本例为0。</p>
+<div class="math-display">\[S=\begin{pmatrix}2&0\\0&1/2\end{pmatrix},\qquad \operatorname{Var}(Xv)=v^TSv.\]</div>
+<p>第二式只是把前面的四个内积平方相加写成矩阵乘法。要最大化它同时要求\(v^Tv=1\)，可以把约束用一个辅助数\(\lambda\)加入目标：\(v^TSv-\lambda(v^Tv-1)\)。对每个方向分量求导，前项给\(2Sv\)，后项给\(2\lambda v\)，令导数为0得到\(Sv=\lambda v\)。</p>
+<p>这叫特征向量方程：经过\(S\)变换后方向不变，只放大\(\lambda\)倍。左乘\(v^T\)得到\(v^TSv=\lambda\)，所以特征值就是该单位方向的方差；选最大特征值对应的方向。对本例，横轴倍数2、纵轴倍数0.5，正好还原手算结果。</p>
+<h3>压缩后怎样还原，丢掉了什么</h3>
+<p>若保留横向\(v=(1,0)\)，编码\(z=x^Tv\)，还原为\(zv\)。前两点完整还原，后两点都变成\((0,0)\)，每点损失平方1，平均重构误差0.5。保留纵向则前两点各损失4，平均误差2。保留最大方差方向也最小化这一类正交线性压缩的平方重构损失。</p>
+<p>多个主成分要求彼此正交，避免第二个方向只是重复第一个。实际计算可使用SVD：把\(X\)拆成方向与放大倍数，取前几个方向；这是稳定求解方法，基础理解不依赖先会手工分解大型矩阵。</p>
+<p><strong>面试追问：</strong>保留99%输入方差就保留了99%预测能力吗？没有。本例若答案由纵坐标正负决定，横轴虽然解释更多输入波动，却把真正预测信息丢掉。标准化也会改变选择：把两列各除自己标准差后，两列方差都为1，原来“横轴更重要”的尺度判断消失。<strong>边界：</strong>PCA只在训练集拟合均值与方向，再作用于新数据；不看标签也不代表可以读取未来输入分布。</p>
+</section><section id="svm" class="lesson"><h2>11 · SVM与核：先把一条分界线离样本多远算清楚</h2>
+<p>一维输入中，\(x=1,2\)为负类，\(x=4,5\)为正类。把分界点放2.5或3.5都能把训练数据分对，为什么更喜欢3？因为3到最近两侧样本2和4的距离都为1，而2.5到最近点只有0.5。SVM在可分场景里追求的是尽量宽的安全间隔。</p>
+<h3>分数、符号与几何距离分别是什么</h3>
+<p>把标签写成\(y=-1\)或\(y=1\)，分类分数为\(f(x)=wx+b\)，正分判正，负分判负。取\(w=1,b=-3\)，分界点为3，四个样本分数为−2、−1、1、2。乘标签后全为正，且最小值为1，表示最近样本也分对并留了一点距离。</p>
+<p>但是分数本身不能直接当距离。若把\(w,b\)同时乘10，分界点仍是3，所有分数却扩大10倍，几何没有改变。一维距离应是\(|wx+b|/|w|\)，高维则是\(|w^Tx+b|/\|w\|\)。分子随参数同比放大，分母也放大，真正距离才不变。</p>
+<h3>用规范化把“最大间隔”变成一个可优化问题</h3>
+<p>对于已经分开的数据，可以整体缩放参数，使最近的样本满足\(y_i(w^Tx_i+b)=1\)，其他样本不小于1。在这个约定下，最小几何距离就是\(1/\|w\|\)。最大化距离等价于最小化\(\|w\|^2/2\)：</p>
+<div class="math-display">\[\min_{w,b}\frac12\|w\|^2,\qquad y_i(w^Tx_i+b)\ge1\quad\text{对所有训练样本}.\]</div>
+<p>本例在最近负点2与正点4处，约束分别为\(-(2w+b)\ge1\)、\(4w+b\ge1\)。两式相加得\(2w\ge2\)，即\(w\ge1\)。最小范数取\(w=1\)，两式迫使\(b=-3\)，得到前面的中点分界。这次不是看图猜中点，而是由约束算出来。</p>
+<h3>有噪声无法完全分开时怎么办</h3>
+<p>若额外出现一条\(x=3.5\)却标为负类，硬要求所有样本都留足间隔可能不合理，甚至根本不可行。软间隔允许违规，并用hinge损失罚分：</p>
+<div class="math-display">\[\ell(y,z)=\max(0,1-yz),\qquad J=\frac12\|w\|^2+C\sum_i\ell(y_i,w^Tx_i+b).\]</div>
+<p>保持原分界3，新负样本分数0.5，\(yz=-0.5\)，损失\(1-(-0.5)=1.5\)。原来\(x=2\)负点\(yz=1\)，损失0。若一个正点分数0.3，虽然方向分对，损失仍0.7，因为还没达到预留间隔1。\(C\)越大，越不愿容忍训练违规，但是否更适合新数据仍需验证。</p>
+<h3>核方法：用新特征分开原空间分不开的形状</h3>
+<p>再看三个点−1、0、1：两端为正类，中间为负类。一条普通一维阈值无法把两端同时放正、中间放负。如果改输入为\(x^2\)，两端都成1、中间成0，马上能用一个阈值分开。这里没有改变标签，只改变了输入表示。</p>
+<p>显式生成很多新特征可能昂贵，而SVM的某些计算只需要新特征的内积。核函数直接给出这个内积，例如：</p>
+<div class="math-display">\[\phi(x)=(x^2,\sqrt2x,1),\qquad \phi(x)^T\phi(z)=x^2z^2+2xz+1=(xz+1)^2=K(x,z).\]</div>
+<p>计算\(K\)就等于先把两个数各转成三维再做内积，无需真的保存三维向量。一般核应满足相应正半定条件，保证它能充当一致的内积；不能挑一个名字叫“相似度”的任意公式就认为合法。</p>
+<p><strong>面试追问：</strong>SVM分数0.8是否表示80%概率？不是，分数是决定边界与间隔的量，概率还需另外校准。<strong>边界：</strong>距离与核对特征尺度敏感；\(C\)和核参数应共同验证。大型核矩阵还带来存储与计算负担，不能只因非线性更强就忽略样本量。</p>
+</section><section id="generative" class="lesson"><h2>12 · 朴素贝叶斯：先问每一类怎样产生证据，再反推类别</h2>
+<p>任务是看到一封消息后判断是否垃圾邮件。暂时只有一个特征：是否出现“促销”。历史中20%邮件是垃圾邮件；垃圾邮件中80%出现促销，普通邮件中10%也出现。现在看到促销，垃圾邮件概率是多少？它不是80%，因为普通邮件数量更多，也能制造这条证据。</p>
+<h3>不用公式，先在1000封邮件里数一次</h3>
+<p>1000封中，垃圾邮件200封，其中160封有促销；普通邮件800封，其中80封有促销。出现促销的一共240封，垃圾邮件占160封，所以后验为\(160/240=2/3\)。这一步就是条件概率：先按观察到的证据筛选，再重新数类别比例。</p>
+<p>写成符号，\(C\)是类别，\(X\)是特征。\(P(C)\)是看内容之前的类别比例，叫先验；\(P(X\mid C)\)是某一类别产生这种内容的概率；\(P(C\mid X)\)才是看到内容之后的类别概率。</p>
+<div class="math-display">\[P(C=\mathrm{spam}\mid X=\mathrm{promo})=\frac{0.2\times0.8}{0.2\times0.8+0.8\times0.1}=\frac23.\]</div>
+<p>先验乘上对应证据概率，得到各类别与证据同时发生的权重；分母把所有类别权重加起来，让最后类别概率总和等于1。若只关心哪一类更大，也可以先比较0.16与0.08，最后需要概率时再归一化。</p>
+<h3>增加第二个特征：哪里开始用了“朴素”假设</h3>
+<p>现在消息还含有一个链接。假设垃圾邮件中有链接的比例70%，普通邮件中20%。要同时利用促销和链接，需要\(P(\mathrm{promo},\mathrm{link}\mid C)\)，只知道两个单独比例通常不够。</p>
+<p>朴素贝叶斯额外假设：<strong>固定类别以后，两个特征相互独立</strong>。在这个假设下，垃圾类别产生两证据的概率是\(0.8\times0.7=0.56\)，普通类别为\(0.1\times0.2=0.02\)。再乘先验，得到0.112与0.016：</p>
+<div class="math-display">\[P(\mathrm{spam}\mid\mathrm{promo},\mathrm{link})=\frac{0.112}{0.112+0.016}=0.875.\]</div>
+<p>注意不是要求特征在全部邮件中独立。恰恰因为类别不同会一起改变两个词的出现率，它们在总体中可能很相关；模型只把同一类别内部仍剩下的依赖忽略。若“促销”几乎总伴随链接，乘法可能把同一证据重复计算，使0.875显得过于自信。</p>
+<h3>从两个特征推广到很多特征</h3>
+<p>输入有\(d\)项时，对每个类别计算下面的权重：</p>
+<div class="math-display">\[s_c=P(C=c)\prod_{j=1}^dP(X_j=x_j\mid C=c),\qquad P(C=c\mid x)=\frac{s_c}{\sum_k s_k}.\]</div>
+<p>每个\(j\)只是一个特征编号。很多小概率连续相乘容易在计算机里变成数值0，因此常先取log：\(\log s_c=\log P(C=c)+\sum_j\log P(X_j=x_j\mid C=c)\)。因为log保持大小顺序，比较哪个类别得分大不会改变。归一化概率则需要把各类log得分转换回来时做好数值稳定处理。</p>
+<h3>零计数为什么需要平滑</h3>
+<p>若训练中10封普通邮件都没出现某词，直接用频率估计得到0。一封测试邮件只要出现这个词，整个普通类别乘积就归零，其他所有证据都被抹掉。这不合理：没在10条中见过，不等于总体绝不出现。</p>
+<p>对“出现/不出现”两个结果，各加一个虚拟计数，0次出现改为\((0+1)/(10+2)=1/12\)，10次未出现改为11/12，仍加起来为1。这个处理叫加一平滑；一般加\(\alpha\)时，\(K\)种结果的分母要增加\(K\alpha\)，不能只改分子。它可解释成先验信息，但强度同样需要谨慎选择。</p>
+<p><strong>面试追问：</strong>生成式与判别式差在哪？这里先估“每类会产生什么内容”再用贝叶斯反推，因此是生成式；逻辑回归直接估内容给定时的类别概率，是判别式。它们不是简单的“哪个一定更好”。<strong>边界：</strong>朴素假设错误时，分类排序仍可能有用，但概率校准可能很差；类别比例变化、相关特征重复及数据泄漏都要独立检查。</p>
+</section><section id="validation" class="lesson"><h2>13 · 时间验证：把每条标签什么时候才知道画出来</h2>
+<p>有每天一条金融记录，要在第\(t\)天决策，预测接下来3天的收益。标签直到第\(t+3\)天结束才完整知道。现在准备从第10天开始验证，能不能把第1到9天全部当训练？不能：第7、8、9天的标签分别要到10、11、12天才知道，预测第10天时还没实现。</p>
+<h3>先走查边界，不急着调用切分函数</h3>
+<p>给每条样本记两个时点：特征决策日\(t\)，标签完成日\(e_t=t+3\)。若验证从第10天开始，采取保守约定，训练标签完成日必须严格早于10。那么第6天标签完成于9，可用；第7天完成于10，不可用；8、9更不可用。</p>
+<div class="math-display">\[\mathcal D_{\rm train}(v)=\{(x_t,y_t):t\lt v,\ e_t\lt v\},\qquad v=10\Longrightarrow t\le6.\]</div>
+<p>删除这些跨进验证边界的训练样本叫purge，中文可理解成清除标签重叠。它不是“数据表排好序以后切一刀”就自动完成的事情。第7天的特征即使当时已经知道，它的答案在第10天决策时仍未完整实现，不能用于监督训练。</p>
+<p>如果实际在一天收盘以后预测下一天，而且某条标签在当天收盘已实现，严格与非严格不等号可以按时间戳调整。关键不是永远固定删3行，而是让训练过程确实只用决策以前已经得到的答案。不同标签窗口、停牌或不规则采样都可能让固定行数失效。</p>
+<h3>Walk-forward就是反复模拟“站在当时向前看”</h3>
+<p>第一轮用第1到6天的合法标签训练，验证第10到12天。下一轮若验证从第13天开始，训练最多可包括第9天标签，因为它到12天完成。训练范围扩大，验证窗口向未来移动，这叫扩展窗口。</p>
+<p>也可以只保留最近一段过去数据，每次把较老记录丢掉，叫滚动窗口。扩展窗口样本多，可能保留更多历史信息；滚动窗口更重最近环境，但样本较少。哪种更好取决于稳定性与样本量，不能仅因为“金融会变”就默认最短窗口最好。</p>
+<p>每轮的预处理也要重新在该轮训练数据上拟合。标准化、缺失填补、特征筛选、PCA都属于训练的一部分。只按时间训练模型，却用整个五年数据先做标准化，仍然让未来参与了训练规则。</p>
+<h3>参数、超参数、测试集分别负责哪件事</h3>
+<p>以Ridge为例，权重是训练数据求出的参数，\(\lambda\)是你外部选择的超参数。候选\(\lambda=0.1\)在三轮验证误差为1、9、1，平均\(11/3\)；候选\(\lambda=1\)为2、2、2，平均2。在相同目标下可先选择后者，并观察前者为什么某轮失效。</p>
+<p>这些窗口已经用于选择\(\lambda\)，所以是验证集。最终还应留一段此前不用于这种选择的测试期，冻结规则后再评估。如果看完测试再换特征、换窗口、换成本假设，测试反馈已经参与了选择，不能继续把同一结果称作全新独立证据。</p>
+<h3>隔开日期后，还需隔开什么</h3>
+<p>同一事件可能生成多条记录，同一公司不同证券可能共享信息；若拆到两侧，模型可能通过相关副本识别答案。评估新实体迁移时，应按公司或事件分组；评估未来同市场时，优先按日期统一划分，避免同一天别的资产的未来信息绕进训练。</p>
+<p>gap是在训练与验证之间留一个时间空档；embargo通常指额外隔离验证邻近、特别是验证之后可能受其信息影响的样本。纯前向训练本来不使用验证后的记录，后侧embargo可能没有额外作用。它们都不能替代逐条检查标签区间和信息可用时间。</p>
+<p><strong>面试追问：</strong>随机K折什么时候可以用？当样本近似独立同分布、部署目标也与之匹配时可以；时间序列不应不经判断就使用。<strong>边界：</strong>时间切分只是信息隔离的一部分，不能自动修正财报发布日期、退市样本缺失、成交假设和反复测试带来的选择偏差。</p>
+</section><section id="leakage" class="lesson"><h2>14 · 数据泄漏：不看标签，也可能偷偷看到了未来</h2>
+<p>训练输入只有0和2，未来测试输入为100。我们先把输入减去平均值，再训练模型。正确做法只能用训练均值\((0+2)/2=1\)，训练值变−1和1，测试值变99。如果先把三条一起求均值，得到34，训练值变−34和−32：未来那条100已经改变了训练过程，虽然完全没有读取测试标签。</p>
+<h3>先区分“学规则”和“应用规则”</h3>
+<p>从训练数据估计均值、方差、缺失填充值或特征方向，叫fit；把这些已经固定的规则作用于新数据，叫transform。两步不能合并成“所有数据一起预处理”，因为预处理本身就是从数据学习。</p>
+<p>以上例子没有保证读取未来一定提高测试分数；它指出评估过程不再模拟部署时能做的事。无论分数变好还是变差，信息边界已经被破坏。正确流程是：训练部分fit并transform，验证部分只transform；每轮交叉验证都重新fit自己的训练部分。</p>
+<div class="math-display">\[\mu_{\rm train}=1,\quad T(x)=x-1,\qquad T(0)=-1,\ T(2)=1,\ T(100)=99.\]</div>
+<p>机器学习Pipeline可以把多个fit/transform步骤串起来，降低误用机会，但它只执行你给出的数据划分和规则。如果原始字段本身来自未来，放进Pipeline也不会自动变合法。</p>
+<h3>金融数据为什么必须区分三个“日期”</h3>
+<p>一份财报属于第一季度，季度结束日3月31日；报告4月20日正式披露；你的系统4月21日才接收。对于这个系统，最早只能在4月21日使用相关字段，而不是把它按“季度日期”回填到4月1日。</p>
+<p>同一个字段可能后来修订。如果数据库只保存最终修订值，用它重跑过去，模型会提前知道当时尚未公开的修正。point-in-time数据的意思就是：按历史决策当时真正可见的版本取值，既检查发布时刻，也检查本系统获得时刻。</p>
+<div class="math-display">\[\mathrm{available\_at}=\max(\mathrm{publish\_time},\mathrm{ingest\_time}),\qquad \mathrm{available\_at}\le\mathrm{decision\_time}.\]</div>
+<p>这个max表示必须同时满足已发布、已接收。实际系统还可能有清洗和计算延迟，应继续加进可用时点。标签可以在未来才知道，因为它是训练答案；但某个回测决策当时使用的训练标签也必须已经实现。</p>
+<h3>目标编码：把答案悄悄装回输入的典型</h3>
+<p>有些特征是类别，例如商品ID。目标编码用“这个类别历史平均答案”代表它。若每条样本ID都不同，直接用整个训练集该ID的均值编码，就等于把每条标签原封不动放进输入；训练看起来极好，新ID却没有任何同类历史可用。</p>
+<p>即使类别重复，也应避免一条记录用自己的答案帮助编码自己。常用办法是在训练内部再分折：为某折编码时，只用其他合法训练折的标签；验证集则只用完整训练集生成的映射。时间场景下“其他折”还必须在过去，不能拿之后发生的标签。新类别没有记录时，用事先定义的训练总体先验或缺失标记，不能从验证答案补齐。</p>
+<h3>幸存者偏差和重复样本同样会造假</h3>
+<p>如果回测十年前只使用今天还上市的股票，就把后来退市失败的公司提前排除了。模型不必显式看到“未来退市”字段，选择样本这一步已经使用未来结局，这叫幸存者偏差。股票池应按每个历史时点重建，并按题设处理退市、停牌及公司行动。</p>
+<p>重复数据也可能绕过划分。同一新闻的原文与改写若分别进入训练和验证，模型可能识别同一事件，成绩却被解释为对新事件泛化。应按事件、公司或来源记录关系分组检查。不能只看每行ID不同就当独立样本。</p>
+<p><strong>面试追问：</strong>怎样开始审计？挑一条高分预测，把每个输入字段追到原记录、版本与可用时间，重演当时的处理链。<strong>边界：</strong>异常好成绩是排查线索，不是泄漏的充分证明；相反，成绩普通也不能证明没有泄漏。需要核验流程，而不是用分数大小猜流程合法性。</p>
+</section><section id="metrics" class="lesson"><h2>15 · 评价指标：同四条预测，可以得到不同但不矛盾的成绩</h2>
+<p>四条二分类记录，真实标签依次为\((1,0,1,0)\)，预测概率依次为\((0.9,0.6,0.4,0.1)\)。现在问“模型好吗”，需要先说好指什么：判对多少、排序对不对、概率准不准，还是最终决策收益好不好。下面用同一批数把这些问题逐个算开。</p>
+<h3>固定阈值后，先数四种结果</h3>
+<p>阈值0.5时，预测类别为\((1,1,0,0)\)。第一条正类判正，叫真阳性；第二条负类判正，是假阳性；第三条正类判负，是假阴性；第四条负类判负，是真阴性。四类各一条，准确率为\((1+1)/4=0.5\)。</p>
+<p>精确率问“报正的里面有多少真正”：本例报正两条，真正一条，所以1/2。召回率问“全部真正里面找回多少”：真正两条，找回一条，也为1/2。它们分母不同，只是在本例数值碰巧相等。PR曲线是在改变阈值时看精确率与召回率怎样权衡；ROC则比较真阳性率与假阳性率。</p>
+<p>把阈值降到0.3，前三条都报正，召回率变1，精确率变2/3，准确率变3/4。概率并没改变，只是决策规则变了。因此比较分类成绩时必须说明阈值与误报、漏报成本，不能暗中给每模型挑最有利阈值。</p>
+<h3>AUC在比较排序，不要求概率大小准确</h3>
+<p>本例两条正类得分0.9、0.4，两条负类0.6、0.1。随机各取一条正负，共四种配对：0.9分别胜0.6、0.1；0.4输0.6、胜0.1。正类排更高的有三种，所以AUC为3/4=0.75。</p>
+<p>这里没有平分；有相同得分时通常按半次胜利计。AUC反映总体正负排序，但不直接关心一个很高阈值区域的精确率，也不看收益幅度。把所有得分作严格单调变换，排序保持，AUC也保持，但作为概率的解释可能完全改变。</p>
+<h3>概率质量可以直接按误差和log概率算</h3>
+<p>Brier分数是概率与0/1答案的平均平方差。四条误差分别−0.1、0.6、−0.6、0.1，因此：</p>
+<div class="math-display">\[\mathrm{Brier}=\frac{0.01+0.36+0.36+0.01}{4}=0.185.\]</div>
+<p>数值越低越好。对数损失则把每条真实标签的概率取负log再平均：第一、四条真实答案概率0.9，第二、三条为0.4：</p>
+<div class="math-display">\[\mathrm{LogLoss}=\frac{-2\log0.9-2\log0.4}{4}\approx0.5108.\]</div>
+<p>对数损失会特别惩罚“非常自信却错了”，例如真实为1却只给0.001概率，单条损失约6.9078。它与Brier的尺度不同，不能比较0.185和0.5108哪个数字更小来决定两个指标谁更好。</p>
+<h3>校准是把“60%”拿到很多同类预测里核对</h3>
+<p>如果100次都报概率0.6，其中约60次发生，就与0.6的含义相容；若只发生20次，模型明显过度自信。校准不要求每次都猜中，因为单次只有0或1。小样本箱里的发生比例波动很大，因此可靠性图还应报告每箱样本数和不确定性。</p>
+<p>一个永远报总体正类比例的模型可能校准尚可，却完全不会区分样本；一个排序很好但把0.6放大到0.99的模型可能AUC不错却校准差。需要同时说明决策需要的是排序、概率还是数值预测，而不是堆一列缩写代替解释。</p>
+<h3>为什么这些成绩还不能直接证明交易赚钱</h3>
+<p>若90%交易赚1、10%亏20，即便方向准确率90%，平均毛收益为\(0.9\times1-0.1\times20=-1.1\)。AUC也不包含成交费用与容量。量化排序常看IC，即某期信号与后续收益的相关；但它同样需要经过组合、成交与成本，才得到净损益。</p>
+<p><strong>面试追问：</strong>模型应该优先提高哪个指标？先说指标服务的动作：排候选、报概率、控仓位或优化净收益，再在同一未来测试期比较。<strong>边界：</strong>校准与阈值也属于模型选择过程，应使用合法验证数据；总体成绩好不保证某行业、时段或市场状态都好，分期与切片要与总体一起报告。</p>
+</section><section id="shift" class="lesson"><h2>16 · 分布漂移：旧样本的平均成绩为什么可能失去代表性</h2>
+<p>模型处理两种输入：普通场景和困难场景。训练期普通场景占80%，困难场景20%；模型在两场景的平均损失分别是1和9。因此训练环境平均损失为\(0.8\times1+0.2\times9=2.6\)。部署后困难场景占80%，即使模型在每种场景内部完全没变，平均损失也会升到7.4。</p>
+<h3>先区分“来的人变了”和“同样的人答案变了”</h3>
+<p>输入分布\(P(X)\)说明哪些情况常出现；条件分布\(P(Y\mid X)\)说明给定同样输入后答案怎样分布。刚才只是普通与困难的比例变化，属于协变量漂移，协变量在这里就是输入。它不要求模型参数一定失效，但过去2.6的加权平均不再代表新环境。</p>
+<p>另一种情况是困难场景本身也变得更难，比如原来损失9现在16，即相同输入下答案关系也变，称概念漂移。还有类别先验漂移，即正负类别的总体比例变化。这些只是帮助分辨变化位置的模型，现实往往几种同时发生，不能凭一个输入直方图就宣布已找到全部原因。</p>
+<h3>在严格条件下，重加权怎样修正平均值</h3>
+<p>暂时假设每种输入内部的答案规律保持不变，训练与部署都能看到这两种场景，只是比例不同。给普通场景权重\(0.2/0.8=0.25\)，给困难场景权重\(0.8/0.2=4\)。用旧数据的出现比例乘新权重，再乘场景损失：</p>
+<div class="math-display">\[0.8\times0.25\times1+0.2\times4\times9=0.2+7.2=7.4.\]</div>
+<p>两类加权出现比例也为\(0.8\times0.25=0.2\)与\(0.2\times4=0.8\)，正好变回部署比例。这就是重要性加权，不是凭空调低错误，而是让旧样本的平均按目标环境的构成重算。</p>
+<div class="math-display">\[w(x)=\frac{p_{\rm test}(x)}{p_{\rm train}(x)},\qquad E_{\rm test}[L]=E_{\rm train}[w(X)L].\]</div>
+<p>推导分两步：测试期联合分布写成\(p_{\rm test}(x)p(y\mid x)\)；在积分里乘除\(p_{\rm train}(x)\)，就得到训练期分布乘比例\(w(x)\)。之所以能沿用同一个\(p(y\mid x)\)，正是先前说的条件规律不变；若它也变了，输入权重无法自动修好。</p>
+<h3>权重不是魔法：缺失区域和大权重都会出问题</h3>
+<p>若训练中困难场景一次都没出现，分母概率为0，既无法稳定估权重，也没有该场景的答案来估损失。重加权不会补出新证据。即使训练概率不为0但极小，少数样本会乘上巨大权重，平均可能被一两个偶然结果主导，估计方差很大。</p>
+<p>实际中还要从有限数据估两个分布，其误差也会进入权重。截断权重能降低极端波动，却引入偏差；是否值得需要验证。最先做的仍是按时间与场景分层，分别报告样本量、输入变化、残差与校准变化，而不是一检测到漂移就立即套一个重加权函数。</p>
+<h3>模型更新要先判断哪里坏了</h3>
+<p>金融模型最近一周亏损，可能只是正常噪声，也可能是行情数据延迟、成交成本上升、样本构成变化或真正预测关系变弱。先对账原始输入、预测、目标订单和实际成交：若预测层未变而滑点上升，重训模型未必修复；若相同场景预测误差也系统增大，再考虑概念变化。</p>
+<p>滚动训练、对旧样本降权、暂时停用或切换模型，都是可能的应对，但应事先说明触发规则和评估方案。每天看损益临时改模型，再只展示改后最好一段，增加了新的选择偏差。保留固定基线与完整版本记录，才能判断更新是否真正有增量。</p>
+<p><strong>面试追问：</strong>输入分布统计显著变化，是否一定影响收益？不一定，变化可能发生在模型根本不用的区域；反过来输入分布看似不变，条件答案关系也可能变。<strong>边界：</strong>本节7.4是人为明确设定下的可手算例子，不能从现实少量损失反推出未来风险已知；非平稳世界需要持续验证并保留未知。</p>
+</section><section id="neural" class="lesson"><h2>17 · 神经网络与反向传播：把每一根参数怎样影响损失算出来</h2>
+<p>先看只有一个隐藏单元的网络。输入\(x\)先乘权重\(w\)、加偏置\(b\)，得到中间数\(a\)；再经过ReLU得到\(h\)；最后乘另一个权重\(v\)、加偏置\(c\)，得到预测。隐藏层并不神秘，它只是把中间计算结果留作下一步输入。</p>
+<div class="math-display">\[a=wx+b,\qquad h=\max(a,0),\qquad \widehat y=vh+c,\qquad L=\tfrac12(\widehat y-y)^2.\]</div>
+<p>ReLU就是保留正数、把负数置0。为什么要有它？如果中间只是线性相乘相加，\(v(wx+b)+c\)仍是一条线；非线性使多层组合有机会表示更复杂形状。先不讨论大量单元，只把这一条链从头算通。</p>
+<h3>前向：按顺序算出每个中间数</h3>
+<p>取\(x=2,y=5,w=1,b=0,v=3,c=0\)。第一步\(a=1\times2+0=2\)；第二步\(h=\max(2,0)=2\)；第三步\(\widehat y=3\times2+0=6\)；第四步误差为1，损失\(L=1^2/2=0.5\)。这些数都要暂存，因为反向计算会反复用到。</p>
+<h3>反向第一段：输出多一点，损失会变多少</h3>
+<p>对预测\(\widehat y\)求导，平方的2与前面的1/2约掉，得到\(\partial L/\partial\widehat y=\widehat y-y=1\)。再看\(\widehat y=vh+c\)：固定其他量，\(v\)增加一点，输出按\(h\)倍增加；\(c\)增加一点，输出等量增加。</p>
+<div class="math-display">\[\frac{\partial L}{\partial v}=\frac{\partial L}{\partial\widehat y}\frac{\partial\widehat y}{\partial v}=1\times2=2,\qquad \frac{\partial L}{\partial c}=1\times1=1.\]</div>
+<p>输出还会把影响向中间量\(h\)传回：\(\partial\widehat y/\partial h=v=3\)，所以\(\partial L/\partial h=1\times3=3\)。到这里，已经知道第二层两个参数的梯度，也知道改变隐藏输出的代价。</p>
+<h3>反向第二段：经过ReLU，再回到第一层</h3>
+<p>当前\(a=2\gt0\)，附近ReLU就是原样输出，因此\(\partial h/\partial a=1\)；损失对\(a\)的导数为\(3\times1=3\)。若\(a\lt0\)，附近ReLU恒为0，导数会是0。在拐点0处普通导数不存在，实现需要约定一个用于训练的取值。</p>
+<p>第一层\(a=wx+b\)，对\(w\)导数为\(x=2\)，对\(b\)为1。最后得到：</p>
+<div class="math-display">\[\frac{\partial L}{\partial w}=\frac{\partial L}{\partial a}\frac{\partial a}{\partial w}=3\times2=6,\qquad \frac{\partial L}{\partial b}=3\times1=3.\]</div>
+<p>四个参数梯度依次是\((6,3,2,1)\)。这就是反向传播：先知道最终损失怎样变，再沿每条计算关系乘局部导数往回传。没有额外的“网络专属求导规则”，主要是链式法则与多路径贡献相加。</p>
+<h3>用所有旧梯度同时更新一次</h3>
+<p>取学习率0.01，更新后\(w=0.94,b=-0.03,v=2.98,c=-0.01\)。必须先算完基于旧参数的梯度，再更新；如果刚改了\(v\)就拿新\(v\)算第一层梯度，就不再是同一步的梯度。</p>
+<p>重新前向：\(a=0.94\times2-0.03=1.85\)，ReLU仍保留；预测\(2.98\times1.85-0.01=5.503\)。新损失为\((0.503)^2/2\approx0.1265\)，低于原来的0.5，确实朝训练目标改善。</p>
+<h3>怎样检查自己的梯度，而不只相信代码能运行</h3>
+<p>固定其他参数，只让\(w\)微增减\(\varepsilon\)，分别重算两次损失。中央差分\([L(w+\varepsilon)-L(w-\varepsilon)]/(2\varepsilon)\)应接近解析梯度6。以本例为例，改变\(w\)会让输出改变\(6\varepsilon\)，两侧损失分别为\((1\pm6\varepsilon)^2/2\)，相减除\(2\varepsilon\)正好得到6。</p>
+<p><strong>面试追问：</strong>为什么要缓存前向中间量？因为反向要用旧的\(h,v,a\)等数，重算既浪费，也可能被随机操作或参数更新改变。<strong>边界：</strong>有梯度不代表一定好优化；过大步长会反弹，ReLU长期在负侧会传不回梯度，深层链还可能放大或缩小导数。先在小规模确定性例子核验，再扩到真实网络。</p>
+</section><section id="clustering" class="lesson"><h2>18 · K-means与EM：从先分组再求平均，到按概率分组</h2>
+<p>数据只有四个数0、1、9、10，想分成两组，让同组尽量靠近。没有人提前给类别答案，因此这是无监督任务。先猜两个中心0和10，再轮流做“按中心分组”和“按分组更新中心”，就得到K-means的基本过程。</p>
+<h3>一次分配、一次更新，手算目标如何下降</h3>
+<p>到中心0更近的是0和1，到中心10更近的是9和10。分配后的平方距离和为\(0^2+1^2+(-1)^2+0^2=2\)。固定这两个组，组内最佳常数仍是均值，所以新中心为0.5和9.5。</p>
+<p>重新计算平方距离：四项都是\(0.5^2\)，总和1。再按这两个中心分组，分配不变；再求均值也不变，过程停止。这个例子中K-means收敛到了直观分组，但一般多维数据换初始中心可能得到不同结果。</p>
+<div class="math-display">\[J=\sum_i\|x_i-\mu_{z_i}\|^2.\]</div>
+<p>\(z_i\)是第\(i\)条记录分到的组编号，\(\mu_k\)是第\(k\)组中心。固定中心，选最近组使每条距离最小；固定分配，对每组求均值使组内平方和最小。因此每一小步都不增加目标，但这不证明找到所有分组里最好的一种，只保证沿当前过程走到一个不能轻易改进的位置。</p>
+<h3>硬分组的疑问：边界附近样本也只能选一个组吗</h3>
+<p>如果一个点同时接近两个中心，硬说它100%属于某一组可能过于武断。高斯混合模型改为：每条记录先随机选一个隐类别，再从该类的正态分布生成。类别没被直接观察到，所以叫隐变量；模型要估各类比例、均值和方差。</p>
+<p>例如两类先验各半，均值0与10，标准差都2。看到\(x=4\)，它离0为4、离10为6，所以更像第一类，但不是不可能来自第二类。正态密度相同常数会在概率比中约掉，剩下指数项：</p>
+<div class="math-display">\[g_0\propto e^{-(4-0)^2/(2\cdot2^2)}=e^{-2},\qquad g_1\propto e^{-(4-10)^2/(2\cdot2^2)}=e^{-4.5}.\]</div>
+<p>先验相同，第一类后验为\(e^{-2}/(e^{-2}+e^{-4.5})=1/(1+e^{-2.5})\approx0.9241\)，第二类为0.0759。这两个数叫责任度，就是把同一点的归属拆成两份软权重。连续变量这里比较的是密度，不是“恰好等于4”的点概率。</p>
+<h3>E步与M步，各自究竟算什么</h3>
+<p>E步固定当前参数，像刚才那样为每个点算属于各类的责任度\(r_{ik}\)。同一行所有类的责任度加起来为1。M步固定这些权重，重新求参数；更新均值时，原来每个点只计0次或1次，现在按软权重计一部分。</p>
+<p>单独练M步：假设三个观测为0、4、10，某一类已算出的责任度为0.9、0.5、0.1。它的总权重为1.5，加权总值为\(0\times0.9+4\times0.5+10\times0.1=3\)，所以新均值为2：</p>
+<div class="math-display">\[\mu_k^{\rm new}=\frac{\sum_i r_{ik}x_i}{\sum_i r_{ik}}=\frac3{1.5}=2.\]</div>
+<p>该类混合比例为总权重除样本数，即\(1.5/3=0.5\)。方差也可按责任度计算离新均值的平方平均：\([0.9(0-2)^2+0.5(4-2)^2+0.1(10-2)^2]/1.5=8\)。这些权重只是为了演示M步，不能误以为它们正是上面另一组参数对这三个点的完整E步结果。</p>
+<h3>为什么它叫EM，而不只是软K-means</h3>
+<p>E意为对未观察类别计算条件权重，M意为在这些权重下最大化参数目标。完整高斯混合还估方差与混合比例，不只移动中心。其数学保证是每轮不降低观测数据的似然；基础操作先掌握“贝叶斯算权重→加权估参数”，更一般的下界证明可在理解过程后再学。</p>
+<p><strong>面试追问：</strong>为什么要多次初始化？目标可能有多个局部解，初始分组不同会走向不同结果。<strong>边界：</strong>某个高斯分量若只抓住一个样本且方差趋0，密度可无限大，似然可能失控，需要方差下界、正则或先验。市场状态分组也不是天然经济真相；在未来全样本上拟合再回填过去属于信息泄漏。</p>
+</section><section id="generalization" class="lesson"><h2>19 · 泛化与模型搜索：挑得越多，为什么越容易挑中运气</h2>
+<p>假设100个候选模型都没有真实优势，但每个验证分数会受样本噪声影响。挑出分数最好的一个，再把这个最好分数当作未来水平，通常会过于乐观。问题不只是某个模型参数太多，还包括研究者尝试了多少种特征、标签、窗口和筛选规则。</p>
+<h3>先定义我们到底想保证什么</h3>
+<p>固定一个模型\(h\)，真实风险\(R(h)\)是新样本平均损失，经验风险\(\widehat R(h)\)是手头样本的平均。泛化问题是：两者相差会有多大？用\(\varepsilon\)表示容许误差幅度，用\(\delta\)表示这个保证可能失效的概率。它们不是模型预测概率，也不是未来交易盈利概率。</p>
+<p>为了能给出明确保证，先假设样本独立同分布，单条损失都在0到1之间，并且模型在观察这批验证样本以前已固定。0/1分类错误符合有界损失，未裁剪的收益平方误差则不一定符合。</p>
+<h3>用方差先推一个完全能跟下来的保证</h3>
+<p>有界随机损失\(Z\in[0,1]\)满足\(Z^2\le Z\)。设均值为\(\mu\)，于是方差\(E[Z^2]-\mu^2\le\mu-\mu^2=1/4-(\mu-1/2)^2\le1/4\)。独立\(n\)条平均后的方差最多\(1/(4n)\)。</p>
+<p>如果样本平均与真平均相差至少\(\varepsilon\)，这个差的平方就至少\(\varepsilon^2\)。所以平方误差的平均至少为\(\varepsilon^2\)乘上“大偏差发生概率”，反向整理得到：</p>
+<div class="math-display">\[P\big(|\widehat R(h)-R(h)|\ge\varepsilon\big)\le\frac{1}{4n\varepsilon^2}.\]</div>
+<p>这就是在本场景下从Chebyshev不等式得到的保证。它可能很松，但每个来源都清楚：损失范围限制方差，独立平均把方差除\(n\)，最后把均方波动换成尾概率。</p>
+<h3>从一个模型，到“看完再挑”的一批模型</h3>
+<p>若预先固定\(m\)个候选，只保证某一个的偏差小还不够，因为你会挑其中最好的那个。应控制“至少某一候选偏差大”。两个事件概率0.03、0.04，至少一个发生最多0.07：重叠部分即使被重复算也只是把上限放宽，这叫并集上界，不要求事件独立。</p>
+<p>同理，把\(m\)个模型各自的失败概率相加，得到：</p>
+<div class="math-display">\[P\left(\max_{h\in\mathcal H}|\widehat R(h)-R(h)|\ge\varepsilon\right)\le\frac{m}{4n\varepsilon^2}.\]</div>
+<p>例有100个候选、10万条独立验证样本，允许相差0.1，上界为\(100/(4\times100000\times0.1^2)=0.025\)。也就是说在这些假设下，至少97.5%的概率，所有候选都不会相差这么多，因此看完再挑也受同一界保护。它不是声称被挑模型的误差一定正好为0.1。</p>
+<h3>更紧的常用界：先认识它解决什么，不把定理装成一步代数</h3>
+<p>有界独立损失还可使用Hoeffding定理，其单模型尾概率上界为\(2e^{-2n\varepsilon^2}\)。它的指数衰减结论需要额外的概率论证明，本节将它明确作为可调用定理，而不是用“展开可得”跳过。接下来从单模型到有限候选的处理仍是刚才已经解释的并集上界：</p>
+<div class="math-display">\[P\left(\max_{h\in\mathcal H}|\widehat R(h)-R(h)|\gt\varepsilon\right)\le2m e^{-2n\varepsilon^2}.\]</div>
+<p>令右边等于\(\delta\)，先除\(2m\)，再取log，得到\(-2n\varepsilon^2=\log\delta-\log(2m)\)。两边变号、除\(2n\)、取非负平方根，得到\(\varepsilon=\sqrt{\log(2m/\delta)/(2n)}\)。代\(m=100,n=1000,\delta=0.05\)，结果约0.0644。这里候选数量进入log，比刚才的粗界更紧。</p>
+<p><strong>面试追问：</strong>只保留最后100个模型，就把\(m\)写100吗？不行，若过程中根据同一验证数据不断创造候选，集合已不再预先固定，不能这样套界。应保留搜索记录、用内层验证选模型、冻结最终测试。<strong>边界：</strong>金融样本的相关、重尾和环境变化会破坏这些假设；数学界解释选择代价，不替代时间验证，更不是净收益保证。</p>
+</section><section id="workflow" class="lesson"><h2>20 · 完整研究回答：让数据、预测、交易和净损益逐项对得上</h2>
+<p>面试问题是：“给你五年价量数据，如何预测下一日收益？”先别立即报模型名。一个完整答案要能让别人沿着一条具体样本复现：当时知道什么，预测什么，根据预测做什么，能否成交，最终留下多少净损益。下面用一个单资产教学策略把每层算出来，重点是研究流程，不是提供可直接使用的交易策略。</p>
+<h3>第一步先固定任务与信息时点</h3>
+<p>假设每天交易开始前收到上一交易日已经完整发布的数据，决定当天持仓；标签是当天可成交买入价到约定退出价的收益。必须规定手续费、买卖价差、停牌和成交限制如何处理，不能先用不可成交的中价算高分，最后补一句“考虑滑点”。</p>
+<p>把每条样本保留为：决策时间、特征可用时间、标签起止时间、原始数据版本。训练只使用标签已实现的历史；验证按时间前推，删除重叠。股票池按历史时点重建，不能只保留今天仍上市的标的。这个阶段的产物不是收益曲线，而是可检查的样本表和时间线。</p>
+<h3>第二步建立小基线，先知道增加复杂度在改什么</h3>
+<p>基线可以是历史均值预测或一项简单线性模型。它应该能完整跑过相同训练、验证与执行流程。新模型若只比训练误差低，而未来验证没有增量，就还没有证据支持上线。若决定比较Ridge与树，应对齐输入字段、可用时间、训练期、验证期和调参预算。</p>
+<p>记录每次尝试的主要变化。一次同时换标签、模型与成本假设，即使净曲线更好，也无法判断贡献来自哪里。对研究项目的个人贡献同样要能指到某一步，而不是把整套团队结果归给“我用了更好的模型”。</p>
+<h3>第三步把预测变成一个事先固定的决策规则</h3>
+<p>教学例采用极简规则：预测收益大于交易门槛时持有1单位，不满足时持有0单位；不做卖空。1单位表示相对同一固定参考本金的一份头寸。这里只为看清账目，暂忽略价格变化引起的小幅头寸漂移，并把完整单位头寸变动成本设为2bp。1bp是参考本金的0.01%。</p>
+<p>第一天预测10bp，超过门槛，从0买到1单位；实际持仓收益8bp，毛损益8bp，交易成本2bp，净损益6bp。第二天仍预测正且保持1单位，实际收益−3bp，没有新增目标头寸变化，教学账目成本0，净损益−3bp。第三天预测不再满足条件，从1卖到0；此后当日收益即使为−5bp，空仓不承担这段收益，但卖出成本仍2bp，净损益−2bp。</p>
+<div class="math-display">\[\mathrm{net}_t=w_t r_t-c|w_t-w_{t-1}|,\qquad (6,-3,-2)\ \mathrm{bp}.\]</div>
+<p>其中\(w_t\)是当期真正实现的头寸，\(r_t\)是与其持有区间一致的收益，\(c=2\)bp是本例成本系数。三天相对固定本金累计净损益为1bp，不是“预测两次为正，所以胜率高就赚很多”。真实组合若按当前净值再投资，或有部分成交、融资、冲击，账目需按真实现金流重算。</p>
+<h3>第四步用同一条记录定位失败在哪层</h3>
+<p>若预测明明产生了买入信号，但订单未成交，不能用目标头寸\(w=1\)冒充实际头寸。先核对模型输出、目标单、发单时间、成交数量与成交价。若信号本身在留出数据失效，问题在预测或样本；若理论组合有优势而实际差，优先查执行与成本；若输入时点非法，先修数据，不应先继续调模型。</p>
+<p>评价至少分两张账：预测层报告误差、排序或概率质量以及分期稳定性；策略层报告成本后损益、回撤、换手与容量。两层都在相同测试区间比较，并给出样本量与不确定性。高IC可能只在不可交易资产上存在，高准确率也可能输在错误时损失幅度更大。</p>
+<h3>最后交付的是结论及其条件，而不是最好看的一个数</h3>
+<p>冻结最终测试以前，把选模型、选门槛、选成本方案放在验证里做完。结果出来后明确：哪个版本、哪段样本、什么信息与成交假设、比什么基线改善多少、最脆弱的边界是什么。再用费用上升、延迟增加、成交量下降做分项压力测试，避免随意说“实盘打五折”。</p>
+<p><strong>面试追问：</strong>下一步先改哪一层？依据首次错误位置与损失贡献决定：口径错先修数据，不可交易先修目标，预测有增量但净收益差先修组合与执行。<strong>边界：</strong>本节所有数字均为教学设定，不代表真实策略效果。即使回测流程合法、历史净收益为正，也仍需前瞻检验，不能推成未来收益保证。</p>
+</section><section id="review"><h2>闭卷复习：检验是否真正掌握</h2><ol><li>任选一节，只凭标题复原例子的计算，不能只背最终数字。</li><li>把独立改成相关、把已知参数改成未知、把固定样本量改成停止规则，说明哪一步需要重写。</li><li>给出一个反例：解释公式在什么情况下不能用，再说可用的替代方法。</li><li>用两分钟把题目讲给同事：设定 → 核心工具 → 推导 → 数值检查 → 边界。</li></ol></section><section id="sources" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>本套笔记是独立编写的教学路线和例题，不是公司真题转录，也不声称覆盖某家公司的所有题目。官方招聘材料只支持能力方向；每节的学习优先级是按概念依赖和迁移范围作出的教学判断，没有未经证实的考题频率排名。招聘流程与网页可能变化，适用范围以具体岗位与招聘方说明为准。</p><ul><li><a href="https://www.janestreet.com/probability-markets/">Jane Street · Probability &amp; Markets</a>：官方明确列出概率、期望与做市等基础准备方向；不等于每一道题都会考。</li><li><a href="https://www.janestreet.com/join-jane-street/interviewing/">Jane Street · Interviewing</a>：区分交易、研究与机器学习面试，研究与交易及工程能力交叉。</li><li><a href="https://www.citadel.com/careers/career-perspectives/candidate-faqs-quantitative-research/">Citadel · Quantitative Research FAQ</a>：明确概率统计、数据分析、预测模型与编程能力。</li><li><a href="https://www.citadel.com/careers/career-perspectives/our-quantitative-research-interview-process/">Citadel · QR interview process</a>：强调编程、研究、数据结构算法与解释解题过程。</li><li><a href="https://cs229.stanford.edu/main_notes.pdf">Stanford CS229 · Lecture Notes</a>：线性/逻辑回归、核方法、泛化、正则化、EM、PCA与深度学习的原始课程资料。这里的示例与步骤是独立编写，完整技术细节可继续查阅课程。</li><li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning · 作者官网</a>：回归、分类、重采样、正则化、树方法与无监督学习的章节导航。</li><li><a href="https://scikit-learn.org/stable/modules/cross_validation.html">scikit-learn · Cross-validation</a>：时间验证、分组验证与预处理边界。</li><li><a href="https://scikit-learn.org/stable/modules/ensemble.html">scikit-learn · Ensembles</a>：bagging、随机森林与gradient boosting的实现概念与边界。</li><li><a href="https://scikit-learn.org/stable/modules/decomposition.html">scikit-learn · Decomposition</a>：PCA/SVD与标准化注意事项。</li></ul><p>公式中的默认假设在各节列出。市场数据的非平稳、重尾、依赖与执行成本会破坏课堂模型；数学例题的正确不构成策略可盈利证据。</p></section></main><footer><a href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false">回到顶部</a> · <a href="index.html">量化基础总入口</a></footer></body></html>
