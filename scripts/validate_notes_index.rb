@@ -86,6 +86,10 @@ def note_html_files
   Dir.glob(File.join(NOTES_ROOT, "**", "*.html")).sort
 end
 
+def unlisted_path?(path, scopes)
+  scopes.any? { |scope| path == scope || path.start_with?("#{scope}/") }
+end
+
 def document_head(content)
   content.match(%r{<head\b[^>]*>(.*?)</head>}im)&.captures&.first.to_s
 end
@@ -161,6 +165,13 @@ if Dir.exist?(mathjax_root)
   end
 end
 notes = YAML.load_file(NOTES_YAML)
+unlisted_defaults = YAML.load_file(File.join(ROOT, "_config.yml")).fetch("defaults", []).select do |entry|
+  entry.fetch("values", {})["unlisted"] == true
+end
+unlisted_scopes = unlisted_defaults.map { |entry| entry.fetch("scope").fetch("path") }
+unlisted_defaults.each do |entry|
+  errors << "Unlisted scope must set sitemap: false: #{entry['scope']['path']}" unless entry['values']['sitemap'] == false
+end
 chapter_orders = book_chapter_orders
 errors << "#{NOTES_YAML} must contain a YAML list" unless notes.is_a?(Array)
 fail_with(errors) unless errors.empty?
@@ -168,6 +179,18 @@ fail_with(errors) unless errors.empty?
 errors << "Missing notes template: #{NOTE_TEMPLATE.delete_prefix("#{ROOT}/")}" unless File.file?(NOTE_TEMPLATE)
 
 urls = notes.map { |note| note["url"] }
+unlisted_urls = notes.select { |note| note["unlisted"] == true }.map { |note| note["url"] }.to_set
+notes.each do |note|
+  if note.key?("unlisted")
+    errors << "notes.yml unlisted must be true or false: #{note['url']}" unless [true, false].include?(note["unlisted"])
+  end
+
+  path = note.fetch("url").delete_prefix("/").sub(%r{/$}, "")
+  scoped_unlisted = unlisted_path?(path, unlisted_scopes)
+  unless (note["unlisted"] == true) == scoped_unlisted
+    errors << "notes.yml unlisted and _config.yml scope disagree: #{note['url']}"
+  end
+end
 duplicate_urls = urls.group_by(&:itself).select { |_url, values| values.size > 1 }.keys
 errors << "Duplicate notes.yml urls: #{duplicate_urls.join(', ')}" unless duplicate_urls.empty?
 
@@ -204,6 +227,11 @@ note_html_files.each do |html_path|
   relative = html_path.delete_prefix("#{ROOT}/")
   content = File.read(html_path, encoding: 'UTF-8')
   head = document_head(content)
+
+  if unlisted_path?(relative, unlisted_scopes)
+    robots = head.scan(/<meta\b[^>]*>/i).find { |tag| tag.match?(/name=["']robots["']/i) }.to_s
+    errors << "#{relative} must include robots noindex metadata" unless robots.match?(/content=["'][^"']*\bnoindex\b/i)
+  end
 
   errors << "#{relative} contains Unicode replacement characters" if content.include?("\uFFFD") || content.include?("�")
   errors << "#{relative} must contain exactly one document <title> in <head>" unless head.scan(/<title\b/i).size == 1
@@ -245,7 +273,9 @@ note_html_files.each do |html_path|
       chapter_file = File.basename(relative)
       chapter_index = order.index(chapter_file)
       if chapter_index.nil?
-        errors << "#{relative} is missing from #{book_root}/index.html chapter order"
+        unless unlisted_urls.include?("/#{relative}")
+          errors << "#{relative} is missing from #{book_root}/index.html chapter order"
+        end
       elsif chapter_navs.size == 1
         expected_hrefs = []
         expected_hrefs << order[chapter_index - 1] if chapter_index.positive?
