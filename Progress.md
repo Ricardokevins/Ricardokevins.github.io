@@ -1,6 +1,6 @@
 # Ricardokevins.github.io Progress
 
-## 2026-10-19 LeetCode 与量化笔记隐藏入口（本地验收完成；待发布）
+## 2026-10-19 LeetCode 与量化笔记隐藏入口（已完成；已发布并核验）
 
 - 用户要求：LeetCode 和量化相关笔记保留原 URL 与章节锚点，从公开入口隐藏；新增可收藏的独立目录 `/notes/unlisted/`，统一访问隐藏内容。
 - 范围：10 个现有笔记入口（含数学基础手册、算法体系笔记）及 LLM 题库中的九坤面经章节；不扩大到模型低精度量化或一般投资访谈。
@@ -9,7 +9,7 @@
 - [x] `ruby scripts/validate_notes_index.rb`：311 条索引通过；新增隐藏标记类型、索引/路径范围一致性、noindex 与 sitemap 配置检查，仅保留既有无关短文警告。`git diff --check` 与 Ruby 语法检查通过。
 - [x] 完整 Jekyll 构建通过；扫描 437 个公开 HTML，通往隐藏内容的链接为 0；XML sitemap 无隐藏内容。76 个内容页逐文件比对，正文与 ID 保持一致，仅改变 metadata、返回目录链接与末尾换行。
 - [x] Playwright 独立无头浏览器：320/390/1440 宽度下两个目录共 6 组交互检查，搜索、空结果、分类、分页、无横向溢出通过；原 `/notes/leetcode-hot-100/#binary`、100 道题及 All Notes 返回隐藏目录通过，无脚本错误。截图保存在临时目录，未添加仓库产物。
-- [ ] 发布并独立回读公开目录、隐藏目录、旧 URL 及线上 sitemap。
+- [x] 功能提交 `63c988a` 已推送至 `origin/main`，GitHub Pages 构建为 `built`。线上首页、公开 Notes、隐藏目录、Hot 100、量化第 001 章、数学手册、公开 LLM 目录及 HTML/XML sitemap 共 9 个地址均 HTTP 200；实际读取到公开 300 条、隐藏 11 条，公开入口无隐藏链接，隐藏页 noindex 与 XML sitemap 排除均通过，原 Hot 100 的 `#binary` 与 100 道题保留。
 
 实现保持静态站点结构，无新增依赖或访问控制服务；两个目录共用同一组件，避免搜索和分页实现分叉。公开目录在构建时排除隐藏数据，而非在浏览器中用样式隐藏。
 
