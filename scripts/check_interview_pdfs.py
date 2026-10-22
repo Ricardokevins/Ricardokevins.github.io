@@ -17,6 +17,15 @@ BOOKS = {
     "quant-probability-statistics.pdf": [ROOT / "notes/quant-foundations/probability-statistics.html"],
     "quant-machine-learning.pdf": [ROOT / "notes/quant-foundations/machine-learning.html"],
 }
+BOOKS["quant-interview-complete.pdf"] = [
+    ROOT / "notes/quant-interview-question-bank/chapters/001.html",
+    *BOOKS["quant-probability-statistics.pdf"],
+    *BOOKS["quant-machine-learning.pdf"],
+    *BOOKS["quant-interview-handbook.pdf"][1:],
+    *BOOKS["leetcode-hot-100.pdf"],
+    *BOOKS["quant-interview-52.pdf"],
+    *BOOKS["quant-interview-61.pdf"],
+]
 
 
 def normalize(text):
@@ -45,6 +54,13 @@ def check_book(filename, sources):
         for anchor in soup.select(".anchor-link"):
             anchor.decompose()
         main = soup.select_one("main")
+        if source.parent.name == "chapters" and source.name == "044.html" and "quant-interview-question-bank" in str(source):
+            cards = main.select('section.problem[id^="e"]')
+            assert len(cards) == 120, "quant 044: expected 120 exercise cards"
+            for card in cards:
+                supplements_for_card = card.select("[data-derivation]")
+                expected = f"44-{card['id']}"
+                assert len(supplements_for_card) == 1 and supplements_for_card[0]["data-derivation"] == expected, f"quant 044: derivation attached to wrong exercise {card['id']}"
         for heading in main.select("h2, h3"):
             label = heading.get_text(" ", strip=True)
             # TeX is rendered, so compare the stable title before inline math.

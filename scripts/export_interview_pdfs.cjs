@@ -9,6 +9,12 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const mathjaxPath = process.env.MATHJAX_PATH || path.join(root, 'notes/assets/mathjax-3.2.2/es5/tex-svg.js');
 const books = {
+  complete: { title: '量化笔试面试合编教材：基础、题型与编程', file: 'quant-interview-complete.pdf',
+    sources: ['notes/quant-interview-question-bank/chapters/001.html',
+      'notes/quant-foundations/probability-statistics.html', 'notes/quant-foundations/machine-learning.html',
+      ...Array.from({ length: 43 }, (_, i) => `notes/quant-interview-question-bank/chapters/${String(i + 2).padStart(3, '0')}.html`),
+      'notes/leetcode-hot-100/index.html', 'notes/tech-analysis/xiaohongshu-quant-interview-question-bank.html',
+      'notes/tech-analysis/xiaohongshu-quant-interview-practice-expansion.html'] },
   quant: { title: '量化面试通用题解手册', file: 'quant-interview-handbook.pdf',
     sources: Array.from({ length: 44 }, (_, i) => `notes/quant-interview-question-bank/chapters/${String(i + 1).padStart(3, '0')}.html`) },
   'quant-52': { title: '量化面试 52 道题：完整推导与面试方法', file: 'quant-interview-52.pdf', sources: ['notes/tech-analysis/xiaohongshu-quant-interview-question-bank.html'] },
@@ -18,6 +24,7 @@ const books = {
   ml: { title: '量化面试：机器学习理论', file: 'quant-machine-learning.pdf', sources: ['notes/quant-foundations/machine-learning.html'] },
 };
 const studyHints = {
+  complete: '本册合并六本自编教材：先读阅读路线与概率统计、机器学习主干，再按目标岗位选择方法题，最后练编程和专项题库。重复知识的变式留在练习部分，不必逐页平推。本册不是推荐商业书的全文翻译或逐题替代。',
   quant: '先掌握概率与期望、统计推断、状态递推和基础算法，再按交易、研究或开发岗位选择公司面经。进阶证明与专项金融题留到第二轮。',
   'quant-52': '先做条件概率、期望、计数、首步递推、最优停止与赔率题；先独立限时尝试，再看解答。进阶随机过程与特殊技巧第二轮选练。',
   'quant-61': '用于同类题迁移：先比较题目改变了哪个条件，再重新建模。先练指标变量、递推、随机游走与停止决策，复杂几何和信息论专题后学。',
@@ -52,6 +59,8 @@ mjx-container:not([display="true"]) { display: inline-block; vertical-align: mid
 .notes-shell-page mjx-container { break-inside: avoid !important; page-break-inside: avoid !important; }
 .notes-shell-page mjx-container * { max-width: none; }
 .notes-shell-page mjx-container[jax="SVG"] > svg { height: revert; max-width: none; }
+.study-priority { padding: 3pt 6pt; font-size: 9pt; background: #f4eee3; }
+.priority-core { color: #792b19; background: #fff0df; }
 table { min-width: 0 !important; width: 100% !important; table-layout: auto; font-size: 8.5pt; }
 thead { display: table-header-group; } tr { break-inside: avoid; }
 th, td { padding: 5pt; overflow-wrap: anywhere; }
@@ -73,7 +82,7 @@ async function exportBook(browser, key, book) {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'interview-print-'));
   try {
     await page.goto('about:blank');
-    const html = await page.evaluate(({ docs, title, studyHint, printCSS, mathjaxURL, rootURL }) => {
+    const html = await page.evaluate(({ docs, title, combined, studyHint, printCSS, mathjaxURL, rootURL }) => {
       const parser = new DOMParser();
       const parsed = docs.map(({ html, url }, i) => {
         const doc = parser.parseFromString(html, 'text/html');
@@ -113,7 +122,7 @@ async function exportBook(browser, key, book) {
           else if (dest.href.startsWith(rootURL)) el.setAttribute('href', 'https://ricardokevins.github.io/' + dest.href.slice(rootURL.length));
         });
         const heading = main.querySelector('h1, h2');
-        return { text: heading ? heading.textContent : doc.title, html: main.innerHTML, id: `book-${i}` };
+        return { text: combined ? doc.title.replace(/ - 量化面试通用题解手册$/, '') : heading ? heading.textContent : doc.title, html: main.innerHTML, id: `book-${i}` };
       });
       const first = parser.parseFromString(docs[0].html, 'text/html');
       first.querySelectorAll('link[href], script[src]').forEach(el => {
@@ -160,7 +169,7 @@ async function exportBook(browser, key, book) {
       }
       first.body.append(main);
       return '<!doctype html>\n' + first.documentElement.outerHTML;
-    }, { docs, title: book.title, studyHint: studyHints[key], printCSS,
+    }, { docs, title: book.title, combined: key === 'complete', studyHint: studyHints[key], printCSS,
       mathjaxURL: pathToFileURL(path.resolve(mathjaxPath)).href,
       rootURL: pathToFileURL(root + path.sep).href });
     const temporaryHTML = path.join(temporary, 'book.html');
