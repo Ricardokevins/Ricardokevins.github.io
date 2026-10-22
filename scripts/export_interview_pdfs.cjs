@@ -7,7 +7,7 @@ const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
-const mathjaxPath = process.env.MATHJAX_PATH || path.join(root, 'notes/assets/mathjax-3.2.2/es5/tex-chtml.js');
+const mathjaxPath = process.env.MATHJAX_PATH || path.join(root, 'notes/assets/mathjax-3.2.2/es5/tex-svg.js');
 const books = {
   quant: { title: '量化面试通用题解手册', file: 'quant-interview-handbook.pdf',
     sources: Array.from({ length: 44 }, (_, i) => `notes/quant-interview-question-bank/chapters/${String(i + 1).padStart(3, '0')}.html`) },
@@ -16,6 +16,14 @@ const books = {
   leetcode: { title: 'LeetCode Hot 100 分类精讲', file: 'leetcode-hot-100.pdf', sources: ['notes/leetcode-hot-100/index.html'] },
   probability: { title: '量化面试：概率论与数理统计', file: 'quant-probability-statistics.pdf', sources: ['notes/quant-foundations/probability-statistics.html'] },
   ml: { title: '量化面试：机器学习理论', file: 'quant-machine-learning.pdf', sources: ['notes/quant-foundations/machine-learning.html'] },
+};
+const studyHints = {
+  quant: '先掌握概率与期望、统计推断、状态递推和基础算法，再按交易、研究或开发岗位选择公司面经。进阶证明与专项金融题留到第二轮。',
+  'quant-52': '先做条件概率、期望、计数、首步递推、最优停止与赔率题；先独立限时尝试，再看解答。进阶随机过程与特殊技巧第二轮选练。',
+  'quant-61': '用于同类题迁移：先比较题目改变了哪个条件，再重新建模。先练指标变量、递推、随机游走与停止决策，复杂几何和信息论专题后学。',
+  leetcode: '先练哈希、双指针与窗口、二分、树图遍历、基础动态规划；每类先独立写出代表题，再练变式。复杂困难题放到基础熟练之后。',
+  probability: '正文带★为核心必会；按交易或研究岗位加练，选读附录留后。优先级表示备考与迁移价值，并非未经核实的出题频率。',
+  ml: '先掌握线性与逻辑回归、正则化、树和Boosting、时间验证、泄漏和指标，再选读进阶专题。各节标注岗位重点与优先级。',
 };
 
 const printCSS = `
@@ -41,6 +49,9 @@ code { overflow-wrap: anywhere; }
 .table-wrap, .table-container, .math-display, .formula, .equation, mjx-container { overflow: visible !important; max-width: 100% !important; }
 .math-display, .formula, .equation { break-inside: avoid !important; }
 mjx-container:not([display="true"]) { display: inline-block; vertical-align: middle; }
+.notes-shell-page mjx-container { break-inside: avoid !important; page-break-inside: avoid !important; }
+.notes-shell-page mjx-container * { max-width: none; }
+.notes-shell-page mjx-container[jax="SVG"] > svg { height: revert; max-width: none; }
 table { min-width: 0 !important; width: 100% !important; table-layout: auto; font-size: 8.5pt; }
 thead { display: table-header-group; } tr { break-inside: avoid; }
 th, td { padding: 5pt; overflow-wrap: anywhere; }
@@ -62,7 +73,7 @@ async function exportBook(browser, key, book) {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'interview-print-'));
   try {
     await page.goto('about:blank');
-    const html = await page.evaluate(({ docs, title, printCSS, mathjaxURL, rootURL }) => {
+    const html = await page.evaluate(({ docs, title, studyHint, printCSS, mathjaxURL, rootURL }) => {
       const parser = new DOMParser();
       const parsed = docs.map(({ html, url }, i) => {
         const doc = parser.parseFromString(html, 'text/html');
@@ -113,6 +124,12 @@ async function exportBook(browser, key, book) {
         if (!/mathjax|tex-(?:chtml|svg)/i.test(el.src)) el.remove();
         else if (mathjaxURL) el.src = mathjaxURL;
       });
+      // SVG outlines keep stretched brackets, radicals and fraction rules
+      // together during Chromium's PDF pagination and do not depend on math fonts.
+      const mathConfig = first.createElement('script');
+      mathConfig.textContent = 'window.MathJax=window.MathJax||{};window.MathJax.svg={fontCache:"local"};';
+      const mathScript = first.querySelector('script[src]');
+      if (mathScript) mathScript.before(mathConfig);
       first.title = title;
       first.querySelector('body').className = 'notes-shell-page';
       first.querySelector('body').innerHTML = '';
@@ -122,6 +139,8 @@ async function exportBook(browser, key, book) {
       if (!parsed[0].html.includes('id="b0-top"')) cover.id = 'b0-top';
       const h1 = first.createElement('h1'); h1.textContent = title; cover.append(h1);
       const p = first.createElement('p'); p.textContent = '离线学习版 · 题型方法、逐步讲解与练习'; cover.append(p); main.append(cover);
+      const aim = first.createElement('h2'); aim.textContent = '复习目标：量化笔试与面试'; cover.append(aim);
+      const hint = first.createElement('p'); hint.textContent = studyHint; cover.append(hint);
       const toc = first.createElement('nav'); toc.className = 'pdf-contents';
       const h2 = first.createElement('h2'); h2.textContent = '目录'; toc.append(h2);
       const list = first.createElement('ol');
@@ -141,7 +160,7 @@ async function exportBook(browser, key, book) {
       }
       first.body.append(main);
       return '<!doctype html>\n' + first.documentElement.outerHTML;
-    }, { docs, title: book.title, printCSS,
+    }, { docs, title: book.title, studyHint: studyHints[key], printCSS,
       mathjaxURL: pathToFileURL(path.resolve(mathjaxPath)).href,
       rootURL: pathToFileURL(root + path.sep).href });
     const temporaryHTML = path.join(temporary, 'book.html');
@@ -159,12 +178,18 @@ async function exportBook(browser, key, book) {
       await document.fonts.ready;
       if ([...document.fonts].some(font => font.status === 'error')) throw new Error('A PDF font failed to load');
       await Promise.all([...document.images].map(img => img.decode()));
-      if (document.querySelector('mjx-merror, [data-mjx-error]')) throw new Error('MathJax formula error');
+      if (document.querySelector('mjx-merror, [data-mjx-error], [data-mml-node="merror"]')) throw new Error('MathJax formula error');
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       while (walker.nextNode()) {
         const node = walker.currentNode;
         if (!node.parentElement.closest('pre, code, script, style, mjx-container') && /\\(?:frac|sqrt|sum|mathbb|begin|theta|alpha)\b/.test(node.textContent)) {
           throw new Error(`Unrendered formula: ${node.textContent.slice(0, 160)}`);
+        }
+        if (!node.parentElement.closest('pre, script, style, mjx-container') && /[_^]\{[^}]+\}/.test(node.textContent)) {
+          throw new Error(`Bare mathematical subscript/superscript: ${node.textContent.slice(0, 160)}`);
+        }
+        if (node.parentElement.closest('code') && !node.parentElement.closest('pre') && /[∫∑Σ]|[_^]\{|\\(?:frac|sqrt|sum)\b/.test(node.textContent)) {
+          throw new Error(`Mathematics placed in a code label: ${node.textContent.slice(0, 160)}`);
         }
       }
     });
@@ -172,10 +197,29 @@ async function exportBook(browser, key, book) {
     // Fit wide inline as well as display equations within their paper column.
     await page.evaluate(() => document.querySelectorAll('mjx-container').forEach(el => {
       const inner = el.querySelector('mjx-math, svg');
+      if (inner?.tagName.toLowerCase() === 'svg') {
+        inner.style.height = inner.getAttribute('height');
+        inner.style.width = inner.getAttribute('width');
+      }
       if (inner && el.clientWidth > 0 && inner.getBoundingClientRect().width > el.clientWidth) {
         el.style.fontSize = `${Math.floor(100 * el.clientWidth / inner.getBoundingClientRect().width)}%`;
       }
     }));
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      for (const el of document.querySelectorAll('mjx-container')) {
+        const inner = el.querySelector('mjx-math, svg');
+        if (!inner) continue;
+        const box = inner.getBoundingClientRect();
+        const parent = el.getBoundingClientRect();
+        if (box.width > parent.width + 2 || box.right > document.documentElement.clientWidth + 2 || box.left < -2) {
+          throw new Error(`Formula exceeds paper column: ${el.textContent.slice(0, 100)}`);
+        }
+        if (parseFloat(getComputedStyle(el).fontSize) < 9) {
+          throw new Error('Formula reduced below readable size; split its source equation');
+        }
+      }
+    });
     const output = path.join(root, 'notes/downloads', book.file);
     await fs.mkdir(path.dirname(output), { recursive: true });
     await page.pdf({ path: output, format: 'A4', printBackground: true, preferCSSPageSize: true,
