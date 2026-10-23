@@ -10,6 +10,7 @@ from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOKS = {
+    "quant-deep-learning.pdf": [ROOT / "notes/quant-foundations/deep-learning.html"],
     "quant-interview-handbook.pdf": sorted((ROOT / "notes/quant-interview-question-bank/chapters").glob("*.html")),
     "quant-interview-52.pdf": [ROOT / "notes/tech-analysis/xiaohongshu-quant-interview-question-bank.html"],
     "quant-interview-61.pdf": [ROOT / "notes/tech-analysis/xiaohongshu-quant-interview-practice-expansion.html"],

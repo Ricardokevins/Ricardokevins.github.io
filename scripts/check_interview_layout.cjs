@@ -95,7 +95,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
     for (const source of ['notes/math-interview-question-bank/chapters/001.html', 'notes/math-interview-question-bank/chapters/021.html',
       'notes/llm-interview-question-bank/chapters/020.html', 'notes/llm-interview-question-bank/chapters/091.html']) await inspect(source, 390);
     for (const source of ['notes/leetcode-hot-100/index.html', 'notes/quant-foundations/index.html',
-      'notes/quant-foundations/probability-statistics.html', 'notes/quant-foundations/machine-learning.html', 'notes/interview-offline/index.html',
+      'notes/quant-foundations/probability-statistics.html', 'notes/quant-foundations/machine-learning.html', 'notes/quant-foundations/deep-learning.html', 'notes/interview-offline/index.html',
       'notes/tech-analysis/xiaohongshu-quant-interview-question-bank.html', 'notes/tech-analysis/xiaohongshu-quant-interview-practice-expansion.html']) {
       try { await fs.access(path.join(root, source)); } catch { continue; }
       for (const width of [320, 390, 768, 1440]) await inspect(source, width, width === 390);

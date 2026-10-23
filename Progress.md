@@ -1,5 +1,15 @@
 # Ricardokevins.github.io Progress
 
+## 2026-10-23 深度学习知识盘点与独立PDF（本地验收完成，发布中）
+
+- 用户新增RNN、Transformer与优化器复习要求；新建隐藏教材deep-learning.html，按核心必会/研究重点/进阶选读组织，新增独立PDF，不改动原六本。
+- 内容含B/L/F形状与目标、反向传播、RNN/BPTT、LSTM/GRU门数值与参数量、QKV手算、Pre-LN残差、位置/RoPE、mask、复杂度/KV cache、SGD/Momentum/AdaGrad/RMSProp/Adam与AdamW、warmup/累积/AMP/裁剪、时间验证和闭卷盘点。
+- 临时PyTorch2.14.1环境实际验证两步优化器数值、AdamW与L2差异、尾组累积、大批次等价、模型形状与有限梯度、未来扰动不影响前缀、序列长度边界和LSTM参数数/BPTT导数；脚本scripts/check_quant_deep_learning.py。CPU验证不代表AMP GPU执行或金融有效性验证。
+- PDF287个公式编译、内容/代码/字体/书签检查通过；全页渲染并目视公式、代码、图示与分页，移除重复目录与冗余来源节。95项页面布局回归通过，索引312条通过；仅既有无关短文警告。
+- 本机临时Jekyll gem环境已不可用，两个已有路径均缺执行文件；完整站点构建交给已有GitHub CI验收，不伪称本地构建通过。新书继续unlisted/noindex，PDF本地交付不提交。
+
+
+
 ## 2026-10-22 推荐读物资料核验、缺口补读与一册合编（本轮交付完成；原书缺失范围保留）
 
 - 用户要求：推荐书不只列书名，实际获取可用内容、记录覆盖范围，尽量通过一册备考教材学习主线。按既有目标优先量化笔试面试，不把商业书全文重建成替代品。

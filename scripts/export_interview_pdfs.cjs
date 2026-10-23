@@ -9,6 +9,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const mathjaxPath = process.env.MATHJAX_PATH || path.join(root, 'notes/assets/mathjax-3.2.2/es5/tex-svg.js');
 const books = {
+  dl: { title: '量化面试深度学习：架构、优化器与时序验证', file: 'quant-deep-learning.pdf', sources: ['notes/quant-foundations/deep-learning.html'] },
   complete: { title: '量化笔试面试合编教材：基础、题型与编程', file: 'quant-interview-complete.pdf',
     sources: ['notes/quant-interview-question-bank/chapters/001.html',
       'notes/quant-foundations/probability-statistics.html', 'notes/quant-foundations/machine-learning.html',
@@ -24,6 +25,7 @@ const books = {
   ml: { title: '量化面试：机器学习理论', file: 'quant-machine-learning.pdf', sources: ['notes/quant-foundations/machine-learning.html'] },
 };
 const studyHints = {
+  dl: '先读输入形状与梯度，再手算RNN/LSTM和注意力，接着复习优化器、学习率与训练顺序。架构正确和训练成功不代表无泄漏或具有可交易收益；最后用闭卷题检验迁移。',
   complete: '本册合并六本自编教材：先读阅读路线与概率统计、机器学习主干，再按目标岗位选择方法题，最后练编程和专项题库。重复知识的变式留在练习部分，不必逐页平推。本册不是推荐商业书的全文翻译或逐题替代。',
   quant: '先掌握概率与期望、统计推断、状态递推和基础算法，再按交易、研究或开发岗位选择公司面经。进阶证明与专项金融题留到第二轮。',
   'quant-52': '先做条件概率、期望、计数、首步递推、最优停止与赔率题；先独立限时尝试，再看解答。进阶随机过程与特殊技巧第二轮选练。',
@@ -82,12 +84,13 @@ async function exportBook(browser, key, book) {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'interview-print-'));
   try {
     await page.goto('about:blank');
-    const html = await page.evaluate(({ docs, title, combined, studyHint, printCSS, mathjaxURL, rootURL }) => {
+    const html = await page.evaluate(({ docs, title, combined, replaceToc, studyHint, printCSS, mathjaxURL, rootURL }) => {
       const parser = new DOMParser();
       const parsed = docs.map(({ html, url }, i) => {
         const doc = parser.parseFromString(html, 'text/html');
         const main = doc.querySelector('main');
         if (!main) throw new Error(`Missing main: ${url}`);
+        if (replaceToc) main.querySelectorAll('nav.toc').forEach(el => el.remove());
         // Later chapters can use a different MathJax delimiter configuration.
         // Normalize their dollar math before applying the first chapter's config.
         if (docs[i].html.includes("['$', '$']") || docs[i].html.includes('["$", "$"]')) {
@@ -169,7 +172,7 @@ async function exportBook(browser, key, book) {
       }
       first.body.append(main);
       return '<!doctype html>\n' + first.documentElement.outerHTML;
-    }, { docs, title: book.title, combined: key === 'complete', studyHint: studyHints[key], printCSS,
+    }, { docs, title: book.title, combined: key === 'complete', replaceToc: key === 'dl', studyHint: studyHints[key], printCSS,
       mathjaxURL: pathToFileURL(path.resolve(mathjaxPath)).href,
       rootURL: pathToFileURL(root + path.sep).href });
     const temporaryHTML = path.join(temporary, 'book.html');
