@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="noindex,nofollow" name="robots"/><title>量化面试深度学习：架构、优化器与时序验证</title><link href="../assets/notes-shell.css?v=20261018" rel="stylesheet"/><link href="foundations.css" rel="stylesheet"/><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]},chtml:{mtextInheritFont:true}};</script><script defer="" src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script></head><body class="notes-shell-page"><nav class="notes-sitebar"><a href="../">Notes</a> / <a href="../unlisted/">All Notes</a> / <a href="../../">Home</a></nav><header id="top"><p class="tag">量化笔试面试 · 深度学习专题</p><h1>深度学习：架构、优化器与时序验证</h1><p class="lead">从一段历史怎样变成预测，到梯度怎样改变参数。用可跟算的例子复习RNN、LSTM、Transformer、AdamW与训练流程。</p></header><main><nav aria-label="知识目录" class="toc"><strong>知识点盘点与复习目录</strong><ol><li><a href="#study-route">复习路线与知识盘点</a></li><li><a href="#data-shapes">从一段行情到一个预测：符号与形状</a></li><li><a href="#loss-objectives">目标与泛化：训练分数在惩罚什么</a></li><li><a href="#gradient-backprop">优化基础一：梯度与反向传播 核心必会</a></li><li><a href="#rnn">RNN：把历史压进一个不断更新的状态</a></li><li><a href="#lstm">LSTM 与 GRU：为什么多几扇门会改变记忆方式</a></li><li><a href="#attention">注意力：用可计算的相似度选择历史信息</a></li><li><a href="#transformer">Transformer：把注意力、逐位置网络与稳定训练通道接起来</a></li><li><a href="#sequence-cost">训练、推理与 KV cache：先说清在算哪一种任务</a></li><li><a href="#sequence-code">一个最小因果预测器：输入历史，输出一个未来目标</a></li><li><a href="#architecture-selftest">面试自测：先独立回答，再核对</a></li><li><a href="#optimizer-comparison">优化基础二：用同一题算懂五种更新 核心必会</a></li><li><a href="#adamw-regularization">优化基础三：AdamW、正则与衰减 核心必会</a></li><li><a href="#training-update-order">优化基础四：学习率与可靠训练步骤 研究重点</a></li><li><a href="#quant-validation">量化应用：先画时间线，再谈模型好坏</a></li><li><a href="#interview-checkpoints">闭卷知识盘点：能否解释、计算并排错</a></li></ol></nav><figure><img alt="历史特征经序列网络和预测头得到损失，再反传梯度并更新参数；时间切分和成本验证位于训练循环之外" src="assets/deep-learning-flow.svg"/><figcaption>先核对时间和形状，再检查训练循环；网络结构只是完整研究链条的一部分。</figcaption></figure><section id="study-route"><h2>复习路线与知识盘点</h2><p>本书服务于量化研究、机器学习研究和开发岗位的笔试面试。学习顺序是先把一次预测与一次参数更新手算清楚，再学如何记住历史，最后学如何从历史中选择信息。这里的“核心”表示依赖与迁移价值，不是未经统计的公司出题频率。</p><ul><li><strong>★ 核心必会：</strong>输入输出形状、链式法则、损失与梯度、SGD/Adam/AdamW、RNN状态、LSTM门、QKV注意力、因果掩码和时间泄漏。</li><li><strong>研究岗重点：</strong>BPTT、梯度裁剪、位置编码、pre-LN残差、学习率调度、损失与业务指标、对照实验。</li><li><strong>进阶选读：</strong>RoPE相对位置推导、KV cache、混合精度、复杂度优化。FlashAttention、SSM、MoE和分布式训练只列后续方向，本书不宣称覆盖完整深度学习领域。</li></ul><p>第一轮要求能画架构并标维度；第二轮能手推两个时间步和两次优化更新；第三轮遮住代码，独立实现并解释一个失败案例。每节末尾自测先自己做，熟悉题目不等于能解决新题。</p></section>
+
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="noindex,nofollow" name="robots"/><title>量化面试深度学习：架构、优化器与时序验证</title><link href="../assets/notes-shell.css?v=20261018" rel="stylesheet"/><link href="foundations.css" rel="stylesheet"/><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]},chtml:{mtextInheritFont:true}};</script><script defer="" src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script></head><body class="notes-shell-page"><nav class="notes-sitebar"><a href="../">Notes</a> / <a href="../unlisted/">All Notes</a> / <a href="../../">Home</a></nav><header id="top"><p class="tag">量化笔试面试 · 深度学习专题</p><h1>深度学习：架构、优化器与时序验证</h1><p class="lead">从RNN、LSTM与Transformer基础，到MoE稀疏路由、MTP多步监督、循环深度和AdamW训练。用逐步计算、代码与量化验证区分机制、收益与代价。</p></header><main><nav aria-label="知识目录" class="toc"><strong>知识点盘点与复习目录</strong><ol><li><a href="#study-route">复习路线与知识盘点</a></li><li><a href="#data-shapes">从一段行情到一个预测：符号与形状</a></li><li><a href="#loss-objectives">目标与泛化：训练分数在惩罚什么</a></li><li><a href="#gradient-backprop">优化基础一：梯度与反向传播 核心必会</a></li><li><a href="#rnn">RNN：把历史压进一个不断更新的状态</a></li><li><a href="#lstm">LSTM 与 GRU：为什么多几扇门会改变记忆方式</a></li><li><a href="#attention">注意力：用可计算的相似度选择历史信息</a></li><li><a href="#transformer">Transformer：把注意力、逐位置网络与稳定训练通道接起来</a></li><li><a href="#sequence-cost">训练、推理与 KV cache：先说清在算哪一种任务</a></li><li><a href="#sequence-code">一个最小因果预测器：输入历史，输出一个未来目标</a></li><li><a href="#architecture-selftest">面试自测：先独立回答，再核对</a></li><li><a href="#optimizer-comparison">优化基础二：用同一题算懂五种更新 核心必会</a></li><li><a href="#adamw-regularization">优化基础三：AdamW、正则与衰减 核心必会</a></li><li><a href="#training-update-order">优化基础四：学习率与可靠训练步骤 研究重点</a></li><li><a href="#modern-map">前沿架构知识地图：先分清在改哪一种资源</a></li><li><a href="#moe-modern">MoE：每个位置只调用一部分专家</a></li><li><a href="#mtp-modern">MTP：训练时多预测几步，与推理时多接受几步</a></li><li><a href="#loop-transformers">Looped Transformer：把同一个计算模块多用几遍</a></li><li><a href="#modern-quant-design">把前沿结构变成可检验的量化实验</a></li><li><a href="#quant-validation">量化应用：先画时间线，再谈模型好坏</a></li><li><a href="#interview-checkpoints">闭卷知识盘点：能否解释、计算并排错</a></li></ol></nav><figure><img alt="历史特征经序列网络和预测头得到损失，再反传梯度并更新参数；时间切分和成本验证位于训练循环之外" src="assets/deep-learning-flow.svg"/><figcaption>先核对时间和形状，再检查训练循环；网络结构只是完整研究链条的一部分。</figcaption></figure><section id="study-route"><h2>复习路线与知识盘点</h2><p>本书服务于量化研究、机器学习研究和开发岗位的笔试面试。学习顺序是先把一次预测与一次参数更新手算清楚，再学如何记住历史，最后学如何从历史中选择信息。这里的“核心”表示依赖与迁移价值，不是未经统计的公司出题频率。</p><ul><li><strong>★ 核心必会：</strong>输入输出形状、链式法则、损失与梯度、SGD/Adam/AdamW、RNN状态、LSTM门、QKV注意力、因果掩码和时间泄漏。</li><li><strong>研究岗重点：</strong>BPTT、梯度裁剪、位置编码、pre-LN残差、学习率调度、损失与业务指标、对照实验。</li><li><strong>进阶专题：</strong>MoE稀疏路由、MTP监督与推测解码、Looped Transformer深度共享，见新增专题；RoPE、KV cache和混合精度配合学习。FlashAttention与MLA在机制地图中辨析，SSM和分布式训练未作完整讲解。</li></ul><p>第一轮要求能画架构并标维度；第二轮能手推两个时间步和两次优化更新；第三轮遮住代码，独立实现并解释一个失败案例。每节末尾自测先自己做，熟悉题目不等于能解决新题。</p></section>
 <section id="data-shapes"><h2>从一段行情到一个预测：符号与形状</h2><p><strong>★ 核心必会。</strong>假设每天收盘后用最近三天的两个特征，预测下一天收益。两个特征可为当日收益与成交量变化；这是教学设定，不保证有预测价值。一条样本是三行两列表，行表示时间，列表示特征。将两条这样的样本装在一起，输入形状为 \(B\times L\times F=2\times3\times2\)：B是同批样本数，L是历史长度，F是每个时点的特征数。</p><p>例如第一条样本为 \(X_1=[(1,2),(0,1),(2,0)]\)，数字已作教学缩放。若预测一项收益，标签形状是 \(B\times1\)，不是每个时间步都有一个未来可用的答案。历史特征通常先经过一层线性映射：输入行 \(x\) 与矩阵 \(W\in\mathbb R^{F\times d}\) 相乘再加偏置，输出维度d，称为隐藏维度。</p><div class="math-display">\[x=(1,2),\quad W=\begin{pmatrix}1&amp;0&amp;1\\0&amp;1&amp;-1\end{pmatrix},\quad b=(0,0,1),\quad xW+b=(1,2,0).\]</div><p>第一列为 \(1\times1+2\times0=1\)，第二列为2，第三列为 \(1-2+1=0\)。整批映射后是 \(2\times3\times3\)。RNN沿时间行更新状态；Transformer让时间行之间通过注意力交换信息；最后的预测头把选定状态从d维映射成一个数。</p><p><strong>易错点：</strong>batch轴不是时间轴；张量转置只改变排列，不改变哪些信息在预测时可用。训练样本 \((t-2,t-1,t)\) 的标签若用 \((t,t+1]\) 收益，就不能把t+1的成交量放进输入。<strong>自测：</strong>B=8,L=20,F=5,d=16，线性映射后的形状？<em>答案：8×20×16，权重5×16，偏置16。</em></p></section>
 <section id="loss-objectives"><h2>目标与泛化：训练分数在惩罚什么</h2><p><strong>★ 核心必会。</strong>回归可用平均平方误差：先逐样本计算预测减真实，再平方后平均。两条真实收益为(1,−1)，预测为(0.5,0)，误差为(−0.5,1)，MSE为 \((0.25+1)/2=0.625\)。对预测的导数为 \(2(\widehat y_i-y_i)/B\)，本例分别−0.5和1。负导数意味着应把该预测提高，正导数意味着应降低。</p><p>平方损失最优目标是条件均值，绝对误差对应条件中位数；这两种目标不同。Huber损失在小误差时像平方、大误差时像绝对值，用于降低单个极端值的影响，但不能自动修好重尾估计、异常数据或时间泄漏。若用分类预测上涨，必须区分logit（任意实数分数）与概率（0到1）。数值稳定的二分类交叉熵直接吃logit；不要先sigmoid再传BCEWithLogitsLoss。</p><div class="math-display">\[p=\frac1{1+e^{-z}},\quad \ell(z,y)=\log(1+e^z)-yz,\quad \frac{\partial\ell}{\partial z}=p-y.\]</div><p>z=0时p=1/2；标签y=1，损失约0.6931、梯度−0.5。沿负梯度更新能提高分数，但p高不保证盈利：若70%概率赚1bp、30%概率亏4bp，期望为 \(0.7-1.2=-0.5\)bp，尚未算成本。方向、幅度和决策损失要分别核对。</p><p>dropout在训练时随机置零部分激活并缩放保留值；它不是随机删除训练样本。训练与评估模式必须切换。BatchNorm跨批次估计统计量，LayerNorm通常在每个token的隐藏维度上归一化；它们既不等价，也不能替代只用训练期拟合的特征预处理。网络越大越能拟合训练样本，也可能更容易记住噪声；先比较同一数据边界下的线性、树模型与简单序列基线。</p><p><strong>自测：</strong>分类准确率提高而成本后收益下降，是否证明实现错误？<em>答案：未必。损失、收益幅度、仓位、换手与成本不同；先拆开验证，再定位。</em></p></section>
 <section id="gradient-backprop">
@@ -191,6 +192,175 @@ def train_epoch(model, loader, optimizer, scheduler, device, accum=4):
 <p><strong>面试回答顺序：</strong>先说明损失和数据批次，再写梯度，再说明优化器状态与更新；最后说验证与排错。选读内容如 Nesterov、AMSGrad、二阶近似优化器，先知道解决什么问题即可，除非具体岗位要求，不必挤占链式法则、AdamW、训练循环与时间切分的复习时间。</p>
 <details open=""><summary>自测与答案</summary><p>累积四个微批次，每个都调用一次 scheduler，但只调用一次 optimizer.step，问题是什么？答：调度进度以微批次跑快四倍；原定一万次参数更新的学习率计划在约二千五百次更新时就结束。若 scheduler 本来按 epoch 配置，则应每个 epoch 调一次，不能套用此处规则。</p></details>
 </section>
-<section id="quant-validation"><h2>量化应用：先画时间线，再谈模型好坏</h2><p><strong>★ 核心必会。</strong>模型应接到明确的预测时刻。例如周二收盘后，用周一至周二的数据预测周三收盘收益。周三才发布的修订财务数据，即便字段名写周二，也不能使用。“数据所属日期”和“首次可见时间”是两个不同字段。</p><h3>切分一个有重叠标签的小例子</h3><p>一条标签若是未来三天累计收益，则时点t的标签用到t+1、t+2、t+3。假设验证预测从第10天开始。第8天训练样本的标签覆盖9—11，与验证期交叉；第9天的标签覆盖10—12，也交叉，不能当作已完全隔离的历史训练信息。最保守的边界要求训练标签末端严格早于验证预测起点：\(t+3&lt;10\)，故只保留t≤6。第7天是否可保留取决于第10天的准确决策时刻和标签何时已知，不能只凭日期猜。</p><p>特征标准化的均值、方差必须只在训练期估计；验证和测试沿用冻结参数。每个滚动窗口可重估，但只能用当时已知资料。交易日之间样本相关，不能把窗口数量直接当独立样本数，也不能把一百次随机种子当一百份独立市场历史。</p><h3>因果掩码解决哪一层泄漏</h3><p>若每个位置都预测其下一步，位置i只能注意到j≤i，须屏蔽右上角未来位置。若整段历史都是截止当前已知输入，只在末端做一个预测，历史内部双向注意力本身不构成使用未来市场数据。但为了通用逐位置训练，本书代码采用因果掩码。模型里有causal mask，仍挡不住输入字段来自未来、全样本归一化或标签重叠。</p><h3>可证伪的基线、消融与最终选择</h3><p>先比较“始终预测0”、简单线性模型、树模型与小型RNN，再比较Transformer，使用相同可用信息和时间留出。若Transformer新增特征、窗口和搜索预算同时变化，无法把收益归因于架构。消融可依次去掉位置编码、缩短历史、关闭新增特征，并记录哪些变化损害留出表现。若效果只在挑中的一个区间出现，应重查漂移与搜索偏差。</p><p>评估至少分三层：预测误差／概率质量；按明确仓位规则得到的毛收益和换手；扣成本、融资和实际成交约束后的结果。IC指横截面或时序上的预测与后续收益相关性，必须写清计算对象、窗口和聚合方式，不是任何高IC都能交易。部署还要测目标硬件上的延迟、吞吐和内存，不能用训练速度代替推理速度。</p><p><strong>自测：</strong>把同一股票相邻日期随机分进训练和测试，即便没有重复行，安全吗？<em>答案：不保证。历史窗口和未来标签可能重叠，市场状态也相关；应按决策时间和标签区间隔离。</em></p></section>
-<section id="interview-checkpoints"><h2>闭卷知识盘点：能否解释、计算并排错</h2><ol><li>画出B×L×F输入、RNN状态、QKV和预测头的形状；说明每个矩阵在做什么。</li><li>手算两步RNN，解释梯度为什么会成为多个Jacobian（局部导数矩阵）的乘积。</li><li>说清LSTM的遗忘门、输入门、输出门分别控制什么；细胞状态通路为什么只是缓解而非彻底消除梯度问题。</li><li>计算两token注意力权重；说明softmax在哪个轴上、sqrt(d_k)为何出现。</li><li>画pre-LN的完整残差块，说明去掉位置编码后为什么无法一般地区分序列顺序。</li><li>手算Adam最初两步；解释偏差校正、二阶矩和方差的区别。</li><li>比较SGD下L2与weight decay的等价条件，再说明Adam下为何不同。</li><li>列出梯度累积、AMP、裁剪、优化器、调度器和清零的次序，解释最后一个不足累积长度的批次。</li><li>解释训练并行、逐token推理、KV cache与金融滑窗推理为什么不是同一种成本问题。</li><li>给一个“有因果掩码却仍泄漏”的反例，再设计能证伪模型优势的对照实验。</li></ol><p>验收方式：架构与优化各用两分钟口述；任选数值例遮住答案重算；再改变一个输入形状或时间边界。如果只能背原例，回到对应小节补第一步。这里不提供未经测试的面试通过率承诺。</p></section>
-<section data-note-role="evidence-appendix" id="sources"><h2>资料与证据边界</h2><p>本教材独立编写例题和复习优先级，不声称统计了出题频率，不保证某种架构优于基线或产生盈利。模型公式与接口依据原论文和官方文档核对；代码在CPU执行验证，AMP的GPU执行与实际市场数据表现需另行测试。</p><p><a href="https://www.janestreet.com/join-jane-street/machine-learning/">Jane Street官方机器学习介绍</a> · <a href="https://arxiv.org/abs/1706.03762">Vaswani 等：Attention Is All You Need</a> · <a href="https://arxiv.org/abs/2104.09864">Su 等：RoFormer</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.LSTM.html">PyTorch LSTM</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.GRU.html">PyTorch GRU</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.TransformerEncoderLayer.html">PyTorch TransformerEncoderLayer</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Transformer.html">Transformer</a> · <a href="https://arxiv.org/abs/1412.6980">Kingma 与 Ba：Adam 原论文</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html">PyTorch Adam</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html">PyTorch SGD</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html">PyTorch AdamW</a> · <a href="https://docs.pytorch.org/docs/stable/notes/amp_examples.html">PyTorch AMP 示例</a></p></section></main><footer><a href="../unlisted/">返回隐藏笔记目录</a> · <a href="index.html">基础教材</a></footer></body></html>
+<section id="modern-map"><h2>前沿架构知识地图：先分清在改哪一种资源</h2><p><strong>研究岗重点，机制优先；论文动态截至2026年10月24日核验。</strong>“新模型”不是一种共同的运算。面对一个名字，先问：它在增加可储存的参数、改变每个token的计算、增加训练监督，还是改变一次预测内部执行的步数？下面三条路线可以组合，但各自要付不同代价。</p><div class="table-wrap"><table><thead><tr><th>路线</th><th>主要改变</th><th>必须一起追问</th></tr></thead><tbody><tr><td>MoE：混合专家</td><td>在许多参数化子网络中稀疏选择少数，扩展条件计算容量</td><td>总参数、每token激活量、权重驻留显存、跨设备通信和尾部延迟分别是多少？</td></tr><tr><td>MTP：多token预测</td><td>在同一前缀或递进状态上增加未来位置的训练目标</td><td>各头看到了什么？标签如何移位？推理是否使用这些头、怎样验证草稿？</td></tr><tr><td>Looped Transformer：深度循环</td><td>同一主干块反复加工隐藏状态，用计算换有效深度</td><td>共享哪些参数？训练循环数与测试循环数如何匹配？什么时候停止？</td></tr></tbody></table></div><p>一个教学组合：四个专家中每次选两个，主干重复三次。每个位置总共发生六次专家调用；仍只储存四个不同专家，而不是凭空长出十二个。若另外加两个未来预测头，这又会增加训练目标和相应模块的计算。不能把“三次循环”“两个预测头”和“两倍推理加速”相互替换。</p><p>同样需要分清工程路线。FlashAttention主要通过分块、重算和访存组织避免显式保存完整注意力矩阵，原始机制仍计算softmax注意力；它不是通过共享深度参数来做循环。MLA等缓存压缩方法改变缓存表示与投影，不能等同于MoE稀疏专家。KV cache存储过去位置的表示，也不能自动证明某个循环架构能复用同一份缓存。</p><p><strong>面试回答的基本次序：</strong>输入和状态 → 一步运算 → 多步展开 → 训练信号 → 参数／计算／显存／通信 → 失效例 → 在目标岗位怎样验证。新论文中的模型名称与基准成绩应放在这个机制骨架之上，而不是替代它。</p></section><section id="moe-modern">
+<h2>MoE：每个位置只调用一部分专家</h2>
+<p><strong>研究岗进阶：</strong>先学会已有 Transformer 的注意力与 FFN，再学习这一节。MoE（Mixture of Experts，混合专家）通常把层中的单个前馈网络换成多个前馈网络及一个路由器。专家只是不同参数的网络，并非人工标注的“科技股专家”“债券专家”。路由器根据当前 token 的表示，选出要计算的专家；选中谁、怎样加权，是两件事。这里介绍可复用的架构机制，不能据此称它是量化公司的高频考题。</p>
+<h3>四个专家、只选两个：把一次计算走完</h3>
+<p>设当前表示为向量 \(x\)，四个专家分别是 \(E_1,E_2,E_3,E_4\)。路由器对它给出非负亲和分数 \(s=(0.6,0.3,0.2,0.1)\)；这些数不要求加起来等于 1。top-2 表示选择分数最高的两个，故选中集合 \(S=\{1,2\}\)。采用“在选中集合中归一化”的规则，权重分别为 \(0.6/(0.6+0.3)=2/3\)、\(0.3/(0.6+0.3)=1/3\)，未选专家权重为零。</p>
+<div class="math-display">\[w_i=\begin{cases}s_i/\sum_{j\in S}s_j,&amp;i\in S,\\0,&amp;i\notin S,\end{cases}\qquad y_{\mathrm{route}}=\sum_{i\in S}w_iE_i(x).\]</div>
+<p>为便于手算，令专家输出为二维向量，\(E_1(x)=(3,0)\)、\(E_2(x)=(0,6)\)。第一项是 \((2,0)\)，第二项是 \((0,2)\)，路由结果就是 \((2,2)\)。第三、第四专家即使有很大输出，也没有进入本次结果，因为它们没有被调用。若这一层另有共享专家，输出为 \(E_s(x)=(1,-1)\)，先相加得到 \((3,1)\)；若含残差且 \(x=(1,2)\)，层输出再加输入，成为 \((4,3)\)。共享专家每个 token 都计算，路由专家按选择计算；共享参数不等于共享专家。</p>
+<p>不同论文的分数函数与归一化约定可能不同，例如先 softmax 再 top-k，或先 sigmoid 再对选中的值归一化。不能只看“top-2”便假设所有实现相同。DeepSeekMoE 强调细粒度路由专家与共享专家；设计动机是让共享部分承担通用计算，让路由组合更灵活，不代表每个专家会自然对应可解释的业务类别。<a href="https://arxiv.org/abs/2401.06066">原论文：DeepSeekMoE</a>。</p>
+<h3>总参数、激活参数、显存与速度，为什么要分别回答</h3>
+<p>设四个路由专家各有 \(P\) 个参数，共享专家也有 \(P\) 个，其他注意力、嵌入、路由器合计 \(A\) 个。则总参数为 \(A+5P\)；top-2 时每个 token 涉及的参数约为 \(A+3P\)。若 \(A=20\) 百万、\(P=10\) 百万，两者分别为 7000 万与 5000 万。这里是简化计数，不是 FLOPs 的严格公式：矩阵形状、序列长度、激活函数和路由操作都会影响运算量。</p>
+<p>总参数决定权重需要存多少，激活参数描述当前 token 走了哪些计算。训练还要存梯度、优化器状态与中间激活；推理还可能有 KV cache。未选专家的权重并未凭空消失，只是不参与该 token 的专家前向。专家并行可以把权重分布在多张卡上，却引入 token 的发送与结果收回。一个批次中的不同 token 可能合起来调用全部专家；少量小矩阵、路由不均衡和跨卡 all-to-all 通信都可能让实际延迟不理想。因此应分别测吞吐、单请求延迟、显存及网络传输，而不是用“总参大但激活少”直接推出更快。</p>
+<h3>为什么路由会扎堆，容量怎么影响结果</h3>
+<p>假设一批有 8 个 token，每个选 2 个专家，共产生 16 次分配。四个专家完全均匀时各处理 4 次；若分配为 \((8,6,2,0)\)，第一张卡可能忙到其他卡等待，第四专家也难以获得训练。给每专家设置容量 4，则前两个专家超出 4 次与 2 次。实现必须明确如何处理：丢弃这部分专家分支、改派、排队，或采取不丢 token 的动态调度；“MoE 必须丢 token”不成立。“容量因子”常指实际容量相对平均负载的倍率；倍率 1.5 时本例容量约 6，但是否取整、按设备还是专家统计，要查实现。</p>
+<p>一种办法是在任务损失外加入负载均衡惩罚。它鼓励路由不要全挤到少数专家，但系数太大会让路由为平均而牺牲任务。另一类办法给专家维护路由偏置：忙的降低选择优先级，闲的提高。关键是它如何进入公式。</p>
+<p>在 DeepSeek-V3 的规则中，用 \(s_i+b_i\) 决定 top-k，实际乘专家输出的权重仍由原始 \(s_i\) 归一化。继续用上面的四个分数，取 \(b=(0,0,0,0.55)\)，选择分数变成 \((0.6,0.3,0.2,0.65)\)，选中专家 4 与 1。加权时却是 \(w_1=0.6/0.7=6/7\)、\(w_4=0.1/0.7=1/7\)，不能拿 0.65 做专家 4 的混合权重。该报告还保留很小的序列级均衡辅助损失；“主要均衡办法不靠辅助损失”不能说成“训练绝无辅助损失”。<a href="https://arxiv.org/html/2412.19437v2#S2.SS1.SSS2">原报告 §2.1.2</a>。</p>
+<pre><code class="language-python">import torch
+
+def route_topk(scores, expert_outputs, k=2, bias=None):
+    # scores: [N, E]; expert_outputs: [N, E, D]
+    # 教学版：先给出所有专家结果以核对权重，生产版应只算选中专家。
+    choice = scores if bias is None else scores + bias
+    indices = choice.topk(k, dim=-1).indices
+    selected = scores.gather(-1, indices)  # 不使用 choice 作 gate
+    weights = selected / selected.sum(-1, keepdim=True)
+    picked = expert_outputs.gather(
+        1, indices[..., None].expand(-1, -1, expert_outputs.size(-1)))
+    result = (picked * weights[..., None]).sum(1)
+    return result, indices, weights
+
+s = torch.tensor([[0.6, 0.3, 0.2, 0.1]])
+e = torch.tensor([[[3., 0.], [0., 6.], [9., 9.], [7., 7.]]])
+y, idx, w = route_topk(s, e)
+assert set(idx[0].tolist()) == {0, 1}
+assert torch.allclose(y, torch.tensor([[2., 2.]]))
+yb, ib, wb = route_topk(s, e, bias=torch.tensor([0., 0., 0., 0.55]))
+assert set(ib[0].tolist()) == {0, 3}
+assert torch.allclose(yb, torch.tensor([[25/7, 1.]]))
+</code></pre>
+<p>这段代码用于验证 top-k 与 gate 的区别，刻意没有冒充稀疏高性能实现；它还要求分数严格为正。真实实现还需检查溢出策略、路由梯度与并行调度。</p>
+<details open=""><summary>闭卷自测</summary><p>若八专家 top-2，总参数是否减少到四分之一？答：没有，只减少每个 token 调用的路由专家比例；总权重仍存在。提高某专家的均衡偏置，是否一定提高它被选中后的混合权重？答：不一定，以上规则的权重用原始分数。换一个批次后，重新统计每专家负载，而不是只看一个 token 的选择。</p></details>
+</section><section id="mtp-modern">
+<h2>MTP：训练时多预测几步，与推理时多接受几步</h2>
+<p><strong>研究岗进阶：</strong>MTP 是 multi-token prediction，多 token 预测。它首先是一类训练目标与预测模块设计，不是一个统一的网络，更不是“无需验证，一次输出几个词”的保证。先把普通语言模型写清楚：主干看到 \(x_1,\ldots,x_t\)，输出状态 \(h_t\)，下一 token 头给出 \(x_{t+1}\) 的概率。交叉熵就是对正确答案概率取负对数：给正确答案概率越小，惩罚越大。</p>
+<h3>并行多头：同一前缀同时承担多个未来目标</h3>
+<p>以三个头为例，头 1、2、3 分别预测 \(x_{t+1},x_{t+2},x_{t+3}\)，都使用只看见前缀 \(x_{\le t}\) 的状态。头 2 不能在输入中偷看真实 \(x_{t+1}\)。这些头共享主干，却有各自的输出计算；多个概率分布来自同一个前缀，不等于已构建一个满足自回归条件依赖的联合采样过程。<a href="https://proceedings.mlr.press/v235/gloeckle24a.html">Gloeckle 等，2024</a>使用共享主干上独立多头的方案；其作用与效果须结合原实验范围理解。</p>
+<p>用教学序列 \((A,B,C,D,E)\) 手对齐。状态 \(h_A\) 的三个目标依次是 B、C、D；\(h_B\) 的三个目标是 C、D、E；\(h_C\) 只有 D、E 两个合法目标。序列末尾不存在的未来 token 必须被 mask，不能拿 padding 当真答案。每个头要明确按本头有效位置平均，还是先汇总再按总位置平均；两种权重约定一般不同。</p>
+<div class="math-display">\[L_k=-\frac{1}{T-k}\sum_{t=1}^{T-k}\log p_k(x_{t+k}\mid x_{\le t}),\quad L=\sum_{k=1}^{K}\lambda_kL_k.\]</div>
+<p>这里 T 是完整教学序列长度、k 是向前预测的步数、\(\lambda_k\) 是各头权重。若首位置的三个正确概率为 \((1/2,1/4,1/8)\)，对应损失为 \((\ln2,\ln4,\ln8)\)，本例三头权重各为1/3，因此平均为(ln 2+ln 4+ln 8)/3，约1.3863。这个数只检查该位置；完整训练还要纳入其他合法位置，不能把它当整批损失。</p>
+<pre><code class="language-python">import torch
+import torch.nn.functional as F
+
+def parallel_mtp_loss(logits, tokens, segment_ids=None):
+    # tokens: [B, T]; 第 k 项 logits[k-1] 为 [B, T, V]
+    # logits 必须由因果主干产生；此函数只能查对齐，不能替你防泄漏。
+    losses = []
+    for k, scores in enumerate(logits, start=1):
+        if k &gt;= tokens.size(1):
+            raise ValueError("每个头至少需要一个合法目标")
+        pred = scores[:, :-k, :]
+        target = tokens[:, k:]
+        valid = target.ne(-100)  # -100 表示 padding 等无效目标
+        if segment_ids is not None:
+            # 同一打包样本内，每段文档使用不同的 segment id。
+            valid = valid &amp; segment_ids[:, :-k].eq(segment_ids[:, k:])
+        if not valid.any():
+            raise ValueError("本头没有有效目标")
+        losses.append(F.cross_entropy(pred[valid], target[valid]))
+    return torch.stack(losses).mean()
+
+ids = torch.tensor([[0, 1, 2, 3, 4]])
+heads = [torch.zeros(1, 5, 5) for _ in range(3)]
+loss = parallel_mtp_loss(heads, ids)
+assert torch.allclose(loss, torch.log(torch.tensor(5.)))
+assert ids[:, 2:].tolist() == [[2, 3, 4]]
+assert heads[1][:, :-2].shape == (1, 3, 5)
+</code></pre>
+<p>若一个 batch 内有多段打包文档，还要让每个偏移头的 mask 排除越过文档边界的目标；仅设 padding 不够。可用segment_ids按头排除跨段目标，但每段ID须在同一打包样本内唯一。代码展示的是损失对齐，并未构造主干或注意力mask，后者也必须隔离文档。</p>
+<h3>串行模块：DeepSeek-V3 不是同一状态接几个独立头</h3>
+<p>DeepSeek-V3 的附加预测按深度串起来：第一个附加模块融合主干状态与真实 \(x_{t+1}\) 的嵌入，经过投影与因果 Transformer 块，预测 \(x_{t+2}\)；下一个再接真实 \(x_{t+2}\)，预测 \(x_{t+3}\)。训练时使用真实前序 token 称为 teacher forcing。它不违反该步的因果边界，因为预测 \(x_{t+2}\) 可以条件于 \(x_{t+1}\)，却不能输入当前答案 \(x_{t+2}\)。推理时真实未来不存在，必须换成已经生成或草拟的前序 token。模块共享嵌入与输出头，但有额外投影和块；可在仅用主模型推理时移除。<a href="https://arxiv.org/html/2412.19437v2#S2.SS2">原报告 §2.2</a>。</p>
+<h3>为什么 MTP 训练不自动等于推测解码加速</h3>
+<p>推测解码让便宜的草稿过程先提议多个 token，较贵的目标模型对提议批量验证。失败后丢弃不合法的后缀；加速取决于接受率、草稿成本、验证开销与硬件。MTP 模块可以提供草稿，也可以仅帮助训练后被丢弃，两者不能混为一谈。</p>
+<p>若目标是保留目标模型的随机采样分布，设当前 token 草稿概率为 q、目标概率为 p，接受概率为 \(\min(1,p/q)\)。拒绝时不是简单按 p 重抽，而要从归一化的 \(\max(0,p-q)\) 校正分布采样。例如两个词的 \(q=(0.8,0.2),p=(0.5,0.5)\)：草拟第一个词后以 0.625 接受，接受贡献为 \(0.8\times0.625=0.5\)；第二个词必接受，贡献 0.2；拒绝概率 0.3 全补给第二个词，最终恰为 \((0.5,0.5)\)。若拒绝后直接按 p 重抽，结果反而是 \((0.65,0.35)\)。多步时逐前缀执行相应规则，并正确回滚缓存；温度、截断采样后的实际分布也必须一致纳入验证。<a href="https://arxiv.org/abs/2211.17192">推测解码原论文</a>。不能将任意置信度阈值方案称为严格同分布。</p>
+<h3>量化迁移：多期收益头首先是多目标回归</h3>
+<p>在日终用同一历史分别预测 1 日、5 日、20 日收益，可以借鉴共享主干与多任务损失，但这些是连续标签，不是下一词离散采样。须先定义简单收益还是对数收益，按各目标尺度设置损失权重，并控制跨期相关性。如果训练样本在验证起点前一天，却使用未来 20 日收益作标签，它已经跨进验证期；必须按最长标签终点清除交叠样本，再比较单期与多期模型。多头训练改善预测，不等于获得交易执行加速；需要单独验证样本外预测、稳定性、换手与成本。</p>
+<details open=""><summary>闭卷自测</summary><p>并行头预测第三个未来词时可否输入中间真实词？答：本节并行定义不可以；串行 teacher forcing 是另一结构。长度 5 的序列中偏移 3 有多少合法目标？答：2 个。多日收益头能否照搬推测解码接受率公式？答：不能，任务与概率对象不同。</p></details>
+</section><section id="loop-transformers">
+<h2>Looped Transformer：把同一个计算模块多用几遍</h2>
+<p><strong>岗位拓展：</strong>本节适合深度学习研究与模型架构岗位；目前没有据此认定它是量化笔试的高频考点。先掌握反向传播、注意力、残差连接和优化器，再学循环深度。这里的 Loop 指深度方向的重复计算，不是简单地让模型多生成几句文字。</p>
+<h3>1．先分清：读下一个时刻，还是再想一轮？</h3>
+<p>假设输入是过去三个交易日的特征。RNN先读第一天，再读第二天，再读第三天，隐藏状态沿<strong>数据时间</strong>传递。Looped Transformer可以一次接收这三天的特征，在同一段已知历史上重复计算：第一轮得到初步表示，第二轮重新组合，第三轮继续修正。重复轮数增加，不意味着又看到了第四天的数据。输入可见范围仍由预测时点和注意力掩码限定。</p>
+<p>普通深层Transformer通常用不同参数的模块依次变换：第一层用参数θ₁，第二层用θ₂。循环模型则反复调用同一个参数集合θ。可以把它理解为，同一个解题步骤被多次使用；每轮输入状态不同，因此输出仍能不同。共享权重并不表示每轮复制前一轮答案。</p>
+<div class="math">\[H^{(0)}=E(x),\qquad H^{(r+1)}=F_\theta(H^{(r)},E(x)),\quad r=0,\ldots,R-1.\]</div>
+<p>x是完整输入，E把输入转成向量；H是一张“每个位置当前理解如何”的状态表；r是循环编号，R是总轮数；F是含注意力和前馈网络的共享模块。每轮再次输入E(x)是常见的输入注入设计，可以防止原始信息逐轮丢失，但不是所有循环模型都必须采用同一注入形式。</p>
+<p><strong>参数共享，计算量不会共享。</strong>设共享主干有P个参数，一轮需要C次计算，R轮主干参数仍是P，前向计算约为RC。若增加每轮独立的归一化或门控，还有额外参数，不能把所有变体都说成参数完全固定。保存全部反向图时，中间激活显存也随轮数增长；参数少不等于推理快、训练省显存。</p>
+<h3>2．具体手算：多循环为什么可能有用，也可能越算越坏？</h3>
+<p>先看一个我们自己构造的标量例子，目的是理解迭代，不是模拟真实模型的推理。设固定输入x=2，初始状态h₀=0，每轮更新h′=0.5h+x。第一轮h₁=0.5×0+2=2；第二轮h₂=0.5×2+2=3；第三轮3.5；第四轮3.75。若最后稳定在h*，则h*=0.5h*+2，移项得到0.5h*=2，所以h*=4。</p>
+<div class="math">\[h_{r+1}-4=0.5(h_r-4).\]</div>
+<p>这一步不是凭直觉：把4=0.5×4+2从更新式两侧减掉，就得到上式。每轮误差只剩一半，因此朝4收敛。但把0.5改成1.2，h′=1.2h+2，从0开始得到2、4.4、7.28；其固定点是−10，误差每轮乘1.2，反而远离固定点。再看h′=−h，初值1会在1与−1之间永远摆动。<strong>共享模块反复调用，本身不保证收敛，也不保证预测正确。</strong>真实网络需要观察表示、损失和样本级预测，不能由这个标量例子推出神经网络必有唯一稳定解。</p>
+<h3>3．同一参数用两次，梯度怎么算？</h3>
+<p>仍用最小例子：h₀=x=2，h₁=wh₀，h₂=wh₁，损失L=(h₂−y)²/2，目标y=0。取w=0.5，便有h₁=1、h₂=0.5，损失0.125。w在两处参与计算，因此必须把两处贡献相加。</p>
+<div class="math">\[\frac{dL}{dw}=(h_2-y)\left(\underbrace{h_1}_{\text{第二次使用的直接贡献}}+\underbrace{w h_0}_{\text{第一次使用经后续传递}}\right)=0.5(1+0.5\times2)=1.\]</div>
+<p>也可独立核验：h₂=w²x，所以dh₂/dw=2wx=2，乘上dL/dh₂=0.5，仍是1。自动求导会在同一个Parameter对象上累加这些贡献；不是每轮更新一次参数，通常是展开全部轮次、一次backward后再optimizer.step。</p>
+<p>如果为了省显存，在h₁处detach，第二轮把h₁当常数，得到梯度0.5×1=0.5，少了第一轮的路径。截断反向传播保存了前向状态，却截掉部分参数依赖，因此一般不再是完整有限展开目标的精确梯度。这是一种需要实验验证的近似，不能描述成“完全不影响训练”。Huginn确实使用尾部有限轮次反传，但这一工程选择的成功不能替代新任务上的比较。</p>
+<h3>4．能在推理时随便把4轮改成40轮吗？</h3>
+<p>程序能运行，不代表质量能外推。训练只见4轮时，第20轮的状态分布可能从未被训练过；迭代还可能抹掉有用信息，把原本正确的预测改错。需要在验证集分别画出R=1、2、4、8时的损失、准确率、延迟和显存曲线，并统计“早轮正确、晚轮错误”的比例。循环次数或停止阈值只能由验证集选择，不能看测试集或未来收益挑最优轮数。</p>
+<p>还要区分<strong>何时停</strong>和<strong>是否正确</strong>。ACT（Adaptive Computation Time，自适应计算时间）学习停止信号；另一些方法看相邻轮输出变化，或看输出分布的熵。熵衡量分布是否分散，例如二分类预测(0.99,0.01)比(0.5,0.5)更确定。然而若真实类别是第二类，前者就是自信地错了。相邻轮相同也可能是稳定地错。Ouro中的熵正则作用于“在哪一轮退出”的概率分布，与直接拿答案熵当正确率不是一回事。</p>
+<h3>5．KV缓存：权重相同，不代表缓存相同</h3>
+<p>自回归解码的KV缓存保存历史位置的Key和Value，使新token不必重算全部历史。但第r轮的K=W_KH⁽ʳ⁾，下一轮的K=W_KH⁽ʳ⁺¹⁾；即使W_K相同，只要H改变，K也会变。把所有轮次共用一份缓存，会改变原来的计算语义。不同token若提前退出，还可能缺少对应深度的历史缓存。</p>
+<p>可靠实现要明确缓存键是“位置、层、循环编号”中的哪些组合，哪些状态允许覆盖，何时重算，以及误差如何衡量。有些论文专门验证跨轮共享近似；它是方法的一部分，不是无需说明的通用优化。LOTUS可复用不进入循环的固定问题前缀缓存，而循环的潜在位置需要按其定义重新更新。最小教学代码下面直接重算整段输入，不偷偷引入缓存近似。</p>
+<h3>6．从2018到2026：同一主线，不同监督信号</h3>
+<ul>
+<li><strong>Universal Transformers</strong>：2018-07首发，ICLR 2019。共享变换沿深度迭代，同时在序列位置之间做注意力；引入逐位置动态停止。它说明循环深度不是2026年才出现的概念。</li>
+<li><strong>Huginn</strong>：2025-02。结构分成输入前奏、重复核心、输出尾部，研究在潜在状态上增加测试时计算；训练采用变化的循环深度与截断反传。这里的latent指不必把每一轮状态翻译成文字。</li>
+<li><strong>Ouro / LoopLM</strong>：2025-10首发，本文核对2026-10-11的v6。把循环纳入预训练，并学习退出轮数分布；熵正则用于避免深度分配塌缩，再训练门控调节计算分配。</li>
+<li><strong>LoopMTP</strong>：2026-08-04预印本。将各轮隐藏表示与不同未来token的嵌入做软对齐，并结合门控聚合；这是潜在表示对齐，不等同于每一轮都做完整词表的多token交叉熵。主干共享，但有每轮特有的归一化设计。</li>
+<li><strong>LOTUS</strong>：2026-06首发，核对v2。预留潜在位置，多轮更新，并用已有CoT步骤token并行监督这些位置，另加最终答案监督。因此它依赖步骤标注的训练设计，不能与不需专门CoT数据的方法混为一谈。</li>
+</ul>
+<p>这些工作各自在语言、数学或代码基准报告结果。<strong>它们没有建立“循环更多→量化预测更好→扣成本收益更高”的证据链。</strong>论文里相对不同大小模型的性能，不能改写成同算力、同延迟下普遍胜出，更不能作为金融部署结论。</p>
+<h3>7．最小PyTorch实现：一个Block确实被复用</h3>
+<p>代码只演示参数共享、因果掩码和梯度；没有ACT、MTP或论文专门的归一化，也不是完整复现。每个位置只看自己和更早位置；用于历史窗口的最终时点预测时，应另行添加任务输出头。输入形状依次是批量、序列长度、特征维度。</p>
+<pre><code class="language-python">import torch
+from torch import nn
+
+torch.manual_seed(7)
+class Looped(nn.Module):
+    def __init__(self, d=8):
+        super().__init__()
+        self.block = nn.TransformerEncoderLayer(
+            d_model=d, nhead=2, dim_feedforward=16,
+            dropout=0.0, batch_first=True, norm_first=True)
+        self.norm = nn.LayerNorm(d)
+
+    def forward(self, x, rounds):
+        assert rounds &gt;= 1
+        mask = torch.triu(torch.ones(
+            x.size(1), x.size(1), device=x.device,
+            dtype=torch.bool), diagonal=1)
+        h = x
+        for _ in range(rounds):
+            h = self.block(h + x, src_mask=mask)
+        return self.norm(h)
+
+model = Looped()
+x = torch.randn(2, 5, 8)
+ids = tuple(id(p) for p in model.parameters())
+count = sum(p.numel() for p in model.parameters())
+y1, y4 = model(x, 1), model(x, 4)
+assert tuple(id(p) for p in model.parameters()) == ids
+assert sum(p.numel() for p in model.parameters()) == count
+assert y1.shape == y4.shape == x.shape
+model.zero_grad()
+y4.square().mean().backward()
+assert all(p.grad is not None and torch.isfinite(p.grad).all()
+           for p in model.parameters())
+print("shared parameters:", count)
+</code></pre>
+<h3>8．量化岗位的对照实验与面试回答</h3>
+<p>如果要尝试历史序列预测，固定输入字段、标签、交易时点与时间切分，以同数据的MLP、GRU和普通Transformer作为基线。循环模型比较1/2/4/8轮；至少分别报告等参数与近似等计算预算两种对照，因为只比较等参数会给多循环模型额外计算。固定回测与交易成本模型，先看预测损失与稳定性，再检查换手、扣成本收益和推理尾延迟。用不同随机种子和多个历史区间检查结论，禁止事后挑唯一赚钱的窗口。</p>
+<p><strong>闭卷自测：</strong>共享4轮为何只算一份主干参数却做4份前向计算？上面w=0.5的例子detach后为何梯度减半？输出熵低为什么不代表正确？为什么共享W_K仍不能直接共享全部KV？若解释不清这些问题，应先回到计算图，而不是继续背模型名字。</p>
+<div data-note-role="evidence-appendix">
+<h3>一手资料与核对范围（截至2026-10-24）</h3>
+<p>本节数值例子、代码和量化对照建议为原创教学；文献观察核对原文方法部分，不据摘要外推。</p>
+<ul>
+<li><a href="https://arxiv.org/html/1807.03819v3">Universal Transformers，§2与动态停止</a>（2019-03-05版本）。</li>
+<li><a href="https://arxiv.org/html/2502.05171v2">Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach，§3、§6</a>（2025-02-17版本）。</li>
+<li><a href="https://arxiv.org/pdf/2510.25741v6">Scaling Latent Reasoning via Looped Language Models，§3与§5.4</a>（2026-10-11版本；HTML不可用，核对PDF）。</li>
+<li><a href="https://arxiv.org/html/2608.03624v1">LoopMTP，§3与实验限制</a>（2026-08-04）。</li>
+<li><a href="https://arxiv.org/html/2606.31779v2">Bridging the Gap Between Latent and Explicit Reasoning with Looped Transformers，§3</a>（2026-07-13版本）。</li>
+</ul></div>
+</section><section id="modern-quant-design"><h2>把前沿结构变成可检验的量化实验</h2><p>下列是本教材提出的实验设计，不是上述论文已经证实的量化收益。先固定可见数据、训练时间切分、特征、目标与成本模型，再分别比较稠密基线与MoE、单期与多期监督、固定层数与共享循环。对照应写清是在匹配参数、训练FLOPs、墙钟时间还是在线延迟；这几种预算通常不能同时相同。</p><p>例如用过去20天特征预测未来1、5、20天收益，多期标签都合法作为训练答案，但不能进入预测当天的输入。若测试从日期T开始，训练样本t的最长标签到t+20，就应以最长区间检查边界，而不是只给1天目标留空档。三个目标的尺度与噪声不同，直接等权相加可能让某一个目标支配梯度；应报告每个目标的表现和主目标变化。</p><p>MoE的路由不能因为被命名为“行业专家”“牛熊专家”就认为真正学到了这些语义。检查每个专家的负载、路由稳定性以及是否只记住资产身份。跨资产注意力还要核对同一决策时刻各资产的数据是否确实已发布。稀疏算量变少但路由通信变多，可能让实时尾延迟变差。</p><p>Looped模型应画循环次数1、2、4、8下的留出误差、置信度与实际延迟曲线，并记录是否有更多循环反而退化的样本。不能只展示挑出的最佳循环数，也不能以低熵直接认定预测正确。若多轮思考只让模型更自信地追随过时规律，需要重查漂移与停止策略，而不是无限加循环。</p><p><strong>独立自测：</strong>MoE模型的训练损失更低、多期预测的平均误差更低、循环模型的回答更自信，哪一个单独足以支持上线？<em>都不够。仍须查主任务的留出表现、选择偏差、数据边界、延迟、成本与失败条件。</em></p></section><section id="quant-validation"><h2>量化应用：先画时间线，再谈模型好坏</h2><p><strong>★ 核心必会。</strong>模型应接到明确的预测时刻。例如周二收盘后，用周一至周二的数据预测周三收盘收益。周三才发布的修订财务数据，即便字段名写周二，也不能使用。“数据所属日期”和“首次可见时间”是两个不同字段。</p><h3>切分一个有重叠标签的小例子</h3><p>一条标签若是未来三天累计收益，则时点t的标签用到t+1、t+2、t+3。假设验证预测从第10天开始。第8天训练样本的标签覆盖9—11，与验证期交叉；第9天的标签覆盖10—12，也交叉，不能当作已完全隔离的历史训练信息。最保守的边界要求训练标签末端严格早于验证预测起点：\(t+3&lt;10\)，故只保留t≤6。第7天是否可保留取决于第10天的准确决策时刻和标签何时已知，不能只凭日期猜。</p><p>特征标准化的均值、方差必须只在训练期估计；验证和测试沿用冻结参数。每个滚动窗口可重估，但只能用当时已知资料。交易日之间样本相关，不能把窗口数量直接当独立样本数，也不能把一百次随机种子当一百份独立市场历史。</p><h3>因果掩码解决哪一层泄漏</h3><p>若每个位置都预测其下一步，位置i只能注意到j≤i，须屏蔽右上角未来位置。若整段历史都是截止当前已知输入，只在末端做一个预测，历史内部双向注意力本身不构成使用未来市场数据。但为了通用逐位置训练，本书代码采用因果掩码。模型里有causal mask，仍挡不住输入字段来自未来、全样本归一化或标签重叠。</p><h3>可证伪的基线、消融与最终选择</h3><p>先比较“始终预测0”、简单线性模型、树模型与小型RNN，再比较Transformer，使用相同可用信息和时间留出。若Transformer新增特征、窗口和搜索预算同时变化，无法把收益归因于架构。消融可依次去掉位置编码、缩短历史、关闭新增特征，并记录哪些变化损害留出表现。若效果只在挑中的一个区间出现，应重查漂移与搜索偏差。</p><p>评估至少分三层：预测误差／概率质量；按明确仓位规则得到的毛收益和换手；扣成本、融资和实际成交约束后的结果。IC指横截面或时序上的预测与后续收益相关性，必须写清计算对象、窗口和聚合方式，不是任何高IC都能交易。部署还要测目标硬件上的延迟、吞吐和内存，不能用训练速度代替推理速度。</p><p><strong>自测：</strong>把同一股票相邻日期随机分进训练和测试，即便没有重复行，安全吗？<em>答案：不保证。历史窗口和未来标签可能重叠，市场状态也相关；应按决策时间和标签区间隔离。</em></p></section>
+<section id="interview-checkpoints"><h2>闭卷知识盘点：能否解释、计算并排错</h2><ol><li>画出B×L×F输入、RNN状态、QKV和预测头的形状；说明每个矩阵在做什么。</li><li>手算两步RNN，解释梯度为什么会成为多个Jacobian（局部导数矩阵）的乘积。</li><li>说清LSTM的遗忘门、输入门、输出门分别控制什么；细胞状态通路为什么只是缓解而非彻底消除梯度问题。</li><li>计算两token注意力权重；说明softmax在哪个轴上、sqrt(d_k)为何出现。</li><li>画pre-LN的完整残差块，说明去掉位置编码后为什么无法一般地区分序列顺序。</li><li>手算Adam最初两步；解释偏差校正、二阶矩和方差的区别。</li><li>比较SGD下L2与weight decay的等价条件，再说明Adam下为何不同。</li><li>列出梯度累积、AMP、裁剪、优化器、调度器和清零的次序，解释最后一个不足累积长度的批次。</li><li>解释训练并行、逐token推理、KV cache与金融滑窗推理为什么不是同一种成本问题。</li><li>给一个“有因果掩码却仍泄漏”的反例，再设计能证伪模型优势的对照实验。</li><li>四个专家选两个，加入路由偏置后选中者改变时，输出权重是否也应该使用偏置？解释MoE不同实现的约定。</li><li>画出两个未来预测头的标签移位与尾部mask，再说明为何不能直接把多头结果拼成一段自回归生成。</li><li>同一个block循环四次，独立参数、激活、梯度与延迟分别怎样变化？举一个更多循环反而发散的例子。</li></ol><p>验收方式：架构与优化各用两分钟口述；任选数值例遮住答案重算；再改变一个输入形状或时间边界。如果只能背原例，回到对应小节补第一步。这里不提供未经测试的面试通过率承诺。</p></section>
+<section data-note-role="evidence-appendix" id="sources"><h2>资料与证据边界</h2><p>本教材独立编写例题和复习优先级，不声称统计了出题频率，不保证某种架构优于基线或产生盈利。模型公式与接口依据原论文和官方文档核对；代码在CPU执行验证，AMP的GPU执行与实际市场数据表现需另行测试。</p><p><a href="https://www.janestreet.com/join-jane-street/machine-learning/">Jane Street官方机器学习介绍</a> · <a href="https://arxiv.org/abs/1706.03762">Vaswani 等：Attention Is All You Need</a> · <a href="https://arxiv.org/abs/2104.09864">Su 等：RoFormer</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.LSTM.html">PyTorch LSTM</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.GRU.html">PyTorch GRU</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.TransformerEncoderLayer.html">PyTorch TransformerEncoderLayer</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Transformer.html">Transformer</a> · <a href="https://arxiv.org/abs/1412.6980">Kingma 与 Ba：Adam 原论文</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html">PyTorch Adam</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.SGD.html">PyTorch SGD</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html">PyTorch AdamW</a> · <a href="https://docs.pytorch.org/docs/stable/notes/amp_examples.html">PyTorch AMP 示例</a></p><a href="https://arxiv.org/abs/2205.14135">FlashAttention原论文</a></section></main><footer><a href="../unlisted/">返回隐藏笔记目录</a> · <a href="index.html">基础教材</a></footer></body></html>

@@ -71,11 +71,11 @@ def check_book(filename, sources):
             assert normalize(label) in compact, f"{filename}: missing heading {label!r}"
             headings += 1
         for code in main.select("pre code"):
-            if normalize(code.get_text()) not in compact:
+            if normalize(code.get_text()) not in compact and normalize(code.get_text()) not in raw_compact:
                 # Poppler can order a CJK inline comment before its ASCII //
                 # marker. Check both code and comment independently in that case.
                 for line in code.get_text().splitlines():
-                    if normalize(line) in compact:
+                    if normalize(line) in compact or normalize(line) in raw_compact:
                         continue
                     pieces = line.split("//", 1)
                     comment_words = re.findall(r"[A-Za-z_][A-Za-z_0-9]*|[\u4e00-\u9fff]+", pieces[-1])

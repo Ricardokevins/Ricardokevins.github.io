@@ -33,3 +33,26 @@ else:raise AssertionError("max_len guard failed")
 h0=torch.tensor(0.,requires_grad=True,dtype=T);h1=torch.tanh(1+.5*h0);h2=torch.tanh(.5*h1);h2.backward();assert abs(h0.grad.item()-.0911)<1e-4
 assert sum(p.numel() for p in torch.nn.LSTM(2,3).parameters())==84
 print("model shapes, finite gradients, future-prefix isolation, max length, BPTT and LSTM count: passed")
+
+# A routed mixture must ignore outputs and gradients of unselected experts.
+scores=torch.tensor([[.6,.3,.2,.1]],requires_grad=True)
+expert=torch.randn(1,4,2,requires_grad=True)
+mixture,index,weight=ns["route_topk"](scores,expert)
+mixture.sum().backward();assert expert.grad[:,2:].abs().sum()==0
+# Per-horizon document masking: changing the score that crosses a boundary
+# must not alter the loss or its gradients.
+tokens=torch.tensor([[0,1,2,3]])
+segments=torch.tensor([[0,0,1,1]])
+logits=torch.randn(1,4,4,requires_grad=True)
+loss=ns["parallel_mtp_loss"]([logits],tokens,segments)
+loss.backward();assert logits.grad[0,1].abs().sum()==0
+manual=torch.nn.functional.cross_entropy(logits[0,[0,2]],tokens[0,[1,3]])
+assert torch.allclose(loss,manual)
+try:ns["parallel_mtp_loss"]([torch.zeros(1,4,4)],torch.full((1,4),-100))
+except ValueError:pass
+else:raise AssertionError("all-padding head was accepted")
+# The same shared block receives a different number of visits, not copies.
+loop=ns["Looped"]();nparams=sum(p.numel() for p in loop.parameters())
+for rounds in [1,4]:assert loop(torch.randn(2,5,8),rounds).shape==(2,5,8)
+assert sum(p.numel() for p in loop.parameters())==nparams
+print("MoE selected gradients, packed-MTP masks, empty targets, loop parameter reuse: passed")

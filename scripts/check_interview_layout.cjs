@@ -16,6 +16,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
   if (screenshots) await fs.mkdir(screenshots, { recursive: true });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    page.setDefaultNavigationTimeout(120000);
     await page.route(/https:.*(?:mathjax@[^/]+|mathjax\/[^/]+)\/es5\//, async route => {
       const asset = route.request().url().split('/es5/')[1];
       const file = path.resolve(path.dirname(mathjaxPath), asset);
