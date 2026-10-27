@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Requires Playwright and a local Chromium/Chrome. No existing browser is used.
+// Requires Playwright, a local Chromium/Chrome, and Python 3 with pypdf.
+// No existing browser is used; numbered contents are checked in two passes.
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
