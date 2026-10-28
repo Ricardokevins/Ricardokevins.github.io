@@ -101,7 +101,7 @@ def check_book(filename, sources):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--include-archives", action="store_true",
-                        help="also validate the two optional large archive PDFs")
+                        help="also validate optional legacy and combined PDFs")
     args = parser.parse_args()
     catalog = json.loads((ROOT / "scripts/interview_books.json").read_text())["books"]
     chosen = [b["file"] for b in catalog.values()

@@ -14,7 +14,7 @@ from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / "scripts/interview_books.json").read_text())["books"]
-DEST = ROOT / "output/pdf/量化面试分册"
+DEST = ROOT / "output/pdf/量化面试五册"
 DEST.mkdir(parents=True, exist_ok=True)
 books, topics = [], []
 
@@ -73,8 +73,8 @@ h1{font-size:30px}h2{font-size:23px;margin-top:32px}a{color:#873e25}input{box-si
 button{font:inherit;margin:4px;padding:4px 9px;cursor:pointer}mark{background:#f7e4b6}</style>
 <h1>量化面试：按问题找分册</h1>
 <p>先解压整个压缩包，再打开本文件。页面、搜索和PDF均不需要联网；书中外部参考链接需要联网。</p>
-<div class=route><strong>从零学习：</strong>数学起步 → 回归与正则化 → 概率统计基础 → 估计与推断 → 机器学习 → 深度学习。
-<br>基础课慢讲；方法题按原题号练习；专项题按目标岗位选读。旧全量合集仅保留归档，不必继续从中翻找。
+<div class=route><strong>从零学习：</strong>概率统计与算法先打基础；模型册从数学起步、回归逐步走到机器学习、深度学习与大模型。
+<br>共五本：概率统计、机器学习与大模型、算法编程、量化金融、综合练习。细分类在各册内部，原题号保留。旧全量合集仅保留归档，不必继续从中翻找。
 <br><strong>查题：</strong>输入关键词，点击结果会打开对应PDF及实际页码。PDF自带目录页码、章节和题目书签。</div>
 <h2>关键词检索</h2><input id=q placeholder="例如：最小二乘、岭回归、PCA、最大似然、标准误">
 <div id=quick></div><p id=status class=muted>输入关键词，最多展示80个匹配书签。</p><div id=results></div>
@@ -86,7 +86,8 @@ const aliases={'最小二乘':['最小二乘','ols'],'岭回归':['岭回归','r
 function search(){const value=q.value.trim().toLowerCase();out.replaceChildren();if(!value){status.textContent='输入关键词，最多展示80个匹配书签。';return;}
  const keys=aliases[value]||[value];const hits=topics.filter(t=>keys.some(k=>(t.title+' '+t.book+' '+t.context).toLowerCase().includes(k)));
  const preferred={'最小二乘':'regression','ols':'regression','岭回归':'regression','ridge':'regression','lasso':'regression','最大似然':'statistics','mle':'statistics','pca':'ml','adam':'dl'};
- hits.sort((a,b)=>Number(b.key===preferred[value])-Number(a.key===preferred[value]));
+ const subjectKeys={"probability": "subject-probability", "brain": "subject-probability", "expectation": "subject-probability", "conditioning": "subject-probability", "games": "subject-probability", "statistics": "subject-probability", "math": "subject-models", "regression": "subject-models", "ml": "subject-models", "dl": "subject-models", "structures": "subject-algorithms", "programming": "subject-algorithms", "leetcode": "subject-algorithms", "finance": "subject-finance", "guide": "subject-practice", "quant-52": "subject-practice", "quant-61": "subject-practice", "joinquant": "subject-practice", "jump": "subject-practice", "worldquant": "subject-practice", "mixed": "subject-practice"}; const preferredKey=subjectKeys[preferred[value]];
+ hits.sort((a,b)=>Number(b.key===preferredKey)-Number(a.key===preferredKey));
  status.textContent='匹配 '+hits.length+' 条；显示前 '+Math.min(80,hits.length)+' 条。';
  for(const t of hits.slice(0,80)){const div=document.createElement('div');div.className='result';const a=document.createElement('a');a.href=t.href;a.textContent=t.title;
  const meta=document.createElement('div');meta.className='muted';meta.textContent=t.book+' · 第'+t.page+'页';div.append(a,meta);out.append(div);}}
@@ -112,7 +113,9 @@ queries = [
     ("风险与回测", "finance", "回测"),
 ]
 rows = []
+subject_keys = {'probability': 'subject-probability', 'brain': 'subject-probability', 'expectation': 'subject-probability', 'conditioning': 'subject-probability', 'games': 'subject-probability', 'statistics': 'subject-probability', 'math': 'subject-models', 'regression': 'subject-models', 'ml': 'subject-models', 'dl': 'subject-models', 'structures': 'subject-algorithms', 'programming': 'subject-algorithms', 'leetcode': 'subject-algorithms', 'finance': 'subject-finance', 'guide': 'subject-practice', 'quant-52': 'subject-practice', 'quant-61': 'subject-practice', 'joinquant': 'subject-practice', 'jump': 'subject-practice', 'worldquant': 'subject-practice', 'mixed': 'subject-practice'}
 for label, key, needle in queries:
+    key = subject_keys[key]
     matches = [t for t in topics if t["key"] == key and needle.lower() in t["title"].lower()]
     if not matches:
         raise ValueError(f"Missing quick-lookup topic: {label} / {key} / {needle}")
@@ -125,7 +128,7 @@ th,td{padding:3px 7px;border-bottom:1px solid #ddd;text-align:left}tr{break-insi
 .volumes{break-before:page}p{orphans:2;widows:2}</style><h1>量化面试分册：先按问题找书</h1>
 <p>数字是对应分册的实际PDF页码，不是旧合编页码。手机不便打开HTML时，直接按下表找册、输入页码。
 更多题目请展开该册书签栏；电脑解压后打开“先打开这个-分册检索.html”可全文搜索书签。</p>
-<p>从零路线：数学起步 → 回归与正则化 → 概率统计基础 → 估计与推断 → 机器学习 → 深度学习。
+<p>从零路线：概率统计与算法先打基础；模型册从数学起步、回归逐步走到机器学习、深度学习与大模型。
 先逐步跟算，再看后读的密集汇总；专项题按目标岗位选读。</p><table><thead><tr><th>想复习什么</th><th>打开哪册</th><th>页码</th></tr></thead><tbody>""" + "".join(rows) + "</tbody></table><section class=volumes><h2>全部分册</h2><table><thead><tr><th>分组</th><th>书名</th><th>页数</th></tr></thead><tbody>" + "".join(
     f"<tr><td>{html.escape(b['group'])}</td><td>{html.escape(b['title'])}</td><td>{b['pages']}</td></tr>"
     for b in books) + "</tbody></table><p>全量合集仅归档，不在本分册包中重复放置。每个PDF均保留公式与原题内容。</p></section></html>"
@@ -137,7 +140,7 @@ subprocess.run(["node", str(ROOT / "scripts/render_library_guide.cjs"),
     "输入关键词可跳到对应册实际页码；也可在PDF阅读器中打开书签栏。\n"
     "部分阅读器不支持网页#page跳转时，请按结果显示的页码手动输入。\n"
     "全量合编不作为默认阅读入口；原题与更紧凑的旧解答仍在相应册的后读部分保留。\n")
-archive = ROOT / "output/pdf/量化面试-分册与检索.zip"
+archive = ROOT / "output/pdf/量化面试-五科教材.zip"
 with ZipFile(archive, "w", ZIP_DEFLATED, compresslevel=6) as zipped:
     allowed = {b["file"] for b in books} | {"先打开这个-分册检索.html", "分册清单.json", "使用说明.txt",
                                              "先看-书目与页码速查.pdf"}

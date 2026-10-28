@@ -187,7 +187,7 @@ async function exportBook(browser, key, book) {
       }
       first.body.append(main);
       return '<!doctype html>\n' + first.documentElement.outerHTML;
-    }, { docs, title: book.title, combined: key === 'complete', replaceToc: true, detailToc: ['regression', 'statistics'].includes(key), studyHint: studyHints[key], printCSS,
+    }, { docs, title: book.title, combined: key === 'complete', replaceToc: true, detailToc: ['regression', 'statistics', 'subject-probability', 'subject-models'].includes(key), studyHint: studyHints[key], printCSS,
       mathjaxURL: pathToFileURL(path.resolve(mathjaxPath)).href,
       rootURL: pathToFileURL(root + path.sep).href });
     const temporaryHTML = path.join(temporary, 'book.html');
