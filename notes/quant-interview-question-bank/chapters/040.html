@@ -129,7 +129,7 @@
             <div class="concept-card"><b>回测的边界</b><p>回测假设你的订单不改变世界；实盘里排队、部分成交、冲击成本与 regime 变化全部到场。审计与 TCA 是把两者对账的工具。</p></div>
           </div>
 
-          <h3 id="s-040-2"><a class="anchor-link" href="#s-040-2" aria-label="跳转到本节">#</a>因子分解：beta、alpha 与市场中性</h3>
+          <h3 id="s-040-2" data-source-questions="F10 F18 F19 F9"><a class="anchor-link" href="#s-040-2" aria-label="跳转到本节">#</a>因子分解：beta、alpha 与市场中性</h3>
           <p><b>beta 是什么（源题 F19）。</b>beta 度量个股收益对市场收益的敏感度，定义与 CAPM（Capital Asset Pricing Model）口径：</p>
           <div class="math-display">\[ \beta_i=\frac{\mathrm{Cov}(R_i,R_M)}{\mathrm{Var}(R_M)}=\rho_{iM}\,\frac{\sigma_i}{\sigma_M},\qquad \mathbb{E}[R_i]=r_f+\beta_i\bigl(\mathbb{E}[R_M]-r_f\bigr). \]</div>
           <p>怎么读：beta 是 \(R_i\) 对 \(R_M\) 的回归斜率——市场涨 1%，该股平均涨 \(\beta\)%。估计：用 1–5 年月度或日度收益做 OLS 回归（回归细节见 <a href="026.html">026 章</a>）；坑：beta 时变（牛市末尾偏高）、不同估计窗口差异大、薄交易导致偏差，实务常用向 1 收缩的调整。对冲视角：\(\beta\) 份指数空头即可对冲掉该股的市场暴露。</p>
@@ -158,9 +158,23 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
           <p>多资产推广：对目标协方差 \(\Sigma\) 做 Cholesky 得 \(L\)，对独立标准正态向量左乘 \(L\) 即得目标相关的样本；\(\Sigma\) 非正定（高度共线的收益序列）时需先加微小对角垫（岭收缩，见 <a href="027.html">027 章</a>）再分解。</p>
           <p><b>相关性的时间尺度依赖（源题 F24 的地基）。</b>相关系数是对某个采样频率定义的：日收益的相关与年收益的相关可以完全不同，因为聚合时间越长，低频随机趋势的权重越大（方差随 \(T\) 线性累积），高频平稳噪声被平均掉（方差封顶）。「日度正相关、年度负相关」因此并不矛盾——机制与数值构造在例题 3 给出。</p>
 
+          <div class="source-followup" id="correlated-normal-code" data-source-questions="F12"><p><b>F12要求实际函数。</b>先生成独立标准正态Z₁、Z₂，再令X=Z₁、Y=ρZ₁+√(1−ρ²)Z₂。均值均0，Y方差ρ²+1−ρ²=1，Cov(X,Y)=ρ，所以相关系数恰为ρ；ρ=±1退化成Y=±X。随机生成器在函数外创建并复用，避免每次重新设相同seed产生假独立。O(1)单次时间与空间。</p><pre><code class="language-python">import math
+import random
+
+def draw_normal(rng):
+    return rng.gauss(0.0, 1.0)
+
+def draw_correlated_pair(rho, rng):
+    if not math.isfinite(rho) or not -1.0 &lt;= rho &lt;= 1.0:
+        raise ValueError("correlation must lie in [-1, 1]")
+    z1, z2 = draw_normal(rng), draw_normal(rng)
+    return z1, rho * z1 + math.sqrt(1.0 - rho * rho) * z2
+
+# rng = random.Random(7)
+# x, y = draw_correlated_pair(0.5, rng)</code></pre></div>
           <h3 id="s-040-4"><a class="anchor-link" href="#s-040-4" aria-label="跳转到本节">#</a>例题详解一：配权、降暴露与再平衡</h3>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-01" data-source-questions="F27">
             <p><b>例题 1（源题 F27、统计源题 S26 同题统一解答）：给定一组股票如何配权使组合波动最小？股票 A、B 期望收益相同，标准差分别为 20% 与 30%，相关系数 0.5，具体怎么配？</b></p>
             <div class="solution">
               <p><b>建模。</b>通用方案：估计 \(\Sigma\) 后取 \(w^{*}=\Sigma^{-1}\mathbf{1}/(\mathbf{1}^{\top}\Sigma^{-1}\mathbf{1})\)；S26 是两资产数值实例（期望收益相同——最小方差与期望无关，正好印证 F27 的通用解）。</p>
@@ -168,21 +182,21 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               <p><b>检验。</b>组合方差（%² 单位）：\(\sigma_p^2=(36/49)\cdot 400+(1/49)\cdot 900+2\cdot 0.5\cdot(6/49)\cdot 600=18900/49\approx 385.7\)，\(\sigma_p\approx 19.6\%\lt 20\%=\min(\sigma_A,\sigma_B)\)——加入一只更高波的股票反而降了波动，分散化的直接证据。边界自查：\(\rho\to-1\) 时 \(w_A\to\sigma_B/(\sigma_A+\sigma_B)\)（零方差组合，权重反比于波动）；\(\rho\to 0\) 时 \(w_A\to\sigma_B^2/(\sigma_A^2+\sigma_B^2)\)（逆方差加权，inverse-variance weighting），两个极端都对。</p>
               <p><b>面试怎么讲。</b>「最小方差只看协方差：通用解 \(w\propto\Sigma^{-1}\mathbf{1}\)，两资产时代入公式得 6/7 与 1/7，组合波动 19.6%，低于两者各自。注意它对 \(\Sigma\) 的估计误差极其敏感，实务要加收缩或正则。」</p>
             </div>
-          <div class="derivation-supplement" data-derivation="040-01"><p><b>推导补全与自检。</b>带权重和1约束，拉格朗日\(L=w^T\Sigma w-\lambda (1^Tw-1)\)，一阶条件\(2\Sigma w=\lambda 1\)，归一化得\(\Sigma ^{-1}1/(1^T\Sigma ^{-1}1)\)。本例权重\(6/7\)与\(1/7\)。该闭式要求\(\Sigma \)正定、无卖空和仓位限制；若\(\Sigma \)奇异用伪逆仍需检查约束是否可行，不能简单把逆替换为伪逆就断言所有情况都成立。</p></div></div>
+          <div class="derivation-supplement" data-derivation="040-01"><p><b>推导补全与自检。</b>带权重和1约束，拉格朗日\(L=w^T\Sigma w-\lambda (1^Tw-1)\)，一阶条件\(2\Sigma w=\lambda 1\)，归一化得\(\Sigma ^{-1}1/(1^T\Sigma ^{-1}1)\)。本例权重\(6/7\)与\(1/7\)。该闭式要求\(\Sigma \)正定、允许卖空且无额外仓位限制；若\(\Sigma \)奇异，使用伪逆还需检查零空间中是否已有满足约束的零风险权重，不能简单把逆替换为伪逆就断言所有情况都成立。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-02" data-source-questions="F11">
             <p><b>例题 2（源题 F11）：组合 X 对市场的暴露为 c。如何降低暴露？分别按交易次数、交易金额的绝对值、交易金额的平方作为成本函数，给出成本最小的削减方式（用直觉与拉格朗日两种方式）。设第 i 只股票的 beta 为 \(\beta_i\)，交易额（占组合比例）为 \(x_i\)。</b></p>
             <div class="solution">
               <p><b>建模。</b>目标是把暴露从 c 降到 \(c-\Delta\)，即约束 \(\sum_i\beta_i x_i=-\Delta\)；三种成本函数给出三个性质完全不同的解。</p>
-              <p><b>推导。</b>① 成本 = 交易次数（L0）：次数与交易额无关，那么一笔大单优于多笔小单；把全部削减放在 \(|\beta|\) 最大的股票上，一笔交易 \(x_j=-\Delta/\beta_j\) 即达标——高 beta 是「最便宜的暴露搬运工」。② 成本 = \(\sum_i|x_i|\)（L1）：每削减一单位暴露所需名义为 \(1/|\beta_i|\)，线性成本下不存在「摊薄」激励，最优仍是全部集中在 \(|\beta|\) 最大的票上（若有单票仓位上限，则按 \(|\beta|\) 从大到小贪心填充）。③ 成本 = \(\sum_i x_i^2\)（L2，刻画冲击成本随单笔规模加速上升）：拉格朗日函数</p>
+              <p><b>推导。</b>① 成本 = 交易次数（L0）：次数与交易额无关，那么一笔大单优于多笔小单；任取一只非零beta的股票，一笔交易 \(x_j=-\Delta/\beta_j\) 即达标；所有这种单笔解的笔数成本均为1，最大绝对beta只有在额外比较交易金额时才更省。② 成本 = \(\sum_i|x_i|\)（L1）：每削减一单位暴露所需名义为 \(1/|\beta_i|\)，线性成本下不存在「摊薄」激励，最优仍是全部集中在 \(|\beta|\) 最大的票上（若有单票仓位上限，则按 \(|\beta|\) 从大到小贪心填充）。③ 成本 = \(\sum_i x_i^2\)（L2，刻画冲击成本随单笔规模加速上升）：拉格朗日函数</p>
               <div class="math-display">\[ \mathcal{L}=\sum_i x_i^2+\lambda\Bigl(\sum_i\beta_i x_i+\Delta\Bigr)\;\Rightarrow\;2x_i+\lambda\beta_i=0\;\Rightarrow\;x_i=-\frac{\Delta\,\beta_i}{\sum_j\beta_j^2}. \]</div>
               <p>即按 beta <b>成比例</b>地在所有票上分摊，谁贡献暴露谁多砍。数值例：\(\beta=(2,1,0.5)\)、\(\Delta=1\)：L0/L1 全砍第一只（\(x_1=-0.5\)，L2 成本 0.25）；L2 给 \(x=(-0.381,-0.190,-0.095)\)，成本 \(\sum x_i^2\approx 0.190\lt 0.25\)，且 \(\sum\beta_ix_i=-1\) 达标。</p>
               <p><b>检验。</b>三类解的一致性：L1 与 L0 都集中（线性成本不奖励分散），L2 强制分散（平方成本惩罚大单）；现实的市场冲击近似平方根律，最优解落在 L1 的「集中」与 L2 的「均摊」之间。</p>
-              <p><b>面试怎么讲。</b>「成本函数的曲率决定答案：数次数与线性金额下，交易集中在最高 beta 名义最省；平方金额下拉格朗日给出 \(x_i\propto\beta_i\) 的均摊解。一句话：线性成本挑工具，二次成本摊着来。」</p>
+              <p><b>面试怎么讲。</b>「成本函数的曲率决定答案：数次数时任一非零beta单笔即可；线性金额下才优先最大绝对beta；平方金额下拉格朗日给出 \(x_i\propto\beta_i\) 的均摊解。一句话：线性成本挑工具，二次成本摊着来。」</p>
             </div>
           <div class="derivation-supplement" data-derivation="040-02"><p><b>推导补全与自检。</b>降暴露约束\(\beta ^Tx=-\Delta \)。L2最小成本由Cauchy–Schwarz给x*\(=-\Delta \beta /(\beta ^T\beta )\)，最小平方金额\(\Delta ^{2}/\)‖\(\beta \)‖\(^{2}\)；L1最小成本下界\(|\Delta |/\max |\beta _{i}|\)，把全部交易放在绝对beta最大的一只可达。按交易笔数计且无单笔上限，只需任一非零beta股票一笔；实际成交上限、费用与风险约束会改变解。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-03" data-source-questions="F24">
             <p><b>例题 3（源题 F24）：两只股票可能日度正相关、而年度负相关吗？</b></p>
             <div class="solution">
               <p><b>建模。</b>可能。相关系数依赖于采样频率：日相关由「共同高频噪声」主导，年相关由「低频随机趋势」主导，两者的符号可以相反。</p>
@@ -194,21 +208,21 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
             </div>
           <div class="derivation-supplement" data-derivation="040-03"><p><b>推导补全与自检。</b>期间聚合收益协方差含所有跨日项：\(\operatorname{Cov}(\sum a_{t},\sum b_{s})=\sum _{t}\sum _{\mathrm{sCov}}(a_{t},b_{s})\)。日度正相关只约束\(t=s\)项，跨期项可为负并在长期主导，所以年度可负相关。若所有跨日协方差都0且各日同分布，则年度相关不会仅靠相加反号；要构造反号必须展示跨期结构，不能只说“时间尺度不同”。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-04" data-source-questions="F35">
             <p><b>例题 4（源题 F35）：股票在 t=1 时价格 100，t=n 时回到 100。你维持一个恒定 100 的组合（涨了就卖、跌了就买）。这个策略最终收益为正吗？</b></p>
             <div class="solution">
               <p><b>建模。</b>每期期初持有市值恰为 100 的股票（涨了卖回 100、跌了用现金补到 100），第 \(t\) 期的盈亏即 \(100\,r_t\)（\(r_t\) 为该期收益率）。终端总盈亏 \(=100\sum_t r_t\)，而买入持有是 \(100\bigl(\prod_t(1+r_t)-1\bigr)=0\)。</p>
               <p><b>推导。</b>关键是恒等式：对一切 \(x\gt -1\)，\(x-\ln(1+x)\ge 0\)（等号仅当 \(x=0\)）。求和：</p>
               <div class="math-display">\[ \sum_t r_t=\underbrace{\sum_t\ln(1+r_t)}_{=\ln(S_n/S_1)=0}+\sum_t\bigl(r_t-\ln(1+r_t)\bigr)\;\ge\;0,\qquad\approx\tfrac{1}{2}\sum_t r_t^2\gt 0. \]</div>
               <p><b>答案：是正的</b>（只要中途有任何波动），近似等于 \(50\sum_t r_t^2\)。数值例：100 → 120 → 100：第一期赚 20，第二期持有 100 市值亏 \(100\times(-1/6)\approx 16.7\)，净赚 \(3.33\)；公式复核 \(100\times\frac{1}{2}(0.2^2+(1/6)^2)\approx 3.39\)（精确值 \(3.33\)，差为三阶小量）。</p>
-              <p><b>检验。</b>两个视角互证：① AM-GM：\(\frac1n\sum(1+r_t)\ge\bigl(\prod(1+r_t)\bigr)^{1/n}=1\)，算术平均不小于几何平均，策略把「算术路径」变现；② 波动率拖累（volatility drag）的对偶：买入持有的对数收益 \(\sum\ln(1+r_t)\approx\sum r_t-\frac12\sum r_t^2\)，拖累项正是策略的利润来源。这个策略就是恒定比例组合（constant mix）的波动率收割（volatility harvesting），与 Shannon 的恶魔、<a href="038.html">038 章</a>对冲组合的 gamma 损益 \(\tfrac12\Gamma S^2\sigma_r^2\) 同构——都是赚已实现方差。</p>
+              <p><b>检验。</b>两个视角互证：① AM-GM：\(\frac1n\sum(1+r_t)\ge\bigl(\prod(1+r_t)\bigr)^{1/n}=1\)，算术平均不小于几何平均，策略把「算术路径」变现；② 波动率拖累（volatility drag）的对偶：买入持有的对数收益 \(\sum\ln(1+r_t)\approx\sum r_t-\frac12\sum r_t^2\)，拖累项正是策略的利润来源。这里是恒定股票市值敞口（constant dollar exposure），不等同于按总财富固定比例配置的constant mix；在所列条件下体现了再平衡的路径收益，与 Shannon 的恶魔、<a href="038.html">038 章</a>对冲组合的 gamma 损益 \(\tfrac12\Gamma S^2\sigma_r^2\) 同构——都是赚已实现方差。</p>
               <p><b>面试怎么讲。</b>「正收益，近似 \(50\sum r_t^2\)：恒定敞口等价于机械地高抛低吸，把波动率拖累反向兑现。但要补风险边界：下跌期需要不断追加现金、股票趋零时摊低无底（需止损/融资约束），它不是免费午餐，是路径风险的补偿。」</p>
             </div>
-          <div class="derivation-supplement" data-derivation="040-04"><p><b>推导补全与自检。</b>价格回到原点给\(\prod (1+r_{t})=1\)且每期gross return&gt;0。AM–GM给平均\(gross return\ge 1\)，所以\(\sum r_{t}\ge 0\)，零融资成本、无交易费用、每期再平衡为100股票市值时现金累计盈亏\(100\sum r_{t}\ge 0\)。路径100→110→100，收益10%与\(-9.0909\%\)，盈利约0.9091；扣掉交易成本或加资金利息后未必为正。</p></div></div>
+          <p><b>“组合始终100”的原文歧义。</b>上述证明维持的是股票仓位市值100，并另记现金余额/融资，最终利润来自现金账户，不是声称含现金的总财富全过程恒为100。若原句要求总财富也固定100，就需要明确外部注资或提款，并把这些现金流计入损益；仅观察起止价格相同不能在未定义现金流的情况下断言盈利。所有证明还假设正价格、零融资利息、无费用、按约定时点再平衡。</p><div class="derivation-supplement" data-derivation="040-04"><p><b>推导补全与自检。</b>价格回到原点给\(\prod (1+r_{t})=1\)且每期gross return&gt;0。AM–GM给平均\(gross return\ge 1\)，所以\(\sum r_{t}\ge 0\)，零融资成本、无交易费用、每期再平衡为100股票市值时现金累计盈亏\(100\sum r_{t}\ge 0\)。路径100→110→100，收益10%与\(-9.0909\%\)，盈利约0.9091；扣掉交易成本或加资金利息后未必为正。</p></div></div>
 
           <h3 id="s-040-5"><a class="anchor-link" href="#s-040-5" aria-label="跳转到本节">#</a>例题详解二：波动率估计与研究口径</h3>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-05" data-source-questions="F1 F1.a">
             <p><b>例题 5（源题 F1）：定义几个波动率估计器。它们的理论性质如何？如何做样本外检验？（子问：线性回归闭式解、何时不可逆、岭回归闭式解、所逆矩阵的谱如何变化、Lasso 为何用梯度类算法。）</b></p>
             <div class="solution">
               <p><b>建模。</b>波动率估计器 = 从不同「价格信息切片」构造日方差估计，性质 = 在 GBM 假设下的无偏性与效率；样本外检验 = 预测问题，不是拟合问题。</p>
@@ -221,11 +235,11 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
               </div>
               <p>样本外检验口径：把「估计器在 t 日的输出」当作对 t+1（或未来 k 日）已实现波动的预测，做 Mincer–Zarnowitz 回归 \(\sigma^2_{t+1}=a+b\,\hat{\sigma}^2_t+\varepsilon\)，检验 \(a=0,b=1\)（检验工具见 <a href="019.html">019 章</a>）；比较用 MSE 或对数尺度更稳的 QLIKE 损失，多估计器两两比较用 Diebold-Mariano 检验。</p>
               <p><b>子问（回归与正则化）。</b>OLS 闭式解 \(\hat{\beta}=(X^{\top}X)^{-1}X^{\top}y\)；不可逆出现在 \(X^{\top}X\) 奇异时——特征数超过样本数（\(p\gt n\)）或特征共线。岭回归闭式解 \(\hat{\beta}_{ridge}=(X^{\top}X+\lambda I)^{-1}X^{\top}y\)：谱的视角，\(X^{\top}X\) 的特征值 \(\lambda_i\) 整体右移为 \(\lambda_i+\lambda\)，全部严格为正，条件数 \((\lambda_{\max}+\lambda)/(\lambda_{\min}+\lambda)\) 变小——求逆从病态变良态；Lasso 的 \(\ell_1\) 惩罚使目标不可微、无闭式解，用坐标下降或次梯度法求解，其条件数讨论与收敛细节见 <a href="027.html">027 章</a>。</p>
-              <p><b>面试怎么讲。</b>「先按信息量排估计器：收盘-收盘无偏但低效，Parkinson、Garman-Klass 用高低开收效率翻倍但怕隔夜跳空，realized vol 一致但怕微观结构噪声。检验永远是样本外预测问题：MZ 回归加 QLIKE。回归子问一句话：\(X^{\top}X\) 奇异时 OLS 无解，岭把谱整体右移 \(\lambda\) 恢复可逆。」</p>
+              <p><b>面试怎么讲。</b>「先按信息量排估计器：收盘-收盘无偏但低效，Parkinson、Garman-Klass 用高低开收效率翻倍但怕隔夜跳空，realized vol 一致但怕微观结构噪声。检验永远是样本外预测问题：MZ 回归加 QLIKE。回归子问一句话：\(X^{\top}X\)奇异时唯一逆公式失效、OLS系数通常不唯一，岭把谱整体右移 \(\lambda\) 恢复可逆。」</p>
             </div>
           <div class="derivation-supplement" data-derivation="040-05"><p><b>推导补全与自检。</b>收盘收益平方、Parkinson高低价、Garman–Klass开收高低都有各自无漂移、连续路径、无跳空等假设。所谓“效率更高”通常是在该模型下方差更小，不代表遇到跳跃也更准确。评估预测波动时选独立未来区间并处理估计噪声，可比较QLIKE；模型训练、预测目标和年化口径必须一致。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-06" data-source-questions="F2 F2.a F2.b F2.c">
             <p><b>例题 6（源题 F2）：描述你的研究主题。如何计算策略的 alpha？用到哪些数学模型？什么条件触发交易信号？策略表现是否满意？</b></p>
             <div class="solution">
               <p><b>建模。</b>这是一道「简历题」，考的不是具体主题而是你能否按研究流程讲清楚。给一个可复用的答题模板（以「低波动异象的时序实现」这类中性主题为例）。</p>
@@ -243,18 +257,18 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
             </div>
           <div class="derivation-supplement" data-derivation="040-06"><p><b>推导补全与自检。</b>策略alpha回归\(R_{p}-r_{f}=\alpha +\beta ^TF+\epsilon \)，\(\alpha \)取决于因子集合、频率、样本与成本口径。正截距可能来自遗漏风险、样本选择或执行偏差，不能单独证明研究能力。描述项目时给“信号生成时可用数据→仓位决策→成交假设→成本后结果”，并用样本外与失效场景限定结论；不以未运行的设想冒充实绩。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-040-07" data-source-questions="F3 F3.a F3.b">
             <p><b>例题 7（源题 F3）：系统化策略在回测环境与实盘交易中的主要差异是什么？哪些效应只在实盘发生、回测无法复现？实盘的自动交易如何审计？</b></p>
             <div class="solution">
               <p><b>建模。</b>差异来自三个隐含假设：你的订单不影响市场、你能按看到的价成交、市场结构不变。逐条拆掉它们。</p>
-              <p><b>推导（口径）。</b>实盘独有、回测难复现的效应：① 排队与成交概率——限价单排在队尾，看到的价格不是你的价格；② 部分成交与拒单——回测假设全量成交；③ 市场冲击——你的单推动价格，信号容量越大越严重（与 <a href="039.html">039 章</a>的价差、深度直接相关）；④ 滑点与延迟——决策价与成交价之间的差，含网络与撮合延迟；⑤ 借券与费用——做空成本、清算费在回测里常被简化；⑥ regime 与拥挤——同一信号被他人抢先执行（alpha 衰减）、流动性真空、涨跌停与熔断；⑦ 公司行为处理的细节差错。审计口径：逐笔对账（成交回报与行情按时间戳核对，TCA：实现滑点相对决策价/到达价的分布）、全链路日志（信号生成、下单、成交三段留痕）、影子运行（paper trading 与实盘并行比对偏差）、限额与熔断机制（单日亏损、错误单频率触发 kill switch）、定期把实盘 PnL 与回测预测的差异做归因分解。</p>
-              <p><b>检验。</b>健康度指标：实盘/回测夏普比若长期低于 0.5，先怀疑成本模型而非市场；滑点分布若有厚尾，检查是否集中在开盘与事件时段。</p>
+              <p><b>推导（口径）。</b>实盘重要、简单回测容易遗漏或难以精确复现的效应：① 排队与成交概率——限价单排在队尾，看到的价格不是你的价格；② 部分成交与拒单——回测假设全量成交；③ 市场冲击——你的单推动价格，信号容量越大越严重（与 <a href="039.html">039 章</a>的价差、深度直接相关）；④ 滑点与延迟——决策价与成交价之间的差，含网络与撮合延迟；⑤ 借券与费用——做空成本、清算费在回测里常被简化；⑥ regime 与拥挤——同一信号被他人抢先执行（alpha 衰减）、流动性真空、涨跌停与熔断；⑦ 公司行为处理的细节差错。审计口径：逐笔对账（成交回报与行情按时间戳核对，TCA：实现滑点相对决策价/到达价的分布）、全链路日志（信号生成、下单、成交三段留痕）、影子运行（paper trading 与实盘并行比对偏差）、限额与熔断机制（单日亏损、错误单频率触发 kill switch）、定期把实盘 PnL 与回测预测的差异做归因分解。</p>
+              <p><b>检验。</b>健康度指标：实盘与回测偏差须按成交、成本、模型漂移和数据口径分解，不能用统一的0.5比值阈值直接归因；滑点分布若有厚尾，检查是否集中在开盘与事件时段。</p>
               <p><b>面试怎么讲。</b>「回测的三个隐含假设——不冲击市场、按看到的价成交、结构不变——在实盘全部失效。我把差异归为成交类（排队、部分成交、冲击、滑点）与环境类（borrow、regime、拥挤），审计靠逐笔对账、全链路日志、影子运行和 kill switch。」</p>
             </div>
           <div class="derivation-supplement" data-derivation="040-07"><p><b>推导补全与自检。</b>回测可模拟队列、冲击、拒单与延迟，但模型精度受数据与反馈效应限制；这些不是逻辑上永远无法复现。实盘审计应对每个意图记录订单ID、发送/确认/成交时戳、状态变更、撤单与重试、资金仓位核对，验证幂等与恢复。净PnL要能从逐笔成交和费用独立重算，而不只依赖策略日志中的汇总数字。</p></div></div>
 
           <h3 id="s-040-6"><a class="anchor-link" href="#s-040-6" aria-label="跳转到本节">#</a>误区与边界</h3>
-          <div class="intuition-box"><b>常见误区</b><p>① 「市场中性 = 没有风险」——beta 归零只是搬走了一个因子，残差波动、行业暴露与拥挤风险都还在；② 最小方差解对 \(\Sigma\) 的估计误差极度敏感——样本协方差在维度高时近乎噪声，实务必须收缩（与 <a href="027.html">027 章</a>岭回归同一逻辑）；③ beta 用哪个窗口都对/都不对——它是时变量，报告 beta 必须带窗口与置信区间；④ 例题 4 的再平衡收益不是套利——它需要承担路径风险并提供下跌期的追加资金；⑤ 回测里最大的偏差往往不是漏了成本，而是多重检验：试了一百个信号后留下的最好者，样本外衰减是必然（检验口径见 <a href="019.html">019 章</a>）；⑥ 日度相关矩阵不能直接回答年度风险问题（例题 3）。</p></div>
+          <div class="intuition-box"><b>常见误区</b><p>① 「市场中性 = 没有风险」——beta 归零只是搬走了一个因子，残差波动、行业暴露与拥挤风险都还在；② 最小方差解对 \(\Sigma\) 的估计误差极度敏感——样本协方差在维度高时近乎噪声，实务必须收缩（与 <a href="027.html">027 章</a>岭回归同一逻辑）；③ beta 用哪个窗口都对/都不对——它是时变量，报告 beta 必须带窗口与置信区间；④ 例题 4 的再平衡收益不是套利——它需要承担路径风险并提供下跌期的追加资金；⑤ 回测里最大的偏差往往不是漏了成本，而是多重检验：试了一百个信号后留下的最好者，样本外衰减风险显著增加，但不能无条件断言每个结果必然衰减（检验口径见 <a href="019.html">019 章</a>）；⑥ 日度相关矩阵不能直接回答年度风险问题（例题 3）。</p></div>
           <div class="intuition-box"><b>考官追问的变式</b><p>常见变式：把 F11 的成本函数改成平方根律（答案在 L1 与 L2 解之间，需数值求解）；把 F27 加上「不能做空」约束（闭式解失效，退化为带界二次规划，边界上多只票权重为零）；把 F24 反过来问「年度正相关、日度负相关可能吗」（同样可能，把构造整体反号：当天回吐的反向共同噪声 + 缓慢同向的随机趋势）；把 F35 的恒定市值改成恒定份额（恒定份额 = 买入持有，不再有再平衡收益）。准备这些问题时始终回到两块硬通货：因子分解与协方差矩阵。</p></div>
 
           <h3 id="s-040-7"><a class="anchor-link" href="#s-040-7" aria-label="跳转到本节">#</a>检查清单</h3>
@@ -264,8 +278,8 @@ void sampleCorrelated(mt19937&amp; rng, double rho, int n,
             <li>我能就「alpha 最重要的因素」给出有排序的判断：真实性/样本外稳健性优先于容量与成本，并讲清理由。</li>
             <li>我能按交易次数、绝对金额、平方金额三种成本函数给出降暴露的最优路径，并写出 L2 情形的拉格朗日推导。</li>
             <li>我能用两资产公式与通用式 \(w\propto\Sigma^{-1}\mathbf{1}\) 算最小方差权重（S26：6/7 与 1/7，波动 19.6%）。</li>
-            <li>我能用 Cholesky 写出生成指定相关正态的代码，并解释「日度正相关、年度负相关」的机制。</li>
-            <li>我能证明恒定市值再平衡策略的终期收益为正（约 \(50\sum r_t^2\)），并说出它与波动率拖累、gamma 损益的对偶关系。</li>
+            <li>我能用两个独立标准正态构造给定相关的正态对并写出函数，并解释「日度正相关、年度负相关」的机制。</li>
+            <li>我能在正价格、零融资成本和无费用的离散再平衡条件下，证明恒定股票市值敞口的终期现金盈亏非负（小收益近似为50Σr²），并说出它与波动率拖累、gamma 损益的对偶关系。</li>
             <li>我能列出回测与实盘的七类差异和审计四件套（对账、日志、影子运行、kill switch），并按七步模板讲清一项研究。</li>
           </ul>
         </section>

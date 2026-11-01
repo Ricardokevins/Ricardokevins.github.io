@@ -129,7 +129,7 @@
             <div class="concept-card"><b>遍历：树的序列化</b><p>三种深度优先序（前/中/后）加一种广度优先序（层序），递归版三行、迭代版考栈功力，层序版考队列功力。</p></div>
           </div>
 
-          <h3 id="s-003-2"><a class="anchor-link" href="#s-003-2" aria-label="跳转到本节">#</a>哈希表：装载因子、冲突与复杂度反例</h3>
+          <h3 id="s-003-2" data-source-questions="DS4"><a class="anchor-link" href="#s-003-2" aria-label="跳转到本节">#</a>哈希表：装载因子、冲突与复杂度反例</h3>
           <p>哈希表（hash table）的核心是一个数组，外加一个哈希函数 \(h\) 把键映射到下标：键 \(k\) 存在第 \(h(k) \bmod m\) 个桶里（\(m\) 为桶数）。理想情况下不同的键落进不同的桶，查找就是「算下标 + 访问数组」，\(\Theta(1)\)。问题在于键的可能性远多于桶：两个不同键可能得到同一个下标，这就是<b>冲突（collision）</b>，哈希表的所有工程细节都是冲突处理。</p>
           <div class="formula-list">
             <p><b>装载因子：</b>\(\alpha = n / m\)，即每桶平均元素数。链地址法下期望链长就是 \(\alpha\)，查找期望 \(\Theta(1 + \alpha)\)——想要 O(1)，就要让 \(\alpha\) 是常数（比如控制在 1 以内）。</p>
@@ -140,7 +140,7 @@
           <p>「平均 \(\Theta(1)\)」的前提值得单独立一段：它假设键在桶间<b>简单均匀散布</b>。一旦哈希函数质量差（或被恶意构造——hash flooding 攻击），所有键挤进同一个桶，链地址法退化为单链表，每次操作 \(\Theta(n)\)。这是一个必须能随口给出的复杂度反例。工程上的三条防线：换更好的哈希函数（乘大质数、混合位）、对每次运行引入随机种子（让攻击者无法预构造）、以及超长链转平衡树（Java 8 起桶内链表超过 8 个节点转红黑树，最坏保底 \(\Theta(\log n)\)）。</p>
           <div class="intuition-box"><b>unordered_map 还是 map</b><p>C++ 的 std::unordered_map 是哈希表：平均 O(1)、无序；std::map 是红黑树：\(\Theta(\log n)\)、按键有序、支持 lower_bound 等范围查询。选择口径一句话：要「点查」用 unordered_map，要「有序遍历或前驱后继查询」用 map。把两者答反或混说，是哈希题里最常见的扣分点。</p></div>
 
-          <h3 id="s-003-3"><a class="anchor-link" href="#s-003-3" aria-label="跳转到本节">#</a>二叉搜索树：中序有序与退化风险</h3>
+          <h3 id="s-003-3" data-source-questions="DS5"><a class="anchor-link" href="#s-003-3" aria-label="跳转到本节">#</a>二叉搜索树：中序有序与退化风险</h3>
           <p>二叉搜索树（binary search tree，BST）对每个节点施加递归约束：<b>左子树所有键 &lt; 根的键 &lt; 右子树所有键</b>（注意是与整棵子树比较，不是只与孩子比较——例题 2 的经典错解就错在这里）。这一约束直接给出两个果实：</p>
           <div class="math-display">\[\text{查找路径：} \quad k \lt \mathrm{root} \to \text{去左}, \qquad k \gt \mathrm{root} \to \text{去右}, \qquad \text{每层排除一棵子树}.\]</div>
           <p>怎么读：一次比较淘汰一半候选（平衡时），与二分查找同构，代价 \(O(h)\)。第二个果实是<b>中序遍历有序</b>：中序是「左、根、右」，而 BST 里左 ≤ 根 ≤ 右，对子树递归归纳即得整树中序升序。这个性质把一大批问题转成线性扫描：验证 BST、找第 k 小、找众数、合并两棵 BST，套路都是「中序遍历 + 指针维护前驱」。</p>
@@ -189,9 +189,62 @@ std::vector&lt;int&gt; preorder(TreeNode* root) {
           </div>
           <p>口诀化的记忆点：递归版「换个位置放访问」，迭代版「栈记住回来的路」，层序版「队列按层排队」。例题 3 会把中序迭代版完整写出来并解释它为什么对。</p>
 
+          <div class="source-followup" id="tree-traversal-implementations" data-source-questions="A13"><p><b>补齐提纲要求的返回结果实现。</b>前序与中序迭代代码见本节和例题3；下面补递归三序、迭代后序、队列层序和递归按深度收集层序。递归层序的执行顺序是DFS，再按深度分组得到相同的层序结果；它不是把DFS过程改称队列BFS。各方法O(n)时间，递归栈最坏O(n)，层序输出与队列最坏O(n)。空树均产生空结果。</p><pre><code class="language-cpp">void traversalsRecursive(TreeNode* node, vector&lt;int&gt;&amp; pre, vector&lt;int&gt;&amp; in, vector&lt;int&gt;&amp; post) {
+    if (!node) return;
+    pre.push_back(node-&gt;val);
+    traversalsRecursive(node-&gt;left, pre, in, post);
+    in.push_back(node-&gt;val);
+    traversalsRecursive(node-&gt;right, pre, in, post);
+    post.push_back(node-&gt;val);
+}
+
+vector&lt;int&gt; postorderIterative(TreeNode* root) {
+    vector&lt;int&gt; answer;
+    stack&lt;TreeNode*&gt; pending;
+    if (root) pending.push(root);
+    while (!pending.empty()) {
+        TreeNode* node = pending.top(); pending.pop();
+        answer.push_back(node-&gt;val);
+        if (node-&gt;left) pending.push(node-&gt;left);
+        if (node-&gt;right) pending.push(node-&gt;right);
+    }
+    reverse(answer.begin(), answer.end());
+    return answer;
+}
+
+vector&lt;vector&lt;int&gt;&gt; levelOrderIterative(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; levels;
+    queue&lt;TreeNode*&gt; pending;
+    if (root) pending.push(root);
+    while (!pending.empty()) {
+        int count = pending.size();
+        levels.push_back({});
+        while (count-- &gt; 0) {
+            TreeNode* node = pending.front(); pending.pop();
+            levels.back().push_back(node-&gt;val);
+            if (node-&gt;left) pending.push(node-&gt;left);
+            if (node-&gt;right) pending.push(node-&gt;right);
+        }
+    }
+    return levels;
+}
+
+void collectLevels(TreeNode* node, size_t depth, vector&lt;vector&lt;int&gt;&gt;&amp; levels) {
+    if (!node) return;
+    if (depth == levels.size()) levels.push_back({});
+    levels[depth].push_back(node-&gt;val);
+    collectLevels(node-&gt;left, depth + 1, levels);
+    collectLevels(node-&gt;right, depth + 1, levels);
+}
+
+vector&lt;vector&lt;int&gt;&gt; levelOrderRecursive(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; levels;
+    collectLevels(root, 0, levels);
+    return levels;
+}</code></pre></div>
           <h3 id="s-003-5"><a class="anchor-link" href="#s-003-5" aria-label="跳转到本节">#</a>例题详解</h3>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-003-01">
             <p><b>例题 1：手写一个链地址法哈希表（int 键到 int 值），支持 put/get，并在装载因子超过 1 时扩容。</b></p>
             <div class="solution">
               <p><b>建模。</b>桶数组 buckets_，每桶一条 pair 链；哈希函数用 Knuth 乘法哈希（键乘大奇数再截断）把整数打散；size_ 记元素数。不变量：\(\alpha = \text{size\_} / \text{buckets\_}.size() \le 1\)，即将越界时翻倍再哈希。</p>
@@ -245,7 +298,7 @@ private:
             </div>
           <div class="derivation-supplement" data-derivation="003-01"><p><b>推导补全与自检。</b>桶从 B 扩为 2B 后，必须对每个旧键重算桶号，不能原样拷贝链表。重复 put 已有键只改值，不增加 size，否则装载因子和后续扩容都错误。均匀散列假设下单次期望 O(1)，但所有键撞进同桶时 get 为 O(n)；容量翻倍让扩容成本均摊，不会自动消除恶意碰撞。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-003-02">
             <p><b>例题 2：验证二叉搜索树。给定二叉树根节点，判断它是否是合法 BST（键互异）。</b></p>
             <div class="solution">
               <p><b>建模。</b>错误做法是「每个节点与左右孩子比较」——它只验证局部，放过深层违规（见知识点反例：5 的右子树里出现 3）。正确做法有二：(a) 中序遍历必须严格递增；(b) 递归传递祖先上下界，每个节点的键必须落在开区间 \((lo, hi)\) 内。</p>
@@ -282,7 +335,7 @@ bool check(TreeNode* node, long long lo, long long hi) {
             </div>
           <div class="derivation-supplement" data-derivation="003-02"><p><b>推导补全与自检。</b>反例根 10，右孩子 15，右孩子的左孩子 6：6&lt;15 的局部关系成立，却违反祖先给出的 6&gt;10。上下界递归到该节点时应是开区间 (10,15)，因此能查出错误。若键允许 INT_MIN、INT_MAX，界限用更宽整数或“可空界”，不能拿合法键值充当不可取哨兵。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-003-03">
             <p><b>例题 3：二叉树的中序遍历，迭代实现（不使用递归）。</b></p>
             <div class="solution">
               <p><b>建模。</b>递归中序隐式使用了调用栈；迭代化就是把「回来的路」显式放进一个栈。不变量：栈中从底到顶是「当前节点的一串祖先 + 各祖先的左链」；外层循环条件「curr 非空或栈非空」覆盖「正在下沉」与「正在回溯」两种状态。</p>
@@ -312,7 +365,7 @@ std::vector&lt;int&gt; inorderTraversal(TreeNode* root) {
             </div>
           <div class="derivation-supplement" data-derivation="003-03"><p><b>推导补全与自检。</b>对树 2(左1、右3)：压栈 2、1；弹 1 输出，右空；弹 2 输出，再压 3 并输出。显式栈保存的是尚未完成“访问自己与右支”的节点；弹出后必须转向该节点的右子树。循环条件为 curr 非空或栈非空，缺少后一项会在左链尽头提前结束。空间为 O(h)，偏斜树可达 O(n)。</p></div></div>
 
-          <div class="worked-example">
+          <div class="worked-example" id="q-003-04">
             <p><b>例题 4：已知一棵键互异二叉树的前序遍历与中序遍历，重建这棵树。</b></p>
             <div class="solution">
               <p><b>建模。</b>前序第一个元素必是根；在中序里找到根的位置，其左边全是左子树的中序、右边全是右子树的中序；再由左子树的元素个数切出左子树的前序。递归下 go，子问题结构不变。用哈希表把「键 → 中序下标」预处理成 \(O(1)\) 查询。</p>

@@ -148,7 +148,7 @@
           <p>两者的关系值得多说一句：不动点版本等价于把「钥匙集合单调增长」这一性质抽出来做了松弛——钥匙只会增多不会减少，所以重复扫描必然收敛，这与贝尔曼-福特反复松弛边是同一种思想。面试里能指出「这是带单调性的松弛」会比背模板更加分。</p>
 
           <h3 id="s-036-4"><a class="anchor-link" href="#s-036-4" aria-label="跳转到本节">#</a>例题一：运行中位数（源题 66）</h3>
-          <div class="worked-example">
+          <div class="worked-example" id="q-036-01" data-source-questions="C66">
             <p><b>例题 1（源题 66）：写一个函数，返回一个数列的运行中位数（running median）——每读入一个数，输出至今所有数的中位数。</b></p>
             <div class="solution">
               <p><b>思路。</b>知识点一的双堆：新数与左堆顶比较决定去向，插入后立即恢复平衡不变量；中位数按奇偶从堆顶读取。</p>
@@ -164,10 +164,10 @@ public:
         }
     }
     double median() const {
-        if (low.empty()) return 0.0 / 0.0;             // 空流：中位数无定义
+        if (low.empty()) return numeric_limits&lt;double&gt;::quiet_NaN();             // 空流：中位数无定义
         return low.size() &gt; high.size()
                    ? (double)low.top()                  // 奇数个：左堆顶
-                   : (low.top() + high.top()) / 2.0;   // 偶数个：两堆顶平均
+                   : ((double)low.top() + high.top()) / 2.0;   // 偶数个：两堆顶平均
     }
 private:
     priority_queue&lt;int&gt; low;                            // 较小一半：大根堆
@@ -180,11 +180,12 @@ private:
           <div class="derivation-supplement" data-derivation="036-01"><p><b>推导补全与自检。</b>左侧大顶堆保存较小一半，右侧小顶堆保存较大一半；维持左最大\(\le \)右最小、两边大小差\(\le 1\)。输入[5,1,3,2]的中位数应为5、3、3、2.5。偶数取(a+b)/2时先转浮点或更宽整数，避免两极值相加溢出。两个堆内部都无序，但分区不变量保证只有堆顶会参与中位数。</p></div></div>
 
           <h3 id="s-036-5"><a class="anchor-link" href="#s-036-5" aria-label="跳转到本节">#</a>例题二：滑动窗口中位数（源题 40）</h3>
-          <div class="worked-example">
+          <div class="worked-example" id="q-036-02" data-source-questions="C40">
             <p><b>例题 2（源题 40）：给定数列与窗口长度 \(k\)，给出每个长度为 \(k\) 的滑动子数组（sliding sublist）的中位数。</b></p>
             <div class="solution">
               <p><b>思路。</b>窗口每滑一步 = 一次插入 + 一次删除 + 一次查询。堆不支持删除，用<b>两个多重集合</b>维护左右两半（与双堆完全同构的不变量），删除用 <code>find</code> 精确擦除一个实例，再平衡。</p>
               <pre><code>vector&lt;double&gt; slidingMedian(const vector&lt;int&gt;&amp; a, int k) {
+    if (k &lt;= 0 || k &gt; (int)a.size()) return {};
     multiset&lt;int&gt; low, high;                  // low：较小一半；high：较大一半
     auto rebalance = [&amp;]() {
         while (low.size() &gt; high.size() + 1) {
@@ -221,7 +222,7 @@ private:
           <div class="derivation-supplement" data-derivation="036-02"><p><b>推导补全与自检。</b>滑窗\([1,3,-1,-3,5]\)、\(k=3\)的中位数为1、\(-1\)、\(-1\)。删除只能擦掉一个相同值实例；multiset.erase(value)会删除该值全部副本，应find后erase(iterator)。每轮插入和删除后都恢复分区与大小不变量。若用延迟删除双堆，还需区分逻辑大小与物理堆长度，不能拿含过期元素的size直接比较。</p></div></div>
 
           <h3 id="s-036-6"><a class="anchor-link" href="#s-036-6" aria-label="跳转到本节">#</a>例题三：房间、钥匙与可达性（源题 61）</h3>
-          <div class="worked-example">
+          <div class="worked-example" id="q-036-03" data-source-questions="C61">
             <p><b>例题 3（源题 61）：\(n\) 个房间、\(m\) 条隧道，房间 \(i\) 内有一把类型为 \(r[i]\) 的钥匙，第 \(j\) 条隧道连接 \(u[j]\) 与 \(v[j]\) 但上锁，需要类型 \(c[j]\) 的钥匙才能通过。给定起点 \(s\)，问能访问哪些房间；再问从哪个房间出发能访问最多房间。</b></p>
             <div class="solution">
               <p><b>建模。</b>图搜索的边带「钥匙门」约束。按知识点二：钥匙类型数未知时用不动点 BFS——每轮从已访问房间做一次普通 BFS（只穿已持有钥匙的隧道），新房间可能带来新钥匙，有新增就再来一轮。第二个问题枚举所有起点取最大（钥匙结构一般无法共享加速，这是诚实且正确的答案）。</p>
@@ -274,7 +275,7 @@ int bestStart(int n, const vector&lt;int&gt;&amp; key,
           <div class="derivation-supplement" data-derivation="036-03"><p><b>推导补全与自检。</b>到达房间时获得新钥匙，必须重新激活此前因缺钥匙而阻塞的门；普通“一次扫描所有邻边后永久忘记”会漏路。可按钥匙类型存等待门，首次获得某类钥匙时把该类等待目标加入队列。单源每个门只需登记和解锁有限次；所有起点都求最优则朴素重复O(n(n+m))，不能把单源复杂度误报为整体。</p></div></div>
 
           <h3 id="s-036-7"><a class="anchor-link" href="#s-036-7" aria-label="跳转到本节">#</a>例题四：岛屿、完全背包与数位 DP（源题 53、75、69）</h3>
-          <div class="worked-example">
+          <div class="worked-example" id="q-036-04" data-source-questions="C53">
             <p><b>例题 4（源题 53）：给定 0/1 二维矩阵，1 表示陆地，识别其中的岛屿（四方向相邻的 1 连通块）并计数。</b></p>
             <div class="solution">
               <p><b>思路。</b>洪泛（flood fill）：扫到一块未访问的陆地就把整座岛淹没，计数加一。DFS 版就地标记；图论基础（BFS/DFS、并查集）在 <a href="005.html">005 章</a>有完整讲解，这里给最简实现。</p>
@@ -293,7 +294,7 @@ int bestStart(int n, const vector&lt;int&gt;&amp; key,
               <p><b>复杂度与边界。</b>时间空间均 \(O(nm)\)，每格至多访问两次。边界：空矩阵返回 0；全 1 矩阵答案 1。追问准备：不许改输入就用 visited 数组或并查集；矩阵大到放不进内存就按行扫描 + 并查集合并（面试只需说思路）。源题另一问「按系数找连通关系」即邻接判定（上下左右），口径先复述。</p>
             </div>
           <div class="derivation-supplement" data-derivation="036-04"><p><b>推导补全与自检。</b>四连通的递归洪泛在访问一个1时立即改0，再看四邻居；否则相邻陆地会互相递归。\(1\times 1\)的1返回1、0返回0；空矩阵要先检查再取grid[0]。改原数组的副作用需明确，若后面还要使用原地形，应传副本或单独visited。所有格子只处理一次给O(RC)，递归栈最坏也为O(RC)。</p></div></div>
-          <div class="worked-example">
+          <div class="worked-example" id="q-036-05" data-source-questions="C75">
             <p><b>例题 5（源题 75）：实现 \(f(a, b)\)：\(a\) 为正整数，\(b\) 为正整数列表，判断 \(a\) 能否表示为 \(b\) 中元素之和（每个元素可重复使用任意次）。</b></p>
             <div class="solution">
               <p><b>建模。</b>完全背包（unbounded knapsack）的可达性版本：\(dp[x]\) 表示金额 \(x\) 能否凑出，\(dp[0] = \text{true}\)，转移 \(dp[x] = \bigvee_{v \in b,\ v \le x} dp[x - v]\)。</p>
@@ -307,10 +308,10 @@ int bestStart(int n, const vector&lt;int&gt;&amp; key,
     return dp[a];
 }</code></pre>
               <p><b>数值结果。</b>\(a = 11, b = [5, 3]\)：\(11 = 3+3+5\)，返回真；\(a = 7, b = [5, 3]\)：可达集 \(\{3,5,6,8,9,10,11,\ldots\}\) 不含 7，返回假。</p>
-              <p><b>复杂度与边界。</b>时间 \(O(a \cdot |b|)\)、空间 \(O(a)\)。剪枝彩蛋：若 \(\gcd(b) \nmid a\) 直接返回假；由 Frobenius 数结论，\(a\) 超过约 \((\min b)(\max b)\) 量级后必然可达——\(a\) 极大时可先用这两条短路，再对剩余小值跑 DP。</p>
+              <p><b>复杂度与边界。</b>时间 \(O(a \cdot |b|)\)、空间 \(O(a)\)。剪枝彩蛋：若 \(\gcd(b) \nmid a\) 直接返回假；gcd整除只是必要条件，不能凭“a很大”直接返回真。若要用Frobenius或模最小币值的最短路作短路，须证明对应条件与阈值；本例代码仍以完全背包为准。</p>
             </div>
           <div class="derivation-supplement" data-derivation="036-05"><p><b>推导补全与自检。</b>可重复正整数凑和，从\(dp[0]=true\)出发，若按每种币遍历则金额必须正向；\(b=[3],a=6\)应为真，而\(0/1\)背包倒序会返回假。gcd(b)不整除a时可立即判假，但整除不充分，例如\(b=[4,6],a=2\)仍不可达。\(a=0\)应为真（空组合），零币和负币必须按输入约束排除以避免循环意义混乱。</p></div></div>
-          <div class="worked-example">
+          <div class="worked-example" id="q-036-06" data-source-questions="C69">
             <p><b>例题 6（源题 69）：优惠券编号从 LowValue 到 HighValue，每张券的码是其数位和；获奖者均匀分配在所有码上。用动态规划求码的分配方式数、最少与最多的获奖人数（例：2 到 11 时，码 2 有两张券（2 与 11），其余码各一，共 9 种码、最多 2 人）。</b></p>
             <div class="solution">
               <p><b>建模。</b>先求计数函数 \(f(N)\)：\(0..N\) 中每种数位和的券数。数位 DP：预处理 \(g[i][s]\)（\(i\) 个 0–9 自由数位凑出和 \(s\) 的方案数）；再逐位枚举「第 \(i\) 位首次小于 \(N\) 的数字」的情形，后缀自由。区间 \([\text{Lo}, \text{Hi}]\) 的计数为 \(f(\text{Hi}) - f(\text{Lo}-1)\)，非零项即码数，取最小/最大即所求。</p>
@@ -352,45 +353,44 @@ tuple&lt;long long, long long, long long&gt; couponStats(long long Lo, long long
               <p><b>数值结果。</b>\(\text{Lo}=2, \text{Hi}=11\)：码 1 只有券 10（1 张），码 2 有券 2 与 11（2 张），码 3–9 各 1 张——共 9 种码、最少 1 人、最多 2 人，与题给示例完全一致。</p>
               <p><b>复杂度与边界。</b>数位 DP 为 \(O(L^2 \cdot 81)\)（\(L\) 为位数，\(9L\) 为最大数位和），对 long long 范围绰绰有余。边界：Lo 为 0 时 \(f(\text{Lo}-1)\) 直接置零向量；数位和最大 \(9 \times 19 = 171\)，两表长度不同时以长表为准逐位相减。追问准备：若问「哪个码人数最多」，返回最大值下标即可；若码上均匀抽奖，某张券中奖概率是 \(\frac{1}{\text{该码券数}} \times \frac{1}{\text{码数}}\)——顺口就能补上概率口径。</p>
             </div>
-          <div class="derivation-supplement" data-derivation="036-06"><p><b>推导补全与自检。</b>数位DP状态含位数、当前数位和、是否贴上界；若统计[Low,High]，用\(F(High)-F(Low-1)\)逐个数位和相减。前导零不改变数位和，但若不允许编号0，应在范围差或started标记里去掉。取最小获奖人数时只对非零计数的码求最小，否则把从未出现的码算进去会错误得到0。</p></div></div>
+          <p><b>C69的ways表述不清。</b>为避免把不同统计量混成一个输出，先给每种数位和的完整券数分布。2…11的例子有9个非空码，最小桶大小1（8个码达到），最大桶大小2（只有码2达到）。若“ways”问可选择的码数，取9；若问达到最多获奖人数的选码方式数，取1；若问达到最少人数的方式数，取8。原文无法唯一决定它指哪个，不能把“最少人数1”直接等同于“方式数1”。digitSumCounts已经返回逐码计数，可据明确的输出规格统计。</p><div class="derivation-supplement" data-derivation="036-06"><p><b>推导补全与自检。</b>数位DP状态含位数、当前数位和、是否贴上界；若统计[Low,High]，用\(F(High)-F(Low-1)\)逐个数位和相减。前导零不改变数位和，但若不允许编号0，应在范围差或started标记里去掉。取最小获奖人数时只对非零计数的码求最小，否则把从未出现的码算进去会错误得到0。</p></div></div>
 
           <h3 id="s-036-8"><a class="anchor-link" href="#s-036-8" aria-label="跳转到本节">#</a>例题五：调度、填充与回归口径（源题 29、30、73）</h3>
           <p>编程篇收尾的三道题分属贪心调度、位运算填充与统计口径，按题库完整性收录于此；它们共同的模式是「先用小例子把口径钉死，再动手」。</p>
-          <div class="worked-example">
-            <p><b>例题 7（源题 29）：给定若干部影片时长，求最少观看天数；每天可组合多部影片，但每天总时长不超过 3 小时。</b></p>
+          <div class="worked-example" id="q-036-07" data-source-questions="C29">
+            <p><b>例题 7（源题 C29）：电影排片的接口与条件回顾</b></p>
             <div class="solution">
-              <p><b>建模。</b>装箱问题（bin packing，箱容量 3）。先与考官确认「每天至多几部」：至多两部时是经典的双指针配对（最长带最短，装不下就单独一天）；不限部数且时长为整数小时时可给闭式解；任意实数时长则是一般装箱——NP 难，标准做法是首次适应递减（FFD）启发式。</p>
-              <pre><code>int minDays(vector&lt;int&gt;&amp; dur) {              // 每天总时长至多 3，每天至多两部
-    sort(dur.begin(), dur.end());
-    int i = 0, j = dur.size() - 1, days = 0;
-    while (i &lt;= j) {                         // 最长影片尽量带一部最短的
-        if (i &lt; j &amp;&amp; dur[i] + dur[j] &lt;= 3) ++i;
-        --j; ++days;
-    }
-    return days;
-}</code></pre>
-              <p><b>数值结果与变体。</b>时长 \([1,1,1,1,1]\)：每天至多两部的双指针版得 3 天（\((1,1),(1,1),(1)\)）；整数任意部版的闭式 \(n_3 + n_2 + \lceil \max(0, n_1 - n_2)/3 \rceil = 0 + 0 + 2\) 得 2 天（\((1,1,1),(1,1)\)）——这个例子正好把两种口径区分开。若时长为 \([1,1,2,2,3]\)，两种口径同为 3 天（\((3),(1,2),(1,2)\)）。</p>
-              <p><b>复杂度与边界。</b>双指针 \(O(n \log n)\)（排序主导）。边界：超过 3 小时的影片按题意不存在（存在则无解，先声明）；单部影片成天。能主动说出「一般装箱 NP 难、FFD 是 \(\frac{11}{9}\) 近似」就到了追问的天花板。</p>
-            </div>
-          <div class="derivation-supplement" data-derivation="036-07"><p><b>推导补全与自检。</b>[1.6,1.4,1.4,0.6]总5小时可两天安排(1.6,1.4)与(1.4,0.6)；而首次适应、首次适应递减都只是一般装箱的启发式，不能由某个成功例子证明始终最优。若每天最多两部且单部\(\le 3\)小时，排序后最短配最长的贪心才有交换证明。题目的“同一天可多部”不自动蕴含“最多两部”。</p></div></div>
-          <div class="worked-example">
-            <p><b>例题 8（源题 30）：文件上传场景：给定哪些位置已被占用，要求用大小为 \(2^n\) 的文件把其余位置填满，求最少文件数。</b></p>
+<p>原题每天只限制总时长3小时，不限制片数。完整精确搜索实现见<a href="032.html#q-032-07">032章电影排片</a>的minDaysMinutesExact；同一问题不再保留一份只解“每天两部”的代码冒充原题。</p>
+<p>若时长恰为正整数小时1、2、3，可用计数闭式：设三类片数n₁、n₂、n₃，先让每部3小时独占一天，每部2小时尽可能带一部1小时，其余1小时每三部一天。总天数为\(n_3+n_2+\lceil\max(0,n_1-n_2)/3\rceil\)。[1,1,1,1,1]因此为2天。任意分钟时长不满足这个特殊值域条件，应回到装箱模型。</p>
+</div>
+            <div class="derivation-supplement" data-derivation="036-07"><p><b>推导补全与自检。</b>两个章节统一指向同一个原规则精确实现；受限版本须在接口、示例和复杂度中明确条件。三小时是180分钟，不能把参数用整数分钟而代码仍拿常数3比较。</p></div>
+          </div>
+          <div class="worked-example" id="q-036-08" data-source-questions="C30">
+            <p><b>例题 8（源题 C30）：用2的幂长度文件填满空段；地址对齐另设条件</b></p>
             <div class="solution">
-              <p><b>建模。</b>把空位切成极大连续段，每段独立填充。长度 \(L\) 的段需要的最少 2 的幂文件数是 \(L\) 的二进制表示中 1 的个数（popcount）：任何 2 的幂之和都可合并——两个 \(2^k\) 换一个 \(2^{k+1}\)，故最优解就是二进制分解。</p>
-              <pre><code>int minFiles(const string&amp; slots) {          // '.' 空位，'#' 占用
-    int total = 0, run = 0;
-    string s = slots + '#';                  // 末尾哨兵 flush 最后一段
-    for (char c : s) {
-        if (c == '.') ++run;
-        else { total += __builtin_popcount(run); run = 0; }
+<p><b>无对齐要求的原文版本。</b>PDF只给占用位置与2的幂大小，没有给地址对齐要求。不同连续空段不能跨越，长度L的每段可按二进制分解，最少popcount(L)个文件。下界理由：k个2的幂相加，二进制1的数量不超过k；构造恰好用每一个1位对应的块，达到下界。</p>
+<p><b>若额外要求对齐。</b>大小2ᵏ的块起始地址必须是2ᵏ的倍数，此时段起点也影响答案。在每段当前起点，从能对齐且不超过余长的块中选最大者。对齐的二进制块要么不交、要么包含，最大可行块不会跨越空段，其他对齐覆盖只能将它细分；合并细分块不会增加数量，所以贪心可取最少块。</p>
+<pre><code class="language-cpp">long long minFiles(const string&amp; slots, bool aligned = false) {
+    long long answer = 0, n = slots.size();
+    for (long long i = 0; i &lt; n;) {
+        if (slots[i] != '.') { ++i; continue; }
+        long long start = i;
+        while (i &lt; n &amp;&amp; slots[i] == '.') ++i;
+        long long remaining = i - start;
+        if (!aligned) { answer += __builtin_popcountll(remaining); continue; }
+        while (remaining &gt; 0) {
+            long long block = 1;
+            while (block &lt;= remaining / 2 &amp;&amp; start % (2 * block) == 0) block *= 2;
+            start += block; remaining -= block; ++answer;
+        }
     }
-    return total;
+    return answer;
 }</code></pre>
-              <p><b>数值结果。</b><code>"..#...#"</code>：两段长度 2 与 3，分别需要 \(1\)（一个 \(2\)）与 \(2\)（\(2+1\)）个文件，共 3。</p>
-              <p><b>复杂度与边界。</b>线性 \(O(n)\)。为什么 popcount 是下界也要会说：\(k\) 个 2 的幂之和，其二进制 1 的个数不超过 \(k\)（合并只减不增），所以要凑出 \(L\) 至少需要 popcount(\(L\)) 个文件，而二进制分解恰好达到。变体：若文件必须按 \(2^k\) 对齐摆放（只能落在 \(2^k\) 的倍数位置），递归对半切分即可，答案仍是 popcount——两问同答，先问清是否对齐。</p>
-            </div>
-          <div class="derivation-supplement" data-derivation="036-08"><p><b>推导补全与自检。</b>连续空段长度为5和3时，最少文件数\(popcount(5)+popcount(3)=2+2=4\)；不能先加成8再只用一个8，因为中间已有占位不允许跨越。若有起始地址对齐要求，就按当前位置最大可对齐块与剩余长度共同限制选块，答案会依赖段起点；原popcount结论只覆盖无对齐约束版本。</p></div></div>
-          <div class="worked-example">
+<p>slots=".#.."的空段为地址0的一格、地址2起的两格：两种模式均用2个块。slots="#..#"只有地址1、2两格空闲：不对齐可用一个大小2的块；对齐模式必须用两个大小1的块。默认aligned=false；地址从0开始，'.'为空闲、其他字符为已占。无对齐模式O(n)扫描、O(1)额外空间；对齐模式最坏O(n log n)时间，额外空间仍O(1)。</p>
+</div>
+            <div class="derivation-supplement" data-derivation="036-08"><p><b>推导补全与自检。</b>长度相同但起点不同的空段，在对齐要求下可能有不同答案，不能继续声称“无论对齐与否都等于popcount”。原题缺失对齐信息时，先按无对齐规则作答，再给显式开关的条件版本。</p></div>
+          </div>
+          <div class="worked-example" id="q-036-09" data-source-questions="C73">
             <p><b>例题 9（源题 73，统计题）：线性回归中设计矩阵不可逆，怎么办？</b></p>
             <div class="solution">
               <p><b>诊断。</b>\(X^\top X\) 奇异通常来自四种情形：特征完全共线（某列是其余列的线性组合）、虚拟变量陷阱（哑变量加全了常数列）、样本数小于特征数（\(n \lt p\)）、重复或常数列。先做诊断再谈药方，是这道题的正确顺序。</p>
@@ -406,7 +406,7 @@ tuple&lt;long long, long long, long long&gt; couponStats(long long Lo, long long
 
           <h3 id="s-036-9"><a class="anchor-link" href="#s-036-9" aria-label="跳转到本节">#</a>误区与边界</h3>
           <div class="intuition-box"><b>中位数家族的三个坑</b><p>一、平衡写反：左堆只允许比右堆<b>多</b>一个，反了会偶数取错堆顶；二、多重集合删除传值：<code>erase(value)</code> 会删光所有实例，必须传 <code>find</code> 返回的迭代器；三、偶数平均溢出：两个 int 堆顶相加先转 long long 或 double。窗口题还有一个隐藏坑：删除元素找错半区会破坏不变量，应先在左半 <code>find</code>，找不到再删右半——依据是跨堆有序。</p></div>
-          <div class="intuition-box"><b>图与 DP 的口径坑</b><p>钥匙题：忘收起点房间的钥匙、或把「新钥匙当场生效」写成下一轮才生效，都会漏解；状压与不动点按钥匙类型数分流，别在 \(k\) 很大时硬上 \(2^k\)。数位 DP：上界本身（\(N\) 那一支）要单独加一，区间相减时两表长度对齐。完全背包：\(a\) 特大时先做 gcd/Frobenius 短路。调度与填充题：装箱的「每天几部」与文件的「是否对齐」两个口径必须先问——这类题丢分大多丢在口径而非算法。</p></div>
+          <div class="intuition-box"><b>图与 DP 的口径坑</b><p>钥匙题：忘收起点房间的钥匙、或拿到新钥匙后不重访先前被锁住的边，都会漏解；若使用多轮不动点搜索，下一轮生效本身仍可正确收敛；状压与不动点按钥匙类型数分流，别在 \(k\) 很大时硬上 \(2^k\)。数位 DP：上界本身（\(N\) 那一支）要单独加一，区间相减时两表长度对齐。完全背包：\(a\) 特大时先做 gcd/Frobenius 短路。调度与填充题：装箱的「每天几部」与文件的「是否对齐」两个口径必须先问——这类题丢分大多丢在口径而非算法。</p></div>
 
           <h3 id="s-036-10"><a class="anchor-link" href="#s-036-10" aria-label="跳转到本节">#</a>检查清单</h3>
           <ul class="checkpoint-list">
@@ -414,7 +414,7 @@ tuple&lt;long long, long long, long long&gt; couponStats(long long Lo, long long
             <li>我能把双堆改造成双多重集合以支持删除，正确输出滑动窗口中位数，并说明延迟删除双堆的替代方案。</li>
             <li>我能把「锁与钥匙」约束并入图搜索状态，实现不动点 BFS，并按钥匙类型数在 \(O(n(n+m))\) 与 \(O(2^k m)\) 之间选型。</li>
             <li>我能用洪泛数岛屿并就地标记，说出禁止改输入时的 visited/并查集替代方案。</li>
-            <li>我能实现完全背包可达性 \(f(a,b)\)，并用 gcd 与 Frobenius 结论对大 \(a\) 短路。</li>
+            <li>我能实现完全背包可达性 \(f(a,b)\)，并用 gcd 与 已给明确定理条件的剩余类方法分析大目标，而非凭一个未证明的Frobenius阈值短路。</li>
             <li>我能用数位 DP 求任意区间内数位和的分布，并复现 2..11 的「9 种码、最多 2 人」示例。</li>
             <li>我能对设计矩阵不可逆给出诊断顺序与三类药方（删列、岭回归、伪逆），并链接到正则化章节。</li>
             <li>我拿到任何设计题都会先复述接口与调用模式，再选结构、讲不变量、做均摊分析、过边界清单。</li>
