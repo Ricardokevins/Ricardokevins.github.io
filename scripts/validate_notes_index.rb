@@ -8,6 +8,7 @@ ROOT = File.expand_path("..", __dir__)
 NOTES_ROOT = File.join(ROOT, "notes")
 NOTES_YAML = File.join(ROOT, "_data", "notes.yml")
 NOTE_TEMPLATE = File.join(NOTES_ROOT, "NOTE_TEMPLATE.md")
+EXCLUDED_PATHS = YAML.load_file(File.join(ROOT, "_config.yml")).fetch("exclude", [])
 
 BOOK_INDEX_URLS = {
   "/notes/llm-interview-question-bank/index.html" => "/notes/llm-interview-question-bank/",
@@ -78,12 +79,17 @@ end
 def note_entry_files
   Dir.glob(File.join(NOTES_ROOT, "*", "*.html")).map do |path|
     relative = path.delete_prefix("#{ROOT}/")
-    "/#{relative}"
-  end.sort
+    "/#{relative}" unless excluded_path?(path)
+  end.compact.sort
 end
 
 def note_html_files
-  Dir.glob(File.join(NOTES_ROOT, "**", "*.html")).sort
+  Dir.glob(File.join(NOTES_ROOT, "**", "*.html")).reject { |path| excluded_path?(path) }.sort
+end
+
+def excluded_path?(path)
+  relative = path.delete_prefix("#{ROOT}/")
+  EXCLUDED_PATHS.any? { |scope| relative == scope || relative.start_with?("#{scope}/") }
 end
 
 def unlisted_path?(path, scopes)
@@ -118,7 +124,7 @@ def chapter_heading_texts(content)
 end
 
 def book_chapter_orders
-  BOOK_CHAPTER_INDEXES.transform_values do |index_path|
+  BOOK_CHAPTER_INDEXES.reject { |_root, index_path| excluded_path?(index_path) }.transform_values do |index_path|
     File.read(index_path, encoding: 'UTF-8').scan(%r{href=["']chapters/([^"']+\.html)["']}i).flatten.uniq
   end
 end
