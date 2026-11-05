@@ -9,4 +9,6 @@ redirect_from:
 
 {% include base_path %}
 
-<embed src="{{ site.baseurl }}/files/sheshuaijie_EnCV_1008.pdf" width="600" height="700" type='application/pdf'>
+[Download CV (PDF)]({{ site.baseurl }}/files/ShuaijieShe_CV_En_Latest.pdf)
+
+<embed src="{{ site.baseurl }}/files/ShuaijieShe_CV_En_Latest.pdf" width="100%" height="700" type='application/pdf'>

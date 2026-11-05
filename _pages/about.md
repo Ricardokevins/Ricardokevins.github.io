@@ -17,6 +17,8 @@ I focus on constructing **self-supervised** learning signals and exploring **gen
 
 ⭐ News
 ==========
+**\[2026-10-15\]** Invited by **Jump Trading** to an AI workshop in Hong Kong to share our work on **general self-supervised learning** for reasoning and long-context tasks. Discussions focused on task and intelligence scaling, continual self-improvement, and reliable learning signals in low-signal-to-noise domains.
+
 **\[2026-04-10\]** Our two new papers got accepted to ACL 2026.
 
 **\[2026-01-27\]** Our **DuPO** got accepted to ICLR 2026. Check out our [paper](https://arxiv.org/abs/2508.14460) for more details.
