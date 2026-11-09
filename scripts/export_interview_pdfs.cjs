@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const mathjaxPath = process.env.MATHJAX_PATH || path.join(root, 'notes/assets/mathjax-3.2.2/es5/tex-svg.js');
 const { execFileSync } = require('node:child_process');
-const books = require('./interview_books.json').books;
+const books = require(path.resolve(process.env.INTERVIEW_CATALOG || path.join(__dirname, 'interview_books.json'))).books;
 const studyHints = Object.fromEntries(Object.entries(books).map(([key, book]) => [key, book.studyHint]));
 
 const printCSS = `
@@ -34,6 +34,7 @@ html, body.notes-shell-page { background: #fff !important; color: #202020; font-
 .pdf-contents li { margin: 3pt 0; position: relative; padding-right: 35pt; }
 .pdf-page-number { position: absolute; right: 0; top: 0; color: #555; font-variant-numeric: tabular-nums; }
 .pdf-contents .toc-topic { margin-left: 1em; font-size: 9pt; }
+.pdf-contents .toc-part { margin-top: 10pt; font-weight: bold; }
 .book-chapter + .book-chapter { break-before: page; }
 .book-chapter, .chapter, .chapter-page, section, article, .qa, .problem, .worked-example, .solution, .derivation, .proof-detail, .supplement { height: auto !important; max-height: none !important; overflow: visible !important; break-inside: auto !important; box-shadow: none !important; }
 .chapter-page { padding: 0 !important; border: 0 !important; }
@@ -73,7 +74,7 @@ async function exportBook(browser, key, book) {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'interview-print-'));
   try {
     await page.goto('about:blank');
-    const html = await page.evaluate(({ docs, title, combined, replaceToc, detailToc, studyHint, printCSS, mathjaxURL, rootURL }) => {
+    const html = await page.evaluate(({ docs, title, combined, replaceToc, detailToc, studyHint, printCSS, mathjaxURL, rootURL, coverLabel, coverAim, offlineFileLinks, includeParts }) => {
       const parser = new DOMParser();
       // Short ASCII destinations avoid PDF Name-length warnings for long CJK IDs.
       const pdfId = (index, value) => {
@@ -129,6 +130,7 @@ async function exportBook(browser, key, book) {
           const dest = new URL(el.getAttribute('href'), url);
           const match = docs.findIndex(d => d.url === dest.href.split('#')[0]);
           if (match >= 0) el.setAttribute('href', dest.hash ? '#' + pdfId(match, decodeURIComponent(dest.hash.slice(1))) : '#book-' + match);
+          else if (offlineFileLinks && /\.pdf(?:#|$)/i.test(dest.href)) el.setAttribute('href', dest.href);
           else if (dest.href.startsWith(rootURL)) el.setAttribute('href', 'https://ricardokevins.github.io/' + dest.href.slice(rootURL.length));
         });
         const heading = main.querySelector('h1, h2');
@@ -158,8 +160,8 @@ async function exportBook(browser, key, book) {
       const topId = pdfId(0, 'top');
       if (!parsed[0].html.includes('id="' + topId + '"')) cover.id = topId;
       const h1 = first.createElement('h1'); h1.textContent = title; cover.append(h1);
-      const p = first.createElement('p'); p.textContent = '离线学习版 · 题型方法、逐步讲解与练习'; cover.append(p); main.append(cover);
-      const aim = first.createElement('h2'); aim.textContent = '复习目标：量化笔试与面试'; cover.append(aim);
+      const p = first.createElement('p'); p.textContent = coverLabel || '离线学习版 · 题型方法、逐步讲解与练习'; cover.append(p); main.append(cover);
+      const aim = first.createElement('h2'); aim.textContent = coverAim || '复习目标：量化笔试与面试'; cover.append(aim);
       const hint = first.createElement('p'); hint.textContent = studyHint; cover.append(hint);
       const toc = first.createElement('nav'); toc.className = 'pdf-contents';
       const h2 = first.createElement('h2'); h2.textContent = '目录'; toc.append(h2);
@@ -174,11 +176,11 @@ async function exportBook(browser, key, book) {
       }
       if (parsed.length === 1) {
         const holder = first.createElement('div'); holder.innerHTML = parsed[0].html;
-        holder.querySelectorAll('h2[id]').forEach(el => tocItems.push({ id: el.id, text: el.textContent }));
+        holder.querySelectorAll(includeParts ? 'h1[id],h2[id]' : 'h2[id]').forEach(el => tocItems.push({ id: el.id, text: el.textContent, part: el.tagName === 'H1' }));
       }
       for (const item of tocItems) {
         const li = first.createElement('li'); const a = first.createElement('a');
-        a.href = `#${item.id}`; a.textContent = item.text; li.append(a); if (item.topic) li.className = 'toc-topic'; list.append(li);
+        a.href = `#${item.id}`; a.textContent = item.text; li.append(a); if (item.topic) li.className = 'toc-topic'; if (item.part) li.className = 'toc-part'; list.append(li);
       }
       toc.append(list); if (tocItems.length) main.append(toc);
       for (const part of parsed) {
@@ -189,7 +191,7 @@ async function exportBook(browser, key, book) {
       return '<!doctype html>\n' + first.documentElement.outerHTML;
     }, { docs, title: book.title, combined: key === 'complete', replaceToc: true, detailToc: ['regression', 'statistics', 'subject-probability', 'subject-models'].includes(key), studyHint: studyHints[key], printCSS,
       mathjaxURL: pathToFileURL(path.resolve(mathjaxPath)).href,
-      rootURL: pathToFileURL(root + path.sep).href });
+      rootURL: pathToFileURL(root + path.sep).href, coverLabel: book.coverLabel, coverAim: book.coverAim, offlineFileLinks: book.offlineFileLinks, includeParts: book.includeParts });
     const temporaryHTML = path.join(temporary, 'book.html');
     await fs.writeFile(temporaryHTML, html);
     // A4 minus 15mm margins is 680 CSS pixels. Typeset and measure formulas at
@@ -205,7 +207,10 @@ async function exportBook(browser, key, book) {
       await document.fonts.ready;
       if ([...document.fonts].some(font => font.status === 'error')) throw new Error('A PDF font failed to load');
       await Promise.all([...document.images].map(img => img.decode()));
-      if (document.querySelector('mjx-merror, [data-mjx-error], [data-mml-node="merror"]')) throw new Error('MathJax formula error');
+      const mathError = document.querySelector('mjx-merror, [data-mjx-error], [data-mml-node="merror"]');
+      if (mathError) throw new Error('MathJax formula error: ' +
+        (mathError.getAttribute('data-mjx-error') || mathError.textContent) + ' in ' +
+        mathError.closest('section')?.textContent.slice(0, 500));
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       while (walker.nextNode()) {
         const node = walker.currentNode;
@@ -247,7 +252,7 @@ async function exportBook(browser, key, book) {
         }
       }
     });
-    const output = path.join(root, 'notes/downloads', book.file);
+    const output = path.join(process.env.INTERVIEW_OUTPUT_DIR || path.join(root, 'notes/downloads'), book.file);
     await fs.mkdir(path.dirname(output), { recursive: true });
     const draftPDF = path.join(temporary, 'book.pdf');
     const pdfOptions = { path: draftPDF, format: 'A4', printBackground: true, preferCSSPageSize: true,

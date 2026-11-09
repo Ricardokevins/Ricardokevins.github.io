@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Science's Last Exam（SLE）深度解读：评测科研 Agent 的哪些能力</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #a84f32;
+      --accent-soft: #f7ece4;
+      --accent-2: #8a5b12;
+      --accent-2-soft: #fdf3e7;
+      --info: #356b78;
+      --info-soft: #eaf3f4;
+      --radius: 8px;
+      --max: 1080px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(168,79,50,.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(53,107,120,.025) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; overflow-wrap: anywhere; }
+    main, header, footer { width: min(var(--max), calc(100% - 36px)); margin: 0 auto; }
+    header { padding: 58px 0 28px; }
+    .kicker { margin: 0 0 12px; color: var(--accent-2); font-size: 13px; font-weight: 800; }
+    h1 { max-width: 960px; margin: 0; font: 760 44px/1.14 var(--serif); }
+    .lede { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: 19px; }
+    main { display: grid; gap: 28px; padding-bottom: 64px; }
+    section { padding-top: 28px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.3; }
+    h2 { font-size: 30px; }
+    h3 { margin-top: 22px; color: var(--accent); font-size: 20px; }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    strong { font-weight: 750; }
+    .small { color: var(--muted); font-size: 14px; }
+    .callout { margin: 18px 0; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+    .callout > b { display: block; margin-bottom: 5px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .def-list { display: grid; gap: 9px; margin: 18px 0; }
+    .def-list > div { display: grid; grid-template-columns: minmax(150px, .25fr) minmax(0, 1fr); gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .def-list b { color: var(--accent); }
+    .def-list span { min-width: 0; }
+    .table-wrap { margin: 16px 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.018); }
+    code { padding: 2px 6px; border-radius: 4px; background: #ece5d7; color: #713821; font-family: var(--mono); font-size: .92em; overflow-wrap: anywhere; }
+    pre { overflow-x: auto; margin: 16px 0; padding: 15px; border-radius: var(--radius); background: #182321; color: #f4f0e8; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    .source-list li { margin: 10px 0; }
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      header { padding-top: 38px; }
+      h1 { font-size: 32px; }
+      h2 { font-size: 26px; }
+      .lede { font-size: 17px; }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <p class="kicker">Benchmark Analysis · Scientific Agents</p>
+    <h1>Science's Last Exam（SLE）深度解读：评测科研 Agent 的哪些能力</h1>
+    <p class="lede">SLE 把科研工作拆成一组有输入、工具、预算和验证器的 Agent 任务。理解它，关键不是只看榜单名次，而是看每类任务要求模型交付什么、评分器实际检查什么，以及这些测量还没有覆盖什么。</p>
+  </header>
+
+  <main>
+    <section id="source-reconstruction">
+      <h2>项目讲解：SLE 想把“科研能力”拆成可检查的任务</h2>
+      <p>Science's Last Exam（SLE，意为“科学的最后考试”）由 AItonomy Foundation 发起，定位是评测科学研究 Agent。项目希望超越“模型能不能答对一道科学题”，让模型进入实验流程规划、科学代码、专业软件、研究数据库等任务环境，实际操作并交出结果。项目介绍称，任务由来自 34 家机构的研究者参与设计和审阅；这些参与者以个人身份参与，不代表其所在机构背书。</p>
+      <p>v1 于 2026 年 11 月 6 日开放公开下载，公布 113 项任务、覆盖统计、物理、天文学、化学、地球科学、生物、工程、材料科学和医学九个领域。项目把“科研”切成六个已评分维度，并另列一个尚在建设、暂不计分的湿实验执行维度。任务数量并不平均：流程规划有 40 项，实验观察有 30 项，而假设发现只有 5 项，端到端研究只有 1 项。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>v1 数量</th><th>任务要求的主要产物</th></tr></thead>
+          <tbody>
+            <tr><td>假设发现（HD）</td><td>5 次研究运行</td><td>结构化假设及其迭代版本、研究计划与论据。</td></tr>
+            <tr><td>实验流程规划（PP）</td><td>40</td><td>下一步实验动作，或一段符合动作接口的实验计划。</td></tr>
+            <tr><td>科学计算（SC）</td><td>23</td><td>修复后的科研代码、重新运行的模拟和科学检查结果。</td></tr>
+            <tr><td>科研软件操作（SO）</td><td>14</td><td>通过图形界面完成的测量、软件状态和输出文件。</td></tr>
+            <tr><td>实验观察（EO）</td><td>30</td><td>实验视频中活动的时序顺序和指定动作的起始时间。</td></tr>
+            <tr><td>端到端科研（E2E）</td><td>1</td><td>受约束的模拟研究、对照实验记录、分析脚本和报告。</td></tr>
+            <tr><td>湿实验执行</td><td>0，建设中</td><td>目前没有可参与榜单的实体实验执行任务。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>这六个维度不是六种同构试题。它们的输入、产物和评分口径各不相同：有的考动作选择，有的考程序修复，有的考图像与视频定位，有的考事后文献匹配。因此，SLE 的综合分不是一道统一试卷的正确率，而是把多个异质指标组合后的总分。</p>
+
+      <h3>从任务说明到独立验证</h3>
+      <p>常规任务包把 Agent 能看到的说明和输入，与用于判分的参考答案、隐藏测试或 verifier 分开。任务说明定义目标和限制；Agent 在 solver 环境里调用工具、编辑文件或操作软件；结束后，独立验证器检查提交产物和环境结果。评分看的是代码、数据、GUI 状态、动作序列或可复现实验记录，不只看一段自然语言自评。</p>
+      <p>运行框架会固定模型接口、Agent CLI 版本、任务版本和资源预算。实验流程规划、实验观察的标准上限为每题 15 分钟；科学计算、科研软件操作为每题 90 分钟；标准任务另有 200 步上限。标准 Docker 配置采用网络出口白名单，任务中关闭命令行网页搜索和网页抓取；兼容配置开放求解器网络，使用时需要披露。不同能力并非完全共用一套运行环境：科研软件操作需要 GUI 控制器，假设发现使用 DiscoveryRSI，端到端任务则在独立冻结环境中运行。</p>
+
+      <h3>六种能力各自具体在做什么</h3>
+      <p><strong>实验流程规划。</strong>Level 1 看当前实验状态，选出正确的下一步。例如金纳米颗粒合成任务给出器具图片与历史：容器已酸洗、冲洗、干燥，水和柠檬酸钠已经加入并放在热板上；Agent 要在继续加热或加入氯金酸等候选动作中选下一步。它考察视觉状态、协议顺序和参数，而不只是背出一段实验知识。</p>
+      <p>Level 2 的要求更像把流程写成一段“受限动作脚本”：从任务提供的动作集合中，按顺序调用动作并填写参数。脚本必须可解析、符合动作签名，再由评分器比较动作顺序和参数。这就是“直线式程序”一词的含义：动作固定地一行接一行执行，不带条件分支和循环；不是线性代数、线性回归，也不是让 Agent 自己编写任意程序。</p>
+      <p><strong>科学计算。</strong>任务把一处局部缺陷注入固定版本的真实科学软件，给出失败症状但隐藏缺陷位置。Agent 需要找到原因、修改源码、重新构建并运行科学检查。PLUTO 磁流体模拟示例要求修复导致程序无法终止的问题，同时保留数值格式和关键设置，避免用改参数掩盖缺陷。</p>
+      <p><strong>科研软件操作。</strong>Agent 必须通过 GUI 完成任务，评分器检查最终文件和软件状态。Celestia 天文学示例要求找到 2000—2100 年的一次日食，设置地球观察位置，测量太阳和月球的距离及角直径，再判断日食类型；不能隐藏天体来伪造观测。它验证界面操作和测量结果，但不是开放式天文学研究。</p>
+      <p><strong>实验观察。</strong>输入是一段完整的第一视角实验视频和四段活动描述。Agent 要在视频中定位每段活动的第一次出现，按开始时间排列四段活动，再报告开始最晚的那段活动的起始秒数。视频从 0 秒计时；若活动描述包含连续几个动作，以第一个可见动作作为开始。顺序必须完全正确，时间误差还要在正负 3 秒内，否则该题记 0。它测视觉时序定位，不要求识别试剂、解释实验原理或推断下一步。</p>
+      <p><strong>假设发现。</strong>Agent 根据研究目标和指定数据集产生假设，随后通过生成、批评、修订等角色迭代。假设不只是一个标题，还应包含研究主张、比较对象、测量计划、替代解释和可证伪条件。评测保留每个版本，再检查它能否与模型知识截止之后发表的期刊研究建立审计关联。</p>
+      <p><strong>端到端科研。</strong>唯一任务使用 clotFoam_sD 血栓模拟，要求研究降低血小板黏附性在不同浓度背景下的影响。Agent 有最多六次串行模拟，单次模拟有 300 秒限制，总体运行约束为 2400 秒，并需控制对照条件。交付包括实验记录、分析代码和报告；验证器检查配置、输出数值、网格与通量、匹配对照和新环境重放。当前只评估是否建立了可复现、匹配的比较流程，不评估结论的生物学正确性。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>核心判断：它是科研工作流基准，不是“AI 会做科学”的总考卷</h2>
+      <p>SLE 的价值在于把若干真实科研工作环节变成有边界、可记录、部分可重放的 Agent 任务。它比纯科学问答更接近“模型要使用工具并交付可验证产物”。但 v1 的覆盖范围和指标仍不足以证明 AI 能独立提出、实施、验证并推广新的科学发现。</p>
+      <div class="callout info"><b>最稳妥的读法</b><p>把结果读成“某个模型 + harness + 工具配置，在 SLE v1 的特定子任务和预算下做得如何”，不要简化成“哪个基础模型最会做科学”。</p></div>
+    </section>
+
+    <section id="problem">
+      <h2>为什么需要这种评测</h2>
+      <p>传统科学问答主要检验知识提取与推理；但实际科研还包含读取仪器或软件状态、选择动作、运行代码、观察失败、修复配置、保存产物、报告不确定性等过程。只看最终自然语言答案，无法区分模型是根据证据完成了工作，还是猜中了一个看似合理的结论。</p>
+      <p>SLE 试图把一部分过程变成外部可检查的交付物：运行结果可由测试复核，动作序列可对照参考协议，GUI 状态可由控制器检查，视频时间点可与标注对齐。其设计方向有意义，但“拆成可测子任务”并不自动等于“这些子任务合起来就是科研”。端到端研究、假设证据质量、领域覆盖和长期验证仍需单独检验。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：输入、执行、交付物、验证器</h2>
+      <p>对一项标准任务，可以把数据流概括为：<strong>任务说明与可见输入 → Agent 在受限环境中行动 → 保存代码、计划、数据或状态 → 独立 verifier 检查 → 形成任务分与轨迹。</strong>Agent 不应看到参考答案；Verifier 也不应把 Agent 的自我描述当成证据。这种边界减少了“答案说得像做过”却没有产物的空间。</p>
+      <p>公开任务代码让研究者能检查任务逻辑和评分器；任务卡、输入数据、隐藏参考及测试的公开程度则不同。项目称 113 项中有 42 项提供回放。提交榜单结果时需要披露模型和 harness 的确切版本、任务与数据版本、推理设置、资源预算、尝试次数、轨迹和失败结果；项目团队表示会复跑提交后再发布。这有助于复现，但仍属于项目内部复核，不等于第三方独立审计。</p>
+
+      <h3>不同任务的分数不能直接当成同一种正确率</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>维度</th><th>单题判分要点</th><th>榜单更接近什么</th></tr></thead>
+          <tbody>
+            <tr><td>PP Level 1</td><td>下一步动作是否正确，正确记 1，否则 0。</td><td>动作选择通过率。</td></tr>
+            <tr><td>PP Level 2</td><td>有效程序的动作序列相似度与参数准确度取平均；数值通常允许 10% 误差，计数须精确，部分任务允许审过的等价步骤。</td><td>结构化协议完成度。</td></tr>
+            <tr><td>SC</td><td>单题 reward 是通过检查的比例；另有基于基线的修复收益诊断。</td><td>有多少任务通过全部科学检查，而非平均部分修复分。</td></tr>
+            <tr><td>SO</td><td>可信 GUI 控制器检查最终软件状态和文件，单题得分在 0 到 1 之间。</td><td>拿到满分的任务比例。</td></tr>
+            <tr><td>EO</td><td>顺序完全正确，且指定活动的开始时间误差不超过 3 秒，才得满分。</td><td>严格时序定位通过率。</td></tr>
+            <tr><td>HD</td><td>回溯审计每个假设版本与后续论文的匹配。</td><td>Inspire rate，而非假设正确率。</td></tr>
+            <tr><td>E2E</td><td>检查模拟可重放、对照匹配及规定的研究步骤。</td><td>当前榜单维度仍是 0；任务进度奖励不能替代科学结论验证。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>SC 的部分 reward 与排行榜满题比例尤其容易混淆：一个补丁即使通过了多数测试，仍可能不计为“该任务完整通过”。E2E 也有两种不同的量：任务内部的进度奖励最高 0.3；榜单的 E2E 维度是另一项 0—100 分的综合分，目前所有已列系统都是 0。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键数字：榜单名次背后的组成</h2>
+      <p>官网 2026 年 11 月 8 日的榜单把六项已评分维度等权平均：假设发现、实验流程规划、科学计算、科研软件操作、实验观察、端到端科研，各占六分之一；湿实验执行目前没有任务，不进入计算。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>系统</th><th>综合分</th><th>可读到的主要特点</th></tr></thead>
+          <tbody>
+            <tr><td>Claude Opus 5</td><td>37.50</td><td>流程规划 55、科学计算 57、软件操作 79；实验观察 26.67，HD 7.33。</td></tr>
+            <tr><td>GPT-6.1 Sol</td><td>36.15</td><td>流程规划 51、科学计算 57、软件操作 64；实验观察 40，HD 4.92。</td></tr>
+            <tr><td>Kimi K3.1 Pro</td><td>28.92</td><td>官方榜单综合分。</td></tr>
+            <tr><td>DeepSeek V4.1 Flash</td><td>26.83</td><td>HD Inspire rate 21.28%，即 116/545 个版本匹配审计标准。</td></tr>
+            <tr><td>MiMo-V2.6-Pro</td><td>26.40</td><td>官方榜单综合分。</td></tr>
+            <tr><td>Qwen3.8 Max</td><td>23.30</td><td>官方榜单综合分。</td></tr>
+            <tr><td>GLM-5.3 Flash</td><td>21.33</td><td>官方榜单综合分。</td></tr>
+            <tr><td>MiniMax-M3</td><td>16.82</td><td>官方榜单综合分。</td></tr>
+            <tr><td>Gemini 4 Argon</td><td>暂缺</td><td>HD 结果待补，官网暂不显示综合分；其余维度不能补成完整总分。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Claude 的六项分数是 7.33、55、57、79、26.67、0，平均得到 37.50；GPT 对应为 4.92、51、57、64、40、0，平均得到约 36.15。这里的 37.50 不是“37.5% 科研题做对了”，而是不同口径的六项指标的平均值。</p>
+      <p>因为 E2E 目前对所有系统都是 0，即使其他五项都得 100，官方综合分上限也只有 83.33。若仅为了观察非 E2E 五项而重新归一化，Claude 约为 45.00、GPT 约为 43.38；这不是官方分数，只是解释零分维度如何影响综合排名的一种算术换算。</p>
+      <p>每题成本和时间的平均只覆盖流程规划、科学计算、软件操作、实验观察四类，不包括 HD 和 E2E；它也不是把所有任务实例的总成本直接除以总题数。榜单报告的例子中，Claude 约 US$19.70 / 1051 秒每题，GPT 约 US$2.85 / 692 秒，DeepSeek 约 US$0.42 / 1266 秒。低成本、低耗时和高分不是同一件事。</p>
+      <p>这些数据同时比较了不同 harness 和设置：GPT/Gemini 使用 Codex 系统，Claude/DeepSeek 使用 Claude Code；推理 effort 也不完全一致。因此它衡量的是完整 Agent 配置，而不能单独归因给底层模型。官网还提示榜单由已四舍五入的图表数据生成，显示值与重新聚合可能存在小幅精度差异。</p>
+
+      <h3>假设发现的 Inspire rate：怎样理解 116 / 545</h3>
+      <p>五次假设发现运行覆盖六个研究数据库：MIMIC-IV、eICU、内部 HCC 队列、UK Biobank、GEO 和 ArrayExpress（后两者共用一个任务）。DiscoveryRSI 会通过研究目标、假设生成、批评、演化和编译等角色不断产出版本。</p>
+      <p>Inspire rate 的分子是被审计判定为与后续期刊研究相符的假设版本，分母是所有生成的版本。纳入匹配的论文需要是期刊研究，其首次发表时间晚于模型登记的知识截止日、且不晚于 2026-10-14；预印本不计入。检索候选时会遮蔽模型名称、日期和数据集名称，再对候选论文进行关联审计。</p>
+      <p>用一个虚构例子说明：Agent 先猜“某类患者的指标 A 可能与结局 B 有关”，再把它修订为“比较患者群体 Z 中指标 A 高低不同的人，并控制年龄等变量，检查 30 天结局 B 是否有差异”。若之后的一篇期刊论文研究了相近人群和关系，审计人员可能把一个或多个版本判为匹配。这个标签不表示模型的假设已经被实验证明，也不证明论文是由该假设促成。</p>
+      <div class="callout warn"><b>比例不是“科学发现成功率”</b><p>DeepSeek 的 116/545 = 21.28%，只能读作 545 个假设版本中 116 个符合该文献匹配审计标准。545 个版本彼此相关，不是 545 个独立实验；迭代次数、假设具体程度、文献检索召回率和审计标准都会改变比例。</p></div>
+
+      <h3>端到端任务：进度可复现，不等于结论成立</h3>
+      <p>血栓模拟任务的内部进度评分分三档：0.1 要有可解析提交和完成模拟的证据；0.2 要有能重放的匹配比较；0.3 要在两个浓度背景下重复黏附性对照，最高 0.3。它主要奖励研究过程是否可复现、比较是否受控，不按结果是“黏附性增强”还是“降低”给奖励。</p>
+      <p>该任务尚未评分结论的正负方向与幅度，也没有完成外推预测、数值收敛和外部生物验证。因而即使 Agent 拿到最高进度奖励，也不能据此说它发现了有效血栓机制。更重要的是，这个 progress rubric 不等于官方榜单的 E2E 分；目前榜单 E2E 都是 0。</p>
+    </section>
+
+    <section id="terms">
+      <h2>容易误解的术语</h2>
+      <div class="def-list">
+        <div><b>科研 Agent</b><span>不只是回答问题的模型，而是模型加命令行或 GUI harness、工具、执行环境和预算的完整系统。</span></div>
+        <div><b>Harness</b><span>把模型接入任务的运行框架：负责上下文、工具、文件操作、运行限制和结果保存。换 harness 可能改变任务成绩。</span></div>
+        <div><b>Verifier</b><span>独立验证器。它根据预设测试检查代码、数值、文件、状态或动作是否满足要求，而不是相信 Agent 自己宣称完成。</span></div>
+        <div><b>直线式程序</b><span>固定顺序调用动作的受限脚本。每行一个动作与参数，没有 if/for 等控制流；不指线性回归或线性代数。</span></div>
+        <div><b>活动开始时间</b><span>实验观察任务中，一段活动描述内第一个可见动作出现的时刻，不是最后一个动作，也不是活动结束时刻。</span></div>
+        <div><b>假设版本</b><span>迭代中某一时点保存的结构化猜想。前后版本常共享同一条研究线索，不能当作相互独立的样本。</span></div>
+        <div><b>Inspire rate</b><span>假设版本中与截止日之后的期刊研究符合审计关联标准的比例；是回溯文献匹配代理指标，不是事实正确率或新颖性证明。</span></div>
+        <div><b>综合分</b><span>六类不同任务指标各占六分之一的平均分，不是任务数加权的总通过率，也不是基础模型的纯能力分。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险：现阶段不能从 SLE 推出什么</h2>
+      <ul>
+        <li><strong>不能推出 AI 已能独立做完整科研。</strong>v1 没有湿实验执行任务；E2E 只有 1 项，且现行奖励不验证科学结论正确性。</li>
+        <li><strong>不能把 Inspire rate 等同于真实发现。</strong>它是与后来论文的回溯匹配，受版本依赖、检索和审计标准影响，不是独立实验验证，也不是原创性证明。</li>
+        <li><strong>不能把总分当成任务成功率。</strong>六项评分口径不同且等权；单项任务数量差距很大，1 项 E2E 与 40 项 PP 在总分里的权重相同。</li>
+        <li><strong>不能把榜单差距纯归因于模型。</strong>Agent harness、推理设置、工具、运行版本和预算共同影响结果。</li>
+        <li><strong>不能假设所有任务都能完全独立复现。</strong>公开仓库有框架和评分器，但数据卡、隐藏参考和部分访问受限数据需要审批；MIMIC-IV、eICU、UK Biobank 有各自权限门槛，HCC 是内部队列，公开数据覆盖也不完整。</li>
+        <li><strong>不能忽略任务版本。</strong>v1 任务规模曾从 91 项扩到 96 项再到 113 项；实验观察从 13 项增加至 30 项，项目声明旧结果不可直接比较。复现时需要锁定 commit、数据 revision、模型、harness、推理 effort 和预算。</li>
+        <li><strong>公开任务存在潜在污染风险，但这不是已证实的作弊指控。</strong>公开性提高可检查性，也可能让未来模型训练集接触任务材料；评测需持续维护新题、隐藏测试或任务刷新。</li>
+        <li><strong>当前榜单缺少完整的独立统计复核。</strong>页面主要展示聚合点分；若要判断结果稳定性，还需看多次运行方差、失败轨迹和完整评测设置，而不能只看名次。</li>
+      </ul>
+      <p>官网说明研究团队会在发布前复跑外部提交，这是有价值的复核步骤，但不能替代独立第三方复现。当前项目页面没有可审阅的基准论文链接；截至本笔记所列榜单日期，也没有发现足以验证整套榜单的独立重复评测。</p>
+    </section>
+
+    <section id="insight">
+      <h2>怎样使用这份基准：看剖面，不只看总分</h2>
+      <p>如果要据此选用 Agent，应先确认目标工作环节与 SLE 任务是否相近，再查看对应分项、轨迹、预算和 harness。比如大量工作是 GUI 软件操作，SO 分项可能比综合分更相关；如果关心科研视频中的动作时序，应看 EO，而不是把 HD 高分误当成视频能力。</p>
+      <p>如果要研究模型是否能做科学发现，SLE 更适合作为评测组件清单的起点。下一步要补上更大规模的端到端任务、湿实验或外部真实验证、盲化的独立专家判断、重复运行置信区间、跨领域迁移，以及可审计的假设到实验结果链条。对于 Hypothesis Discovery，最好区分“与后来论文相似”“数据中有统计证据”“经独立实验复现”这三个强度完全不同的结论。</p>
+      <div class="callout"><b>最终结论</b><p>SLE v1 的强项是把科研 Agent 的若干操作能力变成更可审计的任务；它的薄弱处是这些能力距离完整科学方法仍有明显断层。37.50 这样的分数应被视为有限任务集上的系统基准成绩，而不是 AI 科研成熟度的百分比。</p></div>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本笔记的任务划分、指标口径、运行限制和榜单数值以项目官方 v1 文档、任务说明和 2026-11-08 静态榜单数据为依据。榜单和任务数量会随版本更新；文中明确区分了官方指标、为解释指标所做的算术换算，以及笔记中的判断。数据访问限制、复现政策和贡献者身份说明属于项目方描述；未将其当作第三方审计结论。</p>
+      <ul class="source-list">
+        <li><a href="https://sciences-last-exam.org/">Science's Last Exam 官方主页</a>：项目范围、介绍与任务入口。</li>
+        <li><a href="https://sciences-last-exam.org/docs">官方文档总览</a>：任务框架及项目术语。</li>
+        <li><a href="https://sciences-last-exam.org/docs-scoring">官方评分规范</a>：各能力任务及单项评分定义。</li>
+        <li><a href="https://sciences-last-exam.org/docs-evaluate">官方运行指南</a>：运行环境、预算、网络和复现流程。</li>
+        <li><a href="https://sciences-last-exam.org/docs-results">官方结果说明</a>：分项结果和提交评测规则。</li>
+        <li><a href="https://sciences-last-exam.org/leaderboard">官方排行榜</a>：榜单当前视图。</li>
+        <li><a href="https://sciences-last-exam.org/assets/data.3839fede7a1c3592.js">2026-11-08 榜单静态数据</a>：本文所列模型分数快照。</li>
+        <li><a href="https://sciences-last-exam.org/replays">官方任务回放</a>：可查看的 Agent 执行轨迹。</li>
+        <li><a href="https://sciences-last-exam.org/submit-results">结果提交说明</a>：外部评测提交与复跑政策。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/docs/releases/v1.md">v1 发布说明</a>：任务数量变更、版本和发布内容。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/docs/TASKS.md">任务定义索引</a>：任务包结构和能力任务规范。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/docs/HYPOTHESIS_DISCOVERY.md">Hypothesis Discovery 规范</a>：DiscoveryRSI 运行与 Inspire rate 审计方法。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/tasks/protocol-planning/ProtocolPlanning-L1-train-000135/instruction.md">金纳米颗粒流程规划示例</a>：Level 1 状态与下一步动作。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/tasks/scientific-computing/pluto-repair-sol-dt-growth-cap/instruction.md">PLUTO 科学计算修复示例</a>：数值模拟缺陷修复任务。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/tasks/scientific-software-operation/astronomy--task020/instruction.md">Celestia 软件操作示例</a>：通过天文软件 GUI 完成观测。</li>
+        <li><a href="https://github.com/Gen-Verse/Science-Last-Exam/blob/main/tasks/end-to-end-science/thrombosis-adhesion-platelet/instruction.md">血栓端到端研究示例</a>：模拟实验、对照和评分范围。</li>
+        <li><a href="https://huggingface.co/datasets/Gen-Verse/Science-Last-Exam">Hugging Face 数据集卡</a>：任务卡、输入数据与受控访问说明。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

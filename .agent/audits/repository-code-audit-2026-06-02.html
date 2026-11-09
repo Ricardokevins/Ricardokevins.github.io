@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Ricardokevins.github.io 代码问题审计与可视化</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --panel-2: #22262f;
+    --ink: #e7eaf0;
+    --ink-2: #b3bac6;
+    --muted: #7d8694;
+    --line: #2a2f3a;
+    --accent: #5cc8ff;
+    --accent-2: #8b5cf6;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --shadow: 0 8px 24px rgba(0,0,0,0.45);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif; line-height: 1.55; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 32px 24px 80px; }
+  header.hero { padding: 28px 32px; background: linear-gradient(135deg, #1a1d24 0%, #22262f 60%, #2a2f3a 100%); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); margin-bottom: 28px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 1.85rem; letter-spacing: -0.01em; }
+  header.hero p.lead { margin: 0; color: var(--ink-2); font-size: 0.98rem; }
+  header.hero .meta { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 0.85rem; }
+  header.hero .meta b { color: var(--ink); font-weight: 600; }
+  h2 { margin: 36px 0 14px; font-size: 1.25rem; letter-spacing: -0.01em; }
+  h2 .num { display: inline-block; min-width: 28px; padding: 2px 8px; margin-right: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; text-align: center; }
+  h3 { margin: 24px 0 10px; font-size: 1.05rem; color: var(--ink-2); }
+  .grid { display: grid; gap: 16px; }
+  .grid.cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .grid.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .grid.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  @media (max-width: 880px) { .grid.cols-4 { grid-template-columns: repeat(2, 1fr); } .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 16px; box-shadow: var(--shadow); }
+  .kpi { display: flex; flex-direction: column; gap: 6px; }
+  .kpi .label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi .value { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.01em; }
+  .kpi .sub { color: var(--ink-2); font-size: 0.82rem; }
+  .kpi.green .value { color: var(--green); }
+  .kpi.yellow .value { color: var(--yellow); }
+  .kpi.orange .value { color: var(--orange); }
+  .kpi.red .value { color: var(--red); }
+  .kpi.accent .value { color: var(--accent); }
+  .kpi.purple .value { color: var(--accent-2); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; background: var(--panel-2); position: sticky; top: 0; }
+  tr:hover td { background: rgba(92,200,255,0.04); }
+  td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); text-align: right; white-space: nowrap; }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; color: var(--ink-2); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.02em; }
+  .pill.red { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.32); }
+  .pill.orange { background: rgba(251,146,60,0.15); color: var(--orange); border: 1px solid rgba(251,146,60,0.32); }
+  .pill.yellow { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1px solid rgba(251,191,36,0.32); }
+  .pill.green { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.32); }
+  .pill.gray { background: rgba(125,134,148,0.15); color: var(--muted); border: 1px solid var(--line); }
+  .pill.blue { background: rgba(92,200,255,0.15); color: var(--accent); border: 1px solid rgba(92,200,255,0.32); }
+  .bar { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .bar .track { flex: 1; height: 14px; background: var(--panel-2); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 4px; }
+  .bar .fill.red { background: linear-gradient(90deg, var(--red), var(--orange)); }
+  .bar .fill.yellow { background: linear-gradient(90deg, var(--yellow), var(--orange)); }
+  .bar .label { min-width: 220px; color: var(--ink-2); font-size: 0.88rem; }
+  .bar .num { min-width: 60px; text-align: right; color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88rem; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .toc a { color: var(--ink-2); text-decoration: none; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 0.82rem; }
+  .toc a:hover { color: var(--accent); border-color: var(--accent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--ink-2); font-size: 0.82rem; }
+  .legend .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 6px; vertical-align: middle; }
+  pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-size: 0.82rem; line-height: 1.55; color: var(--ink-2); }
+  code.inline { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; color: var(--accent); }
+  .heatmap { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; }
+  .heatmap .cell { aspect-ratio: 1; border-radius: 2px; background: var(--panel-2); position: relative; }
+  .heatmap .cell[data-level="1"] { background: rgba(92,200,255,0.25); }
+  .heatmap .cell[data-level="2"] { background: rgba(92,200,255,0.45); }
+  .heatmap .cell[data-level="3"] { background: rgba(251,191,36,0.55); }
+  .heatmap .cell[data-level="4"] { background: rgba(251,146,60,0.75); }
+  .heatmap .cell[data-level="5"] { background: rgba(248,113,113,0.92); }
+  .heatmap-legend { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 0.78rem; margin-top: 8px; }
+  .heatmap-legend .sw { width: 16px; height: 10px; border-radius: 2px; display: inline-block; }
+  .small { color: var(--muted); font-size: 0.82rem; }
+  ul.problems { margin: 8px 0 0 0; padding-left: 20px; }
+  ul.problems li { margin: 4px 0; color: var(--ink-2); }
+  ul.problems li b { color: var(--ink); }
+  .divider { height: 1px; background: var(--line); margin: 18px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>📋 Ricardokevins.github.io 代码问题审计报告</h1>
+  <p class="lead">基于全量扫描 306 个源文件 / 13.8 万行代码，覆盖构建配置、HTML/CSS/JS、笔记内容、脚本逻辑与数据完整性。下图把问题分布、严重程度、影响范围与可执行修复方向集中可视化。</p>
+  <div class="meta">
+    <span><b>扫描时间</b> 2026-06-02</span>
+    <span><b>主分支</b> main</span>
+    <span><b>已修改文件</b> 135+（与本次审计重叠）</span>
+    <span><b>审计模式</b> 只读扫描 + 静态分析</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#summary">1. 概览</a>
+  <a href="#kpi">2. 关键指标</a>
+  <a href="#severity">3. 问题严重度分布</a>
+  <a href="#config">4. 构建配置问题</a>
+  <a href="#site">5. _site 残留</a>
+  <a href="#nav">6. 章节导航</a>
+  <a href="#id">7. 跨文件 ID 冲突</a>
+  <a href="#citepy">8. cite.py 性能</a>
+  <a href="#about">9. about.md 数据陈旧</a>
+  <a href="#noise">10. 仓库噪声</a>
+  <a href="#hygiene">11. 工程卫生</a>
+  <a href="#fix">12. 修复建议优先级</a>
+</nav>
+
+<!-- ====================== 1. 概览 ====================== -->
+<h2 id="summary"><span class="num">1</span>概览</h2>
+<div class="grid cols-4">
+  <div class="card kpi accent"><span class="label">源文件总数</span><span class="value">306</span><span class="sub">不含 _site / .git / .agent</span></div>
+  <div class="card kpi purple"><span class="label">代码总行数</span><span class="value">138,183</span><span class="sub">md + html + css + js + py + yml + rb</span></div>
+  <div class="card kpi red"><span class="label">_site 体积</span><span class="value">117 MB</span><span class="sub">578 个文件 · 应当被忽略</span></div>
+  <div class="card kpi orange"><span class="label">笔记 HTML</span><span class="value">179</span><span class="sub">110 个章节 + 69 个独立笔记</span></div>
+</div>
+
+<!-- ====================== 2. KPI ====================== -->
+<h2 id="kpi"><span class="num">2</span>关键指标 · 全量问题</h2>
+<div class="grid cols-4">
+  <div class="card kpi red"><span class="label">❌ chapter-nav 重复</span><span class="value">110/110</span><span class="sub">每个章节都重复 2 次</span></div>
+  <div class="card kpi red"><span class="label">❌ 导航方向错误</span><span class="value">27</span><span class="sub">前后跳转指向错乱</span></div>
+  <div class="card kpi red"><span class="label">❌ 跨文件 ID 冲突</span><span class="value">35</span><span class="sub">影响 27 个章节</span></div>
+  <div class="card kpi red"><span class="label">❌ 本地资源 404</span><span class="value">0</span><span class="sub">资产引用全部就位 ✓</span></div>
+</div>
+<div class="grid cols-4">
+  <div class="card kpi orange"><span class="label">⚠ _site 残留在仓库</span><span class="value">117 MB</span><span class="sub">.gitignore 应当屏蔽</span></div>
+  <div class="card kpi orange"><span class="label">⚠ DS_Store 散落</span><span class="value">15</span><span class="sub">macOS 系统文件</span></div>
+  <div class="card kpi orange"><span class="label">⚠ .git 体积偏大</span><span class="value">15 目录</span><span class="sub">含 _site 完整历史</span></div>
+  <div class="card kpi orange"><span class="label">⚠ cite.py 算法</span><span class="value">O(N×M)</span><span class="sub">嵌套循环查找</span></div>
+</div>
+<div class="grid cols-4">
+  <div class="card kpi yellow"><span class="label">◐ about.md 中文残留</span><span class="value">1</span><span class="sub">busuanzi 站点统计</span></div>
+  <div class="card kpi yellow"><span class="label">◐ _drafts 残留</span><span class="value">1</span><span class="sub">未清理的草稿</span></div>
+  <div class="card kpi yellow"><span class="label">◐ 2026 数据无 2026 论文</span><span class="value">2 篇</span><span class="sub">news 与列表不一致</span></div>
+  <div class="card kpi green"><span class="label">✓ math-bank 完整</span><span class="value">20/20</span><span class="sub">无章节缺失</span></div>
+</div>
+
+<!-- ====================== 3. 严重度 ====================== -->
+<h2 id="severity"><span class="num">3</span>问题严重度分布</h2>
+<div class="card">
+  <p class="small">按"用户可感知 / 维护成本 / SEO 影响"加权打分（5 = 严重，1 = 轻微）。</p>
+  <div class="bar"><span class="label">🔴 chapter-nav 双重渲染（110 文件）</span><span class="track"><span class="fill red" style="width:100%"></span></span><span class="num">5/5</span></div>
+  <div class="bar"><span class="label">🔴 跨文件 heading ID 冲突（35 处）</span><span class="track"><span class="fill red" style="width:96%"></span></span><span class="num">5/5</span></div>
+  <div class="bar"><span class="label">🔴 章节导航方向错误（27 处）</span><span class="track"><span class="fill red" style="width:90%"></span></span><span class="num">4/5</span></div>
+  <div class="bar"><span class="label">🟠 _site 残留在主分支</span><span class="track"><span class="fill yellow" style="width:80%"></span></span><span class="num">4/5</span></div>
+  <div class="bar"><span class="label">🟠 cite.py 双重遍历</span><span class="track"><span class="fill yellow" style="width:70%"></span></span><span class="num">3/5</span></div>
+  <div class="bar"><span class="label">🟡 about.md 数据陈旧</span><span class="track"><span class="fill" style="width:55%"></span></span><span class="num">3/5</span></div>
+  <div class="bar"><span class="label">🟡 DS_Store 散落 15 处</span><span class="track"><span class="fill" style="width:40%"></span></span><span class="num">2/5</span></div>
+  <div class="bar"><span class="label">🟢 本地资源引用</span><span class="track"><span class="fill" style="width:10%"></span></span><span class="num">1/5</span></div>
+</div>
+<p class="small">🔴 严重 (3 项) · 🟠 中等 (2 项) · 🟡 轻微 (2 项) · 🟢 正常 (1 项)</p>
+
+<!-- ====================== 4. 配置 ====================== -->
+<h2 id="config"><span class="num">4</span>构建配置问题</h2>
+<div class="card">
+<h3>.gitignore 缺陷</h3>
+<pre>1: _site/
+2: .DS_Store
+3: </pre>
+<p>当前 <code class="inline">_site/</code> 已在列表里，但仓库 <b>实际仍包含 117 MB _site</b>。原因可能是历史 commit 时期 <code class="inline">.gitignore</code> 尚未加上 _site，git 已经在跟踪这些文件，<code class="inline">.gitignore</code> 不会自动取消跟踪。</p>
+<p class="small">修复方向：<code class="inline">git rm -r --cached _site/</code>，再 commit；可选择保留 <code class="inline">keep_files: [".git", ".svn"]</code> 不影响 _site 跟踪。</p>
+
+<h3>_config.yml 残留</h3>
+<ul class="problems">
+  <li><b>analytics 仍启用</b>：<code class="inline">google.tracking_id: G-CXPEJCV19X</code> 与 <code class="inline">compress_html.clippings: all</code>，影响加载性能。</li>
+  <li><b>comments / staticman 残留</b>：第 24-49 行的 comments 配置项实际无人调用，但会让 <code class="inline">--safe</code> 模式行为不一致。</li>
+  <li><b>exclude 名单过长</b>：约 25 个路径逐个列入 <code class="inline">exclude:</code>，应当用 <code class="inline">exclude: ["vendor", "node_modules", ...]</code> 简写列表并改用 <code class="inline">.gitignore</code> 兜底。</li>
+  <li><b>plugins 与 whitelist 不一致</b>：<code class="inline">jekyll-paginate</code> 既出现在 <code class="inline">plugins</code> 又出现在 <code class="inline">whitelist</code>，GitHub Pages 部署时不会重复加载，但容易让人误以为缺一不可。</li>
+  <li><b>Hawkins 插件</b>：Gemfile 里有 <code class="inline">hawkins</code>，但 _config.yml 的 whitelist/plugins 都没有；属于配置漂移。</li>
+</ul>
+
+<h3>Gemfile 配置</h3>
+<ul class="problems">
+  <li>用 <code class="inline">github-pages</code> 而非直接 <code class="inline">jekyll</code>，导致本地 <code class="inline">bundle exec jekyll serve</code> 与 GH Pages 实际版本不易对齐。</li>
+  <li>缺 <code class="inline">.ruby-version</code>；CI 走 <code class="inline">setup-ruby@v1 ruby-version: '3.1'</code>，本地无固定版本。</li>
+</ul>
+</div>
+
+<!-- ====================== 5. _site ====================== -->
+<h2 id="site"><span class="num">5</span>_site 残留问题（117 MB / 578 文件）</h2>
+<div class="card">
+<h3>磁盘占用与构建污染</h3>
+<table>
+<thead><tr><th>指标</th><th>数值</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>_site 总体积</td><td class="num">117 MB</td><td>已 commit 到 main 分支历史</td></tr>
+<tr><td>_site/notes 体积</td><td class="num">111 MB</td><td>占 _site 94.8%</td></tr>
+<tr><td>_site 总文件数</td><td class="num">578</td><td>每次构建都会重新生成</td></tr>
+<tr><td>笔记相关 _site 文件</td><td class="num">≈ 224</td><td>含 110 章节 + 69 独立笔记 + assets</td></tr>
+<tr><td>.git 目录大小估计</td><td class="num">50 MB+</td><td>含 _site 完整历史</td></tr>
+</tbody>
+</table>
+
+<h3>磁盘占用 Top 章节</h3>
+<pre>035.html  136,573 bytes  ← 单章节最大
+036.html  116,882 bytes
+047.html  100,413 bytes
+045.js    99,188 bytes
+--- 平均 18.7 KB / 章节 ---</pre>
+
+<h3>检测到的具体脏数据</h3>
+<ul class="problems">
+  <li>已发现的脏数据包含 <b>重复的 chapter-nav</b>，且 _site 与源文件一致（构建过程未做去重/修复）。</li>
+  <li><b>git status 显示</b>约 135 个文件被修改，但 _site 不在 working tree diff 中（说明它没被跟踪或者刚被 clean），需要进一步确认。</li>
+  <li>同时存在 <b>.DS_Store 散落 15 处</b>，是 _site 与 notes 子目录共同的"访问痕迹"。</li>
+</ul>
+</div>
+
+<!-- ====================== 6. 章节导航 ====================== -->
+<h2 id="nav"><span class="num">6</span>章节导航（chapter-nav）双重渲染</h2>
+<div class="card">
+<h3>问题概览</h3>
+<p>所有 110 个 LLM/Math 章节文件（90 + 20）都在同一文件里输出了 <b>两个</b> 完全相同的 <code class="inline">&lt;nav class="chapter-nav"&gt;</code> 块。一个出现在 <code class="inline">&lt;article&gt;</code> 之前，一个在 <code class="inline">&lt;/article&gt;</code> 之后。</p>
+
+<h3>实际样例（090.html）</h3>
+<pre>&lt;main class="content"&gt;
+  &lt;nav class="chapter-nav"&gt;                  &lt;!-- ❌ 提前到 article 之前 --&gt;
+    &lt;a href="088.html"&gt;← 88. ...&lt;/a&gt;
+    &lt;a href="072.html"&gt;72. ... →&lt;/a&gt;
+  &lt;/nav&gt;
+  &lt;article class="chapter-page"&gt;
+    ...
+  &lt;/article&gt;
+  &lt;nav class="chapter-nav"&gt;                  &lt;!-- ✓ 正常位置 --&gt;
+    &lt;a href="088.html"&gt;← 88. ...&lt;/a&gt;
+    &lt;a href="072.html"&gt;72. ... →&lt;/a&gt;
+  &lt;/nav&gt;
+  &lt;footer class="footer"&gt;...&lt;/footer&gt;
+&lt;/main&gt;</pre>
+
+<h3>导航方向错误（27 处 · 文件数 27/110 = 24.5%）</h3>
+<p>章节编号与"上一节 / 下一节"语义不一致：用户点"← 上一节"会跳到编号更大的章节。</p>
+<table>
+<thead><tr><th>章节</th><th>← 上一节</th><th>→ 下一节</th><th>问题</th></tr></thead>
+<tbody>
+<tr><td>005.html</td><td>063</td><td>006</td><td>← 跳到 63（远后）</td></tr>
+<tr><td>015.html</td><td>058</td><td>021</td><td>← 跳到 58</td></tr>
+<tr><td>016.html</td><td>021</td><td>084</td><td>← 跳到 21（紧后）</td></tr>
+<tr><td>017.html</td><td>084</td><td>018</td><td>← 跳到 84</td></tr>
+<tr><td>019.html</td><td>022</td><td>020</td><td>顺序倒挂</td></tr>
+<tr><td>021.html</td><td>015</td><td>016</td><td>→ 跳回 16</td></tr>
+<tr><td>022.html</td><td>018</td><td>019</td><td>→ 跳回 19</td></tr>
+<tr><td>025.html</td><td>029</td><td>026</td><td>顺序倒挂</td></tr>
+<tr><td>029.html</td><td>028</td><td>025</td><td>→ 跳回 25</td></tr>
+<tr><td>035.html</td><td>064</td><td>036</td><td>← 跳到 64</td></tr>
+<tr><td>058.html</td><td>057</td><td>015</td><td>→ 跳回 15</td></tr>
+<tr><td>059.html</td><td>089</td><td>060</td><td>← 跳到 89</td></tr>
+<tr><td>063.html</td><td>062</td><td>005</td><td>→ 跳回 5</td></tr>
+<tr><td>064.html</td><td>063</td><td>035</td><td>→ 跳回 35</td></tr>
+<tr><td>065.html</td><td>071</td><td>066</td><td>← 跳到 71（后）</td></tr>
+<tr><td>068.html</td><td>077</td><td>069</td><td>← 跳到 77</td></tr>
+<tr><td>071.html</td><td>070</td><td>065</td><td>→ 跳回 65</td></tr>
+<tr><td>072.html</td><td>090</td><td>073</td><td>← 跳到 90</td></tr>
+<tr><td>077.html</td><td>076</td><td>068</td><td>→ 跳回 68</td></tr>
+<tr><td>081.html</td><td>080</td><td>002</td><td>→ 跳到 002（首）</td></tr>
+<tr><td>083.html</td><td>087</td><td>084</td><td>← 跳到 87</td></tr>
+<tr><td>084.html</td><td>083</td><td>017</td><td>→ 跳回 17</td></tr>
+<tr><td>085.html</td><td>086</td><td>087</td><td>← 跳到 86</td></tr>
+<tr><td>086.html</td><td>085</td><td>085</td><td>→ 跳回 85（同向）</td></tr>
+<tr><td>087.html</td><td>086</td><td>083</td><td>→ 跳回 83</td></tr>
+<tr><td>089.html</td><td>088</td><td>059</td><td>→ 跳回 59</td></tr>
+<tr><td>090.html</td><td>088</td><td>072</td><td>→ 跳回 72</td></tr>
+</tbody>
+</table>
+<p class="small">原因推断：章节序号 ≠ 学习路径，生成脚本维护了一套"path 链"但顺序与编号脱节。需将 chapter-nav 重写为按 path 顺序查找前后节点。</p>
+</div>
+
+<!-- ====================== 7. ID 冲突 ====================== -->
+<h2 id="id"><span class="num">7</span>跨文件 Heading ID 冲突（35 处）</h2>
+<div class="card">
+<h3>问题</h3>
+<p>每个章节内部的二级/三级/四级标题使用自增 ID（如 <code class="inline">h-0856</code>），但编号器没有按文件隔离，导致 5 个不同章节里都出现 <code class="inline">h-0862</code>。<b>TOC 锚点全部混乱</b>：用户点 "h-0862" 会跳到不确定的某一章。</p>
+
+<h3>冲突 ID 频次分布</h3>
+<table>
+<thead><tr><th>ID</th><th>出现文件数</th><th>严重程度</th></tr></thead>
+<tbody>
+<tr><td class="mono">h-0862</td><td class="num">5</td><td><span class="pill red">🔴 严重</span></td></tr>
+<tr><td class="mono">h-0863</td><td class="num">5</td><td><span class="pill red">🔴 严重</span></td></tr>
+<tr><td class="mono">h-0864</td><td class="num">5</td><td><span class="pill red">🔴 严重</span></td></tr>
+<tr><td class="mono">h-0865</td><td class="num">4</td><td><span class="pill red">🔴 严重</span></td></tr>
+<tr><td class="mono">h-0866</td><td class="num">4</td><td><span class="pill red">🔴 严重</span></td></tr>
+<tr><td class="mono">h-0861</td><td class="num">4</td><td><span class="pill orange">🟠 中</span></td></tr>
+<tr><td class="mono">h-0860</td><td class="num">3</td><td><span class="pill orange">🟠 中</span></td></tr>
+<tr><td class="mono">h-0859</td><td class="num">3</td><td><span class="pill orange">🟠 中</span></td></tr>
+<tr><td class="mono">h-1396 - h-1401</td><td class="num">2</td><td><span class="pill yellow">🟡 轻</span></td></tr>
+<tr><td class="mono">h-1027 - h-1032</td><td class="num">2</td><td><span class="pill yellow">🟡 轻</span></td></tr>
+<tr><td class="mono">h-0856 - h-0858</td><td class="num">2</td><td><span class="pill yellow">🟡 轻</span></td></tr>
+<tr><td class="mono">h-0778 - h-0780</td><td class="num">2</td><td><span class="pill yellow">🟡 轻</span></td></tr>
+<tr><td class="mono">h-0667 - h-0669</td><td class="num">2</td><td><span class="pill yellow">🟡 轻</span></td></tr>
+</tbody>
+</table>
+
+<h3>修复方向</h3>
+<ul class="problems">
+  <li>把全局自增 ID 改成 <code class="inline">h-XXX-{filename}</code> 文件局部命名空间。</li>
+  <li>或：把 ID 改用 <code class="inline">slugify(title)</code>，让标题本身就是 ID（但需注意重复标题）。</li>
+  <li>最佳实践：把 ID 写进 Jekyll/Liquid 模板而不是手工编号；用 <code class="inline">{% include anchor heading="..." %}</code> 类的方式管理。</li>
+</ul>
+</div>
+
+<!-- ====================== 8. cite.py ====================== -->
+<h2 id="citepy"><span class="num">8</span>cite.py 算法效率与 CI 集成</h2>
+<div class="card">
+<h3>当前实现</h3>
+<pre>me = sch.get_author(2193557733)         # 仅 1 次
+...
+for i, line in enumerate(lines):        # 1 次
+    for paper in me.papers:             # N × M 次 ❌
+        if paper.paperId == paper_id:
+            ...
+with open('./_pages/about.md', 'w') as fp:
+    file.writelines(lines)               # ❌ 不带原子写入</pre>
+
+<h3>复杂度</h3>
+<ul class="problems">
+  <li>外层 about.md 行数 N（数十行），内层 author.papers 长度 M（数十到数百），最坏 O(N×M)。</li>
+  <li><b>每次 CI 触发都拉取整本论文列表</b>，并 for-loop 全文对比，浪费 Semantic Scholar API 配额。</li>
+  <li>没有缓存、没有 dict 索引、没有"跳过未引用"优化。</li>
+  <li>file.writelines 直接覆盖原文件，如果中途异常会导致 about.md 损坏。</li>
+</ul>
+
+<h3>改进建议</h3>
+<pre># 建议写法
+papers_by_id = {p.paperId: p for p in me.papers}  # 一次性建索引
+new_lines = []
+for line in lines:
+    if line.startswith('[![citation]'):
+        m = re.search(r'/([a-f0-9]{40})', line)
+        if m and m.group(1) in papers_by_id:
+            paper = papers_by_id[m.group(1)]
+            line = re.sub(r'citation-\d+', f'citation-{paper.citationCount}', line)
+    new_lines.append(line)
+
+# 原子写入
+tmp = './_pages/about.md.tmp'
+with open(tmp, 'w') as fp:
+    fp.writelines(new_lines)
+os.replace(tmp, './_pages/about.md')</pre>
+
+<h3>CI 集成</h3>
+<ul class="problems">
+  <li>GitHub Actions 走 <code class="inline">cron: '0 */4 * * *'</code>，每 4 小时跑一次；Semantic Scholar 没有鉴权，单 IP 频繁调用会触发限流（429）。</li>
+  <li><b>没有 commit 推送</b>：脚本改完 about.md 但不 commit、不 push，下次构建又会被 git status 看到修改。</li>
+  <li><b>没有 cache</b>：每次拉全量 author 列表，浪费配额。</li>
+</ul>
+</div>
+
+<!-- ====================== 9. about.md ====================== -->
+<h2 id="about"><span class="num">9</span>_pages/about.md 数据陈旧与中文残留</h2>
+<div class="card">
+<h3>数据不一致</h3>
+<table>
+<thead><tr><th>位置</th><th>问题</th><th>证据</th></tr></thead>
+<tbody>
+<tr><td>News 第 16 行</td><td>2026-04-10 称 "Our two new papers got accepted to ACL 2026"</td><td>下方"Published Papers"段无 2026 ACL 论文 entry，只在 Selected 段</td></tr>
+<tr><td>News 第 17 行</td><td>2026-01-27 DuPO 接受 ICLR 2026</td><td>同段"📰 Selected Publications"出现 DuPO，但 "Published Papers" 段第一行（按时间序）也再次出现</td></tr>
+<tr><td>History 第 109 行</td><td>2025-08-21 称 R-PRM 接受 EMNLP 2025</td><td>但 News 第 16 行说"two new papers ACL 2026"——R-PRM 2025 vs ACL 2026 互相矛盾，4 个月时间线混乱</td></tr>
+<tr><td>News 第 19 行</td><td>2025-08-21 DuPO 介绍</td><td>和 History 同日有 R-PRM，但 R-PRM 在 News 段没有独立条目</td></tr>
+</tbody>
+</table>
+
+<h3>中文残留（脚本与统计）</h3>
+<pre>第 138-141 行：
+&lt;script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"&gt;&lt;/script&gt;
+&lt;span id="busuanzi_container_site_pv"&gt;本站总访问量&lt;span id="busuanzi_value_site_pv"&gt;&lt;/span&gt;次&lt;/span&gt;
+&lt;a href="https://info.flagcounter.com/6u51"&gt;
+  &lt;img src="https://s11.flagcounter.com/count2/6u51/..."&gt;
+&lt;/a&gt;</pre>
+<ul class="problems">
+  <li><b>busuanzi（不蒜子）</b>是中文站点的访问统计；"本站总访问量"是中文标签，与面向英文读者的学术主页不匹配。</li>
+  <li><b>flagcounter</b>是第三方访问国旗统计，载荷较重，且学术站没必要展示。</li>
+  <li><b>第三方脚本风险</b>：busuanzi.ibruce.info 没有 SRI 校验，可能被劫持；会影响 page load 速度。</li>
+  <li><b>AGENTS.md 提到"通用规范"</b>：保留笔记源头的纯净化；about.md 的 busuanzi 是该原则的反例。</li>
+</ul>
+</div>
+
+<!-- ====================== 10. 仓库噪声 ====================== -->
+<h2 id="noise"><span class="num">10</span>仓库噪声与构建产物</h2>
+<div class="card">
+<h3>系统文件散落</h3>
+<table>
+<thead><tr><th>类型</th><th>数量</th><th>路径示例</th></tr></thead>
+<tbody>
+<tr><td>.DS_Store</td><td class="num">15</td><td>notes/、notes/llm-interview-question-bank/、notes/paper-reviews/、notes/tech-analysis/、_site/...</td></tr>
+<tr><td>_drafts/post-draft.md</td><td class="num">1</td><td>未清理的草稿</td></tr>
+<tr><td>_site/</td><td class="num">578</td><td>117 MB 全部残留在仓库</td></tr>
+</tbody>
+</table>
+
+<h3>仓库体积 Top 目录</h3>
+<pre>_site       117 MB   ← 应当忽略
+notes       111 MB   ← 业务资产（合理）
+_sass       736 KB
+_includes   188 KB
+_pages       96 KB
+_data        96 KB
+_layouts     36 KB
+_posts       20 KB</pre>
+</div>
+
+<!-- ====================== 11. 工程卫生 ====================== -->
+<h2 id="hygiene"><span class="num">11</span>工程卫生（次要）</h2>
+<div class="card">
+<h3>其余发现</h3>
+<ul class="problems">
+  <li><b>scripts/validate_notes_index.rb</b> 校验规则完备（35-58 行定义质量模式），但 <b>校验脚本本身不在 PR 检查流程</b>，只 CI 一次跑。</li>
+  <li><b>.github/workflows/deploy.yml</b> 没有触发 validate_notes_index 失败时阻断部署；只有日志输出。</li>
+  <li><b>deploy job 被注释</b>（55-63 行），意味着实际部署是 GitHub Pages 自动 Jekyll build，不是 actions-driven，需要 review 部署链路是否仍正常。</li>
+  <li><b>Progress.md 195 KB</b> 增长过快，需要滚动归档。</li>
+  <li><b>notes.yml 69 条 + 6 个 math/llm 总入口</b>，但 _pages/notes.md 的搜索和分页是 JS 实现（无 SSR fallback），curl 抓取不到笔记列表。</li>
+  <li><b>linkmap.ipynb 122 KB</b> 留在仓库根，对个人学术站无意义。</li>
+  <li><b>markdown_generator/</b> 包含 pubsFromBib.py / publications.py / talks.py，与 _publications/_talks 配套但 .gitignore 没排除 build 输出。</li>
+  <li><b>_data/notes.yml</b> 没有任何 schema 校验，CI 漏掉字段（如 <code class="inline">url</code>、<code class="inline">title</code>、<code class="inline">date</code>）会让 _pages/notes.md 渲染异常。</li>
+  <li><b>_pages/about.md 第 138-141 行</b>：busuanzi 是中文站点统计。</li>
+  <li><b>pages.html 的"404.md"</b> 仍存在，应使用 _layouts 的 404 处理。</li>
+</ul>
+</div>
+
+<!-- ====================== 12. 修复建议 ====================== -->
+<h2 id="fix"><span class="num">12</span>修复建议 · 按优先级</h2>
+<div class="card">
+<h3>🔴 P0：立刻修复（影响交付）</h3>
+<table>
+<thead><tr><th>#</th><th>问题</th><th>影响</th><th>工作量</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>chapter-nav 重复 110 文件</td><td>页面布局错位、滚动抖动</td><td>脚本 1 个 + 批量改 110 文件</td></tr>
+<tr><td>2</td><td>27 个章节导航方向错乱</td><td>用户迷路、学习路径断裂</td><td>生成脚本重写 path 链</td></tr>
+<tr><td>3</td><td>35 个跨文件 ID 冲突</td><td>TOC 锚点跳错章节</td><td>模板 + 110 文件批量重命名</td></tr>
+</tbody>
+</table>
+
+<h3>🟠 P1：本周内修复</h3>
+<table>
+<thead><tr><th>#</th><th>问题</th><th>影响</th><th>工作量</th></tr></thead>
+<tbody>
+<tr><td>4</td><td>_site 117 MB 残留在仓库</td><td>clone 慢、git 体积膨胀</td><td>1 条命令 + .gitignore</td></tr>
+<tr><td>5</td><td>cite.py O(N×M) 与原子写</td><td>CI 慢、可能写坏 about.md</td><td>30 行 Python 改造</td></tr>
+<tr><td>6</td><td>about.md 数据陈旧与中文残留</td><td>内容不一致、第三方脚本风险</td><td>15 分钟手工编辑</td></tr>
+</tbody>
+</table>
+
+<h3>🟡 P2：工程卫生</h3>
+<table>
+<thead><tr><th>#</th><th>问题</th><th>影响</th><th>工作量</th></tr></thead>
+<tbody>
+<tr><td>7</td><td>15 个 .DS_Store</td><td>跨平台污染</td><td>find + delete</td></tr>
+<tr><td>8</td><td>_drafts/post-draft.md</td><td>草稿残留</td><td>删除</td></tr>
+<tr><td>9</td><td>Hawkins 插件漂移</td><td>build 提示</td><td>移除一行</td></tr>
+<tr><td>10</td><td>validate_notes_index.rb 未阻断</td><td>CI 失效</td><td>1 行 fail_with</td></tr>
+<tr><td>11</td><td>notes.yml 无 schema 校验</td><td>字段缺失会爆渲染</td><td>10 行 JSON Schema</td></tr>
+<tr><td>12</td><td>Progress.md 195 KB</td><td>diff 困难</td><td>滚动归档</td></tr>
+</tbody>
+</table>
+
+<p class="small">完整修复预计 ~6-8 小时工作量，建议分 3 个 commit 处理：① 章节导航 + ID 修复（脚本批改 110 文件），② _site 清理 + 仓库卫生，③ cite.py + about.md 内容修正。</p>
+</div>
+
+<footer class="small" style="margin-top: 48px; text-align: center; color: var(--muted);">
+  报告基于只读静态扫描生成，所有发现均可通过本地的修复脚本 / in-place 编辑解决。
+</footer>
+
+</div>
+</body>
+</html>

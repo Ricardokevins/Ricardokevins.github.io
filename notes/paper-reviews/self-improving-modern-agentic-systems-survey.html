@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Self-Improving Agents 综述深读：真正的分界线是“经验能否跨任务写回”</title>
+  <title>Meta-Harness：让 Agent 学会优化自己的运行方式</title>
   <script>
     window.MathJax = {
       tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true },
@@ -69,6 +69,41 @@
     code { padding:2px 6px; border-radius:5px; background:#ebe4d8; color:#7b321f; font-family:var(--mono); font-size:.92em; }
     @media (max-width:820px) { .flow { grid-template-columns:repeat(2,minmax(0,1fr)); } .flow div::after { display:none; } }
     @media (max-width:760px) { header,main,footer { width:min(100% - 24px,var(--max)); } .grid-2,.grid-3 { grid-template-columns:1fr; } .def-list > div { grid-template-columns:1fr; gap:5px; } }
+
+    main > section, main > details { min-width:0; }
+    .small,.paper-ref { color:var(--muted); font-size:14px; }
+    .paper-ref { margin-bottom:24px; }
+    .loop-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; margin:20px 0; }
+    .loop-pair > div { min-width:0; padding:0 0 0 16px; border-left:3px solid var(--blue); }
+    .loop-pair h3 { margin:0 0 8px; color:var(--blue); }
+    .loop-pair p { margin:6px 0; }
+    .method-steps li { margin:12px 0; padding-left:4px; }
+    .mechanism-line { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; margin:22px 0; }
+    .mechanism-line > div { position:relative; min-width:0; padding:14px; border:1px solid var(--line); background:var(--surface); }
+    .mechanism-line > div:not(:last-child)::after { content:"→"; position:absolute; right:-18px; top:50%; color:var(--blue); transform:translateY(-50%); }
+    .mechanism-line b { display:block; color:var(--blue); margin-bottom:5px; }
+    .mechanism-line span { display:block; font-size:15px; }
+    .case-note { margin:20px 0; padding:16px 20px; border-left:3px solid var(--blue); background:var(--blue-soft); }
+    .case-note > b { color:var(--blue); }
+    .case-note p { margin:8px 0 0; }
+    .evidence-chain { margin:20px 0; display:grid; gap:0; }
+    .evidence-chain > div { border-left:3px solid var(--blue); padding:12px 18px; background:var(--surface); }
+    .evidence-chain > div + div { border-top:1px solid var(--line); }
+    .evidence-chain b { color:var(--blue); }
+    .evidence-chain p { margin:4px 0; }
+    .extended-reading { padding:20px; border:1px solid var(--line); border-radius:var(--radius); background:rgba(255,253,248,.65); }
+    summary { cursor:pointer; color:var(--blue); font-weight:700; line-height:1.55; }
+    details[open] > summary { margin-bottom:18px; }
+    .extended-reading section { margin-top:24px; }
+    :target { scroll-margin-top:80px; }
+    @media (max-width:760px) {
+      .loop-pair,.mechanism-line { grid-template-columns:1fr; }
+      .mechanism-line { gap:8px; }
+      .mechanism-line > div:not(:last-child)::after { content:none; }
+      .mechanism-line > div + div::before { content:"↓"; color:var(--blue); display:block; margin-bottom:4px; }
+      .extended-reading { padding:16px 12px; }
+      h3,code,a { overflow-wrap:anywhere; }
+    }
   </style>
 </head>
 <body class="notes-shell-page">
@@ -78,25 +113,216 @@
   </nav>
 
   <header id="top">
-    <div class="kicker">Paper Note · Self-Improving Agents</div>
-    <h1>Self-Improving Agents 综述深读：真正的分界线是“经验能否跨任务写回”</h1>
-    <p class="lede">这篇 97 页综述最有价值的贡献，不是宣布 Agent 已能无限递归升级，而是把“自我改进”压缩成一个可审计的问题：执行产生的经验，究竟写回了模型权重，还是写回了 prompt、memory、tool 与控制逻辑？进一步审计后，真正需要补上的条件是：持久变化不自动等于改进。候选更新必须跨过独立验证、风险约束和提交权限三道门，才算可信的能力积累。</p>
-    <nav class="toc" aria-label="文章目录"><a href="#takeaway">核心判断</a><a href="#definition">定义</a><a href="#taxonomy">分类地图</a><a href="#corpus">文献审计</a><a href="#evidence">代表证据</a><a href="#evaluation">如何评测</a><a href="#limits">证据边界</a><a href="#insight">独立洞察</a><a href="#practice">工程协议</a><a href="#sources">资料索引</a></nav>
+    <h1>Meta-Harness：让 Agent 学会优化自己的运行方式</h1>
+    <p class="lede">一个任务做不好，可能是模型不会，也可能是工具、上下文和验证流程没有把已有能力发挥出来。Meta-Harness 研究让另一个 Agent 读取执行证据、修改这些运行机制，再验证修改是否有效。这里选四篇代表作，逐篇追踪它们看到了什么、改了什么，以及经验怎样进入下一轮优化。</p>
+    <nav class="toc" aria-label="文章目录"><a href="#source-reconstruction">问题与阅读主线</a><a href="#meta-harness-paper">Meta-Harness</a><a href="#rho">RHO</a><a href="#cig">CIG</a><a href="#rsiflow">RSIFlow</a><a href="#vendors">厂商实践</a><a href="#community">社区讨论</a><a href="#takeaway">研究判断</a><a href="#evaluation">怎样验证迁移</a><a href="#sources">资料入口</a></nav>
   </header>
 
   <main>
-    <section id="takeaway">
-      <h2>核心判断</h2>
-      <p><strong>这是一篇很好的系统设计地图，但不是“自我改进已经被证明”的实证综述。</strong>它把基础模型与外部 scaffold 放进同一状态空间，解决了“微调权重才算学习，还是写入记忆也算学习”的术语混乱；但论文没有做统一效果量、复现实验或文献筛选审计，所覆盖方法也大多是在人工设计的任务、奖励、验证器和沙箱中完成局部优化。</p>
-      <div class="grid-3">
-        <div class="card"><span class="metric">2</span><h3>两类持久化底座</h3><p>慢而难回滚的模型参数 \(\theta\)，以及快而可检查的 scaffold \(\Sigma\)。</p></div>
-        <div class="card"><span class="metric">1</span><h3>真正的控制点</h3><p>不是谁提出更新，而是谁有权验证并把候选更新 commit 到下一版本。</p></div>
-        <div class="card"><span class="metric">0</span><h3>尚未证明的东西</h3><p>没有证据表明现有系统能在开放世界里稳定、通用、低成本地递归提升自身。</p></div>
-      </div>
-      <div class="callout info"><b>一句更实用的定义</b><p>Self-improvement 不是“模型多想了一轮”，而是<strong>经验驱动的、跨任务持久化的、有验收门槛的状态迁移</strong>。如果没有持久写回，它只是推理；如果没有独立验收，它可能只是把错误永久化。</p></div>
+    <section id="source-reconstruction">
+      <h2>先把问题落到一次真实的失败上</h2>
+      <p>设想一个修代码的 Agent：它找到问题、写出修复，却因为不知道 Go 安装在哪里而放弃测试；另一次，它测试通过，却把缓存文件一起塞进补丁，导致补丁无法应用。任务都失败了，但这两种失败提供的信息比一个“0 分”多得多：模型可能已经会修这个 bug，缺的是发现工具链、验证和打包交付的执行方法。</p>
+      <p>这里的 <strong>Harness</strong> 是模型外部、可复用的运行程序：怎样构造上下文、检索哪些记忆、开放哪些工具、什么时候重试、何时验证与结束。<strong>Task-Agent</strong> 使用它完成任务；<strong>Meta-Agent / proposer</strong> 负责读失败轨迹并提出修改；<strong>evaluator</strong> 执行候选版本、记录任务结果。一个高层 Agent 仅仅分派子任务，还没有完成 Harness 优化；修改必须进入后续任务使用的运行版本。</p>
+      <p>在一个目标 benchmark 上，外层循环可以这样工作：运行旧版本 → 读取具体失败 → 修改一个运行机制 → 重跑开发任务 → 按结果留下或拒绝候选。迁移到下一个 benchmark 则多了一层问题：旧经验中哪些是通用的执行规律，哪些只是某个环境的路径、字段名或评分习惯？</p>
+      <div class="callout info"><b>四篇工作分别推进了哪一步</b><p><a href="#meta-harness-paper">Meta-Harness</a> 研究优化器如何读取大量原始历史；<a href="#rho">RHO</a> 研究没有外部正确答案时怎样产生选择信号；<a href="#cig">CIG</a> 研究怎样保存并修订实验解释；<a href="#rsiflow">RSIFlow</a> 进一步让优化器积累“何时该改哪一层”的经验。前三篇主要优化任务 Harness，第四篇把 Meta-Agent 自己的运行机制也纳入更新。</p></div>
+      <p>选择依据是与这个问题的直接相关性、方法覆盖和可核查材料。Meta-Harness 有明确的公开传播与社区实现；RHO 提供了可用于真实项目的回顾优化入口；CIG 和 RSIFlow 则分别把实验记忆与优化器进化讲得更具体。它们并非经过跨平台统计得到的“热度前四”。</p>
     </section>
 
-    <section id="problem">
+    <section id="benchmark-harness">
+      <h2>读方法时，始终分清两个循环</h2>
+      <div class="loop-pair">
+        <div><h3>任务循环</h3><p>当前 Harness → 模型行动 → 工具反馈 → 当前任务结果</p><p class="small">一次任务内多想、重试或修答案，主要改变本次执行。</p></div>
+        <div><h3>优化循环</h3><p>多次任务的轨迹 → 诊断与候选修改 → 评估 → 新 Harness</p><p class="small">输出是一套后续任务也会使用的运行机制。</p></div>
+      </div>
+      <p>接下来的四节按“问题 → 输入与可修改对象 → 优化过程 → 实际改动 → 实验证据”展开。具体例子来自论文时注明出处；帮助理解的简化例子单独标明。</p>
+    </section>
+
+    <section id="meta-harness-paper">
+      <h2>1. Meta-Harness：让优化器自己查代码和原始轨迹</h2>
+      <p class="paper-ref"><a href="https://arxiv.org/html/2603.28052">Meta-Harness: End-to-End Optimization of Model Harnesses</a> · <a href="https://yoonholee.com/meta-harness/">作者项目与演示</a></p>
+      <h3>它要解决的困难：分数说明失败，却没有保存失败如何发生</h3>
+      <p>一次检索策略改动，可能在很久以后才影响答案；一次结束条件改动，可能让已经完成的任务陷入反复检查。如果优化器只看到“候选 A 为 60 分、候选 B 为 55 分”，它不知道是哪一步造成差异。把整段历史先压成固定摘要，也可能提前丢掉真正有用的细节。</p>
+      <p>Meta-Harness 的核心设计是把每个候选的<strong>源代码、分数和原始执行轨迹放进可查询的文件系统</strong>。proposer 是能读文件、搜索、比较和修改程序的 coding agent。它自行决定读哪个版本、哪道题、哪一步工具调用。论文中的 proposer 使用 Claude Code / Opus 4.6，任务模型保持冻结；候选通常是单文件 Python Harness，可改提示构造、检索、记忆和编排逻辑。</p>
+      <p><strong>这里有两层不同的记忆。</strong>外层保存的是“哪个 Harness 版本在什么题上怎样运行”，供优化器比较程序；内层保存的是“任务模型这次能用哪些信息”，例如分类时积累的带标签示例。优化器修改内层的存取程序，而外层实验档案继续增长。把新 Harness 搬到另一个任务时，复用的是程序策略，不意味着旧任务的全部示例和日志也进入新任务的上下文。</p>
+      <h3>外层到底怎样运行</h3>
+      <ol class="method-steps">
+        <li><strong>留下完整候选档案。</strong>种子 Harness 先运行 search set，即搜索期间可以反复评估、用于指导修改的开发任务。每个候选都有可定位的代码、任务分数、模型输入输出和状态变化。</li>
+        <li><strong>由 proposer 自主取证。</strong>它可以读任意旧候选，比较成功与失败。系统维护候选集合；同时考虑准确率和上下文成本时，保留 Pareto 前沿，即没有其他候选在两项上都不差、且至少一项更好的版本。系统不硬性规定必须选哪个父代。</li>
+        <li><strong>提出可执行的新版本。</strong>修改可以小到新增环境信息，也可以大到重写检索流程。轻量检查先排除不能运行的代码。</li>
+        <li><strong>外部程序评估并写回结果。</strong>评测结果成为下一轮档案。达到预设预算后，按搜索表现选候选，再做最终测试；TerminalBench 实验的切分例外见下文。</li>
+      </ol>
+      <p>注意，<strong>评估一个候选、保存它的证据、选择最终部署版本，是三件事</strong>。坏候选也会留下代码和轨迹，供后续诊断；当前最好版本可以不变。下一轮 proposer 也可以组合多个旧版本的思路，所以这不是“每轮接受新版本，分数必然单调上涨”的过程。具体改法由 coding agent 根据可见材料推理生成，论文没有另行训练一个专用的修改策略网络。</p>
+      <p>所谓“一次评估可留下约一千万 token 的诊断材料”，指的是<strong>可访问的档案规模</strong>，不是每轮把一千万 token 塞进模型。TerminalBench 日志中，proposer 每轮读取文件数的中位数为 82，说明它确实在跨版本取证。</p>
+      <h3>它搜出的 Harness 长什么样：分类中的草稿验证</h3>
+      <p>原文附录 B.1 给出一个很容易复用的程序 <code>draft_verification.py</code>。旧式近邻 few-shot 通常只找“与输入最像的例子”；这个程序先让模型猜，再专门检索可能支持或推翻这次猜测的例子：</p>
+      <p>它执行的任务是：给一段新输入预测类别，可检索资料来自此前收到的带标签示例；这些示例的标签已知，待预测输入的正确标签不作为检索条件。第一轮草稿标签由模型自己预测，随后用来筛选哪些已知示例值得再看。</p>
+      <div class="mechanism-line" aria-label="草稿验证分类流程"><div><b>先猜</b><span>取 5 个近邻，生成草稿标签</span></div><div><b>查支持与挑战</b><span>按草稿标签取 5 个同类、5 个异类例子</span></div><div><b>再判断</b><span>保留或修正草稿标签</span></div></div>
+      <p><strong>简化示例：</strong>银行客服请求“ATM 没吐钞，但账户扣款了”，第一轮误判为“银行卡支付问题”。第二轮既取该标签的相似例子，也取其他标签中的相似例子，可能把“现金未取到但已扣款”这一对照送到模型眼前。关键是检索条件多了<strong>当前预测</strong>，因此挑战样例直接针对这次判断。这里的请求为本文自拟；程序中的 5／5／5 检索与两次模型调用来自原文。</p>
+      <p>这只是低上下文成本的一个前沿点。主表采用的高准确率版本是另一种设计：先列完整标签空间，每个标签提供与当前问题相关的代表例子，再给局部异类对照。不能把两个版本的机制与最优数字拼成同一个算法。</p>
+      <h3>编码实验的关键发现：先试错，再改成启动时注入环境</h3>
+      <p>TerminalBench 搜索更能展示“读历史”究竟有什么用。前两轮把结构修复和新的清理／验证提示一起改，分数都下降。proposer 发现二者共享提示改动，于是撤回提示，只测结构修复；退化变小，但仍没有超过基线。后续改完成标记、检查循环等方案也继续失败。</p>
+      <p>到第七轮，它转向<strong>在 Agent 启动前读取工作目录、文件、编程语言及版本、包管理器和可用内存，并注入初始上下文</strong>。这项修改避免触碰此前反复退化的结束逻辑。原文实现约增加 80 行，探测有 15 秒超时和失败回退；作者分析其作用是省去初始 2–4 轮环境摸索，尤其帮助依赖专门工具的任务。附录这条单次搜索轨迹和主表最终成绩属于不同报告层级。</p>
+      <h3>实验支持了什么</h3>
+      <p>分类搜索使用三类数据集，20 轮、每轮两个候选。最终所选 Harness 平均准确率为 <strong>48.6%</strong>，相对 ACE 高 7.7 个百分点，上下文为 11.4K token，ACE 为 50.8K；九个未见分类数据集上的均值为 <strong>73.1% 对 70.2%</strong>。接口消融中，完整轨迹条件的候选准确率中位数为 50.0，只给分数为 34.6，给分数与摘要为 34.9。这是论文对“原始诊断材料有价值”最直接的控制实验。</p>
+      <p>数学实验则自动搜出按组合、几何、数论等分路的 BM25 检索程序，在五个评测模型上相对无检索平均提高 4.7 点，其中四个模型未参加搜索。它支持检索策略跨模型复用。TerminalBench 的主表报告 Opus 4.6 上 76.4%、Haiku 4.5 上 37.6%，但<strong>搜索与最终评估使用同一 89 题 benchmark</strong>。作者检查了题目字符串泄漏；这仍不能替代未见任务上的评测，也不能把当时榜单位置当作持续有效的排名。</p>
+      <div class="callout"><b>这篇工作的可迁移思想</b><p>把优化器当作会查案的程序员：保存可追溯的原始证据，让它按需要调阅，再通过执行检验修改。已发现的 Harness 能有跨数据或跨模型收益；优化器本身是否因经历旧任务而更快学会新任务，还需要单独测试。</p></div>
+    </section>
+
+    <section id="rho">
+      <h2>2. RHO：没有正确答案，也能从过去的执行中提出修改</h2>
+      <p class="paper-ref"><a href="https://arxiv.org/html/2606.05922">Evolving Agents in the Dark: Retrospective Harness Optimization via Self-Preference</a> · <a href="https://paper-rho.wenbo.io/">项目与使用入口</a> · Findings of EMNLP 2026</p>
+      <h3>它推进的是反馈来源</h3>
+      <p>Meta-Harness 搜索需要能够为候选打分的开发任务。在真实部署中，用户请求往往没有标准答案，但 Agent 已留下大量工具结果、报错、测试和最终回复。RHO 问的是：能否只用这些过去的轨迹改进未来任务的 Harness？</p>
+      <p>输入是旧任务及其轨迹，可改对象是一个工作目录里的指令、skills 和可执行工具。实验使用 Codex / GPT-5.5，优化阶段不调用 benchmark 的正确性 grader；最终效果仍由独立的留出任务和 grader 测量。<strong>“无标签”并不意味着没有环境证据</strong>：编译错误、工具返回值和执行是否提前终止，本来就在轨迹里。</p>
+      <p>执行、诊断、修改和比较可以由<strong>同一个底座模型的不同调用</strong>承担，靠各次调用拿到的工作区和输入区分职责。执行时读取当前 Harness；修改时拿到一份可写副本；最终候选是副本中留下的实际文件，而不是模型回复里一句“建议增加检查”。因此这里的学习写回发生在文件和程序中，不需要更新 GPT-5.5 的参数。</p>
+      <h3>完整流程：选问题、重跑比较、生成候选、比较新旧</h3>
+      <ol class="method-steps">
+        <li><strong>挑 10 个困难且不同的问题。</strong>模型为历史轨迹估计难度并描述失败类型；将描述编码成向量，用相似性判断哪些问题重复，再以 DPP（行列式点过程）兼顾难度和多样性。直观上，十个相同的构建错误不如“构建、工具误用、提前结束”等不同问题有诊断价值。</li>
+        <li><strong>每题重跑 3 次。</strong>固定旧 Harness，多次执行，获得同题的不同路径。重跑用于暴露行为差异，因而要求环境能够重置。</li>
+        <li><strong>分两种角度诊断。</strong>self-validation 对照任务要求和环境观察，找单条轨迹内的错误假设、工具错误与过早结束；self-consistency 比较多条轨迹，找计划、行动或答案上的实质冲突。二者合成修改指令。</li>
+        <li><strong>并行生成 3 个 Harness 候选。</strong>每个候选都重跑这 10 题；模型逐题比较候选轨迹与固定的旧版参照轨迹，给出 −10 到 10 的偏好分，再取均值。</li>
+        <li><strong>有正偏好才替换。</strong>选择平均偏好最高的候选，只有严格高于零才接受；相同文件、运行失败或没有正收益时保留旧版。</li>
+      </ol>
+      <p>例如，某个候选在 10 题上的净偏好总和为 12，均值就是 1.2，可以通过正偏好门槛；总和为零则保留旧版。这是本文自拟的计算例子，说明门槛检查的是自评偏好，不是已知真实准确率。</p>
+      <p>三条旧轨迹的组内比较负责<strong>诊断</strong>；最终候选选择用的是<strong>新旧成对偏好</strong>。它没有直接把三个答案多数投票当成真值，也没有因为某个答案最常见就自动认为正确。</p>
+      <h3>轨迹里的证据，怎样变成一条修改指令</h3>
+      <p><strong>下面是按论文诊断接口构造的简化演示，不是作者新增实测：</strong>同一个仓库任务重跑三次。A 在默认路径找不到 Go，就停止测试；B 找到另一处 Go 安装位置，运行测试并留下通过结果；C 修改后直接宣布完成，没有运行测试。单条自检会指出 A 的环境假设、C 的缺少验证；跨轨迹比较则会发现 B 的路径和验证过程提供了可复查的替代做法。</p>
+      <p>诊断因此可以形成一条具体指令：“先检查可用工具链位置，再构建与测试；缺少默认命令不能直接解释为无法验证。”修改调用据此生成工具或操作步骤，新候选再重跑任务，检查它是否真的执行这些步骤。若三次都没有覆盖某个语义错误，这套方法仍可能共同漏判；多次执行提供的是<strong>可比较的差异</strong>，最终正确性仍要在留出评测上验收。</p>
+      <h3>实际产物：把工具链和补丁卫生变成可调用的检查</h3>
+      <p>原文 §5.2 中，历史 SWE 轨迹暴露出 Go 工具链不在默认 PATH、Python 缓存混入最终 diff 等反复出现的问题。优化后生成的 <code>check_build_and_lint</code> 工具负责定位非标准工具链，并提示哪些生成文件应排除在补丁外。这个修改把“以后记得检查”变成了后续任务能执行的过程。</p>
+      <div class="case-note"><b>为什么它可能让新题受益</b><p>新的仓库 bug 不需要与旧 bug 相同。只要同样存在“工具链不可见”或“生成文件污染补丁”，检查工具就可能排除一类执行失败。真正可复用的是定位与检查程序；某个 benchmark 的固定安装路径仍可能只在该环境有效。</p></div>
+      <p>论文还有一个有用的反例：TerminalBench 中新增的脚本实际上没有被执行，收益主要来自写入指令的操作 playbook。这说明“生成了一个工具”不足以解释提升，还要检查后续运行是否调用它、在哪一步改变了行为。</p>
+      <h3>结果与自评的误差</h3>
+      <p>单轮回顾后，作者报告 SWE-Bench Pro 留出集通过率 <strong>59% → 78%</strong>，TerminalBench-2 为 <strong>71% → 76%</strong>，GAIA-2 为 <strong>29% → 37%</strong>。按其数据划分，SWE 和 GAIA 留出集各为 100 题，TerminalBench 为 59 题；这些数字不等同于各 benchmark 官方全量成绩。</p>
+      <p>自偏好没有完美识别最好的候选：SWE 实验中，被选版本为 78%，另一个较低偏好版本最终达到 85%。原始轨迹直接交给同样可改工具、skills、指令的 proposer，只得到约 60%，低于完整 RHO 的 78%；这支持结构化回顾有额外价值，但不能保证自偏好在其他环境总能选对。</p>
+      <div class="callout"><b>这篇工作的可迁移思想</b><p>一个模型从头完成任务困难时，仍可能利用环境结果和多条执行之间的差异识别部分错误。RHO 把这种诊断能力接到持久 Harness 修改上。作者只验证单轮、单一底座／框架，并为各 benchmark 分别生成 Harness；长期多轮增益和跨 benchmark 迁移仍待验证。</p></div>
+    </section>
+
+    <section id="cig">
+      <h2>3. CIG：让失败修改也能改变下一次实验</h2>
+      <p class="paper-ref"><a href="https://arxiv.org/html/2610.05039">Causal Improvement Graph for Agentic Harness Optimization</a> · 2026 年 10 月预印本</p>
+      <h3>它要解决的困难：历史还在，当前解释却容易丢失</h3>
+      <p>保留所有日志以后，优化器每轮仍要重新想起：上一次为什么试这个改动？哪个解释已经被否定？分数提高，究竟支持了假设的哪一部分？CIG 把这些实验关系变成持久状态。它保存四类节点：<strong>Evidence</strong> 记观察，<strong>Hypothesis</strong> 记可检验解释，<strong>Intervention</strong> 记可执行修改，<strong>Outcome</strong> 记测得结果，并连接来源、支持、反驳和版本关系。</p>
+      <p>它仍然修改任务 Harness，并使用外部评价。变化主要在外层：proposer 被用于局部的观察、提案和实现操作；图维护当前知识状态，供下一轮规划读取。作者将“causal”明确限定为由干预和结果驱动的改进推理，没有声称完成严格的因果识别。</p>
+      <h3>先看论文里的一个失败实验</h3>
+      <p>附录 A.9 从“把所有示例都放入上下文”改为“只取与问题相似的示例”。整体分数上升，但 LawBench 从 60 降到 46。这个结果引出假设：局部检索减少了无关示例，也可能删掉法律分类需要的标签与模式覆盖。</p>
+      <div class="evidence-chain" aria-label="CIG 论文案例中的证据、假设、干预和结果">
+        <div><b>Evidence · 观察</b><p>检索提高了整体成绩，却让 LawBench 60 → 46。</p></div>
+        <div><b>Hypothesis · 预测</b><p>补回覆盖应该恢复法律分类，同时保住其他任务的收益。</p></div>
+        <div><b>Intervention · 修改</b><p>60% 提示预算放最近邻，剩余位置按答案空间与词元覆盖补充示例。</p></div>
+        <div><b>Outcome · 实测</b><p>LawBench 46 → 52，但 USPTO 40 → 33.33；整体 58 → 57.78。</p></div>
+      </div>
+      <p>这个干预<strong>没有达到联合目标</strong>：它恢复了一部分法律分数，却把化学任务改坏。图因此保存“这项联合改进预测失败”的判断，同时保留“法律任务出现局部恢复”的事实。下一轮不能把它压成一句“覆盖有用”，也不能简单删除这个失败候选。原始观测、已失败的预测和仍未解决的解释各有自己的位置。</p>
+      <h3>图怎样实际影响候选生成</h3>
+      <p>这里的图是<strong>带类型和关系的实验记录</strong>，不是一个负责预测答案的图神经网络。顶层程序按 Observe → Plan → PlanSelect → Implement → Evaluate → Update 调度；各个局部调用看到对应的记录与目标，完成观察、计划、选择或实现。图中“某个结果反驳了哪项预测”的关系，使后续调用可以沿关系找到原始依据。</p>
+      <p>具体来说，先读图与必要的原始历史，提出“假设—干预”计划，明确父代、要保留的机制和预期效果。另一次 proposer 调用按证据、预期收益、信息价值、新颖性、可证伪性、成本和风险七项 0–4 分评估计划，并考虑候选之间的重复。这些是模型给出的计划判断，不是任务执行后测得的奖励。只有实现并交给外部 evaluator 运行后，才得到真实候选成绩及修好、改坏、未变的任务记录；Update 再据此修订假设。</p>
+      <p>附录还给出一个不同搜索中的状态干预：从同样的新结果和历史出发，一条分支保留“继续精修局部相关性”的旧解释，另一条分支更新为“局部检索可能丢了广覆盖”。前者继续扩检索池和重排，均分留在 57.33；后者增加全局标签／模式锚点，达到 60.44。这个单次对照说明<strong>改变历史的解释，可以改变下一步实验</strong>；它与上一段 57.78 的失败案例是两条独立轨迹。</p>
+      <h3>证据有多强</h3>
+      <p>在作者匹配的三类 Agent 任务比较中，CIG 的留出集宏平均为 <strong>44.6%</strong>，其自行实现、可访问完整历史的对照为 <strong>40.1%</strong>，均报告三次运行均值。另有控制实验逐步加入类型记录、关系、跨轮修订和基于图的选计划，并测试打乱关系、只追加不修订等变体，结果支持这些结构在该协议中的贡献。</p>
+      <p>但同等“候选评估次数”不自动等于相同 token 与墙钟成本；图上的归因判断也仍由模型作出。论文主要研究<strong>单次搜索内部</strong>的持续状态，没有验证把整张改进图带到陌生任务族后能否更快适配。</p>
+      <div class="callout"><b>这篇工作的可迁移思想</b><p>优化器需要保存的不只是“哪些版本分高”，还有“当前相信哪个解释、依据是什么、什么结果会使它改判”。失败能留下信息增益，即使该候选不被部署。这使它比普通成功经验库更接近一个可修订的实验记录系统。</p></div>
+    </section>
+
+    <section id="rsiflow">
+      <h2>4. RSIFlow：优化器自己也要学习该改哪一层</h2>
+      <p class="paper-ref"><a href="https://arxiv.org/html/2610.21791v2">RSIFlow: Adaptive Self-Improvement Workflows with an Evolving Meta-Agent</a> · v2，2026-11-02 · <a href="https://github.com/1HUAN1/RSI-Flow">代码</a></p>
+      <h3>先解释它比“自动调 Harness”多做了什么</h3>
+      <p>对同一条“代码没有通过”的反馈，有三种不同干预：修当前程序中的一个边界条件；改 Harness，使所有后续任务都检查交付格式；训练模型，改善反复出现的语义能力缺口。单纯扩大可写范围没有回答应该选哪一种。RSIFlow 让 Meta-Agent 根据轨迹和反馈选择 <strong>Artifacts、Harness 或 Model</strong> 更新，并把选择和执行的结果写回 Meta-Agent 自己的 Harness。</p>
+      <p>其中 Artifacts 指当前任务的程序或答案；Harness 指跨任务复用的执行方法；Model 指任务模型权重。Meta-Agent 的基础模型权重保持固定，其进化发生在自己的技能库、行动接口及调用指令中。论文的任务模型为 Qwen3-4B／8B，主实验跑五轮，每轮最多两次候选尝试。</p>
+      <h3>一次更新怎样变成“优化经验”</h3>
+      <ol class="method-steps">
+        <li><strong>定位错误属于哪一层。</strong>结合当前任务要求、出错阶段、已有检查和历史技能，选择更新路线；保留另外两类任务组件。</li>
+        <li><strong>实施并比较候选。</strong>Harness 路线改 Action／Skill／Planning 机制；Model 默认用成功轨迹做 SFT；Artifacts 路线指导 Task-Agent 修改自己的当前产物。训练阶段在相同父代、相同任务批次上比较，首个合法且有正收益的候选被接受。</li>
+        <li><strong>对齐新旧轨迹中的关键事件。</strong>比较相同子目标、工具调用和错误位置，区分哪些任务修好了、哪些退化了，保留全任务评价。</li>
+        <li><strong>形成有条件的技能。</strong>记录适用条件、修改对象、具体操作、必须保留的行为、预期响应，以及支持和反对证据；通过新增、补证、修订或合并维护。</li>
+        <li><strong>接入下一轮决策。</strong>更新检索与行动接口、执行指令，让技能进入之后的诊断、路线选择和候选构造。仅存下一段总结，还没有完成这一步。</li>
+      </ol>
+      <h3>原文五轮案例：为什么先改 Harness，后来改模型</h3>
+      <p>附录 C.3 的一条实际轨迹是 <strong>Harness → Harness → Model → Model → Artifacts</strong>。第一轮发现交付格式问题：需要源代码时，Agent 可能返回解释或执行输出，因此加入完整源代码的交付检查。第二轮将“交付要有证据”的判断用于工具任务，新增基于实际执行回执的完成检查，防止只在文本里声称操作成功。这里的回执是工具或环境返回的执行证据，区别于 Agent 自己的完成声明。</p>
+      <p>检查格式和回执后，仍有语义错误，于是第三、四轮转到模型更新：先用 3,798 次符合要求的成功调用做 LoRA replay，再扩展到 5,397 次；第二次应用给已有 replay 技能补充证据。第五轮针对当前输出的局部缺陷，指导 Task-Agent 在预算内修改、测试并重新提交，保持模型与任务 Harness 固定。</p>
+      <p>这条案例的报告均分依次为 <strong>32.23 → 38.04 → 45.46 → 47.11 → 51.21</strong>。第一项已经是第一轮干预后的分数，不能把它当原始基座。第五轮的训练产物也不会直接搬到测试题：报告阶段使用冻结的修复指导，对新题生成的产物最多追加一次允许反馈下的修订。</p>
+      <h3>技能到底写了什么：从“记住错误”到条件化操作</h3>
+      <div class="case-note"><b>以原文交付检查技能为例</b><p><strong>触发：</strong>任务要求源代码，却提交了解释或运行输出。<strong>动作：</strong>在提交路径加入完整源代码检查。<strong>保留：</strong>现有任务接口与有效解题行为。<strong>预期：</strong>减少格式不合约的失败。<strong>边界：</strong>源代码格式正确，不代表算法正确；语义错误应继续诊断，不能无限添加格式检查。</p></div>
+      <p>这些字段使技能既能支持行动，也能限制错误推广。后续工具任务可以复用“完成声明必须对应证据”的原则，但具体实现换成检查环境回执。跨任务保留的是有适用范围的优化程序；当前题修好的答案仍属于当前题。</p>
+      <h3>存下的技能，怎样进入下一轮选择</h3>
+      <p>附录 D.1 把检索实现写得很具体：将当前任务、错误和执行阶段组成查询，与技能文本做词项匹配，普通匹配词贡献 1 分，错误词匹配额外加 3 分，即共 4 分。检索只负责找候选经验；Meta-Agent 还要对照轨迹检查技能的适用条件，再把选中的经验放进诊断和修改指令。<strong>路线选择依靠带检索经验的模型推理</strong>，没有另外训练一个三分类路由器。</p>
+      <p>例如，某次输出又是解释文字而非要求的源代码，交付检查技能会提示 Meta-Agent 检查提交环节，并据此生成 Harness 修改。若已经提交完整源代码、错误发生在算法逻辑，词项匹配即使找到了这项技能，其适用条件也不满足；Meta-Agent 应继续判断能否局部修输出，或是否有反复出现且有合格训练数据的能力缺口。这段是对原文技能调用方式的演示，不是对路由正确率的额外实验结果。</p>
+      <p>接受修改仍然依靠运行结果，检索分不表示预期收益。<strong>自拟算例：</strong>同批 20 题中，候选修好 4 题、改坏 2 题，其他不变，则净通过率提高为（4−2）／20＝10 个百分点，满足正收益条件。它说明这道门槛判断的是整批净增益，不能从“接受”推断每道旧题都没有退化；实际协议还要检查候选合法性与需要保留的约束。</p>
+      <h3>它证明了优化器在进化吗</h3>
+      <p>六个 benchmark 覆盖代码、工具使用、多跳问答；两种底座共 12 个组合，作者报告 11 个超过最强对照。4B 消融中，完整系统三域平均约 51.21，关闭 Meta-Agent 进化约 45.47，相差 <strong>5.74 个百分点</strong>。另一个更贴近优化能力的比较，让不同 Meta 版本都修改同一个初始 Task-Agent，而非继承越来越强的任务模型；较晚 Meta 版本在代码和问答上的收益更大，但工具使用并不单调提高。</p>
+      <p>这些是“积累优化经验有用”的证据。其范围仍是<strong>训练过的三个领域</strong>：报告阶段模型、Task-Harness、Meta-Harness 与技能库冻结，不能把结果解释为测试时不断跨题自学。总演化成本也不因相同单题预算而自动相等。面对全新任务族是否能以更少预算学会优化，论文尚未给出充分检验。</p>
+      <div class="callout"><b>这篇工作最接近的问题</b><p>一次改进会改变下一轮的瓶颈，所以 Meta-Agent 要积累“这个症状在什么条件下适合改 Harness、训练模型或只修当前输出”的经验。它明确实现了优化过程的经验写回；可泛化到多远、是否持续加速，仍应作为研究问题。</p></div>
+    </section>
+
+    <section id="vendors">
+      <h2>厂商已经怎样把这件事做进工作流</h2>
+      <p>公开材料中最接近论文外层循环的是 LangChain 的 Better Harness 和 OpenAI 的 Agent Improvement Loop。Anthropic 的案例更侧重人工根据运行结果设计、删减 Harness；Qoder 将项目中的重复摩擦转成审查与持久配置。它们自动化的范围各不相同。</p>
+      <h3>LangChain：用真实失败构造 eval，再自动诊断与定向修改</h3>
+      <p><a href="https://blog.langchain.com/better-harness-a-recipe-for-harness-hill-climbing-with-evals/">Better Harness</a> 从人工案例、生产 traces 和外部数据中整理 eval，按工具选择、多步检索等行为打标签，分成 Optimization 与 Holdout 两组。先跑基线，再让循环读轨迹、提出定向修改、检查新增通过与旧题回归，最后人工审阅指标没有覆盖的问题。其“一次一个定向变化”允许同时改提示与工具，只要围绕同一个执行机制。</p>
+      <p>一个具体例子是 search-then-email：Agent 反复发出近似搜索而迟迟不交付。优化指令要求信息足够后停止重复搜索，并改善新工具的说明与组合方式。另一个例子是用户已提供时间和约束，Agent 却继续追问；修改要求复用已给条件和合理默认值。这些都是能从 trace 中定位、能在后续 eval 验收的行为变化。</p>
+      <p>在另一个<a href="https://blog.langchain.com/improving-deep-agents-with-harness-engineering/">Deep Agents 案例</a>中，作者固定 GPT-5.2-Codex，报告 TerminalBench-2 从 <strong>52.8% 提高到 66.5%</strong>。实际修改包括结束前自验证、启动时注入环境、检测重复编辑，以及规划／执行／验证阶段的推理预算分配。这个多项工程迭代结果不等同于把全部提升归因给单一自动优化算法。</p>
+      <p><strong>与论文的连接：</strong>它把 Meta-Harness 的“从轨迹提案”接到生产数据、留出测试和发布审阅上。最值得借鉴的持久资产包括带行为标签的 eval、候选差异和逐题回归，优化器只是其中一个环节。</p>
+      <h3>OpenAI：把运行反馈写成可实施的修改交接</h3>
+      <p><a href="https://developers.openai.com/cookbook/examples/agents_sdk/agent_improvement_loop">Agent Improvement Loop</a> 是一个 Cookbook 示例：在合成公司材料上运行分析 Agent，收集五条真实生成轨迹，加入示例人工反馈和模型反馈，将要求转成 Promptfoo eval，再交由 HALO（Hierarchical Agent Loop Optimization）分析当前 Harness、轨迹和评价，排序下一轮修改并形成 Codex 实施交接。</p>
+      <p>例如，Agent 可能把管理层的 NRR 估计当成正式指标。示例把“缺乏财务确认时不能报告正式 NRR”固化为评测要求。HALO 不只改提示措辞，还建议确定性事实账本、对实际交付文件做校验，以及保留生成的回归题。</p>
+      <p>这个 notebook 的评测门检查的是<strong>现有轨迹输出</strong>；验证改后版本需要换成真正运行候选 Agent 的 provider 并重新评估。它给出了反馈到实施的衔接，自动实现、合并和部署是可继续连接的工作流，不能将这个示例当作已经验证的无人值守产品闭环。</p>
+      <h3>Anthropic：先校准评价器，再随模型变化删掉失效脚手架</h3>
+      <p><a href="https://www.anthropic.com/research/harness-design-long-running-apps">长程应用开发实验</a>由 planner 扩展需求，generator 编写应用，evaluator 用 Playwright 实际操作、检查功能并反馈。作者先将审美和质量要求变成标准，再读 evaluator 日志，用人工判断校准它过于宽松的评价。这里循环内主要改的是应用产物；外层 Harness 的设计与评价器校准仍主要由研究者推动。</p>
+      <p>随着模型升级，作者逐项尝试移除旧结构：较新模型不再需要早期的 context reset，后来又移除 sprint 划分，把 evaluator 移至构建末尾。这个观察提醒 Meta-Agent：候选操作应包括<strong>删除或降低检查频率</strong>。对较弱模型有效的复杂工作流，换模型后可能成为延迟与 token 成本。</p>
+      <h3>Qoder：把反复提醒变成项目级规则、技能或检查</h3>
+      <p><a href="https://docs.qoder.com/qoder/better-harness">Qoder Better Harness</a> 是工程审查插件，检查项目指引是否容易发现、验证步骤是否可执行，以及哪些环节反复需要人工提醒。官方示例是分析“发布前为何总漏掉链接验证”，先给证据和建议，再选择一项有明确验收标准的改进，例如补规则或把验证做成脚本，并在后续任务验证。</p>
+      <p>它与 RHO 都关注真实项目的历史摩擦；公开文档描述的是带人工选择的审查与改进入口，没有给出 RHO 式多次重跑和自偏好淘汰协议。相同的 Better Harness 名称，也不代表与 LangChain 使用同一个实现。</p>
+    </section>
+
+    <section id="community">
+      <h2>社区为什么讨论它，又在质疑什么</h2>
+      <h3>X：传播焦点是固定模型也能通过 Harness 获得提升</h3>
+      <p><a href="https://x.com/LiorOnAI/status/2038669301541228606">Lior Alexander 对 Meta-Harness 的介绍帖</a>在本次可读取页面上显示约 <strong>4.39 万浏览、251 赞、33 次转帖、393 次收藏</strong>。帖子引用作者发布信息，突出代码／日志／分数的文件系统与多任务结果。这个快照足以说明 Meta-Harness 有可见传播，不能据此推断四篇论文的相对热度。</p>
+      <p>传播时最容易压缩掉两处条件：“同模型可有六倍性能差距”是论文引言引用的背景观察，并非 Meta-Harness 自身的统一六倍增益；“一千万 token”是可访问原始材料的规模，并非单步实际上下文。评论提出的实际问题包括回归怎样评估、规则放入上下文后是否真的被执行。后二者也正是研究应测的行为环节。</p>
+      <h3>HN 与 Reddit：可运行演示和真实能力提升之间有距离</h3>
+      <p><a href="https://news.ycombinator.com/item?id=48022596">HN 的 Simple Meta-Harness 讨论</a>在读取时为 51 points。支持者认可完整轨迹便于定位问题；质疑集中于演示任务过于简单、术语先于解释、成本，以及自修改失败后怎么恢复。帖中一位独立实现者明确说，自己的试验只证明修补不良 prompt 的纪律改善，没有证明任务 Agent 能力提升。这些评论针对社区 demo，不能直接替代对论文实验的评价。</p>
+      <p><a href="https://www.reddit.com/r/ClaudeAI/comments/1u57fyy/a_claude_code_skill_that_autooptimizes_your/">Reddit 的相关 skill 帖</a>也将例子标为 synthetic demo，并讨论冻结／缓存输出可能导致不真实的优化信号。可操作的启发是：评估必须重新运行被修改的执行路径，观察真实行动和结果；只重评缓存答案，不能验证 Harness 改动。</p>
+      <h3>小红书：目前不能据公开样本做热度结论</h3>
+      <p>本次抽样的相关笔记链接未能取得可读正文与稳定互动量，因而不把搜索摘要写成已核查的用户观点，也不给出“国内最热工作”之类排序。小红书官方招聘页提到的 Harness／Agent 进化属于组织需求信息，与小红书社区用户对这几篇研究的讨论度是两件事。</p>
+      <p>所以社区材料在这里承担两个作用：说明 Meta-Harness 的公开关注点，以及揭示实现者关心的成本、回归与有效评测。CIG 和 RSIFlow 的入选主要来自其机制代表性，尚没有可比的跨平台热度数据支持。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>读完四篇，原始设想已经走到了哪里</h2>
+      <p><strong>让专门 Agent 针对目标任务自动改 Harness，已有直接研究和工程实现。</strong>Meta-Harness 与 RHO 最贴近这个起点：前者用评测与完整历史搜索，后者用部署轨迹和自偏好回顾。CIG 使经验以可修订的实验关系保留；RSIFlow 再让 Meta-Agent 从改进结果中更新自己的技能和调用方式。</p>
+      <p>但需要区分三个结果：为每个目标分别调出专用版本；把已发现的运行策略直接搬到相近任务；积累旧任务经验后，以更少反馈为陌生任务发现新策略。分类 OOD、数学跨模型和 RSIFlow 的 Meta 版本比较分别提供了不同方向的证据，尚不能合并成第三个结果已被充分证明。</p>
+      <h3>我的判断：真正可积累的对象，是“有条件的干预经验”</h3>
+      <p>“多验证”“用工具”“更仔细”很难成为有效经验。可操作的经验要包含：<strong>观察到什么错误 → 怀疑哪种机制 → 在什么条件下改哪一层 → 哪些行为必须保留 → 预期哪项结果变化 → 实际变化与反例</strong>。Meta-Harness 提供原始依据，RHO 提供低标签反馈，CIG 管理解释修订，RSIFlow 把经验用于路线选择。这里是一种综合设计思路，四篇论文没有共同验证这样一套完整系统。</p>
+      <h3>一个更具体的研究问题：选择信号能否可靠区分值得持久化的修改</h3>
+      <p>当环境没有最终真值时，能否利用编译结果、工具状态、同题多次执行和输入输出约束，判断一次修改修复的是通用执行缺陷，还是只让当前轨迹更像“成功”？RHO 的自偏好错过更优候选、CIG 的局部恢复伴随整体退化，都说明诊断信号与最终任务收益之间还有距离。</p>
+      <p>可以把这个接口单独研究：固定候选生成器，只替换候选选择信号；对照原始自评、成对偏好、可执行约束和跨任务反例检验。先验证哪种信号更能选中在新任务上有效的修改，再讨论是否用于 Harness 搜索或模型训练。这样能把“自动优化有没有收益”拆成候选质量与反馈可靠性两个可测问题。</p>
+    </section>
+
+    <section id="evaluation">
+      <h2>怎样验证“对新 benchmark 更快进化出能力”</h2>
+      <p>下面是本文建议的实验协议。任务 Harness 变强和 Meta-Agent 更会优化，应分别测量。</p>
+      <ol>
+        <li><strong>留出整个任务族。</strong>例如用代码修复和工具调用积累优化经验，之后才开放一个陌生的交互任务族；每个族内部另分开发与隐藏测试，避免把随机切分当成跨族迁移。</li>
+        <li><strong>固定优化器与任务模型。</strong>比较无历史、原始历史、可修订实验记录和条件技能四种状态，提供相同任务接口。先固定模型参数，以隔离 Harness 学习；允许训练权重时另列实验。</li>
+        <li><strong>比较整条适配曲线。</strong>记录调用数、实际 token、费用与墙钟时间；报告同预算最终分数及达到目标分数的预算。相同候选数可能隐藏不同的取证和诊断成本。</li>
+        <li><strong>查旧能力与任务行为。</strong>适配新族后重测旧族，并确认新增工具实际被调用、规则改变了哪一步。把每次修复与回归连回候选 diff。</li>
+        <li><strong>设置直接搬运对照。</strong>将旧 Harness 或旧 skill 直接用于新任务，与继续由 Meta-Agent 进行搜索分开。这样才能区分“好策略可复用”和“学会更快发现新策略”。</li>
+      </ol>
+      <p>一个可检验预测是：原始轨迹档案在证据量小的时候可能已经足够；任务族和失败解释增多以后，可修订记录应降低重复尝试、冲突修改和每次诊断的成本。如果只是记录更漂亮，适配预算与真实通过率没有改善，就不足以支持“优化能力积累”。</p>
+      <p><a href="https://arxiv.org/abs/2606.04455">Meta-Agent Challenge</a> 可作为可靠性参照：其 39 个配置仅 5 个超过相应人工 scaffold 均值，且报告明显的跨运行方差和 reward-hacking 尝试。它提醒我们重复运行、隐藏任务与完整成本统计都应成为结果的一部分。</p>
+    </section>
+
+    <section id="insight">
+      <h2>阅读和动手的优先顺序</h2>
+      <p>先读 <strong>Meta-Harness 的方法与附录 B</strong>，看“自动优化”最终能产出什么程序；接着读 <strong>RHO 的三阶段流程和候选分析</strong>，理解标签稀缺时的反馈来源。希望研究优化经验如何累积，再进入 <strong>CIG 的失败案例与结构消融</strong>、<strong>RSIFlow 的五轮轨迹和 Meta 版本比较</strong>。厂商侧优先看 LangChain 的完整流程，它把搜集评测、诊断、修改、回归和人工审阅连接得最具体。</p>
+      <p>最小复现可以先固定一个模型和一个可重置任务环境，开放提示、工具包装和验证逻辑三类修改，保存每题的完整输入输出与工具状态。做出稳定的“从证据到一次可验收修改”之后，再比较无标签选择、实验图或 Meta 技能带来的增量。这里不需要一开始就联合训练权重；那会额外引入数据、算力和归因问题。</p>
+    </section>
+
+    <!-- 原有综述分析保留于扩展阅读，四篇机制精读构成正文。 -->
+    <details class="extended-reading" id="survey-background">
+      <summary>扩展阅读：原有自我改进综述的定义、分类、文献审计与工程边界</summary>
+      <p>下面保留原综述的宽口径分析，包含权重、prompt、记忆、工具与完整程序更新。它为四篇精读提供背景，不承担本页代表工作的方法讲解。</p>
+          <section id="problem">
       <h2>它解决的真实问题：大家说的“自我改进”根本不是同一种东西</h2>
       <p>当前文献把 self-training、self-reflection、self-play、memory、prompt optimization、自动造工具、修改 Agent 源码乃至递归自改都放在相似叙事中。只看名称，会把三件完全不同的事混在一起：一次任务内利用上下文做得更好；跨任务保留经验；修改产生更新的机制本身。</p>
       <p>综述的关键动作是把现代 Agent 拆成“模型核 + 运行 scaffold”。这样，模型微调和外部软件更新不再是两个不相干的领域，而是同一个系统的不同持久化通道。这个视角也解释了为什么近中期最常见的改进并不发生在权重里：prompt、playbook、工具封装、检索规则和代码 diff 更便宜、更透明，也更容易回滚。</p>
@@ -175,7 +401,7 @@
     </section>
 
     <section id="evidence">
-      <h2>代表性证据：四条路径都成立，但距离开放式递归改进仍很远</h2>
+      <h2>代表性证据：不同更新面各有收益与限制</h2>
       <div class="table-wrap"><table>
         <thead><tr><th>方法</th><th>改了什么</th><th>作者报告的关键结果</th><th>结论边界</th></tr></thead>
         <tbody>
@@ -198,46 +424,6 @@
       <p>这组三分法说明“有 feedback loop”远远不够。至少还要问：<strong>更新对象是什么、保存到哪个版本、跨过什么边界、由谁验收、失败时是否回滚</strong>。同一篇工作甚至会因部署生命周期不同，从普通 test-time compute 变成真正的 scaffold learning。</p>
     </section>
 
-    <section id="evaluation">
-      <h2>评测：不要问新版本有多高，先问提升轨迹是否真实</h2>
-      <p>论文最值得直接采纳的是评测框架。对固定的 held-out 分布 \(\mathcal{D}_{\text{eval}}\)，第 \(t\) 个版本的能力应写成：</p>
-      <div class="math-display">\[
-        m_t=\mathbb{E}_{x\sim\mathcal{D}_{\mathrm{eval}},\,\tau\sim\mathcal{A}_t(x)}[\Phi(x,\tau)],\qquad B_t=\sum_{i=1}^{t}b_i\le B_{\max}
-      \]</div>
-      <p>重点不是最终峰值，而是固定预算下的整条曲线。一个可信报告至少需要六列账：</p>
-      <div class="grid-3">
-        <div class="card"><h3>起点与曲线</h3><p>基座、每次更新后的均值与方差，而不是从多轮里挑最好一次。</p></div>
-        <div class="card"><h3>迁移</h3><p>在未参与更新的任务族、时间切片、仓库或环境上验证。</p></div>
-        <div class="card"><h3>回归</h3><p>旧能力、尾部失败、安全违规与灾难性遗忘是否恶化。</p></div>
-        <div class="card"><h3>总预算</h3><p>token、GPU/API、工具调用、墙钟时间与人类监督分别计价。</p></div>
-        <div class="card"><h3>机制归因</h3><p>冻结环境、交换模块、做 component ablation，区分真正更新与采样噪声。</p></div>
-        <div class="card"><h3>裁判独立</h3><p>驱动训练的 judge 不应同时担任最终裁判；用异构 rubric、可执行子集或人工抽检校准。</p></div>
-      </div>
-      <h3>把“候选变好”写成可拒绝的统计门槛</h3>
-      <p>均值上升仍可能来自采样波动、挑选最好 seed 或在同一 judge 上过拟合。更严格的 gate 应同时约束迁移收益、回归、风险与预算，并对不确定性使用置信界：</p>
-      <div class="math-display">\[
-        G=1\iff
-        \operatorname{LCB}(\Delta m_{\text{transfer}})\ge\delta
-        \;\land\;
-        \operatorname{UCB}(r_{\text{regress}})\le\varepsilon
-        \;\land\;
-        \operatorname{UCB}(r_{\text{safety}})\le\rho
-        \;\land\; B_t\le B_{\max}
-      \]</div>
-      <p>如果证据不足，正确状态不是“更新失败”，而是“不允许提交”。这能防止系统把探索噪声永久写入自身。对于 judge-based 任务，还应把生成/更新预算、训练 judge 的预算和最终验收预算分账；否则更高分可能只是裁判获得了更多推理资源。</p>
-      <div class="table-wrap"><table>
-        <thead><tr><th>要证明的主张</th><th>最低指标</th><th>常见伪阳性</th></tr></thead>
-        <tbody>
-          <tr><td>这次更新有效</td><td>隐藏迁移集上的 \(\Delta m\) 及置信区间</td><td>同一训练任务、同一 judge、只报最好 checkpoint</td></tr>
-          <tr><td>持续学习而非局部修补</td><td>整条 \(m_t\) 曲线、旧任务 retention、尾部失败</td><td>新任务涨分但旧能力持续遗忘</td></tr>
-          <tr><td>资源效率提高</td><td>单位累计预算的面积或斜率 \(\Delta m/\Delta B\)</td><td>用十倍 rollout 换取少量终点增益</td></tr>
-          <tr><td>出现递归加速</td><td>后续学习斜率本身提高，且跨任务、跨 seed 保持</td><td>一次昂贵搜索找到更好 scaffold</td></tr>
-          <tr><td>能够安全自治提交</td><td>独立权限域、隐藏安全集、回滚演练与审计谱系</td><td>Agent 同时改 critic、测试和准入阈值</td></tr>
-        </tbody>
-      </table></div>
-      <div class="callout"><b>最重要的安全重构</b><p>critic 不是被动 benchmark，而是系统的治理基础设施和攻击面。提议更新的 Agent 不能同时拥有修改验收器、降低门槛并批准自己的权限；否则闭环优化的很可能是“更会通过检查”，而不是“更有能力”。</p></div>
-    </section>
-
     <section id="limits">
       <h2>证据边界：为什么它更像 field map，而不是 systematic review</h2>
       <ol>
@@ -249,22 +435,6 @@
         <li><strong>很多案例是自动化改进，不是开放式自我决定。</strong>任务分布、奖励函数、测试集、模型 API、沙箱和停止条件大多仍由人类规定；“没有逐步人工介入”不等于“系统自己选择了目标和价值函数”。</li>
       </ol>
       <div class="callout warn"><b>不要从这篇综述推出</b><p>不能推出 recursive self-improvement 已经进入失控加速阶段，不能推出 scaffold 更新必然比权重更新安全，也不能把一次 benchmark 上升解释成通用能力复利。现有证据更接近“有界搜索 + 可验证写回”。</p></div>
-    </section>
-
-    <section id="insight">
-      <h2>独立洞察：自我改进的核心不是 intelligence loop，而是 state migration governance</h2>
-      <h3>1. “自我”的可操作定义应落在写权限，而不是生成来源</h3>
-      <p>模型提出一个 prompt diff，并不比工程师提出 diff 更神秘。真正改变系统性质的是它是否能把候选写入未来版本，以及写入前要经过谁的验收。由此可以把自治程度拆成三个独立轴：<strong>proposal autonomy</strong>（谁提议）、<strong>evaluation autonomy</strong>（谁判断）、<strong>commit autonomy</strong>（谁批准持久化）。很多论文只自动化了第一轴，却用“self-improving”描述整个闭环。</p>
-      <h3>2. 最合理的近期架构是“两速学习”，但中间必须有 promotion gate</h3>
-      <p>先在可读、可回滚的 scaffold 层高速探索；只有当某个策略在独立任务、回归集与安全检查上稳定，才把它蒸馏进权重。这与 CPU cache / database compaction 的直觉相似：热状态便于快速修改，冷状态负责压缩和复用。关键不是简单地“memory 最后都进模型”，而是为 promotion 定义证据门槛，并保留那些蒸馏容易丢失的罕见错误恢复轨迹。</p>
-      <h3>3. 自我改进系统的最小可信单位不是 Agent，而是带谱系的 update</h3>
-      <p>静态模型卡不足以描述持续变化的系统。每个更新应携带来源任务、信号类型、适用范围、候选 diff、验证集、成本、回归与安全结果、批准者和回滚点。这样才能回答“为什么变好”“哪里可能退化”“能否把这项能力移植给另一个 Agent”。论文把 skill 视为可序列化 update operator，真正的工程含义正是把能力积累变成可版本化资产。</p>
-      <h3>4. 复利需要测“改进速度的改进”，而不仅是任务分数上升</h3>
-      <p>一次从 20% 到 50% 可能只是高成本搜索找到了更好配置。递归自我改进的更强证据应是：后续每单位预算获得的提升更大、发现新更新所需的样本更少、跨任务 transfer 更强，同时回归与风险不增加。换言之，不仅要测 \(m_t\)，还要测在同一预算下的 \(\Delta m/\Delta b\) 是否随版本改善；否则“self-accelerating”仍只是叙事。</p>
-      <h3>5. 一棵 taxonomy tree 不足以描述真正的自改进系统</h3>
-      <p>“改权重 / prompt / memory / tool”只回答了写到哪里，却没有回答更新能否信任。更好的记录单位是一个多轴 change manifest：<strong>target</strong>（写哪里）、<strong>signal</strong>（从哪里学）、<strong>proposer</strong>、<strong>verifier</strong>、<strong>committer</strong>、<strong>lifetime</strong>、<strong>scope</strong>、<strong>reversibility</strong> 与 <strong>cost</strong>。这也解释了清单为何出现大量跨类重复：真实系统本来就是组合式更新，强行塞进单棵树会丢掉治理信息。</p>
-      <h3>6. Skill 不是一段成功文本，而是带适用条件的可部署更新包</h3>
-      <p>综述把 skill 视为可序列化 update operator，这是连接 memory、tool 和权重的好抽象；但“可序列化”仍不足以保证可复用。一个可信 skill 还必须携带输入前置条件、依赖与权限、适用任务分布、测试、版本、失败语义和卸载/回滚方法。否则把某次成功轨迹存入 skill library，只是把未经校准的经验变成更容易传播的风险。</p>
     </section>
 
     <section id="practice">
@@ -281,11 +451,35 @@
         <li><strong>达到稳定门槛后再做权重固化。</strong>把成熟的 scaffold 经验蒸馏进参数，但重新跑完整安全与遗忘评测。</li>
       </ol>
     </section>
+    </details>
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>主材料为 arXiv v1（2026-07-14，97 页、12 幅图）及作者维护的项目与论文清单；截至 2026-07-22，arXiv 仍只有 v1，官方仓库在初次阅读后的提交没有修改论文正文或方法列表。本文复核了正文、图表、附录、公开 LaTeX 与当前清单，并用 SEAL、ACE、WebRL、DGM、Self-Refine、Reflexion、OPRO 原论文校准参数、上下文、环境、完整程序与“瞬时推理 / 持久更新”的边界。实验数值均为各论文发布方报告，本次未重新训练模型或独立复现实验；清单持续更新，条目计数和链接质量会变化。</p>
+      <p>四篇方法讲解依据公开正文、算法、表格与附录；Meta-Harness、CIG、RSIFlow 为预印本，RHO 另有 Findings of EMNLP 2026 正式入口，RSIFlow 按 2026-11-02 的 v2 核对。全部成绩为作者报告，没有独立复现实验。不同论文的数据切分、底座和预算不同，本文不据其绝对分数做横向排名。</p>
+      <p>厂商部分依据各家官方文章或文档；它们分别包含示例工作流、研究实验、工程经验和产品操作说明。社区互动量为 2026-11-09 读取的页面快照，可能变化；公开帖不代表全平台观点。小红书笔记样本未取得可读正文与可靠互动量，不能据此判断没有讨论，也不能进行热度排序。</p>
+      <h3>四篇研究与直接实现入口</h3>
       <ul>
+        <li><a href="https://arxiv.org/html/2603.28052">Meta-Harness：正文、接口消融与附录中的已发现程序</a> · <a href="https://yoonholee.com/meta-harness/">作者项目页</a> · <a href="https://github.com/stanford-iris-lab/meta-harness-tbench2-artifact">TerminalBench 已发现 Harness</a></li>
+        <li><a href="https://arxiv.org/html/2606.05922">RHO：方法、候选选择与局限</a> · <a href="https://aclanthology.org/2026.findings-emnlp.2439/">Findings of EMNLP 2026</a> · <a href="https://github.com/wbopan/retro-harness">官方代码与项目回顾入口</a></li>
+        <li><a href="https://arxiv.org/html/2610.05039">CIG：图结构、控制实验与附录 A.9 案例</a></li>
+        <li><a href="https://arxiv.org/html/2610.21791v2">RSIFlow v2：组件选择、技能维护及报告协议</a> · <a href="https://github.com/1HUAN1/RSI-Flow">官方代码</a></li>
+      </ul>
+      <h3>厂商一手材料</h3>
+      <ul>
+        <li><a href="https://blog.langchain.com/better-harness-a-recipe-for-harness-hill-climbing-with-evals/">LangChain：Better Harness</a> · <a href="https://blog.langchain.com/improving-deep-agents-with-harness-engineering/">Deep Agents Harness 工程案例</a></li>
+        <li><a href="https://developers.openai.com/cookbook/examples/agents_sdk/agent_improvement_loop">OpenAI：Build an Agent Improvement Loop with Traces, Evals, and Codex</a></li>
+        <li><a href="https://www.anthropic.com/research/harness-design-long-running-apps">Anthropic：Harness design for long-running application development</a></li>
+        <li><a href="https://docs.qoder.com/qoder/better-harness">Qoder：Better Harness 官方操作与范围</a></li>
+      </ul>
+      <h3>社区讨论与补充阅读</h3>
+      <ul>
+        <li><a href="https://x.com/LiorOnAI/status/2038669301541228606">X：Lior Alexander 的 Meta-Harness 介绍及回复</a></li>
+        <li><a href="https://news.ycombinator.com/item?id=48022596">HN：Simple Meta-Harness on Islo.dev 讨论</a> · <a href="https://www.reddit.com/r/ClaudeAI/comments/1u57fyy/a_claude_code_skill_that_autooptimizes_your/">Reddit：Harness 优化 skill 的 synthetic demo 讨论</a></li>
+        <li><a href="https://arxiv.org/abs/2408.08435">ADAS / Meta Agent Search</a> · <a href="https://arxiv.org/abs/2410.10762">AFlow</a> · <a href="https://arxiv.org/abs/2603.03329">AutoHarness</a> · <a href="https://arxiv.org/abs/2606.04455">Meta-Agent Challenge</a></li>
+        <li><a href="https://arxiv.org/abs/2605.24117">SkillEvolBench：从经验到技能的评测</a> · <a href="https://arxiv.org/abs/2604.05336">TRACE：模型能力训练路线</a></li>
+      </ul>
+      <details><summary>原有综述分析的资料入口</summary>
+        <ul>
         <li><a href="https://arxiv.org/abs/2607.13104">Self-Improvements in Modern Agentic Systems: A Survey（arXiv）</a></li>
         <li><a href="https://selfimproving-agent.github.io/">作者项目页与分类导航</a></li>
         <li><a href="https://github.com/selfimproving-agent/awesome-Self-Improving-Agents">作者维护的论文、源码与版本记录</a></li>
@@ -297,7 +491,25 @@
         <li><a href="https://arxiv.org/abs/2303.17651">Self-Refine: Iterative Refinement with Self-Feedback</a></li>
         <li><a href="https://arxiv.org/abs/2303.11366">Reflexion: Language Agents with Verbal Reinforcement Learning</a></li>
         <li><a href="https://arxiv.org/abs/2309.03409">OPRO: Large Language Models as Optimizers</a></li>
+        <li><a href="https://arxiv.org/abs/2408.08435">Automated Design of Agentic Systems / Meta Agent Search</a></li>
+        <li><a href="https://arxiv.org/abs/2410.10762">AFlow: Automating Agentic Workflow Generation</a></li>
+        <li><a href="https://arxiv.org/abs/2510.06711">Inefficiencies of Meta Agents for Agent Design</a></li>
+        <li><a href="https://arxiv.org/abs/2406.11695">MIPRO: Optimizing Instructions and Demonstrations for Multi-Stage LM Programs</a></li>
+        <li><a href="https://arxiv.org/abs/2309.16797">Promptbreeder: Self-Referential Self-Improvement via Prompt Evolution</a></li>
+        <li><a href="https://arxiv.org/abs/2308.10144">ExpeL: LLM Agents Are Experiential Learners</a></li>
+        <li><a href="https://arxiv.org/abs/2603.00718">SkillCraft: Can LLM Agents Learn to Use Tools Skillfully?</a></li>
+        <li><a href="https://arxiv.org/abs/2305.16291">Voyager: An Open-Ended Embodied Agent with Large Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2603.28052">Meta-Harness: End-to-End Optimization of Model Harnesses</a></li>
+        <li><a href="https://arxiv.org/abs/2603.03329">AutoHarness: Improving LLM Agents by Automatically Synthesizing a Code Harness</a></li>
+        <li><a href="https://arxiv.org/abs/2606.05922">Evolving Agents in the Dark: Retrospective Harness Optimization via Self-Preference</a></li>
+        <li><a href="https://arxiv.org/abs/2610.05039">Causal Improvement Graph for Agentic Harness Optimization</a></li>
+        <li><a href="https://arxiv.org/abs/2610.15221">HarnessNet: Feedback-Driven Hierarchical Joint Harness Evolution</a></li>
+        <li><a href="https://arxiv.org/abs/2610.21791">RSIFlow: Adaptive Self-Improvement Workflows with an Evolving Meta-Agent</a></li>
+        <li><a href="https://arxiv.org/abs/2606.04455">The Meta-Agent Challenge</a></li>
+        <li><a href="https://arxiv.org/abs/2605.24117">SkillEvolBench: Benchmarking the Evolution from Episodic Experience to Procedural Skills</a></li>
+        <li><a href="https://arxiv.org/abs/2604.05336">TRACE: Capability-Targeted Agentic Training</a></li>
       </ul>
+      </details>
     </section>
   </main>
 </body>
