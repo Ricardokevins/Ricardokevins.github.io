@@ -63,6 +63,8 @@
         <a href="#landscape">五代图谱</a>
         <a href="#mechanism">评测机制</a>
         <a href="#evidence">工作地图</a>
+        <a href="#representative">代表工作精读</a>
+        <a href="#recent-evaluations">近年评测结论</a>
         <a href="#influence">影响力</a>
         <a href="#selection">选型建议</a>
         <a href="#terms">术语</a>
@@ -324,31 +326,66 @@
         </table>
       </div>
 
-      <h3>6.7 六个深读：争议、数字与边界</h3>
+      <h3 id="representative">6.7 代表工作精读：它们具体测什么、结果说明什么</h3>
 
-      <h4>RULER：把“有效长度”变成公共语言</h4>
-      <p>RULER 的贡献不只是 13 个任务，而是把“长度”从模型卡的一个数字变成了可测曲线。它的四类任务覆盖检索、多跳追踪、聚合、问答；每一类都可以在 4K 到 128K 重复。NIAH 在短长度上接近满分，但一到长长度和多跳，模型就开始掉点；这说明“能找针”与“能用多条针推理”不是同一件事。</p>
-      <p>它最常被引用的是 effective context length：宣称 128K 的模型，可能在 32K 或 64K 就已经明显退化。论文里“宣称至少 32K 的模型中只有约一半在 32K 保持满意表现”这个结论，后来被大量技术报告复述。需要注意的是，RULER 的任务是合成的，分数不能直接外推到真实办公文档；它更像“压力测试”，不是“能力终点”。</p>
+      <h4>Lost in the Middle：固定问题，只移动证据</h4>
+      <p>这项工作刻意把任务保持简单：给模型一组文档，问一个答案明确的问题；实验者改变包含答案的那篇文档在上下文中的位置，分别放在靠前、居中和靠后位置。另一组实验用 key-value 配对，要求模型根据 key 找到对应 value。因为问题、证据内容和大部分文档都不变，准确率随位置变化就直接暴露了位置敏感性。多种模型在证据位于开头或结尾时表现较好、移到中段时明显下降，曲线呈 U 形。</p>
+      <p>它的关键贡献是证明“上下文里有证据”与“模型在当前输入排列下会使用证据”是两件事。它没有证明所有真实文档都会出现同样幅度的 U 形退化，也没有解释唯一的内部机制；工作给后续评测留下了一个实验控制原则：位置应该与长度、任务一起报告，不能只把文档顺序当成无关的格式选择。</p>
 
-      <h4>HELMET：NIAH 不能预测下游</h4>
-      <p>HELMET 用 7 个应用类别、至少 128K 的输入、59 个长上下文模型，做了一次系统对照。它最重要的结论不是“谁第一”，而是“NIAH 分数不能预测下游表现”：在 NIAH 上接近满分的模型，到了全文推理、复杂指令、应用问答上可能完全不同；不同类别之间的相关性也不高。这意味着“长上下文能力”不是一个单因子，至少要多轴报告。</p>
-      <p>HELMET 还发现，开源模型在全文推理和复杂指令上落后闭源，而且差距随长度扩大。这个结论后来被 Phi-4、Jamba 1.6 等模型采用为评测依据，也被 Stanford HELM 列为参考。它的局限是应用类别仍偏英文办公，model-based 评分有成本，base model 兼容性也需要额外处理。</p>
+      <h4>RULER：用可调合成任务把长度画成曲线</h4>
+      <p>RULER 的输入由程序生成，长度和任务难度可以分别调。它保留单针检索作为最低门槛，再增加多针检索、变量追踪、多跳追踪、聚合和问答。拿多跳任务举例，模型要从一段段局部材料取出中间关系，再用中间结果找到最终答案；长度增加时，评测器可以继续添加干扰文档，而不是换一份完全不同的测试集。论文用 13 个任务、4 个大类评测 17 个长上下文模型，并在多个长度档重复测试。</p>
+      <p>论文看到一个鲜明反差：不少模型在普通 NIAH 接近满分，但上下文变长、needle 数量增加或任务从单步检索转向追踪/聚合后，得分明显下降；在声称至少 32K 的模型中，大约只有一半在 32K 达到作者定义的满意表现。RULER 因此把“有效上下文长度”带进了讨论：它不是模型接受输入的硬上限，而是模型在指定任务和通过标准下仍维持可用性能的范围。各论文的通过阈值和任务集不同，effective length 目前仍不是跨 benchmark 统一标尺。</p>
 
-      <h4>LongBench v2 与 LongBench Pro：真实感与可控性之间的拉扯</h4>
-      <p>LongBench v2 用 503 道 MCQ、六类场景、8K 到 2M 词，把“真实长上下文”做得更接近工业使用。它的人类专家基线是 53.7%，直接回答的最佳模型 50.1%，o1-preview 通过更长推理达到 57.7%。这个结果很微妙：模型在“直接答”上还不如人类，但一旦允许长推理，就能超过人类基线；说明“长上下文”与“长推理”经常纠缠在一起。</p>
-      <p>LongBench Pro 则把规模推到 1,500 个自然样本、11 个主任务/25 个子任务、8K 到 256K、46 个模型。它的结论更像产品建议：长上下文优化比参数规模更重要；有效长度普遍短于宣称，而且跨语言不一致；thinking 主要帮原生 reasoning 模型，mixed-thinking 是 Pareto 折中。它和 v2 的差异，正好说明“真实样本”与“可控长度”很难同时最大化。</p>
+      <h4>HELMET：同一套应用类别，检验 NIAH 能否预测实用任务</h4>
+      <p>HELMET 的问题来自实践中大量只公布 NIAH 或任意选几个任务的模型报告。它把评测组织成七个应用中心类别：合成召回、长文档问答、摘要、many-shot 上下文学习、RAG、段落重排、带引用生成；允许把输入长度控制到 128K，并用 few-shot 提示让 base model 也能参加。作者对 59 个长上下文模型做统一评测，尽量避免每个模型使用不同的套件、长度和评分标准。</p>
+      <p>主结论是不同类别并不高度相关，NIAH 高分也不能稳定预测下游长文表现。作者还观察到，开放权重模型在全文推理与复杂指令上与闭源模型存在差距，且长度增长会扩大部分差距；同时，RAG 类任务较便宜，也更能预测其他下游分数，适合快速迭代。这里的“预测”是这组 benchmark 间的经验关系，不是对任意产品任务的保证。HELMET 的价值在于给出完整能力面板，而非一个不受任务影响的总分。</p>
 
-      <h4>NoLiMa 与 MRCR：检索还没有结束</h4>
-      <p>NoLiMa 的做法很巧：去掉 needle 与 haystack 的字面重叠，要求模型做一步联想。结果在 32K 就出现大幅掉点：GPT-4o 从 99.3% 降到 69.7%，Llama 3.3 70B 从 97.3% 降到 42.7%。这说明很多“长上下文能力”其实是“关键词匹配 + 位置先验”；一旦需要语义关联，曲线就塌了。它在 r/LocalLLaMA 拿到 468 points、92 条评论，说明工业界对“32K 就崩”这件事有强共鸣。</p>
-      <p>MRCR 则把多针推到多轮共指：2/4/8 个近似重复请求，4K 到 1M，要求复现第 i 个请求的答案。Context Arena 用 8-needle 变体做排行榜，52 个模型的 AUC@1M 最高仍不到 50%。社区里有人用开源 Qwen2.5-32B 栈在 1M 8-needle 上跑到 0.601–0.688，接近 SubQ 的 0.659；这类实测比论文更能说明“百万上下文”在工程上有多脆弱。</p>
+      <h4>LongBench v2：真实工作题型与推理预算被放进同一场考试</h4>
+      <p>LongBench v2 收集 503 道英文多项选择题，覆盖单文档问答、多文档问答、长上下文学习、长对话、代码仓库和结构化数据六类、20 个子任务；上下文从 8K 延伸到 2M 词。题目由近百位不同专业背景的高学历标注者提出，再经过自动和人工审核。多数题目要把相距较远的信息组合起来，或从材料中学一个新规则；不要求答案一定是原文中能直接复制的一句话。四选一随机猜测约为 25%。</p>
+      <p>在论文设定的 15 分钟限时下，人类专家平均准确率为 53.7%；直接回答时最好的模型为 50.1%；允许较长 test-time reasoning 的 o1-preview 达到 57.7%。结果说明推理预算会显著改变“长上下文成绩”，所以模型比较必须把 thinking 设定、输出预算和输入截断方式写清。它不意味着 o1-preview 在所有真实工作上超过人类：人类分数受时限影响，而模型与人类的成本、交互和答案核查方式也不同；多项选择格式仍允许猜测。</p>
 
-      <h4>Oolong 与 StateBench：从“找”到“聚合/状态”</h4>
-      <p>Oolong 的任务设计是“先分析、再聚合”：模型需要判断大量原子事实的分布，再回答一个全局问题。它覆盖 4K 到 1M，合成与真实两个 split；GPT-5、Claude Sonnet 4、Gemini 2.5 Pro 在 128K 上都不到 50%。这比 NIAH 难得多，因为答案不在某个片段里，而在整个分布的统计中。它的局限是构造复杂、真实 split 规模有限，但方向很清楚：长上下文的下一阶段是“全局计算”，不是“局部检索”。</p>
-      <p>StateBench 则把状态跟踪做成形式语言层级：r-trivial、aperiodic、soluble、general finite。它用 Krohn-Rhodes 理论解释为什么某些状态机天然更难，并证明 GDN 的正特征值可以表达所有 aperiodic。实验里，预训练模型没有人能稳健解决 soluble 层，前沿模型在最难、最长的设置下掉到 13% 以下。这个结果的重要性在于：它不是“再多几条数据”能解决的，而是涉及模型架构与算法能力。</p>
+      <h4>LongBench Pro：双语自然样本让“有效长度”可以分任务、分语言看</h4>
+      <p>LongBench Pro 面向合成任务不够自然、完全人工造题又很难扩到超长文档的折中点。它包含 1,500 个英语和中文自然长上下文样本、11 个主任务和 25 个子任务，输入长度分布在 8K–256K；额外标出题目需要依赖全文还是部分证据、长度档和模型校准难度。构题时由前沿模型提出问题、答案和解题理由，专家再逐项核实与返修。这样能扩展候选题量，但最终质量仍依赖人工复核，不能把“模型参与构造”理解成自动标注。</p>
+      <p>论文在 46 个模型上的报告中，Gemini 2.5 Pro 为 73.42，GPT-5 为 72.61，Claude 4 Sonnet 为 69.87；开放模型中 DeepSeek-V3.2 为 67.82，Qwen3-235B-A22B-Thinking-2507 为 66.97。更有解释力的是分组对照：Qwen3-30B-A3B-Instruct-2507（256K）为 54.52，高于 Qwen3-32B 的 51.12；4B 的长上下文优化版本也超过 8B 对照。这个结果支持作者所说的“上下文优化可能胜过单纯参数扩张”，但模型版本、原生长度、训练配方同时不同，因此不能单凭这组数字估计“把同一模型扩窗”的纯因果收益。</p>
+      <p>它也给出了长上下文评测中很实用的反例：MiniMax-Text-01 宣称可接收 4M token，但在该套件总分为 45.00，低于不少标称 128K 的模型。论文进一步发现英语和中文的表现存在错位，提示“多语种支持”不等于长上下文能力在各语言间对齐。思考模式也不是提示词开关就能普遍得到：原生 reasoning / mixed-thinking 模型较常受益，普通 instruct 模型被要求展开思考时收益有限甚至退化；Extreme 档的提升明显小于 Easy 档。</p>
 
-      <h4>HANDBOOK 与 LongSocialBench：Agent 评测的“真实工作”</h4>
-      <p>HANDBOOK.md 用 65 个任务、5 个领域、10 家虚构公司、20 到 124 页的 SOP，配 82 个工具、6 个 MCP server、824 条 rubric，把“长上下文”放进真实工作流。最强模型 36.2%，多数前沿模型低于 25%；失败模式包括被环境内请求诱导覆盖政策、检查后违背结果、长程丢失规则细节、谎报合规。这些失败不是“读不懂”，而是“在长流程中保持约束”。</p>
-      <p>LongSocialBench 把评测放到真实讨论串：94 个 HN/Stack Exchange/r/ChangeMyView 讨论，1,462 道人类验证 MCQ，中位约 73K token。模型要跟踪 parent-reply、转折点、子树、跨分支对比、参与者轨迹；最佳模型 63.0%，人类 72.4%，给 gold evidence 后也只有 55.0%。这说明“长上下文理解”不仅是文本长度，还包括对话结构、参与者意图和上下文指代。</p>
+      <h4>NoLiMa 与 MRCR：分别移除词面捷径、增加相似请求的区分负担</h4>
+      <p>NoLiMa 仍采用 needle-in-haystack 形式，但让问题和答案线索尽量不共享字词。用一个自拟例子说明：文档中埋的是“她在火星驾驶的车辆叫 X”，问题则问“她在红色星球开的是什么交通工具？”模型要先建立语义联系，再定位那个实体。作者评测 13 个宣称至少支持 128K 的模型：在短上下文强基线上，GPT-4o 为 99.3%；在 32K 的 NoLiMa 条件下为 69.7%，Llama 3.3 70B 从 97.3% 降到 42.7%，总计 11 个模型低于 50%。所以它测的是“无明显词面重合时的关联检索”，仍不等于多跳推理或真实全篇综合。</p>
+      <p>MRCR 的做法不是去掉词面重合，而是在长对话中反复出现近似相同的用户请求，然后指定模型复现第 i 次请求对应的生成。比如同一对话里用户多次让模型写某主题的诗，最后指定“带特定前缀的第 2 首”。模型必须区分相似请求的轮次，而不能只找任意相关诗句。评分常要求答案包含目标前缀，再以序列相似度衡量复现质量。它因此更像多实例、指代敏感的检索；若只看总体 MRCR 分数，必须同时说明版本、needle 数、输入长度和评分变体，因为这些设置会大幅改变难度。</p>
+
+      <h4>Oolong：把上下文切成许多“必须逐条判断”的证据，再问整体分布</h4>
+      <p>Oolong 针对一种被单针任务忽略的情形：上下文中的许多片段都相关，答案却不在任何一个片段里。它把大量文本单元对应到简单类别，让模型判断每个单元属于哪一类，再回答总量、比例、时间变化或用户关系等分布性问题。合成 split 允许研究者控制长度与问题组成；真实 split 使用对话/叙事材料，观察这类逐项判断和汇总能否迁移到自然语境。模型不仅要检索“某一条”，还要尽可能遍历相关证据、稳定分类并正确累计。</p>
+      <p>论文报告在 128K 上，GPT-5、Claude Sonnet 4、Gemini 2.5 Pro 在合成和真实两个 split 都未达到 50%。错误分析指出瓶颈常在识别所有相关单元和聚合，不只是基础分类；reasoning 模型还会过度逐条推演、耗尽输出预算，或直接拒答，造成没有最终答案。这个设计把长上下文从“找到最相关的几段”推进到“覆盖并计算许多分散证据”，但真实 split 规模与任务范围有限，结果不能直接代表所有长文工作。</p>
+
+      <h4>StateBench：用受控状态更新检验模型能否一直记住“现在的值”</h4>
+      <p>StateBench 把每题写成变量初值、长串赋值操作和最终状态问题。作者通过四层任务控制状态更新规则：r-trivial 中变量只允许固定值写入一次；aperiodic 允许多次按常量覆盖，例如 <code>x=2</code> 后再 <code>x=5</code>；soluble 允许自指更新，例如 <code>x=(x+1) mod 5</code>，每一步都依赖旧值；general finite 还包括变量之间的交换，例如交换 <code>x</code> 和 <code>y</code> 的当前值。评测样本可以达到 64,000 次状态变化，并给出一个正确和多个错误候选终态。</p>
+      <p>分层来自有限状态机/代数结构理论，令研究者可以问“架构能不能学习并外推这类更新规则”，而不是只比较一串未解释的困难题。论文先在新初始化、直接训练的架构上做长度泛化实验，再测预训练模型。前者大体显示 recurrent Gated DeltaNet 在较低层状态更新上的长度泛化强于 Transformer；后者中，当前预训练模型能处理简单赋值，但会随长度在自指更新和更一般的状态任务上明显退化，没有模型能稳健解决 soluble 层。理论表达能力结论、直接训练曲线和预训练模型结果是三种不同证据，不能合并成“某种架构已证明更适合所有长上下文”。</p>
+
+      <h4>LongSocialBench：把长对话还原成带父子关系的讨论树</h4>
+      <p>把论坛讨论展平为一段普通文本，会丢掉“这句回复到底在回应谁”。LongSocialBench 保留 94 段完整 Hacker News、Stack Exchange 和 Reddit r/ChangeMyView 讨论及其 reply tree，设计 1,462 道人工核验的四选一题，中位输入约 73K token。题目要求定位某条回复所属的子树、发现讨论转折、比较不同分支论据，或追踪参与者在讨论中的立场变化。每题还经过可回答性、选项唯一性和证据依据审核。</p>
+      <p>18 个模型的全上下文基线平均 43.9%；最佳单项是 Claude Opus 4.7 配合“先排除错误选项”的提示，得分 63.0%；独立人类读者为 72.4%。如果直接提供 gold evidence scope，模型平均升至 55.0%，仍未达到人类结果。这个干预很有诊断力：模型的一部分错误来自找错讨论片段，但即使片段已经定位，结构化立场理解仍然困难。Gold evidence 是分析用 oracle，不是实际系统能免费获得的能力。</p>
+
+      <h4>LongMemEval-V2 与 LongHarness：评估对象从模型扩展到记忆和处理系统</h4>
+      <p>LongMemEval-V2 把历史看作 agent 在定制网页环境里积累的经验：哪些按钮存在、动作会改变什么状态、流程怎么走、哪些常见坑要避开，以及提问本身是否带有错误前提。451 个问题分别配以最多约 500 条轨迹、最高约 115M token 的历史。实验不是直接把 115M token 塞进回答模型，而是先让 memory system 按 <code>Insert</code> 接收轨迹、按 <code>Query</code> 返回证据，再由固定 reader 作答。AgentRunbook-C 用文件和 coding agent 搜索、检查证据，平均准确率 72.5%，高于最强 RAG baseline 的 48.5% 和通用 Codex baseline 的 69.3%；但它仍需约百秒级查询，作者把结果定位为 accuracy-latency frontier 的改进。该基准测 memory context gathering + QA，不是 agent 重新操作环境的端到端完成率。</p>
+      <p>LongHarness 则研究 model harness：相同的底层模型可通过搜索、切片、工具和多轮调用处理长上下文。它的任务会让大量片段“看似相关”，但每一步只有少数真正有用；模型需要自适应决定先查什么、何时回到全局信息以及是否值得继续花计算。四个评测套件中，最强模型与 harness 组合的 macro-average accuracy 为 68%，不同 harness 还会让同一模型产生不同准确率—成本结果。结论不是某个 backbone 排第一，而是长上下文成绩必须注明模型、harness、调用/计算预算，并同时看正确率和成本。</p>
+
+      <h3 id="recent-evaluations">6.8 近年主流评测结论：论文榜、统一榜与动态榜分开读</h3>
+      <p>下面列的是三种不同证据形态：论文发表时固定的一组模型实验、同一团队统一跑的透明榜单，以及持续更新的厂商无关排行榜。它们的分数不能互相排序；同一 leaderboard 也要看数据版本、模型推理档位、评分器和采样次数。</p>
+      <div class="table-wrap">
+        <table>
+          <caption>截至 2026-11-09 已公开的代表性评测结果。数字均保留各来源原有口径，彼此不可直接横向比较。</caption>
+          <thead><tr><th>工作 / 证据形态</th><th>测试对象与协议</th><th>报告结论</th><th>主要读法与边界</th></tr></thead>
+          <tbody>
+            <tr><td>LongBench Pro（2026 论文）</td><td>1,500 个英中自然样本；11 个主任务/25 个子任务；46 个模型；8K–256K</td><td>Gemini 2.5 Pro 73.42，GPT-5 72.61，Claude 4 Sonnet 69.87；开放模型 DeepSeek-V3.2 67.82、Qwen3-235B-A22B-Thinking-2507 66.97。Qwen3-30B-A3B（256K）54.52，高于 Qwen3-32B 的 51.12。</td><td>支持长上下文优化重要，但模型版本、训练和原生长度不完全受控；论文报告的是各模型在该评测协议下的总分，不能解释成仅扩窗带来的因果增益。</td></tr>
+            <tr><td>HELM Long Context（Stanford 统一评测，2025）</td><td>10 个模型；RULER SQuAD/HotPotQA、∞Bench 小说问答/摘要、MRCR；各 100 题；最高 128K</td><td>GPT-4.1 平均 0.588 居首；Palmyra X5 的 MRCR 最高也只有 0.256；Long Context 排名与 HELM Capabilities 排名相关为 Spearman 0.90。</td><td>说明通用能力和长上下文有相关性、但单项仍能暴露短板；只有 5 个任务，0.90 来自 10 个模型，且未测真实长对话、多模态和工具。</td></tr>
+            <tr><td>AA-LCR v1.1（Artificial Analysis 独立动态评测）</td><td>100 道开放式题；234 份文档、30 组，平均约 100K token/题；答案由等价性评分器判定</td><td>官方动态页在本次查阅时报告 Kimi K3 Max 88.7%、Step 5 Preview 88.3%、Kimi K3.1 Pro 86.3%。v1.1 修正 16 个答案键并为 equality checker 增加系统提示。</td><td>采用 100 题 pass rate、每题重复评测；分数受推理档位、版本和裁判影响。官方页的顶部排名文字与 FAQ 有未同步现象，因此把它当作带日期的榜单快照，不当作稳固的长期排名。</td></tr>
+            <tr><td>LongSocialBench（EMNLP 2026 论文）</td><td>94 段完整讨论树；1,462 题；18 个模型、29 个设置</td><td>全上下文 baseline 平均 43.9%；给 gold evidence scope 后 55.0%；Claude Opus 4.7 + 排错提示 63.0%；人类 72.4%。</td><td>oracle 证据干预显示片段定位只解释部分失败，剩余错误来自讨论树与社会语境理解；数据集中于三个平台。</td></tr>
+            <tr><td>LongMemEval-V2（Agent memory 论文，2026）</td><td>451 个定制网页经验问题；小/中历史约 25M/115M tokens；固定 reader</td><td>AgentRunbook-C 72.5%，最强 RAG 48.5%，通用 coding-agent baseline 69.3%；高分伴随百秒级延迟。</td><td>比较的是 memory 模块的证据收集与 QA，不是模型裸读 115M tokens 或端到端网页任务成功。</td></tr>
+            <tr><td>LongHarness Bench（harness 论文，2026）</td><td>四个长上下文套件；4 种代表 harness；准确率与计算/调用效率</td><td>最强模型—harness 组合 macro-average accuracy 为 68%；固定同一模型更换 harness 后，准确率与效率会明显变化。</td><td>系统结果不能归因给 backbone；公开摘要没有提供跨论文可比较的统一成本单位，评估应保留各套件内的 token/调用成本。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info"><b>怎么读“新模型分数”</b><p>一个模型的 88% 只能说明它在某个版本的 100 道多文档开放题上表现强，不能替代 128K 长度曲线、双语能力、状态更新、长社交讨论或真实工具任务。可复用的近期结论是：高分已经从 NIAH 迁移到复杂多文档推理，但细粒度状态、全局聚合、证据树结构、系统成本仍有明显缺口。</p></div>
     </section>
 
     <section id="influence">
@@ -524,7 +561,9 @@
         <li><a href="https://www.trychroma.com/research/context-rot">Context Rot: How Increasing Input Tokens Impacts LLM Performance</a></li>
         <li><a href="https://crfm.stanford.edu/2025/09/29/helm-long-context.html">Stanford HELM Long Context</a></li>
         <li><a href="https://contextarena.ai/">Context Arena</a></li>
-        <li><a href="https://artificialanalysis.ai/">Artificial Analysis</a></li>
+        <li><a href="https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning">Artificial Analysis Long Context Reasoning (AA-LCR v1.1)</a></li>
+        <li><a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-LCR">ArtificialAnalysis/AA-LCR dataset card</a></li>
+        <li><a href="https://www.mercor.com/apex/oss-benchmarks/oss-aa-lcr-leaderboard/">AA-LCR v1.1 task counts and public leaderboard details</a></li>
       </ul>
 
       <h3>合成检索与压力测试</h3>
@@ -576,7 +615,6 @@
         <li><a href="https://arxiv.org/abs/2504.12845">MLRBench: Multilingual Long-Context Reasoning Benchmark</a></li>
         <li><a href="https://arxiv.org/abs/2608.20853">MGAL: Multilingual Granularity-Aware Long-Context Benchmark</a></li>
         <li><a href="https://arxiv.org/abs/2507.09506">Ref-Long: Benchmarking Long-Context Referencing</a></li>
-        <li><a href="https://artificialanalysis.ai/">AA-LCR</a></li>
       </ul>
 
       <h3>推理、状态、记忆与 Agent</h3>
@@ -595,10 +633,11 @@
         <li><a href="https://arxiv.org/abs/2611.03094">StateBench: A Fine-Grained Hierarchy and Benchmark for State Tracking</a></li>
         <li><a href="https://allenai.org/blog/statebench">Ai2 StateBench blog</a></li>
         <li><a href="https://github.com/allenai/state-bench">allenai/state-bench</a></li>
-        <li><a href="https://arxiv.org/abs/2609.38137">LongHarness Bench</a></li>
+        <li><a href="https://arxiv.org/abs/2609.38137">LongHarness Bench: Stress-Testing Language Model Harnesses for Long-Context Reasoning</a></li>
         <li><a href="https://arxiv.org/abs/2609.36984">REALHOP: Behavioral Necessity in Multi-Hop Reasoning</a></li>
         <li><a href="https://arxiv.org/abs/2610.26827">KEEP-Bench: Evidence Preservation in Context Compression</a></li>
         <li><a href="https://arxiv.org/abs/2608.28411">LongPIBench: Prompt Injection in Long Contexts</a></li>
+        <li><a href="https://arxiv.org/abs/2605.12493">LongMemEval-V2: Evaluating Long-Term Agent Memory Toward Experienced Colleagues</a></li>
       </ul>
 
       <h3>长输出、指令与安全</h3>
