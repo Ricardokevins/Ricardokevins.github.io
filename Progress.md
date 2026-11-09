@@ -1,5 +1,46 @@
 # Ricardokevins.github.io Progress
 
+## 2026-11-09 Meta-Harness 在代码、AI4Science 与芯片设计中的应用（本地验收完成）
+
+- 用户继续调研细分领域，并澄清 AI4SDE 为笔误，实际关注 LLM 指导芯片设计，即 AI for EDA。新建领域应用专题，与通用方法页双向链接，不改为另一个通用综述版本。
+- 主体精读 Self-HPO、Organon、DrugHarness、Dr. RTL，逐项解释输入、循环、可写对象、持久经验、案例、验收和迁移范围；补读 Chip Harness 作者记录与 README，并将 AlphaEvolve、HORIZON 作为任务产物/研究方法区别的对照。
+- 核查重点：Self-HPO 的 H/P 交替及空 patch 交付案例；Organon 数值解记忆与可替换搜索组件、单次轨迹限制；DrugHarness 科学审查、研究者选择反馈、虚拟筛选退化及湿实验因果范围；Dr. RTL 四折 15→5 跨设计协议、SEC 与时序/面积目标、优势公式符号待核对项；Chip Harness 弱种子、工具开放与第二轮八版本全部退役。
+- 已核对原文与三份官方 README；没有运行论文训练、分子实验或 EDA。公开网页下载在沙箱外获得自动审核授权，未操作用户前台浏览器。新专题、原页链接及索引/进度为本次写入范围；保留其他未提交的个人站改动。
+- [x] Notes 索引 305/305 与 `git diff --check` 通过，只有既有短文软提示。两篇笔记的构建产物与最终源文一致，公开 Notes 索引产物包含新专题。
+- [x] 完整 Jekyll 离线构建通过：常规构建受可选 GitHub Metadata 网络请求阻塞，已停止本次进程；离线验证仅在当前 Ruby 进程跳过远程元数据，不改变仓库配置或依赖。
+- [x] 独立测试浏览器检查 1440px/390px：页面宽度等于视口，主文表格 0，缺失锚点/重复 id/横向溢出/浏览器错误均为 0；公式方向补充可展开，通用页与专题的双向跳转实测通过。实际目视首屏、RTL 流程与科学技能案例；机制审读与版面验收分别完成。
+- 本轮仅维护研究专题、通用页链接、索引和任务日志，没有提交、推送或发布；保留其他会话的导航、长上下文笔记、talk 和 poster 改动。
+
+
+## 2026-11-09 长上下文评测笔记深化
+
+- 按用户反馈原位深化 `notes/paper-reviews/long-context-benchmarks-2023-2026.html`：将代表工作从概览式介绍改为任务机制与证据的连续讲解，覆盖 Lost in the Middle、RULER、HELMET、LongBench v2、LongBench Pro、NoLiMa/MRCR、Oolong、StateBench、LongSocialBench，以及 LongMemEval-V2/LongHarness 的系统边界。
+- 新增近年评测结果对照，区分 LongBench Pro 论文表、Stanford HELM Long Context、AA-LCR v1.1 动态榜、LongSocialBench、LongMemEval-V2 与 LongHarness；明确分数口径、推理预算和系统对象不同，不能拼成跨 benchmark 总榜。AA-LCR 排名保留日期并提示官方页面 top card/FAQ 未同步。
+- 更新 `_data/notes.yml` 的摘要、标签和材料范围。核心数据核对 LongBench Pro 46 模型表、LongBench v2 503 题与人类/模型协议、NoLiMa 32K 结果、StateBench 任务层级、AA-LCR v1.1 分数修订，以及 LongSocialBench / LongMemEval-V2 / LongHarness 官方报告。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：305 条索引与 305 个顶层 HTML 对应；唯一短文警告为既有 `turning-structure-into-reward.html`。`git diff --check` 通过，目标页 12 个正文 section、13 张表全部包在滚动容器中，无重复 ID 或断锚。
+- [x] 隔离 Jekyll build 到 `/tmp/long-context-benchmarks-build-final` 成功；仅有既有 Faraday retry 与 GitHub Metadata 未认证提示。输出页与源文件一致。
+- [x] Chromium/Playwright 检查 1440×1000 与 390×844：document/body 宽度等于视口、console/page/request errors 为 0；手机端 13 张表各在 364px 容器内横向滚动，表格内容宽 820px。目视桌面代表作和结果表、手机结果表，未见重叠或标题截断。
+- 本轮没有独立重跑任何模型或 benchmark；数值明确为论文、榜单或发布方报告。未提交或推送。
+
+## 2026-11-09 八册教材独立子 agent 深审（进行中）
+
+- 按用户最新要求，每册建立独立 Subagent 审读任务；受当前三个子 agent 并发槽位限制，01／02／06 首批运行，03／04／05／07／00依次排队。
+- 任务与恢复记录位于本地忽略的 `.codex-tasks/20261109-handbook-review/`；输入快照记录八册实际模块与文本 hash。报告须记录实读范围、具体问题、修订及核算，未读完不标通过。
+- 已独立发现共享 HTML 修订中三处裸小于号被当作标签，吞掉平价、二叉树、贴现曲线推导文字；已改为 TeX 比较命令并增加解析前后公式保留检查。金融数值与实际代码检查重跑通过。
+- 分册 patch 只有经主 agent 审核并在 `review_patches/__init__.py` 显式启用才进入构建；保留既有中央修订，避免并发改写同一文件。精确移除“放在……小节附近”的编写提示，不删除正常教学注释。
+- 当前仍未完成整套语义终审及最终 PDF 重导出；旧技术检查与已发现局部问题的修复不等于全册已通过。全部教材继续仅本地保留。
+
+## 2026-11-09 主页导航与 Jump Trading Talks
+
+- 从顶栏移除 `Publications` 与 `Teaching`，保留页面和直接 URL；顶栏继续提供 `Talks`、`Notes` 与 `CV`。`Publications` 仍保留独立列表，`Teaching` 是没有课程条目的归档模板。
+- 新增 `_talks/2026-10-15-jump-trading-ai-workshop.md`，依据 Jump Trading AI Workshop 海报整理演讲标题、日期、地点、议题摘要与海报链接。
+- 将单页海报复制到 `files/ShuaijieShe_JumpTrading_AI_Poster.pdf`；源文件与站内副本 SHA-256 均为 `bcaa27ede411e77bb7a0e1d70ca58c6734a3b0efdd1b843c500c099e5a504666`。未复制同目录下的论文 PDF。
+- 已用 Poppler 渲染并目视检查海报：单页横向版式、标题、图表和二维码均完整可读。
+- [x] `ruby scripts/validate_notes_index.rb`（304 条索引）、导航 YAML 解析与 `git diff --check` 通过。
+- [x] 在本地单次进程关闭 GitHub Metadata DNS 探测后，隔离 Jekyll 全站构建成功至 `/private/tmp/jt-homepage-build`；首页导航生成 `Talks / Notes / CV`，Talks 列表和详情包含 Jump Trading 条目，PDF 已生成到站点 `files/`。
+- [x] 构建产物结构检查确认日期、地点、演讲摘要和 PDF 路径存在。
+- [ ] 未能做浏览器截图验收：当前运行沙箱禁止监听本地 HTTP 端口，Playwright CLI 的 npm 启动也未能完成；静态构建与链接检查已通过。
+
 ## 2026-11-09 工作区提交前核验
 
 - 按用户要求整理当前 10 个变更文件，范围包括三篇 Agent 研究笔记及索引、教材导出脚本、仓库规则、忽略配置、历史审计归档和本进度记录；本地教材与 PDF 仍由既有忽略规则保留。
