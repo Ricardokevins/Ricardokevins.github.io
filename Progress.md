@@ -1,5 +1,26 @@
 # Ricardokevins.github.io Progress
 
+## 2026-11-09 Score Centering 深度笔记
+
+### 完成变更
+
+- 新建 `notes/paper-reviews/score-centering-off-policy-rl-2026.html`，把 Together AI 的 Score Centering 论文及此前的概念追问整理成一篇面向未读原文读者的中文长文。
+- 正文先按论文原意讲清 training-inference mismatch、sampler \(q\) 与 trainer \(p\) 的两套概率、drift 的来源和论文论证顺序；再进入独立推导、证据审计与工程判断。
+- 机制部分覆盖：score 在自身分布下均值为零的归一化证明、off-policy 的两项分解、两 token 数值例、logit 空间 \(e_a-q\)、参数空间 \(J^\top\)、loss 反推、top-k 的 \(\rho\) 与 head 系数、group-centered reward 与 prefix-conditioned drift 的区别、value baseline 的对照。
+- 校正部分区分 naive PG、SC、TIS、MIS、PPO clip 和 SC+TIS/MIS 组合，明确“先 weight 再 center”的顺序，并解释为什么生成器的 logprob 是 \(q\) 而不是 trainer 的 \(\pi_{old}\)。
+- 证据部分整理 0.6B、1.7B、30B-A3B 的设置与数字，区分训练准确率与 held-out、面板内比较与跨面板绝对准确率、种子不均衡、top-k 质量与成本，以及 verl、TRL、NeMo-RL、Tinker 的接入条件。
+- 在 `_data/notes.yml` 顶部登记新条目，日期为 `2026-11-09 16:27`，类型为 Paper Note，标签覆盖 Score Centering、Reinforcement Learning、Training-Inference Mismatch、Importance Sampling、PPO、GRPO、Quantization、LLM Post-Training。
+
+### 验证结果
+
+- [x] `ruby scripts/validate_notes_index.rb` 通过：304 条索引与 304 个顶层笔记 HTML 一一对应；新笔记无质量警告，唯一短文警告来自既有 `turning-structure-into-reward.html`。
+- [x] `git diff --check` 通过。
+- [x] Jekyll 完整构建成功；仅保留仓库既有的 `faraday-retry` 与 GitHub Metadata 未认证提示，不影响静态页面。
+- [x] 浏览器检查 1440px 桌面与 390px 手机：文档宽度等于视口宽度，无页面级横向溢出；9 张表均在 `.table-wrap` 内，手机端表格容器可横向滚动；26 个公式块全部由 MathJax 渲染，页内锚点缺失 0，控制台错误 0。
+- [x] 结构审计：11 个 h2、41 个 h3、约 21,684 个可见字符；9 个 table 对应 9 个 table-wrap。首次手机检查发现 3 个较长公式在 390px 下需要横向滚动；已把两 token 例子、链式 Jacobian 和 PPO 目标拆成多行，复检后公式内部溢出为 0。
+- 本轮只读取论文 v1、官方代码与公开框架文档；没有运行 30B 训练，也没有独立复现论文实验。所有实验数字均为论文报告，证据边界已在文末标注。
+- 本次只改动新笔记、索引与本进度记录；没有改动其他笔记的正文。
+
 ## 2026-11-02 原 unlisted 笔记停止同步与下线（线上验收完成）
 
 - 用户要求原 unlisted 内容下线、不再同步到网上；本次范围为原 13 个索引入口及附属章节、代码与目录，共 105 个跟踪文件（其中 79 个 HTML，含目录）。

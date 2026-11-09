@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Score Centering：把采样器的偏差从策略梯度里减掉</title>
+
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: {
+        matchFontHeight: false,
+        mtextInheritFont: true,
+        linebreaks: { automatic: true, width: 'container' }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5f686f;
+      --line: #dcd6c8;
+      --accent: #c15f3c;
+      --accent-soft: #f7ece4;
+      --accent-2: #986023;
+      --accent-2-soft: #f8eee2;
+      --info: #50668f;
+      --info-soft: #edf1f8;
+      --risk: #9c4545;
+      --risk-soft: #f8eaea;
+      --good: #25675f;
+      --shadow: 0 16px 44px rgba(31, 37, 40, .08);
+      --radius: 10px;
+      --max: 1120px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.78;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    header, main {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 1040px;
+      margin: 0;
+      font: 760 clamp(32px, 4.8vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 940px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    main { display: grid; gap: 30px; padding-bottom: 64px; }
+    section { padding-top: 30px; border-top: 1px solid var(--line); scroll-margin-top: 68px; }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font: 740 clamp(24px, 3.2vw, 34px)/1.25 var(--serif); }
+    h3 { margin-top: 26px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 7px 0; }
+    strong { font-weight: 700; }
+    .small { color: var(--muted); font-size: 14px; }
+
+    .toc {
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,253,248,.92);
+      box-shadow: var(--shadow);
+    }
+    .toc b { display: block; margin-bottom: 8px; color: var(--accent-2); }
+    .toc-links { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+    .toc a { font-size: 14px; text-decoration: none; }
+
+    .grid-2, .grid-3 {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .metric {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+      font: 760 23px/1.15 var(--serif);
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout.risk { border-left-color: var(--risk); background: var(--risk-soft); }
+    .callout.risk > b { color: var(--risk); }
+
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      font-size: 14.5px;
+    }
+    caption {
+      padding: 12px 14px 8px;
+      color: var(--muted);
+      text-align: left;
+      font-size: 13.5px;
+    }
+    th, td {
+      padding: 10px 13px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+    .good { color: var(--good); font-weight: 700; }
+    .bad { color: var(--risk); font-weight: 700; }
+    .tag {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #ece5d7;
+      color: #7c2d12;
+      font-family: var(--mono);
+      font-size: .92em;
+    }
+    pre {
+      margin: 16px 0;
+      padding: 16px;
+      border-radius: var(--radius);
+      background: #18201f;
+      color: #f1ebde;
+      overflow-x: auto;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 24px, var(--max)); }
+      h1 { font-size: 31px; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+      .toc-links { display: grid; grid-template-columns: 1fr 1fr; }
+      .table-wrap table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <div class="kicker">Paper Note · Reinforcement Learning / Training-Inference Mismatch</div>
+    <h1>Score Centering：把采样器的偏差从策略梯度里减掉</h1>
+    <p class="lede">2026 年 9 月，Together AI 的 Martin Marek 与 Max Ryabinin 给出一个很简单的修正：不要直接使用采样 token 的 score，而是先减去采样分布下的期望 score。本文把这句话拆成可计算的步骤：为什么减、减什么、怎么在 top-k 词表上实现、它和 TIS/MIS/PPO 各修的是什么，以及 30B 实验到底证明了什么。</p>
+  </header>
+
+  <main>
+    <nav class="toc" aria-label="本文目录">
+      <b>阅读地图</b>
+      <div class="toc-links">
+        <a href="#source-reconstruction">论文讲解</a>
+        <a href="#takeaway">核心判断</a>
+        <a href="#problem">两套概率</a>
+        <a href="#mechanism">机制推导</a>
+        <a href="#is">TIS/MIS/PPO</a>
+        <a href="#evidence">实验证据</a>
+        <a href="#engineering">工程实现</a>
+        <a href="#terms">术语表</a>
+        <a href="#limits">边界与风险</a>
+        <a href="#insight">研究启发</a>
+        <a href="#sources">资料索引</a>
+      </div>
+    </nav>
+
+    <section id="source-reconstruction">
+      <h2>第一遍：这篇论文到底在解决什么</h2>
+
+      <p>这篇论文讨论的不是一个新的模型结构，也不是一个新的 reward，而是一个在 RL 训练系统里经常被忽略的记账问题：<strong>生成 rollout 的模型，和计算策略梯度的模型，可能不是同一个概率分布。</strong></p>
+
+      <p>在理想化的 on-policy RL 里，这两个东西是同一个策略 \(\pi_\theta\)：我们用 \(\pi_\theta\) 采样一条轨迹，再用同一个 \(\pi_\theta\) 计算 \(\log \pi_\theta(a\mid h)\) 和梯度。此时策略梯度有一个漂亮的性质：对任意 prefix \(h\)，score 在策略自身分布下的期望为零。也就是说，如果 reward 和 token 的选择没有关联，梯度平均下来应该不动。</p>
+
+      <p>但真实的大模型 RL 系统很少这么干净。生成通常交给 vLLM、SGLang 这类推理引擎，训练则在 Megatron、FSDP 或 JAX 训练栈里完成。两边即使加载同一个 checkpoint，也可能因为量化、kernel、并行方式、tokenizer、采样参数或异步更新，产生不同的下一 token 分布。论文把这种现象称为 <strong>training-inference mismatch（TIM）</strong>。</p>
+
+      <p>论文的核心观察是：TIM 下，score 的期望不再为零。这个非零的期望会像一个固定的方向，持续把参数往采样器的分布上推；它和 reward 无关，因此即使所有样本拿到同样的奖励，模型仍然会更新。作者把这种现象叫做 <strong>drift</strong>。Drift 每一步都很小，但在线 RL 会反复采样、反复更新，误差会累积，最终表现为训练崩溃、输出分布变窄或 reward 停滞。</p>
+
+      <div class="callout info">
+        <b>先澄清一个词</b>
+        <p>这里的 score 不是 attention score，也不是 reward model 的分数，而是策略对数概率对参数的梯度：\(s_v=\nabla_\theta \log p_v\)。它回答的是“如果想让 token \(v\) 的概率变大，参数应该往哪个方向走”。</p>
+      </div>
+
+      <h3>论文的论证顺序</h3>
+      <p>作者的推进很克制，基本是四步。</p>
+      <ol>
+        <li>先把 trainer 和 sampler 的下一 token 分布分别记为 \(p\) 和 \(q\)，定义每个 token 的 score \(s_v\)，证明 on-policy 时 \(\mathbb{E}_p[s_v]=0\)，而 TIM 下 \(\mathbb{E}_q[s_v]\neq 0\)。</li>
+        <li>把 off-policy 的梯度分解成“均值奖励乘 drift”和“奖励与 score 的协方差”两部分，指出 drift 是那个与奖励无关、但会持续累积的坏项。</li>
+        <li>提出 score centering（SC）：对每个 prefix，从采样 token 的 score 里减去采样分布下的期望 score。这个操作是加性的、确定性的、没有超参数；它不改变奖励，也不引入 importance ratio。</li>
+        <li>把 SC 和已有的 importance sampling（IS）方法对比，并给出 top-k 词表上的高效实现；然后在 0.6B 到 30B 的模型上，用合成噪声、量化和 staleness 三类 mismatch 做实验。</li>
+      </ol>
+
+      <h3>论文报告了什么</h3>
+      <p>实验的主线是 Qwen3 系列：0.6B 的 Countdown 任务、1.7B 的 toy reward 任务，以及 30B-A3B 的 INTELLECT-2 数学任务。所有方法共享同一套 REINFORCE 加 group-centered reward 的骨架，每个 batch 只做一步 SGD；作者刻意没有比较完整的 PPO、DAPO、GRPO 工程配方，而是把“校正规则”单独拿出来看。</p>
+
+      <p>在最温和的 FP8 量化设置下，普通策略梯度可以稳定训练到约 58% 的训练准确率，SC 和 TIS 的表现与它接近。真正拉开差距的是更严重的 mismatch：在 FP8 权重/激活加 FP4 KV cache 的设置里，普通策略梯度在 200 步内崩溃，MIS 在后期崩溃，而 SC 和 TIS 分别稳定在 52% 和 51%；在 INT8 权重/激活加 INT4 KV cache 的设置里，SC 仍有 30%，TIS 降到 12%，其余方法大多低于 5%。</p>
+
+      <p>作者还报告了 staleness 的结果：当推理引擎每 64 步才同步一次参数时，SC 单独使用不如 SC 加 TIS/MIS 的组合；组合能同时利用 IS 对采样分布的修正和 SC 对剩余 drift 的消除。与之相对，PPO/DAPO 能扛住 staleness，但在量化和权重噪声下崩溃，因为它们的 clip 针对的是策略更新的幅度，而不是数值误差造成的分布偏移。</p>
+
+      <h3>作者最后落到哪里</h3>
+      <p>论文的结论不是“SC 可以替代 PPO”，而是一个更窄、更可靠的判断：<strong>当 mismatch 是系统性的、且你能够记录采样器的概率时，减去期望 score 是一个便宜且有效的偏差修正。</strong>作者也明确承认，温和 mismatch 下短训练很难把差异跑显著，所以很多实验故意放大了 mismatch，把严重设置当作长训练的代理； headline 数字是训练准确率，不是 held-out benchmark；30B 的种子数量也不均衡。</p>
+
+      <p class="small">以上是按论文原意做的连续讲解。下面进入本文自己的结构化抽象、公式推导、证据审计与工程判断。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>核心判断：SC 修的是“没有奖励也会走”的那一部分</h2>
+
+      <p>如果把整篇论文压缩成一句话：<strong>SC 不是把 off-policy 变成 on-policy，而是把 off-policy 梯度里那个与奖励无关、却会持续累积的系统性漂移拿掉。</strong>它留下的是采样分布下的奖励- score 协方差；这部分仍然不是 on-policy 的目标，但至少是“有奖励信号”的部分。</p>
+
+      <div class="grid-3">
+        <div class="card">
+          <span class="metric">漂移是向量</span>
+          <h3>不是奖励均值</h3>
+          <p>要减的是 \(\mathbb{E}_q[s]\)，一个和参数同维的向量；不是把 reward 减去 batch 均值。奖励基线解决的是另一个问题。</p>
+        </div>
+        <div class="card">
+          <span class="metric">加法校正</span>
+          <h3>不是乘性权重</h3>
+          <p>SC 对每个样本做减法，不乘 importance ratio；因此不会出现 ratio 爆炸、截断偏差或 mask 丢样本的问题。</p>
+        </div>
+        <div class="card">
+          <span class="metric">偏差修正</span>
+          <h3>不是万能方差缩减</h3>
+          <p>SC 去掉 drift，但剩余项仍在 \(q\) 下取期望；\(q\neq p\) 时它不是 on-policy 的无偏梯度，也不保证方差一定下降。</p>
+        </div>
+      </div>
+
+      <p>这三个判断决定了它的适用边界：如果 mismatch 很轻，drift 很小，SC 的收益也小；如果 mismatch 很重，SC 能让训练不崩，但它不能把采样器变好，所以最终能力上限仍受 \(q\) 的限制；如果 mismatch 主要来自 staleness，单靠 SC 不够，需要和 TIS/MIS 组合。</p>
+    </section>
+
+    <section id="problem">
+      <h2>问题背景：同一个 checkpoint，为什么会有两个分布</h2>
+
+      <p>很多人第一次听到“生成模型和计算 \(\pi_{old}\) 的模型不同”会觉得奇怪：不就是同一个模型吗？问题在于，<strong>“模型”在工程上不是只有权重，还包括计算图、数值精度、kernel、并行方式和采样参数。</strong>任意一项改变，下一 token 的概率都会变。</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>表 1：trainer 与 sampler 产生不同分布的常见来源</caption>
+          <thead>
+            <tr><th>来源</th><th>trainer 侧 \(p\)</th><th>sampler 侧 \(q\)</th><th>后果</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>量化</td><td>bf16 / fp32 权重与激活</td><td>FP8、INT8、FP4 KV cache</td><td>logits 有系统偏差，q 是 p 的低精度近似</td></tr>
+            <tr><td>推理/训练引擎</td><td>Megatron、FSDP、JAX</td><td>vLLM、SGLang</td><td>kernel、融合方式、reduction 顺序不同</td></tr>
+            <tr><td>并行方式</td><td>序列并行、张量并行</td><td>自回归 decoding、continuous batching</td><td>浮点非结合性导致微小 logit 差异</td></tr>
+            <tr><td>tokenizer / chat template</td><td>训练侧模板</td><td>推理侧模板</td><td>同一段文本可能被切成不同 token</td></tr>
+            <tr><td>采样参数</td><td>通常看原始 softmax</td><td>temperature、top-p、top-k、repetition penalty</td><td>q 是处理后的行为分布，不是原始 p</td></tr>
+            <tr><td>异步 / staleness</td><td>当前参数 \(\theta_t\)</td><td>若干步之前的 \(\theta_{t-k}\)</td><td>q 是旧策略，甚至同一 batch 内混有多个版本</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>这就是为什么“同一个 checkpoint”不等于“同一个分布”。在监督学习里，这种差异通常只表现为一点点数值噪声；在 RL 里，它会被 importance ratio、log-prob 梯度和多步反馈放大。论文的实验之所以要故意放大 mismatch，就是因为温和设置下这点差异在短训练里很难被稳定观测到。</p>
+
+      <h3>\(\pi_{old}\) 到底是什么</h3>
+      <p>PPO 的 ratio 通常写成：</p>
+      <div class="math-display">\[
+r_a=\frac{\pi_\theta(a\mid h)}{\pi_{old}(a\mid h)}.
+\]</div>
+      <p>在很多实现里，\(\pi_{old}\) 是“这一批 rollout 开始时 trainer 侧保存的参数快照”。它是一个名义上的旧策略，用来限制新策略不要一步走太远。问题在于，真正生成数据的并不是这个快照，而是推理引擎里的 \(q\)：如果推理引擎做了量化，\(q\) 是量化模型的分布；如果推理引擎滞后，\(q\) 是更旧参数的分布。</p>
+
+      <p>于是有三种常见做法，它们对应的数学对象不同：</p>
+      <div class="table-wrap">
+        <table>
+          <caption>表 2：三种“旧策略”的用法</caption>
+          <thead>
+            <tr><th>做法</th><th>分母是什么</th><th>优点</th><th>风险</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>trainer 重算旧策略</td><td>full-precision 的 \(\pi_{old}\)</td><td>定义干净，PPO 语义稳定</td><td>和实际 behavior \(q\) 不一致，drift 仍在</td></tr>
+            <tr><td>直接用采样器 logprob</td><td>实际 behavior \(q\)</td><td>对 sampled token 的 IS 修正是精确的</td><td>q 可能只有 top-k、可能被量化、可能很旧</td></tr>
+            <tr><td>记录 q 并使用 SC/TIS/MIS</td><td>q，但额外做校正</td><td>承认 mismatch，并用统计方法处理</td><td>需要额外 logprob、存储和工程支持</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>关键区别</b>
+        <p>如果你把“旧策略”定义成实际 behavior distribution，那么 \(\pi_{old}=q\)，PPO 的 ratio 就是 \(p/q\)。但很多系统里的 \(\pi_{old}\) 是 trainer 侧重算的名义旧策略，而 \(q\) 是推理引擎真正执行的分布；两者只在采样器完全忠实执行 \(\pi_{old}\) 时才相等。</p>
+      </div>
+
+      <h3>为什么在线 RL 比 SFT 更敏感</h3>
+      <p>论文用一个对比来解释：离线 SFT 即使数据来自完全不同的模型，用 +1/0 奖励做 policy gradient 也往往稳定，因为数据分布是固定的，模型只是在拟合这些数据；而在线 RL 的采样器是当前策略的有偏副本，并且会周期性同步。模型学到的东西会改变下一轮采样，采样误差又回到训练里，形成 feedback loop。</p>
+
+      <p>可以把这想象成“老师”和“学生”的关系。离线蒸馏里，老师是固定的，即使老师有偏差，学生也不会把偏差放大；在线 RL 里，老师就是学生的有偏副本，学生越学越像老师，老师的偏差也被一起学进去。drift 正是这个 feedback loop 的数学表达。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制推导：从 naive PG 到 score centering</h2>
+
+      <h3>记号与 score 的定义</h3>
+      <p>固定一个 prefix \(h\)，也就是已经生成的上下文。记：</p>
+      <div class="def-list">
+        <div><b>\(p_v\)</b><span>trainer 当前策略给 token \(v\) 的下一 token 概率，\(p_v=\pi_\theta(v\mid h)\)。</span></div>
+        <div><b>\(q_v\)</b><span>sampler 实际生成时给 token \(v\) 的概率；它可能来自量化模型、旧 checkpoint 或不同的采样参数。</span></div>
+        <div><b>\(a\)</b><span>实际采样到的 token。注意它不是 label，而是 rollout 中真实执行的动作。</span></div>
+        <div><b>\(s_v\)</b><span>token \(v\) 的 score：\(s_v=\nabla_\theta \log p_v\)。它是一个和参数同维的向量。</span></div>
+        <div><b>\(A\)</b><span>这个 token 或这条轨迹的 advantage；它可以是标量，也可以是 group-centered 后的值。</span></div>
+      </div>
+
+      <p>策略梯度的基本形式是：</p>
+      <div class="math-display">\[
+\nabla_\theta J=\mathbb{E}_{a\sim q}\left[A\,s_a\right].
+\]</div>
+      <p>在 on-policy 且 \(q=p\) 时，对任意 prefix：</p>
+      <div class="math-display">\[
+\mathbb{E}_{v\sim p}[s_v]
+=\sum_v p_v \nabla_\theta \log p_v
+=\nabla_\theta \sum_v p_v
+=\nabla_\theta 1
+=0.
+\]</div>
+      <p>这一步是整个方法的地基：<strong>score 在策略自己的分布下均值为零，不是因为奖励均值为零，而是因为概率之和恒为 1。</strong>如果 \(q\neq p\)，同样的求和就不再是 \(\nabla_\theta 1\)，而是一个非零向量。</p>
+
+      <h3>off-policy 多出来的两项</h3>
+      <p>把 naive 梯度在 \(q\) 下展开：</p>
+      <div class="math-display">\[
+\mathbb{E}_q[A\,s_a]
+=\mathbb{E}_q[A]\cdot \mathbb{E}_q[s_a]
++\operatorname{Cov}_q(A,s_a).
+\]</div>
+      <p>第一项是“平均 advantage 乘 drift”。如果 \(A\) 是常数，第二项为零，第一项就是全部；如果 \(A\) 随 token 变化，第二项才包含“奖励和 token 选择相关”的信息。SC 只减掉 \(\mathbb{E}_q[s_a]\)，因此：</p>
+      <div class="math-display">\[
+\mathbb{E}_q\left[A\left(s_a-\mathbb{E}_q[s]\right)\right]
+=\operatorname{Cov}_q(A,s_a).
+\]</div>
+      <p>这就是论文的核心恒等式。它说明 SC 去掉的是 drift，留下的是 \(q\) 下的协方差；当 \(p=q\) 时，SC 是 no-op，因为 \(\mathbb{E}_q[s]=0\)。当 \(p\neq q\) 时，剩下的协方差一般不等于 on-policy 的 \(\operatorname{Cov}_p(A,s)\)，所以 SC 不是“完全无偏的 off-policy 修正”。</p>
+
+      <h3>两 token 的最小例子</h3>
+      <p>设词表只有两个 token，trainer 和 sampler 的分布分别是：</p>
+      <div class="math-display">\[
+p=(0.7,\;0.3),\qquad q=(0.5,\;0.5).
+\]</div>
+      <p>在 logit 坐标下，score 是 \(s_v=e_v-p\)，所以：</p>
+      <div class="math-display">\[
+\begin{aligned}
+s_1&=(1-0.7,\;-0.3)=(0.3,\;-0.3),\\
+s_2&=(-0.7,\;0.7).
+\end{aligned}
+\]</div>
+      <p>采样分布下的期望 score 是：</p>
+      <div class="math-display">\[
+\mathbb{E}_q[s]=0.5s_1+0.5s_2=(-0.2,\;0.2)=q-p.
+\]</div>
+
+      <div class="table-wrap">
+        <table>
+          <caption>表 3：两 token 例子，常数 advantage \(A=1\)</caption>
+          <thead>
+            <tr><th>采样到的 token</th><th>naive 更新 \(A s_a\)</th><th>SC 更新 \(A(s_a-\mathbb{E}_q[s])\)</th><th>采样概率</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>token 1</td><td>\((0.3,\;-0.3)\)</td><td>\((0.5,\;-0.5)\)</td><td>0.5</td></tr>
+            <tr><td>token 2</td><td>\((-0.7,\;0.7)\)</td><td>\((-0.5,\;0.5)\)</td><td>0.5</td></tr>
+            <tr><td>按 \(q\) 平均</td><td class="bad">\((-0.2,\;0.2)\)</td><td class="good">\((0,\;0)\)</td><td>1.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>这就是“采样到 token 1 时，SC 是 \((0.3,-0.3)-(-0.2,0.2)=(0.5,-0.5)\)”的来源。单条样本的更新不是零，按 \(q\) 平均才是零。naive 的平均是 \((-0.2,0.2)\)，正好等于 \(q-p\)；SC 把这个漂移减掉了。</p>
+
+      <p>但如果 \(A\) 不是常数，SC 的平均就不是零。例如奖励只在 token 1 上为 1，SC 会留下 \(0.5\times(0.5,-0.5)=(0.25,-0.25)\)，而 on-policy 的目标是 \(0.7\times(0.3,-0.3)=(0.21,-0.21)\)。两者不相等，因为采样分布是 \(q\) 而不是 \(p\)。这正是“SC 是偏差修正，不是无偏估计”的具体含义。</p>
+
+      <h3>从 logit 看：\(e_a-q\) 是什么</h3>
+      <p>上面的例子把 logits 当成参数，所以 \(s_v=e_v-p\)。真实模型里 logits 是参数的函数，但在 logit 空间看会更清楚。设 \(z\) 是 logits，\(p=\operatorname{softmax}(z)\)，则：</p>
+      <div class="math-display">\[
+\nabla_z \log p_v=e_v-p,
+\qquad
+\mathbb{E}_{v\sim q}[\nabla_z \log p_v]=q-p.
+\]</div>
+      <p>因此 SC 在 logit 空间的更新是：</p>
+      <div class="math-display">\[
+(e_a-p)-(q-p)=e_a-q.
+\]</div>
+      <p>这句话可以读成：<strong>采样到的 token 加 1，所有 token 减 \(q\)。</strong>它不是“减一个标量”，而是减一个和词表同维的向量；在真实模型里，这个向量还会通过 Jacobian 映射到参数空间。</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>表 4：三个容易混淆的量</caption>
+          <thead>
+            <tr><th>量</th><th>含义</th><th>方向</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>\(q-p\)</td><td>采样分布相对 trainer 的 drift</td><td>从 p 指向 q；naive 更新会往这个方向走</td></tr>
+            <tr><td>\(p-q\)</td><td>drift 的修正量</td><td>从 q 指回 p；SC 把它加回去</td></tr>
+            <tr><td>\(e_a-q\)</td><td>SC 在 logit 空间的最终方向</td><td>采样 token 上加 1，所有 token 减 q</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>从参数空间看：为什么要乘 \(J^\top\)</h3>
+      <p>\(e_a-q\) 是 logit 空间的梯度，不是参数空间的梯度。设 \(z=f_\theta(h)\)，\(J=\partial z/\partial\theta\)，则：</p>
+      <div class="math-display">\[
+s_v=\nabla_\theta \log p_v=J^\top(e_v-p),
+\]</div>
+      <div class="math-display">\[
+\begin{aligned}
+s_a-\sum_v q_v s_v
+&=J^\top\left[(e_a-p)-(q-p)\right]\\
+&=J^\top(e_a-q).
+\end{aligned}
+\]</div>
+      <p>所以参数更新是 \(A J^\top(e_a-q)\)，而 loss 对参数的梯度是它的相反数 \(-A J^\top(e_a-q)\)。如果 logits 本身就是参数（\(z=\theta\)），那么 \(J=I\)，两者数值相同；真实模型里 \(J\neq I\)，必须区分“logit 梯度”和“参数梯度”。</p>
+
+      <h3>loss 是怎么反推出来的</h3>
+      <p>我们想要优化器产生更新 \(A(s_a-\sum_v q_v s_v)\)。优化器做的是 \(\theta\leftarrow\theta-\eta\nabla_\theta L\)，所以需要：</p>
+      <div class="math-display">\[
+\nabla_\theta L=-A\left(s_a-\sum_v q_v s_v\right).
+\]</div>
+      <p>利用 \(\nabla_\theta \log p_a=s_a\) 和 \(\nabla_\theta \sum_v q_v\log p_v=\sum_v q_v s_v\)（把 \(q\) 冻结），可以得到：</p>
+      <div class="math-display">\[
+L=-A\left(\log p_a-\sum_v \operatorname{sg}(q_v)\log p_v\right),
+\]</div>
+      <p>其中 \(\operatorname{sg}(\cdot)\) 是 stop-gradient。这个 loss 的数值没有直接的物理意义，它只是一个“梯度生成器”；真正要学的是它的梯度。实现时 \(q\)、\(\rho\)、\(A\) 都必须 detach，否则会对它们求导，得到完全不同的更新。</p>
+
+      <h3>top-k 词表上的实现</h3>
+      <p>真实词表有 15 万到 20 万 token，保存完整 \(q\) 很贵。论文只记录 sampler 的 top-k logprobs，默认 \(k=128\)。记 head 集合为 \(H\)，head 质量为：</p>
+      <div class="math-display">\[
+q_H=\sum_{v\in H}q_v,\qquad p_H=\sum_{v\in H}p_v.
+\]</div>
+      <p>tail 的概率用 trainer 分布按 sampler 的 tail 质量重标：</p>
+      <div class="math-display">\[
+q_v\approx \rho p_v\quad(v\notin H),\qquad
+\rho=\frac{1-q_H}{1-p_H}.
+\]</div>
+      <p>于是期望 score 可以写成 head 上的求和：</p>
+      <div class="math-display">\[
+\mathbb{E}_q[s]\approx\sum_{v\in H}(q_v-\rho p_v)s_v.
+\]</div>
+      <p>对应的 loss 是：</p>
+      <div class="math-display">\[
+L=-A\left(\log p_a-\sum_{v\in H}\operatorname{sg}(q_v-\rho p_v)\log p_v\right).
+\]</div>
+      <p>这里有几个实现细节，错一个就会把方法做坏：</p>
+      <ul>
+        <li><strong>head 不重新归一化。</strong>\(q_v\) 和 \(p_v\) 都用原始概率；如果把 head 归一化，tail 质量就被伪装成 full support，\(\rho\) 也失去意义。</li>
+        <li><strong>采样 token 的 logprob 必须保留。</strong>即使它不在 top-k 里，第一项 \(\log p_a\) 仍然需要；IS 组合还需要 \(q_a\)。</li>
+        <li><strong>tail 只用 \(\rho p_v\) 近似。</strong>\(k=128\) 时 head 覆盖大多数 sampler mass；\(k=V-1\) 时 tail 只剩一个 token，近似是精确的。</li>
+        <li><strong>系数全部 stop-gradient。</strong>q、\(\rho\)、A 是统计量，不是要优化的参数。</li>
+      </ul>
+
+      <h3>为什么 group-centered reward 不能替代 SC</h3>
+      <p>GRPO 之类的 group-centered reward 会让同一个 prompt 下所有轨迹的 advantage 之和为零。这消掉的是“prompt 级别”的均值，不是“prefix 级别”的均值。SC 需要的是对每个 prefix \(h\) 都有 \(\mathbb{E}_q[A\mid h]=0\)；group centering 通常做不到这一点。</p>
+
+      <p>论文特别指出，drift 恰恰在有学习信号的 prefix 上最强：如果某个 prefix 下所有采样都得到同样的奖励，group centering 会把 advantage 变成零，这个 prefix 反而不贡献梯度；而在那些奖励有差异的 prefix 上，\(\mathbb{E}_q[A\mid h]\) 通常非零，drift 仍然存在。因此“组内减均值”不是 SC 的替代品。</p>
+
+      <h3>和 value baseline 的关系</h3>
+      <p>如果有一个精确的 \(V_q(h)\)，用 \(A=V_q(h)-R\) 之类的 baseline 也能在期望上消掉 drift，因为减去的正是 \(\mathbb{E}_q[A\mid h]\cdot\mathbb{E}_q[s]\)。但 value baseline 需要 critic，critic 本身也有误差；SC 不需要 critic，它直接用采样分布 \(q\) 算期望 score。两者不是互斥的：SC 是“用已知的 q 做无 critic 的 drift 修正”，value baseline 是“用学到的 V 做方差缩减和 drift 修正”。</p>
+    </section>
+
+    <section id="is">
+      <h2>TIS、MIS、PPO：它们各自在修什么</h2>
+
+      <p>要理解 SC 的位置，最好把它和 importance sampling 放在一张桌子上。它们都在处理 \(q\neq p\)，但处理的对象不同：IS 改的是“每个样本的权重”，SC 改的是“每个样本的 score 减去什么”。</p>
+
+      <h3>Importance sampling 的基本恒等式</h3>
+      <p>对于从 \(q\) 采样的 token \(a\)，如果 \(q_a\gt 0\)，有：</p>
+      <div class="math-display">\[
+\mathbb{E}_{a\sim p}[A\,s_a]
+=\mathbb{E}_{a\sim q}\left[\frac{p_a}{q_a}A\,s_a\right].
+\]</div>
+      <p>令 \(r_a=p_a/q_a\)，IS 更新就是 \(r_a A s_a\)。在没有截断、full support 的情况下，它是无偏的；问题是方差。稀有 token 的 \(r_a\) 可能非常大，一个样本就能主导整个 batch。</p>
+
+      <h3>TIS：把 ratio 砍到上限</h3>
+      <p>Truncated importance sampling 用：</p>
+      <div class="math-display">\[
+w_v=\min(r_v,C),
+\]</div>
+      <p>论文的实现里 \(C=2\)。它把高 ratio 压到 2，方差降下来了，但高 ratio 样本的贡献被低估，因而引入偏差。TIS 在温和 mismatch 下通常够用；在严重 mismatch 下，大量样本的 ratio 会超过上限，截断偏差变成主要问题。</p>
+
+      <p>用前面的两 token 例子：\(r_1=0.7/0.5=1.4\)，\(r_2=0.3/0.5=0.6\)。如果 \(C=2\)，两个都没被截断，期望为零；如果 \(C=1\)，token 1 的权重被压到 1，按 \(q\) 平均会留下 \((-0.06,0.06)\) 的残差。这就是“截断重新引入 drift”的最小演示。</p>
+
+      <h3>MIS：区间外直接丢掉</h3>
+      <p>Masked importance sampling 用：</p>
+      <div class="math-display">\[
+w_v=
+\begin{cases}
+r_v, & r_v\in[\ell,u],\\
+0, & \text{otherwise}.
+\end{cases}
+\]</div>
+      <p>论文的实现里区间是 \([0.5,5]\)。它比 TIS 更激进：区间外的样本不是被压权重，而是完全不贡献梯度。好处是极端 ratio 不会污染更新；坏处是可能丢掉大量样本，尤其在严重 mismatch 下，留下的是被截断的、非随机的子集，偏差可能更大。</p>
+
+      <p>还是两 token 例子：区间 \([0.5,1.5]\) 会保留两个 token；区间 \([0.8,1.2]\) 会把两个都丢掉，更新为零。零更新不是“无偏”，只是“没有学习信号”。这也解释了为什么 MIS 在严重 mismatch 下可能后期崩溃：它不是修好了分布，而是把大部分数据扔掉了。</p>
+
+      <h3>PPO 的 ratio 在修什么</h3>
+      <p>PPO 的目标通常写成：</p>
+      <div class="math-display">\[
+\begin{aligned}
+L_{\text{PPO}}
+&=-\mathbb{E}\Big[\min\Big(r_a A,\\
+&\qquad \operatorname{clip}(r_a,1-\epsilon,1+\epsilon)A\Big)\Big],\\
+r_a&=\frac{p_a}{\pi_{old,a}}.
+\end{aligned}
+\]</div>
+      <p>这个 ratio 的目的是限制“新策略相对旧策略走多远”，它是一个 trust region 机制。它并不是为“trainer 和 sampler 数值不一致”设计的。若 \(\pi_{old}=q\)，PPO ratio 和 IS ratio 是同一个东西；若 \(\pi_{old}\) 是 trainer 重算的名义旧策略，而数据来自量化后的 \(q\)，那么 clip 只能约束 \(p/\pi_{old}\)，约束不了 \(p/q\) 的漂移。</p>
+
+      <p>DPPO 用 total variation 做二值 mask，试图把“变化太大”的 token 去掉；但它仍然依赖 IS ratio，仍然假设分母是 behavior distribution。它能在 staleness 下工作，不代表它能处理量化误差。</p>
+
+      <h3>SC 和 IS 的组合：先加权，再中心化</h3>
+      <p>SC 可以和 TIS/MIS 组合。给定权重 \(w_v\)，正确的更新是：</p>
+      <div class="math-display">\[
+A\left(w_a s_a-\sum_v q_v w_v s_v\right).
+\]</div>
+      <p>注意顺序：<strong>先对 score 加权，再减加权后的期望。</strong>如果反过来，先减期望再加权，减掉的不是 \(w\) 下的均值，会留下残差。用 full-vocab 的 loss 写就是：</p>
+      <div class="math-display">\[
+L=-A\left(w_a\log p_a-\sum_v \operatorname{sg}(q_v w_v)\log p_v\right).
+\]</div>
+      <p>top-k 版本里，tail 的权重是常数 \(w(1/\rho)\)，因为 tail 上 \(r_v=p_v/q_v=1/\rho\)。令：</p>
+      <div class="math-display">\[
+\alpha=\rho\,w(1/\rho),
+\]</div>
+      <p>则 head 的系数是 \(q_v w_v-\alpha p_v\)，loss 为：</p>
+      <div class="math-display">\[
+L=-A\left(w_a\log p_a-\sum_{v\in H}\operatorname{sg}(q_v w_v-\alpha p_v)\log p_v\right).
+\]</div>
+      <p>这解释了论文里的一个细节：SC 和 IS 不是二选一。SC 去掉剩余 drift，IS 把采样分布往 trainer 拉近；在 staleness 场景下，两者组合通常比单独 SC 更好。</p>
+
+      <h3>为什么不能直接用生成器的 logprob 当 \(\pi_{old}\)</h3>
+      <p>生成器当然可以在生成时算 sampled token 的 logprob，但那是 \(q_a\)，不是 trainer 的 \(\pi_{old,a}\)。如果你把 \(q\) 当 \(\pi_{old}\)，你做的其实是 behavior IS：ratio 变成 \(p/q\)，这在数学上是合法的，但它不再是“trainer 名义旧策略”的 PPO。两者的区别不是符号游戏，而是分母代表的对象不同。</p>
+
+      <p>工程上还有三个现实约束：第一，推理引擎未必暴露完整 logprob，通常只有 top-k 或不给；第二，top-k 的排序、序列化和传输有成本，尤其在高并发下；第三，q 可能是量化后的、滞后的，直接拿它做分母会把数值误差带进 ratio。论文的选择是：记录 q 的 top-k，用 SC/TIS/MIS 显式处理 mismatch，而不是假装 q 就是 \(\pi_{old}\)。</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>表 5：几种校正方式的对比</caption>
+          <thead>
+            <tr><th>方法</th><th>对样本做什么</th><th>用到的信息</th><th>超参数</th><th>主要问题</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>naive PG</td><td>直接用 \(A s_a\)</td><td>p、a、A</td><td>无</td><td>q 下的 drift 会累积</td></tr>
+            <tr><td>SC</td><td>减 \(\mathbb{E}_q[s]\)</td><td>p、q 的 top-k</td><td>k</td><td>剩余协方差仍在 q 下，不是无偏</td></tr>
+            <tr><td>TIS</td><td>乘 \(\min(r,C)\)</td><td>p、q、a</td><td>C</td><td>截断偏差；ratio 方差</td></tr>
+            <tr><td>MIS</td><td>区间内乘 r，区间外置零</td><td>p、q、a</td><td>\(\ell,u\)</td><td>丢数据；严重 mismatch 下信号稀疏</td></tr>
+            <tr><td>PPO</td><td>clip \(p/\pi_{old}\)</td><td>p、\(\pi_{old}\)、a</td><td>\(\epsilon\)</td><td>不直接修 trainer/sampler 的数值差</td></tr>
+            <tr><td>SC + TIS/MIS</td><td>先加权，再减加权均值</td><td>p、q、a、w</td><td>k、C 或区间</td><td>实现复杂；需要 q 的覆盖</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>实验证据：数字说明了什么，又没说明什么</h2>
+
+      <p>论文的实验设计有一个明确取舍：它不比较完整的 PPO/GRPO 配方，而是固定一个简单的 REINFORCE 骨架，把不同的校正规则单独加上去。这样做的好处是能隔离变量，坏处是结论不能直接外推到所有 RL 系统。</p>
+
+      <h3>设置</h3>
+      <ul>
+        <li>模型：Qwen3-0.6B-Instruct 做 Countdown；Qwen3-30B-A3B-Base 做 INTELLECT-2 数学；另有 1.7B 的 toy reward 任务。</li>
+        <li>算法：REINFORCE 加 group-centered rewards，每个 batch 一个 SGD step；所有 importance ratio 用 sampler 记录的 logprob。</li>
+        <li>mismatch 来源：合成 Gaussian 权重噪声、只量化 sampler 的 FP8/INT8/FP4 KV、以及推理引擎每 64 步才同步一次的 staleness。</li>
+        <li>作者刻意放大 mismatch，因为温和设置下短训练很难把方法差异跑显著；严重设置被当作长训练的代理。</li>
+      </ul>
+
+      <h3>30B 的主要数字</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>表 6：30B-A3B 在量化 mismatch 下的训练准确率（论文报告，非 held-out）</caption>
+          <thead>
+            <tr><th>设置</th><th>naive PG</th><th>TIS</th><th>MIS</th><th>SC</th><th>读法</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>FP8 温和</td><td>约 58%</td><td>接近 naive</td><td>接近 naive</td><td>接近 naive</td><td>mismatch 轻，普通 PG 就够</td></tr>
+            <tr><td>FP8 W/A + FP4 KV</td><td class="bad">200 步内崩</td><td>51%</td><td class="bad">后期崩</td><td class="good">52%</td><td>SC/TIS 能稳住，SC 略高</td></tr>
+            <tr><td>INT8 W/A + INT4 KV</td><td class="bad">低于 5%</td><td>12%</td><td class="bad">低于 5%</td><td class="good">30%</td><td>严重 mismatch 下只有 SC 类方法有明显信号</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>这些数字最容易被误读的地方是“52% 对 58%”或“30% 对 58%”。它们不是同一个面板里的对照：FP8 温和面板的 58% 是 naive 的稳定值，FP4/INT4 面板则是更严重的失配设置；不同面板的绝对准确率不能直接横比。论文想说明的是<strong>同一面板内，哪种方法能稳住训练</strong>，而不是“SC 普遍比 naive 高 18 个百分点”。</p>
+
+      <h3>合成噪声与 staleness</h3>
+      <p>在合成 Gaussian 权重噪声下，SC、TIS、MIS 及其组合普遍优于 naive；噪声最大时，只有 SC 和 SC+TIS/MIS 稳定。DPPO 在三个噪声档大约第 160、80、20 步崩溃，TIS 在小噪声下稳定、大噪声下约第 180 或 40 步崩溃。这里的“崩溃步数”是论文图上的近似读数，不是精确的算法常数。</p>
+
+      <p>staleness 的结果方向相反：SC 单独使用不如 SC+TIS/MIS。作者的解释是，SC 的剩余协方差是在 \(q\) 下算的；TIS/MIS 先把 \(q\) 往 \(p\) 拉近，SC 再消掉剩余 drift。PPO/DAPO 能扛住 staleness，但在量化和权重噪声下崩溃，因为它们的 clip 不是为数值误差设计的。</p>
+
+      <h3>top-k 的质量与成本</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>表 7：top-k 近似的证据（论文附录）</caption>
+          <thead>
+            <tr><th>项目</th><th>报告值</th><th>含义</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>默认 k</td><td>128</td><td>head 覆盖大多数 sampler mass</td></tr>
+            <tr><td>k=32/128</td><td>在所测设置与 full SC 相当</td><td>不是所有任务都保证，但至少这些实验够用</td></tr>
+            <tr><td>k=V−1</td><td>tail 只剩一个 token，近似精确</td><td>单元测试常用的 toy 情形</td></tr>
+            <tr><td>head 平均质量</td><td>除最重 30B 外均高于 99.9%</td><td>INT8+INT4 为 99.45%，最差 batch 95.8%</td></tr>
+            <tr><td>full logprob 成本</td><td>152K 词表、fp32 约 608KB/token；1024×32K 约 20TB</td><td>不现实，所以必须 top-k</td></tr>
+            <tr><td>wall-clock</td><td>匹配硬件上相对 baseline 低于 1%</td><td>作者的自定义 JAX sampler；vLLM/SGLang 开销未测</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>top-k 的边界要说清楚：head 覆盖 99.9% 不等于 tail 的 shape 一定对。论文用的是“tail 按 trainer 分布重标”的近似；如果任务 entropy 很高、tail 很重，或者 top-k 之外的概率不可忽略，这个近似会有残差。官方单元测试只覆盖了 \(k=V-1\) 的 toy 情形，不能证明大词表 tail 一定无误。</p>
+
+      <h3>种子与证据强度</h3>
+      <p>30B 的种子并不均衡：FP8 面板全是单 seed；FP4 KV 面板是 SC 5、TIS 4、MIS 3、vanilla IS 2；INT4 KV 面板是 SC 4、TIS 3、MIS 3、vanilla IS 1；0.6B/1.7B 每个方法 3 seeds。作者先跑单 seed，再给最有希望的方法补种子。这在小模型上问题不大，但在 30B 上意味着“绝对准确率”的置信区间并不对称。</p>
+
+      <p>此外，序列长度是 512/1024，训练步数有限；没有 replay MoE router indices（作者说实践中最好 replay）；headline 是训练准确率，不是独立 held-out benchmark。所有这些都限制了“SC 在真实长训练里一定更好”的外推。</p>
+
+      <div class="callout warn">
+        <b>怎么读这篇论文的证据</b>
+        <p>它最强的是“机制 + 严重 mismatch 下的稳定性”：在同一个面板里，naive 崩了而 SC 没崩，这个对比很难用随机波动解释。它较弱的是“普遍性能提升”：不同面板、不同种子、短序列、训练准确率，都不足以支持“SC 在所有 RL 任务上都能涨点”的说法。</p>
+      </div>
+    </section>
+
+    <section id="engineering">
+      <h2>工程实现：怎么把它接进现有 RL 栈</h2>
+
+      <p>SC 的数学很简单，工程上却有几个容易踩的坑。下面按“数据要什么、框架怎么接、上线前怎么验”三层说。</p>
+
+      <h3>数据层：你需要保存什么</h3>
+      <ul>
+        <li><strong>采样 token 的 \(q_a\)。</strong>即使它不在 top-k 里，IS 组合也需要；SC 单独用时间接需要 \(\rho\) 和 head 质量。</li>
+        <li><strong>sampler top-k 的 ids 与 logprobs。</strong>默认 \(k=128\)；不要只存概率，存 logprob 更稳。</li>
+        <li><strong>trainer 侧对应 head 的 logprobs。</strong>用原始值，不要重新归一化；需要和 sampler 的 tokenizer、模板对齐。</li>
+        <li><strong>采样参数。</strong>temperature、top-p、top-k 会改变 \(q\)；如果训练侧用原始 softmax，必须知道这个差异。</li>
+      </ul>
+
+      <h3>框架层：不同栈的接入条件</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>表 8：公开文档里的接入条件（截至 2026 年 11 月）</caption>
+          <thead>
+            <tr><th>框架</th><th>默认</th><th>关键条件</th><th>备注</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>verl</td><td>关闭</td><td>需 bypass mode、REINFORCE loss、rollout IS 为 None 或 token、不做 batch normalize、topk_log_probs 大于 0、FSDP actor</td><td>不兼容 fused kernels、distillation；只支持 single-turn agent loop</td></tr>
+            <tr><td>TRL AsyncGRPO</td><td>实验性，默认开启</td><td>记录 sampler top logprobs，按 IS clip 区间 mask</td><td>top logprobs 的序列化成本可能很高；vLLM 新版多 API server 可缓解</td></tr>
+            <tr><td>NeMo-RL</td><td>实验性，默认关闭</td><td>loss_fn.score_centering、top_logprobs、SingleController + Gym + vLLM + token capture</td><td>filters 需要 sampler replay 的 shared support；不是所有 PPO 路径都精确等价</td></tr>
+            <tr><td>Tinker</td><td>stable_reinforce 的 alpha</td><td>需要 record_stability_info 和 sequence provenance</td><td>公开文档没有给出 SC 的逐项等式，不能当作独立复现</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>这里最值得记住的不是“哪个框架支持”，而是“支持”往往有条件。verl 的 score centering 需要特定的 bypass 路径；TRL 默认开启但把成本转移到了 logprob 序列化；NeMo-RL 仍是 experimental；Tinker 的 stable_reinforce 是产品接口，不是论文公式的逐项实现。上线前要读自己版本的文档，不要只看 README 的“支持”二字。</p>
+
+      <h3>成本层：full logprob 为什么不可行</h3>
+      <p>Qwen3 的词表约 152K。一个 token 的 fp32 全词表 logprob 约 608KB；如果 batch 1024、序列 32K，单是 logprob 就约 20TB。这就是论文只存 top-k 的原因。top-k 把存储降到 \(k\) 个数，但带来两个成本：排序/选择本身的算力，以及从推理引擎到训练侧的传输。</p>
+
+      <p>论文在自定义 JAX sampler 上报告相对 baseline 低于 1% 的 wall-clock；这不等于 vLLM/SGLang 的实际开销。TRL 文档报告过：默认单 API server、top-8 时生成吞吐可能减半；vLLM 0.32 以上、8 个 API server 可以降到 3% 以下；v0.31 仍有 20% 到 40% 的损失。部署时要按自己的引擎版本和并发量实测。</p>
+
+      <h3>验证层：上线前的五个检查</h3>
+      <ol>
+        <li><strong>常数奖励测试。</strong>固定所有样本奖励相同，naive 应该出现非零更新，SC 的期望应该接近零；如果 SC 也更新，说明 q 或 stop-gradient 有问题。</li>
+        <li><strong>q 的覆盖率。</strong>记录 head mass \(q_H\) 和 tail 比例；如果 \(q_H\) 很低，top-k 近似不可信。</li>
+        <li><strong>\(\rho\) 的数值稳定性。</strong>当 \(p_H\) 接近 1 时，\(\rho\) 的分母会很小；需要 clamp 或回退到 full/更小的 k。</li>
+        <li><strong>采样 token 是否在 head 内。</strong>两种路径都要测；不要假设它一定在 top-k 里。</li>
+        <li><strong>组合顺序。</strong>先 weight 再 center；用有限差分或玩具分布验证梯度方向，不要只看 loss 曲线。</li>
+      </ol>
+    </section>
+
+    <section id="terms">
+      <h2>术语表</h2>
+
+      <div class="def-list">
+        <div><b>TIM</b><span>training-inference mismatch。训练引擎和推理引擎即使加载同一 checkpoint，也可能产生不同的下一 token 分布。</span></div>
+        <div><b>\(p\)</b><span>trainer 当前策略的下一 token 分布；它参与梯度计算，通常是 full precision。</span></div>
+        <div><b>\(q\)</b><span>sampler 实际生成时的下一 token 分布；它可能被量化、滞后，或带有 sampling 后处理。</span></div>
+        <div><b>\(\pi_{old}\)</b><span>PPO 名义上的旧策略。它可以是 trainer 重算的快照，也可以是采样器记录的行为分布；两种定义只在 sampler 完全忠实时相等。</span></div>
+        <div><b>score</b><span>\(s_v=\nabla_\theta \log p_v\)，策略对数概率对参数的梯度；不是 attention score，也不是 reward。</span></div>
+        <div><b>drift</b><span>\(\mathbb{E}_q[s]\)，采样分布下 score 的非零均值；它与奖励无关，会持续把参数推向采样器分布。</span></div>
+        <div><b>IS</b><span>importance sampling。用 \(p/q\) 乘样本，把 \(q\) 下的期望改写成 \(p\) 下的期望；无偏但方差大。</span></div>
+        <div><b>TIS</b><span>truncated IS。把 ratio 截到上限 \(C\)，降低方差但引入截断偏差。</span></div>
+        <div><b>MIS</b><span>masked IS。ratio 在区间内才保留，区间外置零；更激进地去掉极端样本。</span></div>
+        <div><b>top-k</b><span>只保留 sampler 概率最高的 k 个 token；tail 用 trainer 分布按 tail mass 重标。</span></div>
+        <div><b>stop-gradient</b><span>在前向计算中保留数值，但反向传播时不求导；SC 的 q、\(\rho\)、A 都必须这样处理。</span></div>
+        <div><b>covariance</b><span>\(\operatorname{Cov}_q(A,s)\)，奖励与 score 在采样分布下的协方差；SC 留下的就是这一项。</span></div>
+        <div><b>logit 梯度</b><span>对 logits 的导数 \(e_a-q\)；参数梯度还要乘 Jacobian \(J^\top\)，两者不能混为一谈。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>边界与风险：它不保证什么</h2>
+
+      <h3>它不是无偏的 off-policy 梯度</h3>
+      <p>SC 去掉 drift 后，剩下的是 \(\operatorname{Cov}_q(A,s)\)，而不是 on-policy 的 \(\operatorname{Cov}_p(A,s)\)。如果 \(q\) 和 \(p\) 差得很远，这个协方差本身也可能有偏。SC 让训练“不漂”，不等于让训练“朝着正确的目标走”。</p>
+
+      <h3>它不是通用的方差缩减</h3>
+      <p>论文明确说 SC 是 bias correction，不是 variance reduction。减掉一个随机向量的均值，有时会降低方差，有时会增加方差；没有普遍保证。把它当成“免费降方差”会失望。</p>
+
+      <h3>top-k 是近似，不是精确</h3>
+      <p>tail 用 \(\rho p_v\) 重标，假设 tail 的形状和 trainer 一致。如果采样器 tail 很重、任务 entropy 很高，或者 top-k 覆盖不足，这个假设会失效。单元测试只覆盖 \(k=V-1\) 的 toy 情形，不能替代真实词表上的验证。</p>
+
+      <h3>实验外推有限</h3>
+      <p>headline 是训练准确率，不是 held-out benchmark；30B 种子不均衡；序列长度 512/1024；没有 MoE router replay；严重 mismatch 是长训练的代理，不是真实长训练本身。作者自己承认温和 mismatch 下短训练差异小，所以不能把“SC 在严重设置下稳定”外推成“SC 在所有任务上涨点”。</p>
+
+      <h3>工程约束</h3>
+      <p>需要 sampler 的 top-k logprobs、需要 trainer 侧对齐的 head logprobs、需要处理 tokenizer/模板/采样参数差异；推理引擎可能不暴露 logprob，或者暴露成本很高；框架支持往往是 experimental，且有 bypass、FSDP、single-turn 等限制。SC 不是一个“加一行 loss 就能用”的方法。</p>
+
+      <h3>理论边界</h3>
+      <p>SC 的推导是 prefix 条件的；group-centered reward 只保证 prompt 级别的均值为零，不保证 prefix 条件均值为零。精确的 value baseline 也能消 drift，但需要 critic。IS 组合在 full support 下更干净，但实际系统往往只有 top-k，support 不完整。所有这些都意味着：SC 是一个有明确适用条件的工具，不是 RL 的通用解药。</p>
+
+      <div class="callout risk">
+        <b>如果只记一句话</b>
+        <p>SC 能让“没有奖励也会走”的漂移消失，但它不能把采样器变成 trainer，也不能保证剩下的协方差就是你要的 on-policy 目标。它是稳定器，不是修正一切的万能公式。</p>
+      </div>
+    </section>
+
+    <section id="insight">
+      <h2>研究启发：把“分布记账”当成一等公民</h2>
+
+      <p>这篇论文最有价值的地方，可能不是那个减法本身，而是它逼着我们把 RL 系统里的三个分布分开：</p>
+      <ul>
+        <li><strong>\(p\)</strong>：trainer 当前策略，决定梯度；</li>
+        <li><strong>\(q\)</strong>：sampler 实际行为，决定数据从哪来；</li>
+        <li><strong>\(\pi_{old}\)</strong>：PPO 名义旧策略，决定 trust region 的分母。</li>
+      </ul>
+      <p>很多 RL 的“玄学不稳定”，追根溯源是这三个对象被混用了：数据来自 q，梯度按 p 算，ratio 却除以 π_old。把这三个对象显式记录、对齐、监控，比换一个更复杂的 loss 更有用。</p>
+
+      <h3>如果你在做训练系统</h3>
+      <ol>
+        <li>先测量，不要假设。记录 sampled token 的 \(\log p_a-\log q_a\)、top-k head mass、以及不同 checkpoint 之间的 logprob 差。</li>
+        <li>把 q 的来源写清楚：是量化模型、旧 checkpoint，还是带 temperature/top-p 的采样分布。不要用一个模糊的“old policy”覆盖三种东西。</li>
+        <li>在玩具分布上做常数奖励测试。naive 应该漂，SC 应该不漂；如果不符合，先修实现，不要调超参。</li>
+        <li>SC 和 TIS/MIS 不是互斥的。量化严重时先看 SC；staleness 严重时看组合；用同一面板、同等算力比较。</li>
+        <li>不要用 PPO clip 掩盖数值 mismatch。Clip 约束的是策略移动，不是 trainer/sampler 的精度差。</li>
+      </ol>
+
+      <h3>如果你在做研究</h3>
+      <ul>
+        <li>报告 held-out 指标、多 seed、等算力比较；训练准确率不能替代泛化。</li>
+        <li>把 top-k 的 tail 误差单独审计：高 entropy 任务、长尾词表、不同 k 的敏感性。</li>
+        <li>研究 prefix 条件的 baseline 和 SC 的组合；group centering 不是 prefix centering。</li>
+        <li>在 MoE 模型上 replay router indices，否则 expert routing 的 mismatch 会混进结论。</li>
+        <li>区分“稳定性”和“最终能力”：SC 能让曲线不崩，但不一定让上限更高。</li>
+      </ul>
+
+      <h3>三个常见误解</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>表 9：容易混淆的说法</caption>
+          <thead>
+            <tr><th>误解</th><th>纠正</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>SC 就是减去 reward 的均值</td><td>不是。减的是 \(\mathbb{E}_q[s]\)，一个和参数同维的向量；reward baseline 是另一件事。</td></tr>
+            <tr><td>SC 就是 importance sampling</td><td>不是。SC 是加性校正，不乘 ratio；IS 是乘性重加权，方差和截断偏差是它的问题。</td></tr>
+            <tr><td>\(e_a-q\) 就是参数更新</td><td>不是。它是 logit 空间的梯度；参数更新还要乘 \(J^\top\)，即 \(A J^\top(e_a-q)\)。</td></tr>
+            <tr><td>SC 是无偏的 on-policy 梯度</td><td>不是。它只去掉 drift，剩下的是 q 下的协方差，不是 p 下的协方差。</td></tr>
+            <tr><td>group centering 等于 prefix centering</td><td>不是。组内均值零不代表每个 prefix 的条件均值零，drift 仍可能存在。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>最后回到一个更一般的教训：RL 的很多问题不是“优化器不够强”，而是“我们以为自己在优化 p，实际上数据来自 q，分母却是 \(\pi_{old}\)”。Score centering 用一个很小的加法，把这个记账错误的一部分显式化了。它的价值不在于复杂，而在于它把问题说清楚了。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+
+      <p>本文以论文 v1 的正文与附录为主，结合官方代码、框架文档和两篇独立分析。论文数字均为作者报告；本文没有运行 30B 训练，也没有独立复现论文的 JAX 实验。官方单元测试只覆盖小词表、\(k=V-1\) 的 toy 情形，不能证明真实大词表 tail 的精确性。</p>
+
+      <p>实验部分的“训练准确率”不是 held-out benchmark；30B 种子数量不均衡；序列长度为 512/1024；没有 replay MoE router indices；严重 mismatch 是作者故意放大的设置，用来代理长训练。框架接入条件来自 2026 年 11 月的公开文档，具体版本可能变化；TRL 的吞吐数字是文档报告，不是本文实测。</p>
+
+      <ul>
+        <li><a href="https://arxiv.org/abs/2609.20807">Score Centering Stabilizes Off-policy Reinforcement Learning（arXiv 摘要）</a></li>
+        <li><a href="https://arxiv.org/html/2609.20807v1">论文 HTML 全文与附录</a></li>
+        <li><a href="https://github.com/martin-marek/score-centering">官方参考实现（JAX，含 full/top-k 与 IS 组合）</a></li>
+        <li><a href="https://verl.readthedocs.io/en/latest/algo/rollout_corr.html#score-centering-bool">verl：rollout correction 与 score centering 配置</a></li>
+        <li><a href="https://huggingface.co/docs/trl/main/en/async_grpo_trainer">TRL：AsyncGRPO 与 score centering</a></li>
+        <li><a href="https://docs.nvidia.com/nemo/rl/nightly/guides/score-centering.html">NeMo-RL：score centering 指南</a></li>
+        <li><a href="https://tinker-docs.thinkingmachines.ai/tinker/losses/stable-reinforce/">Tinker：stable_reinforce 文档</a></li>
+        <li><a href="https://fei-tian.ai/blog/what-score-function-centering-fixes/">Fei Tian：What score function centering fixes</a></li>
+        <li><a href="https://ahxt.github.io/post/2026-09-24-sc/">Logit gradient 视角的独立分析</a></li>
+        <li><a href="https://arxiv.org/abs/2609.15987">Bellman Policy Optimization（相关但不同的出发点）</a></li>
+      </ul>
+
+      <p>未确认事项：SC 在更长训练、更多 seed、held-out 任务上的增益；top-k 在超高 entropy 词表上的 tail 误差；不同推理引擎暴露 top-k logprobs 的真实吞吐成本；MoE router replay 与 SC 的交互。这些问题不改变论文的机制结论，但会影响工程选型。</p>
+    </section>
+  </main>
+</body>
+</html>
