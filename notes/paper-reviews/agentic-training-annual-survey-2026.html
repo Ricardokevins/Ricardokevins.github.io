@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic 训练年度深读：从合成数据到可靠的长程策略</title>
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true, packages: { '[+]': ['ams', 'noerrors', 'noundefined'] } },
+      chtml: { matchFontHeight: false, mtextInheritFont: true, linebreaks: { automatic: true, width: 'container' } },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root { color-scheme:light; --paper:#f4f0e8; --surface:#fffdf8; --ink:#20242a; --muted:#5f686f; --line:#dcd6c8; --accent:#c15f3c; --accent-soft:#f7ece4; --accent-2:#986023; --accent-2-soft:#f8eee2; --info:#50668f; --info-soft:#edf1f8; --risk:#9c4545; --risk-soft:#f8eaea; --good:#25675f; --shadow:0 16px 44px rgba(31,37,40,.08); --radius:10px; --max:1120px; --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif; --serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif; --mono:"SFMono-Regular","Menlo","Consolas",monospace; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; background:var(--paper); }
+    body { margin:0; background:linear-gradient(90deg,rgba(193,95,60,.045) 1px,transparent 1px),linear-gradient(180deg,rgba(120,105,85,.03) 1px,transparent 1px),var(--paper); background-size:44px 44px; color:var(--ink); font-family:var(--sans); line-height:1.78; }
+    a { color:var(--accent); text-underline-offset:3px; }
+    header,main { width:min(var(--max),calc(100% - 32px)); margin:0 auto; }
+    header { padding:clamp(36px,6vw,76px) 0 26px; }
+    .kicker { margin-bottom:12px; color:var(--accent-2); font:800 13px/1.3 var(--sans); letter-spacing:.07em; text-transform:uppercase; }
+    h1 { max-width:1040px; margin:0; font:760 clamp(32px,4.8vw,58px)/1.12 var(--serif); }
+    .lede { max-width:940px; margin:18px 0 0; color:var(--muted); font-size:clamp(17px,2vw,20px); }
+    main { display:grid; gap:30px; padding-bottom:64px; }
+    section { padding-top:30px; border-top:1px solid var(--line); scroll-margin-top:68px; }
+    h2,h3 { margin:0 0 12px; line-height:1.25; }
+    h2 { font:740 clamp(24px,3.2vw,34px)/1.25 var(--serif); }
+    h3 { margin-top:26px; font-size:20px; color:var(--accent); }
+    h4 { margin:18px 0 8px; font-size:16px; color:var(--accent-2); }
+    p { margin:12px 0; } ul,ol { padding-left:1.3rem; } li { margin:7px 0; }
+    strong { font-weight:700; } .small { color:var(--muted); font-size:14px; }
+    .toc { padding:14px 18px; border:1px solid var(--line); border-radius:var(--radius); background:rgba(255,253,248,.92); box-shadow:var(--shadow); }
+    .toc b { display:block; margin-bottom:8px; color:var(--accent-2); } .toc-links { display:flex; flex-wrap:wrap; gap:8px 14px; } .toc a { font-size:14px; text-decoration:none; }
+    .grid-2,.grid-3 { display:grid; gap:14px; margin:18px 0; } .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); } .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .card { min-width:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .card h3,.card h4 { margin:0 0 8px; font-size:16px; color:var(--accent); } .card p { margin:0; color:var(--muted); font-size:14.5px; }
+    .callout { margin:18px 0; padding:14px 18px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:var(--radius); background:var(--accent-soft); }
+    .callout>b { display:block; margin-bottom:6px; color:var(--accent); } .callout.info { border-left-color:var(--info); background:var(--info-soft); } .callout.info>b { color:var(--info); } .callout.warn { border-left-color:var(--accent-2); background:var(--accent-2-soft); } .callout.warn>b { color:var(--accent-2); }
+    .flow { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:18px 0; }
+    .flow-step { min-width:0; padding:14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    .flow-step b { display:block; color:var(--accent); } .flow-step span { display:block; margin-top:5px; color:var(--muted); font-size:13.5px; line-height:1.55; }
+    .def-list { display:grid; gap:10px; margin:18px 0; } .def-list>div { display:grid; grid-template-columns:minmax(155px,.24fr) minmax(0,1fr); gap:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); } .def-list b { color:var(--accent); }
+    .math-display { margin:16px 0; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); max-width:100%; overflow-x:auto; overflow-y:hidden; } mjx-container { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+    .table-wrap { margin:16px 0; max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); }
+    table { width:100%; min-width:720px; border-collapse:collapse; font-size:14.3px; } caption { padding:12px 14px 8px; color:var(--muted); text-align:left; font-size:13.5px; } th,td { padding:10px 13px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; } th { background:var(--accent-soft); color:var(--ink); font-weight:700; } tr:nth-child(even) td { background:rgba(0,0,0,.015); }
+    code { padding:2px 6px; border-radius:5px; background:#ece5d7; color:#7c2d12; font-family:var(--mono); font-size:.92em; } pre { margin:16px 0; padding:16px; border-radius:var(--radius); background:#18201f; color:#f1ebde; overflow-x:auto; } pre code { padding:0; background:transparent; color:inherit; }
+    .paper-anchor { padding-top:4px; } .paper-anchor h2 { margin-top:0; }
+    @media(max-width:920px){.flow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:760px){header,main{width:min(100% - 24px,var(--max))}.grid-2,.grid-3{grid-template-columns:1fr}.def-list>div{grid-template-columns:1fr;gap:6px}.toc-links{display:grid;grid-template-columns:1fr 1fr}.table-wrap table{min-width:760px}.flow{grid-template-columns:1fr}}
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+  </nav>
+  <header id="top">
+    <div class="kicker">Annual Survey · Agentic Training / Synthetic Data / Agentic RL</div>
+    <h1>Agentic 训练年度深读：从合成数据到可靠的长程策略</h1>
+    <p class="lede">围绕 2025 年 11 月至 2026 年 11 月首次公开的一批工作，选择 Agent0、EnvScaler、SPADE、RAGEN-2、Agent Lightning v1.0 五篇做机制深读，再将近年其他代表方法整理成统一对照。核心不是追逐“自进化”这个新名词，而是看清任务、环境、反馈与运行协议怎样共同进入训练。</p>
+  </header>
+  <main>
+    <nav class="toc" aria-label="本文目录"><b>阅读地图</b><div class="toc-links"><a href="#source-reconstruction">材料重建</a><a href="#takeaway">年度判断</a><a href="#agent0">Agent0</a><a href="#envscaler">EnvScaler</a><a href="#spade">SPADE</a><a href="#ragen2">RAGEN-2</a><a href="#agent-lightning">Agent Lightning</a><a href="#comparison">其他方法表</a><a href="#evidence">实验口径</a><a href="#terms">术语</a><a href="#limits">证据边界</a><a href="#insight">研究启发</a><a href="#community">社区讨论</a><a href="#sources">资料索引</a></div></nav>
+
+    <section id="source-reconstruction">
+      <h2>第一遍：先把这条技术脉络讲清楚</h2>
+      <p>Agentic 训练的目标不只是让语言模型写出一轮更好的回答，而是让它在一段持续变化的交互中做出有用的动作。工具调用、网页操作、文件修改、用户澄清和错误恢复都可能改变后续环境；因此一次训练样本不能只由 prompt 和标准答案描述。</p>
+      <h3>从一道贯穿全文的小任务开始</h3>
+      <p>假设给 Agent 的指令是：“找出超过 7 天未处理的 P1 工单，邮件提醒各负责人，并把提醒时间写回工单；过去 24 小时提醒过的不要重复发。”模型必须先查询工单，理解日期和优先级，关联负责人邮箱，发送内容正确的邮件，最后只更新目标记录。任何一个环节出错，都可能表现为最终任务失败。</p>
+      <p>这个例子把 Agentic 训练的四个难题同时暴露出来：</p>
+      <ol>
+        <li><strong>训练任务从哪里来：</strong>能否自动生成同一工作流的不同工单、负责人、时间边界和例外规则，而非只改一个题目里的数字？</li>
+        <li><strong>怎样知道真的完成：</strong>“已发送”这句话不算完成；收件人、发送内容、工单状态和未误发记录都需要验收。</li>
+        <li><strong>失败归因给谁：</strong>查询对了但邮件发错人，不能把查找信息这一步也判成错误。</li>
+        <li><strong>实际运行怎样重现：</strong>工具超时、工具返回被截断、历史摘要丢失和文本重新分词，都会改变模型在训练时看到的上下文。</li>
+      </ol>
+      <p>传统单次回答的训练通常将数据写成 \(D=(x,y^*)\)。而长程 Agent 的更完整训练单元，可以写成一个辅助理解的任务包：</p>
+      <div class="math-display">\[z=(q,e,s_0,v,\mathcal H).\]</div>
+      <p>其中 \(q\) 是用户请求，\(e\) 是工具与状态转移实现，\(s_0\) 是初始状态，\(v\) 是验收器，\(\mathcal H\) 是组织上下文、执行工具与控制流程的 harness。一次交互产生轨迹 \(\tau=(o_0,a_0,o_1,a_1,\ldots,o_T)\)，动作 \(a_t\) 包含模型生成的推理与工具调用，观察 \(o_t\) 来自环境或用户。训练的重点便从“模仿 \(y^*\)”扩展到“在当前策略会访问到的状态上，学会采取能提高最终完成率的动作”。</p>
+      <h3>这五篇分别在这条链上做了什么</h3>
+      <p><strong>Agent0</strong> 用课程模型与执行模型的交替学习，让任务难度跟着执行能力变化；<strong>EnvScaler</strong> 生成状态、工具、初始数据库和最终状态检查器，把“数据”扩展为可运行的小世界；<strong>SPADE</strong> 把同一模型同时用作环境设计者与解题者，让环境分布在线变化；<strong>RAGEN-2</strong> 诊断训练后期推理看似多样、实则不再随输入改变的问题；<strong>Agent Lightning v1.0</strong> 则将训练接入真实 harness，处理 token、轨迹切分、advantage 与损失权重的正确对应。</p>
+      <p>把它们放在一起看，这一年的进展更像训练闭环的重构：先生成或选择任务，再检查任务与验收器是否可靠；用真实协议采集轨迹，区分任务失败、环境失败和训练失败；最后根据失败决定补示范、改课程、改奖励、改上下文还是修系统。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>第二遍：年度核心判断</h2>
+      <p><strong>最有价值的变化，不是“不再需要人类”，而是把训练信号的构造与审计变成了一等研究对象。</strong>减少人工题目和轨迹标注确实可行，但任务定义、环境逻辑、评价标准与优化算法仍需要外部约束。将“合成”“零数据”“自演化”“可验证”分别拆成具体的信息来源与失败条件，才能判断一个方法究竟学到了什么。</p>
+      <div class="grid-3">
+        <div class="card"><h3>数据变成训练接口</h3><p>任务、初始状态、工具逻辑、验收器和交互协议需要一起生成。数据量不再能代替环境多样性与反馈质量。</p></div>
+        <div class="card"><h3>细粒度不等于可靠</h3><p>逐步打分、过程 judge 与 token 级优势提供更密的更新，却不自动提供因果正确的信用分配。</p></div>
+        <div class="card"><h3>系统会改变算法</h3><p>切片、重分词、上下文压缩、策略滞后与缓存处理不只是吞吐优化，也会改变实际训练分布。</p></div>
+      </div>
+    </section>
+
+    <section id="agent0" class="paper-anchor">
+      <h2>代表作一 · Agent0：让课程与执行器共同进化</h2>
+      <p><a href="https://arxiv.org/abs/2511.16043">Agent0: Unleashing Self-Evolving Agents from Zero Data via Tool-Integrated Reasoning</a>，2025 年 11 月首次公开。它研究的是：没有现成任务集和人工答案时，能否让模型自己生成有挑战性的任务，并在解决这些任务时继续提升？</p>
+      <h3>它试图突破的不是标注成本，而是固定课程的上限</h3>
+      <p>静态题库会随模型变强而失效：全会的题不再产生组内学习差异，全不会的题也无法提供可用成功路径。Agent0 从同一个基座模型初始化两个角色：Curriculum Agent 负责出题，Executor Agent 负责解题。每轮先训练出题器，再冻结它生成候选池，筛选并训练执行器。两者都配代码解释器，执行能力提高后，出题器需要生成更依赖工具、结构更复杂的任务。</p>
+      <div class="flow">
+        <div class="flow-step"><b>出题器学习</b><span>根据执行器的一致性与工具使用，奖励位于能力边缘的新任务。</span></div>
+        <div class="flow-step"><b>冻结并出题</b><span>产生任务池，用多次执行的一致性筛选挑战任务。</span></div>
+        <div class="flow-step"><b>多轮工具执行</b><span>模型生成推理与 Python，执行结果重新进入上下文。</span></div>
+        <div class="flow-step"><b>执行器学习</b><span>以多数答案作伪标签，用 ADPO 调整更新强度与裁剪上界。</span></div>
+      </div>
+      <h3>课程奖励：寻找“半数意见”的任务</h3>
+      <p>对生成的题目 \(x\)，执行器采样 \(k\) 个回答，令 \(\hat p\) 为投给多数答案 \(\tilde y\) 的比例。课程奖励之一为：</p>
+      <div class="math-display">\[R_{\mathrm{unc}}(x)=1-2\left|\hat p(x)-0.5\right|.\]</div>
+      <p>\(\hat p=0.5\) 时奖励最高，表示回答分歧大；接近 1 表示任务太容易或模型高度一致；接近 0 表示多数答案占比很小，任务可能过难或表述不清。课程奖励还鼓励工具调用、惩罚相似任务重复，并用格式检查门控。执行器则按是否匹配多数答案 \(\tilde y\) 给终局奖励。</p>
+      <p>例如 10 次采样中，6 次答 42、4 次答 41，多数答案为 42，\(\hat p=0.6\)，于是 \(R_{\mathrm{unc}}=0.8\)。<strong>这里的 0.6 不是“60% 正确率”，而是 60% 的回答相互一致。</strong>如果正确答案其实是 43，模型仍可能高一致地犯错。代码执行能验证某段计算的结果，却不能自动证明题意、输入或数学建模正确。</p>
+      <h3>ADPO：在低置信处少信任伪标签，同时允许探索</h3>
+      <p>Agent0 的 ADPO 用同一 \(\hat p\) 做两件事：一致性越低，优势缩放越小，避免强学习可疑伪标签；同时提高 PPO 风格裁剪的上界 \(\epsilon_{\mathrm{high}}\)，允许当前低概率的正确路径获得更大上升空间。高置信样本则保持更紧的约束。它针对的是“伪标签可能错”与“探索可能被压住”之间的矛盾，不是对多数投票正确性的证明。</p>
+      <h3>实验支持了什么</h3>
+      <p>论文在 Qwen3-4B/8B-Base 上比较数学与一般推理任务，8B 数学平均从基座 49.2 到 Agent0 的 58.2；总体十项平均从 34.5 到 42.1。迭代中，同一早期执行器对第 1、2、3 轮生成任务的通过率从 64.0% 降至 58.5% 和 51.0%，平均工具调用从 1.65 增至 2.60，支持“生成任务变难、工具依赖增强”的作者解释。课程训练、工具奖励、重复惩罚和 ADPO 的消融也显示各组件有贡献。</p>
+      <div class="callout warn"><b>独立判断</b><p>Agent0 证明了在有预训练先验、代码执行和外部基准验收的条件下，自生成课程可以产生增益；“zero data”应理解为无外部人工标注训练集，不是无先验知识、无工具信息或无任务评价。它与后续 GUI/跨应用 Agent 仍有距离，主要证据是工具增强推理而非通用工作流执行。</p></div>
+    </section>
+
+    <section id="envscaler" class="paper-anchor">
+      <h2>代表作二 · EnvScaler：把训练样本造成可运行的小世界</h2>
+      <p><a href="https://arxiv.org/abs/2601.05808">EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis</a>，2026 年 1 月首次公开。它解决的不是“怎样自动写更多问答”，而是如何批量构造有持久状态、可执行工具、任务场景和验收逻辑的训练环境。</p>
+      <h3>为什么仅有成功轨迹不够</h3>
+      <p>模仿“先调用 query_ticket，再调用 send_email”只能教会一条已被演示的路径。真实执行中，查询可能为空、参数可能缺失、用户可能只给不完整信息、不同合法调用顺序也可能达到同一目标。EnvScaler 因此让 LLM 充当环境程序员，而不是让它在每一步凭空扮演环境。</p>
+      <h3>两段生成流水线</h3>
+      <p><strong>SkelBuilder</strong> 从已有任务资源反推环境主题，再规划状态、领域规则与工具，将它们组装为 Python 类。类属性表示持久状态，方法表示工具，文档与工具 schema 决定 Agent 能看到什么。前端测试 Agent 发起正常或异常工具请求，后端检查 Agent 根据源码、返回值与状态变化评价行为是否符合预期；经过 100 轮检查，通过率低于 0.85 的环境被丢弃。</p>
+      <p><strong>ScenGenerator</strong> 在骨架上生成初始数据库与具体任务，再将任务拆成若干可检查条件，每个条件转成最终状态的布尔函数：</p>
+      <div class="math-display">\[R(\tau)=\frac{1}{K}\sum_{k=1}^{K}\mathbf 1\!\left[f_k(S_{\mathrm{final}})=\mathrm{True}\right].\]</div>
+      <p>这条奖励可以容纳多条合法执行路径，并给部分完成以部分分数。但它检查的是<strong>生成出来的条件</strong>，不是自动覆盖任务全部语义。例如只检查“工单有提醒时间”与“邮件已发送”，仍可能漏掉“收件人必须是该工单负责人”和“24 小时内不得重复提醒”。</p>
+      <h3>环境检查与任务验收不是同一件事</h3>
+      <p>环境检查关心“工具实现是否按程序与规格工作”：删除不存在的文件是否报错、成功发送是否更新记录、异常输入是否破坏状态。任务验收关心“用户目标是否达成”：是否正确查询、是否发给正确的人、是否只修改需要的字段。两层都可能通过而仍不真实：程序稳定地执行了错误的业务逻辑，验收器也继承了同样的遗漏。</p>
+      <h3>实验增量主要来自哪里</h3>
+      <p>论文生成 191 个环境、约 7K 场景；140 个环境用于 SFT，另外 51 个用于 RL，教师轨迹约 9K，RL 使用 REINFORCE++。Qwen3-8B 在 BFCL-v3 Multi-Turn 的 overall 从 28.88 到 SFT 的 37.00，再到 SFT+RL 的 41.88：<strong>13 点总增益中，SFT 占 8.12 点，RL 在其上再增 4.88 点</strong>。Tau-Bench 从 38.19 到 41.35、44.81，ACEBench-Agent 从 60.00 到 71.67、72.50。</p>
+      <p>直接使用 RL 不经过 SFT 也能提升，但弱模型收益更不稳定；作者将差异归因于探索能力与噪声奖励的敏感性。环境数量从 0 增至 20 时收益最明显，之后仍有增长但趋缓。报告的小样本生成成本约为每环境 1 美元、每场景 0.06 美元，主要 token 用在 100 轮环境评估。</p>
+      <div class="callout warn"><b>独立判断</b><p>EnvScaler 的代表性在于将“环境—任务—状态验收”做成可执行训练接口。它适合结构化、文本工具的状态世界，不支持多模态工具，也尚未显式模拟网络延迟、波动和真实故障。程序可运行、任务可解、验收完整是三项不同质量门槛，必须分别审计。</p></div>
+    </section>
+
+    <section id="spade" class="paper-anchor">
+      <h2>代表作三 · SPADE：让环境难度跟着策略一起变化</h2>
+      <p><a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments</a>，2026 年 8 月首次公开。EnvScaler 展示怎样批量造环境，SPADE 进一步问：环境生成器本身能否在线学习，使课程随解题能力共同演化？</p>
+      <h3>同一模型分饰环境设计者与解题者</h3>
+      <p>Environment Designer（ED）输出带 <code>reset()</code> 与 <code>step(action)</code> 的 Python 环境，内部包含状态转移、奖励与 verifier；Reasoning Agent（RA）看不到环境源码，只能根据观察行动。二者共享参数、通过不同提示切换角色。ED 还从外部语料抽取题材，并读取包含历史环境胜率与 regret 的记忆，避免重复生成过时难度。</p>
+      <p>对单轮推理任务，<code>step(answer)</code> 只执行一次；对多轮游戏或工具任务，环境能连续反馈。候选环境先做语法与执行检查，工具环境还检查重置条件和可解性。随后，RA 分别在无提示和有提示条件下多次游玩，环境的“难度”与“可教性”由两组回报共同决定。</p>
+      <h3>提示 regret 与难度平台各自负责什么</h3>
+      <p>提示 regret 写为：</p>
+      <div class="math-display">\[r_D(e)=\bar r_A(e\mid h)-\bar r_A(e).\]</div>
+      <p>如果有提示能显著提升回报，说明环境处于“给一点帮助就能学会”的区域；两边都成功表示太容易，两边都失败可能太难或环境有缺陷。实际 ED 奖励并非只有 regret，而是约 60% 来自胜率位于 0.4–0.6 的难度平台，约 40% 来自截断并归一化的提示 regret。前者让任务留在学习边缘，后者在相近难度中优先可教任务。</p>
+      <p>例如一个环境无提示平均回报 0.25，有提示 0.65，差值 0.4，说明有较大的提示可教空间；另一个环境两边都约 0.9，虽能稳定得分，却不再是好课程。<strong>但提示差并不证明环境语义正确</strong>：提示也可能泄露答案、引导错误捷径或改变任务本身，仍需独立检查状态转移与验收条件。</p>
+      <h3>外部语料是新颖性的重要来源</h3>
+      <p>SPADE 并没有让模型在封闭自我循环中凭空增加知识。游戏环境使用数学与科学材料，工具环境使用代码预训练语料作为生成种子。已有精读中的复核显示，去掉语料后 Vendi/n 多样性指标从 0.68 降至 0.04；环境记忆则更偏向记录哪些难度已经过时。这个消融说明：<strong>外部材料提供“还能写什么”，当前策略回报提供“现在该学什么”。</strong></p>
+      <h3>实验证据与仍未证明的部分</h3>
+      <p>在 Qwen3-30B-A3B 的游戏设置中，论文报告八项平均从 50.2 到 58.3；可学习环境（胜率 20%–80%）占比从 0.16 到 0.31。工具环境的多轮 BFCL、τ²-bench、ACEBench-Agent 也报告提升。完整配方优于冻结设计者、去掉记忆和去掉语料的变体，支持在线环境更新的价值。</p>
+      <p>这些结果不是“无限开放自我改进”的证据：外部语料仍提供题材，难度区间仍由人工设定，优化算法仍固定为 GRPO，评测仍是固定 benchmark；主实验的多随机种子、等总算力与完整生成成本比较也有限。站内已有 <a href="spade-adaptive-synthetic-executable-environments.html">SPADE 单篇深读</a>，继续展开其程序接口、理论假设、公开代码与 verifier 反例。</p>
+      <div class="callout"><b>与 Agent0 的关系</b><p>二者都训练课程生成与求解，但 Agent0 更侧重多数答案的一致性和工具使用，SPADE 则把可执行环境、外部语料、环境记忆与双臂提示差结合起来。它们说明“自演化”并不是单一算法，而是一组关于谁生成任务、谁提供新信息、谁判断任务可学的不同选择。</p></div>
+    </section>
+
+    <section id="ragen2" class="paper-anchor">
+      <h2>代表作四 · RAGEN-2：熵正常，不代表推理仍然健康</h2>
+      <p><a href="https://arxiv.org/abs/2604.06268">RAGEN-2: Reasoning Collapse in Agentic RL</a>，2026 年 4 月首次公开。前三篇改善训练任务与环境供给，RAGEN-2 则处理一个更隐蔽的问题：训练继续更新，输出仍然流畅、有变化，却逐渐不再真正响应当前输入。</p>
+      <h3>什么是 template collapse</h3>
+      <p>设想模型面对“工单已提醒”与“工单未提醒”两个不同状态，都生成“先全面分析，再谨慎执行，最后确认结果”的长篇推理，偶尔替换几个同义词。单看每道题，输出似乎有变化；把不同题放在一起，推理却几乎不携带输入信息。此时 entropy 可以仍然很高，但策略已开始模板化。</p>
+      <p>论文用信息论恒等式区分两种性质：</p>
+      <div class="math-display">\[H(Z)=I(X;Z)+H(Z\mid X).\]</div>
+      <p>\(H(Z\mid X)\) 是同输入下的条件多样性，\(I(X;Z)\) 是输入与推理之间的依赖。前者高并不保证后者高。理想状态是推理能随问题改变，而不是单纯追求更高随机性。</p>
+      <h3>怎样用已有 rollout 估计输入依赖</h3>
+      <p>对批内 \(P\) 个输入及每个输入的 \(G\) 条推理，计算每条推理 \(Z_{i,k}\) 在真实来源输入 \(X_i\) 与其他输入 \(X_j\) 下的 teacher-forced 对数似然，形成矩阵：</p>
+      <div class="math-display">\[L_{i,k,j}=\log p_\theta(Z_{i,k}\mid X_j).\]</div>
+      <p>若正确来源输入下的分数明显高于其他输入，检索准确率较高，说明推理仍能区分题目；若每个输入下都差不多，matched 与 marginal 接近，输入依赖代理接近 0。论文同时监控基于检索的 Retrieval-Acc 与经过标准化、指数平滑的 MI-ZScore-EMA。它不是直接得到高维 token 序列的真实互信息，而是可计算的诊断代理。</p>
+      <h3>低奖励方差为何值得警惕</h3>
+      <p>同一输入采样 \(G\) 条轨迹，组内奖励为 \(R_g\)，以均值作 baseline 时：</p>
+      <div class="math-display">\[g_{\mathrm{task}}(x)=\frac{1}{G}\sum_g (R_g-\bar R)\nabla_\theta\log\pi_\theta(\tau_g\mid x).\]</div>
+      <p>若全成功或全失败，奖励差消失，任务梯度弱；KL 与 entropy 等正则项却仍可能更新参数。论文将低方差、弱任务梯度与输入无关正则占主导联系起来，提出按组内奖励方差排序、累计保留方差质量的 Top-p SNR-Aware Filtering。它优先更新能区分轨迹的题，而不是盲目对所有样本施加相同更新。</p>
+      <p>需要特别区分：<strong>方差小说明当前组缺少区分信号，不说明题永远没有价值。</strong>全失败的难题也可能恰是需要示范或拆解的任务；过滤只是控制更新，不应成为永久删除难题的理由。</p>
+      <h3>证据和适用范围</h3>
+      <p>论文在 Sokoban、FrozenLake、MetaMathQA、Countdown、SearchQA、WebShop、DeepCoder 等环境，以及多种算法、模型规模和模态下检验。主文中 MI 代理与最终表现的正相关高于 entropy 类指标；过滤在若干设置下改善峰值成功率，并减少参与梯度计算的组数。作者也明确承认，信号/噪声分解在现实中可能耦合，高噪声奖励会破坏方差代理，激进过滤会缩窄探索，且多智能体情形仍待研究。</p>
+      <p>更完整的推导、交叉打分、消融和失败条件，见站内 <a href="ragen-2-reasoning-collapse-agentic-rl.html">RAGEN-2 单篇精读</a>。</p>
+      <div class="callout warn"><b>独立判断</b><p>RAGEN-2 最重要的贡献是把“当前更新有没有任务信息”提升为训练监控问题。高方差也可能来自 API 抖动或错误验收，输入依赖变高也可能只是复述更多题目字段。实践中应同时记录任务成功、无效动作、环境随机性、输入扰动后的行为与留出集迁移，而不是把 MI 或方差当成新的单一健康分数。</p></div>
+    </section>
+
+    <section id="agent-lightning" class="paper-anchor">
+      <h2>代表作五 · Agent Lightning v1.0：训练必须保存真实发生的调用</h2>
+      <p><a href="https://arxiv.org/abs/2608.17528">Agent Lightning v1.0: Towards Harnessed Agentic RL</a>，2026 年 8 月首次公开。它把关注点从奖励函数转向训练与部署之间的接口：真正的 Agent 已生活在复杂 harness 中，训练框架如果只保留简化版 ReAct 循环，学到的可能不是部署时那个系统。</p>
+      <h3>harness 为什么不是外围包装</h3>
+      <p>harness 负责构造上下文、执行工具、处理异常、调用子 Agent、压缩历史和控制停止。它决定模型实际看到什么、能采取哪些动作、错误如何恢复。Agent Lightning 的选择是让部署 harness 持有这些逻辑，训练器通过模型 API 边界记录每次请求的真实 prompt 和生成 token，而不是要求用户在训练框架内重新实现整个 Agent。</p>
+      <h3>文本相同，不代表训练上下文相同</h3>
+      <p>一次调用采样得到 \(a_i^{\mathrm{tok}}\)，返回文本后再进入下一次 prompt。重新分词可能将相同字符串切成不同 token；chat template 也可能拼接边界符、移除标记；工具输出解析器还可能规范化 JSON 或修复格式。因此下一次真实请求中的历史响应 \(\widehat a_i^{\mathrm{tok}}\) 不一定等于原始采样：</p>
+      <div class="math-display">\[\operatorname{Tok}\!\left(\operatorname{Decode}(a_i^{\mathrm{tok}})\right)\ne a_i^{\mathrm{tok}}.\]</div>
+      <p>若强行用旧 token 替换新请求中的片段，虽然提高了 prefix merge 率，却让下一次动作在一个它当时没有看到的“拼接 prompt”上计算损失，形成 off-policy 差异。Agent Lightning 采用 best-effort merging：只有真实 token 前缀完全成立才合并，否则结束当前训练序列并新开一个。它牺牲部分复用，优先保存生成时真实条件。</p>
+      <h3>一个切片改变 advantage 的算例</h3>
+      <p>同一 GRPO 组有两条原始 rollout：成功得 1，失败得 0。成功 rollout 因摘要被切成 3 个训练 sample，失败仍是 1 个。</p>
+      <div class="math-display">\[\bar r_{\mathrm{rollout}}=\frac{1+0}{2}=0.5,\qquad \bar r_{\mathrm{sample}}=\frac{1+1+1+0}{4}=0.75.\]</div>
+      <p>模型行为与任务奖励完全没有变化，只是物理切片不同，baseline 就从 0.5 变成 0.75。论文因此主张按原始 rollout 归组计算 advantage，并保留每条序列的 rollout 与 prompt-group 身份。</p>
+      <p>损失平均也有不同选择：全 batch token-mean 不因 sample 数改变，但长负轨迹会占据更多权重；逐 sample 先平均再平均会让切片更多者权重更高；rollout-level token-mean 先在每条 rollout 内按 token 汇总，再在 rollout 间等权，论文采用后者。它没有声称所有任务的最优归一化唯一，而是把原本隐含的权重选择显式化。</p>
+      <h3>结果与复现边界</h3>
+      <p>论文报告 Qwen3.5-9B 在约 6K SWE-smith 训练样本上，经 RL 后 SWE-bench Verified 从 41.8% 到 56.4%，绝对增加 14.6 点。官方示例提供数据过滤、环境镜像与训练脚本，同时需要 GPU 与容器/Kubernetes 环境；“轻量框架”“开源”不等于个人电脑可直接复现。其价值更在于把真实 harness 的动态样本问题变成可审查的训练语义。</p>
+      <div class="callout warn"><b>独立判断</b><p>这篇工作提醒我们：如果 rollout 记录、切片映射和真实上下文都不准确，更复杂的信用分配算法也可能在优化错误对象。比较新算法前，应先固定任务、策略版本、实际 prompt、采样 log-prob、轨迹身份和损失权重，否则增益可能来自实现差异而不是算法创新。</p></div>
+    </section>
+
+    <section id="comparison">
+      <h2>其他代表方法：按训练问题维护的对照表</h2>
+      <p>下表按首次公开日期整理，覆盖本页主体之外的课程、环境、蒸馏、记忆、信用分配与系统工作。相近方法被用于说明同一技术问题，不表示彼此存在直接继承关系；结果摘要均为论文报告，不构成跨系统总排名。</p>
+      <div class="table-wrap"><table>
+        <caption>其余代表论文与项目，2025-11-09—2026-11-09。按 arXiv 首次提交归窗。</caption>
+        <thead><tr><th>工作 / 时间</th><th>核心问题</th><th>机制与训练信号</th><th>阅读时最需要保留的边界</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://arxiv.org/abs/2511.10395">AgentEvolver</a> · 2025-11</td><td>新环境中缺少任务与探索经验</td><td>探索后生成任务；经验引导与自由 rollout 混合；LLM 对步骤标 GOOD/BAD，融合结果奖励。</td><td>后见步骤评价不等于因果贡献；经验提示在采样与更新时不同，需单独验证其分布影响。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2511.14460">Agent-R1</a> · 2025-11</td><td>把多轮交互接入可复用 RL 框架</td><td>按步骤保存观察、动作、反馈与上下文，支持不同算法。</td><td>框架支持某算法不等于该信用分配方法已被证明有效。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2511.21689">ToolOrchestra</a> · 2025-11</td><td>用小模型协调强模型与工具，控制成本</td><td>训练 8B 调度器；结果正确后再优化费用、时延和用户工具偏好；随机工具子集与价格。</td><td>成绩属于整个工具系统，必须同时报告调用模型、token、费用和时延。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2512.02556">DeepSeek-V3.2</a> · 2025-12</td><td>大规模构造可验证 Agent 任务</td><td>生成环境、工具、参照解与 verifier；参照解只能通过工具；工具轮内保留推理。</td><td>一般 Agent 部分报告 1,827 环境、4,417 任务，不应把全部任务都当作同一种合成环境。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2512.13278">AutoTool</a> · 2025-12</td><td>陌生工具与新工具组合的选择</td><td>为选择步骤补充理由；SFT+RL 后仅优化选择片段，以过程评分和答案奖励形成排序目标。</td><td>“选择理由”可能是事后合理化；不同工具并非天然更差，需要独立执行结果。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2512.24873">ROME</a> · 2025-12</td><td>大规模训练、环境与 harness 协同</td><td>ROLL/ROCK/iFlow 联动；以工具交互 chunk 组织优化。</td><td>chunk 缩短优化粒度跨度，不自动提供 chunk 的因果价值。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2601.01885">AgeMem</a> · 2026-01</td><td>长期记忆与当前上下文的统一管理</td><td>将 Add/Update/Delete/Retrieve/Summary/Filter 纳入动作；存储、干扰、最终任务三阶段训练。</td><td>step-wise GRPO 仍广播终局优势；构造任务有效不等于开放部署长期记忆可靠。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2601.22149">DynaWeb</a> · 2026-01</td><td>真实网页交互成本</td><td>用真实转移训练网页世界模型，预测页面变化后进行想象 rollout，混入真实专家轨迹。</td><td>模型误差随梦境长度累积；真实专家轨迹并非当前策略采样。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.02276">Kimi K2.5 / PARL</a> · 2026-02</td><td>多 Agent 分解与并行调度</td><td>训练主调度器、冻结子 Agent；任务结果配合逐渐退火的并行与子任务完成奖励。</td><td>critical steps 衡量最长分支，不等于总 token、费用或独立证据增加。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.02361">SWE-Universe</a> · 2026-02</td><td>真实软件工程任务的大规模可执行化</td><td>从 PR 分离测试与修复 patch，要求验收器修复前失败、修复后通过，并拒绝静态投机检查。</td><td>能区分原 bug 与 gold patch，不保证所有错误补丁都失败；总量与公开工件范围需区分。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.02488">RLAnything</a> · 2026-02</td><td>策略、过程奖励模型与任务难度共同优化</td><td>终局信号结合多次步骤评价；一致性信号回训评价器，并据此改写任务难度。</td><td>终局失败不表示每一步都错；GUI 新目标仍需预先构建 verifier。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.03411">SWE-Master</a> · 2026-02</td><td>长轨迹 SWE 后训练全链路</td><td>教师轨迹过滤、长程 SFT、真实执行反馈 RL 与测试时扩展。</td><td>单次结果与 TTS@8 结果不能混用，比较时要固定 scaffold 与预算。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.06554">SeeUPO</a> · 2026-02</td><td>跨轮策略更新的相互影响</td><td>把轮次视作虚拟 Agent，逆时间顺序更新，并校正后续策略变化。</td><td>理论镜像更新保证不能直接外推到共享参数、有限步神经网络训练。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.09892">Scale-SWE</a> · 2026-02</td><td>从真实 GitHub 活动扩大可执行 SWE 数据</td><td>环境设置、测试生成与问题描述由不同构建 Agent 完成。</td><td>合成描述与测试可共享遗漏，需检查仓库级切分和污染。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.10090">AWM</a> · 2026-02</td><td>大规模可执行工具世界</td><td>场景/任务到 SQLite 数据库、MCP 工具与状态验证；状态差分辅助 LLM judge。</td><td>这里的 world model 是生成可执行世界，不是逐步预测下一观察的动力学模型。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.10356">ACuRL</a> · 2026-02</td><td>GUI 环境变化下的持续适应</td><td>先探索软件与真实工件；按成功率分解或扩展任务；CUAJudge 检查关键截图与状态差分。</td><td>评价器小规模一致性检查不排除系统偏差；环境适应与普适能力提升不同。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2602.23866">SWE-rebench V2</a> · 2026-02</td><td>跨语言 SWE 环境收集</td><td>安装与测试 Agent、质量审计、缺陷元数据；构建真实执行任务。</td><td>已构建任务与附安装说明的扩展任务具有不同工件完备度。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2604.05336">TRACE</a> · 2026-04 · <a href="TRACE-Capability-Targeted-Agentic-Training-Report.html">精读</a></td><td>把反复出现的失败转为专项能力课程</td><td>对比成败轨迹识别能力缺口，生成专项环境，训练 LoRA 与可训练 token 路由。</td><td>当前版使用可训练 MoE 路由；能力标签是诊断假说，不是已证因果解释。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2604.18292">Agent-World</a> · 2026-04</td><td>从真实工具生态扩展环境与任务</td><td>检索工具与数据库，合成状态环境；根据当前弱点扩展任务。</td><td>论文报告 1,978 环境，当前公开为精选 563 子集，不应写成全量开放。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2605.18703">EnvFactory</a> · 2026-05</td><td>可执行环境与更自然的用户意图</td><td>真实文档落地工具；依赖图补齐输入输出；把显式步骤改成省略、指代和可澄清请求。</td><td>参考轨迹匹配仍可能惩罚合法替代路径。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2606.30616">Agents-A1</a> · 2026-06 · <a href="agents-a1-scaling-horizon-35b-agent.html">精读</a></td><td>多领域长时程能力的组合</td><td>长轨迹 SFT、领域教师训练与领域路由多教师 OPD。</td><td>长时运行案例不等于独立发现新问题或 research taste。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2607.05378">CompactionRL</a> · 2026-07</td><td>固定峰值上下文下的长程训练</td><td>将摘要 token 纳入 RL，以最终任务奖励训练；PPO 与跨段位置修正。</td><td>跨段 GAE 是近似，不是精确重建全轨迹；单窗口收益并不总一致。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2607.05391">LLM-as-a-Verifier</a> · 2026-07</td><td>通用候选验证与细粒度反馈</td><td>评分 token 概率期望、多次评价、评价标准分解。</td><td>验证/选择准确率不是 RL 后任务成功率；连续分数仍需独立语义锚点。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2607.05804">TurnOPD</a> · 2026-07</td><td>长程 OPD 的采样与轮次预算</td><td>按轮次 KL 与存活率调节采样深度，逐渐均衡轮次损失；周期性完整探测。</td><td>小 KL 可能来自双方都易预测失败上下文，不能简单视为已对齐。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2607.10601">Agentic-DPO</a> · 2026-07</td><td>离线状态下学习动作选择</td><td>在同一专家状态采样学生动作负例；动作级 DPO 加 SFT 锚点。</td><td>不同动作未执行，未必更差；专家状态外的恢复能力仍缺证据。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2608.06197">EnvACE</a> · 2026-08</td><td>把环境动态内化到策略训练中</td><td>以 world rehearsal 辅助 Agentic RL。</td><td>作为补充阅读，本文未逐项审计其完整实验表。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2609.19969">DeepSeek-V4.1-Flash</a> · 2026-09</td><td>大规模任务合成、异步 RL 与多教师整合</td><td>失败重放、持续质量重审、多 harness RL 与四十余教师 OPD。</td><td>厂商整体配方，不是完整公开复现；缓存与状态复用有模型架构条件。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2609.33665">CompoWorld</a> · 2026-09</td><td>跨服务信息依赖与组合泛化</td><td>组合可复用服务，构造重访与状态依赖；按组内通过率加权未满足条件。</td><td>全组都失败的条件仍无区分信号；部分服务有模拟后备。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2609.34422">CAMG-RL</a> · 2026-09</td><td>用已有文件操作形成持久记忆</td><td>在持续工作目录中用 shell 写、查、改文件；原生任务奖励、异步 PPO。</td><td>多域 RL 增益不全等于记忆增益，需要同预算的关闭文件/摘要对照。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2610.23946">Agentic Data Scaling</a> · 2026-10</td><td>数据预算应投给任务、环境还是重复轨迹</td><td>区分任务数、环境结构数、每任务采样数和奖励密度，拟合分轴缩放。</td><td>拟合范围内的规律不应当作跨域普适常数。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2610.23148">GCA</a> · 2026-10</td><td>把“找到证据”与“用对证据”分开</td><td>依据别名覆盖和最终正确性区分轨迹，对 token 优势添加有界残差。</td><td>默认约 10% 重加权且保持符号；词面命中不等于完整语义支持。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2610.24914">Arctic-SWE</a> · 2026-10</td><td>长程训练基线的稳定性与数据验收</td><td>小任务池长训排障；修复奖励门控、数值、缓存与异步调度，再评估数据清理。</td><td>小池过拟合是诊断工具，不替代留出泛化；系统结论有架构条件。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2610.26828">WildAWM</a> · 2026-10</td><td>跨 GUI、CLI、MCP 的完整电脑世界</td><td>生成连续人物日程与跨接口任务，以多层执行验收检查可解性、难度和 verifier。</td><td>341 是环境任务对，不是 341 个独立世界；反事实 probe 不是因果证明。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2610.31918">分层 Agent 蒸馏</a> · 2026-10</td><td>跟随学生的应是历史还是动作前缀</td><td>分别控制环境历史与当前动作前缀的教师/学生来源，研究混合与课程。</td><td>教师有额外特权指导；结论限于论文模型和环境的受控比较。</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2610.39264">Live iOS / GiGPPO</a> · 2026-10</td><td>真实移动 UI 的在线 RL</td><td>规划与坐标定位分离；截图 judge 提供步骤与终局奖励，近邻稳定 critic。</td><td>依赖私有设备、数据与 judge；同一模拟用户参与训练及评测。</td></tr>
+        </tbody>
+      </table></div>
+      <p>时间窗外的必要前置包括 <a href="https://arxiv.org/abs/2503.09516">Search-R1</a>、<a href="https://arxiv.org/abs/2504.07164">R2E-Gym</a>、<a href="https://arxiv.org/abs/2504.21798">SWE-smith</a> 和 <a href="https://arxiv.org/abs/2505.10978">GiGPO</a>。它们用于理解检索 RL、可执行 SWE 数据与状态分组信用，不计入本页年度目录。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>怎样读这些论文的实验结果</h2>
+      <h3>同一条增量链，不能全部归给 RL</h3>
+      <p>EnvScaler 的 BFCL-v3 Multi-Turn 从 28.88 到 37.00 再到 41.88，最直接的信息是：先通过教师轨迹扩大有效行为支持，再利用环境反馈改善选择。将 13 点全部称为“RL 增益”会漏掉 SFT 的主要贡献。类似地，Agent Lightning 的提升也不能自动证明一种新的 RL 算法优于 GRPO/PPO，它首先证明的是真实 harness 与正确训练语义可以落地。</p>
+      <h3>“更高奖励”与“更可靠行为”可能分离</h3>
+      <p>奖励上升可能来自更会满足生成验收器，而非更会满足用户目标；工具调用更多也可能只是增加成本。评估应至少同时报告完整任务成功、必要条件通过、未预期副作用、失败恢复、平均与尾部时长、总 token/工具/教师成本。多 Agent 还需分别报告关键路径与总工作量。</p>
+      <h3>“自洽”不是独立正确性</h3>
+      <p>多次 LLM judge 一致主要说明结果稳定，不排除稳定的共同错误。多数答案投票、环境作者写的 verifier、教师模型与最终 judge 若共享相同盲点，就会形成闭环自证。独立可执行检查、人工审查、已知错误候选、等价正确路径与未预期副作用，是不同类型的外部锚点。</p>
+      <h3>“开源”不等于“可复现”</h3>
+      <p>应分别确认数据、初始环境、工具镜像、奖励、训练脚本、权重、评测 harness 与计算资源。论文总环境数可能大于公开子集；公开训练入口存在也不代表端到端跑通。对长程 RL，训练策略版本、真实 prompt、log-prob、缓存与状态重置协议应进入复现记录。</p>
+    </section>
+
+    <section id="terms">
+      <h2>术语解释</h2>
+      <div class="def-list">
+        <div><b>Agentic RL</b><span>让策略在多轮环境交互中，依据后续观察和延迟反馈学习动作的强化学习；不只是给单轮最终答案打分。</span></div>
+        <div><b>Verifier</b><span>检查任务是否满足条件的程序或模型。能运行只说明可计算，不说明检查项完整或语义正确。</span></div>
+        <div><b>Curriculum</b><span>训练任务的难度与分布安排。它可以来自成功率、估计不确定性、失败类型或环境生成器的在线更新。</span></div>
+        <div><b>Credit assignment</b><span>把最终结果对应到早期状态、动作或 token 的过程。广播终局 advantage 是一种选择，不等于精确识别因果贡献。</span></div>
+        <div><b>OPD</b><span>On-policy distillation：学生先访问自己的状态与前缀，再由教师在这些上下文提供分布监督；它补充教师成功轨迹覆盖不到的错误状态。</span></div>
+        <div><b>Harness</b><span>模型外部的执行运行时，负责上下文、工具、状态、子 Agent、异常与停止。它决定模型在训练和部署时实际面对的观察。</span></div>
+        <div><b>Group advantage</b><span>以同一任务的一组 rollout 奖励构造相对学习信号。全组同奖励时没有组内任务差异，但不等于题目永远没有训练价值。</span></div>
+        <div><b>Self-evolution</b><span>任务、反馈、环境或策略部分由系统自己更新。它不是无先验、无外部信息或无人工规则的同义词。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>证据边界：现在还不能下的强结论</h2>
+      <ul>
+        <li><strong>不能说更多合成环境必然带来通用能力。</strong>环境多样性、真实状态依赖、验收质量和留出协议需要同时成立。</li>
+        <li><strong>不能把“零外部训练标注”写成“没有先验与外部知识”。</strong>预训练模型、教师、工具、外部语料、测试集和人工规则都提供信息。</li>
+        <li><strong>不能把细粒度奖励当作已解决信用分配。</strong>局部标签、value、子结果或 judge 各自带偏差；真正的因果价值需要状态分支、后续完成率或独立任务验证。</li>
+        <li><strong>不能把理想化理论保证直接套到真实长程训练。</strong>有限采样、共享参数、近似价值、off-policy 与动态 harness 都会改变条件。</li>
+        <li><strong>不能把单次高分当成泛化。</strong>需要区分新实例、新任务模板、新环境、新工具、新组合与真实部署迁移，并固定推理预算。</li>
+        <li><strong>不能把任务合成或长时运行等同于发现重要问题。</strong>执行任务的能力、选择研究问题的能力和形成独立研究判断的能力仍需不同证据。</li>
+      </ul>
+    </section>
+
+    <section id="insight">
+      <h2>研究启发：三个值得做的小而清楚的问题</h2>
+      <h3>1. 用同样预算审计反馈，还是扩大任务数？</h3>
+      <p>在一个 3–5 个工具、可重置状态的工单环境中，先植入验收器遗漏：允许重复提醒、忽略副作用、错误收件人也能通过。固定策略与训练预算，对照“继续生成更多任务”与“用预算生成错误候选、等价成功路径和副作用检查来审计 verifier”。主要指标应是独立验收下的 false positive、false negative、约束违反和最终成功，而不是训练奖励。</p>
+      <p>可检验的预测是：独立审计能修复特定假阳性并改善真实任务完成；仅增加 judge 次数更多是在降低随机波动，无法自动修复共同遗漏。这里检验的是反馈质量，而不是再发明一个更复杂的 RL 名称。</p>
+      <h3>2. 局部动作评价能否由同状态后续结果校准？</h3>
+      <p>在可重置状态上，对“查询邮箱”“直接发送”“先澄清”分别采样后续轨迹，比较最终完成率，再把这种分支结果用于校准便宜的局部 judge。对照同预算的终局 GRPO、专家动作 DPO 与 LLM 过程奖励。它回答“这个动作是否提高完成概率”，而不是“这个动作是否看起来像专家”。</p>
+      <p>可检验的预测是：同状态分支监督在恢复、信息获取与等价路径任务上更可靠；在无法重置、强不可逆环境中成本优势会减弱。实验必须同时报告分支调用成本。</p>
+      <h3>3. 压缩是否保留了未来真正需要的信息？</h3>
+      <p>给同一段历史设置两种后续任务：一种需要旧错误日志，一种需要去重时间。比较摘要与文件记忆是否分别保留必要信息，并测最终执行结果。仅按摘要与原文的文本相似度评分，会奖励表面完整而非行动可用。</p>
+      <p>可检验的预测是：任务条件化的信息保存在约束回溯和错误恢复上优于通用摘要模板；未来需求高度不可预测时，过度压缩会失败。该方向连接 CompactionRL、AgeMem 与 CAMG-RL，但仍是需要独立验证的研究设计。</p>
+    </section>
+
+    <section id="community">
+      <h2>社区讨论如何使用：作为线索，不作为质量裁判</h2>
+      <p>公开社区里，Agent0 与 SPADE 的讨论主要围绕“没有人工数据也能否持续变强”展开，RAGEN-2 则引起对 entropy 之外训练诊断的关注。它们有较强传播性，是因为回应了人工标注成本、自演化和训练失稳三个共同痛点。Agent Lightning 的讨论更偏工程：真实 harness 是否能直接进入训练、长轨迹与 token 对齐如何处理。</p>
+      <p>社区材料可分为三层：<strong>作者发布与项目解读</strong>有助于理解设计动机；<strong>独立研究者长评</strong>有助于发现实验边界、复现问题和未检验假设；<strong>浏览、点赞与收藏</strong>只反映某个时点的可见传播。它们都不能替代论文原文、实现或独立复现。不同工作的发布时间与受众差异很大，因此本页不以互动量给论文排质量名次。</p>
+      <p>小红书公开检索未获得足够稳定、可核验的笔记正文与互动数据，故不据此比较讨论度。X 上能定位的代表性解读保留在文末；快照和页面可访问性可能变化。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本页覆盖 2025-11-09—2026-11-09 首次公开的工作，以 arXiv 首次提交日期归窗，正文按核查时版本描述。五篇代表作核对方法、公式、相关实验与作者限制，其他论文按相关正文与公开项目材料整理。实验数值均为作者或项目方报告，未独立启动模型训练或复现 benchmark。社区材料用于理解传播议题与争议，不作为论文质量或独立验证依据。</p>
+      <h3>五篇代表作与实现</h3>
+      <ul>
+        <li><a href="https://arxiv.org/abs/2511.16043">Agent0 · arXiv</a> · <a href="https://github.com/aiming-lab/Agent0">官方代码</a></li>
+        <li><a href="https://arxiv.org/abs/2601.05808">EnvScaler · arXiv</a> · <a href="https://github.com/RUC-NLPIR/EnvScaler">官方代码与数据入口</a></li>
+        <li><a href="https://arxiv.org/abs/2608.19197">SPADE · arXiv</a> · <a href="https://huggingface.co/spade-rl">官方模型与环境资源</a></li>
+        <li><a href="https://arxiv.org/abs/2604.06268">RAGEN-2 · arXiv</a> · <a href="https://github.com/mll-lab-nu/RAGEN">官方实现</a></li>
+        <li><a href="https://arxiv.org/abs/2608.17528">Agent Lightning v1.0 · arXiv</a> · <a href="https://github.com/microsoft/agent-lightning">官方实现与示例</a></li>
+      </ul>
+      <h3>代表性社区解读</h3>
+      <ul>
+        <li><a href="https://x.com/rryssf_/status/1992889473911378039">关于 Agent0 的公开介绍与回复</a></li>
+        <li><a href="https://benjamin-eecs.github.io/blog/2026/spade/">作者团队对 SPADE 机制与开源资源的介绍</a></li>
+        <li><a href="https://x.com/cwolferesearch/status/2063363579987030044">Cameron Wolfe 对 RAGEN-2 的公开讨论</a></li>
+        <li><a href="https://www.microsoft.com/en-us/research/blog/agent-lightning-v1-0-a-3500-line-lightweight-agentic-rl-framework-for-training-agents-with-real-harnesses/">Microsoft Research 对 Agent Lightning v1.0 的工程介绍</a></li>
+      </ul>
+      <p class="small">其余工作的 arXiv ID 与时间、机制摘要已在“其他代表方法”表中逐项列出；已有单篇精读的页面保留原文与实现入口，避免在此重复堆砌链接。</p>
+    </section>
+  </main>
+</body>
+</html>

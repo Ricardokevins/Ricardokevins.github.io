@@ -1,3 +1,15 @@
+## 2026-11-09 Agentic 训练年度调研（本地验收完成）
+
+- 首页分类修正：原索引误用了 `Paper Survey`，使该条在 Notes 首页落入单独类别并排在旧笔记之后。已改为站内统一的 `Paper Note`；重新构建后核验首页卡片、分类筛选及进入正文的链接。
+- 首页跳转修正：卡片链接原将缺少结尾 `/` 的站点地址与笔记绝对路径直接拼接，形成 `ricardokevins.github.io/notes/...`。改为显式 `{{ base_path }}{{ note.url }}`，补回 `/`，并在本地页面路由下实测从 Notes 首页进入正确正文。
+- 按用户指定，将研究笔记默认沉淀到本仓库 `notes/`，不再默认写入 Obsidian；本轮新增 `notes/paper-reviews/agentic-training-annual-survey-2026.html`，并登记 `_data/notes.yml`。保留已有 Progress 与其他工作区改动，未提交或推送。
+- 主体选择 Agent0、EnvScaler、SPADE、RAGEN-2、Agent Lightning v1.0 五篇，分别解释自生成课程与多数答案伪标签、可执行环境与最终状态验收、环境—策略共同演化、输入依赖与 SNR-aware filtering，以及真实 harness 的 token 前缀、轨迹切片和 rollout-level loss。逐篇说明输入输出、奖励语义、算例、实验增量和失败边界；其余 35 项工作整理为带原文链接的对照表。
+- 覆盖 2025-11-09—2026-11-09 首次公开的工作，复用并链接既有 SPADE、RAGEN-2、TRACE、Agents-A1 精读。特别区分“无外部人工训练标注”与“无先验/外部知识”、程序可执行与验收规格正确、组内方差与任务学习价值、框架可接入与算法已验证。
+- 社区讨论用于选题和争议线索：作者/研究者发布、独立讨论与互动量分层，不将点赞等传播指标当质量证明。小红书未取得足够稳定的正文与互动快照，未据此制造热度排序。公开论文和项目材料为主，未独立训练或复现实验。
+- [x] `ruby scripts/validate_notes_index.rb` 通过：306 条索引对应 306 个顶层笔记 HTML；唯一质量警告来自既有 `turning-structure-into-reward.html` 短文。`git diff --check` 与目标页公开过程噪声/公式裸小于号扫描通过；表格条目均补齐原文链接。
+- [x] 常规构建受可选 GitHub Metadata 联网阻塞，已终止；在当前 Ruby 进程内禁用远程元数据探测并将 Sass 缓存置于临时目录后，完整 Jekyll 离线构建成功至隔离目录，未修改仓库配置或依赖。
+- [x] 独立无头 Chromium 检查 1440px/390px：页面宽度等于视口，40 个 MathJax 容器正常、公式错误 0、缺失锚点/重复 id/浏览器错误/失败请求均为 0。手机端宽表 760px 在 364px 容器内横向滚动；实际目视首屏、Agent0/RAGEN-2/Agent Lightning 公式与移动端长表。截图与 QA 记录在 `output/playwright/agentic-training-annual-survey/`。
+- 交付为本仓库站内笔记与索引更新，不代表线上已发布；没有改动其他笔记正文。
 # Ricardokevins.github.io Progress
 
 ## 2026-11-09 Meta-Harness 在代码、AI4Science 与芯片设计中的应用（本地验收完成）
