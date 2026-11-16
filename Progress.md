@@ -9049,7 +9049,6 @@ bundle exec jekyll build               # done in 7.6s, 仅 NOTE_TEMPLATE.md 模�
 - 私人资料库 `README.md`、`task-state.json`、`checks/detailed-notes-audit.json`、`checks/all-episode-structure.json` 与SHA256清单同步更新。原始音频、完整转录、模型原始响应、旧稿、失败记录和补源材料不进入公开网站，但继续保存在私人库。未提交、推送或发布。
 - 证据边界：本轮为完整机器转录和逐期正文审读，不是对全部约195小时逐字听审；少量原链资料仅用于核对指标等特定口径。嘉宾涉及的公司、投资、实验、技术指标和未来预测不自动等于独立核验事实。
 
-## 2026-11-15　推特研究讨论与深度分析接入个人笔记仓库
 
 - 按用户要求，将已完成的十一组X讨论与深度分析整理为 `notes/tech-analysis/ai-research-feedback-self-improvement-x-notes-2026-11.html`，登记 `_data/notes.yml`；配图位于同名assets目录，关联Agentic训练、Meta-Harness领域落地与结构反馈三篇站内笔记。保留此前仓库改动，未提交或推送。
 - 内容审读：保留14节、8条深入推论、研究对照与失败条件，将个体履历/申请匹配改为一般研究问题，原帖主张、作者报告、教学算例和研究设想分别呈现。公开页去掉本地路径、工具记录与存储说明，35个原始公开来源链接完整保留；原私人笔记与缓存未改。
