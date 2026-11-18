@@ -1,0 +1,190 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Paperboy：连续上下文与主动协作的边界</title><link rel="stylesheet" href="../assets/notes-shell.css"><style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style></head><body class="notes-shell-page">
+<nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+<header><div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-6a0be0cfe1eb34a939abced5">十字路口目录</a> · Agent 产品</div><h1>Paperboy：连续上下文与主动协作的边界</h1><p class="lede">如果助手能了解跨应用的工作过程，它能省去多少重复解释？它又怎样避免误解、越权和打扰？</p><nav class="toc" aria-label="本文目录"><a href="#conversation">对话脉络</a> · <a href="#mechanism">从活动到记忆</a> · <a href="#judgment">独立判断</a> · <a href="#sources">证据边界</a></nav></header>
+<main><section id="conversation"><h2>先把对话讲清楚</h2><p>Koji 采访 Paperboy 创始人 John Yang 和 founding engineer Jett Chen。团队试图探索一种更连续的 AI 协作方式：让助手理解用户在不同应用中的工作，并在合适时机主动提供帮助。采访时他们说团队约 12 人，产品仍在迭代，早期原型面临成本和效果问题。</p>
+<h3>1. 从对现有交互的不满出发</h3><p>John 说，他不希望每次都手动把文件、邮件和个人背景放进一个对话框；团队协作时，也希望多人和 Agent 能共享必要上下文。他认为许多工具以会话和用户提示为中心：会话多了难找，重要信息可能留在旧对话里，而用户还得主动维护说明文件。</p><p>Jett 补充，压缩长对话可以延长一次任务，但并不自动收集用户在其他应用里的工作。他们尝试从用户授权的电脑活动中提取背景，希望帮助系统理解人当下在做什么。这是对特定产品使用体验的观察，不意味着所有会话式工具都不能保存记忆或调用外部资料。</p>
+<h3>2. 观察之后，怎样变成有用的记忆</h3><p>团队描述的方向是：在用户授权范围内处理电脑活动，再形成不同粒度的记忆。Jett 说，越接近当前任务的信息通常保留得越细，较久以前的内容可以更概括。John 认为不同用途需要不同组织方式：帮助回复邮件与帮助研究项目，不能简单使用完全相同的压缩结构。</p><p>他们举的应用包括在文本输入处提供补全，以及综合聊天、浏览和开发过程，为代码变更起草说明。Jett 觉得跨应用信息让草稿更贴近实际任务；这是团队内部的体验，节目没有提供盲测或与其他工具的系统对照。</p>
+<h3>3. 第一次使用，为什么可能从会前准备开始</h3><p>主持人问用户前五分钟能获得什么。John 说可能先做会议准备：用户授权日历和邮件后，系统理解即将到来的会议，再询问是否需要查资料。他强调不能只承诺“以后会更懂你”，还需要尽快展示能理解用户、又不令人厌烦的帮助方式。采访时这是团队计划与原型，并非本文验证过的公开产品能力。</p>
+<h3>4. 团队里的数字分身</h3><p>团队描述了各自在 Slack 里的助手实例：一个帮助同事了解产品和设计背景，另一个协助招聘信息整理。Jett 说它能提供创始人掌握的部分背景和判断线索，但遇到需要创始人授权的决定，仍不会把它当作本人批准。</p><p>John 说，设置过程中会询问哪些信息可以与哪些人分享，并希望根据既有关系安排分享范围。这提出一个难点：知道某人过去对谁说过什么，不自动等于知道他现在愿意分享什么；记忆中的判断也可能已经改变。产品如何表达来源、纠错和授权，需要具体设计。</p>
+<h3>5. 为什么界面借鉴群聊</h3><p>团队最初想为投资人、创业者等不同角色设计不同侧边栏模块，但发现每种职业都可能要求不同组合。后来他们想到即时通讯：同一组人可以围绕不同话题建立群聊，不活跃的讨论自然沉到下面。Koji 说自己的播客团队也会为不同节目建群，以免多个任务挤在一个对话里。</p><p>他们因此探索以聊天和群组组织人与 Agent 的协作，而不是为每种工作强制设计一个完全不同的界面。John 也承认，要替换企业现有通讯系统很困难：已有数据、连接器和组织习惯都带来迁移成本，因此更现实的起点可能是在团队已经工作的地方提供帮助。</p>
+<h3>6. 任务时间尺度改变交互</h3><p>John 借用不同事物以不同速度变化的“节奏层”概念，讨论 AI 产品：回复一句消息可能只需要几秒，输入处的补全就足够；阅读多份报告、组织复杂判断可能持续数小时甚至更久，需要其他形式的协作。他说“五层”只是思考分类，不代表世界只有五种任务速度。</p><p>时间越长，系统越需要保留目标、进度、依据和待决问题；同时用户也更需要知道它何时会行动、何时需要自己。节目对长期任务的最佳界面仍保持探索态度。</p>
+<h3>7. 创始人的工作与团队</h3><p>John 说，做 CEO 后发现自己的一个错误决定可能消耗团队大量时间，因此要明确什么算成功、让成员理解目标，并学习招聘、反馈和管理。他提到通过书籍、与有经验的管理者交流以及定期教练沟通来学习。其对教练和心理治疗的比较是个人体验，不是两类专业服务的普遍优劣结论。</p><p>团队希望同时吸引快速搭原型的人和理解操作系统、基础设施的人。他认为深入系统的专家仍有价值。Jett 也谈到大学可能为尚不确定方向的人提供学习和探索时间；如果已有明确机会，离校工作也可能是个人选择，取决于资源、机会与风险。</p>
+<h3>8. 独立创业与产品竞争</h3><p>John 回忆此前团队收到过收购意向，但他希望保持独立，继续做自己关心的问题。他认为基础模型公司的模型、算力和分发能力很强，创业团队需要在具体体验与用户需求上找到优势。他也讨论消费者产品、机器人和安全等可能机会，承认模型公司同样可能进入这些领域。</p><p>节目最后他希望公司不再持续亏损，同时继续改进团队。对具体模型公司、产品体验、价格和投资的看法都属于采访时的个人判断；官方简介与机器转写对个别说话人及产品偏好存在混淆，本文不据此替某位嘉宾确定投资建议。</p></section>
+<section id="mechanism"><h2>机制：活动记录如何成为一次有依据的帮助</h2><p><strong>本文自拟例子：</strong>用户最近在三个地方讨论一个研究问题：文档记录了假设，会议里有人提出反例，代码实验显示初步结果。系统如果只保存“用户研究这个方向”，下一次帮助有限；如果保存“假设是什么、反例由谁提出、实验在哪个设置下得到什么结果”，并在下次任务中能找到原始依据，就能更具体地提醒尚未解决的冲突。</p><p>但这需要经过几步：用户选择允许读取的来源；系统把事件关联到正确任务；区分事实、他人建议与用户决定；检索与当前问题相关的部分；展示来源并允许修改。越久以前的信息越可能过时，系统需要知道什么时候重新确认，而不是把旧记录当作永久事实。</p><p>主动性也要有触发条件。日历出现会议只说明可能需要准备，不说明用户希望它向其他人发消息。一个可控的助手可以先在本地给出建议，等用户明确授权后才执行相应动作；是否需要通知、何时打扰，应由用户的任务和设置决定。</p></section>
+<section id="judgment"><h2>独立判断：更多上下文不自动带来更可靠的理解</h2><h3>观察到活动，仍要知道它代表什么</h3><p>打开一份招聘简历可能表示在筛选候选人，也可能只是帮同事查资料；在浏览器停留三十分钟可能是深入研究，也可能是离开了电脑。系统可以把活动当作线索，却不应直接把推断写成用户偏好或绩效结论。用主动提问、可编辑记忆和原始依据，可以降低这种误解。</p><h3>一人授权并不自动覆盖其他人的信息</h3><p>会议、聊天和屏幕可能包含同事、客户或家人的信息。持续采集比一次粘贴更容易扩大范围，也可能记录用户本不打算保留的内容。产品需要让采集范围、保存期限、删除和分享权限清楚可控；“转成摘要或特征”也不必然消除敏感信息。</p><h3>真正有用的长期助手要能承认不确定</h3><p>如果系统记得用户上个月考虑过某个岗位，它应表述为“曾经考虑”，并询问是否仍有效，而不是替用户宣布已经决定。对于科研，它还需要保留失败、竞争解释与停止原因；这些比一份光滑的最终摘要更有助于未来判断。可以比较带来源和不带来源的记忆，在后续任务中的纠错时间与错误继承，而不只看回答是否流畅。</p></section>
+<section id="sources" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>依据官方简介及可取得的第三方机器转写整理，未逐字听审或实际测试 Paperboy。访谈中英混杂，转写有姓名、说话人和产品名称识别不一致；团队规模、融资、功能和体验均按访谈时点理解。研究记忆例子和验证建议为本文构造。</p><ul><li><a href="https://www.xiaoyuzhoufm.com/episode/6a0be0cfe1eb34a939abced5">原节目：Paperboy 团队</a></li><li><a href="https://www.paperboy.com/">Paperboy 官网</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-05-20-ai-agent">本期文字稿（BidClub）</a></li></ul><p><a href="crossing-podcast-year-2025-2026.html#ep-6a0be0cfe1eb34a939abced5">返回十字路口目录</a></p>
+</section></main></body></html>

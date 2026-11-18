@@ -1,0 +1,193 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MiniMax 与 Hermes：Harness、多智能体和自我改进</title><link rel="stylesheet" href="../assets/notes-shell.css"><style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style></head><body class="notes-shell-page">
+<nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+<header><div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-69e96b5b1e94ae6921ee3c2b">十字路口目录</a> · Agent 圆桌</div><h1>MiniMax 与 Hermes：Harness、多智能体和自我改进</h1><p class="lede">从记忆和反馈开始，讨论 Agent 怎样持续工作、模型与应用如何互相影响，以及人仍在哪里定义问题。</p><nav class="toc" aria-label="本文目录"><a href="#conversation">对话脉络</a> · <a href="#mechanism">反馈机制</a> · <a href="#judgment">独立判断</a> · <a href="#sources">资料与边界</a></nav></header>
+<main><section id="conversation"><h2>先把对话讲清楚</h2>
+<h3>从 OpenClaw 到 Hermes：用户为什么希望它记住</h3><p>Koji 主持的直播精华中，嘉宾是 MiniMax Agent 首席架构师阿岛、研发工程师择因，以及 Nous Research 的 Hermes Agent 业务负责人 Tommy Eastman。节目称原直播英文部分经过 AI 配音翻译，以下按节目所呈现的中文内容整理。几位嘉宾既是产品参与者，也在讨论与自身产品相关的市场和技术判断。</p><p>Koji 先问为什么 OpenClaw 在中国受到广泛关注。阿岛认为，一些用户此前较少接触实用的 Agent，而国内模型能力与即时通讯入口共同降低了体验门槛；他也提到同期大众 AI 产品的传播影响。这是嘉宾对热度的解释，并非经过对照的因果归因。</p><p>择因说，使用 Agent 的人很快会遇到跨天遗忘：昨天调通的合作方式，今天可能需要重新解释。他认为 Hermes 在记忆和使用体验上回应了这一痛点。Tommy 介绍，Hermes 把工具调用、循环、状态和错误处理组织起来，并尝试把成功工作流保存为可复用的 Skill。这里的 Skill 可以理解为任务相关的操作说明和资料：未来做类似任务时，系统可读取它，而不是从零开始。Tommy 强调安装容易、模型可替换和社区的重要性，并认为复用经验能提高一致性；节目没有提供跨模型可靠性对照，不能因此断言每次都能完美重现。</p><p>Tommy 回忆 Nous Research 从社区协作、Llama 后训练及扩展上下文研究起步；Hermes Agent 最初是团队成员为自己的日常工作制作的助手，后来才开源并受到关注。他提到访问平台的 Token 用量快速增长，但所述不同时间点和统计口径不足以推断独立用户数、留存率或产品是否盈利。</p>
+<h3>Harness 解决什么瓶颈</h3><p>择因把 Harness 比作给同事配电脑、电话和邮箱，再约定哪些事可以做：模型获得工具和行动空间，也受到权限、目标和验收方式约束。多个实例可以承担执行和审查等角色。阿岛说，自己并发使用多个 Agent 后，人不断切换任务和逐一确认反而成为瓶颈。因此他希望把更多可验证的环节交给系统，例如运行测试、读取真实反馈，再把有用经验写成 Skill 或其他可复用约束。</p><p>他的核心问题不是「人是否完全退出」，而是哪些判断有可靠反馈、可以减少逐步询问，哪些还需要人设定目标和验收。节目提出的高自动化描述来自各自工作实践，不能直接推断所有任务都适用。</p>
+<h3>多 Agent：新视角还是更多计算</h3><p>主持人提出争议：单个强模型已经能做很多工作，为什么还要多个？择因认为多个实例能够交换较多信息，也能分散一次会话中的上下文负担。他还声称上下文使用超过一半后能力会指数下降，但节目没有给出模型、任务、指标或实验，因此这只是一个未经支持的具体数字主张。</p><p>阿岛补充自己的经验：一个实例沿错误路线投入越多，越可能继续沿着旧思路走；换一个带新上下文的实例审视，有时能发现另一条路。他也明确说，这相当于使用了更多预算。这个补充很重要：效果提升可能来自新的视角，也可能只是多了一次尝试或更多计算。要知道哪一种起作用，需要在相同预算下比较。</p>
+<h3>自我进化与人类经验</h3><p>Koji 问：推荐系统也会根据使用行为变得更贴合用户，为什么 Agent 的「自我进化」特别受关注？阿岛从模型研发流程回答：已有模型可帮助清洗数据、构造任务和环境，让后续模型获得训练材料。他称 MiniMax 某次模型的强化学习流水线中已有大量工作由模型和 Agent 参与，口述比例约七到八成，而人更多判断结果与预期的偏差、决定方向。节目未定义工作量分母、任务种类或验收标准，这个比例只能作为团队自述。</p><p>择因则从用户体验回答：初次使用时用户需要提供文件、反馈和习惯；如果助手能把经验带到下一次合作，会减少反复磨合，也可能让人对它形成更持久的关系。两位说的「变好」并不相同：前者涉及训练新模型的流水线，后者可能只是更新可读取的个人记忆。</p><p>关于把名人「蒸馏成 Skill」，阿岛认为它更像把可获得的资料整理成对话入口，类似读书，不是真正复制一个人。反过来，他也说模型公司会向专家收集难题及解法，而自己把工作方法写成 Skill 时也像在整理自己的经验。主持人提到研究者看到模型训练模型后产生的失落；阿岛的回答是，希望机器承担重复劳动，人能做自己热爱的创造性工作。这是他的价值判断，不是对未来岗位分布的证明。</p>
+<h3>零人公司与谁决定目标</h3><p>对「未来只有零人公司」的观点，阿岛和择因并不完全赞同。他们认为初始目标与取舍仍需要人的判断，并主张人不应轻易放弃设定目标的权利。Koji 举了一个接受 Token Grant 的 Agent 实验：创建者设定超越 Claude Code 的目标后，希望它自己写代码并通过公开渠道获得资源。他说自己收到一封感谢信。嘉宾把这看成目标、设计者偏好和系统行为共同形成的结果；它是一次有外部资助与初始人类设定的实验，不能据此认定已形成无需人的公司。</p>
+<h3>模型、应用与真实任务如何互相影响</h3><p>在产品关系上，阿岛说 MiniMax 同时做模型和 Agent，也希望模型能服务外部 Agent。用户和开发者会把模型带到公司内部想不到的场景，模型公司再从适当取得的数据与经验中学习。因此他预测，一部分通用工作流可能逐渐被模型或模型厂商的产品吸收，应用不能只依赖暂时补上的能力缺口。</p><p>他区分聊天与 Agent：聊天主要生成当前回答；Agent 需要执行行动、观察环境结果，再调整下一步。他用交错思考描述这种循环：不是一开始制订完计划后不再改变，而是每次获得新信息都可以重新判断。主持人以复杂网页检索为例追问；这类问题需要组合多个条件并在搜索失败后改变路径。能多轮调用工具并不自动保证答案正确，还要看检索、来源和验收。</p><p>对中美模型差异，阿岛认为训练技术认识未必相距很大，但高质量地定义真实任务、与领域专家共同构造数据，是值得重视的差别。他还谈到算力、投入与长期判断。这里是从业者观点，节目未提供足以量化各项差距的可比证据。</p>
+<h3>通用 Agent、垂直产品和基础设施</h3><p>Koji 问具体机会在哪里。阿岛认为，通用能力即使提高，特定行业仍可能有最后一公里：例如法律服务中，要处理具体客户、责任和合规要求。择因觉得视频剪辑等垂直任务当前与通用编码的工作方式仍有差异；阿岛则预期更强的多模态模型会逐步缩小差距。两人对长期边界有分歧，不应抹成一致结论。</p><p>谈到 Agent 基础设施，阿岛认为身份和支付涉及广泛的社会协作与责任，资源门槛很高；为具体业务提供可供 Agent 使用的接口、环境和服务，则可能存在机会。他对通用沙箱、记忆和运行时是否有独立机会持谨慎态度。这个判断反映他对市场结构的预期，不等于这些组件没有技术价值或所有创业都没有机会。</p>
+<h3>行业新闻、产品形态与就业</h3><p>嘉宾随后评论模型版本、身份认证、未发布产品和 Claude Code 的内部设计，对厂商动机存在推测。阿岛比较了更简化的框架和较多约束的做法；他们都认为，即使领先团队也在持续试验。讨论 Manus 时，择因区分了为用户交付结果的服务与用户自己购买模型、配置长期助手的模式；阿岛预计更强模型可能使这些形态逐渐融合。</p><p>最后，阿岛设想多模态、近实时、自然交互且可按需查看细节的助手；他相信人的创造力仍重要。择因用自动取款机与银行网点的历史类比，鼓励工程师主动使用 AI。类比表达了他们的乐观，但历史上某项技术提高生产率，并不能单独预测另一项技术对所有岗位、工资和个人转型的影响。</p></section>
+<section id="mechanism"><h2>把「越用越好」拆成三个不同过程</h2><p><strong>第一，任务内纠错。</strong>模型尝试写程序，测试返回错误，它读取错误并修改；改变发生在当前任务的行动选择中，任务结束后未必保留。<strong>第二，跨任务积累。</strong>系统把已验证的步骤和适用条件写成 Skill；下次遇到类似问题时检索并执行。模型参数可能完全没变，但输入变了。<strong>第三，参数学习。</strong>团队将多次轨迹连同结果组织成训练数据，通过监督学习或强化学习更新模型，之后即使不读取原来的 Skill，模型行为也可能改变。</p><p>例如修复某类数据库迁移错误，第一次成功后保存了「先备份、检查版本、在隔离库测试」的流程。下一次自动读取它可以减少遗漏；但如果数据库版本或任务条件变了，照搬也可能出错。改进系统需要记录流程的适用范围、来源和失败反馈，而不只是统计文件增加了多少。</p><p>推荐系统也会利用反馈改变行为：一次是根据当前用户历史调整推荐，另一次可能是定期重新训练参数。它与 Agent 并无绝对的技术分界；这里更有解释力的差别是，系统改变了什么、依据什么反馈、改动是否可检查，以及是否能迁移到不同任务。</p></section>
+<section id="judgment"><h2>独立分析：把主张变成可检验的问题</h2>
+<h3>第二个 Agent 真正带来了什么</h3><p>想检验「新上下文审查有用」，可以给同一批任务分配相同总 Token 和时间预算，比较三种安排：单实例继续思考；单实例重新开始并可查看相同材料；执行者加独立审查者。三组都用未被执行者修改的验收数据，记录最终正确率、错误类型和成本。如果第三组只是在预算翻倍时更好，就不能把收益全部归给协作；如果审查者只看到执行者的结论而没看到原始证据，还可能共同继承错误。</p><p>长上下文确实可能带来信息检索困难。早期研究在特定问答和检索任务中观察到相关信息位置影响表现，但这不能推出所有模型在窗口使用到 50% 时都会按同一规律下降。不同模型、长度、信息位置和任务都需要分别测量。</p>
+<h3>人定义任务，是反馈链中难以省略的一步</h3><p>阿岛强调让系统获得真实反馈，这比只让两个模型互相夸赞更有力：程序能否运行、答案与资料是否一致，至少可以产生可检查的结果。但指标本身也由人或另一个系统选定。如果只奖励测试通过，模型可能迎合不完整测试；如果只奖励研究计划写得像样，模型可能熟练复述已有方向。</p><p>可以把研究系统拆成两项能力：在给定候选假设后，能否选择实验、执行并解释结果；以及能否发现原本没有进入候选集的问题。前者可用盲测候选和隐藏验收比较；后者还要让领域专家事先保留未知的有价值问题，检查系统提出的新问题是否新颖、重要、可验证，并与独立研究者或其他搜索方法对照。执行更快或提出更多问题，都不足以单独证明后者提高。</p>
+<h3>「被模型内化」要区分三种变化</h3><p>模型参数可能学会一项通用操作；模型厂商的应用也可能在模型外加入类似工具；垂直产品则可能仍需读取实时私有数据、连接系统并承担交付责任。外部功能消失，并不自动说明能力已经写入参数。判断应用护城河时，应看客户究竟为哪一步付费、替换成本是什么、模型厂商是否获得同样数据和反馈，而不是假设某层一定永存或一定消失。</p><h3>结果导向不等于强化学习只能奖励结果</h3><p>访谈将某些产品的过程错误归因于强化学习「只看结果」。强化学习使用什么奖励取决于训练设计：既可以按最终结果给信号，也可以引入过程中的检查。即便如此，奖励是否真实反映目标、能否被投机利用仍需要实测。没有训练细节与对照，不能据外部体验断定某个模型的具体训练方法或故障原因。</p></section>
+<section id="sources" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>依据节目官方简介与可取得的第三方机器转写整理；未逐字听审，节目英语部分本身经过 AI 配音翻译。简介称直播回应过 EvoMap 的指控，但现有这期转写仅在开头提及指控，没有对应的具体回应，故无法据此判断争议。嘉宾对模型、厂商动机、用量和人才差异的判断未独立证实；文中的比较方案与例子由本文提出。</p><ul><li><a href="https://www.xiaoyuzhoufm.com/episode/69e96b5b1e94ae6921ee3c2b">原节目：MiniMax × Hermes Agent</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-04-28-harness-minimax">本期文字稿（BidClub）</a></li><li><a href="https://openai.com/index/harness-engineering/">OpenAI：Harness engineering 项目记录</a></li><li><a href="https://arxiv.org/abs/2307.03172">Lost in the Middle：长上下文中的信息位置实验</a></li></ul><p><a href="crossing-podcast-year-2025-2026.html#ep-69e96b5b1e94ae6921ee3c2b">返回十字路口目录</a></p>
+</section></main></body></html>

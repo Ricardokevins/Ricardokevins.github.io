@@ -1,0 +1,191 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>来新璐：Agent Harness 的执行、状态与治理</title><link rel="stylesheet" href="../assets/notes-shell.css"><style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style></head><body class="notes-shell-page">
+<nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+<header><div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-69f2e83fbb3ffa11e59dec82">十字路口目录</a> · Agent 工程</div><h1>来新璐：Agent Harness 的执行、状态与治理</h1><p class="lede">从一个长程编程任务出发，理解模型如何获得行动能力、延续工作并与其他 Agent 协作。</p><nav class="toc" aria-label="本文目录"><a href="#conversation">对话脉络</a> · <a href="#walkthrough">任务例子</a> · <a href="#judgment">独立分析</a> · <a href="#sources">资料与边界</a></nav></header>
+<main><section id="conversation"><h2>先把访谈讲清楚</h2>
+<h3>从「模型以外」谈起</h3><p>主持人 Koji 采访 ShareAI 开源社区发起人、Komputer Blue 创始人来新璐，讨论 Agent Harness：围绕模型，让它能在环境中完成任务的一整套工程安排。来新璐维护的《Learn Claude Code》教程在采访时已有超过五万 GitHub 星标。他说新公司刚完成数百万美元融资，团队主力是自己和两名实习生，新方向尚无收入。这些是录制时的自述。</p><p>Koji 问，为什么不直接说模型决定 Agent 的上限？来新璐回答：智能的提升仍主要来自模型；但没有行动接口的模型像没有手脚的大脑，只能给出文字。Harness 则像为它提供身体或机甲，扩展它能接触和改变的环境。他用人的智商打比方，并非一项可据此比较模型与人的标准测量。</p><p>教程最初来自他自己做 Code Agent 的经验：他认为 Claude Code 展示了一种让模型自主决定下一步的方式，而许多旧式流程把问题拆成预先规定的提示词节点，再由程序决定流向。他预计后一种做法在一些 Agent 任务中会被更灵活的执行方式替代。主持人追问，既然托管式 Agent 服务已经出现，开发者还要不要了解内部机制？他承认未来许多使用者可能像使用成熟框架一样直接调用，但认为在技术和产品尚未稳定时，理解工具、状态和反馈仍有助于迭代。</p>
+<h3>三层：能动手、能接着做、能协同</h3><p>来新璐把 Harness 粗分三层。第一层是<strong>执行能力</strong>：文件的读写搜索、浏览器、命令行和其他工具，使模型能观察或改变外部世界。CLI 是通过命令与程序交互的接口；MCP 是连接应用与工具、资源等能力的协议。具体能做什么仍由工具实现和权限决定。</p><p>第二层是<strong>上下文和状态</strong>。模型需要知道目标、当前目录、已有文件、之前的尝试和待办；一次上下文窗口装不下整个任务时，系统要把必要信息写到可再读取的位置，由后续调用接续。这里的「下一个 Agent」可以只是一次新的模型会话，不意味着它拥有像人一样持续的内在记忆。</p><p>第三层是<strong>治理与编排</strong>：安排任务由谁执行、怎样并行、结果如何汇合，以及每个角色能读写什么。例如测试者需要运行测试，但不一定应该有权修改验收标准，否则它可能通过改变检查方式制造虚假的成功。三层不是互不相交的产品分类：能看到什么、能做什么和如何限制行动会共同影响系统。</p>
+<h3>他为什么做 K 系列工具链</h3><p>Koji 以多 Agent 构建 C 编译器为例，请他串起三层：模型要能创建和修改源文件；会话结束后要留下工程进展；多个实例还要分配任务、避免同时修改相同部分。来新璐由此介绍自己的项目：以接近 Unix 的文件与命令交互为基础，向开发者提供运行时；另有观察任务卡点、导出轨迹以及支持后续训练或上下文更新的设想。官方简介把组件称为 Komputer、Kruntime、Kwatch、Krl；转写的名称有识别差异。</p><p>面对云厂商竞争，他强调团队希望覆盖浏览器和其他能运行 JavaScript 的轻量场景。其方案用数据结构模拟文件系统和一部分命令，不等于在每个环境里装了一台完整 Linux。他明确承认：这种模拟环境不能直接运行真正的 GCC 编译器或浏览器，重型能力需要由其他服务提供。节目提到「1KB」和轻量化，未给出足以核验全部组件体积、功能及安全隔离的测量条件。</p>
+<h3>记忆不只是把对话存下来</h3><p>来新璐将记忆方案概括为更规则的结构化组织、文件加模型维护的半结构化方式，以及未来可能把经验纳入模型参数的方法。他偏好把信息放在文件中，再由 Agent 查询、整理和更新；主持人指出，个人经验、可复用的操作指南和 Skill 之间有重叠，重点是实践能否帮助系统完成后续任务。</p><p>他还描述一种两级维护设想：一次任务结束时检查有没有值得保存的信息；后台再周期性回顾多次会话，合并、纠正过时记忆。他把它称作「做梦」，认为与按需读取的文件式记忆相互配合。关于某产品内部的触发条件和未公开特性，节目基于嘉宾的解读；本文没有通过稳定版本的官方资料独立确认，不把具体运行频率当作产品保证。</p><p>这与参数训练有相似目标：利用过去经验改变未来行为，但机制不同。更新文件是改变后续模型调用能读到的信息；强化学习或微调是利用训练数据和目标更新参数。文件更新错误可以被后续检索反复带入，参数更新也可能遗忘旧能力；两者都需要检查经验是否适用于新任务。</p>
+<h3>上下文管理与他对 CLI 的偏好</h3><p>访谈接着讨论长任务何时压缩：工具输出太长时可先移出不必要的信息；接近容量时也可记录目标、当前进展、失败尝试和下一步，再由新会话读入。来新璐特别强调不要随意改动反复使用的前缀，因为前缀缓存可能因此无法复用，增加重新处理成本。他主张提供更多有用上下文和行动能力，减少对每一步的硬编码控制。</p><p>他用个人使用 GitHub 命令行的经验支持「CLI is all you need」：命令行容易组合，他觉得在自己的任务中比曾用过的 MCP 工具更顺手。他猜测这与模型在预训练中见过大量 Unix 命令有关。节目没有提供匹配任务、权限、工具描述、模型和预算的对照，也没有证明预训练语料比例，因此更适合把它看作经验和待检验解释。</p><p>访谈最后转向创业。除工具链外，他关注云端与个人设备的连接，以及让多位用户以较低成本训练和运行个性化模型的基础设施。他设想 Agent 从单体走向协作、再走向自行管理和发明，并提出「零人公司」。主持人提到一个接受 Token 资助、试图持续改进的项目。它展示了一种实验方向，不等于已经有无需人类、资源或组织承担责任的成熟公司。</p></section>
+<section id="walkthrough"><h2>把三层连起来：一个可复查的任务</h2><p><strong>本文自拟例子。</strong>用户希望修复一个项目的日期解析错误，并保持其他格式兼容。模型拿到目标后，先用只读搜索定位解析函数，再运行复现测试；找到问题后在允许的范围内修改代码，运行旧测试和新增的边界输入，最后说明改动和未覆盖情形。执行层提供搜索、读取、编辑和测试工具；如果没有文件或测试工具，模型只能提出方案。</p><p>假设任务中途窗口将满，状态层不能只留下「正在修 bug」。较有用的交接包括：用户要求兼容哪些格式、已发现哪个输入失败、复现命令和结果、改动了哪些文件、尚未检查什么。新会话读取这些线索后还应查看当前文件和测试结果，因为外部状态可能已经变化。把失败原因写错，后续会话即使流畅地继续，也可能朝错误方向前进。</p><p>如果把修复与验收分给两个实例，治理层需要规定：修复者可编辑代码，验收者运行预先约定的测试并报告结果；若验收者可以悄悄删除失败用例，绿色结果就失去意义。还要解决两个实例同时修改、测试环境不同以及最终由谁汇总的问题。分工的收益来自可独立推进的工作和可信反馈，不来自实例数量本身。</p></section>
+<section id="judgment"><h2>独立分析：哪些观点成立，哪些需要对照</h2>
+<h3>编译器案例的关键不只是多 Agent</h3><p>Anthropic 的项目记录称，研究者让 16 个实例在近 2,000 次会话中协作，API 开销约 2 万美元。项目通过文件锁和共享代码库减少重复工作；当大家都卡在 Linux 内核构建的同一个错误时，研究者引入 GCC 作为对照，只让自制编译器处理部分文件，才把故障拆成可并行定位的问题。研究者还编写测试、改进反馈并处理回归。因此，案例支持「合适的反馈和任务拆分能让多实例继续推进」，不支持「增加实例就能自主解决任意复杂问题」。项目是作者报告，本文未独立复现。</p>
+<h3>少控制不是不要约束</h3><p>预先规定每一步可能让模型无法利用新能力；完全不给边界又可能让它误操作或追逐错误指标。更合理的区分是：对探索路径保留空间，对外部副作用、权限和验收条件给出明确约束。例如允许模型自行搜索多个修复方向，但不允许它改写隐藏测试或未经授权向外发送数据。何处需要固定流程，取决于任务可逆性、验证质量和错误代价。</p>
+<h3>CLI 与 MCP 不是同一层的对手</h3><p>CLI 是一种使用程序的交互方式；MCP 规定应用与提供工具或资源的服务如何交换信息。一个 MCP 服务也可以在内部调用 CLI，二者可以组合。CLI 的组合性、结构化工具的参数约束、认证和远程部署分别有价值。要比较两条路径，应让它们完成同一批任务，尽量提供相同底层功能与权限，记录成功率、调用次数、耗时、输入输出成本和误操作，再检查差异来自接口描述、实现质量还是模型对命令的熟悉程度。</p>
+<h3>缓存、压缩和记忆分别解决什么</h3><p>缓存复用已计算过的相同前缀以减少重复计算；窗口压缩把部分历史换成较短表示以腾出空间；长期记忆把可能有用的信息保存到未来会话。它们经常配合，但不能互相替代。前缀改变可能影响缓存命中；与此同时，保留所有旧内容也可能挤占窗口并掩盖关键事实。工程上应同时衡量任务质量、压缩后信息丢失、缓存命中和总成本，而不是一律不压缩。</p><p>对研究工作尤其如此：一份有用的交接，应记录假设、关键反例、实验设置、失败尝试和尚未解释的现象，而非只保留最终结论。可以让后续会话分别使用完整记录、普通摘要和带依据的结构化交接，在相同任务与预算下比较能否找回失败原因、是否重复无效实验，以及发现新问题的数量和质量。即便交接提高了执行效率，也不能直接证明模型能发现原本不在候选集中的重要研究问题。</p></section>
+<section id="sources" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>本文依据本期官方简介及第三方机器转写重建访谈，未逐字听审或复现 K 系列产品。机器转写可能误识别名称、数字和发言人；嘉宾对模型排名、行业共识、内部机制、未来公司形态和训练语料的判断均不视为独立事实。官方文档会随版本变化，以下公开资料只支持文中明确引用的机制与案例。</p><ul><li><a href="https://www.xiaoyuzhoufm.com/episode/69f2e83fbb3ffa11e59dec82">原节目：来新璐谈 Agent Harness</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-05-05-claude-code">本期文字稿（BidClub）</a></li><li><a href="https://www.anthropic.com/research/building-c-compiler">Anthropic：多实例构建 C 编译器的项目记录</a></li><li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Claude 文档：提示前缀缓存</a></li><li><a href="https://code.claude.com/docs/en/memory">Claude Code 文档：项目指令与自动记忆</a></li><li><a href="https://modelcontextprotocol.io/docs/learn/architecture">MCP 官方文档：架构</a></li></ul><p><a href="crossing-podcast-year-2025-2026.html#ep-69f2e83fbb3ffa11e59dec82">返回十字路口目录</a></p>
+</section></main></body></html>

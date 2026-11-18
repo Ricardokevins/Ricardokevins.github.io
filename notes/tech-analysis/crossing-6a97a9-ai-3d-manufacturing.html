@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>卷卷：AI 3D 怎样从一张图走到实体制造</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header>
+    <div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-6a97a9daa0210c197dcc1ba0">十字路口目录</a> · AI 3D 与制造</div>
+    <h1>卷卷：AI 3D 怎样从一张图走到实体制造</h1>
+    <p class="lede">从短视频的创作激励，到三维模型、材料工艺与订单交付：生成能力如何接上真实生产链条？</p>
+    <nav class="toc" aria-label="本文目录"><a href="#conversation">完整对话脉络</a> · <a href="#mechanism">机制与例子</a> · <a href="#judgment">独立判断</a> · <a href="#sources">证据边界</a></nav>
+  </header>
+  <main>
+    <section id="conversation">
+      <h2>先把对话讲清楚</h2>
+      <p>Koji 与数美万物创始人、CEO 卷卷（任利锋）进行长谈。卷卷曾参与并带领早期抖音团队，此次介绍团队的 Hi3D 模型、造好物等产品，以及从三维生成延伸到实际制造的设想。对谈还回到早期内容产品经验，讨论哪些能力可以迁移、哪些制造问题需要重新学习。</p>
+
+      <h3>1. 从短视频立项，看见基础设施变化</h3>
+      <p>卷卷回忆，短视频机会与移动网络、手机屏幕和拍摄能力改善有关；团队也观察到快手与 Musical.ly 等不同内容形式。公司管理层决定探索不同方向，他负责其中后来发展为抖音的方向。他认为自己此前在用户运营与后台产品上的经验，对内容产品有帮助；同时强调组织支持和运气。节目中对早年通信技术和手机合作的个别时间描述较口语化，不能据此推断精确历史时间线。</p>
+      <p>他总结早期创作需要两件事：被激发、被看见。完全自由可能让新用户不知道拍什么，固定模板又可能限制表达；音乐、道具和特效提供了一个半开放的起点。推荐系统和人工运营则帮助发现不同主题，让作品有机会被更多人看到。这是他对当时产品经验的解释，不足以单独归因产品增长。</p>
+
+      <h3>2. 为什么把目光转向 AI 3D 与实体制造</h3>
+      <p>他在 VR 工作中看到，互动内容依赖大量三维资产，制作成本和周期都高；生成式 AI 的进展让他开始思考能否降低获取三维模型的门槛。他个人也长期关注珠宝、服装等实物，走访过产业带，观察到材料、工艺与设备的变化。AI 生成和制造设备数字化在他看来是两类可能结合的变量。</p>
+      <p>他希望普通人不仅能表达创意，还能把创意做成实物。离开原公司并非因为在那里不愉快，而是他判断供应链、制造和长周期验证需要不同组织方式，也认为三维模态存在新团队的机会。决定创业后，他先做体检，确认自己有能力承担接下来的投入。这些是他对自己选择的回顾，不能推导所有大公司都不适合做制造。</p>
+
+      <h3>3. 工厂关心的不是 AI 概念，而是订单</h3>
+      <p>团队最初向产业带工厂介绍 AI 时发现，对方更关心是否有订单、收入和利润，以及投入人力是否值得。为了验证流程，公司在广州番禺搭建小型实验工厂，采购设备并邀请行业人士参与，尝试 3D 打印、激光、数控加工，以及布艺、刺绣等方向。它既是实验场所，也承担一部分小批量交付。</p>
+      <p>他承认自己有互联网产品对快速增长的习惯，但材料、设备与供应链有不同周期。一个工厂难以覆盖全部工序，还需要与外部供应商合作。团队面对的问题包括早期订单不足时如何激励工厂、是否补贴、研发投入如何回收，以及长链路能否形成商业模型。</p>
+
+      <h3>4. Hi3D 演示：一张图片生成三维资产</h3>
+      <p>现场演示中，卷卷展示宠物、人物、文字浮雕和复杂造型等案例，强调从单张图生成几何，并为看不见的部分补出合理结构。对于家用和工业设备，他也承认最终可呈现的细节不同：高精度模型仍会受材料与打印设备限制。演示选择了哪些样本、失败比例多少、背面是否与真实对象一致，文字材料没有提供完整评估。</p>
+      <p>他说模型表现来自数据积累、三维表示路线和生成后的处理管线共同变化；节目没有给出可以分离各因素作用的实验。第三方转写将模型名误写为其他名称，本文采用官方简介中的 Hi3D。嘉宾称某些能力处于领先或独有位置；这类竞品比较未在节目中展示统一基准，不宜直接采信为市场结论。</p>
+
+      <h3>5. 能生成三维模型，为什么还不能直接打印</h3>
+      <p>卷卷介绍，用户可能需要把大模型拆成零件，为接合处设计连接件，再把零件摆进打印区域。摆放方向影响支撑结构、打印时间、拆除支撑时的损伤，以及连接处能否配合；不同材料还需要不同的工艺参数。团队尝试将语义分割、几何处理和设备管线结合，输出可交给切片软件处理的文件。</p>
+      <p>他说团队也会检查网格破洞、是否封闭、设备识别错误、悬垂和多色映射等问题。高质量渲染图只是一个环节；实际交付需要模型、材料、设备和人工处理一起工作。主持人追问视频模型变强是否会减少三维需求，他认为部分游戏、影视需求可能被其他生成形式分流，而实体生产仍需要可用的三维结构；这属于嘉宾对应用变化的判断。</p>
+
+      <h3>6. 三维训练数据从哪里来</h3>
+      <p>他认为三维数据获取困难，过去分散在游戏公司、制造业版房和模型网站。团队通过产业带、行业机构和商业采购等方式获取数据；他把已有关系与行业沟通视为重要条件。节目没有公开训练数据清单、授权条款或覆盖分布，因此无法仅凭口述判断数据的完整性或各来源的实际贡献。</p>
+
+      <h3>7. 柔性材料：毛绒玩具为什么比看起来更复杂</h3>
+      <p>除了硬质打印，他关注毛绒、布艺和刺绣。服装版师通常先根据设计和人体结构确定布片形状，再裁剪、试样、修改，直到可生产。毛绒角色可能没有现成的人体形状，团队设想先从图生成三维形体，再确定表面分割与纸样，考虑材料弹性和张力，最后切割、缝合、填充并检查实物。</p>
+      <p>刺绣同样不只是把图片交给机器：需要确定针迹路径、线色和设备可识别的数据。嘉宾介绍了自己理解中的格式转换与设备衔接；不同刺绣软件、机器和文件格式可能有不同要求，不能把某一种转换说成所有设备的通用流程。他将柔性材料市场视为增长机会，并用女性手工爱好举例；这不意味着材料偏好可以按性别固定划分。</p>
+
+      <h3>8. 投稿、毛利与 T+7 各自衡量什么</h3>
+      <p>他称造好物的投稿率超过 20%，并解释口径是每日发布作品的用户数除以每日活跃用户数。Koji 追问是否因为浏览用户较少导致比例高；他更倾向解释为工具降低了创作门槛。没有用户构成和对照产品数据，节目不足以区分这些解释。他还称一些个性化打印业务毛利率超过 50%、Hi3D 有月度订阅服务；具体成本口径及不同时期价格未独立核实。</p>
+      <p>他特别强调“高并发、非标、准时”：许多用户同时下单，每件东西不同，但仍要按承诺时间发出。嘉宾说当时 T+7 准时发出物流信息的比例约 90% 至 95%，由自有产能与外部工厂共同完成。这里是发货或物流信息口径，不是七天送达用户，也不是客户验收满意率；样本量、统计周期和返工成本没有披露。</p>
+
+      <h3>9. 从产品延伸到工艺、农场和创作者收益</h3>
+      <p>卷卷说，团队并非一开始就把所有业务同时做出来：先沿满足创意落地的主线探索模型，后来再把内部使用的能力产品化。他希望提供模块化流程，让用户按需求组合生图、建模、预览、拆分和拼合，也能对接不同工艺和设备。</p>
+      <p>谈到 3D 打印农场，他描述设备数量扩大，但不少农场制作相似的热门商品，创作者可能没有获得相应收益。他希望平台把创作者、订单和农场连接起来，并在下载或实物销售后分享收益。这是团队提出的机制，节目未给出实施后的分配比例或效果。最终愿景从面向 Maker 的工具平台，扩展到更大范围的“制造业 OS”；这仍是长期目标。</p>
+
+      <h3>10. 哪些抖音经验可以复用，哪些会误导</h3>
+      <p>他认为对用户、内容和创作者生态的理解可以迁移，但制造与模型结合的专业知识要重新学习。他回忆与创作者长时间交流，核心是弄清实际问题，例如分段拍摄和音画同步，而不是单纯维系关系；他们也要接受直接批评，再把模糊需求转成产品和工程问题。</p>
+      <p>他举过自己的两次调整。早期曾以个人喜好限制内容形式，后来发现用户需求更丰富，于是放松限制。创业初期又过度追求实物质量，一再修改，导致部分订单拖了很久；同事提醒后，他开始把约定时间和准时率作为明确标准。质量不能无限改善而没有交付，时效也不能替代对质量的要求。</p>
+
+      <h3>11. 创业、责任与机会</h3>
+      <p>他形容创业像过山车：从早期乐观，到遇到陌生问题产生挫败，再到逐渐解决一些小问题。他认为做产品与经营公司不同：后者还要处理人、资金、合作与组织责任。因此他会劝一些尚未想清楚要解决什么的人谨慎创业，但对想法经过质疑后仍有充分理由的人表示支持。他说如果再来一次、仍看到同样机会，自己仍会尝试。</p>
+      <p>他把自己对能力不足的感受称为“自卑”，说这促使自己向专家学习；也认为管理者需要在照顾关系与面对岗位调整之间承担责任。他建议在当前工作中积累，但又强调机会出现时要识别并抓住。这里是他个人经历形成的观点：沉下心与主动了解其他机会是否值得，要看当前平台、可进入选项和各自成本，不能变成适用于所有人的单一规则。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制：从图片到交付，中间发生了什么</h2>
+      <p><strong>本文自拟例子：</strong>用户上传一张人物抱着宠物的图片，希望得到可组装摆件。系统先生成一个三维几何体；图片没显示的背面只能合理推测，不能声称还原了原物。接下来识别人物、宠物和底座，检查细小部位能否承受打印与运输；若整件太大或无法直接成型，就拆成多个零件。</p>
+      <p>然后需要在相接处设计连接结构，并给连接留出适当余量：如果孔与桩在数字文件中尺寸完全相同，实际材料和设备误差可能使它们装不上。再决定每个零件的朝向与支撑、选择材料和设备参数，打印后清理支撑、装配、检查并发货。任何一步都可能需要人工介入，因此评价应记录整条链路的耗时和返工，而不是只记录生成模型的时间。</p>
+      <p>柔性材料的流程不同。对于毛绒玩具，三维外形需要转成多块可裁剪的二维布片，预留缝份，再缝合和填充；同一形状选用弹性不同的布料，纸样和最终效果可能不同。三维外观只是起点，纸样、材料和手工装配共同决定实物。</p>
+    </section>
+
+    <section id="judgment">
+      <h2>独立判断：怎样判断从模型到制造的价值</h2>
+      <h3>“生产级”应落到可重复的验收</h3>
+      <p>可以随机抽取订单，分别记录几何文件是否可处理、实际打印是否成功、需要多少人工修复、成品是否符合客户要求，以及是否准时发货。T+7 发货率有价值，但如果通过额外人工或外包加班达成，还需要看成本；客户收到以后是否满意，也需要另行测量。</p>
+
+      <h3>基础模型与专业管线会共同变化</h3>
+      <p>通用模型可能改善图像理解和生成，但本期提出的制造问题还涉及材料、设备、连接和交付。专业管线的价值取决于这些能力能否稳定减少成本或提高质量，而不是仅因它位于某个垂直行业就天然拥有壁垒。随着通用模型进步，哪些环节仍需专业系统，也需要持续重新评估。</p>
+
+      <h3>创作者生态的收益分配需要具体规则</h3>
+      <p>让农场获得订单、让创作者获得报酬，是可能互相促进的目标。要判断机制是否成立，需要知道作品权利、授权范围、下载和实物销售如何计费、收益何时结算，以及侵权或质量争议由谁处理。愿景与实际规则之间还有一段工作。</p>
+
+      <h3>规模增长与交付能力需要一起验证</h3>
+      <p>低门槛可能增加投稿，但如果订单增长快于制造产能，等待和返工也会增加。公司可以同时跟踪创作到下单的转化、单位订单毛利、人工时间、返工、准时发货和复购，并按不同材质和复杂度拆分。单一投稿率或某次演示无法回答整套系统能否扩张。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文根据整期第三方机器转写与官方简介重建，未逐字听审，也未观看或复现现场完整视频演示。转写将 Hi3D 误写成其他名称，采用节目官方简介；公司业绩、数据来源、竞品比较、市场规模和交付指标按嘉宾口述，未独立查账或验证。本文制作流程为解释性例子，不是对公司私有系统实现的披露。</p>
+      <ul><li><a href="https://www.xiaoyuzhoufm.com/episode/6a97a9daa0210c197dcc1ba0">原节目：对卷卷的长访谈，AI 3D 与制造</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-09-02-3-ai">本期文字稿（BidClub）</a></li></ul>
+    <p><a href="crossing-podcast-year-2025-2026.html#ep-6a97a9daa0210c197dcc1ba0">返回十字路口目录</a></p>
+</section>
+  </main>
+</body>
+</html>

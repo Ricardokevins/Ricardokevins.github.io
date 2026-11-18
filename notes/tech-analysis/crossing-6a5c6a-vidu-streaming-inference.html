@@ -1,0 +1,189 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>张金涛：实时视频生成与三层推理加速</title><link rel="stylesheet" href="../assets/notes-shell.css"><style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style></head><body class="notes-shell-page">
+<nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+<header><div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-6a5c6a91a3fec224d59fd014">十字路口目录</a> · 技术对谈</div><h1>张金涛：实时视频生成与三层推理加速</h1><p class="lede">从更快的注意力计算，到长时间互动视频：一项研究怎样穿过算法、硬件与服务部署。</p><nav class="toc" aria-label="本文目录"><a href="#conversation">对话脉络</a> · <a href="#mechanism">跟算速度与延迟</a> · <a href="#judgment">独立判断</a> · <a href="#sources">证据边界</a></nav></header>
+<main><section id="conversation"><h2>先把对话讲清楚</h2><p>Koji 采访生数科技负责流式视频生成与推理部署的张金涛。他介绍自己从 GPU 注意力算子研究，到模型蒸馏、集群调度，最后参与实时交互视频产品 Vidu S1 的经历。对话既涉及技术，也谈选择研究问题、管理团队和怎样理解科研快乐。</p>
+<h3>1. 看到未被充分使用的硬件</h3><p>张金涛说，读研期间在导师建议下研究注意力计算。当时 FlashAttention 已经很有影响力，但团队发现 GPU 上还有更适合低精度运算的单元，提出为什么不能把它们用于注意力。他解释了两个实际障碍：注意力的高效实现需要编写 GPU 底层程序，而把运算简单压到低比特可能损害输出质量；不同模型阶段还可能受数据搬运速度限制，算得更快未必能明显降低总时间。</p><p>官方简介将这项工作称为 SageAttention；机器转写多处误作“C Attention”。他称团队通过底层实现和精度控制解决问题，并认为这种方法后来得到广泛采用。行业采用范围、各厂商实现是否相同，需要逐项核对，不能只凭访谈认定它已成为所有系统的标准。</p>
+<h3>2. 从算子、模型到部署</h3><p>他把工作分成三层。第一层是<strong>算子</strong>：例如同样计算一次注意力或线性变换，怎样让它在硬件上更快完成。第二层是<strong>模型</strong>：通过训练和结构改变减少必须做的计算，例如把扩散模型反复去噪所需的步数减少，或者让注意力只计算选出的部分位置。扩散生成可以粗略理解为从噪声出发，反复根据模型预测把样本推向目标内容；步数蒸馏希望让较少的步骤学会原来较多步骤的效果。</p><p>第三层是<strong>服务部署</strong>：多张卡怎样分工、通信和计算怎样重叠、多个用户何时被调度。他说 TurboDiffusion 结合较快的算子、蒸馏和稀疏注意力；举例把约 50 次去噪降到 4 次，但这并不意味着任何模型的端到端速度都必然提升 12.5 倍，质量和其他开销仍要测量。TurboServe 则面向流式生成中用户随时接入、退出时的调度问题。节目没有给出充分实验配置来复现这些成绩。</p>
+<h3>3. 实时互动不是只把短视频算快</h3><p>普通生成通常先接收提示，等待一段时间，再交付一段固定长度的视频。张金涛说，实时互动还要求模型在播放过程中接收语音或其他输入，持续产生后续画面，并尽可能保持角色和场景一致。若长期平均生成速度低于播放速度，缓冲终究会耗尽；他还强调要处理长时间生成后的画面漂移，以及对输入及时作出合适反馈。</p><p>节目中他称 Vidu S1 可生成 540p、约 25–42 帧每秒的视频，并可在消费级显卡运行；主持人也描述了上传图片、选择或克隆声音后与角色交流的体验。模型、硬件、并发、延迟及画质的完整测试条件并未给出，因此这些是产品方在节目中的性能表述，不是本文独立测得的指标。他说为了先满足实时性，当前会适当牺牲画质；对“几天几夜”“无限时长”的说法，应理解为产品目标与口述能力，节目没有给出覆盖所有情况的长期实验。</p>
+<h3>4. 人们会拿它做什么</h3><p>他将预先生成的电影、短视频与实时互动区别开：后者需要根据每个人当下的行为产生不同内容。他举发布后看到的例子，包括上传宠物照片进行对话，以及把游戏画面传给虚拟角色，让它一边“看”一边陪玩家交流。主持人进一步设想把编程屏幕传入，获得实时反馈；嘉宾认为可以探索。这些例子展示了交互形态，不能单独说明长期留存、付费意愿或模型对游戏和代码的理解准确率。</p><p>他强烈看好实时视觉娱乐，认为它的需求会超过离线内容，未来视觉信号会大量由 AI 生成。这是他的长期判断，而不是节目已经证明的市场规模比较。网站和应用当时的免费体验、API 按分钟收费也是访谈时点的描述。</p>
+<h3>5. 未来优化在哪里</h3><p>张金涛认为，推理加速不能只理解成把一个算子写快；稀疏计算、专家模型和蒸馏可能减少实际要做的工作，而请求调度影响多用户服务。他举 TensorRT、vLLM 等作为自己接触过的相关项目，也主动说明这份名单并不完整。</p><p>他预测编程工具进步后，常见算子的实现会逐步接近硬件上限，机会可能更多地出现在芯片设计和减少计算的算法两端。例如，面向一类视频模型的芯片可调整计算单元和内存带宽，但如果只针对某一个模型固定设计，模型更新后硬件可能利用不足。他主张软件与硬件共同设计，因为算法上的计算量下降不一定能转化为真实机器上的加速。这是方向判断；中间层是否会收敛、何时收敛并无确定结论。</p>
+<h3>6. 数据、行业与团队</h3><p>谈及中国视频模型的进展，他认为数据数量、质量、是否符合用户偏好和是否容易学习很重要，并把短视频、直播、电商生态视为潜在优势。他还认为中国公司的相关数据和构造方式优于美国同行；这属于个人判断，节目没有给出双方可比训练数据和统一评测，不能据此确定差距或原因。</p><p>主持人问博士和教授创业的趋势，他看好 AI 需求，但也说技术能力与团队管理能力不同。他分享导师给自己的一个工作观念：理解领先方法后，还要把实现中的各个环节做对；两行代码的问题就可能影响实验。作为负责人，他认为还要了解成员更在乎报酬、成果署名还是做事成就感，并协调部门间利益。将 GPT-3 的成功完全归结为“把每个环节做到极致”是他对研究实践的理解，不构成对其全部技术贡献的历史证明。</p>
+<h3>7. 一个值得记住的研究时刻</h3><p>他回忆在清华逐个线程排查精度问题、与老师讨论，再将自己实现的注意力替换到视频生成系统中。他口述某次结果是画面像素级一致、端到端速度快了一倍多，于是立即分享给老师。访谈没有提供逐帧比较、随机种子、硬件和计时范围，无法据此判断这一结果能在所有输入复现。</p><p>他也说自己享受把复杂工作讲清楚：说明为什么做、原有方法卡在哪里、如何解决以及贡献是什么。他将那段经历归因于问题方向、老师支持、资源和自由度的共同作用，而不仅是一个人的灵感。</p></section>
+<section id="mechanism"><h2>算一算：帧率、响应延迟与端到端收益</h2><p><strong>本文自拟例子：</strong>假设视频每秒播放 25 帧，系统每批生成 10 帧；每批可播放 10÷25＝0.4 秒。如果每批只用 0.25 秒生成，稳定状态下每秒可产出约 40 帧，平均速度足以供播放。但如果系统要等凑满一批输入、生成后再传输，用户一句话引起画面变化仍可能等待数百毫秒甚至更久。平均帧率回答“能否持续供帧”，端到端延迟回答“用户多久看到响应”；两者不能互相替代。</p><p>再假设原来总耗时 100 毫秒，其中注意力计算占 40 毫秒、其他工作占 60 毫秒。若只把注意力加速一倍，它变成 20 毫秒，总耗时为 80 毫秒，总加速是 100÷80＝1.25 倍，而不是两倍。若同时减少去噪步数、改善其他算子和通信，整体收益可能更高；也可能因数据传输、排队和新增开销而降低。这说明要同时报告被优化的部分、完整工作负载和最终计时边界。</p><p>低比特计算用更少的位数表示部分数值，通常能利用更快的计算单元并减少数据量，但会引入舍入误差。误差是否改变最终图像，取决于被量化的位置、尺度、模型和后续计算；某次输出相同并不意味着量化在所有样本上严格无损。检验时要在相同输入、随机种子和设置下比较质量、异常样本与端到端时间。</p></section>
+<section id="judgment"><h2>独立判断：什么决定一项加速能否变成产品</h2><h3>硬件闲置是研究线索，不是收益证明</h3><p>这个研究故事的起点是发现硬件能力与软件使用之间的落差。但仍需解释为什么原方案没用它：也许是计算并非瓶颈，也许是精度、数据布局或开发成本过高。选择视频这样的计算更密集场景，再解决数值和底层实现，才把看似明显的机会变成值得测量的方案。这个逻辑也可用于寻找问题：同时问“哪里有未使用的能力”和“过去为什么没有采用”。</p><h3>服务指标要覆盖持续会话</h3><p>交互产品应同时考察首帧和响应延迟、连续帧率、长时间稳定性、并发下排队、每分钟成本及用户中途退出后的资源回收。一个短演示可以说明某个场景能运行，却不能证明一小时后不漂移，也不能证明高并发时仍然流畅。比较不同方案时，画质、分辨率、帧率与硬件应尽量对齐。</p><h3>“数据重要”之后还要问数据怎样起作用</h3><p>视频生态可能提供更多素材和反馈，但可获得的原始视频数量不等于可合法用于训练的高质量数据，也不等于模型学到了长时一致性。更有信息量的比较，是在固定模型和训练预算下改变数据筛选、标注或构造方式，再在相同评测任务上比较；否则算力、模型结构和产品选择也可能解释观察到的差异。</p></section>
+<section id="sources" data-note-role="evidence-appendix"><h2>证据边界与资料索引</h2><p>本文依据节目官方简介和可取得的第三方机器转写整理，未逐字听审或复现模型；具体性能、采用范围、价格和未来预测均按节目时点的口述理解。官方简介提供 SageAttention 名称；机器转写中若干项目名有识别不确定性，未将其扩展成未经核实的技术细节。文中计算例子为本文自拟。</p><ul><li><a href="https://www.xiaoyuzhoufm.com/episode/6a5c6a91a3fec224d59fd014">原节目：张金涛谈 Vidu S1 与推理加速</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-07-19-vidu-s1">本期文字稿（BidClub）</a></li></ul><p><a href="crossing-podcast-year-2025-2026.html#ep-6a5c6a91a3fec224d59fd014">返回十字路口目录</a></p>
+</section></main></body></html>

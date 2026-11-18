@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>赵晨阳：用模型改进模型、评估的边界与交互式 AI</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header>
+    <div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-6af936ea14d01a26f8a9fd94">十字路口目录</a> · 人物访谈</div>
+    <h1>赵晨阳：用模型改进模型、评估的边界与交互式 AI</h1>
+    <p class="lede">从推理工程师的十个年度瞬间出发，理解模型参与自身改进、语音与电脑操作的产品实践，以及技术变化中的个人生活和组织责任。</p>
+    <nav class="toc" aria-label="本文目录"><a href="#conversation">完整对话脉络</a> · <a href="#mechanism">机制与算例</a> · <a href="#judgment">独立判断</a> · <a href="#sources">证据边界</a></nav>
+  </header>
+  <main>
+    <section id="conversation">
+      <h2>先把对话讲清楚</h2>
+      <p>《十字路口》主播 Koji 邀请赵晨阳回顾一年中触动他的 AI 时刻。赵晨阳在推理基础设施团队工作，参与 SGLang 与交互式智能系统；他既谈如何用模型改善模型的运行，又谈评估、开源项目管理、电脑操作和语音系统，最后把读历史得到的组织观带回社区治理。这些话题由同一个问题串联：当智能和行动越来越便宜，人怎样设计反馈、保留判断，并承担决策的后果？</p>
+
+      <h3>1. 什么叫“用模型改进模型”</h3>
+      <p>被问到第一个顿悟时刻，赵晨阳先为 RSI（递归自我改进）给出自己的宽定义：当现有模型能够主动参与本代模型的部署，或下一代模型的训练，就出现了 RSI 的雏形。他并不要求机房、电力和 GPU 管理完全无人参与，而把人类参与比例逐渐下降看作重要变化。</p>
+      <p>他用一家虚构公司的第七代和第八代模型解释。第七代模型可以协助筛选训练数据，帮助研究者验证架构参数，也可以编写或优化下一代模型的推理引擎。若引擎跑得更快，同样的计算资源便可能完成更多生成和强化学习尝试，之后迭代新模型的条件也会改变。这是嘉宾提出的可能链条，各环节并不因为连起来就自动成立。</p>
+      <p>他的个人例子是让 Kimi K3.1 协助编写该模型在 B300 上的推理引擎，形象地称为“用 Kimi 加速 Kimi”。他把它比作向神灯多要愿望：一次改进若能降低后续调用成本，后续迭代就可能更容易。主持人追问何时开始出现这种感觉，他将其联系到年中前沿模型的进步和自己参与的 OpenRSI 项目。谈到 AGI 和经济价值时，他明确表示自己的乐观很大程度是一种信念；攻克疾病等结果在节目里属于愿景，不是已经发生的成果。</p>
+
+      <h3>2. 从“能评估什么”到低成本试错</h3>
+      <p>接着，赵晨阳问，模型改了一版，谁来判断它有没有变好？他从自己读到的“不能评估，就不能优化”出发，提出更强的主张，认为能评估的事情就能被优化。他以语音识别（ASR）为例。系统把声音转成文字，研究者拿文字和人工参考稿对齐，算出词错误率（WER），就可以要求程序在加快推理时同时检查识别质量。</p>
+      <p>用一个小例子看分母。参考稿是四个词 <i>turn on the light</i>，系统写成 <i>turn on a light now</i>。把参考稿变成识别结果，最少要替换一个词（the → a），再插入一个词（now）。两次编辑除以参考稿的四个词，词错误率为 50%。这是本文的算例。</p>
+      <p>他随后讲的是另一次工作。一个约八千万参数的语音合成模型（TTS）把文字变成声音，他称自己用一个周末让 AI 协助优化，两天内性能提升了 1700%。节目没有交代这次提升测的是吞吐、延迟还是其他指标，也没有给出起始值。前面的词错误率解释了怎样设置质量约束，这里的百分比只能按嘉宾对这次优化的口述来读。</p>
+      <p>主持人进一步问：影视与文学创作也需要评估，能否把审美拆成许多小问题？赵晨阳赞同拆解可能有用，但提醒只盯几个小指标，可能让系统把没有被约束的其他方面牺牲掉。他给出的评估条件是尽量客观、自动化且便宜；若测试一次芯片需要流片或一个药物假设需要动物实验，哪怕 AI 能在周末提出成千上万个候选，也难以用同样速度获得最终反馈。主持人用“假设可以从十个变成一万个，但实验资源没有同样增加”补充了这个限制。赵晨阳据此提出“低成本、自动化评估是唯一瓶颈”的强判断；它是他的观点，下面会具体讨论其适用范围。</p>
+
+      <h3>3. 生成代码变快后，谁来负责代码库</h3>
+      <p>赵晨阳把评估的问题接到开源社区：过去提交代码需要不少人工劳动，如今 AI 能大幅增加提交数量。如果维护者逐个理解质量低的修改，审查可能跟不上；无差别合并又可能让代码难以维护。他用“一周从两个提交变成一百个提交”说明审查负担怎样扩大，这是他的假设性对比，不是项目统计。</p>
+      <p>他因此强调 BDFL：由一个对项目长期结果负责的人作最终技术判断，同时把偏好写成团队都能执行的规则。他举出代码风格和注释等要求，并称规则推行后，团队更容易保持连续性。他的理由不是每条风格规则都能由客观标准唯一推出，而是项目需要一个明确、可共同遵循的约定。后面谈历史时，他又补上一条：制定规则的人自己也必须遵守，并对合并后的结果负责。</p>
+
+      <h3>4. 廉价智能、社会分配与“活人感”</h3>
+      <p>主持人请他谈模型发布带来的感受。赵晨阳一方面喜欢并频繁使用这些工具，另一方面担心智能劳动贬值后，收入、权力与尊严如何分配。他提到全民基本收入（UBI，即向人提供基本收入的一类制度设想），并担忧如果人们依赖他人施予，消费选择可能被评价或限制。节目中他引用一则涉及低保的社会新闻来表达担忧；个案事实与不同基本收入制度的具体规则并不能互相替代，这里保留的是他的类比和问题意识。</p>
+      <p>主持人问有没有积极的行动，他说自己曾因好奇短暂参与“Stop AI”的现场活动，但没有因此形成完整的政策答案。他反对少数精英替所有人决定未来，也希望更多人参与讨论。这并不妨碍他继续做 AI：他自己承认既享受技术进步，又担忧其社会后果。</p>
+      <p>随后主持人从他的社交昵称问到工作之外的生活。赵晨阳谈到不想只用履历和绩效定义自己；他开始健身，也反思长期把工作带入家庭。他讲自己戒掉游戏：多次想着输一局就卸载，却反复继续，最后决定停下来。他把这体验理解为对时间和注意力的掌控被削弱；游戏是否按他猜测的方式安排匹配，节目没有提供可独立验证的证据。戒掉游戏后，他把部分时间用于陪伴家人、爬山、阅读和写作。</p>
+
+      <h3>5. 电脑操作 Agent：从怀疑演示到处理生活事务</h3>
+      <p>赵晨阳说自己曾批评 Agent 展示方式：如果录制多次，只挑一次最成功的演示，就不能知道系统通常有多可靠。他认为更好的任务评估推动了领域进展。真正改变他感受的个人经历，是看到家人在使用电脑操作 Agent 处理科学软件；即使软件没有方便调用的接口，系统也可以像人一样操作界面。</p>
+      <p>他从推理工程的角度解释一种实现思路：界面截图包含视觉信息，而操作系统的无障碍接口还能把部分界面元素描述为文本。若连续步骤的文本前缀相同，系统在某些条件下可以复用此前计算；必要时再结合截图。这里说的是嘉宾对可用方法的解释，并不意味着所有电脑操作 Agent 都采用同一实现，或每一步都能复用缓存。</p>
+      <p>他给出两件个人经历：让工具与物业沟通，后来退回 75 美元的租金罚款；以及让系统逐页导出大学时期放在 Notion 里的笔记，约两小时完成。另一面，他见过双方客服都使用 AI、长时间往返仍无法解决的问题。他将其归因于系统没有足够的决定权、倾向推脱责任；这是他对该案例的解释，单个案例无法确定唯一原因。主持人也提到通过手机镜像等方式操作手机，指出这一类产品仍有多种实现路径。</p>
+
+      <h3>6. 交互式语音的三条路线，以及为什么“会说话”还不够</h3>
+      <p>他把自然交互的目标描述为：系统持续接收人的信息，可以根据对方停顿补充，也能在适当时候被打断，同时维持回答质量。他区分了三类路线。第一类是原生全双工模型：模型持续处理输入并产生输出；第二类是按轮次工作的音频对话模型；第三类是级联，把语音活动检测、语音识别、语言模型和语音合成串起来。语音活动检测负责判断何时有人说话；识别负责把声音变成文字；语言模型决定回答；合成把文字变成声音。</p>
+      <p>他介绍团队做过一个级联演示：不同环节使用不同模型，其好处是可以分别更换和升级。主持人问端到端和级联是否长期并存，他认为可能并存，也可能出现中间方案，例如对级联中的某些模块再训练；这里是路线判断，不是成本或效果已经完成公平对照。</p>
+      <p>具体难题出现在模块之间。语言模型可能输出适合屏幕的长文本、表情或工具结果，但语音助手不应该把每个符号都念出来。以天气为例，屏幕可以显示一周预报，声音只需要念出当前最重要的信息。团队考虑把语音合成变成语言模型调用的工具，让模型选择要读的部分；但他发现，不开较长推理时工具参数可能出错，长时间思考又会破坏实时对话。问题因此不只是“识别和合成够不够好”，还包括系统如何在时间限制内决定说什么。</p>
+
+      <h3>7. 语音输入：识别之后还要处理个人语境</h3>
+      <p>他接着谈自己喜欢的语音输入法，估计自己一天可能输出四万字，这是个人估计。常见流程是先用语音识别生成文字，再让语言模型整理和纠错。难点之一是人名同音：如果上下文没有交代具体是哪几个字，即使声音听对，系统也可能写错。赵晨阳的做法是把常用人名、可能的错误写法和期望写法告诉模型，让它结合上下文修正。</p>
+      <p>他分享使用开源输入工具 Voxt 的经历：既可以选择本地模型，也可以连接其他服务；选中文字后，用语音直接触发翻译、润色或改写。他尤其强调入口的便利，因为省下的不是单次几秒，而是每次切换窗口、复制内容和重新描述意图的摩擦。本地运行可以减少数据离开设备的范围；若接入云服务，隐私边界则要看实际选用的组件。</p>
+
+      <h3>8—10. 从历史叙事回到权力、责任与制度</h3>
+      <p>最后，赵晨阳谈戒掉游戏后读书和看历史剧的收获。他从《大明王朝1566》中提炼出组织腐败可能自上而下扩散，并强调掌权者如果能享受权力而把责任转给下属，组织中的失衡会放大。他又结合《万历十五年》和《挣扎的帝国：元与明》讨论继承、规则和执行：当各方依赖含糊的道德解释而缺少能约束所有人的制度时，争议可能持续扩大。</p>
+      <p>他把这些阅读感受带回开源项目：如果维护者要求别人遵守代码规范，自己也不能例外；拥有合并权限，也要承担维护和解释的责任。他还批评客服或助手一味回避决定，让用户在不同环节之间反复等待。历史剧、书中的解释和他对现实组织的类比属于不同证据；节目中有关明代立储的机器转写存在明显年份与人物关系疑点，不能据此作为历史事实。主持人最后感谢嘉宾，嘉宾则希望听众讨论人类与 AI 的共存，并在自己的角色中承担责任。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制：评估如何进入一次改进循环</h2>
+      <p>可以把嘉宾描述的过程拆成四步：<strong>提出候选</strong>（例如修改某个推理算子）→ <strong>执行测试</strong>（运行正确性、速度和其他约束）→ <strong>选择结果</strong>（保留通过约束且表现更好的方案）→ <strong>再次提出候选</strong>。评估接收候选方案和测试任务，输出分数、通过/失败结果或更丰富的反馈；搜索器接收反馈，再决定下一次修改。</p>
+      <p>低成本评估主要改变的是可尝试次数。假设一次测试花 10 分钟，100 次需要约 1,000 分钟；若在可比条件下缩短到 1 分钟，100 次需要约 100 分钟。这个自拟算例只计算测试时间，不包括生成候选、排队、人工审查和最终验证，也不保证这 100 次产生了有价值的新方案。若便宜测试漏掉某类错误，反复选择最高分还可能越来越擅长利用这个漏洞。</p>
+      <p>因此，完整目标往往不是一个速度数字：先确认输出和原实现足够一致，再比较延迟、吞吐或资源占用，还要检查其他模型是否退化。嘉宾提到“不能让另一种模型变差”和“不要增加令人讨厌的环境变量”，正是在提醒约束需要覆盖实际使用情境。</p>
+    </section>
+
+    <section id="judgment">
+      <h2>独立判断：这个观点能带我们走多远</h2>
+      <h3>评估是必要环节，但评估器本身不负责发现所有候选</h3>
+      <p>嘉宾强调的方向有很强的现实意义：当一个结果可以快速、可靠地检查，AI 的多次试错才能被组织成可重复的改进。但“有评估”不等于“必然找到改进”。还需要候选生成器提出可行修改，需要有足够预算运行测试，也需要评分与真正目标对齐。如果搜索器始终只改一个无关参数，即使评估完全正确，也不会自动发明新的架构。</p>
+      <p>这对研究问题选择尤其重要：评估可以帮助比较已经提出的假设，却不能单独保证系统发现尚未进入候选集合的重要问题。要研究开放式发现，除了最终分数，还要记录问题从哪里来、系统曾考虑什么替代解释，以及改变候选生成方式后是否能找到人类此前没有提供的有效问题。</p>
+
+      <h3>一个可跟算的评估过拟合例子</h3>
+      <p>以下是本文自拟例子。某语音识别系统在固定的 100 条测试材料上原本有 8 个错误；团队反复根据这 100 条材料调参后，错误降到 4 个。若另一批此前没有用于选择模型的材料上，错误却从 8 个变成 12 个，就说明固定材料上的进步没有转化为这批新材料上的进步。这个例子不能证明所有评估都会失效，但说明应分别报告开发过程中使用的反馈和独立保留的最终检查。</p>
+      <p>反过来，如果新材料也持续改善，而且不同口音、噪声和使用场景均未明显退化，那么“评估驱动的改善可以迁移”就有了更强证据。是否迁移仍取决于任务分布，不能由单次漂亮数字代替。</p>
+
+      <h3>提高推理速度是一种反馈环，不自动等于能力持续自增</h3>
+      <p>用现有模型帮助写更快的推理实现，直接作用于运行成本；节省出来的资源可能用于更多调用、更多训练或更快实验，再由这些活动间接影响模型能力。要证明后者，还需要比较：在相同总预算下，新引擎是否真的带来更多有效实验或更好的独立任务表现。若成本节省被调试和部署开销抵消，或者新的候选毫无价值，循环就可能停住。</p>
+      <p>这一界定不否认工程改进的重要性，也不要求无人值守才算值得研究；它只是把“模型参与改进”“运行速度提高”和“模型能力可持续提高”分成三个可分别检验的命题。</p>
+
+      <h3>一致规则能降低审查负担，还要给例外和责任留出口</h3>
+      <p>统一风格能够减少维护者在格式选择上的重复讨论，也方便自动检查；但格式一致不能证明代码语义正确、性能可靠或规则本身合适。如果规则制定者是最终裁决者，别人是否能够提出例外、解释真实使用问题并推动规则修改，同样会影响项目质量。嘉宾强调以身作则，为权力提供了一个约束；可追溯的决策理由与可申诉的例外流程，则是可以进一步检验的治理选择。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文依据整期第三方机器转写和节目官方简介重建，已按对话顺序核对主要话题与官方十个章节；未对整期原声逐字听审。机器转写的说话人、专有名词、数字与历史细节可能有误。节目中的个人经历、公司情况、行业判断和未来预测按嘉宾口述呈现，未全部独立核验；本文算例与判断均明确标出。</p>
+      <ul><li><a href="https://www.xiaoyuzhoufm.com/episode/6af936ea14d01a26f8a9fd94">原节目：用 Kimi 加速 Kimi——赵晨阳的十个 Aha Moments</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-11-15-kimi-kimi">本期文字稿（BidClub）</a></li></ul>
+    <p><a href="crossing-podcast-year-2025-2026.html#ep-6af936ea14d01a26f8a9fd94">返回十字路口目录</a></p>
+</section>
+  </main>
+</body>
+</html>

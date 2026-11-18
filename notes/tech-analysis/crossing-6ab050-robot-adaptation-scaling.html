@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>徐梦迪：机器人怎样从交互中学习，而不只依赖预训练</title>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;        /* 页面底色 */
+      --surface: #fffdf8;      /* 卡片底色 */
+      --ink: #20242a;          /* 正文 */
+      --muted: #5f686f;        /* 次要文字 */
+      --line: #dcd6c8;         /* 边框 */
+      --accent: #c15f3c;       /* 主强调（陶土橙 / clay） */
+      --accent-soft: #f7ece4;  /* 强调浅底 */
+      --accent-2: #b45309;     /* 次强调（赭石） */
+      --accent-2-soft: #fdf3e7;
+      --info: #c15f3c;         /* 信息蓝 */
+      --info-soft: #eef3fb;
+      --shadow: 0 16px 44px rgba(31, 37, 40, 0.08);
+      --radius: 10px;
+      --max: 1100px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(193,95,60,.045) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.03) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+
+    main, header, footer {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 页头 ---------- */
+    header { padding: clamp(36px, 6vw, 76px) 0 26px; }
+    .kicker {
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font: 800 13px/1.3 var(--sans);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 940px;
+      margin: 0;
+      font: 760 clamp(32px, 5vw, 58px)/1.12 var(--serif);
+    }
+    .lede {
+      max-width: 860px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    /* ---------- 章节 ---------- */
+    main {
+      display: grid;
+      gap: 30px;
+      padding-bottom: 60px;
+    }
+    section {
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+    h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h2 { font-size: clamp(24px, 3.2vw, 34px); }
+    h3 { margin-top: 22px; font-size: 20px; color: var(--accent); }
+    p { margin: 12px 0; }
+    ul, ol { padding-left: 1.3rem; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    /* ---------- 卡片 / 网格 ---------- */
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 18px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* ---------- 提示框 callout ---------- */
+    .callout {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info  { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn  { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+
+    /* ---------- 术语 / 要点行 ---------- */
+    .def-list { display: grid; gap: 10px; margin: 18px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(120px, .24fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    /* ---------- 图片 / 图注 ---------- */
+    figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- 公式 ---------- */
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: var(--accent-soft); color: var(--ink); font-weight: 700; }
+    tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+
+    /* ---------- 代码 ---------- */
+    code { padding: 2px 6px; border-radius: 5px; background: #ece5d7; color: #7c2d12; font-family: var(--mono); font-size: .92em; }
+    pre { margin: 16px 0; padding: 16px; border-radius: var(--radius); background: #18201f; color: #f1ebde; overflow-x: auto; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+
+    @media (max-width: 760px) {
+      main, header, footer { width: min(100% - 24px, var(--max)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航"><a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a><span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span></nav>
+  <header>
+    <div class="kicker"><a href="crossing-podcast-year-2025-2026.html#ep-6ab0504f0916f6f8b4466ece">十字路口目录</a> · 具身智能</div>
+    <h1>徐梦迪：机器人怎样从交互中学习，而不只依赖预训练</h1>
+    <p class="lede">从上下文学习、失败纠正和评估走到研究选题：机器人看到更多数据之后，怎样证明它真的更能适应陌生环境？</p>
+    <nav class="toc" aria-label="本文目录"><a href="#conversation">完整对话脉络</a> · <a href="#mechanism">机制与算例</a> · <a href="#judgment">独立判断</a> · <a href="#sources">证据边界</a></nav>
+  </header>
+  <main>
+    <section id="conversation">
+      <h2>先把对话讲清楚</h2>
+      <p>主持人 Koji 对谈清华交叉信息研究院助理教授徐梦迪。她从车辆工程出发，经历机器人机械设计、机器学习研究和斯坦福博士后，主要关心机器人能否进入不断变化的现实环境，借助人的示范、纠正和自身经历持续提升。访谈从求学经历讲到研究方法、学术选择和具身行业；她讨论的许多系统仍是研究愿景，并非已经部署到普通家庭的产品。</p>
+
+      <h3>1. 从车辆工程、四驱车到机器人泛化</h3>
+      <p>徐梦迪说，本科车辆工程涉及机械设计、电子与算法，为后来做机器人提供了交叉基础。她大二接触生物机器人，研究蜜蜂翅膀受碰撞后的恢复；后来在 CMU 参与沿管道爬行的蛇形机器人设计，逐渐由机械转向算法。她也回忆小时候喜欢组装四驱车，会和小伙伴收集可回收的金属零件换钱；她把对机械结构的兴趣视为早期线索之一。</p>
+      <p>谈到衡水中学，她强调自己的观察来自竞赛班：统一作息严格，但竞赛训练和普通高考课程安排有所不同。她与同伴投入大量时间，享受共同解题，也承认竞赛路径使系统准备普通高考的时间减少。她不把自己的经历说成所有学生的共同体验。</p>
+
+      <h3>2. 预训练很重要，为什么还要学习适应</h3>
+      <p>博士阶段，她希望构建能适应变化的通用机器人。她相信数据和模型规模能形成重要的先验，但家里的物体、摆放和个人偏好不断变化，部署后的机器人无法保证只靠预训练就解决所有情况。她把人类的泛化理解为两部分共同作用：过去积累的知识，以及面对新情况时快速学习的能力。</p>
+      <p>她讲了两条研究路线。第一条是上下文学习：把少量示范放入模型当前输入，让模型根据示范改变动作，不必为每个任务重新微调。她回忆 Prompt-DT 受到语言模型提示学习的启发，用机器人示范帮助不同运动或操作任务的适应。第二条是在部署时更新少量参数：她介绍的 Hyper-Decision Transformer 通过超网络根据示范初始化适配模块，再只调整小部分参数，试图兼顾适应和保留原有知识。她认为随着预训练变强，不改参数的上下文学习可能更有前景；这是她对路线的判断，并非节目对两种方式作出的普遍胜负结论。</p>
+      <p>她还提到 Algorithm Distillation：训练时让模型看到学习算法从较差到较好的交互历史，部署时将过去的行动与反馈作为上下文，期望它在参数固定时调整下一步行为。她说当时相关结果更多在模拟导航、运动控制等任务上，操作任务仍困难。她强调，安全的适应同样依赖基础能力：如果机器人学习时频繁打碎杯子，单说它“会在现场学习”还不够。</p>
+
+      <h3>3. 三项博士后工作：重要任务、用户意图和工具使用</h3>
+      <p>徐梦迪介绍，BEHAVIOR 基准尝试提出机器人应当解决哪些贴近人类生活的任务，包含家庭、学校等模拟环境和可用资产；她参与数据生成。第二个方向是让机器人更加可引导，能够遵循更丰富的语言要求，适应不同人的偏好。</p>
+      <p>第三个方向是创造性工具使用。她说，人拿工具不完全依赖名字，而会利用它能产生什么作用：没有蛋糕刀时可以尝试叉子或筷子；没有扫帚时可以用书本甚至机器人小臂把物品扫拢。她介绍团队采集人的第一、第三视角数据，并从多模态模型选工具和生成轨迹、对柔性物体的三维或四维重建、人类操作能力到机器人的迁移三个维度评估。能说出“书可以推东西”，与机器人真正把书拿稳、接触物体并完成清扫，是不同环节。</p>
+
+      <h3>4. 从解题人到出题人：指标与研究方向</h3>
+      <p>谈到导师，徐梦迪说李飞飞常引导她跳出单个项目，思考领域未来十年什么问题最重要。一次团队设计基准指标时列出进度、用时和成功率等，导师追问最终愿景中哪个最重要。她的回答是任务成功率；进度和时间仍有开发调试价值。吴佳俊则会与她讨论方向和设计细节，支持她形成自己的研究主线。</p>
+      <p>她把博士到独立研究者的变化描述为：除了把已有问题解好，还要判断应该提出什么问题。所谓 research brand，在她看来不是先找一个与别人不同的标签，而是找到自己认为重要、愿意持续研究多年的问题。她自己的长期问题是让机器人在真实环境里继续学习。</p>
+
+      <h3>5. 为什么选择学术环境，怎样了解适不适合</h3>
+      <p>她在工业界实习时得到导师帮助，也看到产业算力与规模的优势；同时，她很看重把时间投入自己认为重要的问题的自由度。回国面试时，她考虑学生和研究者、机器人软硬件系统所需条件，以及环境能否支持自己的方向，最终选择教职。她承认回国适应和资源取舍都是挑战，不能把自己的选择当作适合所有人的答案。</p>
+      <p>一位面试老师曾问她：为什么认为自己五年后能成为领域顶尖研究者？她回想当时只是自信地说自己可以，后来认为更好的回答应联系一个真正关心的问题，以及多年持续深入所需的路径。她建议了解环境时先找朋友和相关人员交流，不通则邮件联系；她更愿意回复那些能说明具体兴趣、了解方向并写清愿意做什么的邮件。她也把自己的经历归于朋友、老师和合作者的支持，而不只归于个人选择。</p>
+
+      <h3>6. 数据、世界模型和行业的进步与泡沫</h3>
+      <p>对国内具身创业，她同时看到材料、传感器、机器人本体、数据与模型各环节的实际进展，以及技术路线未收敛时可能出现的泡沫。她说行业注意力会从数据转向世界模型，又回到数据；二者回答的是不同问题。数据决定模型接触什么，世界模型则试图学习环境如何变化。她看好后者，是因为任务种类很难逐个穷举，希望模型掌握更可迁移的规律。</p>
+      <p>Koji 询问是否已经看到 Scaling Law。她引用其他公司的结果，说预训练数据从十万小时扩大到一百万小时后，一些留出数据的指标改善；但她指出，机器人动作预测的 loss 不一定和任务成功率一致。比如拿杯子要二十步，前十七步动作拟合得很好，真正接触杯子的关键一步偏差较大，任务仍可能失败。她更想看到的是：数据与模型规模增加时，未见过任务的真实成功率也稳定提高。节目没有给出这个十倍数据案例的完整实验控制或原始结果。</p>
+      <p>她把需要针对任务微调的现阶段机器人类比语言模型 GPT-1 阶段，希望出现更多只靠上下文就能定义任务的能力。类比帮助表达她的方向，但机器人有身体、实时性和安全问题，不意味着它会沿语言模型相同时间表发展。她建议评估不仅要看成功，也要看失败风险；她推荐 BEHAVIOR 等基准，同时承认模拟与现实之间的差距。</p>
+
+      <h3>7. 用户教机器人，数据闭环如何启动</h3>
+      <p>她用衣服举例：许多演示把衣服叠成方块，但她自己希望卷起来，别人可能按颜色放置或直接挂起。她希望用户能用示范或指令定义自己的任务；进一步的愿景是机器人经历许多任务后，适应新任务所需的时间缩短。她谈到做菜示范等情境是在说明愿景，没有给出家庭部署的量化结果。</p>
+      <p>Koji 追问最大障碍。她认为关键是稳定的数据闭环：模型需要足够好，用户教它一段时间才能看到进步；有了可见进步，用户才可能继续教，系统才有机会获得真实场景中的数据。基础能力不足时，用户可能不愿投入；没有真实交互又难以获得适应数据。她说团队当时从真机双臂、灵巧手和桌面任务开始，采集人的纠正和示范，目标是未来的全身灵巧操作；并未声称已经打通家庭场景闭环。</p>
+      <p>在她的对比中，传统离线模仿学习侧重从专家示范学习任务动作；她希望训练时也纳入次优轨迹、失败、身体姿态、语言纠正及人的示范，使模型能利用反馈改变行为。这里是她对不同数据和能力的研究主张：示范学习本身可以有不同训练设计，不能据此把所有模仿学习模型都断言为只会机械记忆。</p>
+
+      <h3>8. 先定义需要什么能力，再决定采什么数据</h3>
+      <p>她说数据需求应从模型想获得的能力倒推：想要动作平滑，就需要相应动作信息；想要失败恢复，就需要失败与纠正，而不能只收集成功示范。遥操作数据最贴近机器人本体，可能适合接近目标场景的后期训练；仿真便于改变位置、纹理和颜色；UMI 类数据处在中间；人类活动数据较易在多场景采集，但人和机器人身体不同，迁移需要额外方法。这些是她对数据用途的判断，不是节目给出的统一成本或效果对照。</p>
+
+      <h3>9. 如何培养年轻研究者</h3>
+      <p>她建议学生先广泛阅读和交流，把模糊的兴趣变成具体问题，同时尽早上手，因为真机部署中的困难很难只靠阅读获得。博士面试时，她会问最感兴趣或认为做得最好的一篇论文。她欣赏一位学生从机器人中的扩散应用追溯到更早的扩散模型工作，认为这体现了追根究底。实验室组会让学生先做领域教程，再介绍项目；她说新实验室的博士生也需要承担建设工作，因此面试时会提前说明。</p>
+      <p>面对论文增长，她会关注研究者主动分享的工作，也担心一些 AI 生成论文形式详尽但论证薄弱。这是她的筛选经验；文章的实际质量仍需看论证和实验，不能仅凭是否使用 AI 推断。节目的最后，她把具身发展比作马拉松跑到约十公里，并预测未来三至五年可能出现重要转折；这是个人判断，而不是可测量的行业完成比例。</p>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制：机器人到底从什么输入中改变什么</h2>
+      <h3>示范、纠正与参数更新分别发生在哪里</h3>
+      <p><strong>本文自拟例子：</strong>机器人第一次到一户人家，桌上有一件衣服。用户演示卷衣服，模型收到示范片段和当前画面，输出机器人的动作；衣服位置变化后，它再次根据画面调整。如果参数保持不变、仅把示范放进当前上下文，这次变化是上下文适应。换一个家庭，若上下文重置且没有其他记忆或参数更新，不能假定它仍记得上一家的偏好。</p>
+      <p>如果第一次卷得太松，用户说“卷紧一点”，模型要把这条纠正与刚刚的动作和结果联系起来，下一次才能尝试不同力度或方式。要证明它利用了纠正，需要比较相同场景下有、无纠正，或给出方向相反的纠正后行为是否相应变化。仅看到第二次成功，可能是随机性、重试或环境变化造成的。</p>
+      <p>测试时训练则不同：系统用部署场景数据调整部分参数，之后即便示范不再放在上下文，改变也可能保留。保留多久、是否损害旧任务，以及训练需要多长时间，都要单独测试。长期学习还可能涉及把多次交互重新汇总、筛选后批量更新；这又是另一个时间尺度。</p>
+
+      <h3>为什么更低的平均 loss 可能对应更差的任务结果</h3>
+      <p><strong>本文构造一个二十步的算例：</strong>模型 A 在十九步的预测误差记为 0，关键接触步骤的误差为 0.16，平均误差是 0.008；模型 B 每步误差均为 0.01，平均为 0.01。如果 A 的关键一步让杯子滑脱，而 B 始终在容许范围内，A 的平均误差更低，却会失败。这里的误差和成败是为说明问题而设定的示意值，不是论文实验数据。真实评估还需看误差的定义、关键时刻和实际闭环执行。</p>
+
+      <h3>数据闭环不等于收集越多越好</h3>
+      <p>要让一次用户纠正成为可学习的信息，至少要关联当时观察、机器人行动、行动结果、人的纠正以及之后是否改进。若只有“用户说卷紧”，却不知道对应哪件衣服或此前动作，监督对象便不清楚。之后还需确定把信息用于当前上下文、保存为用户偏好，还是进入后续参数训练；三者的反馈速度、隐私和遗忘方式都不同。</p>
+    </section>
+
+    <section id="judgment">
+      <h2>独立判断：从演示走向可检验的能力</h2>
+      <h3>把“没见过”拆开</h3>
+      <p>新位置、新物体、新组合、新偏好和全新任务需要不同程度的迁移。比较模型时，应固定训练数据和硬件条件，分别报告每一类变化下的成功率、失败类型、人工帮助和重复次数。一个模型能适应不同位置，不足以证明它能凭一次示范掌握任意新任务。</p>
+      <p>节目简介补充了 Generalist 的 GEN-1.5。公司报告十个短程操作任务中，一次示范、无梯度更新的平均成功率约 59%；其报告也说明任务较短、成功率有限。这支持在其测试设定里观察到一次示范后的适应，不证明普通家庭中所有任务均可可靠完成。论文和公司结果的核验范围见文末。</p>
+
+      <h3>反馈的含义取决于参照</h3>
+      <p>失败轨迹不天然告诉模型正确动作：它可能只表明目标没达成，也可能附带碰撞信息、用户纠正或成功对照。训练系统应说明输入含有哪些反馈、怎样判断成功、哪些行为因此被改变。尤其要区分在一次任务内根据历史改变行为，与把经验保存到后续任务并真正提升参数，两者需要不同评估。</p>
+
+      <h3>数据规模信号与可预测的规律之间还有距离</h3>
+      <p>扩大数据后留出 loss 降低是有价值的信号；如果同时改变数据质量、任务构成、模型结构和训练时间，就很难只把变化归因于数据量。进一步应控制数据分布和计算预算，报告多种规模下的真实任务成功率、置信区间与安全事件，并检查曲线是否能预测更大规模的结果。一次增量比较本身还不能确立通用的规模规律。</p>
+
+      <h3>研究品味不仅是追溯论文源头</h3>
+      <p>从应用论文回到原始方法可以看清假设何时成立，但这只是判断能力的一部分。更难的问题还包括：现有评估漏掉了什么、哪个失败值得成为新问题，以及当任务定义本身限制了发现时如何提出新的候选。可以在读完工作前先独立写出想解决的问题、可能的反例和成本，再与作者选择比较；这并不能保证形成新问题，却让判断过程有机会被检验。</p>
+    </section>
+
+    <section id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>访谈依据整期第三方机器转写与官方简介重建，未逐字听审原声；嘉宾经历、行业判断、数据规模与预测未逐项独立核验。为更准确解释文中提到的研究，核对了下列论文摘要及公司发布材料，而非完整复现其实验。Prompt-DT 正式论文发表于 2022 年；转写中的 Hyper Design Transformer 应为 Hyper-Decision Transformer。GEN-1.5 的数字为公司自行报告。</p>
+      <ul><li><a href="https://www.xiaoyuzhoufm.com/episode/6ab0504f0916f6f8b4466ece">原节目：对谈徐梦迪，具身智能与真正的泛化</a></li><li><a href="https://www.bidclub.ai/e/shizilukou-2026-09-20-scaling-law">本期文字稿（BidClub）</a></li><li><a href="https://proceedings.mlr.press/v162/xu22g.html">Prompting Decision Transformer 论文摘要</a></li><li><a href="https://arxiv.org/abs/2304.08487">Hyper-Decision Transformer 论文摘要</a></li><li><a href="https://arxiv.org/abs/2210.14215">Algorithm Distillation 论文摘要</a></li><li><a href="https://generalistai.com/blog/gen-1.5">Generalist 对 GEN-1.5 的报告</a></li></ul>
+    <p><a href="crossing-podcast-year-2025-2026.html#ep-6ab0504f0916f6f8b4466ece">返回十字路口目录</a></p>
+</section>
+  </main>
+</body>
+</html>
