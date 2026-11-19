@@ -214,10 +214,10 @@
 <tr>
 <td><strong>总计</strong></td>
 <td></td>
-<td><strong>约 12-16× 参数量</strong></td>
+<td><strong>模型状态为 BF16 权重字节数的 6 倍，激活另计</strong></td>
 </tr>
 </tbody></table></div>
-<p>其中 P 是模型参数量。</p>
+<p>P 是标量参数个数。本例权重和梯度各 2P 字节，Adam 两个 FP32 矩各 4P，合计 12P 字节。若实现还保存独立的 FP32 主权重，模型状态增至 16P 字节；以下 7B 例子按 12P 计算。</p>
 <p><strong>具体例子</strong>：7B 模型</p>
 <pre><code class="language-text">参数:    7B × 2B  = 14 GB
 梯度:    7B × 2B  = 14 GB
@@ -345,7 +345,7 @@ Node 6-7: Stage 2-3                         ┘ Pipeline Stage 2-3</code></pre>
 <h4 id="h-0301"><a class="anchor-link" href="#h-0301" aria-label="跳转到本节">#</a>3. 各维度的通信量分析</h4>
 <p><strong>TP（张量并行）通信</strong>：</p>
 <ul>
-<li>每层的 AllReduce / AllGather：通信量 ≈ <code>2 × batch_size × seq_len × d_model × bytes</code>
+<li>原始 Megatron-LM 的张量并行在每个 Transformer 层有前向两次、反向两次 all-reduce。单个激活张量的负载为 <code>V = micro_batch × seq_len × d_model × bytes</code>。
 </li>
 <li>发生在每层的前向和反向，<strong>频率最高</strong>；
 </li>
@@ -356,45 +356,45 @@ Node 6-7: Stage 2-3                         ┘ Pipeline Stage 2-3</code></pre>
 <ul>
 <li>每个 stage 边界传输激活值：通信量 ≈ <code>batch_size × seq_len × d_model × bytes</code>
 </li>
-<li>频率低（每 stage 一次），但传输的数据块大；
+<li>每个微批在每个相邻 stage 边界前向传一次激活，反向传一次同形梯度；
 </li>
 <li>可以用 IB/RoCE 跨机，不需要 NVLink 级别带宽。
 </li>
 </ul>
 <p><strong>DP（数据并行）通信</strong>：</p>
 <ul>
-<li>梯度同步 AllReduce：通信量 ≈ <code>模型参数量 × bytes</code>
+<li>普通 DP 一步需同步的梯度负载为 <code>本 rank 持有的参数数 × 每个梯度的字节数</code>
 </li>
-<li>每 step 一次，通信量大但频率低；
+<li>一次同步可以拆成多个桶，边反传边通信。环形 all-reduce 在 N 个 rank 上每个 rank 总发送约 2(N−1)V/N 字节，V 为待归约张量大小；
 </li>
-<li>在 ZeRO-1/2 中，AllReduce 可以 overlap；在 ZeRO-3/FSDP 中，用 reduce-scatter + all-gather。
+<li>ZeRO 可用 reduce-scatter 把梯度按归属分发。Stage 3 还要为即将计算的层收集参数；这次 all-gather 收集的是参数。
 </li>
 </ul>
-<p><strong>通信量对比表</strong>（以 batch=4, seq=2K, d=4096, BF16 为例）：</p>
+<p><strong>通信量对比表</strong>取每微批 4 条、每条 2048 个位置、隐藏维度 4096、每元素 2 字节，V = 67,108,864 字节（64 MiB）。下表把张量负载和通信次数分开。</p>
 <div class="table-wrap"><table>
 <thead><tr>
 <th>并行维度</th>
-<th>单次通信量</th>
-<th>每 step 次数</th>
+<th>张量负载</th>
+<th>统计单位与次数</th>
 <th>对互联要求</th>
 </tr></thead>
 <tbody>
 <tr>
 <td>TP</td>
-<td>~134 MB</td>
-<td>2×L</td>
+<td>每次约 67.1 MB，环形归约的每卡发送量另乘 2(N−1)/N</td>
+<td>原始 Megatron，每微批每层前向 2 次、反向 2 次</td>
 <td>极高（NVLink）</td>
 </tr>
 <tr>
 <td>PP</td>
 <td>~67 MB</td>
-<td>2×PP</td>
+<td>每微批跨每个相邻边界 2 次（前向与反向）</td>
 <td>中（IB/RoCE）</td>
 </tr>
 <tr>
 <td>DP (AllReduce)</td>
-<td>~14 GB (7B model)</td>
-<td>1</td>
+<td>全模型 7B 个 BF16 梯度合计 14 GB（纯 DP）</td>
+<td>每次更新同步，可拆桶</td>
 <td>中（IB/RoCE）</td>
 </tr>
 </tbody></table></div>
@@ -616,6 +616,7 @@ PP=8, micro-batch=32:
 </tr>
 </tbody></table></div>
 <hr>
+<p><strong>原始资料</strong>　<a href="https://arxiv.org/abs/1910.02054">ZeRO 的状态分片与字节口径</a> · <a href="https://arxiv.org/abs/1909.08053">Megatron-LM 的张量并行</a></p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="024.html">← 24. 十八、分布式训练、并行策略与显存优化专项题库</a><a href="029.html">29. 分布式与系统标准答案 →</a></nav>

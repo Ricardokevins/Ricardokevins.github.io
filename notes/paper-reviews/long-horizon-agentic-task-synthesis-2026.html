@@ -53,7 +53,7 @@
   <header id="top">
     <div class="kicker">Survey · Long-Horizon Agents / Task Synthesis / Environment Engineering</div>
     <h1>长程 Agentic 任务合成：<br>从轨迹拼接到可验证世界</h1>
-    <p class="lede">当 agent 开始连续执行几十步、修改真实文件、跨应用搬运状态，训练数据的瓶颈就不再是“多写几条 prompt”，而是能否造出一个自洽、可执行、可验证、难度可调的世界。本文梳理 2024–2026 年间约三十项代表性工作，解释它们各自怎么造任务、长程性从哪里来、验证器如何设计，以及引用、下载和社区讨论分别说明了什么。</p>
+    <p class="lede">当 agent 开始连续执行几十步、修改真实文件、跨应用搬运状态，训练数据的瓶颈就不再是“多写几条 prompt”，而是能否造出一个自洽、可执行、可验证、难度可调的世界。本文梳理 2024–2026 年间的 40 项代表性工作，解释它们各自怎么造任务、长程性从哪里来、验证器如何设计，以及引用、下载和社区讨论分别说明了什么。</p>
   </header>
 
   <main>
@@ -78,7 +78,7 @@
 
       <h3>1. 材料定位：不是一篇论文，而是一条正在成形的技术路线</h3>
       <p>这里讨论的不是单一方法，而是 2024 年末到 2026 年间出现的一批长程 agent 数据工作。它们分布在终端、浏览器、企业软件、工具调用和操作系统等不同环境里，但共享同一个目标：让 agent 在训练时见到足够多“需要连续决策、跨阶段保存状态、最后还能被自动判定”的任务。</p>
-      <p>早期代表是 OS-Genesis、AgentTrek、AgentSynth 和 TaskCraft。它们的共同思路是“先拿到一条轨迹，再把它包装成任务”。2026 年之后，RST、Tev、TerminalHorizon、ToolSpace、LOGIGEN 和 Anchor 把顺序倒了过来：先构造环境、参考解和验证器，再让指令与轨迹从中长出来。这个转向是本文最想讲清楚的主线。</p>
+      <p>OS-Genesis 从界面动作反推目标，AgentTrek 先读已有教程再实际操作，AgentSynth 和 TaskCraft 分别组合电脑子任务与工具问题。到 RST、Tev、TerminalHorizon、ToolSpace、LOGIGEN 和 Anchor，出题者还会显式构造世界状态、参考解或业务规则。不同年代都有从记录出发和从规范出发的工作；后文逐项追问，每一种构造顺序让哪些假设变得可检查。</p>
       <p>因此，阅读这批材料时不能只问“任务数量是多少”。更关键的问题是：任务包的四件套是否互相一致，参考解是否真能跑通，验证器是否检查了指令真正要求的东西，以及难度是否来自真实工作量而不是更长的 prompt。</p>
 
       <h3>2. 一个长程任务包由什么组成</h3>
@@ -88,33 +88,33 @@
       <div class="callout"><b>一句话理解 artifact drift</b><p>出题人以为自己在考“迁移数据库并保持外键”，验证器却只检查“目标表存在”；参考解走了一条环境里没有线索的隐藏路径；最后 agent 学会了猜测试，而不是完成任务。</p></div>
 
       <h3>3. 长程不等于长上下文</h3>
-      <p>The Horizon Gap 综述了 1,547 篇 2024–2026 年的 arXiv 论文，用 26.8% 的 bleed filter 区分三个概念：long-horizon 是任务属性，指需要很多步、很多依赖、很长时间；long-context 是模型一次能读多少 token；long-term memory 是系统能否跨会话保存和检索状态。</p>
-      <p>它的核心结论是：只看最终成败的 outcome-only 信号，会随着 horizon 变长而失效。失败发生在第 3 步还是第 30 步，无法从最终分数里看出来；这直接催生了 Tev 的 dense progress reward、Explorer-Zero 的可分解奖励和 SkillHorizon 的 progress potential。</p>
+      <p>The Horizon Gap 综述了 1,547 篇 2024–2026 年的 arXiv 论文。作者从 1,939 个去重检索命中中两轮剔除 520 篇离题材料，占原始命中的 26.8%。剩下 1,419 篇，再定向补入 128 篇，得到 1,547 篇。理解这批研究需要区分三个概念：long-horizon 是任务属性，指需要很多步、很多依赖、很长时间；long-context 是模型一次能读多少 token；long-term memory 是系统能否跨会话保存和检索状态。</p>
+      <p>The Horizon Gap 指出，多步任务只有一个终局分数时，单靠成败难以定位哪一步需要改进。Tev 用阶段势能塑造训练奖励，Explorer-Zero 给完成的中间状态计分，SkillHorizon 则在评测中统计局部目标完成率。前两者改变训练信号，后者帮助读者看清任务在哪个阶段停住。</p>
       <p>长程性的来源可以归纳为六类：依赖链深度、状态持久化、信息不对称、环境规模、失败与中断注入、多轮反馈。后面每一类方法，本质上都在强化其中一两种来源。</p>
 
       <h3>4. 第一代：从轨迹里反推任务</h3>
       <p>OS-Genesis 是 GUI 轨迹合成的早期代表。它先让 agent 在界面里自由探索，记录状态与动作，再从事后轨迹反向推导“用户本来可能想完成什么任务”，最后用 trajectory reward model 过滤质量。这个顺序很重要：不是先写任务再找界面，而是先让界面暴露出可执行动作，再反推目标。</p>
-      <p>AgentTrek 换了一个信息源：网页教程。它先用分类器收割教程文本，把教程转成结构化任务规格，再让视觉语言模型在真实网站里执行，并由另一个视觉语言模型评估是否完成。ICLR 2025 Spotlight，成本约 0.55 美元一条高质量轨迹，后续被 SWE-smith、OpenCUA、OSWorld 2.0 等工作大量引用。</p>
-      <p>AgentSynth 利用的是信息不对称：正向一步步解题容易，反向一次性推断整条解很难。它用六个角色——出题、执行、验证、改写、追加子任务、总结——把多条短轨迹拼成一个高层长程任务。难度由总结的子任务数量控制，从 level 1 到 level 6，平均 horizon 从 5 步升到 45 步，应用数从 1.2 升到 3.3，成功率从 18% 降到 4%。六千多个任务，成本约 0.60 美元一条轨迹。</p>
-      <p>TaskCraft 把组合做得更形式化。它从单次工具调用可解的 atomic task 出发，做 depth extension：把工具输入替换成需要另一跳才能得到的值；再做 width extension：合并两个子任务并要求答案相加。约三万六千个任务，后来成为工具型组合合成的常见基线。</p>
+      <p>AgentTrek 换了一个信息源：网页教程。它先用分类器收割教程文本，把教程转成结构化任务规格，再让视觉语言模型在真实网站里执行，并由另一个视觉语言模型评估是否完成。ICLR 2025 Spotlight，成本约 0.55 美元一条高质量轨迹，作者报告每条高质量轨迹的采集成本；具体学术收录见后面的传播表。</p>
+      <p>AgentSynth 利用的是信息不对称：正向一步步解题容易，反向一次性推断整条解很难。它用六个角色——出题、执行、验证、改写、追加子任务、总结——把多条短轨迹拼成一个高层长程任务。难度由总结的子任务数量控制，从 level 1 到 level 6，平均 horizon 从 5 步升到 45 步，应用数从 1.2 升到 3.3；o4-mini 的成功率从 18% 降到 4%。六千多个任务，成本约 0.60 美元一条轨迹。</p>
+      <p>TaskCraft 把组合做得更形式化。它从单次工具调用可解的 atomic task 出发，做 depth extension：把工具输入替换成需要另一跳才能得到的值；再做 width extension：合并两个子任务并要求答案相加。约三万六千个任务，论文用不同深宽的任务考察模型。</p>
       <p>GEM 从文本语料里挖多步工作流，再转成工具调用轨迹；Watch and Learn 从在线操作视频里提取屏幕状态序列，用逆动力学预测动作，得到五万多条 UI 轨迹。它们代表了另外两个信息源：文档和视频。</p>
 
       <h3>5. 第二代：把种子任务递归推难</h3>
-      <p>RST 是目前终端任务递归合成里最完整的配方。它从 TerminalWorld 取 639 个已经过 oracle 验证的种子，每轮从 40 个 rewrite operator 中选三十多个，分属五个家族：配置与控制状态、数据与 schema、文件系统与资源绑定、构建缓存与产物、运行时工具与诊断。</p>
-      <p>关键原则是 <strong>solution-first</strong>：先扩展参考解 <code>solve.sh</code> 和运行环境，再更新验证器与公开指令。实验显示，solution-first 比 instruction-first 的验证通过率高 24.1 个百分点，递归种子再加 13.2 个百分点；组合方案平均通过率 74.1%，比 instruction-first 非递归高 32.3 个百分点。</p>
-      <p>规模上，RST 跑了 15 轮，得到 37,484 道题，成本约每千题 50 美元。参考解中位数从第一轮的 67 行、40 条命令，增长到第十五轮的 374 行、244 条命令；DeepSeek-V4-Pro 的 pass@4 从 90% 降到 2.5%，没有饱和。用拒绝采样轨迹做 SFT 后，Qwen3.5 27B 和 122B-A10B 在 Terminal-Bench 2、TB-Hard 和 Long-Horizon Terminal Bench 上最多提升 10 分。</p>
+      <p>RST 研究如何让同一个种子经过多轮改写仍然可解。它从 TerminalWorld 取 639 个已经过 oracle 验证的种子，每次生成子任务时选择 40 个改写算子中的一个；第十五轮的任务合计用到其中 36 个。算子分属五个家族：配置与控制状态、数据与 schema、文件系统与资源绑定、构建缓存与产物、运行时工具与诊断。</p>
+      <p>关键原则是 <strong>solution-first</strong>：先扩展参考解 <code>solve.sh</code> 和运行环境，再更新验证器与公开指令。非递归时，先写指令的验收通过率为 41.8%，先扩展解为 65.9%，差 24.1 个百分点。换用递归种子后，两种顺序分别达到 55.0% 和 74.1%，对应提升 13.2 和 8.2 个百分点。最佳组合比 41.8% 的起点高 32.3 个百分点。</p>
+      <p>规模上，RST 跑了 15 轮，得到 37,484 道通过验收的题，报告的合成成本折合每千道通过验收的题约 50 美元。参考解中位数从第一轮的 67 行、40 条命令，增长到第十五轮的 374 行、244 条命令；DeepSeek-V4-Pro 的 pass@4 从 90% 降到 2.5%。实验观察到第十五轮，后续难度曲线仍待测量。用拒绝采样轨迹做 SFT 后，Qwen3.5 27B 和 122B-A10B 在 Terminal-Bench 2、TB-Hard 和 Long-Horizon Terminal Bench 上最多提升 10 分。</p>
       <p>Dream-RSI 把这套递归思路再推进一步：它不直接造任务，而是把历史发现树当作 replay simulator，在“梦中”低成本评估和改写探索策略，再部署回在线环境。它说明 2026 年的递归不只是任务递归，也包括造题策略本身的递归。</p>
       <p>RES 不改变任务目标，只递归改环境。它做三类变换：资源变换改变信息访问方式，关系变换改变资源之间的依赖，操作变换改变动作可用时机；再用 dependency composition 让后续操作消费前序产物。每一步都从固定父代独立 replay，检查任务保持、构造一致和公开可执行。</p>
-      <p>TURTLE 把 benchmark 本身做成可进化的系统。AlphaEvolve 变异 AppWorld 和 AutomationBench 的任务程序，solver 跑多次得到完成率与轨迹长度，反馈生成器比较失败轨迹与标准答案，最后用六个 fitness 选择任务，目标难度设在 0.5 附近。AppWorld hard 任务提升 165%。</p>
+      <p>TURTLE 把 benchmark 本身做成可进化的系统。AlphaEvolve 变异 AppWorld 和 AutomationBench 的任务程序，solver 跑多次得到完成率与轨迹长度，反馈生成器比较失败轨迹与标准答案，最后用六个 fitness 选择任务，目标难度设在 0.5 附近。在作者采用的难度评价下，AppWorld 中被标为 hard 的题目占比从 20% 增至 53%，相对增加 165%。</p>
       <p>SkillHorizon 关注“工作量”而不是单纯步数。它构造七个业务环境，把业务模块按输出依赖组成 DAG，支持顺序扩展、汇合和长距离复用；再用规则型 reference policy 执行，按参考轨迹累计的工具 token 数分 workload band。1,050 个任务，参考工作量从 64K 到 1M token；local-goal completion 从 90.4% 降到 46.8%，说明工作量一大，agent 很容易提前提交未完成答案。</p>
       <p>AgentSkiller 是一条十七步的全链路流水线，从领域本体、人物实体图、服务蓝图、工具接口、约束数据库、领域 policy，一直生成到多轮 rollout 和评估。它追求的是跨域 policy 一致性和 persona 模拟，工程量很大，采用门槛也高。</p>
       <p>CLI-Universe、Meta-Task 和 FACET 则分别从能力分类、自指生成和环境状态保持三个角度改进了终端任务合成。CLI-Universe 用 rubric 门控、hint 条件过滤和严格的 fail-to-pass 检查，只保留约三分之一候选；Meta-Task 把“造题”本身定义成一个终端任务，让 agent 在真实容器里边生成边执行；FACET 强调源意图保持和共享可执行状态，先修环境，再生成最终任务。</p>
 
       <h3>6. 第三代：先有世界，再有任务</h3>
       <p>Tev 是“潜世界优先”路线最完整的代表。它先构造一个完整正确的隐藏世界 <code>W</code>，包括域、工作流和每一步的期望状态；再由 <code>W</code> 渲染环境，并做声明式、可逆的损坏，得到初始状态 <code>s0</code>。任务包变成 <code>E = (x, s0, ver_W, Φ_W)</code>。工作流由代码编译成 DAG，关键路径定义 horizon，阶段定义 progress potential。</p>
-      <p>Tev 的核心训练信号是 PPRS：把 progress potential 转成每一步的 dense reward，缓解 GRPO 在长程稀疏奖励下的 starvation。它有 1,170 个经过验证的环境，覆盖七个域，中位 rollout 12.4 分钟；八道自动资格门和十四个 gaming probe 必须零分。Tev-27B 在 ALE-CM 上 Pass@5 达到 0.28，基座是 0.17，接近 GPT-6 Astra 和 Claude Opus 5；Tev-320B 把 GLM-5.3-Flash 在 TB4.0-CM 上从 29% 提到 37%。</p>
-      <p>LOGIGEN 把业务 policy 编译成 SQLite schema 和 trigger。Architect 负责把 wiki policy 变成数据库约束，BEFORE 触发器产生违规，AFTER 触发器做审计和扣库存；Set Designer 做 boundary-adjacent seeding，把阈值放在 N 到 N-1 的边缘，并加入 trade-off、distractor、substitute 和噪声；Explorer 用 Client 和 Consultant 两个角色探索出可执行 episode，得到目标状态和无剧透指令。验证用 State-Diff，天然没有标准答案漂移。两万道题、八个域，τ²-Bench 达到 79.5%，基座是 40.7%。</p>
-      <p>Anchor 用约束优化程序做唯一事实源。它把业务流程写成 OR-Tools CP-SAT 约束程序，同一个参数化规范 <code>S_θ</code> 编译出指令、环境初始化、oracle 解和状态验证器。四道端到端检查是：no-op 必须零分，oracle replay 必须满分，LLM judge 交叉一致，reward-hacking canary 在结果优于认证最优时告警。ERP-Bench 三百道题全部通过 no-op 和 oracle；前沿模型只有 25.9% 的 trial 遵守全部规则，17.4% 达到完全最优。</p>
+      <p>Tev 的核心训练信号是 PPRS：把 progress potential 转成每一步的 dense reward，缓解 GRPO 在长程稀疏奖励下的 starvation。它有 1,170 个经过验证的环境，覆盖七个域，抽取其中 100 个环境让 Gemini 3.6 Flash 各运行两次，耗时中位数为 12.4 分钟。候选环境要通过八项自动验收，其中十四个用于检查错误给分的探针须得零分。Tev-27B 在 ALE-CM 上 Pass@5 达到 0.28，基座是 0.17，接近 GPT-6 Astra 和 Claude Opus 5；Tev-320B 把 GLM-5.3-Flash 在 TB4.0-CM 上从 29% 提到 37%。</p>
+      <p>LOGIGEN 把业务 policy 编译成 SQLite schema 和 trigger。Architect 负责把 wiki policy 变成数据库约束，BEFORE 触发器产生违规，AFTER 触发器做审计和扣库存；Set Designer 做 boundary-adjacent seeding，把阈值放在 N 到 N-1 的边缘，并加入 trade-off、distractor、substitute 和噪声；Explorer 用 Client 和 Consultant 两个角色探索出可执行 episode，得到目标状态和无剧透指令。验证器比对数据库状态变化，使结果可重查；其覆盖范围仍依赖业务政策是否编译完整。八域约两万道合成题用于训练。τ²-Bench 上，32B 基座、SFT 版与 RL 版分别得 40.7%、77.5% 与 79.5%。</p>
+      <p>Anchor 用约束优化程序做唯一事实源。它把业务流程写成 OR-Tools CP-SAT 约束程序，同一个参数化规范 <code>S_θ</code> 编译出指令、环境初始化、oracle 解和状态验证器。四道端到端检查是：no-op 必须零分，oracle replay 必须满分，LLM judge 交叉一致，reward-hacking canary 在结果优于认证最优时告警。ERP-Bench 的三百道题均为空操作零分、参考解满分。十个完整模型与执行框架组合共 15,000 次尝试，25.9% 满足全部硬约束，17.4% 达到认证最优。</p>
       <p>CUA-Gym 面向 computer-use agent，用 Generator 构造初始状态和 golden 状态，用 Discriminator 从任务规格写 reward 函数，再由 Orchestrator 驱动迭代。它产出 32,112 条 verified RLVR tuple 和 110 个高保真 mock web app；GSPO 训练后 A3B 在 OSWorld-Verified 上达到 62.1%，A17B 达到 72.6%。</p>
       <p>AutoWebWorld 用有限状态机定义 Web 环境的所有状态、动作和转移规则，再用 coding agent 把 FSM 翻译成可交互网站。动作正确性按预定义规则检查，任务成功等于到达目标状态。29 个环境、11,663 条 verified trajectory，成本约 0.04 美元一条；七 B 模型在 WebVoyager 十五步限制内超过基线，数据量增加时性能持续提升。</p>
       <p>C-World 按需创建 computer-use 环境：5,571 个统一工具、204 个常用应用；任务分布引擎合成带 wild constraints 的长程工作流；状态控制器注入真实失败；奖励由可验证指标和 LLM judge 组成。它的 World Engine 与真实执行之间的 Spearman 相关系数是 0.883；仅用 1,170 条 C-World 轨迹微调，就超过了 119k 样本的基线。</p>
@@ -122,10 +122,10 @@
 
       <h3>7. 真实工作、轨迹回收与工具依赖</h3>
       <p>TerminalHorizon 从真实专业工作出发，分两阶段。第一阶段是 challenge-guided synthesis：Planner 规划研究 brief，Deep Research agent 查文档、代码、issue 和专业材料，Construction agent 联合构造五元组，要求验证器语义包含在公开指令和可发现证据里；然后由一个不参与构造、只看公开包的 Independent Challenger 实际 rollout，做 Horizon Gap Analysis，找出“构造时已经把核心工作做完”的地方，再 Refine 恢复被省略的工作。第二阶段是 progressive expansion：在同目标下增加更广的角色、更深的机制、更丰富的证据和方法升级，新需求必须依赖前序证据或产物。</p>
-      <p>它覆盖 27 种 agentic behavioral pattern、五个族，1.5K 个环境；用 3K 条 SFT 轨迹，Qwen3.5-27B 在 Terminal-Bench 2.0 上达到 55.8%，比基座高 14.2 分，并在十二个基准上全面提升；多个 case study 连续运行十二小时。</p>
+      <p>它覆盖 27 种 agentic behavioral pattern、五个族，1.5K 个环境；用 3K 条 SFT 轨迹，Qwen3.5-27B 在 Terminal-Bench 2.0 上达到 55.8%，比基座高 14.2 分，并在十二个基准上全面提升；另有多个案例各给十二小时研究预算。</p>
       <p>WorkBorne 以 artifact transition 为中心原语，从真实 artifact 的输入输出关系发现任务。它构建了 1,061 个 artifact corpus、7,882 个任务环境和 15,485 条轨迹，53.6% 的轨迹超过 30 个 assistant turn；Qwen3.5-27B 在 Terminal-Bench 2.1 上从 43.1% 提升到 61.8%，ClawEval General 从 75.0 提升到 80.2。</p>
       <p>Terminal-Universe 把已有 agent 轨迹反演成环境：replay 轨迹中的文件操作，恢复每个文件被修改前的状态，得到 partial workspace；再用 completion agent 补齐缺失文件和依赖；然后在恢复的 workspace 上重建原始意图任务，并合成全新任务。它产出 37.3K 个 task-sufficient environment，Qwen3.5-27B SFT 后在 Terminal-Bench 2.1 上提升 11.9 分，在 EvoCode-Bench v2 上提升 13.8 分。</p>
-      <p>工具侧的三个代表是 ToolVerse、ToolSpace 和 GTA。ToolVerse 用工具依赖图组织课程，按入度零解锁，把 golden trace 反写成用户任务，再用 LangGraph replay 和 teacher Pass@8 过滤。ToolSpace 从真实 MCP 和 agent 轨迹的相邻调用中挖 data、state、retry 三类依赖，用确定性规则而不是 LLM 判断；加权工具组合图聚类成 804 个环境；只给有状态变更的 cluster 合成数据库；用 state-aware random walk 生成跨环境长链，再反编译成带 assertion 的自然语言任务。GTA 则从网站爬取和多跳种子生成 web 任务，并记录最小 gold path，供确定性 replay 和逐步诊断。</p>
+      <p>ToolVerse 和 ToolSpace 构造工具任务，GTA 处理多跳网页导航。ToolVerse 用工具依赖图组织课程，按入度零解锁，把 golden trace 反写成用户任务，再用 LangGraph replay 和 teacher Pass@8 过滤。ToolSpace 从真实 MCP 和 agent 轨迹的相邻调用中挖 data、state、retry 三类依赖，用确定性规则而不是 LLM 判断；加权工具组合图聚类成 804 个环境；只给有状态变更的 cluster 合成数据库；用 state-aware random walk 生成跨环境长链，再反编译成带 assertion 的自然语言任务。GTA 则从网站爬取和多跳种子生成 web 任务，并记录最小 gold path，供确定性 replay 和逐步诊断。</p>
 
       <h3>8. 自博弈与自适应课程</h3>
       <p>SPADE 用同一个语言模型扮演两个角色。Environment Designer 写完整的 Python 环境，接口仿照 Gym 的 <code>reset()</code> 和 <code>step(action)</code>；Reasoning Agent 在这些环境里学习。设计者的奖励来自 hint-based regret：同一个环境，有特权提示和没有提示的回报差；再叠加一个难度平台奖励，让胜率落在 0.4 到 0.6 之间。外部语料提供题材，环境记忆提供难度历史。</p>
@@ -134,11 +134,11 @@
 
       <h3>9. 验证器与综述</h3>
       <p>VerifierBench 专门评估“从指令和环境自动生成可执行验证器”的能力。它有 222 道题、6 个 benchmark、4,993 个隐藏测试，包含 alternative valid solution 和 attack；19 个模型的 normalized balanced accuracy 只有 10.6 到 62.1。关键发现是：生成验证器更擅长拒绝错误解，不擅长接受所有正确解；很多 false rejection 来自“任何解都不接受”的验证器。</p>
-      <p>The Horizon Gap 提供了概念清理，Agentic Environment Engineering 综述则给出了目前最系统的 taxonomy：符号合成分为任务驱动、真实世界驱动和从零生成；神经合成分为像素、词和潜世界模型；环境演化分为神经驱动、难度驱动和规模驱动。它还把未来方向概括为 environment-as-a-service、多 agent 环境和神经符号环境。</p>
+      <p>The Horizon Gap 提供了概念清理，Agentic Environment Engineering 综述则给出了一套按环境建模、合成、评估和应用组织的分类：符号合成分为任务驱动、真实世界驱动和从零生成；神经合成分为像素、词和潜世界模型；环境演化分为神经驱动、难度驱动和规模驱动。它还把未来方向概括为 environment-as-a-service、多 agent 环境和神经符号环境。</p>
 
       <h3>10. 材料最后落到哪里</h3>
-      <p>把这批工作放在一起，作者的共同结论可以概括为五句话。第一，环境比指令更重要；第二，先让解变长变难，再让验证器和指令对齐；第三，独立 challenger 是发现“构造者已经把任务做完”的最好办法；第四，长程训练需要过程奖励，而不是只看最终成败；第五，验证器才是真正的瓶颈。</p>
-      <p>成本也已经不是主要障碍。RST 约 0.05 美元一题，AutoWebWorld 约 0.04 美元一条轨迹，AgentSynth 约 0.60 美元一条轨迹。问题从“造不起”变成“造得对不对、难不难、有没有泄漏”。</p>
+      <p>这些作者采用了不同的验收参照。RST 看改写后参考解与验证器能否共同通过，TerminalHorizon 检查独立求解者实际要完成多少工作，Tev 检查中间状态的进度，Anchor 检查业务约束与最优解。若某种方法声称持续提高长程能力，本文关心的是它在独立任务、固定交互预算下能把哪一项结果改变多少。</p>
+      <p>RST 报告每个通过验收的任务约 0.05 美元；AutoWebWorld 和 AgentSynth 分别报告每条轨迹约 0.04、0.60 美元。读者估算自己的成本时，还要知道每题需采多少条轨迹、保留比例多少、工具能否复用，以及训练和人工验证另需多少投入。</p>
       <p class="small">以上是按材料顺序做的连续讲解。下面进入本文自己的结构化抽象、证据审计与独立判断。</p>
     </section>
 
@@ -146,10 +146,10 @@
       <h2>第二遍：核心判断</h2>
       <p><strong>长程 agentic 任务合成的竞争焦点，已经从“谁能生成更多轨迹”转向“谁能先构造出一个自洽、可执行、可验证、难度可调的世界”。</strong>这不是一句口号，而是四件套一致性、独立挑战者、过程奖励和验证器工程共同逼出来的结果。</p>
       <div class="grid-4">
-        <div class="card"><span class="metric">环境优先</span><h3>顺序反转</h3><p>2025 年主流是先有轨迹再包装任务；2026 年主流是先有世界、参考解和验证器，再渲染指令。</p></div>
-        <div class="card"><span class="metric">0.05 美元</span><h3>成本坍塌</h3><p>RST 把终端任务降到约五分钱一题；瓶颈从预算转向质量与语义一致性。</p></div>
+        <div class="card"><span class="metric">环境优先</span><h3>构造顺序</h3><p>AgentTrek 从教程出发再执行，OS-Genesis 从操作反推出题；Anchor 和 Tev 让任务与验收共用一份世界描述。这些起点会留下不同的证据。</p></div>
+        <div class="card"><span class="metric">0.05 美元</span><h3>制备成本</h3><p>RST 估算每道通过验收的终端题约 0.05 美元。换用其他模型、验收标准或训练预算时须重估。</p></div>
         <div class="card"><span class="metric">90% → 2.5%</span><h3>难度可扩展</h3><p>递归十五轮后 pass@4 大幅下降，说明“更难”可以由真实工作量增长实现。</p></div>
-        <div class="card"><span class="metric">10.6–62.1</span><h3>验证器短板</h3><p>自动验证器的平衡准确率跨度极大，假拒绝和“任何解都不接受”仍普遍。</p></div>
+        <div class="card"><span class="metric">10.6–62.1</span><h3>验证器短板</h3><p>VerifierBench 的归一化平衡准确率从 10.6 到 62.1，各模型均更容易拒绝无效解；接受其他有效做法仍困难。</p></div>
       </div>
       <div class="callout"><b>最值得记住的判断</b><p>长程性不是把 prompt 写长，而是让后一步真的依赖前一步的产物，让状态跨阶段保留，让构造时简单、求解时必须反推。没有这三件事，任务再长也只是并行的小题拼接。</p></div>
     </section>
@@ -168,22 +168,22 @@
 
     <section id="landscape">
       <h2>方法谱系：六条路线与一层基础设施</h2>
-      <p>把三十项工作按“任务从哪里来”分类，可以得到六条路线。它们不是互斥的，很多系统会同时用到两三条。</p>
+      <p>按任务的来源和验收方式，下表给出六种观察角度。同一工作可能同时提供环境、出题方法与训练数据。</p>
       <div class="table-wrap">
         <table>
           <caption>长程 agentic 任务合成的六条路线。</caption>
           <thead><tr><th>路线</th><th>核心操作</th><th>代表工作</th><th>长程性来源</th><th>主要风险</th></tr></thead>
           <tbody>
-            <tr><td>递归与进化扩展</td><td>对种子任务反复施加 rewrite operator，扩展解、环境、验证器</td><td>RST、RES、TURTLE、SkillHorizon、AgentSkiller、CLI-Universe、Meta-Task、FACET</td><td>轮次累积、依赖组合、工作量增长</td><td>分布漂移、验证器失配、难度饱和</td></tr>
-            <tr><td>潜世界优先与反向合成</td><td>先构造完整正确的隐藏世界，再渲染环境、反推初始状态和指令</td><td>Tev、LOGIGEN、Anchor、CUA-Gym、AutoWebWorld</td><td>世界状态深度、因果链、进度势能</td><td>世界构造成本高、渲染保真度</td></tr>
-            <tr><td>组合与自底向上</td><td>原子任务拆解、深度扩展、宽度扩展、跨应用合并</td><td>AgentSynth、TaskCraft、ToolVerse、ToolSpace、GTA、SynWeaver、OS-Genesis、Terminal-Universe</td><td>依赖链、跨应用、信息不对称</td><td>组合语义不连贯、验证器覆盖不足</td></tr>
-            <tr><td>自博弈与自适应环境</td><td>proposer 出题、solver 解题，按能力边缘调整难度</td><td>SPADE、Explorer-Zero、SCOPE、SESA、CuES</td><td>课程自适应、失败驱动</td><td>reward hacking、难度坍塌、rubric 偏差</td></tr>
-            <tr><td>真实痕迹与专业工作</td><td>从真实工单、代码库、文档、专家流程中挖掘任务</td><td>TerminalHorizon、WorkBorne、C-World、EnvScaler、ScaleEnv、InfiniteWeb、Agent World Model、GEM、Watch and Learn、AgentTrek</td><td>真实依赖、专业约束、环境复杂度</td><td>成本、隐私、污染、可复现性</td></tr>
-            <tr><td>验证与综述</td><td>生成或审计验证器，定义 horizon 度量</td><td>VerifierBench、The Horizon Gap、环境工程综述</td><td>过程级信号</td><td>验证器偏差、评测泄漏</td></tr>
+            <tr><td>递归扩展与相关构造方法</td><td>追踪哪些方法迭代同系任务，哪些通过技能组合或环境校验扩展任务。</td><td>RST、RES、TURTLE、SkillHorizon、AgentSkiller、CLI-Universe、Meta-Task、FACET</td><td>轮次累积、依赖组合、工作量增长</td><td>分布漂移、验证器失配、难度饱和<details><summary>实验与出处</summary><p>RST 让通过验收的终端任务成为下一轮种子，RES 保留原目标并递归改环境，TURTLE 按求解反馈筛变异任务。SkillHorizon 组合业务技能，AgentSkiller 连接人物、服务与跨域状态；CLI-Universe 从能力分类出题，Meta-Task 让代理在容器里造题，FACET 先落实环境再修复不一致的工件。 前三项直接研究递归或进化。后五项给出组合、构造或验收的对照，不能用来支持“八种方法都因多轮递归而变强”。</p><p><small>八篇各自的方法总览；RST 轮次表、RES 配对实验、TURTLE 图 3、其余五篇生成设置。</small></p><p><a href="https://arxiv.org/abs/2608.05466">RST · Recursive Synthesis for Long-Horizon Terminal Tasks</a>、<a href="https://arxiv.org/abs/2610.16397">RES · Recursive Environment Scaling for General Long-Horizon Agents</a>、<a href="https://arxiv.org/abs/2610.27307">TURTLE · Evolving Self-tuning Benchmarks for Long-Horizon Tool Use</a>、<a href="https://arxiv.org/abs/2610.14966">SkillHorizon: Constructing Long-Horizon Agent Tasks through Skill Composition</a>、<a href="https://arxiv.org/abs/2602.09372">AgentSkiller: Scaling Generalist Agent Intelligence through Semantically Integrated Cross-Domain Data Synthesis</a>、<a href="https://arxiv.org/abs/2606.22883">CLI-Universe: Towards Verifiable Task Synthesis Engine for Terminal Agents</a>、<a href="https://arxiv.org/abs/2607.27929">Meta-Task: Turning Terminal Task Synthesis into a Terminal Task for Scalable Agent Training</a>、<a href="https://arxiv.org/abs/2608.18580">FACET: Preserving Source Intent and Executable State in Terminal Task Synthesis</a></p></details></td></tr>
+            <tr><td>用显式状态或规范生成任务</td><td>从隐藏工作流、业务规则、目标状态或有限状态机导出可验收的工件。</td><td>Tev、LOGIGEN、Anchor、CUA-Gym、AutoWebWorld</td><td>世界状态深度、因果链、进度势能</td><td>世界构造成本高、渲染保真度<details><summary>实验与出处</summary><p>Tev 从隐藏世界导出初态、终态和阶段分数；LOGIGEN 把政策写入数据库并向前探索；Anchor 从同一约束规范生成任务工件。CUA-Gym 让两个角色分别构造环境与奖励并检查初态、目标态；AutoWebWorld 把有限状态机渲染成网站，按状态转换产生轨迹。 五种方法各有可检查的结构，但只有其中一部分从完整隐藏世界倒推。单一规范若漏译规则，多个工件仍会一致地遗漏同一要求。</p><p><small>Tev 方法图、LOGIGEN 三角色、Anchor 单源编译、CUA-Gym 权限矩阵、AutoWebWorld 有限状态机。</small></p><p><a href="https://arxiv.org/abs/2610.18868">Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</a>、<a href="https://arxiv.org/abs/2603.00540">LOGIGEN: Logic-Driven Generation of Verifiable Agentic Tasks</a>、<a href="https://arxiv.org/abs/2605.26321">Anchor: Preventing Artifact Drift for Reliable Agent Verification</a>、<a href="https://arxiv.org/abs/2605.25624">CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents</a>、<a href="https://arxiv.org/abs/2602.14296">AutoWebWorld: Synthesizing Infinite Verifiable Web Environments via Finite State Machines</a></p></details></td></tr>
+            <tr><td>组合与自底向上</td><td>区分工具依赖、页面证据、界面探索和工作区重建，再问哪些中间产物需要被后续步骤使用。</td><td>AgentSynth、TaskCraft、ToolVerse、ToolSpace、GTA、SynWeaver、OS-Genesis、Terminal-Universe</td><td>依赖链、跨应用、信息不对称</td><td>组合语义不连贯、验证器覆盖不足<details><summary>实验与出处</summary><p>AgentSynth 拼接电脑子任务，TaskCraft 扩展工具题的深度和宽度；ToolVerse 用工具依赖图组织任务，ToolSpace 加入真实执行中出现的调用边。GTA 从网页内容与证据片段生成多跳检索题，SynWeaver 先构网站功能图；OS-Genesis 从界面动作反推可执行目标，Terminal-Universe 从终端轨迹恢复初始工作区。 这些论文用来连接子任务的证据分别来自执行、依赖图、页面或录下的轨迹。GTA 是多跳网页任务生成，OS-Genesis 和 Terminal-Universe 还包含反向重建。</p><p><small>八篇构造方法；GTA 的 ACL 2026 正式出版记录与 arXiv v1 摘要、方法。</small></p><p><a href="https://arxiv.org/abs/2506.14205">AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents</a>、<a href="https://arxiv.org/abs/2506.10055">TaskCraft: Automated Generation of Agentic Tasks</a>、<a href="https://arxiv.org/abs/2607.15660">ToolVerse: Unlocking Massive Environments and Long-Horizon Tasks for Agentic Reinforcement Learning</a>、<a href="https://arxiv.org/abs/2611.05036">ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</a>、<a href="https://aclanthology.org/2026.acl-long.856/">GTA: Generating Long-Horizon Tasks for Web Agents at Scale</a>、<a href="https://arxiv.org/abs/2608.12429">SynWeaver: Website-Prior Task and Trajectory Co-Synthesis for Web Agents</a>、<a href="https://aclanthology.org/2025.acl-long.277.pdf">OS-Genesis: Automating GUI Agent Trajectory Construction via Reverse Task Synthesis</a>、<a href="https://arxiv.org/abs/2609.04148">Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</a></p></details></td></tr>
+            <tr><td>自博弈与自适应环境</td><td>由探索记录、求解器反馈、评分细则或技能记忆改变后续出题分布。</td><td>SPADE、Explorer-Zero、SCOPE、SESA、CuES</td><td>课程自适应、失败驱动</td><td>reward hacking、难度坍塌、rubric 偏差<details><summary>实验与出处</summary><p>SPADE v3 的同一模型分任环境设计与求解；Explorer-Zero 在 ALFWorld、ScienceWorld、AppWorld 用探索取得的中间状态打分。SCOPE 在检索问答中用冻结模型写评分细则，SESA 把搜索失败写入技能记忆；CuES 从 AppWorld、BFCL、WebShop 的交互发现任务。 这些工作都能改变训练分布，出题者、验收依据及监督来源却各异。CuES 的环境探索不能当成它训练了与 SPADE 相同的双角色自博弈。</p><p><small>SPADE 主表、Explorer-Zero 表 1、SCOPE 表 2–3、SESA 表 1–2、CuES 表 1。</small></p><p><a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments</a>、<a href="https://arxiv.org/abs/2610.19868">Explorer-Zero: Improving Self-Play for Long-Horizon Tasks with Decomposable Verifiable Rewards</a>、<a href="https://arxiv.org/abs/2605.31433">SCOPE: Self-Play via Co-Evolving Policies for Open-Ended Tasks</a>、<a href="https://arxiv.org/abs/2607.29468">SESA · Self-Play Meets Skill Evolution: Self-Evolving Search Agents that Pose, Solve, and Remember</a>、<a href="https://arxiv.org/abs/2512.01311">CuES: A Curiosity-driven and Environment-grounded Synthesis Framework for Agentic RL</a></p></details></td></tr>
+            <tr><td>专业材料、行为记录与合成环境</td><td>专业资料和行为记录提供样例；另有一批工作程序化构造环境、任务及验证器。</td><td>TerminalHorizon、WorkBorne、C-World、EnvScaler、ScaleEnv、InfiniteWeb、Agent World Model、GEM、Watch and Learn、AgentTrek</td><td>材料间的依赖、环境状态与专业要求</td><td>成本、隐私、污染、可复现性<details><summary>实验与出处</summary><p>TerminalHorizon 据专业资料构造挑战；WorkBorne 从工作材料的输入输出关系造题。GEM 从文本还原工具流程，Watch and Learn 从网上演示视频推断动作，AgentTrek 按教程重新操作网站。C-World 同时提供真实 API 执行和模拟工具行为两种模式；EnvScaler 生成环境骨架与任务，ScaleEnv 从零生成工具世界，InfiniteWeb 生成网站，Agent World Model 生成 1,000 个代码与数据库支持的环境。 真实材料的形态会影响可验证的主张。视频中推断的动作与可重放的执行记录仍有距离。环境能执行，也不能据此将它登记为一次真实用户操作。</p><p><small>十篇的输入、产物及训练/测试设置；Watch and Learn 的 arXiv HTML §3–4。</small></p><p><a href="https://arxiv.org/abs/2610.13166">TerminalHorizon · Scaling Agentic Data for Long-Horizon Terminal Intelligence</a>、<a href="https://arxiv.org/abs/2610.14915">WorkBorne: Discovering Agentic Tasks from Real-World Artifact Transitions</a>、<a href="https://arxiv.org/abs/2601.06328">C-World: A Computer Use Agent Environment Creator</a>、<a href="https://arxiv.org/abs/2601.05808">EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis</a>、<a href="https://arxiv.org/abs/2602.06820">ScaleEnv: Scaling Environment Synthesis from Scratch for Generalist Interactive Tool-Use Agent Training</a>、<a href="https://arxiv.org/abs/2601.04126">InfiniteWeb: Scalable Web Environment Synthesis for GUI Agent Training</a>、<a href="https://arxiv.org/abs/2602.10090">Agent World Model: Infinity Synthetic Environments for Agentic Reinforcement Learning</a>、<a href="https://arxiv.org/abs/2601.10355">GEM · Unlocking Implicit Experience: Synthesizing Tool-Use Trajectories from Text</a>、<a href="https://arxiv.org/abs/2510.04673">Watch and Learn: Learning to Use Computers from Online Videos</a>、<a href="https://agenttrek.github.io/">AgentTrek: Agent Trajectory Synthesis via Guiding Replay with Web Tutorials</a></p></details></td></tr>
+            <tr><td>验证与综述</td><td>把验证器的实测表现与文献分类分开。</td><td>VerifierBench、The Horizon Gap、环境工程综述</td><td>验证覆盖、任务跨度和评测定义</td><td>验证器偏差、评测泄漏<details><summary>实验与出处</summary><p>VerifierBench 让模型写验证器，拿隐藏的有效解与无效解直接测试。The Horizon Gap 按任务跨度、上下文与跨会话记忆分析 1,547 篇文献；环境工程综述则按建模、合成、评价和应用梳理系统。 只有第一篇的 222 题提供验证器判定准确度的实测值。两篇综述的分类可以指导选指标，不能用其文献计数证明过程奖励提高了成功率。</p><p><small>VerifierBench 公式 1 与实验；两篇综述的概念定义、语料与分类。</small></p><p><a href="https://arxiv.org/abs/2610.28679">VerifierBench: Benchmarking the Generation of Executable Verifiers for LLM Agents</a>、<a href="https://arxiv.org/abs/2608.06663">The Horizon Gap: Planning, Memory, Execution, Training, and Evaluation for Long-Horizon LLM Agents</a>、<a href="https://arxiv.org/abs/2606.12191">环境工程综述 · Agentic Environment Engineering for Large Language Models: A Survey of Environment Modeling, Synthesis, Evaluation, and Application</a></p></details></td></tr>
           </tbody>
         </table>
       </div>
-      <p>在这六条路线之下，还有一层“环境基础设施”：EnvScaler、ScaleEnv、Agent World Model、InfiniteWeb、C-World 和 CUA-Gym 不直接生产最终任务，而是生产可交互环境、状态机和 reward 函数。它们决定了上层任务合成能走多远。</p>
+      <p>EnvScaler、ScaleEnv、Agent World Model、InfiniteWeb、C-World 和 CUA-Gym 都提供可交互环境。它们也会生成训练任务或验收条件，例如 CUA-Gym 在 110 个环境中生成了 32,112 组已验证的 RL 训练样本。使用这些资源前，可以分别检查环境能否运行、任务能否完成，以及验证器能否识别合理的替代解。</p>
       <p>演化方向可以概括为：从“让模型自己出题”，到“让环境先成立”，再到“让验证器和进度信号可执行”，最后到“让任务难度随模型能力自适应”。</p>
     </section>
 
@@ -200,8 +200,8 @@
       </div>
       <p>第一阶段决定任务的“题材真实性”。真实 artifact 和轨迹通常比纯 LLM 想象更有依赖结构；文档和视频提供操作知识；业务 policy 提供硬约束。第二阶段决定任务的“可执行性”：状态机、数据库、文件系统、工具 API 和失败注入，都是让任务不只是文字游戏的手段。</p>
       <p>第三阶段是最容易被忽略的。很多合成流水线先写指令，再让模型补一个参考解，结果解只覆盖指令的表面要求。RST 的证据说明，先扩展解再对齐指令，验证通过率会显著更高。第四阶段则要求验证器的语义是公开指令的子集：验证器可以检查比指令更具体的东西，但不能要求指令里没提、环境中也发现不了的隐藏知识。</p>
-      <p>第五阶段是 TerminalHorizon 的核心贡献。构造者自己跑参考解，通常会“知道路怎么走”，因此容易把关键工作省略。独立 challenger 不参与构造，只看公开包，实际 rollout 后再对比 seed 意图，才能发现“构造时已把核心工作做完”的问题。第六阶段是难度校准：TURTLE 用 0.5 附近的完成率，SkillHorizon 用参考 token 工作量分 band，AgentSynth 用子任务数分 level，RST 用递归轮次自然升级。</p>
-      <p>验证器的强度可以排一个序：状态 diff 和数据库断言最强，其次是 SQL 和业务规则引擎，再次是 pytest 和文件系统检查，然后是程序化 reward 加轨迹 replay，最后才是 LLM judge 加 rubric。原则很简单：能用状态检查就不要用 LLM judge，能用确定性 replay 就不要用“看起来完成了”的截图判断。</p>
+      <p>第五阶段是 TerminalHorizon 的核心贡献。构造者自己跑参考解，通常会“知道路怎么走”，因此容易把关键工作省略。独立 challenger 不参与构造，只看公开包，实际 rollout 后再对比 seed 意图，可以发现“构造时已把核心工作做完”的问题。第六阶段是难度校准：TURTLE 用 0.5 附近的完成率，SkillHorizon 用参考 token 工作量分 band，AgentSynth 用子任务数分 level，RST 用递归轮次自然升级。</p>
+      <p>选择验收器要看任务要求能否被它观察到。数据库断言适合检查余额和库存，文件测试适合检查产物，轨迹回放能检查依赖次序；开放式内容可能需要带量规的人工或模型判断。若指令允许多条路径，可以同时测试已知错误解和另一份有效解。不同任务上的评价器分数没有给这些实现排出通用次序。</p>
     </section>
 
     <section id="evidence">
@@ -212,51 +212,51 @@
           <caption>规模、成本与关键结果。数字均为论文或项目页报告，未做独立重跑。</caption>
           <thead><tr><th>工作</th><th>路线</th><th>规模</th><th>成本</th><th>关键数字</th></tr></thead>
           <tbody>
-            <tr><td>RST</td><td>递归进化</td><td>37,484 题 / 15 轮</td><td>约 0.05 美元一题</td><td>pass@4 90% 到 2.5%；参考解 67 到 374 行</td></tr>
-            <tr><td>RES</td><td>递归进化</td><td>294 个初始任务</td><td>未报告</td><td>Claw-Eval-Live 下降 57.14 到 77.14 个百分点</td></tr>
-            <tr><td>TURTLE</td><td>进化 / UED</td><td>持续进化</td><td>未报告</td><td>AppWorld hard 提升 165%</td></tr>
-            <tr><td>SkillHorizon</td><td>递归组合</td><td>1,050 题 / 7 域</td><td>未报告</td><td>参考工作量 64K 到 1M token；完成率 90.4% 到 46.8%</td></tr>
-            <tr><td>Tev</td><td>潜世界优先</td><td>1,170 环境 / 7 域</td><td>未报告</td><td>ALE-CM Pass@5 0.28；中位 rollout 12.4 分钟</td></tr>
-            <tr><td>LOGIGEN</td><td>策略编译</td><td>20,000 题 / 8 域</td><td>未报告</td><td>τ²-Bench 79.5%，基座 40.7%</td></tr>
-            <tr><td>Anchor</td><td>约束编译</td><td>300 题</td><td>未报告</td><td>300/300 通过 no-op 与 oracle；全规则遵守率 25.9%</td></tr>
-            <tr><td>AgentSynth</td><td>组合</td><td>6,000+ 题</td><td>约 0.60 美元一条轨迹</td><td>level 6 成功率 4%；verifier 准确率 88%</td></tr>
-            <tr><td>TaskCraft</td><td>组合</td><td>约 36,000 题</td><td>未报告</td><td>depth 与 width 扩展；HF 数据集 40,000+ 实例</td></tr>
-            <tr><td>ToolSpace</td><td>痕迹 / 工具</td><td>804 环境</td><td>未报告</td><td>GLM-5.2 44.6 到 56.6；Qwen3.6 35B 23.0 到 41.0</td></tr>
-            <tr><td>SPADE</td><td>自博弈</td><td>400 rollout</td><td>未报告</td><td>30B 八项平均 50.2 到 58.3；可学习环境 0.16 到 0.31</td></tr>
-            <tr><td>TerminalHorizon</td><td>真实工作</td><td>1.5K 环境 / 3K SFT</td><td>未报告</td><td>27B 在 TB2.0 达到 55.8%，提升 14.2 分</td></tr>
-            <tr><td>WorkBorne</td><td>真实 artifact</td><td>7,882 环境 / 15,485 轨迹</td><td>未报告</td><td>TB2.1 43.1% 到 61.8%</td></tr>
-            <tr><td>VerifierBench</td><td>验证器</td><td>222 题 / 4,993 隐藏测试</td><td>未报告</td><td>19 个模型平衡准确率 10.6 到 62.1</td></tr>
+            <tr><td>RST</td><td>递归进化</td><td>37,484 题 / 15 轮</td><td>约 0.05 美元／验收通过的任务</td><td>DeepSeek-V4-Pro 子集 pass@4 为 90% → 2.5%；参考解长度中位数为 67 → 374 行。<details><summary>实验与出处</summary><p>639 个经参考解验证的种子经 15 轮扩展，保留 37,484 个任务。R1 到 R15，参考解的中位行数为 67 到 374，DeepSeek-V4-Pro 在匹配子集上的 pass@4 从 90% 降至 2.5%。 0.05 美元以通过验收的任务为分母。模型在后期题目更难答对，不能据此把 374 行解释为所有正确解的最短长度。</p><p><small>v4 数据统计、轮次对照、per passed task。</small></p><p><a href="https://arxiv.org/abs/2608.05466">RST · Recursive Synthesis for Long-Horizon Terminal Tasks</a></p></details></td></tr>
+            <tr><td>RES</td><td>递归进化</td><td>294 个初始任务</td><td>289 个通过验收的子环境共消耗 25.78M token；未计没有产出子环境的分支</td><td>Claw-Eval-Live 单次成功率下降 57.14–77.14 个百分点。<details><summary>实验与出处</summary><p>294 个原任务分属三个基准；Claw-Eval-Live 占 105 个。六个模型分别比较原始环境和保持目标、扩大依赖后的环境，例如 DeepSeek-V4.1-Flash 的单次通过率为 82.86% → 5.71%。 57.14–77.14 是这一个基准上跨模型的百分点降幅。另一个等轨迹数的训练实验证明这些扩展可以用作训练数据，两者测量方向不同。</p><p><small>v2 §4.1–4.2、表 1、附录 A 成本表。</small></p><p><a href="https://arxiv.org/abs/2610.16397">RES · Recursive Environment Scaling for General Long-Horizon Agents</a></p></details></td></tr>
+            <tr><td>TURTLE</td><td>进化 / UED</td><td>持续进化</td><td>缺少可比的单题制备金额</td><td>难题占比 20% → 53%，相对增加 165%；两组相差 33 个百分点。<details><summary>实验与出处</summary><p>在 AppWorld，作者用 LLM 评价任务难度，原任务中被标为 hard 的占 20%，变异后的任务中占 53%。 差值为 33 个百分点，除以原占比才是相对增加 165%。该行的分母是各自的题数，无法据此读出求解器成功率提高多少。</p><p><small>v2 图 3、§4 AppWorld task difficulty。</small></p><p><a href="https://arxiv.org/abs/2610.27307">TURTLE · Evolving Self-tuning Benchmarks for Long-Horizon Tool Use</a></p></details></td></tr>
+            <tr><td>SkillHorizon</td><td>递归组合</td><td>1,050 题 / 7 域</td><td>缺少可比的单题制备金额</td><td>从 64K 至 1M 的参考工作量档，平均局部目标完成率从 90.4% 降到 46.8%。<details><summary>实验与出处</summary><p>五个模型各运行七域中的 1,050 道业务任务，共 5,250 次执行。参考策略完成任务消耗的交互 token 决定 64K 至 1M 工作量分档。 90.4% → 46.8% 是模型平均完成的局部目标比例；论文另计整题成功。1M 描述累计交互工作量，而单次上下文窗口有自己的上限。</p><p><small>v1 数据集、模型与按工作量分档主表。</small></p><p><a href="https://arxiv.org/abs/2610.14966">SkillHorizon: Constructing Long-Horizon Agent Tasks through Skill Composition</a></p></details></td></tr>
+            <tr><td>Tev</td><td>潜世界优先</td><td>1,170 环境 / 7 域</td><td>表 1 报告执行时间；按题制备金额未核到</td><td>Tev-27B 在 ALE-CM 的 pass@5 为 0.28；12.4 分钟来自另一组 200 次计时执行。<details><summary>实验与出处</summary><p>训练语料有 1,170 个环境、七个领域。Gemini 3.6 Flash 在分层抽取的 100 个环境中各运行两次，单次中位耗时 12.4 分钟。在另一项 ALE-CM 测试中，Tev-27B 的 pass@1 为 0.16，pass@5 为 0.28。 耗时从首次动作计到最后一步，排除事前启动及事后测试。0.28 是五次尝试的指标，跨系统比较还须看各自的执行框架。</p><p><small>v1 表 1、主结果表、附录 A.8。</small></p><p><a href="https://arxiv.org/abs/2610.18868">Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</a></p></details></td></tr>
+            <tr><td>LOGIGEN</td><td>策略编译</td><td>20,000 题 / 8 域</td><td>作者按无前缀缓存估算，架构、布景、探索、轨迹蒸馏模块均价依次为 ¥1.22、¥1.61、¥1.24、¥1.43</td><td>τ²-Bench 三域平均：基座 40.7%，SFT 77.5%，RL 79.5%。<details><summary>实验与出处</summary><p>八域合成约两万题。在同用 DeepSeek-V3.2 模拟用户的 τ²-Bench 三域平均中，作者重测的 Qwen3-32B 得 40.7%，LOGIGEN-32B 的 SFT 版得 77.5%，RL 版得 79.5%。 相对基座的 38.8 分包括数据与训练配方；若比较论文给出的两个训练版本，表中差值为 2.0 分。附录分模块估算费用，各模块成功率不同。</p><p><small>v1 主结果表、冷启动与 TA-GRPO 设置、附录 B.2 表 5。</small></p><p><a href="https://arxiv.org/abs/2603.00540">LOGIGEN: Logic-Driven Generation of Verifiable Agentic Tasks</a></p></details></td></tr>
+            <tr><td>Anchor</td><td>约束编译</td><td>300 题</td><td>GPT-5.5 单题运行费在代码、浏览器、电脑操作三种界面为 $5.28、$17.65、$16.25</td><td>空操作 300/300 得零分，参考解 300/300 满分；完整配置的试次中 25.9% 满足全部硬约束。<details><summary>实验与出处</summary><p>v3 的 300 个 Odoo 任务都满足两个端点：空操作得零分，参考解回放得满分。25.9% 来自十种跑完的模型与执行框架配置，共 15,000 次尝试；达到认证最优的只有 17.4%。 两组提前停止的配置排除在该汇总之外。端点检查验证初态和参考解，其他合法解能否通过仍需另外检查。</p><p><small>v3 端点回放、feasibility-optimality gap 与 §4 接口费用。</small></p><p><a href="https://arxiv.org/abs/2605.26321">Anchor: Preventing Artifact Drift for Reliable Agent Verification</a></p></details></td></tr>
+            <tr><td>AgentSynth</td><td>组合</td><td>6,000+ 题</td><td>约 0.60 美元一条轨迹</td><td>o4-mini 在等级 1、6 的成功率为 18%、4%；评价器与人工在 100 例中一致 88%。<details><summary>实验与出处</summary><p>论文生成六千余个任务，平均每条轨迹约 0.60 美元。o4-mini 的任务成功率在等级 1 为 18%、等级 6 为 4%。另从各等级共随机抽 100 例，以人工判断核验自动评价器。 88% 是这 100 例中评价器二值判断与人一致的比例。它与 o4-mini 解题的 4% 各有分母。</p><p><small>v2 §4.1 表 1、§5 难度结果。</small></p><p><a href="https://arxiv.org/abs/2506.14205">AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents</a></p></details></td></tr>
+            <tr><td>TaskCraft</td><td>组合</td><td>约 36,000 题</td><td>缺少可比的单题制备金额</td><td>论文约 36,000 题；发布卡称 40,000 余个实例，两个版本分开引用。<details><summary>实验与出处</summary><p>论文 v2 报告约 36,000 道按深度与宽度生成的任务；作者数据卡另述收录逾 40,000 个任务实例，并分列题目、回答和预测。 两个数字分别描述实验报告和发布说明。公开页没有提供从旧题到发布实例的逐题对应，不能用差值推算新增的独立题目数。</p><p><small>论文 v2 摘要、深宽扩展与作者 Dataset Card。</small></p><p><a href="https://arxiv.org/abs/2506.10055">TaskCraft: Automated Generation of Agentic Tasks</a>；<a href="https://huggingface.co/datasets/PersonalAILab/TaskCraft">作者数据卡</a></p></details></td></tr>
+            <tr><td>ToolSpace</td><td>痕迹 / 工具</td><td>804 个 MCP 环境配置簇</td><td>缺少可比的单题制备金额</td><td>七项平均：GLM-5.2 为 44.6 → 56.6，Qwen3.6-35B-A3B 为 23.0 → 41.0，加 RL 后为 43.2。<details><summary>实验与出处</summary><p>804 是筛出的真实 MCP 服务配置簇。七项工具使用基准平均分中，GLM-5.2 从 44.6 到 56.6，Qwen3.6-35B-A3B 从 23.0 到 41.0，后者加入 RL 后为 43.2。 这里汇总不同基准的分数；不能当成同一批 804 个环境上的成功率。由执行轨迹支持的边是筛选训练任务的一种依据。</p><p><small>v1 语料构建与表 1。</small></p><p><a href="https://arxiv.org/abs/2611.05036">ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</a></p></details></td></tr>
+            <tr><td>SPADE</td><td>自博弈</td><td>400 次训练迭代</td><td>缺少可比的单题制备金额</td><td>30B Games 八项均分 50.2 → 58.3；可学区间内的环境占比 16% → 31%。<details><summary>实验与出处</summary><p>v3 表 1 的预算是 400 次训练迭代。Qwen3-30B-A3B-Instruct-2507 的八项平均从基座 50.2 升至 Games 配置的 58.3。另按成功率在 0.2–0.8 之间定义可学环境，其占比由训练早期的 0.16 升至晚期的 0.31。 一次迭代采样多条轨迹。可学环境占比统计的是生成环境的分布，不能解释成基准成功率。</p><p><small>v3 表 1、附录 F.1.1 表 7。</small></p><p><a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments</a></p></details></td></tr>
+            <tr><td>TerminalHorizon</td><td>真实工作</td><td>1,535 个环境／2,852 条 SFT 轨迹</td><td>缺少可比的单题制备金额</td><td>Qwen3.5-27B 在 TB 2.0 的 mean pass@1 从 41.6% 到 55.8%，相差 14.2 个百分点。<details><summary>实验与出处</summary><p>1,535 个环境产出 2,852 条过滤后的 SFT 轨迹。Qwen3.5-27B 在 Terminus2 的 Terminal-Bench 2.0 得 41.6%，微调后得 55.8%。 14.2 是同基准差的百分点。作者按单次成功的平均表现汇总，多次独立实验取均值仍是 mean pass@1。</p><p><small>v2 实验主表、附录评测协议与图 9。</small></p><p><a href="https://arxiv.org/abs/2610.13166">TerminalHorizon · Scaling Agentic Data for Long-Horizon Terminal Intelligence</a></p></details></td></tr>
+            <tr><td>WorkBorne</td><td>真实 artifact</td><td>7,882 环境 / 15,485 轨迹</td><td>缺少可比的单题制备金额</td><td>Qwen3.5-27B 上，TB 2.1 的平均 pass@1 为 43.1% → 61.8%。<details><summary>实验与出处</summary><p>1,061 组源材料对应 7,882 个任务环境和 15,485 条保留轨迹；作者以这些轨迹做三轮 SFT，Qwen3.5-27B 和训练后的 WorkBorne-27B 在 TB 2.1 上分别得 43.1% 和 61.8%。 这里是 Terminus2 下三次运行的平均 pass@1，提升 18.7 个百分点。另一列 ClawEval General 使用自己的评分与执行框架。</p><p><small>v1 表 1–2、§4.1 训练与评测设置。</small></p><p><a href="https://arxiv.org/abs/2610.14915">WorkBorne: Discovering Agentic Tasks from Real-World Artifact Transitions</a></p></details></td></tr>
+            <tr><td>VerifierBench</td><td>验证器</td><td>222 题 / 4,993 隐藏测试</td><td>缺少可比的单题制备金额</td><td>19 个模型的归一化平衡准确率 10.6–62.1；恒定作答对应 0，完全正确对应 100。<details><summary>实验与出处</summary><p>在同一 Pi 执行框架下，19 个模型生成验证器，使用来自六个基准的 222 题、4,993 个隐藏测试验收。先在任务内分别算接受有效解和拒绝无效解的比例，再对任务等权。 10.6–62.1 是归一化后的分数：把通常的平衡准确率乘二再减一百（百分数制）。普通平衡准确率相应为 55.3%–81.05%。</p><p><small>v2 §3.1 公式 1、§3.2 表 2。</small></p><p><a href="https://arxiv.org/abs/2610.28679">VerifierBench: Benchmarking the Generation of Executable Verifiers for LLM Agents</a></p></details></td></tr>
           </tbody>
         </table>
       </div>
 
       <h3>影响力：引用、下载与讨论不是一回事</h3>
-      <p>引用数来自 2026 年 11 月初的公开学术图谱，Hugging Face upvote、模型与数据集下载、GitHub star 来自同月上旬的公开页面。2026 年 10 月到 11 月发布的新论文，引用数天然接近零，不能直接和 2024 年末、2025 年中的工作比较。</p>
+      <p>以下为 2026 年 11 月 18 日的公开读数。引用按每篇链接到的 OpenAlex 记录，论文点赞取 Hugging Face Papers，星标取能确认归属的 GitHub 仓库。下载量按具体资源的近月窗口计算。各论文发表时间不同，预印本与会议版也可能归并到不同记录。</p>
       <div class="table-wrap">
         <table>
           <caption>三层影响力指标。社区信号为公开检索到的代表性讨论，不代表穷尽。</caption>
-          <thead><tr><th>工作</th><th>引用</th><th>HF upvote</th><th>GitHub star</th><th>代表性社区信号</th></tr></thead>
+          <thead><tr><th>工作</th><th>OpenAlex 引用</th><th>HF 论文点赞</th><th>GitHub 星标</th><th>出版物与可查资源</th></tr></thead>
           <tbody>
-            <tr><td>OS-Genesis</td><td>177</td><td>83</td><td>193</td><td>ACL 2025；大量 GUI agent 工作引用</td></tr>
-            <tr><td>AgentTrek</td><td>143</td><td>无页面</td><td>未找到官方高星库</td><td>ICLR 2025 Spotlight；教程 replay 代表作</td></tr>
-            <tr><td>TaskCraft</td><td>58</td><td>32</td><td>201</td><td>ICLR 2026；工具型组合基线</td></tr>
-            <tr><td>AgentSynth</td><td>53</td><td>8</td><td>54</td><td>ICLR 2026；作者公开分享</td></tr>
-            <tr><td>RST</td><td>27</td><td>78</td><td>未找到官方库</td><td>X 长帖、Pith 长评、AlphaSignal 解读</td></tr>
-            <tr><td>Dream-RSI</td><td>26</td><td>142</td><td>未找到官方库</td><td>递归自进化话题热度很高</td></tr>
-            <tr><td>SPADE</td><td>18</td><td>47</td><td>128</td><td>作者与多位研究者长帖讨论</td></tr>
-            <tr><td>GEM</td><td>15</td><td>40</td><td>未找到官方库</td><td>文本到轨迹的代表</td></tr>
-            <tr><td>CuES</td><td>13</td><td>0</td><td>未找到官方库</td><td>学术引用尚可，社区声量低</td></tr>
-            <tr><td>LOGIGEN</td><td>7</td><td>0</td><td>未找到官方库</td><td>方法扎实但传播弱</td></tr>
-            <tr><td>Anchor</td><td>6</td><td>无页面</td><td>未找到官方库</td><td>无开源资产，讨论少</td></tr>
-            <tr><td>TerminalHorizon</td><td>1</td><td>126</td><td>未找到官方库</td><td>HF 热度最高；数据集下载 10,863</td></tr>
-            <tr><td>Tev</td><td>0</td><td>46</td><td>未找到官方库</td><td>X 中文长评、Pith 长评；模型下载 2,049</td></tr>
-            <tr><td>ToolSpace</td><td>0</td><td>42</td><td>43</td><td>发布三天即获得关注；Pith 长评</td></tr>
-            <tr><td>SkillHorizon</td><td>0</td><td>0</td><td>3</td><td>几乎无社区讨论</td></tr>
+            <tr><td>OS-Genesis</td><td>214</td><td>83</td><td>193</td><td>ACL 2025 正式版。作者从界面动作反推任务，用轨迹评价器筛选。<details><summary>统计口径与出处</summary><p>OpenAlex 将预印本 DOI 解析到 ACL 正式版。本表计一次该记录，引用数没有标明施引者具体用过哪项数据。</p><p><a href="https://aclanthology.org/2025.acl-long.277.pdf">OS-Genesis: Automating GUI Agent Trajectory Construction via Reverse Task Synthesis</a>；<a href="https://openalex.org/W4412945695">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2412.19723">HF 论文条目</a>、<a href="https://github.com/OS-Copilot/OS-Genesis">作者仓库</a>、<a href="https://aclanthology.org/2025.acl-long.277/">ACL 正式记录</a></p></details></td></tr>
+            <tr><td>AgentTrek</td><td>98</td><td>30</td><td>60</td><td>ICLR 2025 Spotlight。先从网页教程提取目标，再让视觉语言模型在网站执行和评价轨迹。<details><summary>统计口径与出处</summary><p>论文页和作者仓库都能查到。OpenAlex 当前返回预印本记录，直接与另一平台的早期读数求差会混入收录口径变化。</p><p><a href="https://agenttrek.github.io/">AgentTrek: Agent Trajectory Synthesis via Guiding Replay with Web Tutorials</a>；<a href="https://openalex.org/W4405355468">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2412.09605">HF 论文条目</a>、<a href="https://github.com/xlang-ai/AgentTrek">作者仓库</a>、<a href="https://taoyds.github.io/index.html">作者发表记录</a></p></details></td></tr>
+            <tr><td>TaskCraft</td><td>77</td><td>32</td><td>201</td><td>ICLR 2026。用深度与宽度扩展原子工具任务，作者另公开数据卡。<details><summary>统计口径与出处</summary><p>仓库的收藏与数据下载各有独立分母，两项指标都不能推出有多少团队复现训练。</p><p><a href="https://arxiv.org/abs/2506.10055">TaskCraft: Automated Generation of Agentic Tasks</a>；<a href="https://openalex.org/W4417309032">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2506.10055">HF 论文条目</a>、<a href="https://github.com/OPPO-PersonalAI/TaskCraft">作者仓库</a>、<a href="https://huggingface.co/datasets/PersonalAILab/TaskCraft">作者数据卡</a>、<a href="https://openreview.net/pdf/cc3312e95789a77ecbcf26821d1b6129642bcb26.pdf">会议论文</a></p></details></td></tr>
+            <tr><td>AgentSynth</td><td>48</td><td>8</td><td>54</td><td>ICLR 2026。组合电脑子任务并校验轨迹；论文另抽 100 例检查验收器。<details><summary>统计口径与出处</summary><p>HF 点赞针对论文条目，作者仓库包含项目代码。两处计数都不直接评价被组合任务的正确性。</p><p><a href="https://arxiv.org/abs/2506.14205">AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents</a>；<a href="https://openalex.org/W4415311645">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2506.14205">HF 论文条目</a>、<a href="https://github.com/sunblaze-ucb/AgentSynth">作者仓库</a></p></details></td></tr>
+            <tr><td>RST</td><td>26</td><td>78</td><td>未核实专属实现库</td><td>递归扩展终端题。作者资源页列数据、模型和任务查看器，数据卡给出通过验收的题集。 数据卡所示近月下载量为 7,486。<details><summary>统计口径与出处</summary><p>项目页提供的是查看器源码入口；此处没有将查看器当作完整合成流水线统计星数。能否复现还取决于生成与验证环境。</p><p><a href="https://arxiv.org/abs/2608.05466">RST · Recursive Synthesis for Long-Horizon Terminal Tasks</a>；<a href="https://openalex.org/W7201839693">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2608.05466">HF 论文条目</a>、<a href="https://zhongzhi660.github.io/recursive-verified-synthesis-site/">作者项目与查看器</a>、<a href="https://huggingface.co/datasets/TMaxxx/agent-task-recursive-task-synthesis-v1.1">合成题数据卡</a></p></details></td></tr>
+            <tr><td>Dream-RSI</td><td>31</td><td>142</td><td>1604</td><td>作者在历史搜索树上回放策略选择，再到在线环境验证；项目已公开独立仓库。<details><summary>统计口径与出处</summary><p>此前原稿把仓库列为未找到，现可直接核实地址与精确收藏数。收藏数无法衡量闭环中的真实改进。</p><p><a href="https://arxiv.org/abs/2609.14858">Dream-RSI: Recursive Self-Improvement through Evolving Worlds</a>；<a href="https://openalex.org/W7213353131">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2609.14858">HF 论文条目</a>、<a href="https://github.com/zhengkid/Dream-RSI">作者仓库</a></p></details></td></tr>
+            <tr><td>SPADE</td><td>26</td><td>47</td><td>131</td><td>当前论文 v3 使用同一骨干分别运行环境设计者与求解者；有单独的作者实现。<details><summary>统计口径与出处</summary><p>八基准结果来自指定训练配方。读者关注度与生成环境的可学性是两个独立量。</p><p><a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments</a>；<a href="https://openalex.org/W7203892401">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2608.19197">HF 论文条目</a>、<a href="https://github.com/spade-rl/spade">作者仓库</a></p></details></td></tr>
+            <tr><td>GEM</td><td>20</td><td>40</td><td>未核实专属实现库</td><td>ACL 2026 正式收录。作者从文本抽取工作流再合成工具轨迹，在 BFCL v3 等基准测量。<details><summary>统计口径与出处</summary><p>OpenAlex 的 DOI 指向 ACL 正式版；此轮未从论文与论文卡找到可确认的专属实现仓库。</p><p><a href="https://arxiv.org/abs/2601.10355">GEM · Unlocking Implicit Experience: Synthesizing Tool-Use Trajectories from Text</a>；<a href="https://openalex.org/W7166806951">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2601.10355">HF 论文条目</a>、<a href="https://aclanthology.org/2026.acl-long.452/">ACL 正式记录</a></p></details></td></tr>
+            <tr><td>CuES</td><td>15</td><td>0</td><td>1597（主仓合计）</td><td>代码位于 AgentEvolver 的 research/CuES 子目录。论文在 AppWorld、BFCL 和 WebShop 比较生成任务。<details><summary>统计口径与出处</summary><p>GitHub 的收藏属于整个 AgentEvolver 主仓，无法单独归给 CuES；论文页点赞的零值只描述这个条目。</p><p><a href="https://arxiv.org/abs/2512.01311">CuES: A Curiosity-driven and Environment-grounded Synthesis Framework for Agentic RL</a>；<a href="https://openalex.org/W4416959505">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2512.01311">HF 论文条目</a>、<a href="https://github.com/modelscope/AgentEvolver">作者仓库</a>、<a href="https://github.com/modelscope/AgentEvolver/tree/main/research/CuES">CuES 子目录</a></p></details></td></tr>
+            <tr><td>LOGIGEN</td><td>8</td><td>0</td><td>未核实专属实现库</td><td>按政策构造数据库和任务，32B 的 SFT 与 RL 版本在 τ²-Bench 分别为 77.5% 与 79.5%。<details><summary>统计口径与出处</summary><p>本轮未从论文及论文卡定位专属实现库；论文条目的点赞数不能验证或否定训练收益。</p><p><a href="https://arxiv.org/abs/2603.00540">LOGIGEN: Logic-Driven Generation of Verifiable Agentic Tasks</a>；<a href="https://openalex.org/W7133298477">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2603.00540">HF 论文条目</a></p></details></td></tr>
+            <tr><td>Anchor</td><td>7</td><td>未收录</td><td>0</td><td>作者公开 ERP-Bench 任务和代码；论文 v3 用同一套业务规则编译指令、环境、参考解与验证器。<details><summary>统计口径与出处</summary><p>HF Papers 接口没有收录这个编号，作者仓库仍可访问。未收录的格子保留为空值，和已收录但点赞为零分开。</p><p><a href="https://arxiv.org/abs/2605.26321">Anchor: Preventing Artifact Drift for Reliable Agent Verification</a>；<a href="https://openalex.org/W7162547973">OpenAlex 收录记录</a>、<a href="https://huggingface.co/api/papers/2605.26321">HF 条目查询</a>、<a href="https://github.com/abhijayrana/erp-bench">作者仓库</a></p></details></td></tr>
+            <tr><td>TerminalHorizon</td><td>1</td><td>128</td><td>未核实专属实现库</td><td>作者项目页分别发布环境、训练轨迹及模型；约 3K 指过滤后的 2,852 条训练轨迹。 当日所示近月下载量分别为 TerminalHorizon-Environment 为 9,674；TerminalHorizon-3K 为 2,211。<details><summary>统计口径与出处</summary><p>下载按具体资源和滚动月份统计，环境包与轨迹包分开。没有把论文网页项目的源文件计作可复现的训练实现。</p><p><a href="https://arxiv.org/abs/2610.13166">TerminalHorizon · Scaling Agentic Data for Long-Horizon Terminal Intelligence</a>；<a href="https://openalex.org/W7221576374">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2610.13166">HF 论文条目</a>、<a href="https://zs1314.github.io/TerminalHorizon/">作者资源页</a>、<a href="https://huggingface.co/datasets/shunzou05/TerminalHorizon-Environment">环境包</a>、<a href="https://huggingface.co/datasets/shunzou05/TerminalHorizon-3K">轨迹包</a></p></details></td></tr>
+            <tr><td>Tev</td><td>0</td><td>47</td><td>12</td><td>作者公开代码及不同规模的权重；论文以七域验证环境训练，在独立基准评估。 当日所示近月下载量分别为 Tev-27B 为 418；Tev-320B 为 447。<details><summary>统计口径与出处</summary><p>下载按模型卡分别计量，一个用户或流水线可多次下载。原稿的合计没有资源和时间窗明细，无法还原为同口径趋势。</p><p><a href="https://arxiv.org/abs/2610.18868">Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</a>；<a href="https://openalex.org/W7221771723">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2610.18868">HF 论文条目</a>、<a href="https://github.com/adobe-research/Tev">作者仓库</a>、<a href="https://tev-agent.github.io/">作者项目页</a>、<a href="https://huggingface.co/gordonhu/Tev-27B">27B 模型卡</a>、<a href="https://huggingface.co/gordonhu/Tev-320B">320B 模型卡</a></p></details></td></tr>
+            <tr><td>ToolSpace</td><td>0</td><td>45</td><td>253</td><td>作者公开工具组合图与项目仓库；论文在七项下游工具基准上报告结果。<details><summary>统计口径与出处</summary><p>较晚发表会缩短可能被引用的时间。数值是查阅日的快照，不能倒推发布第三天的确切传播速度。</p><p><a href="https://arxiv.org/abs/2611.05036">ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</a>；<a href="https://openalex.org/W7225267193">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2611.05036">HF 论文条目</a>、<a href="https://github.com/dongguanting/ToolSpace">作者仓库</a></p></details></td></tr>
+            <tr><td>SkillHorizon</td><td>0</td><td>0</td><td>3</td><td>作者组织的仓库公开七域任务生成器与业务评分器，可定位到具体发布资源。<details><summary>统计口径与出处</summary><p>OpenAlex 引用和论文卡点赞均为零时，项目仓库仍有收藏；这三项没有覆盖社交平台上的全部讨论。</p><p><a href="https://arxiv.org/abs/2610.14966">SkillHorizon: Constructing Long-Horizon Agent Tasks through Skill Composition</a>；<a href="https://openalex.org/W7221832988">OpenAlex 收录记录</a>、<a href="https://huggingface.co/papers/2610.14966">HF 论文条目</a>、<a href="https://github.com/HKUST-KnowComp/SkillHorizon">作者仓库</a></p></details></td></tr>
           </tbody>
         </table>
       </div>
-      <p>这张表最重要的信息不是排名，而是三层指标经常背离。OS-Genesis 和 AgentTrek 的引用最高，但社区讨论并不多；TerminalHorizon 的引用只有 1，却有 126 个 HF upvote 和一万多次环境数据集下载；ToolSpace 发布三天，引用为零，但已经有 42 个 upvote 和 43 个 star。引用衡量的是“被写进 related work 和 baseline 的程度”，下载衡量的是“发布后几周内真的有人想用”，讨论衡量的是“有没有进入公共叙事”。</p>
-      <p>RST 是一个典型的基础设施型工作：27 次引用不算惊人，但它被 Dream-RSI、Terminal-Universe、RES、Tev 和 TerminalHorizon 等后续工作引用，已经成为 2026 年终端任务递归合成的枢纽节点。它的数据集下载达到 9,326 次，说明“可复现配方”比“单次 SOTA”更有传播力。</p>
+      <p>OS-Genesis 的引用对应 ACL 正式版，AgentTrek 的查询指向 arXiv 版本。TerminalHorizon 的环境包和轨迹包各有下载统计，CuES 的代码则置于 AgentEvolver 主仓，1,597 个星标包括该仓的其他工作。解读任何一个数，都需要先确定它记录的是哪件工件。</p>
+      <p>Dream-RSI、Terminal-Universe、RES、Tev 与 TerminalHorizon 的参考文献中都能找到 RST，表明这五篇后续工作实际引用了它。RST 的数据卡还可查到题集规模和下载量。要确定后来者是否使用同一批任务训练，则需要查看各自的数据设置。</p>
 
       <h3>公开批评与可信度</h3>
       <p>影响力不等于正确性。公开长评里最有价值的三条批评是：RST 的 headline RL 数字存在冲突，contract-validity 审计主要靠 LLM 检查；Tev 的迁移声明比标题弱，determinacy guarantee 超出了实际检查；ToolVerse 的共享 user simulator 和缺少 error bar 使 headline 变弱。</p>
@@ -284,11 +284,11 @@
       <h2>边界与风险</h2>
       <div class="callout risk"><b>最大的风险：验证器语义漂移</b><p>RST 递归十五轮后，instruction 和 verifier 是否还描述同一个任务，目前主要靠 LLM 审计。Anchor 用单一规范编译四件套，是从根上解决这个问题的正确方向，但它依赖业务能被形式化成约束程序，适用范围有限。</p></div>
       <p><strong>第二，验证器过度约束。</strong>VerifierBench 显示，生成验证器更擅长拒绝错误解，不擅长接受所有正确解。很多 false rejection 来自“任何解都不接受”的验证器。oracle replay 满分只能证明参考解能过，不能证明其他正确解也能过。</p>
-      <p><strong>第三，构造者提前把任务做完。</strong>这是长程合成最隐蔽的失败模式。出题人为了让参考解通过，可能已经把核心工作完成，留下一个只需少量操作的“长任务”。TerminalHorizon 的独立 challenger 是目前最好的解药，但它也增加了成本，并且 challenger 本身可能不够强。</p>
+      <p><strong>第三，构造者提前把任务做完。</strong>这是长程合成最隐蔽的失败模式。出题人为了让参考解通过，可能已经把核心工作完成，留下一个只需少量操作的“长任务”。TerminalHorizon 用独立挑战争取发现这种遗漏。这要额外运行一次解题流程，挑战者也可能没有找到被跳过的工作。</p>
       <p><strong>第四，分布偏置与污染。</strong>合成任务往往集中在少数种子、网站、工具或业务域。RST 用 TerminalWorld 种子，GTA 用网站爬取和多跳种子，ToolSpace 用真实轨迹，但都无法自动覆盖长尾。更严重的是，合成任务可能与 benchmark 同源；如果没有逐样本去重，训练提升可能包含泄漏。</p>
       <p><strong>第五，环境重置与复现成本。</strong>状态化环境的重置很昂贵。ToolSpace 用 rollback 和 replay，Tev 用可逆损坏，都是局部解；当环境包含外部 API、数据库和浏览器会话时，完全复现仍然困难。</p>
       <p><strong>第六，长轨迹信用分配。</strong>稀疏奖励下 GRPO 容易 starvation。Tev 的 PPRS、ToolVerse 的 turn-aware relative advantage、Explorer-Zero 的 checkpoint reward 是三条不同路线，但都还没有统一的评估标准。</p>
-      <p><strong>第七，用户模拟器偏差。</strong>Terminal-Universe、SkillHorizon 和 WorkBorne 都引入 user agent 或多轮反馈。User agent 的偏差会直接变成任务偏差；如果它总是配合、总是给出清晰反馈，任务会比真实用户容易得多。</p>
+      <p><strong>第七，用户模拟器偏差。</strong>Terminal-Universe 设有可追加需求的用户角色；SkillHorizon 主要通过业务状态、依赖及终态目标衡量进度。读 WorkBorne 的助手轮数时，也要区分用户反馈与工具响应。User agent 的偏差会直接变成任务偏差；如果它总是配合、总是给出清晰反馈，任务会比真实用户容易得多。</p>
       <p><strong>第八，安全与双用途。</strong>终端和浏览器环境合成能力可以生成攻击性任务，也可以被用来测试危险操作。需要访问控制、滥用审计和明确的使用边界。</p>
       <p><strong>第九，影响力指标不是质量结论。</strong>引用有滞后，HF upvote 可以被话题热度放大，GitHub star 不等于可复现。一个工作引用为零，可能只是发布时间太短；一个工作 HF 很高，也可能只是叙事好听。</p>
     </section>
@@ -301,12 +301,12 @@
           <caption>不同 agent 场景下的路线选择。</caption>
           <thead><tr><th>目标</th><th>推荐路线</th><th>理由</th></tr></thead>
           <tbody>
-            <tr><td>终端或 coding agent SFT</td><td>RST，然后 WorkBorne 或 Terminal-Universe，再用 FACET 修 source intent</td><td>RST 是廉价可复现基线；后两者提供真实 artifact 与轨迹 grounding。</td></tr>
-            <tr><td>工具与 API agent</td><td>ToolSpace、ToolVerse、EnvScaler、ScaleEnv</td><td>工具依赖图和真实轨迹挖掘比纯 LLM 生成更可靠。</td></tr>
-            <tr><td>GUI 与 web agent</td><td>OS-Genesis、AgentTrek、GTA、SynWeaver、CUA-Gym、AutoWebWorld、InfiniteWeb</td><td>探索、教程、FSM 和环境生成各有优势；CUA-Gym 适合 RLVR。</td></tr>
-            <tr><td>业务 policy agent</td><td>LOGIGEN、Anchor、SkillHorizon、AgentSkiller</td><td>把 policy 编译成数据库约束或约束程序，验证器最硬。</td></tr>
-            <tr><td>RL 训练</td><td>Tev、SPADE、Explorer-Zero、TURTLE</td><td>dense reward、自适应难度和可执行环境是核心。</td></tr>
-            <tr><td>低预算快速起步</td><td>TaskCraft、AgentSynth</td><td>不需要从零建环境，原子任务加深度或宽度扩展即可。</td></tr>
+            <tr><td>终端或 coding agent SFT</td><td>RST，然后 WorkBorne 或 Terminal-Universe，再用 FACET 修 source intent</td><td>有现成容器时可从 RST 试起；已有工作材料或轨迹时可用后两类来源。FACET 提供单独检查源意图和工件一致性的办法。<details><summary>实验与出处</summary><p>做终端 SFT 时，RST 给出通过验收的递归题，WorkBorne 提供工作材料及轨迹，Terminal-Universe 从既有轨迹重建工作区，FACET 用同一环境状态生成并校验指令、解和验证器。 四篇没有按同一总预算比较这种采用顺序。RST 的 0.05 美元只计每个通过的任务，不包括收集教师轨迹、训练或迁移到新软件的总成本。</p><p><small>四篇任务构造、轨迹收集与各自的终端 SFT 设置。</small></p><p><a href="https://arxiv.org/abs/2608.05466">RST · Recursive Synthesis for Long-Horizon Terminal Tasks</a>、<a href="https://arxiv.org/abs/2610.14915">WorkBorne: Discovering Agentic Tasks from Real-World Artifact Transitions</a>、<a href="https://arxiv.org/abs/2609.04148">Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</a>、<a href="https://arxiv.org/abs/2608.18580">FACET: Preserving Source Intent and Executable State in Terminal Task Synthesis</a></p></details></td></tr>
+            <tr><td>工具与 API agent</td><td>ToolSpace、ToolVerse、EnvScaler、ScaleEnv</td><td>已有真实调用可检验工具依赖；新业务可先合成工具，再用独立执行样例检查状态变化。<details><summary>实验与出处</summary><p>ToolSpace 可追溯工具边是否在实际调用中出现；ToolVerse 从 MCP 服务及依赖图构造训练任务。EnvScaler 合成了 191 个带任务情景的环境，ScaleEnv 从零构造工具并用程序测试、执行来筛选。 执行证据能检查某条边曾经可走。各论文的工具、任务划分及基座不同，缺少同预算对照来判定哪类生成器总体更可靠。</p><p><small>ToolSpace 生成消融、ToolVerse 的依赖图、EnvScaler 表 2、ScaleEnv 验收消融。</small></p><p><a href="https://arxiv.org/abs/2611.05036">ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</a>、<a href="https://arxiv.org/abs/2607.15660">ToolVerse: Unlocking Massive Environments and Long-Horizon Tasks for Agentic Reinforcement Learning</a>、<a href="https://arxiv.org/abs/2601.05808">EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis</a>、<a href="https://arxiv.org/abs/2602.06820">ScaleEnv: Scaling Environment Synthesis from Scratch for Generalist Interactive Tool-Use Agent Training</a></p></details></td></tr>
+            <tr><td>GUI 与 web agent</td><td>OS-Genesis、AgentTrek、GTA、SynWeaver、CUA-Gym、AutoWebWorld、InfiniteWeb</td><td>想训练带奖励的策略，可选择能重置并能验收任务的环境；若已有目标站教程或页面证据，可先重放或生成跨页问题。<details><summary>实验与出处</summary><p>OS-Genesis 从界面探索反推目标，AgentTrek 从教程目标出发重做操作，GTA 汇集跨页面证据，SynWeaver 用网站图产生任务及轨迹。CUA-Gym 在 110 个环境构造 32,112 组训练样本；AutoWebWorld 用有限状态机出轨迹，InfiniteWeb 生成有任务验收的网站。 教程、静态证据与网站状态机各自覆盖不同操作。CUA-Gym 报告了使用可验证奖励的 GSPO 结果，不能从其一个基准的得分预测其他网站的真实用户完成率。</p><p><small>七篇输入产物与评测设置；CUA-Gym 的数据及 GSPO 实验。</small></p><p><a href="https://aclanthology.org/2025.acl-long.277.pdf">OS-Genesis: Automating GUI Agent Trajectory Construction via Reverse Task Synthesis</a>、<a href="https://agenttrek.github.io/">AgentTrek: Agent Trajectory Synthesis via Guiding Replay with Web Tutorials</a>、<a href="https://aclanthology.org/2026.acl-long.856/">GTA: Generating Long-Horizon Tasks for Web Agents at Scale</a>、<a href="https://arxiv.org/abs/2608.12429">SynWeaver: Website-Prior Task and Trajectory Co-Synthesis for Web Agents</a>、<a href="https://arxiv.org/abs/2605.25624">CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents</a>、<a href="https://arxiv.org/abs/2602.14296">AutoWebWorld: Synthesizing Infinite Verifiable Web Environments via Finite State Machines</a>、<a href="https://arxiv.org/abs/2601.04126">InfiniteWeb: Scalable Web Environment Synthesis for GUI Agent Training</a></p></details></td></tr>
+            <tr><td>业务 policy agent</td><td>LOGIGEN、Anchor、SkillHorizon、AgentSkiller</td><td>优先把可形式化的政策单独验收，再检查局部完成、整体可行和最优解三个指标。<details><summary>实验与出处</summary><p>LOGIGEN 把规则编入数据库；Anchor 在 Odoo 中以约束程序给出可行性及认证最优值。SkillHorizon 量局部目标及全任务完成，AgentSkiller 另有跨域政策、可执行路径与人格化用户模拟。 可形式化的规则允许精确核对部分终态。是否漏译政策、误拒其他可行解以及用户意图如何解释，仍应以独立案例检验。</p><p><small>四篇的状态验证、可行性与任务成功定义。</small></p><p><a href="https://arxiv.org/abs/2603.00540">LOGIGEN: Logic-Driven Generation of Verifiable Agentic Tasks</a>、<a href="https://arxiv.org/abs/2605.26321">Anchor: Preventing Artifact Drift for Reliable Agent Verification</a>、<a href="https://arxiv.org/abs/2610.14966">SkillHorizon: Constructing Long-Horizon Agent Tasks through Skill Composition</a>、<a href="https://arxiv.org/abs/2602.09372">AgentSkiller: Scaling Generalist Agent Intelligence through Semantically Integrated Cross-Domain Data Synthesis</a></p></details></td></tr>
+            <tr><td>RL 训练</td><td>Tev、SPADE、Explorer-Zero、TURTLE</td><td>按当前缺口选实验：稀疏反馈可比较部分得分，题库太易可先校准生成任务的难度。<details><summary>实验与出处</summary><p>Tev 用阶段势能塑形；SPADE 按有无提示的回报差生成训练环境；Explorer-Zero 用执行到的中间状态给部分分。TURTLE 主要评估能否把任务变异到目标难度，包括在 AppWorld 统计难题占比。 前三项提供策略训练设置；TURTLE 的难度分布不能充当同一 RL 算法的收益。要比较密集奖励与课程，需固定环境、模型及交互预算。</p><p><small>四篇的奖励定义、训练对照及 TURTLE 难度分析。</small></p><p><a href="https://arxiv.org/abs/2610.18868">Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</a>、<a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments</a>、<a href="https://arxiv.org/abs/2610.19868">Explorer-Zero: Improving Self-Play for Long-Horizon Tasks with Decomposable Verifiable Rewards</a>、<a href="https://arxiv.org/abs/2610.27307">TURTLE · Evolving Self-tuning Benchmarks for Long-Horizon Tool Use</a></p></details></td></tr>
+            <tr><td>低预算快速起步</td><td>TaskCraft、AgentSynth</td><td>已有可执行工具或应用时可复用原子任务；把轨迹收集、筛选和人工抽检计入本地预算。<details><summary>实验与出处</summary><p>TaskCraft 从可执行的原子工具题扩展深度或宽度；AgentSynth 组织电脑操作、拼接子任务，并用模型对轨迹作验证。后者报告平均约 0.60 美元一条轨迹。 有合适的工具、应用和可调用模型是这条路线的前提。两篇没有在同一组应用上按统一预算测总成本。</p><p><small>两篇的任务管线与 AgentSynth 轨迹费用。</small></p><p><a href="https://arxiv.org/abs/2506.10055">TaskCraft: Automated Generation of Agentic Tasks</a>、<a href="https://arxiv.org/abs/2506.14205">AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents</a></p></details></td></tr>
           </tbody>
         </table>
       </div>
@@ -331,47 +331,47 @@
 
     <section id="sources" data-note-role="evidence-appendix">
       <h2>证据边界与资料索引</h2>
-      <p>本文综合 arXiv 论文、ACL 与 ICLR 论文页、官方项目页和公开数据页面。规模、成本、通过率与训练提升均为论文或项目方报告，本文只对少量平均值和差值做算术复算，没有重跑大规模训练或 benchmark。引用数截至 2026 年 11 月初，HF upvote、模型与数据集下载、GitHub star 截至同月上旬；新论文的引用为零通常只反映时间窗口，不构成质量判断。公开社区讨论只选取可定位的代表性材料，不代表穷尽。合成任务的污染、验证器语义和真实工作量，仍需独立审计。</p>
+      <p>本文综合 arXiv 论文、ACL 与 ICLR 论文页、官方项目页和公开数据页面。规模、成本、通过率与训练提升均为论文或项目方报告，本文按列核对了模型、任务、分母与对照，并对文中标明的差值做算术复算，没有重跑大规模训练或 benchmark。四张表的 41 行均列出原始出处和具体设置。传播表采用 2026 年 11 月 18 日可查读数；原稿 11 月上旬的计数缺少原日快照，无法逐项还原。公开社区讨论只选取可定位的代表性材料，不代表穷尽。合成任务的污染、验证器语义和真实工作量，仍需独立审计。</p>
       <ul>
-        <li><a href="https://arxiv.org/abs/2608.05466">RST: Recursive Synthesis for Long-Horizon Terminal Tasks</a></li>
-        <li><a href="https://arxiv.org/abs/2610.13166">TerminalHorizon: Scaling Agentic Data for Long-Horizon Terminal Intelligence</a></li>
+        <li><a href="https://arxiv.org/abs/2608.05466">RST · Recursive Synthesis for Long-Horizon Terminal Tasks</a></li>
+        <li><a href="https://arxiv.org/abs/2610.13166">TerminalHorizon · Scaling Agentic Data for Long-Horizon Terminal Intelligence</a></li>
         <li><a href="https://arxiv.org/abs/2610.18868">Tev: Scaling Long-Horizon Agentic Environments with Dense Progress Rewards</a></li>
         <li><a href="https://arxiv.org/abs/2506.14205">AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents</a></li>
         <li><a href="https://arxiv.org/abs/2506.10055">TaskCraft: Automated Generation of Agentic Tasks</a></li>
-        <li><a href="https://arxiv.org/abs/2603.00540">LOGIGEN: Environment-First Task Synthesis</a></li>
-        <li><a href="https://arxiv.org/abs/2607.15660">ToolVerse: Unified Tool Environments for Long-Horizon Agents</a></li>
-        <li><a href="https://arxiv.org/abs/2611.05036">ToolSpace: Scaling Long-Horizon Tool-Use Environments from Real Trajectories</a></li>
-        <li><a href="https://arxiv.org/abs/2610.14966">SkillHorizon: Long-Horizon Skill Composition</a></li>
-        <li><a href="https://arxiv.org/abs/2610.16397">RES: Recursive Environment Scaling</a></li>
-        <li><a href="https://arxiv.org/abs/2610.27307">TURTLE: Evolving Self-tuning Benchmarks for Long-Horizon Tool Use</a></li>
+        <li><a href="https://arxiv.org/abs/2603.00540">LOGIGEN: Logic-Driven Generation of Verifiable Agentic Tasks</a></li>
+        <li><a href="https://arxiv.org/abs/2607.15660">ToolVerse: Unlocking Massive Environments and Long-Horizon Tasks for Agentic Reinforcement Learning</a></li>
+        <li><a href="https://arxiv.org/abs/2611.05036">ToolSpace: Scaling Tool-Centric Environment Synthesis for Long-Horizon Agents</a></li>
+        <li><a href="https://arxiv.org/abs/2610.14966">SkillHorizon: Constructing Long-Horizon Agent Tasks through Skill Composition</a></li>
+        <li><a href="https://arxiv.org/abs/2610.16397">RES · Recursive Environment Scaling for General Long-Horizon Agents</a></li>
+        <li><a href="https://arxiv.org/abs/2610.27307">TURTLE · Evolving Self-tuning Benchmarks for Long-Horizon Tool Use</a></li>
         <li><a href="https://arxiv.org/abs/2605.26321">Anchor: Preventing Artifact Drift for Reliable Agent Verification</a></li>
-        <li><a href="https://arxiv.org/abs/2602.09372">AgentSkiller: A Unified Framework for Agentic Task Synthesis</a></li>
-        <li><a href="https://arxiv.org/abs/2512.01311">CuES: Curiosity-Driven Environment Synthesis</a></li>
+        <li><a href="https://arxiv.org/abs/2602.09372">AgentSkiller: Scaling Generalist Agent Intelligence through Semantically Integrated Cross-Domain Data Synthesis</a></li>
+        <li><a href="https://arxiv.org/abs/2512.01311">CuES: A Curiosity-driven and Environment-grounded Synthesis Framework for Agentic RL</a></li>
         <li><a href="https://arxiv.org/abs/2601.06328">C-World: A Computer Use Agent Environment Creator</a></li>
         <li><a href="https://arxiv.org/abs/2608.19197">SPADE: Self-Play in Adaptive Synthetic Executable Environments</a></li>
-        <li><a href="https://arxiv.org/abs/2610.19868">Explorer-Zero: Self-Play with Decomposable Rewards</a></li>
+        <li><a href="https://arxiv.org/abs/2610.19868">Explorer-Zero: Improving Self-Play for Long-Horizon Tasks with Decomposable Verifiable Rewards</a></li>
         <li><a href="https://arxiv.org/abs/2605.31433">SCOPE: Self-Play via Co-Evolving Policies for Open-Ended Tasks</a></li>
-        <li><a href="https://arxiv.org/abs/2607.29468">SESA: Self-Play Meets Skill Evolution</a></li>
-        <li><a href="https://arxiv.org/abs/2608.12429">SynWeaver: Website-Prior Task and Trajectory Co-Synthesis</a></li>
+        <li><a href="https://arxiv.org/abs/2607.29468">SESA · Self-Play Meets Skill Evolution: Self-Evolving Search Agents that Pose, Solve, and Remember</a></li>
+        <li><a href="https://arxiv.org/abs/2608.12429">SynWeaver: Website-Prior Task and Trajectory Co-Synthesis for Web Agents</a></li><li><a href="https://aclanthology.org/2026.acl-long.856/">GTA: Generating Long-Horizon Tasks for Web Agents at Scale</a></li>
         <li><a href="https://aclanthology.org/2025.acl-long.277.pdf">OS-Genesis: Automating GUI Agent Trajectory Construction via Reverse Task Synthesis</a></li>
         <li><a href="https://agenttrek.github.io/">AgentTrek: Agent Trajectory Synthesis via Guiding Replay with Web Tutorials</a></li>
         <li><a href="https://arxiv.org/abs/2510.04673">Watch and Learn: Learning to Use Computers from Online Videos</a></li>
-        <li><a href="https://arxiv.org/abs/2601.10355">GEM: Unlocking Implicit Experience from Text</a></li>
+        <li><a href="https://arxiv.org/abs/2601.10355">GEM · Unlocking Implicit Experience: Synthesizing Tool-Use Trajectories from Text</a></li>
         <li><a href="https://arxiv.org/abs/2609.04148">Terminal-Universe: Turning Agent Trajectories into Scalable Terminal Environments</a></li>
         <li><a href="https://arxiv.org/abs/2610.14915">WorkBorne: Discovering Agentic Tasks from Real-World Artifact Transitions</a></li>
-        <li><a href="https://arxiv.org/abs/2602.14296">AutoWebWorld: Synthesizing Verifiable Web Environments via Finite State Machines</a></li>
-        <li><a href="https://arxiv.org/abs/2605.25624">CUA-Gym: Scaling Verifiable Training Environments for Computer-Use Agents</a></li>
-        <li><a href="https://arxiv.org/abs/2602.10090">Agent World Model: Infinity Synthetic Environments for Agentic RL</a></li>
-        <li><a href="https://arxiv.org/abs/2601.05808">EnvScaler: Scaling Tool-Interactive Environments via Programmatic Synthesis</a></li>
-        <li><a href="https://arxiv.org/abs/2602.06820">ScaleEnv: Scaling Environment Synthesis from Scratch</a></li>
-        <li><a href="https://arxiv.org/abs/2601.04126">InfiniteWeb: Scalable Web Environment Synthesis for GUI Agents</a></li>
-        <li><a href="https://arxiv.org/abs/2606.22883">CLI-Universe: Towards Verifiable Task Synthesis for Terminal Agents</a></li>
-        <li><a href="https://arxiv.org/abs/2607.27929">Meta-Task: Turning Terminal Task Synthesis into a Terminal Task</a></li>
+        <li><a href="https://arxiv.org/abs/2602.14296">AutoWebWorld: Synthesizing Infinite Verifiable Web Environments via Finite State Machines</a></li>
+        <li><a href="https://arxiv.org/abs/2605.25624">CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents</a></li>
+        <li><a href="https://arxiv.org/abs/2602.10090">Agent World Model: Infinity Synthetic Environments for Agentic Reinforcement Learning</a></li>
+        <li><a href="https://arxiv.org/abs/2601.05808">EnvScaler: Scaling Tool-Interactive Environments for LLM Agent via Programmatic Synthesis</a></li>
+        <li><a href="https://arxiv.org/abs/2602.06820">ScaleEnv: Scaling Environment Synthesis from Scratch for Generalist Interactive Tool-Use Agent Training</a></li>
+        <li><a href="https://arxiv.org/abs/2601.04126">InfiniteWeb: Scalable Web Environment Synthesis for GUI Agent Training</a></li>
+        <li><a href="https://arxiv.org/abs/2606.22883">CLI-Universe: Towards Verifiable Task Synthesis Engine for Terminal Agents</a></li>
+        <li><a href="https://arxiv.org/abs/2607.27929">Meta-Task: Turning Terminal Task Synthesis into a Terminal Task for Scalable Agent Training</a></li>
         <li><a href="https://arxiv.org/abs/2608.18580">FACET: Preserving Source Intent and Executable State in Terminal Task Synthesis</a></li>
         <li><a href="https://arxiv.org/abs/2609.14858">Dream-RSI: Recursive Self-Improvement through Evolving Worlds</a></li>
-        <li><a href="https://arxiv.org/abs/2610.28679">VerifierBench: Benchmarking Executable Verifiers for LLM Agents</a></li>
-        <li><a href="https://arxiv.org/abs/2608.06663">The Horizon Gap: A Survey of Long-Horizon Agents</a></li>
-        <li><a href="https://arxiv.org/abs/2606.12191">Agentic Environment Engineering for LLMs: A Survey</a></li>
+        <li><a href="https://arxiv.org/abs/2610.28679">VerifierBench: Benchmarking the Generation of Executable Verifiers for LLM Agents</a></li>
+        <li><a href="https://arxiv.org/abs/2608.06663">The Horizon Gap: Planning, Memory, Execution, Training, and Evaluation for Long-Horizon LLM Agents</a></li>
+        <li><a href="https://arxiv.org/abs/2606.12191">环境工程综述 · Agentic Environment Engineering for Large Language Models: A Survey of Environment Modeling, Synthesis, Evaluation, and Application</a></li>
         <li><a href="https://pith.science/paper/2608.05466">RST 公开长评</a></li>
         <li><a href="https://pith.science/paper/2610.18868">Tev 公开长评</a></li>
         <li><a href="https://pith.science/paper/2611.05036">ToolSpace 公开长评</a></li>

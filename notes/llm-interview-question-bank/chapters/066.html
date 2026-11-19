@@ -192,7 +192,7 @@
         <div class="inline-enhancement-title">偏好优化公式</div>
         <p class="inline-enhancement-note">放在 RLHF、DPO、PPO、GRPO、Reasoning 后训练小节附近。</p>
 
-        <div class="formula-grid"><div class="formula-card"><b>DPO 损失</b><div class="math-display">\[\mathcal{L}_{DPO}=-\log\sigma\left(\beta\log\frac{\pi_\theta(y_w|x)}{\pi_{ref}(y_w|x)}-\beta\log\frac{\pi_\theta(y_l|x)}{\pi_{ref}(y_l|x)}\right)\]</div><p>把偏好比较转成 policy 相对 reference 的 log-ratio 差。</p></div><div class="formula-card"><b>PPO Clip Objective</b><div class="math-display">\[\mathcal{L}^{clip}=\mathbb{E}\left[\min(r_t A_t,\mathrm{clip}(r_t,1-\epsilon,1+\epsilon)A_t)\right]\]</div><p>clip 限制单步策略更新幅度。</p></div><div class="formula-card"><b>GRPO 组内归一化优势</b><div class="math-display">\[A_i=\frac{r_i-\mathrm{mean}(\{r_j\}_{j=1}^{G})}{\mathrm{std}(\{r_j\}_{j=1}^{G})+\epsilon}\]</div><p>同一 prompt 下多条回答的相对奖励构造 advantage。</p></div></div>
+        <div class="formula-grid"><div class="formula-card"><b>DPO 损失</b><div class="math-display">\[\mathcal{L}_{DPO}=-\log\sigma\left(\beta\log\frac{\pi_\theta(y_w|x)}{\pi_{ref}(y_w|x)}-\beta\log\frac{\pi_\theta(y_l|x)}{\pi_{ref}(y_l|x)}\right)\]</div><p>把偏好比较转成 policy 相对 reference 的 log-ratio 差。</p></div><div class="formula-card"><b>PPO Clip Objective</b><div class="math-display">\[\mathcal{L}^{clip}=\mathbb{E}\left[\min(r_t A_t,\mathrm{clip}(r_t,1-\epsilon,1+\epsilon)A_t)\right]\]</div><p>clip 截平样本在有利方向上的目标收益，实际概率比和整体 KL 仍可能继续变化。</p></div><div class="formula-card"><b>GRPO 组内归一化优势</b><div class="math-display">\[A_i=\frac{r_i-\mathrm{mean}(\{r_j\}_{j=1}^{G})}{\mathrm{std}(\{r_j\}_{j=1}^{G})+\epsilon}\]</div><p>同一 prompt 下多条回答的相对奖励构造 advantage。</p></div></div>
       </aside>
 <h4 id="h-0979"><a class="anchor-link" href="#h-0979" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
@@ -224,7 +224,7 @@
 <h4 id="h-0983"><a class="anchor-link" href="#h-0983" aria-label="跳转到本节">#</a>详细解答</h4>
 <p><code>PPO</code> 里最经典的部分就是 clip objective。它先看同一个动作在新旧策略下的概率比值 <code>r(theta)</code>，如果这个比值变化不大，说明新策略还在旧策略附近，可以正常利用 advantage 更新；但如果比值已经偏得太多，就把目标裁住，不再继续鼓励更激进的更新。</p>
 <p>直觉上，它是在说：这个样本确实告诉你“某个方向更好”，但你不能因为单个样本优势很大，就把策略一下改得面目全非。clip 就像给梯度收益设置上限，让训练更像小步迭代，而不是大起大落。</p>
-<p>高频追问往往不是让你背公式，而是看你能否说出这条因果链：<code>概率比失控 -&gt; 新旧策略差太远 -&gt; 训练不稳定 -&gt; 用 clip 限制单步偏移</code>。</p>
+<p>取 ε=0.2、优势 A=+1，概率比从 1.2 到 1.4 时，这个样本给目标的贡献都为 1.2；若 A=−1，受限的是概率比过低的一侧。其他样本与共享参数仍可推动比值越界，因此训练还要观察实际 KL 和越界比例。</p>
 <h3 id="h-0984"><a class="anchor-link" href="#h-0984" aria-label="跳转到本节">#</a>163. advantage 在 <code>PPO</code> 中为什么重要？它到底在衡量什么？</h3>
 <h4 id="h-0985"><a class="anchor-link" href="#h-0985" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>

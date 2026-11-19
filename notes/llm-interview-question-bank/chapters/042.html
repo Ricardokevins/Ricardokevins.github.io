@@ -62,7 +62,7 @@
 <a class="toc-link" href="#h-0657" style="padding-left:18px">深度解析</a>
 <a class="toc-link" href="#h-0658">58. 如果线上服务要求首 token 延迟很低，但吞吐也不能差，你会怎么折中？</a>
 <a class="toc-link" href="#h-0659" style="padding-left:18px">标准答案</a>
-<a class="toc-link" href="#h-0667">61. 什么是 Prefill/Decode 分离部署？它解决了什么问题，又引入了什么代价？</a>
+<a class="toc-link" href="#h-0667">补题 1　什么是 Prefill/Decode 分离部署？它解决了什么问题，又引入了什么代价？</a>
 <a class="toc-link" href="#h-0668" style="padding-left:18px">标准答案</a>
 <a class="toc-link" href="#h-0669" style="padding-left:18px">深度解析</a>
       </nav>
@@ -692,36 +692,20 @@
 <li>如果 <code>p_i &lt; q_i</code>，以 <code>p_i/q_i</code> 的概率接受
 </li>
 </ul>
-<p>如果拒绝，则从修正分布中采样替代 token。</p>
+<p>在第一个拒绝位置，从各词概率差的正部 <code>max(p−q,0)</code> 归一化后重采一个词，并丢弃其后的草稿。若 K 个全被接受，还可从目标模型的下一个分布采一个额外词。</p>
 <p>这个机制保证：最终输出的分布<strong>严格等于</strong>大模型自己逐 token 生成的分布。是<strong>无损加速</strong>。</p>
 <p><strong>2. 加速效果的关键：接受率</strong></p>
 <div class="table-wrap"><table>
 <thead><tr>
 <th>草稿长度 K</th>
 <th>接受率</th>
-<th>理论加速比</th>
-<th>实际加速比</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>4</td>
-<td>80%</td>
-<td>3.2x</td>
-<td>~2.5x</td>
-</tr>
-<tr>
-<td>4</td>
-<td>60%</td>
-<td>2.4x</td>
-<td>~1.8x</td>
-</tr>
-<tr>
-<td>8</td>
-<td>80%</td>
-<td>6.4x</td>
-<td>~4x</td>
-</tr>
+<th>每轮期望输出（含目标模型的一词）</th>
+</tr></thead><tbody>
+<tr><td>4</td><td>80%</td><td>3.3616 个 token</td></tr>
+<tr><td>4</td><td>60%</td><td>2.3056 个 token</td></tr>
+<tr><td>8</td><td>80%</td><td>4.3289 个 token</td></tr>
 </tbody></table></div>
+<p>表中按各位置条件接受率恒为 α 的简化模型计算。第一词总能产生，能多走一步的概率依次为 α、α²，直到 αᴷ，期望总数是 1 + α + … + αᴷ。换算为墙钟加速还要测 K 次草拟和一次并行验证的时间。</p>
 <p>草稿模型和目标模型越匹配，接受率越高。常见选择：目标 70B + 草稿 7B（同系列）。</p>
 <p><strong>3. 进阶方法：Medusa / EAGLE</strong></p>
 <ul>
@@ -1283,7 +1267,7 @@ Step 4: B(decode_2) + C(decode_1) + D(prefill)   → D进来做prefill，其他d
 <p>这类问题最怕回答成“上大 batch 就好了”或者“把模型换小一点”。真正成熟的答法是说明：延迟和吞吐来自不同流量画像，需要用调度策略把不同请求分层，而不是用一个全局默认策略硬顶。</p>
 <hr>
 <h4 id="h-0660"><a class="anchor-link" href="#h-0660" aria-label="跳转到本节">#</a>深度解析</h4>
-<p><strong>1. 首 token 延迟（TTFT）和吞吐（TPOT）的本质矛盾</strong></p>
+<p><strong>1. 首 token 延迟（TTFT）、后续每 token 用时（TPOT）与服务总吞吐</strong></p>
 <ul>
 <li><strong>TTFT（Time To First Token）</strong>：从请求到达，到第一个输出生成的时间。主要由 <strong>prefill</strong> 阶段决定——模型需要一次性处理整个输入序列的 attention。
 </li>
@@ -1411,7 +1395,7 @@ Step 4: B(decode_2) + C(decode_1) + D(prefill)   → D进来做prefill，其他d
 <ul>
 <li><strong>"speculative decoding 对 TTFT 有帮助吗？"</strong>
 <ul>
-<li>答：几乎没有。speculative decoding 加速的是 decode 阶段（逐 token 生成），而 TTFT 由 prefill 决定。它降低的是 TPOT 和总生成时间，不是首 token 时间。要降低 TTFT，需要优化 prefill（更短输入、前缀缓存、小模型 prefill）。
+<li>答：要看第一词何时交给客户端。若沿用目标模型的首步输出，主要收益在后续 decode；若实现先攒完草稿再验证，首次输出也可能变慢。要降低 TTFT，需要优化 prefill（更短输入、前缀缓存、小模型 prefill）。
 </li>
 </ul>
 </li>
@@ -1648,7 +1632,7 @@ else:
 </ul>
 </li>
 </ul>
-<h3 id="h-0667"><a class="anchor-link" href="#h-0667" aria-label="跳转到本节">#</a>61. 什么是 Prefill/Decode 分离部署？它解决了什么问题，又引入了什么代价？</h3>
+<h3 id="h-0667"><a class="anchor-link" href="#h-0667" aria-label="跳转到本节">#</a>补题 1　什么是 Prefill/Decode 分离部署？它解决了什么问题，又引入了什么代价？</h3>
 <h4 id="h-0668"><a class="anchor-link" href="#h-0668" aria-label="跳转到本节">#</a>标准答案</h4>
 <p><code>Prefill/Decode</code> 分离部署，是把大模型推理的两个阶段拆到不同的执行资源上：<code>Prefill</code> 节点负责处理输入 prompt，一次性算出首批隐藏状态和 KV cache；<code>Decode</code> 节点负责后续逐 token 生成。这样做的核心原因是两个阶段的瓶颈不同：prefill 更偏 compute-bound，decode 更偏 memory-bandwidth-bound 和 KV cache 访问。</p>
 <p>它解决的是混部时的互相干扰问题。长 prompt 的 prefill 会拖慢正在生成的 decode；大量 decode 请求又会让 prefill 无法形成足够高效的大矩阵计算。分离后可以分别调度、分别扩容、分别优化 SLO，例如用 TTFT 约束 prefill，用 TPOT 约束 decode。</p>
@@ -1728,6 +1712,7 @@ else:
 </tbody></table></div>
 <p>一句话总结：Prefill/Decode 分离不是“更高级所以一定更好”，而是把两个瓶颈完全不同的阶段拆开治理。面试官真正想听的是你能否同时讲清收益、适用条件和新引入的系统复杂度。</p>
 <hr>
+<p><strong>原始资料</strong>　<a href="https://arxiv.org/abs/2211.17192">投机采样算法 1 与期望长度</a> · <a href="https://arxiv.org/abs/2401.09670">DistServe 的预填充与解码分离</a></p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="041.html">← 41. 模块四：SFT、PEFT 与对齐训练</a><a href="043.html">43. 模块六：RAG、检索、重排与知识增强 →</a></nav>

@@ -10,7 +10,7 @@
       svg: { fontCache: 'global' }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script defer src="../assets/mathjax-3.2.2/es5/tex-svg.js"></script>
   <style>
     :root {
       --bg: #f7f1e8;
@@ -286,7 +286,7 @@
     </div>
     <aside class="meta-card">
       <strong>材料身份</strong>
-      <p>X 原帖：ZhihuFrontier 对李磊NLP知乎文章《大模型测试的下半场》的英文摘要。</p>
+      <p>ZhihuFrontier 转述的是李磊NLP的知乎文章《大模型测试的下半场》。李磊用团队的 Claw-Eval 说明怎样审计工具选择。另有姚顺雨署名的《The Second Half》，讨论 AI 研究中定义问题与评估的重要性，两篇文章各有原文。</p>
       <p>原文：知乎专栏，2026-05-18 13:57 更新。</p>
       <p>主题：Agent 时代的 LLM eval、Delegation Intelligence、Claw-Eval、Pass-all-k、Token Efficiency、模型直觉和安全。</p>
     </aside>
@@ -468,6 +468,10 @@
         </tbody>
       </table>
       </div>
+      <figure>
+        <img src="delegation-intelligence-agent-eval-assets/token-efficiency.jpg" alt="Claw-Eval token efficiency scatter plot comparing Pass^3 and token usage across models">
+        <figcaption>原文展示的 Token Efficiency 散点图：同等准确率附近，不同模型的 token 消耗可能相差数倍；但医疗、金融、高危写操作等场景下，必要的额外验证不应被简单惩罚，更合理的评估是 task-conditioned cost-quality frontier。</figcaption>
+      </figure>
       <p>这里最值得注意的是“路径合理性”。如果评测强行规定一条黄金路径，就会把真正的智能压扁成流程复刻；但如果完全不看路径，只看最终答案，又无法区分模型是否靠偶然、过度搜索、错误工具、泄漏答案或高成本暴力试出来。好的 Agent eval 必须在这两端之间找到平衡：允许多路径，但要求路径可审计。</p>
     </section>
 
@@ -475,6 +479,39 @@
       <h2>7. “模型直觉”为什么很重要，也为什么很难测</h2>
       <p>文章里最有前瞻性的概念是 Model Instinct。作者观察到，不同模型在 trajectory 里的“第一判断”差异很大：有的模型看论文目录就知道 method section 关键段落在哪，有的模型看代码目录就能猜到核心文件，有的模型在信息不足时的初始判断已经接近最终答案。</p>
       <p>这不是普通 accuracy。两个模型最终都做对，一个可能是读遍所有来源才做对，另一个可能是一开始就走对路径。Token efficiency 可以部分反映这种差异，但不够精确，因为低 token 可能来自粗糙跳步，高 token 也可能来自必要验证。</p>
+      <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>可测 Proxy</th>
+            <th>测什么</th>
+            <th>潜在混淆因素</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Time-to-first-relevant-artifact</code></td>
+            <td>多快定位到真正关键的文件、段落、网页或日志。</td>
+            <td>可能受工具速度、检索索引质量或先验泄漏影响。</td>
+          </tr>
+          <tr>
+            <td><code>Early-path regret</code></td>
+            <td>前几步选择与最终最短成功路径的偏离程度。</td>
+            <td>“最短路径”未必是最安全或最可验证路径。</td>
+          </tr>
+          <tr>
+            <td><code>Unnecessary-tool rate</code></td>
+            <td>调用了多少对最终答案没有实质贡献的工具。</td>
+            <td>探索性任务中，适度冗余验证未必是坏事。</td>
+          </tr>
+          <tr>
+            <td><code>Source-weight calibration</code></td>
+            <td>是否能早期区分高质量一手来源与噪声来源。</td>
+            <td>需要高质量人工或强验证器对来源可靠性做标注。</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
       <div class="grid two">
         <div class="card">
           <strong>可能的测量方式</strong>
@@ -499,7 +536,25 @@
     </section>
 
     <section id="limits">
-      <h2>8. 这篇文章的局限与容易误读的地方</h2>
+      <h2>8. 工程挑战、局限与容易误读的地方</h2>
+      <div class="grid two">
+        <div class="card">
+          <strong>基础设施侧的可信度隐患</strong>
+          <ul>
+            <li>模型服务超时、限流、上下文截断会直接污染评测结果。</li>
+            <li>浏览器、shell、容器与文件系统状态漂移容易被误归因成模型失败。</li>
+            <li>Docker CPU、内存与磁盘争用会让并行任务互相干扰——隔离不仅是文件隔离，也是资源隔离。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <strong>评测设计侧的系统边界</strong>
+          <ul>
+            <li>同一模型换 prompt、工具集或 harness 后表现可能大变，跨模型横评必须正视 harness mismatch。</li>
+            <li>Web search 与外部 mock service 会随时间漂移，需要环境快照或降低强时效依赖。</li>
+            <li>安全应作为一票否决（veto）维度：越权删文件、泄漏信息、乱发请求不能用任务成功抵消。</li>
+          </ul>
+        </div>
+      </div>
       <div class="grid two">
         <div class="card">
           <strong>误读 1：传统能力不重要了</strong>
@@ -544,9 +599,14 @@
           <p>本文的主要论证来自知乎原文；X 原帖主要承担导读和索引作用。</p>
         </div>
         <div class="card">
+          <strong>英文 X Article 与社区讨论</strong>
+          <p><a href="https://x.com/i/article/2056333686597890048">Measuring the Delegation Intelligence of Agents</a>（作者 Lei Li，<a href="https://x.com/_TobiasLee/status/2056339539866886649">X 原帖</a>；回复中 <a href="https://x.com/xeophon/status/2056348520404123793">xeophon</a> 指出 <code>pass-all-k</code> 与 τ-bench 的 <code>pass^k</code> 相通）。</p>
+          <p>中英两版同源，本页已合并原本分散的英文版解读与知乎版解读。</p>
+        </div>
+        <div class="card">
           <strong>外部核验</strong>
           <p><a href="https://claw-eval.github.io/">Claw-Eval</a> 页面确认指标包括 <code>Pass^3</code>、<code>Pass@3</code>、Completion、Robustness、Safety、Avg Score。</p>
-          <p>Pass@k / Pass^k 解释参考 <a href="https://www.philschmid.de/agents-pass-at-k-pass-power-k">Phil Schmid</a> 与 <a href="https://hippocampus-garden.com/pass_k/">Hippocampus's Garden</a>。</p>
+          <p>Pass@k / Pass^k 背景参考 <a href="https://sierra.ai/blog/tau-bench-shaping-development-evaluation-agents">Sierra τ-bench 说明</a>、<a href="https://www.philschmid.de/agents-pass-at-k-pass-power-k">Phil Schmid</a> 与 <a href="https://hippocampus-garden.com/pass_k/">Hippocampus's Garden</a>。</p>
         </div>
       </div>
       <div class="figure-grid">
@@ -570,7 +630,8 @@
       <div class="callout">
         <strong>可靠性边界：</strong>Claw-Eval leaderboard 是动态页面，本报告只使用 2026-05-20 抽取到的指标结构作为上下文，不把其中模型名和分数当成长期固定事实。ProgramBench 在快速检索中没有得到干净权威来源，因此本文仅按原文举例处理，不展开额外 claim。
       </div>
-    </section>
+    <p><a href="https://ysymyth.github.io/The-Second-Half/">姚顺雨，The Second Half</a></p>
+</section>
 
   </main>
 

@@ -21,7 +21,7 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
   <link rel="stylesheet" href="../assets/notes-shell.css">
   <style>
     :root {
@@ -580,7 +580,7 @@
 import torch
 
 
-def scaled_dot_product_attention(query, key, value, attn_mask=None):
+def scaled_dot_product_attention(query, key, value, attn_mask=None, dropout=None):
     """
     query: (batch, heads, q_len, head_dim)
     key:   (batch, heads, k_len, head_dim)
@@ -595,6 +595,10 @@ def scaled_dot_product_attention(query, key, value, attn_mask=None):
         scores = scores.masked_fill(attn_mask, torch.finfo(scores.dtype).min)
 
     weights = torch.softmax(scores, dim=-1)
+    if attn_mask is not None:
+        weights = weights.masked_fill(attn_mask, 0.0)
+    if dropout is not None:
+        weights = dropout(weights)
     return torch.matmul(weights, value), weights</code></pre>
 
         <div class="callout ok">
@@ -681,7 +685,7 @@ class MultiHeadAttention(nn.Module):
         key = self._split_heads(self.k_proj(hidden_states))
         value = self._split_heads(self.v_proj(hidden_states))
 
-        output, weights = scaled_dot_product_attention(query, key, value, attn_mask)
+        output, weights = scaled_dot_product_attention(query, key, value, attn_mask, self.dropout)
         output = self.o_proj(self._merge_heads(output))
         return output, weights</code></pre>
       </div>
@@ -715,7 +719,7 @@ class MultiHeadAttention(nn.Module):
             key = torch.cat([past_key, key], dim=2)
             value = torch.cat([past_value, value], dim=2)
 
-        output, weights = scaled_dot_product_attention(query, key, value, attn_mask)
+        output, weights = scaled_dot_product_attention(query, key, value, attn_mask, self.dropout)
         output = self.o_proj(self._merge_heads(output))
         new_cache = (key, value) if use_cache else None
         return output, new_cache, weights</code></pre>
@@ -848,7 +852,7 @@ class GroupedQueryAttention(nn.Module):
       <div class="check-grid">
         <div class="check-card">
           <b>Mask 广播</b>
-          <p>三维 SDPA 和四维 MHA 的 padding mask 不能用同一套 unsqueeze 规则。要先写出 score shape，再让 mask broadcast 到同一 shape。</p>
+          <p>三维 SDPA 和四维 MHA 的 padding mask 不能用同一套 unsqueeze 规则。先写出分数形状，再让掩码广播到同一形状。示例约定 True 为屏蔽。若某个查询的所有键都被屏蔽，softmax 会把相同的有限极小值变成均匀权重，所以还要把被屏蔽位置的权重清零。训练态中的 attention dropout 作用于这些权重，评估态自动关闭。</p>
         </div>
         <div class="check-card">
           <b>Device 与 dtype</b>

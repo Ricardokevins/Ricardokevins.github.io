@@ -7,7 +7,7 @@
   <script>
     window.MathJax={loader:{load:['[tex]/ams','[tex]/noerrors','[tex]/noundefined']},tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEscapes:true,packages:{'[+]':['ams','noerrors','noundefined']}},chtml:{matchFontHeight:false,mtextInheritFont:true,linebreaks:{automatic:true,width:'container'}},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
   <link rel="stylesheet" href="../assets/notes-shell.css">
   <style>
     :root{color-scheme:light;--paper:#f4f0e8;--surface:#fffdf8;--ink:#20242a;--muted:#5f686f;--line:#dcd6c8;--accent:#236b63;--soft:#e9f4f1;--warn:#a4512b;--warn-soft:#fbefe6;--shadow:0 16px 44px rgba(31,37,40,.08);--radius:10px;--max:1100px;--sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;--serif:"Iowan Old Style","Palatino","Songti SC","Noto Serif CJK SC",Georgia,serif}
@@ -33,25 +33,25 @@
 
       <h3>2608.17981：Recirculation 如何在现成模型上做“小泄漏”</h3>
       <p>Recirculation 的动机来自 Racing Thoughts 的 activation patching 实验。那项工作先定位需要上下文消歧的关键 token，再把该 token 深层的、已经消歧的表示替换到较浅层，报告 contextualization error 下降约 60%。新论文问：如果不知道哪个 token 最关键，也不做强替换，而是在每个位置只把一小部分深层激活泄漏到浅层，会不会让现成模型普遍受益？</p>
-      <p>它选择源层 (s) 与较浅的目标层 (d)，对同一 token 的 residual stream 做混合。为避免深层向量范数更大而淹没目标表示，先把源向量缩放到目标向量的 (L_2) 范数，再用小系数加入：</p>
+      <p>它选择源层 \(s\) 与较浅的目标层 \(d\)，对同一 token 的 residual stream 做混合。为避免深层向量范数更大而淹没目标表示，先把源向量缩放到目标向量的 \(L_2\) 范数，再用小系数加入：</p>
       <div class="math-display">\[
         z'_{t,d}=\alpha\frac{\lVert z_{t,d}\rVert_2}{\lVert z_{t,s}\rVert_2}z_{t,s}+\beta z_{t,d}.
       \]</div>
-      <p>基础版本常用 (alpha) 约 0.07–0.15；1B 模型多用凸组合 (eta=1-alpha)，4B/12B 的最佳设置却常为非凸残差式 (eta=1)。这已经提示它不是一条普适定律，而是受架构、层归一化与训练过程影响的干预。</p>
+      <p>基础版本常用 \(\alpha\) 约 0.07–0.15；1B 模型多用凸组合 \(\beta=1-\alpha\)，4B/12B 的最佳设置却常为非凸残差式 \(\beta=1\)。这已经提示它不是一条普适定律，而是受架构、层归一化与训练过程影响的干预。</p>
       <p>Recirculation 也不同于普通“把一段层再跑一遍”的 looped Transformer。looping 只沿深度增加计算；Recirculation 把深度循环与 token 步推进交错起来：正常分支给出当前输出，另一个并行分支把当前 token 的深层状态混回浅层，形成供下一步继续使用的状态轨迹。论文只实验每个位置一次额外 recirculation。代价是 prefill 必须按 token 顺序传播状态；自回归生成本来就是串行的，两份 stack 可以在硬件上并行，因此作者称生成阶段几乎不增加延迟。</p>
-      <p>作者先在 Gemma3 1B 的 arXiv、PG19、C4 子集上扫 (alpha)、源层和目标层，再固定层对评测十个语言建模数据集。Gemma3 1B/4B/12B 在九个数据集上大多降低 perplexity，Lambada 是例外；较长文档收益更明显。跨 Ministral3、Pythia、Qwen3 与 Phi2 时，热图仍出现可改善区域，但幅度通常不到 0.5%，远小于 Gemma 的约 5% 调参集收益。作者因此把“可接受小回灌”称为较普遍现象，却承认大幅收益可能是 Gemma/Peri-LN 特性。</p>
+      <p>作者先在 Gemma3 1B 的 arXiv、PG19、C4 子集上扫 \(\alpha\)、源层和目标层，再固定层对评测十个语言建模数据集。Gemma3 1B/4B/12B 在九个数据集上大多降低 perplexity，Lambada 是例外；较长文档收益更明显。跨 Ministral3、Pythia、Qwen3 与 Phi2 时，热图仍出现可改善区域，但幅度通常不到 0.5%，远小于 Gemma 的约 5% 调参集收益。作者因此把“可接受小回灌”称为较普遍现象，却承认大幅收益可能是 Gemma/Peri-LN 特性。</p>
       <p>温度消融排除了一个简单解释：对 PG19，单独调温降低约 8.48% perplexity，基础 recirculation 降低约 14.21%，两者合用约 19.55%，近似可加。逐 token 分析发现早期位置在 1B 上可能受损，动词、形容词和副词的收益大于数字、限定词和代词，影响随距离呈长尾衰减。这些结果与“传播上下文化状态”相容，但还不是对内部 belief state 的直接因果证明。</p>
-      <p>下游结果并不整齐。简单 instruction following 的错误率下降，Racing Thoughts 在 1B/4B 多数子任务改善，但 12B 的两个子任务反而变差；八个单 token benchmark 只有很小的正负变化。GSM8K 的生成式推理更明显：基础 recirculation 同时改善 pass@1 与 pass@128。随后作者训练一个小 MLP，根据每个 token 的源/目标激活生成逐维 (oldsymbol\alpha,oldsymbol\beta)，冻结 Gemma 权重；这个 adaptive recirculation 用很小训练集将九数据集平均 perplexity 降幅从 8.5% 提到 23.0%。但它已经不是严格“无训练”：原模型权重不训练，新增混合器仍以 BPTT 学了 100 steps，而且下游效果依赖训练数据。</p>
+      <p>下游结果并不整齐。简单 instruction following 的错误率下降，Racing Thoughts 在 1B/4B 多数子任务改善，但 12B 的两个子任务反而变差；八个单 token benchmark 只有很小的正负变化。GSM8K 的生成式推理更明显：基础 recirculation 同时改善 pass@1 与 pass@128。随后作者训练一个小 MLP，根据每个 token 的源/目标激活生成逐维 \(\boldsymbol{\alpha},\boldsymbol{\beta}\)，冻结 Gemma 权重；这个 adaptive recirculation 用很小训练集将九数据集平均 perplexity 降幅从 8.5% 提到 23.0%。但它已经不是严格“无训练”：原模型权重不训练，新增混合器仍以 BPTT 学了 100 steps，而且下游效果依赖训练数据。</p>
 
       <h3>2608.08888：Full-bandwidth Transformer 为什么必须训练</h3>
-      <p>Full-bandwidth Transformer 做得更激进。生成 token (t) 后，它拿上一位置顶层状态 (h^L_{t-1}) 与当前 token embedding (e_t) 进入 gated linear unit：</p>
+      <p>Full-bandwidth Transformer 做得更激进。生成 token \(t\) 后，它拿上一位置顶层状态 \(h^L_{t-1}\) 与当前 token embedding \(e_t\) 进入 gated linear unit：</p>
       <div class="math-display">\[
         u_t=(W_Uh^L_{t-1})\odot\sigma(W_Ge_t),\qquad h^L_t=f_\theta(u_t;\mathrm{KV}_{\lt t}).
       \]</div>
-      <p>这里不是把深层状态小幅加到模型熟悉的浅层 residual 上，而是用 (u_t) <strong>替换当前 token 的底层输入</strong>。顶层状态走 value path，token embedding 只当门。作者刻意不用 (e_t+Wh^L_{t-1})，因为模型可能关闭状态支路、退回普通 token 输入；现在若丢弃状态，连输入本身也没有了，模型被迫使用反馈通道。</p>
-      <p>这正是为什么它不能直接套到任意 checkpoint。标准预训练的 layer 0 只见过 embedding 分布，从未见过 (u_t)；(W_U,W_G) 也是新增参数。论文原文明确说，预训练模型没有在输入槽见过隐藏状态，latent feedback 不能在推理时直接打开。作者为此设计 multi-pass teacher forcing：第一遍正常并行处理整段 token；第二遍把第一遍每个位置的顶层状态右移一位，与真实 token embedding 融合，再并行跑整段；第 (k) 遍继续使用第 (k-1) 遍状态。每遍都做 next-token loss，后续 pass 的梯度不 detach，因此高层状态被训练成可复用输入。</p>
+      <p>这里不是把深层状态小幅加到模型熟悉的浅层 residual 上，而是用 \(u_t\) <strong>替换当前 token 的底层输入</strong>。顶层状态走 value path，token embedding 只当门。作者刻意不用 \(e_t+Wh^L_{t-1}\)，因为模型可能关闭状态支路、退回普通 token 输入；现在若丢弃状态，连输入本身也没有了，模型被迫使用反馈通道。</p>
+      <p>这正是为什么它不能直接套到任意 checkpoint。标准预训练的 layer 0 只见过 embedding 分布，从未见过 \(u_t\)；(W_U,W_G) 也是新增参数。论文原文明确说，预训练模型没有在输入槽见过隐藏状态，latent feedback 不能在推理时直接打开。作者为此设计 multi-pass teacher forcing：第一遍正常并行处理整段 token；第二遍把第一遍每个位置的顶层状态右移一位，与真实 token embedding 融合，再并行跑整段；第 (k) 遍继续使用第 (k-1) 遍状态。每遍都做 next-token loss，后续 pass 的梯度不 detach，因此高层状态被训练成可复用输入。</p>
       <p>训练还需要 prefix mixin、范数稳定和噪声正则。prefix mixin 随机保留普通 embedding 前缀，只在后缀使用融合输入，模拟“prompt 普通 prefill、生成开启反馈”的边界。深度缩放、RMSNorm、embedding/head 权重绑定让输入基底和状态尺度更相容；给反馈状态加噪声，使重复自组合对局部偏移更稳。只用 1/2-pass 训练时，继续多 pass 会发散；在 1B、200B-token 实验里加入仅 3% 的 3-pass batch 后，验证损失到 30 pass 保持平稳，附录报告到 1000 pass 仍稳定。它支持“少量三次自组合监督诱导稳定映射”的解释，但不是数学收缩证明。</p>
-      <p>作者训练 1B 模型到 400B tokens。普通 prefill、生成反馈的 soft decoding，以及额外一次融合 prefill 的 fused decoding 分别承担不同成本。反馈每 token 只多两个 (D\times D) 矩阵乘，作者报告小于 1%；fused 模式把 prefill 约翻倍。基础模型上，soft decoding 在 GSM8K、MATH-500、HumanEval、MBPP 都优于同一权重的 standard decoding；指令微调后多数收益保留。线性 probe 还显示，一次反馈后，synthetic completion/memory 的全局状态在 layer 0 可达 99.6%/100% 可解码；不过可线性读出只证明信息存在，不证明模型因果使用了它。</p>
+      <p>作者训练 1B 模型到 400B tokens。普通 prefill、生成反馈的 soft decoding，以及额外一次融合 prefill 的 fused decoding 分别承担不同成本。反馈每 token 只多两个 \(D\times D\) 矩阵乘，作者报告小于 1%；fused 模式把 prefill 约翻倍。基础模型上，soft decoding 在 GSM8K、MATH-500、HumanEval、MBPP 都优于同一权重的 standard decoding；指令微调后多数收益保留。线性 probe 还显示，一次反馈后，synthetic completion/memory 的全局状态在 layer 0 可达 99.6%/100% 可解码；不过可线性读出只证明信息存在，不证明模型因果使用了它。</p>
       <p>局限也很直接：实验只到 1B 参数，feedback schedule 依赖启发式；推理更简短的现象在 instruction tuning 后消失。公开首版未给出可直接复现整套训练的官方代码仓库链接，因此 vLLM 兼容性和完整成本目前主要是作者报告。</p>
       <p class="small">以上是两篇论文的原文重建。下面才进入针对“为什么能免训练”的机制判断与证据审计。</p>
     </section>
@@ -61,22 +61,22 @@
       <div class="callout"><b>严格答案</b><p><strong>“上一 token 顶层状态作为下一 token 底层输入”的 Full-bandwidth Transformer 并不能免训练；能在现成模型上工作的是 Recirculation 那个更保守的变体。</strong>它成功的条件是：同一 token 的不同 residual 层大致共享特征坐标系，只注入一个经过范数匹配的小扰动，同时保留模型原本熟悉的目标层表示。它更像 self-steering / residual correction，不是把顶层状态硬当 token embedding。</p></div>
       <div class="grid-3">
         <div class="card"><h3>坐标系近似共用</h3><p>Residual stream 是各层共同读写的黑板。深层发现的语义方向，浅层往往仍能读懂。</p></div>
-        <div class="card"><h3>扰动足够小</h3><p>范数匹配、(alpha\ll1) 与保留 (z_d) 把输入留在局部邻域；模型主要走原电路。</p></div>
+        <div class="card"><h3>扰动足够小</h3><p>范数匹配、\(\alpha\ll1\) 与保留 \(z_d\) 把输入留在局部邻域；模型主要走原电路。</p></div>
         <div class="card"><h3>层对由模型选择</h3><p>作者不是声称任意回灌有效，而是扫描 checkpoint 已经“接受”的连接与强度。</p></div>
       </div>
     </section>
 
     <section id="mechanism">
       <h2>从一个两维小例子理解“无需训练”</h2>
-      <p>假设 residual stream 的两个方向粗略对应“金融机构”和“河岸”。浅层读到 <em>bank</em> 时是歧义向量 (z_d=(0.5,0.5))；深层结合 fishing context 后变成 (z_s=(0.1,0.9))。若强行把 (z_s) 当下一 token embedding，底层会遇到从没见过的输入；但只做 10% 混合：</p>
+      <p>假设 residual stream 的两个方向粗略对应“金融机构”和“河岸”。浅层读到 <em>bank</em> 时是歧义向量 \(z_d=(0.5,0.5)\)；深层结合 fishing context 后变成 \(z_s=(0.1,0.9)\)。若强行把 \(z_s\) 当下一 token embedding，底层会遇到从没见过的输入；但只做 10% 混合：</p>
       <div class="math-display">\[z'=0.9z_d+0.1z_s=(0.46,0.54).\]</div>
       <p>模型仍看到非常接近原浅层表示的向量，只是“河岸”方向略被放大。后续 attention/MLP 本来就学会响应这些 residual 方向，所以不必重训所有权重。真实模型当然不是两个可解释神经元，特征也可能 superposition；这个例子只说明局部扰动逻辑。</p>
-      <p>关键不是“高层和底层 shape 都是 (D)，所以可以相加”。shape 相同只是必要条件。真正需要的是<strong>语义基底兼容 + 幅度兼容 + 局部扰动</strong>。Recirculation 用实验扫描和归一化满足后两项，并借 residual 架构押注第一项；Full-bandwidth 不押注现成兼容性，而是显式学习 gate 与整个模型如何消费新输入。</p>
+      <p>关键不是“高层和底层 shape 都是 \(D\)，所以可以相加”。shape 相同只是必要条件。真正需要的是<strong>语义基底兼容 + 幅度兼容 + 局部扰动</strong>。Recirculation 用实验扫描和归一化满足后两项，并借 residual 架构押注第一项；Full-bandwidth 不押注现成兼容性，而是显式学习 gate 与整个模型如何消费新输入。</p>
     </section>
 
     <section id="why-alignment">
       <h2>为什么 residual stream 会跨层近似对齐</h2>
-      <p>Pre-norm Transformer 的 block 大致做 (x_{\ell+1}=x_\ell+F_\ell(x_\ell))。原状态沿 identity path 保留，各层把新特征写回同一个 (D) 维通道；最终 unembedding 又直接读取这条通道。于是“某方向对输出意味着什么”不会在每层都任意旋转一次，否则下一层必须不断学习逆旋转，残差相加也失去稳定语义。</p>
+      <p>Pre-norm Transformer 的 block 大致做 \(x_{\ell+1}=x_\ell+F_\ell(x_\ell)\)。原状态沿 identity path 保留，各层把新特征写回同一个 \(D\) 维通道；最终 unembedding 又直接读取这条通道。于是“某方向对输出意味着什么”不会在每层都任意旋转一次，否则下一层必须不断学习逆旋转，残差相加也失去稳定语义。</p>
       <ol>
         <li><strong>架构理由：</strong>恒等残差路径让所有层在可相加的共同空间通信。</li>
         <li><strong>优化理由：</strong>输入 embedding 到 output head 的近似共享基底与逐层小更新，鼓励渐进变换而非任意换坐标。</li>
@@ -129,7 +129,7 @@
       <h2>独立 insight：真正的新 scaling axis 是“跨 token 复用深度”</h2>
       <p>普通 Transformer 消耗完一次前向的深度后，几乎只把一个 token 带到下一步；CoT 用更多可见 token 购买串行深度；looped Transformer 多跑几遍 stack；这两篇工作则尝试把已经支付过的深层计算变成下一步可继续加工的状态。它们探索的是：<strong>不是增加参数或唯一训练 token，而是提高每份深层表示被后续计算复用的次数。</strong></p>
       <p>两篇论文组合给出一个设计原则：反馈强度决定训练要求。若只在共同 residual 坐标系里做小幅、保留原路径的修正，可以先做 training-free architecture search，让 checkpoint 暴露它能容忍的连接；若反馈成为强制的新输入接口，就必须训练输入适配、状态可复用性与长期自组合稳定性。<strong>training-free 不是因为 recurrence 天生兼容 Transformer，而是因为干预被限制在模型局部线性化仍有效的区域。</strong></p>
-      <p>最值得补的四类实验是：比较 identity、小旋转与随机正交旋转以直接检验跨层基底；分别回灌任务状态子空间、正交补和随机方向做因果 mediation；画 (alpha) 从 0 到失效点的剂量反应与分布距离；报告同预算 wall-clock/显存/吞吐，并测试 blockwise recirculation 的长 prefill 权衡。</p>
+      <p>最值得补的四类实验是：比较 identity、小旋转与随机正交旋转以直接检验跨层基底；分别回灌任务状态子空间、正交补和随机方向做因果 mediation；画 \(\alpha\) 从 0 到失效点的剂量反应与分布距离；报告同预算 wall-clock/显存/吞吐，并测试 blockwise recirculation 的长 prefill 权衡。</p>
     </section>
 
     <section id="sources" data-note-role="evidence-appendix">

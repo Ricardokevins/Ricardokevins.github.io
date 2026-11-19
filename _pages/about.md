@@ -17,7 +17,7 @@ I focus on constructing **self-supervised** learning signals and exploring **gen
 
 ⭐ News
 ==========
-**\[2026-10-15\]** Invited by **Jump Trading** to an AI workshop in Hong Kong to share our work on **general self-supervised learning** for reasoning and long-context tasks. Discussions focused on task and intelligence scaling, continual self-improvement, and reliable learning signals in low-signal-to-noise domains.
+**\[2026-10-15\]** Invited by **Jump Trading** to an AI workshop in Hong Kong to share our work on **general self-supervised learning** for reasoning and long-context tasks ([poster & abstract](/talks/jump-trading-ai-workshop/) · [research overview note](/notes/paper-reviews/turning-structure-into-reward.html)). Discussions focused on task and intelligence scaling, continual self-improvement, and reliable learning signals in low-signal-to-noise domains.
 
 **\[2026-04-10\]** Our two new papers got accepted to ACL 2026.
 
@@ -35,6 +35,10 @@ I focus on constructing **self-supervised** learning signals and exploring **gen
 [![paper](https://img.shields.io/badge/paper-d6d6d6.svg?style=flat-square&logo=overleaf)](https://arxiv.org/abs/2508.14460)
 [![citation](https://img.shields.io/badge/citation-5-d6d6d6.svg?style=flat-square&logo=semanticscholar)](https://www.semanticscholar.org/paper/DuPO%3A-Enabling-Reliable-LLM-Self-Verification-via-She-Bao/72cd4ae987f0f6c7a0406d9912dd232002159272)
 > 💡 **Dual Learning · Preference Optimization · Annotation-Free** — Decomposes a primal task's input into known/unknown parts and constructs a dual task that reconstructs the unknown part from the primal output; the reconstruction quality serves as a self-supervised reward, enabling reliable LLM self-verification and self-improvement without human annotation or oracle labels, even on non-verifiable tasks.
+
+- <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2026&nbsp;</span> 🔥 Improving Long-Context Translation via Self-Supervised Dual Learning (LongDu)</div>
+Shanbo Cheng\*, **Shuaijie She**\*, Yu Bao, Jianbing Zhang, Jiajun Chen, Shujian Huang
+> 💡 **Long-Context RL · Self-Supervised Dual Learning · Annotation-Free** — Derives stable self-supervised long-context training signals from monolingual documents alone to mitigate catastrophic information loss in long-input/long-output tasks, achieving +19 BLEU on LMT-60-8B and +6.5 BLEU on Qwen3-30B-A3B while generalizing beyond training lengths and to unseen target languages.
 
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;Tech Report&nbsp;</span> 🔥 Seed-X: Building Strong Multilingual Translation LLM with 7B Parameters</div>
 **ByteDance Seed Team**
@@ -56,9 +60,6 @@ Xiang Liu, Xiang Geng, Jiajun Chen
 > 💡 **Multilingual Reasoning · Alignment-as-Preference** — Reframes multilingual alignment as preference optimization: an off-the-shelf translator measures the consistency between reasoning in dominant and non-dominant languages as the preference signal (DPO/PPO), aligning non-dominant-language reasoning with English (MSVAMP +16.2%, MGSM +6.1%).
 
 # Published Papers
-- <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2026&nbsp;</span> Improving Long-Context Translation via Self-Supervised Dual Learning</div>
-Shanbo Cheng\*, **Shuaijie She**\*, Yu Bao, Jianbing Zhang, Jiajun Chen, Shujian Huang
-
 - <div><span style="background: #8c0000; color: white; font-family: Arial; font-size: 10px;">&nbsp;ACL 2026&nbsp;</span> A Data-Efficient Path to Multilingual LLMs: Language Expansion via Post-training PARAM Integration into Upcycled MoE</div>
 Hao Zhou, Tianhao Li, Zhijun Wang, **Shuaijie She**, Linjuan Wu, Hao-Ran Wei, Baosong Yang, Jiajun Chen, Shujian Huang
 
@@ -95,8 +96,8 @@ Xiang Geng, Yu Zhang, Zhejian Lai, **Shuaijie She**, Wei Zou, Shimin Tao, Hao Ya
 
 
 # 💻 Internship
-- *2024.04 - now*, Bytedance Seed-Speech, Research Intern.
-- *2023.04 - 2024.04*, 4Paradigm LLM Group, NLP Research Intern.
+- *2024.04 - present*, **ByteDance Seed** — Research Intern (LLM / Post-Training / ALM): self-supervised RL research (DuPO, LongDu); Seed ALM post-training launched in Doubao & Feishu/Lark (8 → 22 languages, bad-case rate −9 to −32 pp); Seed-X 7B multilingual translation LLM launched for TikTok (756 directions, Hugging Face Trending #6, 200k+ downloads).
+- *2023.04 - 2024.04*, **4Paradigm LLM Group** — NLP Research Intern (SFT, RLHF, reasoning optimization, and pre-training data processing).
 
 # 📚 Academic Services
 - Reviewer for ACL, EMNLP, NAACL, NIPS, AAAI, etc.

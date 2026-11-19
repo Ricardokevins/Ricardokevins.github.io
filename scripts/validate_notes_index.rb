@@ -3,12 +3,14 @@
 
 require "set"
 require "yaml"
+require "date"
 
 ROOT = File.expand_path("..", __dir__)
 NOTES_ROOT = File.join(ROOT, "notes")
 NOTES_YAML = File.join(ROOT, "_data", "notes.yml")
 NOTE_TEMPLATE = File.join(NOTES_ROOT, "NOTE_TEMPLATE.md")
-EXCLUDED_PATHS = YAML.load_file(File.join(ROOT, "_config.yml")).fetch("exclude", [])
+SITE_CONFIG = YAML.safe_load(File.read(File.join(ROOT, "_config.yml")), aliases: true)
+EXCLUDED_PATHS = SITE_CONFIG.fetch("exclude", [])
 
 BOOK_INDEX_URLS = {
   "/notes/llm-interview-question-bank/index.html" => "/notes/llm-interview-question-bank/",
@@ -39,7 +41,7 @@ MATHJAX_MARKERS = [
 IGNORED_FOR_MATH_SCAN = %r{<(script|style|pre|code)\b[^>]*>.*?</\1>}im
 QUALITY_WARNING_PATTERNS = {
   "generation artifact" => /Generated locally|HTML generated|本地 HTML 生成|本地 HTML 报告生成|本 HTML 报告|本报告生成|报告生成日期|生成日期：20\d{2}-\d{2}-\d{2}|\d{4}-\d{2}-\d{2}\s*生成/i,
-  "local temporary path" => %r{/Users/xxx|/tmp/|/Users/bytedance/Downloads|/Users/|(?<![/\w])Downloads\b|results/}i,
+  "local temporary path" => %r{/Users/xxx|/tmp/|/Users/[a-zA-Z0-9._-]+/Downloads|/Users/|(?<![/\w])Downloads\b|results/}i,
   "tool or command trace" => /\bOpenCLI\b|\bopencli\b|mcp-router|pdftotext|pdfinfo|curl\s+-|browser-backed read|X 线程公开读取|网页公开读取/i,
   "download artifact wording" => /最终 HTML 路径|最终文件路径|文件位置：|报告文件：|本地参考文件位于|本地路径|下载 PDF/i
 }.freeze
@@ -125,6 +127,7 @@ end
 
 def book_chapter_orders
   BOOK_CHAPTER_INDEXES.reject { |_root, index_path| excluded_path?(index_path) }.transform_values do |index_path|
+    fail_with(["Missing book index: #{index_path.delete_prefix("#{ROOT}/")}"]) unless File.file?(index_path)
     File.read(index_path, encoding: 'UTF-8').scan(%r{href=["']chapters/([^"']+\.html)["']}i).flatten.uniq
   end
 end
@@ -170,25 +173,52 @@ if Dir.exist?(mathjax_root)
     errors << "Invalid MathJax WOFF font: #{File.basename(font)}" unless File.binread(font, 4) == "wOFF"
   end
 end
-notes = YAML.load_file(NOTES_YAML)
-unlisted_defaults = YAML.load_file(File.join(ROOT, "_config.yml")).fetch("defaults", []).select do |entry|
+notes = YAML.safe_load(File.read(NOTES_YAML), permitted_classes: [Date, Time])
+errors << "#{NOTES_YAML} must contain a YAML list" unless notes.is_a?(Array)
+fail_with(errors) unless errors.empty?
+notes.each_with_index do |note, index|
+  unless note.is_a?(Hash)
+    errors << "notes.yml entry #{index + 1} must be a mapping"
+    next
+  end
+  %w[title url date kind summary].each do |key|
+    value = note[key]
+    valid = value.is_a?(String) && !value.strip.empty?
+    valid ||= key == "date" && (value.is_a?(Date) || value.is_a?(Time))
+    errors << "notes.yml entry #{index + 1} requires non-empty #{key}" unless valid
+  end
+  url = note["url"]
+  if url.is_a?(String) && (!url.start_with?("/notes/") || url.split("/").include?("..") || url.match?(/[?#]/))
+    errors << "notes.yml entry #{index + 1} must use a local /notes/ URL: #{url}"
+  end
+  if note.key?("tags") && (!note["tags"].is_a?(Array) || !note["tags"].all? { |tag| tag.is_a?(String) && !tag.strip.empty? })
+    errors << "notes.yml entry #{index + 1} tags must be a list of non-empty strings"
+  end
+end
+fail_with(errors) unless errors.empty?
+unlisted_defaults = SITE_CONFIG.fetch("defaults", []).select do |entry|
   entry.fetch("values", {})["unlisted"] == true
 end
 unlisted_scopes = unlisted_defaults.map { |entry| entry.fetch("scope").fetch("path") }
 unlisted_defaults.each do |entry|
   errors << "Unlisted scope must set sitemap: false: #{entry['scope']['path']}" unless entry['values']['sitemap'] == false
+  scope_path = File.join(ROOT, entry.fetch("scope").fetch("path"))
+  errors << "Local-only scope must be excluded from the build: #{entry['scope']['path']}" unless excluded_path?(scope_path)
 end
-chapter_orders = book_chapter_orders
-errors << "#{NOTES_YAML} must contain a YAML list" unless notes.is_a?(Array)
 fail_with(errors) unless errors.empty?
+chapter_orders = book_chapter_orders
 
 errors << "Missing notes template: #{NOTE_TEMPLATE.delete_prefix("#{ROOT}/")}" unless File.file?(NOTE_TEMPLATE)
 
 urls = notes.map { |note| note["url"] }
 unlisted_urls = notes.select { |note| note["unlisted"] == true }.map { |note| note["url"] }.to_set
+archived_urls = notes.select { |note| note["archived"] == true }.map { |note| note["url"] }.to_set
 notes.each do |note|
   if note.key?("unlisted")
     errors << "notes.yml unlisted must be true or false: #{note['url']}" unless [true, false].include?(note["unlisted"])
+  end
+  if note.key?("archived")
+    errors << "notes.yml archived must be true or false: #{note['url']}" unless [true, false].include?(note["archived"])
   end
 
   path = note.fetch("url").delete_prefix("/").sub(%r{/$}, "")
@@ -206,6 +236,7 @@ urls.each do |url|
   candidate = File.join(ROOT, url.delete_prefix("/"))
   candidate = File.join(candidate, "index.html") if url.end_with?("/")
   errors << "notes.yml url has no file: #{url}" unless File.file?(candidate)
+  errors << "notes.yml must not index an excluded local-only path: #{url}" if excluded_path?(candidate)
 end
 
 indexed_urls = urls.to_set
@@ -324,6 +355,8 @@ note_html_files.each do |html_path|
   has_terms = headings.any? { |heading| heading.match?(CONTENT_TERM_HEADING) } || text.match?(CONTENT_TERM_TEXT)
   has_evidence = content.include?('data-note-role="evidence-appendix"') ||
                  headings.any? { |heading| heading.match?(CONTENT_EVIDENCE_HEADING) }
+
+  next if archived_urls.include?(public_path)
 
   warnings << "#{relative}: content audit missing explicit term/concept explanations" unless has_terms
   warnings << "#{relative}: content audit missing evidence/source boundary section" unless has_evidence

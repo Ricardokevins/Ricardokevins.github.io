@@ -192,7 +192,7 @@
 <aside class="chapter-orientation"><b>阅读定位</b><p>本章是核心题完整答案层，承接 <a href="006.html">第 06 章</a> 的模块地图。建议按问题顺序精读；读完后用 <a href="050.html">第 50 章</a> 做知识点查漏。</p></aside>
 <h3 id="h-0520"><a class="anchor-link" href="#h-0520" aria-label="跳转到本节">#</a>13. BPE、WordPiece、SentencePiece 的主要区别是什么？</h3>
 <h4 id="h-0521"><a class="anchor-link" href="#h-0521" aria-label="跳转到本节">#</a>标准答案</h4>
-<p>三者本质上都在做子词切分，但训练方式和工程假设不一样。<code>BPE</code> 可以理解成不断把高频相邻片段合并，所以更偏频次驱动；<code>WordPiece</code> 更像是在问“合并后能不能让语言模型更划算”，因此带一点概率视角；<code>SentencePiece</code> 的优势则是它不依赖人工先分词，直接在原始文本流上学习切分单元，所以对中文、多语言、带特殊符号的文本更友好。</p>
+<p>BPE 和 WordPiece 都可学习子词词表。BPE 反复合并高频相邻单元；常见 WordPiece 教学实现按相对频率选对，编码时用已有词表作最长匹配。SentencePiece 是从原始句子训练和使用分词模型的工具，支持 BPE 和 Unigram 等算法。</p>
 <p>面试里不要只说“它们都是 tokenizer 方法”，最好补一句：它们的差别不仅影响词表构建，还会影响 token 长度分布、训练成本以及不同语言场景下的适配性。这样答案会更像工程判断。</p>
 <hr>
 <h4 id="h-0522"><a class="anchor-link" href="#h-0522" aria-label="跳转到本节">#</a>深度解析</h4>
@@ -255,21 +255,19 @@ w i d e r &lt;/w&gt;: 3</code></pre>
 <hr>
 <p><strong>3. WordPiece</strong></p>
 <p>WordPiece 和 BPE 很像，但合并标准不同：</p>
-<p>| | BPE | WordPiece | |--|-----|-----------| | 合并标准 | 频率最高 | 使语言模型损失下降最多 | | 合并方式 | 基于频次 | 基于概率 |</p>
-<p><strong>WordPiece 的合并规则</strong>：</p>
+<p>BPE 训练时记录合并顺序。WordPiece 编码时用词表从词首向后找最长匹配，词内片段可用 <code>##</code> 标记。二者即使学到类似子词，输出也可能不同。</p>
+<p><strong>一种常见的 WordPiece 训练复现</strong>：</p>
 <p>对于候选 pair <code>(a, b)</code>，计算合并后的得分：</p>
 <pre><code class="language-text">score = count(a, b) / (count(a) * count(b))</code></pre>
 <p>这个得分衡量的是"a 和 b 一起出现的频率"相对于"它们各自独立出现的频率"的比值。比值越大，说明 a 和 b 越应该合并。</p>
 <p><strong>例子</strong>：</p>
 <ul>
-<li><code>th</code> 经常一起出现，<code>count(th)</code> ≈ <code>count(t) * count(h)</code> 的比值很大 → 合并
-</li>
-<li><code>qx</code> 很少一起出现，比值很小 → 不合并
-</li>
+<li>若 <code>th</code> 共现 20 次，单项计数分别为 100 和 50，得分为 0.004。</li>
+<li>若 <code>qx</code> 只共现 2 次，两个单项计数都为 3，得分约 0.222。按此规则后者优先；按原始共现次数前者优先。</li>
 </ul>
 <p><strong>WordPiece 的优势</strong>：</p>
 <ul>
-<li>更"语义化"——不只是看频率，还看了组合的信息增益
+<li>相对频率能保留单个片段罕见、组合却紧密的候选，语义效果还要结合具体语料评估
 </li>
 <li>Google 的 BERT 使用 WordPiece
 </li>
@@ -277,7 +275,7 @@ w i d e r &lt;/w&gt;: 3</code></pre>
 <hr>
 <p><strong>4. SentencePiece</strong></p>
 <p>SentencePiece 最大的区别：<strong>不假设输入有分词边界</strong>。</p>
-<p>BPE 和 WordPiece 都需要先把文本按空格分成"词"，然后再做子词切分。这对英语没问题，但对中文、日文（没有空格）、泰文（没有空格）就有问题了。</p>
+<p>有些训练流程会先按空格或标点预切分，再在各段内学习 BPE；SentencePiece 也能直接在原始句子上训练 BPE。BERT 的预分词器还会单独处理中文字符。需要说明所用工具及配置，才能确定实际边界。</p>
 <p><strong>SentencePiece 的做法</strong>：</p>
 <p>直接把原始文本当成字符流，用 <code>▁</code>（特殊符号）标记空格：</p>
 <pre><code class="language-text">原始文本：Hello world
@@ -319,19 +317,19 @@ SentencePiece 输入：Hello▁world</code></pre>
 <tr>
 <td>合并策略</td>
 <td>频率最高</td>
-<td>信息增益最大</td>
-<td>反向删除（Unigram）</td>
+<td>常见复现按相对共现程度打分</td>
+<td>BPE 合并，或 Unigram 依据似然裁减候选</td>
 </tr>
 <tr>
 <td>预处理</td>
-<td>需先按空格分词</td>
-<td>需先按空格分词</td>
+<td>由实现决定，可直接使用原始句子</td>
+<td>BERT 常先执行基础预分词</td>
 <td>直接在原始文本上学习</td>
 </tr>
 <tr>
 <td>语言适应性</td>
-<td>英语好</td>
-<td>英语好</td>
+<td>取决于训练语料与初始单元</td>
+<td>取决于词表与预分词规则</td>
 <td>任何语言（含中文/日文）</td>
 </tr>
 <tr>
@@ -342,8 +340,8 @@ SentencePiece 输入：Hello▁world</code></pre>
 </tr>
 <tr>
 <td>空格处理</td>
-<td>空格作为分隔符</td>
-<td>空格作为分隔符</td>
+<td>由预处理与实现决定</td>
+<td>BERT 基础分词器使用空白边界</td>
 <td><code>▁</code> 显式编码空格</td>
 </tr>
 </tbody></table></div>
@@ -360,7 +358,7 @@ SentencePiece 输入：Hello▁world</code></pre>
 <ul>
 <li><strong>"为什么中文 tokenizer 经常把词切成单字？"</strong>
 <ul>
-<li>答：因为中文训练语料里单字频率极高（的、了、是），BPE/WordPiece 会优先合并高频 pair，而中文高频 pair 大多是单字组合。解决方法：1）增大词表；2）用预分词（如 jieba）做初始切分；3）用 SentencePiece 的 Unigram 算法，它更容易学到多字词。
+<li>答：汉字成为一个还是多个 token，取决于字符或字节底座、词表预算、预切分和训练文本。可在同一批中文句子上比较单字、多字词和字节回退的比例，再判断应补语料还是改词表。
 </li>
 </ul>
 </li>
@@ -379,7 +377,11 @@ SentencePiece 输入：Hello▁world</code></pre>
 <p>如果直接按词建词表，会遇到两个大问题：第一，词表会非常大，参数和训练成本都高；第二，大量未登录词会变成 OOV，模型泛化能力差。子词切分的价值，就是在”粒度不要太粗”和”不要切得太碎”之间找平衡。</p>
 <hr>
 <h4 id="h-0525"><a class="anchor-link" href="#h-0525" aria-label="跳转到本节">#</a>深度解析</h4>
-<p><strong>1. 为什么”按词切”不行？数字说话</strong></p>
+<p><strong>从具体文本看分词</strong>。<code>run / runs / ran / running</code> 在全词词表中可能占四项；新名字或 <code>user_id_2024</code> 遇到词表外拼写时，子词或字节回退可以保留原字符。中文的「南京市长江大桥」也说明，按空格切分不足以确定词边界。Python 的缩进则要求编码和解码都能保留空白。</p>
+<p>自拟一个可复算的例子。假设小词表含 <code>Hello</code>、<code> world</code>、<code>你好</code>、<code>世界</code>、<code>def</code>、<code> hello</code>、<code>()</code> 和 <code>:</code>，每次取最长匹配。下表将同一字符串按这份词表和按 UTF-8 字节分别计数。</p>
+<div class="table-wrap"><table><thead><tr><th>文本</th><th>Unicode 字符</th><th>UTF-8 字节</th><th>示例词表的 token</th></tr></thead><tbody><tr><td>Hello world</td><td>11</td><td>11</td><td>2</td></tr><tr><td>你好世界</td><td>4</td><td>12</td><td>2</td></tr><tr><td><code>def hello():</code></td><td>12</td><td>12</td><td>4</td></tr></tbody></table></div>
+<p>序列长度会改变注意力计算和上下文占用，词表变大也会增大嵌入表。结论取决于词表与语料；比较中英文或代码时应保留原文和实际切分。</p>
+<p><strong>1. 为什么按词切会遇到困难</strong></p>
 <div class="table-wrap"><table>
 <thead><tr>
 <th>切分方式</th>
@@ -397,9 +399,9 @@ SentencePiece 输入：Hello▁world</code></pre>
 <td>词表爆炸、罕见词 embedding 学不好</td>
 </tr>
 <tr>
-<td>按字符</td>
-<td>256</td>
-<td>0%</td>
+<td>按 UTF-8 字节</td>
+<td>256 种字节值</td>
+<td>合法 UTF-8 输入均可表示</td>
 <td>很长</td>
 <td>序列太长、失去词级别语义</td>
 </tr>
@@ -467,7 +469,7 @@ SentencePiece 输入：Hello▁world</code></pre>
 <ul>
 <li><strong>”为什么 GPT-4 的 tokenizer 对中文不友好？怎么解决？”</strong>
 <ul>
-<li>答：GPT-4 的 cl100k_base 词表主要基于英文语料训练，中文覆盖不足。一个中文字符通常被切成 1.5-2 个 token，导致：1）同样内容中文成本高 50-100%；2）上下文窗口”缩水”。解决：1）换中文优化的 tokenizer（如 ChatGLM 的）；2）扩展词表并继续预训练；3）用更短的表达方式。
+<li>答：对指定编码器统计同一组中英文本的 token 数与字节数，同时保持模型和任务不变。真实成本取决于序列、服务定价与输出长度。若改动已有模型的词表，还要适配嵌入、输出层及模型权重。
 </li>
 </ul>
 </li>
@@ -475,7 +477,7 @@ SentencePiece 输入：Hello▁world</code></pre>
 <ul>
 <li><strong>”BPE 和 SentencePiece 的本质区别是什么？”</strong>
 <ul>
-<li>答：BPE 需要预先把文本按空格分词（对中文不友好），然后合并高频子词对。SentencePiece 直接在原始字符流上操作，不需要预分词，对中文、日文等多语言更友好。BPE 是”词级别合并”，SentencePiece 是”字符级别合并”。
+<li>答：SentencePiece 的 BPE 模式就是反例。算法决定如何合并，工具决定如何读原始文本、处理空格、保存与应用模型。
 </li>
 </ul>
 </li>
@@ -1689,6 +1691,7 @@ PE(pos, 2i+1) = cos(pos / 10000^(2i/d))</code></pre>
 </li>
 </ul>
 <hr>
+<p><strong>原始资料</strong>　<a href="https://github.com/google/sentencepiece">SentencePiece 项目及训练算法</a> · <a href="https://huggingface.co/learn/llm-course/chapter6/6">Hugging Face 的 WordPiece 复现说明</a></p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="038.html">← 38. 模块一：基础与 Transformer 架构</a><a href="040.html">40. 模块三：预训练、数据工程、Scaling Law 与模型结构扩展 →</a></nav>

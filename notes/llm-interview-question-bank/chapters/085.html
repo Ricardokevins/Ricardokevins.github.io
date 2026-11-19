@@ -62,10 +62,10 @@
 <a class="toc-link" href="#h-1390">285. MCP/A2A 场景下的长任务（数小时）应该如何建模？</a>
 <a class="toc-link" href="#h-1391" style="padding-left:18px">知识点</a>
 <a class="toc-link" href="#h-1392" style="padding-left:18px">详细解答</a>
-<a class="toc-link" href="#h-1396">287. Agent 工具调用的安全威胁模型是什么？prompt injection 为什么特别危险？</a>
+<a class="toc-link" href="#h-1396">补题 1　Agent 工具调用的安全威胁模型是什么？prompt injection 为什么特别危险？</a>
 <a class="toc-link" href="#h-1397" style="padding-left:18px">知识点</a>
 <a class="toc-link" href="#h-1398" style="padding-left:18px">详细解答</a>
-<a class="toc-link" href="#h-1399">288. 如何评测一个 Agent 是否真的可靠，而不是只会演示 demo？</a>
+<a class="toc-link" href="#h-1399">补题 2　如何评测一个 Agent 是否真的可靠，而不是只会演示 demo？</a>
 <a class="toc-link" href="#h-1400" style="padding-left:18px">知识点</a>
 <a class="toc-link" href="#h-1401" style="padding-left:18px">详细解答</a>
       </nav>
@@ -285,7 +285,7 @@
 <li><strong>Server</strong>：暴露具体能力的服务端（如文件系统、数据库查询、GitHub API、代码执行器）。
 </li>
 </ul>
-<p>Host 与 Client/Server 之间通过持久连接交互，传输层支持 STDIO、SSE、WebSocket、Streamable HTTP 等。消息格式基于 <strong>JSON-RPC 2.0</strong>。</p>
+<p>Host 与 Client/Server 之间通过持久连接交互，传输层支持 标准的 stdio 与 Streamable HTTP（2025-06-18 版）；后者可用 SSE 传递事件，WebSocket 属自定义传输。消息格式基于 <strong>JSON-RPC 2.0</strong>。</p>
 <p><strong>三类原语</strong>：</p>
 <ol>
 <li><strong>Tools（工具）</strong>：模型可以调用的函数/动作，带有结构化参数定义（JSON Schema）。例如 <code>search_web</code>、<code>execute_code</code>、<code>send_email</code>。工具调用可能产生副作用。
@@ -341,7 +341,7 @@
 <tr>
 <td><strong>能力发现</strong></td>
 <td>Server 在连接时暴露 tools/resources 清单</td>
-<td>Agent Card 在 <code>/.well-known/agent.json</code> 公开能力与认证要求</td>
+<td>Agent Card 在 <code>/.well-known/agent-card.json</code> 公开能力与认证要求</td>
 </tr>
 </tbody></table></div>
 <p><strong>MCP 适合的场景</strong>：</p>
@@ -449,7 +449,7 @@
 </ul>
 <h4 id="h-1377"><a class="anchor-link" href="#h-1377" aria-label="跳转到本节">#</a>详细解答</h4>
 <p><strong>工具审批（require_approval）的重要性</strong>：</p>
-<p>MCP 规范支持为敏感工具（如发送邮件、转账、删除文件、修改数据库）设置 <code>require_approval</code> 标志。这意味着模型生成调用意图后，必须先获得人类用户或上层系统的显式批准，才能实际执行。</p>
+<p>工具审批由宿主按风险与用户授权实施。2025-06-18 版 MCP 的工具声明包含名称、输入 schema、可选注解等；协议鼓励在人机交互中让用户有机会拒绝调用。<code>require_approval</code> 是 OpenAI Responses API 对远程 MCP 的配置项，其他客户端可采用自己的审批流程。</p>
 <p><strong>为什么重要</strong>：</p>
 <ol>
 <li><strong>防止自主 Agent 的失控行为</strong>：Agent 可能因 prompt 注入、逻辑错误或恶意输入而调用危险工具。
@@ -460,19 +460,19 @@
 </li>
 </ol>
 <p><strong>OAuth 认证机制的重要性</strong>：</p>
-<p>MCP 规范推荐使用 <strong>OAuth 2.1 + PKCE</strong> 作为认证模式，而不是简单的 API key 或共享 secret。</p>
+<p>需要授权的 HTTP 服务可使用 MCP 的 OAuth 授权框架。客户端通过授权服务器取得适用于目标资源的访问令牌，授权码流程用 PKCE 关联请求。stdio 部署从进程环境等途径取得凭据，两者的信任边界不同。</p>
 <p><strong>相比 API key 的优势</strong>：</p>
 <ol>
 <li><strong>可撤销</strong>：token 有过期时间，泄露后可被吊销，影响范围可控。
 </li>
 <li><strong>权限范围可控</strong>：OAuth scope 能精确限制 Agent 能访问哪些资源、执行哪些操作。
 </li>
-<li><strong>审计链完整</strong>：OAuth 流程能关联"human identity → agent identity → tool call"，满足企业审计需求。
+<li><strong>审计</strong>：令牌可以绑定主体和授权范围，逐工具调用的审计仍需宿主与服务端记录。
 </li>
 <li><strong>跨域安全</strong>：PKCE 防止 authorization code 拦截攻击，适合桌面/移动 Host 场景。
 </li>
 </ol>
-<p><strong>工程建议</strong>：在生产级 MCP 部署中，务必在网关层强制执行 OAuth，而不是依赖本地无认证的 Server。</p>
+<p>为远程资源明确授权服务器、资源标识、令牌作用域和过期行为。本地子进程则要限制凭据和实际可访问的资源。</p>
 <hr>
 <h3 id="h-1378"><a class="anchor-link" href="#h-1378" aria-label="跳转到本节">#</a>281. 多 agent 系统中如何避免 token/配额耗尽的连锁失败？</h3>
 <h4 id="h-1379"><a class="anchor-link" href="#h-1379" aria-label="跳转到本节">#</a>知识点</h4>
@@ -541,7 +541,7 @@
 <ul>
 <li>Agent Card
 </li>
-<li><code>/.well-known/agent.json</code>
+<li><code>/.well-known/agent-card.json</code>
 </li>
 <li>能力发现（Capability Discovery）
 </li>
@@ -550,47 +550,32 @@
 </ul>
 <h4 id="h-1383"><a class="anchor-link" href="#h-1383" aria-label="跳转到本节">#</a>详细解答</h4>
 <p><strong>Agent Card 是什么</strong>：</p>
-<p>Agent Card 是 A2A 协议中的能力声明文件，托管在 Agent 的 <code>/.well-known/agent.json</code> 路径下。其他 Agent 或系统可以通过标准 HTTP GET 请求读取这个文件，从而了解该 Agent 能做什么、需要什么认证、端点在哪里。</p>
-<p><strong>典型 Agent Card 内容</strong>：</p>
+<p>A2A v0.3.0 的 Agent Card 描述代理的服务地址、传输方式、能力、技能与认证。使用 well-known 发现策略时，推荐路径是 <code>/.well-known/agent-card.json</code>；也可以通过目录或直接配置取得。</p>
+<p><strong>一个 A2A v0.3.0 JSON-RPC 名片示例</strong></p>
 <pre><code class="language-json">{
-  "agent_id": "researcher-v1",
+  "protocolVersion": "0.3.0",
   "name": "Researcher Agent",
-  "description": "擅长网络搜索、文献综述与数据整理",
-  "capabilities": ["web_research", "summarization", "data_extraction"],
-  "auth": {
-    "schemes": ["oauth2", "bearer_token"]
-  },
-  "endpoints": {
-    "tasks": "https://agent.example.com/tasks",
-    "status": "https://agent.example.com/status",
-    "events": "https://agent.example.com/events"
-  },
-  "rate_limits": {
-    "max_requests_per_minute": 60
-  }
+  "description": "整理公开文献",
+  "url": "https://agent.example.com/a2a",
+  "version": "1.0.0",
+  "preferredTransport": "JSONRPC",
+  "capabilities": {"streaming": true},
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
+  "skills": [{"id": "review", "name": "文献整理", "description": "整理主题文献", "tags": ["research"]}]
 }</code></pre>
-<p><strong>关键字段</strong>：</p>
-<ul>
-<li><code>capabilities</code>：该 Agent 支持的任务类型列表。
-</li>
-<li><code>auth.schemes</code>：支持的认证方式（OAuth、Bearer、API key、mTLS 等）。
-</li>
-<li><code>endpoints</code>：任务提交、状态查询、事件订阅的 URL。
-</li>
-<li><code>rate_limits</code>：可选的速率限制声明。
-</li>
-</ul>
-<p><strong>能力发现流程</strong>：</p>
+<p>客户端用 <code>skills</code> 判断能否委派研究任务，用 <code>capabilities.streaming</code> 判断能否接收进度事件。需要认证的服务还可用 <code>securitySchemes</code> 和 <code>security</code> 声明认证要求。</p>
+<p><strong>一次任务的交互过程</strong></p>
 <ol>
-<li><strong>发现阶段</strong>：委派方 Agent 向目标域名发送 <code>GET /.well-known/agent.json</code>。
+<li><strong>发现阶段</strong>：委派方 Agent 向目标域名发送 <code>GET /.well-known/agent-card.json</code>。
 </li>
 <li><strong>协商阶段</strong>：解析 Agent Card，确认目标 Agent 是否具备所需能力，以及委派方是否满足认证要求。
 </li>
 <li><strong>认证阶段</strong>：按 Agent Card 声明的方式获取 access token。
 </li>
-<li><strong>任务委派阶段</strong>：向 <code>endpoints.tasks</code> 提交任务，获得 <code>task_id</code>。
+<li><strong>委派</strong>：向名片的 <code>url</code> 调用 <code>message/send</code>。服务可直接返回消息；长任务返回带 <code>id</code> 的 Task。
 </li>
-<li><strong>状态跟踪阶段</strong>：通过 <code>endpoints.status</code> 或 SSE 事件流跟踪任务进展，直到 completed/failed。
+<li><strong>跟踪</strong>：用 <code>tasks/get</code> 查询任务；服务声明支持流式时可用 <code>message/stream</code> 接收状态和产物更新。
 </li>
 </ol>
 <hr>
@@ -755,7 +740,7 @@
 <ul>
 <li>委派方提交任务后，接收方返回 <code>202 Accepted</code> 和 <code>task_id</code>。
 </li>
-<li>在工作过程中，接收方通过 SSE 或 HTTP 回调发送进度更新（<code>working</code>、<code>partial_result</code>）。
+<li>在工作过程中，接收方通过 SSE 或 HTTP 回调发送进度更新（<code>working</code> 状态与产物更新事件）。
 </li>
 <li>委派方可以发送取消请求，接收方应支持优雅终止。
 </li>
@@ -852,7 +837,7 @@
 <li><strong>文档中必须包含错误示例</strong>：在 Tool Schema 文档中为每个工具提供至少一个错误返回示例，帮助 Agent 学会正确解析和处理。
 </li>
 </ol>
-<h3 id="h-1396"><a class="anchor-link" href="#h-1396" aria-label="跳转到本节">#</a>287. Agent 工具调用的安全威胁模型是什么？prompt injection 为什么特别危险？</h3>
+<h3 id="h-1396"><a class="anchor-link" href="#h-1396" aria-label="跳转到本节">#</a>补题 1　Agent 工具调用的安全威胁模型是什么？prompt injection 为什么特别危险？</h3>
 <h4 id="h-1397"><a class="anchor-link" href="#h-1397" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
 <li>直接/间接 prompt injection
@@ -910,7 +895,7 @@
 </tr>
 </tbody></table></div>
 <p>一个成熟回答应该说：prompt injection 不是纯模型问题，而是 <strong>模型指令遵循 + 工具权限 + 外部内容不可信 + 副作用执行</strong> 叠加后的系统安全问题。只靠模型“更聪明”不够，必须靠权限隔离、审批、沙箱和可观测性兜底。</p>
-<h3 id="h-1399"><a class="anchor-link" href="#h-1399" aria-label="跳转到本节">#</a>288. 如何评测一个 Agent 是否真的可靠，而不是只会演示 demo？</h3>
+<h3 id="h-1399"><a class="anchor-link" href="#h-1399" aria-label="跳转到本节">#</a>补题 2　如何评测一个 Agent 是否真的可靠，而不是只会演示 demo？</h3>
 <h4 id="h-1400"><a class="anchor-link" href="#h-1400" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
 <li>end-to-end task success
@@ -973,6 +958,7 @@
   -> 统计任务成功、子任务成功、恢复、安全和成本
   -> 回放失败轨迹，给 planning/tool/state/safety 打标签</code></pre>
 <p>如果对方问 <code>AgentBench</code>、<code>SWE-bench</code>、<code>tau-bench</code> 这类评测，可以这样归类：它们都试图从“单轮问答”走向“交互式任务完成”。区别在于任务环境不同，有的偏工具/API，有的偏真实代码仓库修复，有的偏业务流程对话。核心不是记住榜单名字，而是理解 Agent 评测一定要评 <strong>过程、环境交互和失败恢复</strong>。</p>
+<p><strong>原始资料</strong>　<a href="https://modelcontextprotocol.io/specification/2025-06-18/server/tools">MCP 工具定义（2025-06-18）</a> · <a href="https://a2a-protocol.org/v0.3.0/specification/">A2A v0.3.0 名片与方法</a> · <a href="https://developers.openai.com/api/docs/guides/tools-connectors-mcp">Responses API 的 MCP 工具配置</a></p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="086.html">← 86. 合成数据工程专项强化题库（第十六批：Self-Improvement、Rejection Sampling、验证流水线与规模化）</a><a href="089.html">89. 代码大模型专项强化题库（第十九批：FIM、CodeLlama、StarCoder、评测与工程） →</a></nav>

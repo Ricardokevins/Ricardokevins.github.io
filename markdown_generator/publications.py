@@ -24,6 +24,9 @@
 # In[2]:
 
 import pandas as pd
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
 
 
 # ## Import TSV
@@ -34,7 +37,7 @@ import pandas as pd
 
 # In[3]:
 
-publications = pd.read_csv("publications.tsv", sep="\t", header=0)
+publications = pd.read_csv(ROOT / "publications.tsv", sep="\t", header=0)
 publications
 
 
@@ -70,7 +73,7 @@ for row, item in publications.iterrows():
     
     ## YAML variables
     
-    md = "---\ntitle: \""   + item.title + '"\n'
+    md = "---\ntitle: \""   + html_escape(item.title) + '"\n'
     
     md += """collection: publications"""
     
@@ -84,7 +87,7 @@ for row, item in publications.iterrows():
     md += "\nvenue: '" + html_escape(item.venue) + "'"
     
     if len(str(item.paper_url)) > 5:
-        md += "\npaperurl: '" + item.paper_url + "'"
+        md += "\npaperurl: '" + html_escape(item.paper_url) + "'"
     
     md += "\ncitation: '" + html_escape(item.citation) + "'"
     
@@ -93,7 +96,7 @@ for row, item in publications.iterrows():
     ## Markdown description for individual page
     
     if len(str(item.paper_url)) > 5:
-        md += "\n\n<a href='" + item.paper_url + "'>Download paper here</a>\n" 
+        md += "\n\n<a href='" + html_escape(item.paper_url) + "'>Download paper here</a>\n"
         
     if len(str(item.excerpt)) > 5:
         md += "\n" + html_escape(item.excerpt) + "\n"
@@ -102,7 +105,7 @@ for row, item in publications.iterrows():
     
     md_filename = os.path.basename(md_filename)
        
-    with open("../_publications/" + md_filename, 'w') as f:
+    with open(ROOT.parent / "_publications" / md_filename, 'w', encoding='utf-8') as f:
         f.write(md)
 
 

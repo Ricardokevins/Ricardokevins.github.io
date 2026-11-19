@@ -2,9 +2,10 @@
 {% if include.unlisted %}
   {% assign notes = site.data.notes | where: "unlisted", true | sort: "date" | reverse %}
 {% else %}
-  {% assign notes = site.data.notes | where_exp: "note", "note.unlisted != true" | sort: "date" | reverse %}
+  {% assign notes = site.data.notes | where_exp: "note", "note.unlisted != true" | where_exp: "note", "note.archived != true" | sort: "date" | reverse %}
 {% endif %}
 {% assign grouped_notes = notes | group_by: "kind" | sort: "name" %}
+{% assign curated_notes = notes | where_exp: "note", "note.kind != 'Podcast Interview'" %}
 {% assign podcast_collections = notes | where: "kind", "Podcast Collection" %}
 
 <style>
@@ -358,7 +359,7 @@
       <nav class="notes-lead" id="podcast-collections" aria-label="播客专栏">
         <strong>播客专栏</strong>
         {% for collection in podcast_collections %}
-          · <a href="{{ collection.url | relative_url }}">{{ collection.title | escape }}</a>
+          · <a href="{{ collection.url | relative_url }}">{{ collection.podcast_show | default: collection.title | escape }}</a>
         {% endfor %}
       </nav>
     {% endif %}
@@ -367,15 +368,18 @@
   <div class="notes-panel">
     <div class="notes-toolbar">
       <div class="notes-count">
-        <span data-notes-visible-count>{{ notes | size }}</span>
+        <span data-notes-visible-count>{{ curated_notes | size }} / {{ notes | size }} 条</span>
         · 每页 10 条
       </div>
-      <input class="notes-search" type="search" placeholder="搜索标题、标签或摘要" aria-label="Search notes" data-notes-search>
+      <input class="notes-search" type="search" placeholder="搜索标题、嘉宾、标签（含播客）" aria-label="Search notes" data-notes-search>
     </div>
 
     <div class="notes-filters" aria-label="Note categories">
-      <button class="notes-filter-button is-active" type="button" data-note-filter="all" aria-pressed="true">
-        全部 <span class="notes-filter-button__count">{{ notes | size }}</span>
+      <button class="notes-filter-button is-active" type="button" data-note-filter="curated" aria-pressed="true">
+        精选 &amp; 专栏 <span class="notes-filter-button__count">{{ curated_notes | size }}</span>
+      </button>
+      <button class="notes-filter-button" type="button" data-note-filter="all" aria-pressed="false">
+        全部（含播客单期） <span class="notes-filter-button__count">{{ notes | size }}</span>
       </button>
       {% for group in grouped_notes %}
         <button class="notes-filter-button" type="button" data-note-filter="{{ group.name | slugify }}" aria-pressed="false">
@@ -384,7 +388,7 @@
       {% endfor %}
     </div>
 
-    <p class="notes-sort-note">默认排序：最近更新优先；分类筛选和搜索会保留这个倒序。</p>
+    <p class="notes-sort-note" data-notes-sort-note>默认展示论文精读、技术分析、学习资源与播客专栏总览；搜索时自动检索全部笔记（含播客单期），也可点上方切换浏览单期。</p>
   </div>
 
   <div class="notes-list" id="notes-list">
@@ -431,17 +435,25 @@
     var filters = Array.prototype.slice.call(root.querySelectorAll("[data-note-filter]"));
     var search = root.querySelector("[data-notes-search]");
     var visibleCount = root.querySelector("[data-notes-visible-count]");
+    var sortNote = root.querySelector("[data-notes-sort-note]");
     var emptyState = root.querySelector("[data-notes-empty]");
     var pagination = root.querySelector("#notes-pagination");
     var currentPage = 1;
-    var activeFilter = "all";
+    var activeFilter = "curated";
     var query = "";
 
     function getMatches() {
       return cards.filter(function (card) {
         var kind = card.getAttribute("data-note-kind");
         var haystack = card.getAttribute("data-note-search") || "";
-        var filterMatches = activeFilter === "all" || kind === activeFilter;
+        var filterMatches;
+        if (activeFilter === "all") {
+          filterMatches = true;
+        } else if (activeFilter === "curated") {
+          filterMatches = query ? true : kind !== "podcast-interview";
+        } else {
+          filterMatches = kind === activeFilter;
+        }
         var queryMatches = !query || haystack.indexOf(query) !== -1;
         return filterMatches && queryMatches;
       });
@@ -453,12 +465,30 @@
       button.type = "button";
       button.textContent = label;
       button.disabled = isDisabled;
-      button.setAttribute("aria-label", "Go to notes page " + page);
-      if (isActive) button.setAttribute("aria-current", "page");
-      button.addEventListener("click", function () {
-        if (!isDisabled) render(page);
-      });
+      if (typeof page === "number") {
+        button.setAttribute("aria-label", "Go to notes page " + page);
+        if (isActive) button.setAttribute("aria-current", "page");
+        button.addEventListener("click", function () {
+          if (!isDisabled) render(page);
+        });
+      }
       return button;
+    }
+
+    function pageWindow(current, total) {
+      if (total <= 9) {
+        var all = [];
+        for (var i = 1; i <= total; i += 1) all.push(i);
+        return all;
+      }
+      var pages = [1];
+      var left = Math.max(2, current - 2);
+      var right = Math.min(total - 1, current + 2);
+      if (left > 2) pages.push("...");
+      for (var p = left; p <= right; p += 1) pages.push(p);
+      if (right < total - 1) pages.push("...");
+      pages.push(total);
+      return pages;
     }
 
     function render(page) {
@@ -477,15 +507,28 @@
       });
 
       if (visibleCount) visibleCount.textContent = matches.length + " / " + cards.length + " 条";
+      if (sortNote) {
+        if (query && activeFilter === "curated") {
+          sortNote.textContent = "当前为全站检索（含播客单期），按最近更新倒序；清空搜索后回到精选与专栏视图。";
+        } else if (activeFilter === "curated") {
+          sortNote.textContent = "默认展示论文精读、技术分析、学习资源与播客专栏总览；搜索时自动检索全部笔记（含播客单期），也可点上方切换浏览单期。";
+        } else {
+          sortNote.textContent = "按最近更新 / 节目发布时间倒序排列；分类筛选与搜索会保留这个倒序。";
+        }
+      }
       if (emptyState) emptyState.hidden = matches.length !== 0;
 
       pagination.innerHTML = "";
       if (totalPages <= 1) return;
 
       pagination.appendChild(createButton("上一页", currentPage - 1, false, currentPage === 1));
-      for (var pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
-        pagination.appendChild(createButton(String(pageNumber), pageNumber, pageNumber === currentPage, false));
-      }
+      pageWindow(currentPage, totalPages).forEach(function (item) {
+        if (item === "...") {
+          pagination.appendChild(createButton("…", null, false, true));
+        } else {
+          pagination.appendChild(createButton(String(item), item, item === currentPage, false));
+        }
+      });
       pagination.appendChild(createButton("下一页", currentPage + 1, false, currentPage === totalPages));
     }
 

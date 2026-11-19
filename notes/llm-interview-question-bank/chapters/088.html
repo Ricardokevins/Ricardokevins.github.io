@@ -358,7 +358,7 @@
 </ul>
 <p><strong>SnapKV 是"主动观察+提前筛选"</strong>：</p>
 <ul>
-<li>用一个<strong>观察窗口</strong>（通常是 prompt 的最后几个 token 或生成的前几个 token）来"观察"模型会关注哪些历史位置；
+<li>用一个<strong>观察窗口</strong>（取自 prompt 的尾部，在生成开始前即可取得）来"观察"模型会关注哪些历史位置；
 </li>
 <li>基于观察窗口内的注意力模式，<strong>一次性识别出对后续生成最关键的历史 KV 对</strong>；
 </li>
@@ -366,13 +366,13 @@
 </li>
 </ul>
 <p><strong>为什么说 SnapKV 更"主动"？</strong></p>
-<p>SnapKV 不是在生成过程中逐步决定淘汰谁，而是在<strong>生成开始前</strong>（或生成早期）就通过一小段观察来确定"哪些历史 token 会被后续 token 频繁关注"。这相当于：</p>
+<p>SnapKV 不是在生成过程中逐步决定淘汰谁，而是在<strong>生成开始前</strong>就通过一小段观察来确定"哪些历史 token 会被后续 token 频繁关注"。这相当于：</p>
 <blockquote>"我先看一小段，判断模型会关注哪些位置，然后一次性决定保留策略。"</blockquote>
 <p>这种方法有几个优势：</p>
 <ol>
 <li><strong>决策更稳定</strong>：一次性筛选后不再变动，避免了 H2O 中频繁淘汰可能带来的抖动；
 </li>
-<li><strong>压缩率更高</strong>：SnapKV 可以达到 50% 甚至更高的压缩率而几乎不掉效果；
+<li><strong>可控制前缀预算</strong>：可用同一序列及缓存预算比较效果；保留一半位置与将占用降至原来的 20% 是两种不同设置。
 </li>
 <li><strong>工程实现更简单</strong>：不需要维护复杂的累积分数和在线淘汰逻辑。
 </li>
@@ -383,9 +383,9 @@
 </li>
 <li>对每个历史 token，聚合观察窗口中所有 token 对它的注意力分数；
 </li>
-<li>选择注意力分数最高的 Top-K 个历史 token 保留 KV，其余丢弃；
+<li>各注意力头对前缀的重要性分数做局部池化后选取高分位置，同时完整保留尾部观察窗口；
 </li>
-<li>后续生成只使用保留的 KV。
+<li>后续生成从压缩过的 prompt 缓存出发，新生成 token 的 KV 仍会追加。
 </li>
 </ol>
 <p><strong>关键差异总结</strong>：</p>
@@ -404,12 +404,12 @@
 <tr>
 <td>决策时机</td>
 <td>生成过程中</td>
-<td>生成前/早期</td>
+<td>预填充末尾</td>
 </tr>
 <tr>
 <td>压缩率</td>
-<td>中等（通常 20-30%）</td>
-<td>更高（可达 50%+）</td>
+<td>保留预算给近期与重频位置</td>
+<td>保留观察窗口与各头筛出的前缀</td>
 </tr>
 <tr>
 <td>实现复杂度</td>
@@ -664,9 +664,9 @@
 <ul>
 <li>GQA/MQA：通过减少 KV head 数压缩，压缩率固定（如 GQA 从 32 head 降到 8 head，压缩 4x）；
 </li>
-<li>H2O：通常压缩 20-30%；
+<li>H2O：设定保留预算，例如保留原缓存 20% 时，忽略元数据可节省约 80%；
 </li>
-<li>SnapKV：可达 50%+；
+<li>SnapKV：按头设定前缀预算，另加末尾观察窗口与新生成 token；
 </li>
 <li>StreamingLLM：长度无关，压缩率随序列长度提升而提升；
 </li>
@@ -1029,6 +1029,7 @@
 <li>最后针对性调整策略，而不是盲目全局放松。
 </li>
 </ol>
+<p><strong>原始资料</strong>　<a href="https://arxiv.org/abs/2404.14469">SnapKV 的观察窗口</a> · <a href="https://arxiv.org/abs/2306.14048">H₂O 的保留预算</a></p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="027.html">← 27. 训练系统备考顺序</a><a href="090.html">90. 投机解码进阶专项强化题库（第二十批：Medusa、EAGLE、Lookahead Decoding 与接受率分析） →</a></nav>

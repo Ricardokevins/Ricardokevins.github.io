@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,7 +76,7 @@ def flatten_sentences(source: Any) -> tuple[list[SpeakerCue], dict[str, Any]]:
                 end = float(sentence["end"])
             except (KeyError, TypeError, ValueError) as error:
                 raise TranscriptError(f"sentence has invalid timing: {sentence}") from error
-            if end < start or start < 0 or not text:
+            if not math.isfinite(start) or not math.isfinite(end) or end < start or start < 0 or not text:
                 raise TranscriptError(
                     f"sentence has invalid interval or empty text: {start}, {end}, {text!r}"
                 )
@@ -139,15 +140,7 @@ def render_readable(
 
 def render_srt(cues: Sequence[SpeakerCue], speaker_reliable: bool) -> str:
     def srt_stamp(value: float) -> str:
-        value = max(0.0, value)
-        hours = int(value // 3600)
-        minutes = int(value % 3600 // 60)
-        seconds = int(value % 60)
-        millis = int(round((value - int(value)) * 1000))
-        if millis == 1000:
-            seconds += 1
-            millis = 0
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d},{millis:03d}"
+        return stamp(value, milliseconds=True).replace(".", ",")
 
     blocks: list[str] = []
     for index, cue in enumerate(cues, start=1):
@@ -203,7 +196,11 @@ def build_audit(
         "readable_mapping_preserves_sentence_order": readable_cues == list(cues),
         "readable_normalized_text_matches_source": normalized_text([cue.text for cue in readable_cues]) == source_text,
         "exact_line_count_matches_sentences": len(exact.rstrip("\n").splitlines()) == len(cues),
-        "srt_block_count_matches_sentences": len([line for line in srt.splitlines() if line.isdigit()]) == len(cues),
+        "srt_block_count_matches_sentences": sum(
+            1 for block in srt.strip().split("\n\n")
+            if len(block.splitlines()) >= 3 and block.splitlines()[0].isdigit()
+            and " --> " in block.splitlines()[1]
+        ) == len(cues),
     }
     duration = float(metadata.get("duration") or cues[-1].end)
     return {

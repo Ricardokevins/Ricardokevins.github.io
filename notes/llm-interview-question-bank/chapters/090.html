@@ -290,7 +290,7 @@
 </li>
 <li>每个 Medusa Head 是一个轻量的 MLP，负责预测未来某个位置的 token；
 </li>
-<li>例如：Head-1 预测下一个 token（和原模型一样），Head-2 预测下下个 token，Head-3 预测下下下个 token...
+<li>原模型输出头预测第 1 个未来 token；第 1 个额外头预测第 2 个，第 2 个额外头预测第 3 个。
 </li>
 <li>这些 head 的预测组成一棵<strong>候选树</strong>，然后用树形注意力一次性验证整棵树。
 </li>
@@ -309,9 +309,9 @@
 </ul>
 <p>这样做的好处：</p>
 <ol>
-<li><strong>没有额外的 draft model</strong>：不需要额外显存和计算资源；
+<li><strong>没有额外的 draft model</strong>：省去独立草稿模型的权重；新增预测头和候选树验证仍占用显存与计算。
 </li>
-<li><strong>分布天然一致</strong>：Medusa Head 基于 target model 的隐藏状态预测，分布更接近 target model；
+<li><strong>共享输入表示</strong>：各头仍可能猜错。贪心验证可以保持目标模型的贪心输出；论文另给出的 typical acceptance 允许用合理候选换速度，不能据此声称采样分布严格相同。
 </li>
 <li><strong>训练简单</strong>：只需在 target model 上训练几个轻量 head，不需要蒸馏整个 draft model。
 </li>
@@ -331,7 +331,7 @@
 <h3 id="h-1534"><a class="anchor-link" href="#h-1534" aria-label="跳转到本节">#</a>328. EAGLE 的 draft model 为什么可以比原模型小很多还能保持高接受率？</h3>
 <h4 id="h-1535"><a class="anchor-link" href="#h-1535" aria-label="跳转到本节">#</a>知识点</h4>
 <ul>
-<li>EAGLE：Extrapolation Augmented Generation
+<li>EAGLE：Extrapolation Algorithm for Greater Language-model Efficiency
 </li>
 <li>特征自回归（feature-level autoregression）
 </li>
@@ -348,43 +348,8 @@
 <p>原始方法中，draft model 通常是一个小版的 Transformer（如 target 是 70B，draft 是 7B）。这个 draft model 在 token 级别做自回归预测——给定已生成的 token，预测下一个 token。</p>
 <p>问题在于：即使 draft model 有 7B 参数，它在 token 级别的预测分布与 70B 的 target model 仍然有明显差异，导致很多 draft token 被 target model 拒绝。</p>
 <p><strong>EAGLE 的核心改进：特征自回归</strong></p>
-<p>EAGLE 的关键洞察是：<strong>draft model 不需要在 token 级别预测，而可以在 feature（隐藏状态）级别预测。</strong></p>
-<p>具体做法：</p>
-<ol>
-<li><strong>训练数据构造</strong>：从 target model 的推理日志中提取"特征轨迹"——对于每个输入序列，记录 target model 每一层的隐藏状态；
-</li>
-<li><strong>Draft model 的输入</strong>：不是 raw token，而是 target model 的<strong>隐藏状态</strong>（features）；
-</li>
-<li><strong>Draft model 的目标</strong>：预测下一个位置的隐藏状态，而不是下一个 token；
-</li>
-<li><strong>Token 生成</strong>：draft model 预测出下一位置的隐藏状态后，用 target model 的词表投影层把隐藏状态映射成 token；
-</li>
-<li><strong>验证</strong>：target model 验证这些 token，接受则继续，拒绝则回退。
-</li>
-</ol>
-<p><strong>为什么特征自回归比 token 自回归更好？</strong></p>
-<ol>
-<li><strong>信息密度更高</strong>：隐藏状态是高维向量（如 4096 维），编码了丰富的上下文信息。基于隐藏状态预测，draft model 能利用更多信息；
-</li>
-<li><strong>分布更接近 target</strong>：因为 draft model 直接学习 target model 的隐藏状态转移模式，其生成的 token 分布与 target model 更一致；
-</li>
-<li><strong>Draft model 可以更轻量</strong>：因为输入是信息密集的特征而不是离散的 token，一个小模型（如 0.5B 甚至更小）就能学到有效的预测模式；
-</li>
-<li><strong>接受率更高</strong>：实验表明 EAGLE 的接受率比原始 token-level draft model 高出 20-30%。
-</li>
-</ol>
-<p><strong>EAGLE 的训练</strong>：</p>
-<p>EAGLE 的 draft model 需要用 target model 的推理数据训练：</p>
-<ol>
-<li>收集大量输入序列；
-</li>
-<li>用 target model 做前向传播，提取每层的隐藏状态；
-</li>
-<li>训练 draft model：输入当前位置的隐藏状态，预测下一位置的隐藏状态；
-</li>
-<li>损失函数是预测隐藏状态与真实隐藏状态的 MSE。
-</li>
-</ol>
+<p>EAGLE 把草拟分成两步。它先在目标模型输出头之前的特征空间中预测下一位置的表示，再借用目标模型的输出头预测词。作者称这种表示为 second-to-top-layer feature。单给当前特征会有歧义：同一个前缀可能实际采出两个不同的词，这会把下一步状态引向不同方向。</p>
+<p>因此草稿网络还读入超前一位的实际 token。给定截至位置 i 的特征和刚选定的第 i+1 个词，它可以模拟走上这条分支之后的特征，再预测第 i+2 个词。最后仍须目标模型验证候选树。原论文在 LLaMA2-Chat 70B 上训练了不足 1B 参数的额外解码层；接受率与速度应结合具体任务和解码设置报告。</p>
 <p><strong>EAGLE 的局限</strong>：</p>
 <ul>
 <li>需要访问 target model 的隐藏状态，某些封闭 API 无法使用；
@@ -421,22 +386,15 @@
 </li>
 <li>然后并行计算所有 N 个位置：用模型验证这些猜测，得到修正后的 token；
 </li>
-<li>重复迭代，直到所有位置的 token 不再变化（收敛）。
+<li>若直接用朴素 Jacobi 解这个方程组，就会反复刷新猜测，直至不再变化。
 </li>
 </ol>
 <p>这类似于数值分析中的 <strong>Jacobi 迭代法</strong>——解线性方程组时，先猜一个解，然后并行更新所有变量，直到收敛。</p>
 <p><strong>具体做法</strong>：</p>
 <ol>
-<li>维护一个"窗口"，包含当前位置和未来 N-1 个位置的 token；
-</li>
-<li>对这 N 个位置做并行前向传播（利用 causal mask 的灵活性）；
-</li>
-<li>模型同时输出 N 个位置的预测；
-</li>
-<li>比较预测与当前猜测，如果一致则"接受"，不一致则更新猜测；
-</li>
-<li>迭代直到窗口内所有位置都收敛。
-</li>
+<li>前瞻分支在二维窗口内做并行 Jacobi 更新，把局部轨迹中出现的连续词段存为候选 n-gram。</li>
+<li>验证分支选择与当前已确认前缀匹配的候选，利用原模型一次并行前向检查；只把通过验证的前缀提交给输出。</li>
+<li>两条分支可以共用一次前向。即使远处的猜测下一轮还会改变，已经验证的前缀也能推进。</li>
 </ol>
 <p><strong>与 beam search 的区别</strong>：</p>
 <div class="table-wrap"><table>
@@ -459,12 +417,12 @@
 <tr>
 <td><strong>候选来源</strong></td>
 <td>当前步的 top-k token</td>
-<td>对未来位置的启发式猜测</td>
+<td>Jacobi 轨迹中取得的候选 n-gram</td>
 </tr>
 <tr>
 <td><strong>验证方式</strong></td>
 <td>无验证，直接选择</td>
-<td>用模型验证猜测是否收敛</td>
+<td>用目标模型逐前缀验证候选 n-gram</td>
 </tr>
 <tr>
 <td><strong>适用场景</strong></td>
@@ -473,18 +431,18 @@
 </tr>
 </tbody></table></div>
 <p><strong>与 draft-based 方法的区别</strong>：</p>
-<p>Lookahead Decoding <strong>不需要 draft model</strong>，也不需要训练。它的"猜测"来自简单的启发式（如 n-gram 重复、频率统计），而不是学习的模型。这使得它：</p>
+<p>Lookahead Decoding <strong>不需要 draft model</strong>，也不需要训练。候选池来自模型自己的前瞻分支，验证由同一模型完成。这使得它：</p>
 <ul>
 <li><strong>零样本可用</strong>：不需要额外训练；
 </li>
-<li><strong>无额外显存</strong>：不需要 draft model；
+<li><strong>额外开销</strong>：可以省去独立草稿权重，窗口、候选池和验证仍需资源。
 </li>
 <li><strong>但接受率较低</strong>：因为猜测质量不如 trained draft model 或 Medusa Head。
 </li>
 </ul>
 <p><strong>Lookahead Decoding 的适用场景</strong>：</p>
 <ul>
-<li>无法训练 draft model 的场景（如 API-only 模型）；
+<li>能够控制目标模型的前向、掩码和解码循环，但没有单独草稿模型的部署；
 </li>
 <li>对延迟极度敏感但接受率要求不高的场景；
 </li>
@@ -508,37 +466,17 @@
 </ul>
 <h4 id="h-1542"><a class="anchor-link" href="#h-1542" aria-label="跳转到本节">#</a>详细解答</h4>
 <p><strong>接受率的定义</strong>：</p>
-<p>在 speculative decoding 中，draft model 生成 N 个候选 token，target model 验证这些候选。如果第 i 个候选 token 被 target model 接受（即 target model 也认为这个 token 的概率足够高），则继续验证第 i+1 个；否则回退到第 i 个位置重新采样。</p>
-<p><strong>接受率</strong> = 被接受的 draft token 数 / 总 draft token 数。</p>
-<p>接受率直接决定了 speculative decoding 的加速比：</p>
-<ul>
-<li>接受率 100%：每步可以前进 N 个 token，理论加速比 Nx；
-</li>
-<li>接受率 50%：平均每步前进 1 + 0.5N 个 token；
-</li>
-<li>接受率 0%：每步只前进 1 个 token（无加速，甚至因 draft 开销而变慢）。
-</li>
-</ul>
+<p>在同一前缀下，令 q 为草稿分布、p 为目标分布。对从 q 抽到的词 d，以 min(1,p(d)/q(d)) 的概率接纳。第一个拒绝位置从归一化的 max(p−q,0) 重采一词，这轮后续草稿丢弃；全都接纳时，再由目标模型补一词。</p>
+<p>举例，词表只有甲、乙，q=(0.8,0.2)，p=(0.4,0.6)。草稿甲以 1/2 概率被接受，共贡献 0.4；乙一定接受，贡献 0.2。余下 0.4 的拒绝事件都改采乙，最终甲乙概率回到 (0.4,0.6)。贪心解码另用前缀逐词一致来验证。</p>
+<p>报告接受率应注明分母。按已走到某位置时的条件接受率 α 建模，假设各位置独立同分布，一轮草拟 K 词的期望输出是 1 + α + … + αᴷ。K=4、α=0.5 时是 1.9375 词；α=1 时是 5 词。若直接记录每轮实际提交的草稿前缀长，则用其均值加 1。墙钟加速还取决于草拟和验证花了多久。</p>
 <p><strong>接受率的瓶颈</strong>：</p>
 <p><strong>瓶颈一：draft 分布与 target 分布不匹配</strong></p>
 <p>这是最根本的瓶颈。如果 draft model（或 Medusa Head、Lookahead 猜测）生成的 token 分布与 target model 的真实分布差异大，接受率就会低。</p>
 <p>数学上，接受概率与两个分布的"重叠度"有关。如果 draft 给某个 token 的概率很高，但 target 给它的概率很低，这个 token 几乎一定被拒绝。</p>
 <p><strong>瓶颈二：温度（temperature）的影响</strong></p>
 <ul>
-<li><strong>低温度</strong>（如 T=0.1）：模型输出更确定，draft 和 target 更容易达成一致，接受率高；
-</li>
-<li><strong>高温度</strong>（如 T=1.0）：模型输出更随机，draft 和 target 更容易分歧，接受率低。
-</li>
-</ul>
-<p>这就是为什么 speculative decoding 在 greedy decoding（T=0）场景下效果最好，在创意写作（高温度）场景下效果最差。</p>
-<p><strong>瓶颈三：任务类型</strong></p>
-<ul>
-<li><strong>代码生成</strong>：结构化强，draft 容易猜对，接受率高；
-</li>
-<li><strong>事实问答</strong>：有确定答案，接受率中等；
-</li>
-<li><strong>创意写作</strong>：开放性高，draft 很难猜对 target 的"创意"，接受率低。
-</li>
+<li>固定同一前缀，随机采样的一步接受率是各词 min(p,q) 的总和。温度会改变这个重叠面积；如果两个分布相同，任何共同温度下都能全收。</li>
+<li>贪心时比较首选词是否相同。代码补全或开放写作可能有不同的前缀分布；按任务分别记录实际接纳长度，才能判断草稿是否合算。</li>
 </ul>
 <p><strong>提升接受率的方法</strong>：</p>
 <div class="table-wrap"><table>
@@ -606,16 +544,8 @@
 <li>短序列下即使不用投机解码也很快，加速比不明显。
 </li>
 </ul>
-<p><strong>场景二：温度太高</strong></p>
-<p>高温度（T &gt; 0.7）下，模型的输出高度随机：</p>
-<ul>
-<li>draft model 很难猜中 target model 的随机选择；
-</li>
-<li>接受率极低，大部分 draft token 被拒绝；
-</li>
-<li>每次被拒绝都需要回退和重新采样，反而增加了延迟。
-</li>
-</ul>
+<p><strong>场景二：草稿与目标在当前采样设置下重叠很少</strong></p>
+<p>若实测接纳的前缀很短，草拟耗时可能超过节省的目标模型调用。比较不同温度时保持同一批提示与输出预算，同时记录分布重叠和实际解码时间，才能区分是温度改变了匹配程度，还是本来就选错了草稿模型。</p>
 <p><strong>场景三：Draft model 太弱</strong></p>
 <p>如果 draft model 比 target model 弱太多（如 target 70B，draft 100M）：</p>
 <ul>
@@ -652,7 +582,7 @@
 </li>
 <li><strong>测端到端延迟</strong>：不要只看理论加速比，要测真实的 TTFT（Time To First Token）和 TPOT（Time Per Output Token）；
 </li>
-<li><strong>考虑温度设置</strong>：如果业务用高温度（创意生成），投机解码收益小；如果用低温度（代码/问答），收益大；
+<li><strong>考虑温度设置</strong>：按业务所用温度记录目标与草稿的实际匹配、输出长度及验证成本；
 </li>
 <li><strong>考虑序列长度</strong>：长序列（&gt;100 token）收益更明显；
 </li>
@@ -678,11 +608,11 @@
 <p><strong>为什么需要树形注意力？</strong></p>
 <p>Medusa 的每个 head 可以预测多个候选 token，这些候选可以组合成一棵<strong>候选树</strong>。例如：</p>
 <ul>
-<li>Head-1 预测下一个 token 可能是 A 或 B；
+<li>把已确定的下一词放在 ROOT，第一个额外头给再下一位置提出 A、B；
 </li>
-<li>如果下一个是 A，Head-2 预测下下个可能是 C 或 D；
+<li>第二个额外头从相同前缀提出下一深度的候选 C、D、E、F；
 </li>
-<li>如果下一个是 B，Head-2 预测下下个可能是 E 或 F。
+<li>按选定的树形布局把候选组合成下图中的路径。提案头可以并行，验证时的每个节点只看本路径的祖先。
 </li>
 </ul>
 <p>这样就形成了一棵候选树：</p>
@@ -761,56 +691,9 @@
 </ul>
 <h4 id="h-1551"><a class="anchor-link" href="#h-1551" aria-label="跳转到本节">#</a>详细解答</h4>
 <p><strong>EAGLE 训练数据的构造</strong>：</p>
-<p>EAGLE 需要训练一个 draft model 来预测 target model 的隐藏状态。训练数据的构造分为三步：</p>
-<p><strong>第一步：收集输入序列</strong></p>
-<p>从目标任务的分布中采样大量输入序列（prompt）。这些序列应该覆盖目标任务的典型模式。例如，如果目标是代码生成，就收集大量代码相关的 prompt。</p>
-<p><strong>第二步：提取 target model 的隐藏状态轨迹</strong></p>
-<p>对每个输入序列，用 target model 做完整的前向传播（或者截断到某个长度），记录：</p>
-<ul>
-<li>每个 token 位置的隐藏状态（hidden state）；
-</li>
-<li>通常只记录最后一层的隐藏状态（信息最丰富）；
-</li>
-<li>也可能记录中间层的隐藏状态（用于多尺度 draft）。
-</li>
-</ul>
-<p>这样得到的数据形式是：<code>[(h_1, t_1), (h_2, t_2), ..., (h_n, t_n)]</code>，其中 h_i 是第 i 个位置的隐藏状态，t_i 是对应的 token。</p>
-<p><strong>第三步：构造 draft model 的训练样本</strong></p>
-<p>对于每个位置 i，构造一个训练样本：</p>
-<ul>
-<li><strong>输入</strong>：h_i（当前位置的隐藏状态）
-</li>
-<li><strong>目标</strong>：h_{i+1}（下一个位置的隐藏状态）
-</li>
-</ul>
-<p>Draft model 学习的是：给定当前隐藏状态，预测下一个隐藏状态。</p>
-<p><strong>为什么用特征（隐藏状态）而不是 token？</strong></p>
-<p><strong>原因一：信息密度</strong></p>
-<p>一个 token 只是一个离散符号（如词表中的 ID），信息密度很低。而一个隐藏状态是一个高维向量（如 4096 维浮点数），编码了模型对当前上下气的全部理解。</p>
-<ul>
-<li>Token 级别的预测：从词表中选 1 个（如 50000 选 1），信息量为 log2(50000) ≈ 16 bit；
-</li>
-<li>Feature 级别的预测：预测一个 4096 维向量，信息量为 4096 × 16 bit = 65536 bit。
-</li>
-</ul>
-<p>Feature 级别的预测目标包含更多信息，draft model 可以学到更丰富的模式。</p>
-<p><strong>原因二：分布连续性</strong></p>
-<p>Token 是离散的，feature 是连续的。从 h_i 预测 h_{i+1} 是一个连续映射问题，比离散分类问题更容易学习（梯度更稳定）。</p>
-<p><strong>原因三：直接对齐 target model</strong></p>
-<p>EAGLE 的最终目标是让 draft model 生成的 token 被 target model 接受。如果 draft model 直接学习预测 target model 的隐藏状态，那么：</p>
-<ul>
-<li>draft model 预测的 h_{i+1} 通过 target model 的 projection 层映射成的 token；
-</li>
-<li>与 target model 自己计算的 token 天然更接近；
-</li>
-<li>接受率自然更高。
-</li>
-</ul>
-<p><strong>原因四：压缩表示</strong></p>
-<p>隐藏状态可以看作是对输入序列的"压缩表示"。Draft model 学习的是这种压缩表示的转移规律，而不是表面的 token 转移规律。这类似于学习"语义级别的动力学"而不是"符号级别的动力学"。</p>
-<p><strong>EAGLE 的损失函数</strong>：</p>
-<pre><code class="language-text">L = MSE(draft_model(h_i), h_{i+1})</code></pre>
-<p>简单的 MSE 损失。因为隐藏状态是连续的，不需要复杂的分类损失。</p>
+<p>用固定对话语料向目标模型做教师强制前向，记录每个位置输出头之前的特征 fᵢ 及对应的 token tᵢ。原作者使用 ShareGPT；无需先让目标模型为所有训练提示另行采样回复。训练阶段冻结目标模型，优化额外的自回归头。</p>
+<p>构造一条样本时，输入截至 i 的特征序列与错开一位的词序列（最后一个词是 tᵢ₊₁），目标是下一特征 fᵢ₊₁。若前缀“我去”后可能抽到“北京”或“南京”，只看“我去”的同一表示，无法判断要拟合哪条后续轨迹；把已选择的词给草稿网络就能区分。</p>
+<p>作者使用两种监督。一项是预测特征与真实特征的 Smooth L1 回归损失，另一项把两种特征都送入冻结的词表投影，计算真实与预测下一词分布间的交叉熵。论文用 0.1 给后者加权。草稿头因此既要逼近特征，也要在对采样有影响的输出概率上逼近目标。</p>
 <hr>
 <h3 id="h-1552"><a class="anchor-link" href="#h-1552" aria-label="跳转到本节">#</a>334. 投机解码中的"验证步"和"草拟步"的延迟如何权衡？什么比例最优？</h3>
 <h4 id="h-1553"><a class="anchor-link" href="#h-1553" aria-label="跳转到本节">#</a>知识点</h4>
@@ -855,14 +738,14 @@
 </li>
 </ul>
 <p><strong>最优 K 的选择</strong>：</p>
-<p>理论上，最优 K 取决于接受率 α：</p>
+<p>比较不同 K 时，把期望输出词数除以一轮实际的草拟和验证时间：</p>
 <ul>
-<li>如果接受率很高（如 α &gt; 0.8），K 越大越好——因为大部分 draft token 被接受，每验证步前进的距离长；
+<li>即使 α 很高，多猜第 K 个词的边际收益也只有 αᴷ，而草拟仍有计算成本；
 </li>
 <li>如果接受率很低（如 α &lt; 0.3），K 应该小——因为大部分 draft token 被拒绝，大 K 只是浪费 draft 时间。
 </li>
 </ul>
-<p>经验上，K 通常在 3-8 之间。Medusa 的实验表明，4-5 个 head 是 sweet spot。</p>
+<p>例如 K=4、α=0.8 时平均输出 3.36 词；增到 K=5 只多约 0.33 词。是否值得由当前硬件、批量与这一步的额外耗时决定。</p>
 <p><strong>流水调度优化</strong>：</p>
 <p>更高级的优化是<strong>流水线化</strong>：</p>
 <ol>
@@ -873,7 +756,7 @@
 <li>第 3 步：target model 验证第 2 步的候选（同时 draft model 生成下一批）...
 </li>
 </ol>
-<p>这样 draft 和 verification 可以部分重叠，减少总延迟。</p>
+<p>独立请求之间可以交叠。对同一请求，提前草拟的下一批只在假设的前缀被接受时有效；前一批出现拒绝必须丢弃依赖该前缀的工作并回滚状态。</p>
 <p><strong>面试中的实用建议</strong>：</p>
 <p>不要追求"理论最优 K"，而是：</p>
 <ol>
@@ -994,7 +877,7 @@
 <h4 id="h-1560"><a class="anchor-link" href="#h-1560" aria-label="跳转到本节">#</a>详细解答</h4>
 <p>这个问题没有固定答案，需要分析<strong>延迟的构成</strong>和<strong>投机解码对延迟的影响</strong>。</p>
 <p><strong>延迟的分解</strong>：</p>
-<p>在对话场景中，用户感知的延迟 = TTFT + 累计 TPOT：</p>
+<p>文本完整到达的时间等于 TTFT 加上首词之后各词间隔的总和；等待第一词只看 TTFT。</p>
 <ul>
 <li><strong>TTFT（Time To First Token）</strong>：从用户发送消息到看到第一个回复 token 的时间；
 </li>
@@ -1004,9 +887,9 @@
 <p><strong>投机解码对 TTFT 的影响</strong>：</p>
 <p>投机解码通常<strong>增加 TTFT</strong>：</p>
 <ul>
-<li>在生成第一个 token 之前，需要先运行 draft model 生成候选；
+<li>有的实现先攒第一批草稿并验证，有的实现先发送目标模型已有的第一个 token；
 </li>
-<li>这个 draft 步骤增加了首 token 的延迟；
+<li>若服务端等待整批验证才输出，草拟会进入首词的关键路径；若首词已由目标模型直接发出，则主要影响后续速度。
 </li>
 <li>如果用户非常在意"多久看到第一个字"，增加 TTFT 可能是不可接受的。
 </li>
@@ -1077,104 +960,9 @@
 <p><strong>面试中的高分表达</strong>：</p>
 <p>是否用投机解码，不能一概而论。关键要看<strong>业务场景对 TTFT 和 TPOT 的敏感度</strong>。如果业务是"用户说一句，模型回一句"的短对话，TTFT 更重要，投机解码可能得不偿失；如果业务是"用户要求写一篇长文"，TPOT 更重要，投机解码的收益会被放大。最好的做法是在真实业务数据上做 A/B 测试，测端到端的用户体验指标（如用户满意度、任务完成率），而不是只看理论加速比。</p>
 <hr>
-<h4 id="h-1561"><a class="anchor-link" href="#h-1561" aria-label="跳转到本节">#</a>深度解析</h4>
-<p><strong>1. 为什么不能按"词"切？</strong></p>
-<p>假设我们按空格分词，词表就是所有出现过的单词。会遇到三个致命问题：</p>
-<p><strong>问题一：词表爆炸</strong></p>
-<p>英语里 "run", "runs", "ran", "running" 是同一个词的不同形式。如果都进词表，一个词占了 4 个位置。英语还好，但像芬兰语、土耳其语这种黏着语，一个词可以有上百种形态变化。</p>
-<p><strong>问题二：OOV（未登录词）</strong></p>
-<p>人名 "Zhangsan"、新词 "元宇宙"、拼写错误 "teh"（应该是 "the"）、代码变量名 <code>user_id_2024</code>——这些都不可能出现在训练词表里。按词切分的话，它们全部变成 &lt;UNK&gt;，模型完全不理解。</p>
-<p><strong>问题三：多语言灾难</strong></p>
-<p>中文没有空格。"我爱北京天安门" 如果按字切："我" "爱" "北" "京" "天" "安" "门"——丢失了"北京""天安门"这样的词组信息。如果按词切（需要额外分词工具）："我" "爱" "北京" "天安门"——但需要先解决分词歧义（"南京市长江大桥" 是 "南京/市/长江大桥" 还是 "南京市/长江/大桥"？）。</p>
-<hr>
-<p><strong>2. Tokenization 的本质是什么？</strong></p>
-<p>Tokenization = <strong>把连续文本映射成离散符号序列</strong>。</p>
-<p>它不是语言学上的"分词"，而是一个<strong>压缩问题</strong>：</p>
-<ul>
-<li>目标：用最短的 token 序列表示原始文本
-</li>
-<li>约束：token 必须来自固定词表
-</li>
-<li>优化：高频组合尽量用一个 token，低频组合拆开
-</li>
-</ul>
-<p>好的 tokenizer 应该满足：</p>
-<ol>
-<li><strong>紧凑性</strong>：平均每个词用尽量少的 token（英语 ~1.3 token/词，中文 ~1.5-2 token/字）
-</li>
-<li><strong>覆盖率</strong>：OOV 率尽量低
-</li>
-<li><strong>语义性</strong>：切分边界尽量在语义边界上
-</li>
-</ol>
-<hr>
-<p><strong>3. Token 数 vs 字符数：为什么这个比例很重要？</strong></p>
-<div class="table-wrap"><table>
-<thead><tr>
-<th>语言</th>
-<th>文本</th>
-<th>字符数</th>
-<th>Token 数</th>
-<th>比例</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>英文</td>
-<td>"Hello world"</td>
-<td>11</td>
-<td>2-3</td>
-<td>~0.27</td>
-</tr>
-<tr>
-<td>中文</td>
-<td>"你好世界"</td>
-<td>4</td>
-<td>2-4</td>
-<td>~0.75</td>
-</tr>
-<tr>
-<td>代码</td>
-<td><code>def hello():</code></td>
-<td>12</td>
-<td>4-6</td>
-<td>~0.42</td>
-</tr>
-</tbody></table></div>
-<p><strong>为什么中文的 token/字符比更高？</strong></p>
-<p>因为大多数 tokenizer 在英语语料上训练，中文 token 较少。一个中文字经常被切成 1-2 个 token，甚至更多。这带来两个问题：</p>
-<ol>
-<li>同样长度的上下文窗口，中文能容纳的"字"更少
-</li>
-<li>中文推理成本更高（token 数多 → 计算量大）
-</li>
-</ol>
-<p>这也是中文大模型常常需要专门训练 tokenizer 的原因。</p>
-<hr>
-<p><strong>4. 面试官常见深挖追问</strong></p>
-<ul>
-<li><strong>"Tokenizer 对模型效果影响有多大？"</strong>
-<ul>
-<li>答：非常大。Tokenizer 决定了：1）序列长度（影响 attention 计算量）；2）词表大小（影响 embedding 层参数量，通常占模型总参数 10-20%）；3）OOV 率；4）不同语言的切分公平性。有研究表明，换一个更好的 tokenizer 可以让同规模模型提升 2-5 个百分点。
-</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li><strong>"中英文混合文本怎么切分？"</strong>
-<ul>
-<li>答：现代 tokenizer（如 SentencePiece）直接在字节/字符流上训练，不区分语言，所以中英文混用没问题。但问题是：如果训练语料中英语占 90%，tokenizer 会倾向于为英语生成更紧凑的 token，中文 token 就会更碎。解决方法：1）平衡多语言训练语料；2）专门为中文增加训练数据；3）用更大的词表。
-</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li><strong>"代码的 tokenizer 和文本的 tokenizer 有什么区别？"</strong>
-<ul>
-<li>答：代码有大量重复模式（如 <code>def </code>, <code>import </code>, <code>return </code>），而且空格/缩进有语义（Python）。好的代码 tokenizer 会把常见关键字和模式作为独立 token，比如 <code>def</code>, <code>return</code>, <code>self.</code>, <code>__init__</code>。这能显著减少代码序列长度，提高代码生成效率。
-</li>
-</ul>
-</li>
-</ul>
+<h4 id="h-1561"><a class="anchor-link" href="#h-1561" aria-label="跳转到本节">#</a>实时对话的计时算例</h4>
+<p>自拟例子。两种实现分别在 240 ms 和 300 ms 送达第一个词；随后每个词分别用 40 ms 和 20 ms。若输出 11 个词，末词到达时间分别为 640 ms 与 500 ms。第二种实现整句快了 140 ms，但用户多等了 60 ms 才看见首词。若有语音合成，还须从用户说完量到第一段可听音频。需要比较文本怎么变成 token 时，可回到<a href="039.html#h-0523">第 39 章第 14 题的中英文字节与分词算例</a>。</p>
+<p><strong>原始资料</strong>　<a href="https://arxiv.org/abs/2211.17192">精确投机采样</a> · <a href="https://arxiv.org/abs/2401.10774">Medusa</a> · <a href="https://arxiv.org/abs/2401.15077">EAGLE</a> · <a href="https://lmsys.org/blog/2023-11-21-lookahead-decoding/">Lookahead Decoding</a></p>
 </section>
       </article>
       <nav class="chapter-nav"><a href="088.html">← 88. KV Cache 压缩与驱逐技术专项强化题库（第十八批：H2O、SnapKV、StreamingLLM 与 Prefix Caching）</a><a href="072.html">72. 数学基础专项总入口 →</a></nav>

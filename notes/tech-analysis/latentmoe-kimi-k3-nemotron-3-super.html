@@ -14,7 +14,7 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
   <link rel="stylesheet" href="../assets/notes-shell.css">
   <style>
     :root {
@@ -119,7 +119,7 @@
   <header id="top">
     <div class="kicker">Tech Analysis · Mixture of Experts</div>
     <h1>LatentMoE 深读：Kimi K3 与 Nemotron 3 Super 真走上了同一条路吗？</h1>
-    <p class="lede">LatentMoE 最重要的贡献，不是又给 MoE 加了一个压缩层，而是把“主干需要多宽”与“每次路由必须搬多少字节”解耦：专家路径先降到潜在维度，再把节省下来的内存与通信预算换成更多专家和更高 Top-K。这个方向值得重视，但 Kimi K3 与 NVIDIA 方案目前只有名称和高层目标相似；把两者视为同一实现，证据仍然不足。</p>
+    <p class="lede">LatentMoE 最重要的贡献，不是又给 MoE 加了一个压缩层，而是把“主干需要多宽”与“每次路由必须搬多少字节”解耦：专家路径先降到潜在维度，再把节省下来的内存与通信预算换成更多专家和更高 Top-K。这个方向值得重视，K3 后续技术报告确认两者共享一项设计：普通共享专家保留全宽，路由专家在低维空间计算。潜在宽度、路由均衡和执行系统仍各有设计。</p>
     <div class="toc" aria-label="目录">
       <a href="#takeaway">核心判断</a><a href="#problem">真实问题</a><a href="#mechanism">机制</a><a href="#variants">两种变体</a><a href="#evidence">证据</a><a href="#claim-audit">主张审计</a><a href="#comparison">K3 vs Nemotron</a><a href="#limits">边界</a><a href="#insight">独立 Insight</a><a href="#sources">资料索引</a>
     </div>
@@ -128,11 +128,11 @@
   <main>
     <section id="takeaway">
       <h2>核心判断</h2>
-      <p><strong>这篇 X Article 抓对了 LatentMoE 的动机和 NVIDIA 方案的主体机制，却把三种不同证据压成了一个过强结论：</strong>95B 以内的预训练对照是真实实验，H100 上的吞吐是真机测量，万亿参数的 350B / 3.46× 是模拟投影，而 Kimi K3 的 Stable LatentMoE 截至 2026-07-20 仍只有发布博客，没有技术报告与权重可供结构核验。</p>
+      <p><strong>这篇 X Article 抓对了 LatentMoE 的动机和 NVIDIA 方案的主体机制，却把三种不同证据压成了一个过强结论：</strong>95B 以内的预训练对照是真实实验，H100 上的吞吐是真机测量，万亿参数的 350B / 3.46× 是模拟投影。7 月 20 日的 K3 发布博客只概述了结构，后出的技术报告补上了维度和路径，见下文两模型的对照表。</p>
       <div class="grid-3">
         <div class="card"><h3>机制判断：成立</h3><p>专家权重读取与 All-to-All 的确可能成为 MoE 服务瓶颈；把 routed width 从 \(d\) 降到 \(\ell\) 会按约 \(d/\ell\) 缩减专家权重字节与路由 payload。</p></div>
         <div class="card"><h3>效果判断：有条件成立</h3><p>LatentMoE 在论文的 95B Transformer 与 73B hybrid 对照上整体更优，但收益随任务不同，真机吞吐也不是所有并发点都更快。</p></div>
-        <div class="card"><h3>K3 归因：尚未核验</h3><p>Moonshot 公布了 896 / Top-16、Quantile Balancing 与 Stable LatentMoE 名称，却没有公开潜在维度、专家矩阵、投影路径或消融。</p></div>
+        <div class="card"><h3>K3 的路由路径与效果归因</h3><p>Moonshot 后续报告给出 7168 维主干、3584 维路由空间、896 个路由专家和每 token 有效激活 16 个。K3 的总体训练效率还受注意力、优化器和数据影响。</p></div>
       </div>
       <div class="callout warn"><b>最容易被误读的一句话</b>“同等推理成本咨询 4 倍专家”不是所有 LatentMoE 配置自动得到的免费收益。它对应 NVIDIA 的 accuracy-oriented 变体：压缩 routed width 的同时，把总专家数与 Top-K 都放大；如果只压缩、不补专家数量，论文自己的消融显示质量会明显下降。</div>
     </section>
@@ -256,8 +256,8 @@
             <tr><td>同参数、同成本下所有任务都更准</td><td class="status reported">发布方报告</td><td>论文所列聚合任务全部更高，但增益从 +0.49pp 到 +5.65pp 不等，无 seed / CI，且尚无独立复现。</td></tr>
             <tr><td>标准 MoE 要多 350B 参数，LatentMoE 最高快 3.5×</td><td class="status inferred">模型投影</td><td>来自 dense scaling-law 外推、等精度构造与 proprietary serving simulator，不是 1T / 1.35T 真机 A/B。</td></tr>
             <tr><td>额外投影开销约 9%</td><td class="status inferred">模型投影</td><td>是万亿参数模拟中 native Kimi-K2-1T 与构造变体的差距上界，不是普适实测常数。</td></tr>
-            <tr><td>Kimi K3 与 Nemotron 3 Super 做了同一个 LatentMoE 选择</td><td class="status reported">名称层面成立</td><td>两家都公开使用 LatentMoE 命名；只有 Nemotron 已公开投影与专家形状，K3 的 Stable LatentMoE 细节仍待技术报告。</td></tr>
-            <tr><td>K3 相比 K2 有约 2.5× scaling efficiency</td><td class="status reported">发布方报告</td><td>Moonshot 官方博客这样表述，但未定义测量轴、拟合方法、训练 compute 或对照曲线，暂时无法独立复算。</td></tr>
+            <tr><td>Kimi K3 与 Nemotron 3 Super 做了同一个 LatentMoE 选择</td><td class="status reported">结构可比</td><td>两者都压缩路由路径并保留全宽共享专家。Nemotron 与 K3 的压缩比分别为 4 和 2，路由方法也不同。</td></tr>
+            <tr><td>K3 相比 K2 有约 2.5× scaling efficiency</td><td class="status reported">发布方报告</td><td>K3 技术报告 §3.2、图 7 在留出的分布外验证数据上比较损失与训练 FLOPs。达到相近损失时，两条拟合曲线的横向距离约为 2.5 倍。这项比较同时更换了架构、数据与训练配方。</td></tr>
           </tbody>
         </table>
       </div>
@@ -269,19 +269,19 @@
         <table>
           <thead><tr><th>维度</th><th>Nemotron 3 Super</th><th>Kimi K3</th><th>证据状态</th></tr></thead>
           <tbody>
-            <tr><td>总 / active 参数</td><td>120.6B / 12.7B（含 embedding）</td><td>2.8T；官方尚未给完整 active-parameter 口径</td><td>Nemotron 技术报告；K3 发布博客</td></tr>
+            <tr><td>总 / active 参数</td><td>120.6B / 12.7B（含 embedding）</td><td>约 2.8T / 104.2B</td><td>两家技术报告</td></tr>
             <tr><td>专家配置</td><td>512 experts，Top-22</td><td>896 experts，Top-16</td><td>两者均由官方公布</td></tr>
-            <tr><td>主干 / latent 维度</td><td>\(d=4096, \ell=1024\)，压缩比 4</td><td>未公布</td><td>不能从名称反推 K3 形状</td></tr>
-            <tr><td>专家路径</td><td>下投影 → latent dispatch / expert → 上投影；gate 与 shared expert 保持 \(d\)</td><td>官方架构图标注 Stable LatentMoE，但无可核对公式或矩阵尺寸</td><td>K3 实现待报告 / 权重</td></tr>
-            <tr><td>路由平衡</td><td>sigmoid router、bias-based aux-loss-free balancing，并保留小系数 load-balancing loss</td><td>Quantile Balancing，从 router-score quantile 推导分配；细节未披露</td><td>不是同一种公开路由算法</td></tr>
+            <tr><td>主干 / latent 维度</td><td>\(d=4096, \ell=1024\)，压缩比 4</td><td>主干 7168、路由空间 3584，压缩比 2</td><td>K3 技术报告表 1 与 §2.3</td></tr>
+            <tr><td>专家路径</td><td>下投影 → latent dispatch / expert → 上投影；gate 与 shared expert 保持 \(d\)</td><td>共享专家全宽，路由专家先下投影、处理后再上投影</td><td>K3 技术报告 §2.3</td></tr>
+            <tr><td>路由平衡</td><td>sigmoid router、bias-based aux-loss-free balancing，并保留小系数 load-balancing loss</td><td>Quantile Balancing，按路由得分相对入选门槛的分布估计专家偏置</td><td>不是同一种公开路由算法</td></tr>
             <tr><td>序列建模</td><td>Mamba-2 为主，少量全局 attention anchor</td><td>KDA + Gated MLA，并使用 Attention Residuals 处理跨深度信息流</td><td>架构骨架显著不同</td></tr>
-            <tr><td>长上下文</td><td>1M；报告给出 RULER 结果与训练阶段</td><td>1M；官方发布博客声明</td><td>K3 尚无训练 / 评测细节</td></tr>
-            <tr><td>开放状态（2026-07-20）</td><td>报告、BF16 / FP8 / NVFP4 权重、数据与 recipes 已发布</td><td>API 已开放；技术报告待发布，完整权重承诺于 7 月 27 日前发布</td><td>当前不能称两者同等可核验</td></tr>
+            <tr><td>长上下文</td><td>1M；报告给出 RULER 结果与训练阶段</td><td>1M；技术报告说明长上下文训练与评测</td><td>两者均有发布方报告</td></tr>
+            <tr><td>开放状态（2026-07-20）</td><td>报告、BF16 / FP8 / NVFP4 权重、数据与 recipes 已发布</td><td>API 已开放；技术报告待发布，完整权重承诺于 7 月 27 日前发布</td><td>此行为 7 月 20 日的开放状态快照</td></tr>
           </tbody>
         </table>
       </div>
-      <p>因此，“两条路线、同一方向”可以保留：两者都在把 MoE 的核心竞争从 active FLOPs 转向 accuracy per moved byte，并尝试用极稀疏专家池扩大容量。但“同一种 LatentMoE”必须等待 K3 的技术报告、配置与权重。Stable LatentMoE 还同时包含 Quantile Balancing、Per-Head Muon、SiTU 等稳定性设计；它可能是一个更宽的系统包，而不是 NVIDIA 模块的直接复刻。</p>
-      <div class="callout warn"><b>“开放模型”也要区分时间点</b>Moonshot 称 K3 为 open 3T-class model，但发布博客同时写明完整权重将在 2026-07-27 前发布。截至本文核验日，能调用 API 不等于已拥有可审计的 open weights；架构判断应以当时实际发布物为准。</div>
+      <p>因此，“两条路线、同一方向”可以保留：两者都在把 MoE 的核心竞争从 active FLOPs 转向 accuracy per moved byte，并尝试用极稀疏专家池扩大容量。随后公开的技术报告支持两者共享低维路由思路。Stable LatentMoE 还同时包含 Quantile Balancing、Per-Head Muon、SiTU 等稳定性设计；它可能是一个更宽的系统包，而不是 NVIDIA 模块的直接复刻。</p>
+      <div class="callout warn"><b>“开放模型”也要区分时间点</b>Moonshot 称 K3 为 open 3T-class model，但发布博客同时写明完整权重将在 2026-07-27 前发布。这是 7 月 20 日时可获得的资料。上表已按照后来公开的架构报告补全结构参数。</div>
     </section>
 
     <section id="terms">
@@ -292,7 +292,7 @@
         <div><b>Combinatorial sparsity</b><span>从 \(N\) 个专家选 \(K\) 个共有 \(\binom{N}{K}\) 种组合。它描述潜在路由多样性，不保证训练后每种组合都有意义。</span></div>
         <div><b>Feature rank</b><span>保留任务相关信息所需的最低表示自由度。若 \(\ell\) 低于这个隐含下限，投影会造成不可恢复的信息损失。</span></div>
         <div><b>Iso-FLOP / iso-parameter</b><span>分别在近似相同计算量或相同参数量下比较。论文的多个表格约束不同，不能把一张表的结论直接迁移到另一种预算。</span></div>
-        <div><b>Quantile Balancing</b><span>K3 发布博客提出的专家平衡方法：按 router score 的分位数推导分配，目标是消除启发式 bias 更新和敏感平衡超参数；公式与完整实验尚未公开。</span></div>
+        <div><b>Quantile Balancing</b><span>K3 发布博客提出的专家平衡方法：按 router score 的分位数推导分配，目标是消除启发式 bias 更新和敏感平衡超参数；K3 技术报告 §2.3 给出了偏置估计的计算步骤。</span></div>
       </div>
     </section>
 
@@ -305,9 +305,9 @@
         <li><strong>更多组合可能只是更大的搜索空间。</strong>如果 router 只用少数专家、专家趋同或负载平衡过强，\(\binom{N}{K}\) 的理论组合数不会转化为有效 specialization。</li>
         <li><strong>系统收益依赖拓扑。</strong>NVLink domain 内的结论不能原样外推到 PCIe、RoCE、跨节点 IB 或云上异构集群；高 \(K\) 还会加重 dispatch bookkeeping。</li>
         <li><strong>共享投影可能成为新的耦合点。</strong>所有 routed experts 共用 \(W_{\downarrow}\) / \(W_{\uparrow}\)，它节省参数，却也可能形成信息瓶颈或专家间相关性；论文没有与 per-group projection 等替代方案做充分消融。</li>
-        <li><strong>K3 当前不可复算。</strong>2.5× scaling efficiency 没有公开定义，Stable LatentMoE 没有结构表，Quantile Balancing 没有算法与消融；任何细节化解释都必须标为假设。</li>
+        <li><strong>K3 的单模块收益仍难分离。</strong>报告给出了架构表和路由算法，约 2.5 倍是多项架构、数据与训练改动共同对应的效率估计。</li>
       </ol>
-      <p>什么证据会改变当前判断？最关键的是 K3 技术报告与配置、公开权重中的 expert tensor shape、独立 serving benchmark，以及 LatentMoE 在非 NVIDIA 拓扑和多 seed 预训练中的复现。若这些证据显示 K3 没有 \(d\rightarrow\ell\rightarrow d\) 的共享专家路径，那么“同一种架构”应被直接撤回；若独立测量在等精度下稳定重现 Pareto 优势，当前较谨慎的效果判断才应上调。</p>
+      <p>结构问题已有明确答案。要判断两种实现各自节省多少服务成本，仍需要在相同质量、并发和硬件拓扑下比较吞吐与延迟，并把训练配方的影响单独控制。</p>
     </section>
 
     <section id="insight">
@@ -332,7 +332,7 @@
         <li><strong>把负面消融当主实验。</strong>必须 sweep \(\ell\)、是否扩大 \(N\)、是否扩大 \(K\)、shared expert 是否保留 \(d\)，并检查路由熵、专家相似度、dead experts 和 token dropping。</li>
         <li><strong>端到端测量覆盖流量分布。</strong>至少包含 batch 1、交互 decode、中高并发、长 prefill、不同 ISL / OSL 和实际网络拓扑；单个吞吐点无法证明 Pareto 优势。</li>
         <li><strong>不要让小 GEMM 吃掉字节收益。</strong>要同时评估 grouped GEMM、shared / routed overlap、dispatch fusion、expert placement 和 quantization；否则理论下降的通信会被 kernel launch 与 SM 利用率抵消。</li>
-        <li><strong>对 K3 保持可更新判断。</strong>在报告和权重发布前，只引用官方已披露的 896 / Top-16、1M context 与组件名称，不编造 latent size、active parameters 或 Quantile Balancing 公式。</li>
+        <li><strong>对 K3 保持可更新判断。</strong>引用架构尺寸时以技术报告为准，引用 2.5 倍效率时保留发布方总体估计的口径。</li>
       </ul>
     </section>
 
@@ -348,7 +348,8 @@
         <li><a href="https://research.nvidia.com/labs/nemotron/Nemotron-3-Super/">NVIDIA Nemotron 3 Super 发布页</a> — 模型、权重、数据、吞吐与上下文发布状态。</li>
         <li><a href="https://www.kimi.com/blog/kimi-k3">Moonshot AI：Kimi K3 Tech Blog</a> — 2.8T、896 / Top-16、Stable LatentMoE、Quantile Balancing、约 2.5× scaling efficiency 与开放时间表的官方来源。</li>
       </ul>
-    </section>
+    <p><a href="https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf">Moonshot AI，Kimi K3 技术报告，表 1 与 §2.3</a></p>
+</section>
   </main>
 </body>
 </html>

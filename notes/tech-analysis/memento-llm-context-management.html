@@ -476,23 +476,24 @@
 
 <div class="card card-green">
   <div class="card-title">核心发现：能力保留</div>
-  <p>基座模型和 Memento 模型<strong>能解的题目重叠率平均 96.4%</strong>，某些设置下达 100%。模型保留了解题能力，下降的是<strong>单次尝试的一致性</strong>。</p>
+  <p>在九种模型与 AIME 年份组合中，比较每题 64 次采样至少答对一次的题目集合。两模型解题集合的交集除以并集（Jaccard）平均为 <strong>96.4%</strong>，有两种组合达到 100%。这支持相近的解题覆盖；单次作答的成功率仍可能不同。</p>
   <p>这意味着精度差距是<strong>可弥合的</strong>——多数投票 k=3 就足以让 Memento 匹配甚至超过原始基线。</p>
 </div>
 
-<h3>5.3 RL 恢复精度</h3>
+<h3>5.3 RL 恢复精度与指标口径（Peak KV vs. AUC KV）</h3>
 
-<p>用 <strong>CISPO</strong> 对 Qwen3-8B Memento checkpoint 做 RL 微调：</p>
+<p>评估上下文压缩时，只看 <strong>Peak KV</strong>（单次请求的峰值显存）还不够，论文同时引入 <strong>AUC KV</strong>（KV 占用随生成步数的曲线下面积，衡量 memory-time 总成本），用来暴露“峰值降了、但生成变长导致总成本反升”的失败模式。</p>
+
+<p>在主基准上，Qwen3-32B 在 AIME'26 从 Base <strong>75.2%</strong> 到 Memento SFT <strong>72.6%</strong>（仅降 2.6 pp，同时大幅降低 Peak KV）。Qwen3-8B 的 SFT 差距较大，但用 <strong>CISPO</strong> 做 RL 微调后，AIME'26 从 <strong>57.3%</strong> 回升至 <strong>64.9%</strong>，GPQA-Diamond 亦恢复至基线以上——说明压缩造成的主要是单次采样一致性下降，而非能力消失，且 RL 后 KV 节省仍然显著。</p>
 
 <div class="table-wrap">
 <table>
-  <tr><th>基准</th><th>Vanilla 基座</th><th>Memento (SFT)</th><th>Memento + RL</th></tr>
-  <tr><td>AIME'26</td><td>基线</td><td>略低</td><td class="best">恢复至基线 / 超越</td></tr>
-  <tr><td>GPQA-Diamond</td><td>基线</td><td>略低</td><td class="best">恢复至基线 / 超越</td></tr>
+  <tr><th>基准 / 指标</th><th>Vanilla 基座</th><th>Memento (SFT)</th><th>Memento + RL</th></tr>
+  <tr><td>AIME'26（Qwen3-8B）</td><td>基线</td><td>57.3%</td><td class="best">64.9%（恢复/超越）</td></tr>
+  <tr><td>AIME'26（Qwen3-32B）</td><td>75.2%</td><td>72.6%（−2.6 pp）</td><td>规模越大差距越小</td></tr>
+  <tr><td>GPQA-Diamond（Qwen3-8B）</td><td>基线</td><td>略低</td><td class="best">恢复至基线 / 超越</td></tr>
 </table>
 </div>
-
-<p>RL 后 KV 节省仍然显著——精度恢复不以牺牲效率为代价。</p>
 
 <h3>5.4 规模效应</h3>
 
@@ -548,15 +549,19 @@
 </table>
 </div>
 
-<p><strong>15 个百分点的差距</strong>——这绝非噪声，强烈证明 KV 隐式通道对精度至关重要。</p>
+<p>两组相差 <strong>15.3 个百分点</strong>。论文在 AIME’24 的 Qwen3-8B、32K 生成预算下，以 64 次重复估计保留缓存的 pass@1，以 8 次重复估计重启条件。核心区别在于计算条件不同：正常模式下 <code>KV(M<sub>i</sub> | T<sub>i</sub>, M<sub>&lt;i</sub>, prompt)</code> 是在看过原思考块 <code>T<sub>i</sub></code> 后生成的，而重启模式下 <code>KV(M<sub>i</sub> | M<sub>&lt;i</sub>, prompt)</code> 丢失了对 <code>T<sub>i</sub></code> 的隐式依赖。结果支持摘要的缓存状态携带了文字之外的信息；论文没有为这项差值给出配对置信区间。</p>
 
 <h3>6.3 线性探针实验</h3>
 
-<p>更直接的验证：在目标块中注入一个随机 5 位数密码，遮蔽该块，然后在<strong>从未直接 attend 过该块的下游 memento</strong> 的 KV 状态上训练线性探针——能恢复密码吗？</p>
+<p>更直接的验证：在真实 AIME'25 轨迹的目标块 <code>T<sub>2</sub></code> 中注入随机 5 位数密码，遮蔽该块，然后在不同位置的 memento KV 状态上训练线性探针恢复密码：</p>
 
-<div class="card card-violet">
-  <div class="card-title">能！信息确实通过 KV 状态泄漏</div>
-  <p>探针能以远超随机的准确率重建密码。泄漏集中在<strong>更深层</strong>，随距目标块的距离衰减，但<strong>即使 7 个块之后仍可检测</strong>，且随模型容量增大而增强。</p>
+<div class="table-wrap">
+<table>
+  <tr><th>条件</th><th>探针位置</th><th>实验结果与解释</th></tr>
+  <tr><td>Direct</td><td><code>M<sub>2</sub></code> 的 KV（生成时可见 <code>T<sub>2</sub></code>）</td><td>可恢复约 <strong>60–70%</strong>，说明 KV 状态携带远超摘要文本的信息。</td></tr>
+  <tr><td>Masked</td><td><code>M<sub>3</sub></code> 的 KV（无法直接看到 <code>T<sub>2</sub></code>）</td><td>Qwen3-8B 约 <strong>26.7%</strong>、Qwen3-32B 约 <strong>23.0%</strong>，显著高于 10% 随机基线；深层更集中，即使 7 个块后仍可检测。</td></tr>
+  <tr><td>Causal control</td><td><code>T<sub>2</sub></code> 之前的 <code>M<sub>1</sub></code></td><td>接近 <strong>10%</strong> 随机基线，确认信号方向正确、非探针作弊。</td></tr>
+</table>
 </div>
 
 <h3>6.4 为什么这是架构必然</h3>
@@ -623,9 +628,21 @@
 <h3>未来方向</h3>
 
 <div class="card card-green">
-  <div class="card-title">最令人兴奋的方向：Agent 场景</div>
-  <p>Memento 当前以数学/代码/科学推理为测试用例，但作者认为<strong>最有趣的应用是 agent</strong>。终端和 CLI agent 天然是多轮的，每个 action-observation 循环就是一个自然块，选择性地记住和遗忘正是当前 OSS agent 所缺少的。Anthropic 和 OpenAI 近期在 agent 上下文压缩上的工作也指向同一方向。</p>
+  <div class="card-title">对 Claude Code / CLI Agent 的工程含义：为什么“清掉 KV cache”不只是丢加速？</div>
+  <p>Memento 当前以数学/代码/科学推理为测试用例，但作者在 X 讨论中将它直接连接到长会话 coding agent（如 Claude Code）的 idle 体验：<strong>保存 transcript 不等于保存 session state</strong>。文本重放能恢复显式记录，但无法恢复连续生成时 summary token 看过完整上下文后形成的隐式 KV 状态。</p>
 </div>
+
+<div class="table-wrap">
+<table>
+  <tr><th>长 Agent 会话中的状态</th><th>纯文本 Memory / 摘要</th><th>连续 KV 状态通道</th></tr>
+  <tr><td>已读文件、错误日志、用户约束</td><td>可保存，但受限于摘要完整度与检索命中率</td><td>提供对当前任务状态的连续隐式压缩</td></tr>
+  <tr><td>“刚刚为何放弃另一条排查路线”</td><td>未显式写出即丢失</td><td>可能残留在推理块的隐式状态里</td></tr>
+  <tr><td>代码库局部结构的注意力焦点</td><td>文字概括通常较粗糙</td><td>携带更高带宽但不可解释的注意力焦点</td></tr>
+  <tr><td>长时间 idle 后缓存被 flush</td><td>需依赖 transcript / prompt compaction 重建</td><td>隐式状态丢失，计算条件退化为 Restart 模式</td></tr>
+</table>
+</div>
+
+<p>因此，未来强长程 Agent 的记忆更可能是<strong>三层并存</strong>：显式 transcript 负责可审计记录，外部 memory/RAG 负责跨会话长期知识，服务端 KV/state management 负责连续推理中的短期隐式状态。需要强调的边界是：Anthropic 并未公开 Claude Code idle 策略的内部实现，上述对照是机制层面的解释而非产品实测证明。</p>
 
 <div class="card card-gold">
   <div class="card-title">社区讨论中的有趣想法</div>

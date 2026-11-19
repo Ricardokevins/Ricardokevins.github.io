@@ -11,6 +11,9 @@
 
 import pandas as pd
 import os
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
 
 
 # ## Data format
@@ -33,7 +36,7 @@ import os
 
 # In[3]:
 
-talks = pd.read_csv("talks.tsv", sep="\t", header=0)
+talks = pd.read_csv(ROOT / "talks.tsv", sep="\t", header=0)
 talks
 
 
@@ -70,24 +73,23 @@ for row, item in talks.iterrows():
     html_filename = str(item.date) + "-" + item.url_slug 
     year = item.date[:4]
     
-    md = "---\ntitle: \""   + item.title + '"\n'
+    md = "---\ntitle: \""   + html_escape(item.title) + '"\n'
     md += "collection: talks" + "\n"
     
     if len(str(item.type)) > 3:
-        md += 'type: "' + item.type + '"\n'
+        md += 'type: "' + html_escape(item.type) + '"\n'
     else:
         md += 'type: "Talk"\n'
     
     md += "permalink: /talks/" + html_filename + "\n"
     
     if len(str(item.venue)) > 3:
-        md += 'venue: "' + item.venue + '"\n'
+        md += 'venue: "' + html_escape(item.venue) + '"\n'
         
-    if len(str(item.location)) > 3:
-        md += "date: " + str(item.date) + "\n"
+    md += "date: " + str(item.date) + "\n"
     
     if len(str(item.location)) > 3:
-        md += 'location: "' + str(item.location) + '"\n'
+        md += 'location: "' + html_escape(str(item.location)) + '"\n'
            
     md += "---\n"
     
@@ -103,7 +105,7 @@ for row, item in talks.iterrows():
     md_filename = os.path.basename(md_filename)
     #print(md)
     
-    with open("../_talks/" + md_filename, 'w') as f:
+    with open(ROOT.parent / "_talks" / md_filename, 'w', encoding='utf-8') as f:
         f.write(md)
 
 

@@ -17,7 +17,7 @@
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
     };
   </script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
   <link rel="stylesheet" href="../assets/notes-shell.css">
   <style>
     :root {
@@ -141,7 +141,7 @@
         <div><strong>TTS</strong>文本变可播放语音</div>
         <div><strong>会话控制</strong>播放、打断、状态提交</div>
       </div>
-      <p>代价也很明确：延迟逐段相加；ASR 一旦把实体或数字听错，后面的 LLM 看不到原始证据；语调、哭声、笑声、犹豫与说话人特征很容易在 transcript 这道窄门里消失。系统可以把声学特征作为旁路元数据补回去，但它仍不是原生的音频推理。</p>
+      <p>若每级都等上一级交齐整句，等待时间会逐段累积。流式级联允许识别前半句时同时接收后半句。还有一项与速度无关的代价：ASR 一旦把实体或数字听错，后面的 LLM 看不到原始证据；语调、哭声、笑声、犹豫与说话人特征很容易在 transcript 这道窄门里消失。系统可以把声学特征作为旁路元数据补回去，但它仍不是原生的音频推理。</p>
 
       <h3>第二阶段：给文本 LLM 接上一双“耳朵”</h3>
       <p>SALMONN、Qwen2-Audio 一类模型使用预训练 speech/audio encoder 提取音频表示，再通过 Q-Former、projector 或 adapter 把它们映射到 LLM 的输入空间。SALMONN 甚至并用 Whisper speech encoder 与 BEATs audio encoder，试图区分语音内容、一般声响与音乐。它们的核心价值是让 LLM 不必先依赖外部 ASR 文本，也能完成音频问答、情绪识别、声学事件理解和音乐描述。</p>
@@ -149,14 +149,14 @@
 
       <h3>第三阶段：把语音也变成 LLM 能预测的离散 token</h3>
       <p>SpeechGPT、AudioPaLM、GLM-4-Voice 等工作推进了另一条路线：先用神经音频 codec 或语音 tokenizer，把连续波形压缩成离散符号；随后扩展 LLM 词表，让同一个自回归模型同时学习文本 token 与语音 token。SpeechGPT 用跨模态预训练和 instruction tuning 建立 speech-to-text、text-to-speech、speech-to-speech 能力；AudioPaLM 把文本语言知识与 AudioLM 的语音建模结合；GLM-4-Voice 则用 12.5 Hz、单 codebook 的低码率语音 token，配合流式语音 decoder。</p>
-      <p>这类模型开始保留说话人、韵律和情绪，也能减少显式 ASR/TTS 边界。不过离散化制造了新的矛盾：token 太密，序列很长、推理昂贵；token 太稀，细节会丢失。语义 token 容易承载“说了什么”，多层声学 codebook 更擅长重建“怎么说”，但会增加每个时间步的预测负担。因此许多架构用一个大 temporal transformer 建模时间，再用较小 depth transformer 处理同一时刻的多个 codec codebook。</p>
+      <p>不同语音单位保留的信息不同。AudioPaLM 在翻译中用声学提示保留源说话人的声音；SpeechGPT 的作者则明确列出情绪表达受限，且需要先生成文字回答。仅凭模型输出离散语音单位，无法断定输入中的语气会传到回答。不过离散化制造了新的矛盾：token 太密，序列很长、推理昂贵；token 太稀，细节会丢失。语义 token 容易承载“说了什么”，多层声学 codebook 更擅长重建“怎么说”，但会增加每个时间步的预测负担。因此许多架构用一个大 temporal transformer 建模时间，再用较小 depth transformer 处理同一时刻的多个 codec codebook。</p>
 
       <h3>第四阶段：流式 speech-to-speech 不再等待整句</h3>
-      <p>Mini-Omni、GLM-4-Voice、Qwen2.5-Omni 等系统把音频编码和解码做成流式：输入以 block/chunk 到达，输出语音 token 也能边生成边解码。Qwen2.5-Omni 的 Thinker–Talker 很有代表性：Thinker 负责多模态理解和文本生成；Talker 直接读取 Thinker 的隐藏表示，用双轨自回归结构生成音频 token；滑窗 DiT 再把 token 流解码成音频。这种分工保留了文本推理骨干，同时避免必须等完整文字答案结束后才启动 TTS。</p>
+      <p>Mini-Omni 把整轮提问送入语音编码器，回答时并行预测文字和语音。GLM-4-Voice 另支持分块处理输入，Qwen2.5-Omni 则专门设计了分块预填充；三者都能在完整回答生成前开始合成声音。Qwen2.5-Omni 的 Thinker–Talker 很有代表性：Thinker 负责多模态理解和文本生成；Talker 同时读取 Thinker 的隐藏表示和已采样文字的词嵌入，用双轨自回归结构生成音频 token；滑窗 DiT 再把 token 流解码成音频。这种分工保留了文本推理骨干，同时避免必须等完整文字答案结束后才启动 TTS。</p>
       <p>这里最容易出现误读：<strong>流式输入、流式输出、同时生成文字与语音，仍不自动等于原生全双工。</strong>如果系统必须等待外部 VAD 判断“用户已经说完”，然后才允许 assistant 开始，它仍是流式半双工。流式解决的是分块计算和首包延迟；双工解决的是同一时间轴上谁在听、谁在说、重叠时做什么。</p>
 
       <h3>第五阶段：把两个人的声音放到同一条时间线上</h3>
-      <p>Moshi 的关键不是单纯 audio-in/audio-out，而是同时建模两条平行音频流：一条是用户正在说什么，一条是模型自己正在说什么；模型还生成与自身语音对齐的文本“内在独白”。因此用户讲话、模型讲话、停顿、插话和重叠不再需要先切成严格轮次。论文报告的理论延迟为 160 ms、实践可低至约 200 ms，但更重要的是它把 turn-taking 从外部规则移进了生成分布。</p>
+      <p>Moshi 的关键不是单纯 audio-in/audio-out，而是同时建模两条平行音频流：一条是用户正在说什么，一条是模型自己正在说什么；模型还生成与自身语音对齐的文本“内在独白”。因此用户讲话、模型讲话、停顿、插话和重叠不再需要先切成严格轮次。Mimi 编码器需攒够 80 ms 音频，生成声学码再滞后一帧 80 ms，合成 160 ms 的理论流处理延迟；项目在 L4 GPU 上报告实际最低约 200 ms。模型可以继续输出静音，因此从用户句尾到第一声有意义的答复还取决于模型选择何时开口。</p>
       <p>2026 年出现的 BayLing-Duplex、DuplexSLA 又把这条路线向前推。BayLing-Duplex 从 turn-based GLM-4-Voice 出发，通过多通道交错序列和少量对话状态 token，让单个自回归 LLM 决定听、说和停止；DuplexSLA 则把用户音频、assistant 音频与结构化 action channel 对齐到同一个 160 ms chunk 时钟，使模型在说话过程中仍可规划和发出工具调用。与此同时，DuplexChat 这类数据工作开始从播客中构建说话人分离的双流语料，因为单声道“混在一起的对话”无法直接教模型哪条声音属于谁。</p>
       <p class="small">以上按主题重建了公开论文与官方说明的技术演进。下面开始把双工概念、系统组件、架构选择、训练和评测抽象成一套可复用框架。</p>
     </section>
@@ -211,11 +211,13 @@
         <div><b>Jitter buffer</b><span>吸收网络包到达时间的波动。缓冲越大越稳定，端到端延迟也越高。</span></div>
       </div>
 
-      <h3>端到端延迟为什么不能只报“模型首 token”</h3>
+      <h3>同一句回答，计时可以相差多少</h3>
+      <p>先在一条时间线上标出用户开口、说完、系统判定本轮结束（EOU）、模型生成第一个文字或语音 token、客户端收到首个音频包，以及扬声器播出第一个有声样本。第一包可能含有前导静音。对正在等待回答的人，最直接的量是：</p>
       <div class="math-display">\[
-        T_{\mathrm{voice}} = T_{\mathrm{endpoint}} + T_{\mathrm{uplink}} + T_{\mathrm{encode}} + T_{\mathrm{reason}} + T_{\mathrm{audio\ first\ chunk}} + T_{\mathrm{playout}}
+        T_{\mathrm{wait}} = t_{\mathrm{first\ audible\ reply}} - t_{\mathrm{user\ speech\ end}}
       \]</div>
-      <p>半双工系统经常把最大延迟花在 <em>endpoint</em>：为了不抢话，必须等几百毫秒静音；全双工模型可以更早形成假设，却要承担误判和回滚。一个模型即使推理只要 150 ms，如果端点检测等 800 ms、网络和播放缓冲再加 300 ms，用户仍会感到迟钝。</p>
+      <p>举一个自拟例子。麦克风在 0.00 s 开始录音，用户在 2.00 s 说完，系统在 2.45 s 确认结束。首个文字 token 出现在 2.52 s，首个语音 token 出现在 2.58 s，客户端在 2.70 s 收到首包，扬声器在 2.82 s 开始播出有声回复。从录音开始算是 2.82 s，其中用户自己说了两秒；从句尾到听见回答是 820 ms，从 EOU 到收到首包只有 250 ms。麦克风上行、编码和预填充可以在用户说话时重叠进行。核算总耗时应看时间戳及尚在关键路径上的工作，逐段相加只适用于串行且互不重叠的区间。</p>
+      <p>打断要另开一只表。假设用户在 4.00 s 插话，系统在 4.10 s 取消生成，客户端还播放缓冲的音频直到 4.28 s，用户听到的停播延迟是 280 ms。若只量合成吞吐，实时因子 RTF 是「合成耗时 ÷ 所生成音频时长」。用 1 s 合成 4 s 语音得到 0.25，这个比值本身不能确定第一声何时传出来。</p>
 
       <h3>产品级打断的最小状态机</h3>
       <pre><code class="language-python">state = LISTENING
@@ -267,7 +269,7 @@ for audio_chunk in microphone_stream:
       <div class="callout info"><b>为什么常要语义层和声学层</b>低频语义 token 负责“下一句话是什么”，高频声学 token 负责“每几十毫秒具体发出什么声音”。让一个大模型逐个预测所有细节会很慢，所以常见做法是大模型预测时间/语义骨架，小模型或 decoder 补声学细节。</div>
 
       <h3>D. Thinker–Talker / 文本隐状态驱动的双头架构</h3>
-      <p>Qwen2.5-Omni 是典型例子：Thinker 保留强文本、多模态推理能力；Talker 读取 Thinker hidden states，并以流式方式生成 speech token。它不是传统“先生成完文字，再调用独立 TTS”，因为 Talker 可以随着 Thinker 的表示同步工作；但它仍保留清晰的“想”和“说”分工，便于训练不同目标。</p>
+      <p>Qwen2.5-Omni 是典型例子：Thinker 保留强文本、多模态推理能力；Talker 读取 Thinker 的隐藏表示及已采样文字的词嵌入，并以流式方式生成 speech token。它不是传统“先生成完文字，再调用独立 TTS”，因为 Talker 可以随着 Thinker 的表示同步工作；但它仍保留清晰的“想”和“说”分工，便于训练不同目标。</p>
       <p>这种架构的工程意义是避免两个极端：既不让主 LLM 承担全部高频声学预测，也不把语音完全降级成句后 TTS。代价是双模块调度、隐藏状态接口、文本与语音时序对齐，以及 Talker 是否过度依赖显式语言骨架。</p>
 
       <h3>E. 原生双流 / 多流全双工模型</h3>
@@ -280,15 +282,20 @@ for audio_chunk in microphone_stream:
       <div class="table-wrap"><table>
         <thead><tr><th>模型 / 系统</th><th>主要架构定位</th><th>输入 → 输出</th><th>双工边界</th><th>应学到的架构点</th></tr></thead>
         <tbody>
-          <tr><td>SALMONN / Qwen2-Audio</td><td>音频 encoder 接文本 LLM</td><td>audio + text → text</td><td>本身不是 speech-output 全双工模型</td><td>“听懂声音”和“生成声音”可分开建设</td></tr>
-          <tr><td>SpeechGPT / AudioPaLM</td><td>文本与离散语音 token 统一建模</td><td>text/audio → text/audio</td><td>主要是 turn-based 跨模态生成</td><td>离散 token 让 LLM 获得原生语音接口</td></tr>
-          <tr><td>GLM-4-Voice</td><td>低码率 tokenizer + GLM + streaming decoder</td><td>speech/text → speech/text</td><td>流式、实时，但公开基础架构仍以轮次为主</td><td>单 codebook 低 token rate 降低语言模型负担</td></tr>
-          <tr><td>Mini-Omni</td><td>并行生成文本与语音 token</td><td>speech → streaming speech</td><td>实时 speech-to-speech 不自动证明原生双工</td><td>用文本监督约束语音生成质量</td></tr>
-          <tr><td>Qwen2.5-Omni</td><td>Thinker–Talker + streaming DiT decoder</td><td>多模态 → text + speech</td><td>支持流式输入输出；是否同时听说要看会话控制</td><td>推理表示与高频 speech generation 解耦</td></tr>
-          <tr><td>Moshi</td><td>双音频流 + inner monologue + codec</td><td>continuous user speech ↔ assistant speech</td><td>论文原生 full-duplex</td><td>把重叠、插话和停顿作为时间序列学习</td></tr>
-          <tr><td>BayLing-Duplex</td><td>单 AR LLM + 多通道交错 + 状态 token</td><td>user stream → assistant stream</td><td>原生听说控制，不依赖外部 VAD 划轮次</td><td>可从 turn-based checkpoint 低成本改造成 duplex</td></tr>
-          <tr><td>DuplexSLA</td><td>user audio + assistant audio + action channel</td><td>continuous speech → speech + tool action</td><td>全双工并支持说话中规划/工具调用</td><td>语音 Agent 需要把 action 也对齐到实时钟</td></tr>
-          <tr><td>GPT-4o / Realtime、Gemini Live</td><td>商业原生音频/实时 API</td><td>audio/text/video → audio/text</td><td>API 支持实时音频与打断；完整内部结构未公开</td><td>产品能力证据不能替代可审计架构细节</td></tr>
+          <tr><td>SALMONN</td><td>Whisper 与 BEATs → 窗口 Q-Former → Vicuna</td><td>录音和指令 → 文字</td><td>整段音频问答</td><td>约 0.33 s 是一个特征窗口；论文没有可计时的语音输出。</td></tr>
+          <tr><td>Qwen2-Audio</td><td>Whisper-large-v3 初始化的编码器接语言模型</td><td>音频，可附文字 → 文字</td><td>Voice Chat 也以预测文字为目标</td><td>外接 TTS 的播出时间取决于具体系统。</td></tr>
+          <tr><td>SpeechGPT</td><td>离散语音单元、语言模型、单元声码器</td><td>语音指令 → 文字回答 → 语音</td><td>Chain-of-Modality 顺次生成</td><td>等待完整文字回答是论文列出的限制；作者未给句尾到首声的基准。</td></tr>
+          <tr><td>AudioPaLM</td><td>PaLM 预测文字和语义语音单元，下游声学生成器还原波形</td><td>语音识别、语音翻译及带音色迁移的语音到语音翻译</td><td>按给定语段做任务</td><td>作者评估翻译、声音质量和说话人保留，未给持续对话首声或打断延迟。</td></tr>
+          <tr><td>Mini-Omni</td><td>Whisper 编码器、并行文字与 SNAC 声学码</td><td>语音提问 → 流式语音回答</td><td>回答时边生成边解码，原版示例按轮收音</td><td>论文和演示没有统一的「录音结束到扬声器首声」数值；播放器自身还会缓冲。</td></tr>
+          <tr><td>GLM-4-Voice</td><td>单码本语音 tokenizer、GLM、流式语音解码器</td><td>语音/文字 → 交错文字和语音</td><td>按轮推理</td><td>12.5 Hz 表示一个 token 对应 80 ms 内容。首段解码需至少 10 个语音 token，覆盖 0.8 s 音频；首次生成还要先出 13 个文字 token。论文把末块输入编码、预填充、23 步生成与首块解码列入首波形耗时。</td></tr>
+          <tr><td>Qwen2.5-Omni</td><td>Thinker–Talker、滑窗 DiT、BigVGAN</td><td>多模态 → 文字与语音</td><td>输入分块，输出可流式合成</td><td>2 s 是输入编码块；DiT 回看两块、前看一块。报告 §2.4 解释输入处理、首文字到首语音 token 和首段解码，未给统一硬件下从用户句尾到客户端首包的实测数值。</td></tr>
+          <tr><td>Freeze-Omni</td><td>冻结 Qwen2-7B，VAD 触发输入，以分块状态分类区分等待、结束和打断</td><td>语音 → 首段 PCM 波形</td><td>支持打断，端点判定另计</td><td>模型进入打断状态到生成首块 PCM，均值 745 ms，中位数 753 ms，P90 为 1020 ms。作者另估实际句尾到状态判定约 160–320 ms，计入估计的网络耗时后约 1.2 s。</td></tr>
+          <tr><td>Moshi</td><td>双音频流、时间对齐文字、Mimi 编解码</td><td>连续用户语音 ↔ 助手语音或静音</td><td>联合建模同时听说</td><td>理论流处理延迟 80 + 80 = 160 ms，实际最低约 200 ms（L4）。实际何时接话还受停顿策略影响。</td></tr>
+          <tr><td>BayLing-Duplex</td><td>GLM-4-Voice 加多通道交错序列与状态 token</td><td>持续输入 → 助手文字和声音</td><td>单个自回归模型控制听说</td><td>每块 10 个语音 token，即 0.8 s。199 个合成指令的评测用 VAD 找声音边界；DPO 版在用户句尾 3 s 内开口的比例为 92.0%，用户插话到助手停声的平均重叠为 1.10 s，SFT 版为 1.51 s。</td></tr>
+          <tr><td>DuplexSLA</td><td>单骨干对齐用户音频、助手音频与动作</td><td>连续语音 → 语音及工具调用</td><td>按 160 ms 的块更新</td><td>带历史预填充的正常接话，命中窗口样本中，句尾到助手起声的绝对时间差为 0.27 s；语义打断锚点到停声为 0.40 s。两者分别有 96.00% 与 99.33% 的窗口命中率。</td></tr>
+          <tr><td>GPT-4o / Realtime</td><td>厂商披露统一多模态模型，API 支持双向音频与截断</td><td>实时音频收发</td><td>接口可分别取消生成和截断会话</td><td>2024 年发布页称音频输入响应最快 232 ms、平均 320 ms；未给设备播放端点或测试分布，不能据此预测某次 Realtime 会话的首声。</td></tr>
+          <tr><td>Gemini Live</td><td>实时音频接口，可配置语音活动检测</td><td>流式音频收发</td><td>检测到插话后服务器取消生成并通知客户端</td><td>客户端还须清空播放队列；接口未承诺固定的插话到实际停播时间。</td></tr>
+          <tr><td>Amazon Nova Sonic</td><td>流式语音理解与生成，按语境检测轮次切换</td><td>双向语音</td><td>支持用户插话</td><td>首代模型卡表 6 引用的 TTFA 从用户说完量到收到首个回复音频字节，平均 1.09 s，中位数 1.05 s，P90 为 1.35 s。首字节之后还有播放缓冲。</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -300,7 +307,7 @@ for audio_chunk in microphone_stream:
         <li><strong>语音–文本配对：</strong>ASR、TTS、speech translation 数据建立内容对齐，但天然偏向完整句子和清晰轮次。</li>
         <li><strong>无标注音频：</strong>用 next-token prediction 学声音连续性、说话人和声学结构；需要高质量 tokenizer，计算量也大。</li>
         <li><strong>语音 instruction 数据：</strong>教模型听懂命令、回答问题、控制情绪/语速/方言，并维持文本 LLM 的指令能力。</li>
-        <li><strong>说话人分离的双流对话：</strong>保留精确重叠、停顿、附和和打断时间，是 native duplex 的关键。DuplexChat 的意义正在于把播客单声道转成每位说话人独立声道。</li>
+        <li><strong>说话人分离的双流对话：</strong>保留精确重叠、停顿、附和和打断时间，是 native duplex 的关键。DuplexChat 用分离模型从混音重建两条声轨，保留重叠与短暂停顿。作者报告英语 282,634 小时、日语 132,723 小时。它是数据集，分离出来的时序可用于训练，但没有一个可测响应延迟的对话模型。</li>
       </ol>
       <p>如果训练集把所有重叠都清理掉，模型不会凭架构自动学会打断；如果所有对话都是 TTS 合成的严格一问一答，它可能在语义问答上很好，却无法应对真实口吃、假启动、背景说话和设备回声。全双工首先是数据分布变化，其次才是特殊层或 token。</p>
 
@@ -330,7 +337,10 @@ for audio_chunk in microphone_stream:
         </tbody>
       </table></div>
       <p>Full-Duplex-Bench v1.5 把重叠语音拆成四类场景：用户打断（user interruption）、用户附和（user backchannel）、用户对旁人说话（talking to others，早期版本称 side conversation）和背景语音（background speech，早期版本称 ambient speech）。对每类场景，它分别统计模型的对话行为类别、停止与回应延迟，以及语速、音高、音强和预测 MOS（UTMOSv2）在重叠前后的变化。这比只问“能不能被打断”更接近真实风险：模型不该把每个“嗯”都当成抢话，也不该对电视里的声音执行工具。</p>
-      <p>作者评测了 Freeze-Omni、Moshi、Gemini Live、Amazon Nova Sonic 与 GPT-4o Realtime 五个系统，发现“快速让出话轮”和“稳健守住话轮”之间存在稳定权衡。GPT-4o 代表 responsive 策略：真实打断时停得最快（平均停止延迟约 0.23 s），却会系统性地对“用户在跟旁人说话”和背景语音误响应；Nova Sonic 与 Gemini 代表 floor-holding 策略：最能分辨用户是不是在对系统说话，但面对真实打断过于保守，停止延迟超过 2 s。这说明打断成功率和误打断率必须成对报告，单看其中一个指标会奖励某种极端策略。需要注意，这些结果对应论文评测时的具体接口版本（如 2024 年 12 月的 GPT-4o Realtime 预览版和 Gemini 2.0 Flash Live），不能直接外推到之后的模型版本。</p>
+      <p>在真正要求打断的样本里，作者用 Silero VAD 找重叠语音与模型发声的边界。从用户开口插话到模型停声，GPT-4o、Gemini、Nova Sonic 分别为 0.23、2.20、2.25 s；从用户插话结束到模型下次开口，同三个系统分别为 1.50、2.62、2.75 s。Freeze-Omni 停声用 1.42 s，下一句的间隔却最短（1.35 s）。两个起点不同，最快让出话轮的系统未必最快回答新问题。这里只计评测音轨中的发声边界。</p>
+      <p>BayLing-Duplex 的消融给出了只看停声指标会怎样误判的实例。给所有 token 相同训练权重时，助手几乎总是沉默，插话后 2 s 内停声的比例却达到 100%；此时句尾 3 s 内开口的比例只有 60.3%。同为“能及时停声”，还需看它之前是否发过言、之后能否回答新问题。</p>
+      <p>工具动作另有自己的终点。DuplexSLA-Bench 的 900 个工具调用样例比较的是标注触发时刻与模型发出匹配调用的时刻，外部工具执行时间另计。三类场景平均，DuplexSLA 对已匹配动作的延迟为 0.64 s，正确率为 85.56%；流式 ASR 加语言模型的级联基线为 2.77 s、91.33%。工具调用更早与调用更准确是两项需要同时报告的结果。</p>
+      <p>场景也会改变排序。用户对旁人说话时，Gemini 有 99% 接着原话讲，Nova Sonic 为 90%；换成背景语音时，Gemini 有 70% 转而回应，Nova Sonic 只有 1%，GPT-4o 为 93%。把旁人对话和背景播放混为一类，会掩盖 Gemini 的这一差别。五个系统还包括 Moshi，这里使用的是论文测试时的接口和模型版本，例如 2024 年 12 月的 GPT-4o Realtime 预览及 Gemini 2.0 Flash Live。</p>
     </section>
 
     <section id="selection">
@@ -398,6 +408,8 @@ for audio_chunk in microphone_stream:
         <li><a href="https://arxiv.org/abs/2410.00037">Moshi: a speech-text foundation model for real-time dialogue</a>；<a href="https://github.com/kyutai-labs/moshi">官方实现</a></li>
         <li><a href="https://arxiv.org/abs/2412.02612">GLM-4-Voice: Towards Intelligent and Human-Like End-to-End Spoken Chatbot</a>；<a href="https://github.com/THUDM/GLM-4-Voice">官方实现</a></li>
         <li><a href="https://arxiv.org/abs/2503.20215">Qwen2.5-Omni Technical Report</a></li>
+        <li><a href="https://proceedings.mlr.press/v267/wang25aw.html">Freeze-Omni，§3.5 与表 4</a></li>
+        <li><a href="https://www.amazon.science/publications/amazon-nova-sonic-technical-report-and-model-card">Amazon Nova Sonic，技术报告 §2.4 与表 6</a></li>
         <li><a href="https://arxiv.org/abs/2507.23159">Full-Duplex-Bench v1.5: Evaluating Overlap Handling for Full-Duplex Speech Models</a>；<a href="https://github.com/DanielLin94144/Full-Duplex-Bench">持续更新的 benchmark 仓库</a></li>
         <li><a href="https://arxiv.org/abs/2605.20755">DuplexSLA: A Full-Duplex Spoken Language Model with Synchronized Speech, Language, and Action</a>；<a href="https://github.com/hyzhang24/DuplexSLA">项目页与 DuplexSLA-Bench</a></li>
         <li><a href="https://arxiv.org/abs/2606.14528">BayLing-Duplex: Native Full-Duplex Speech Dialogue with a Single Autoregressive LLM</a>；<a href="https://github.com/BayLing-Models/BayLing-Duplex">官方实现</a></li>

@@ -23,6 +23,9 @@ import string
 import html
 import os
 import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
 
 #todo: incorporate different collection types rather than a catch all publications, requires other changes to template
 publist = {
@@ -56,7 +59,7 @@ def html_escape(text):
 
 for pubsource in publist:
     parser = bibtex.Parser()
-    bibdata = parser.parse_file(publist[pubsource]["file"])
+    bibdata = parser.parse_file(str(ROOT / publist[pubsource]["file"]))
 
     #loop through the individual references in a given bibtex file
     for bib_id in bibdata.entries:
@@ -132,7 +135,7 @@ for pubsource in publist:
             url = False
             if "url" in b.keys():
                 if len(str(b["url"])) > 5:
-                    md += "\npaperurl: '" + b["url"] + "'"
+                    md += "\npaperurl: '" + html_escape(b["url"]) + "'"
                     url = True
 
             md += "\ncitation: '" + html_escape(citation) + "'"
@@ -151,7 +154,7 @@ for pubsource in publist:
 
             md_filename = os.path.basename(md_filename)
 
-            with open("../_publications/" + md_filename, 'w') as f:
+            with open(ROOT.parent / "_publications" / md_filename, 'w', encoding='utf-8') as f:
                 f.write(md)
             print(f'SUCESSFULLY PARSED {bib_id}: \"', b["title"][:60],"..."*(len(b['title'])>60),"\"")
         # field may not exist for a reference

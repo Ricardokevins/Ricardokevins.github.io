@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoRL 深读：过程级自主强化学习、热更新工程与多智能体编排的边界</title>
+  <meta name="description" content="精读美团 LongCat 等团队论文 AutoRL（arXiv:2611.17790），完整重建 8 角色过程级 RL 监督框架、HOT/COLD 控制与 224 卡 14.7 天异步长训实证，并拆解热更新工程红利、84% 判分器修复与 0% 算法重构背后的真实能力边界。">
+  <script>
+    window.MathJax = {
+      loader: { load: ['[tex]/ams', '[tex]/noerrors', '[tex]/noundefined'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true,
+        packages: { '[+]': ['ams', 'noerrors', 'noundefined'] }
+      },
+      chtml: { matchFontHeight: false, mtextInheritFont: true },
+      options: { enableMenu: false, skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script defer src="../assets/mathjax-3.2.2/es5/tex-chtml.js"></script>
+  <link rel="stylesheet" href="../assets/notes-shell.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e8;
+      --surface: #fffdf8;
+      --ink: #20242a;
+      --muted: #5b636b;
+      --line: #dcd6c8;
+      --accent: #b54d2b;
+      --accent-soft: #f7ece4;
+      --accent-2: #9a5b13;
+      --accent-2-soft: #fdf3e7;
+      --info: #36648b;
+      --info-soft: #eef4fa;
+      --shadow: 0 12px 32px rgba(31, 37, 40, 0.06);
+      --radius: 10px;
+      --max: 980px;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+      --mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--paper); }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(181,77,43,.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(120,105,85,.028) 1px, transparent 1px),
+        var(--paper);
+      background-size: 44px 44px;
+      color: var(--ink);
+      font: 16.5px/1.8 var(--sans);
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    header, main {
+      width: min(var(--max), calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    header { padding: clamp(30px, 5vw, 60px) 0 22px; }
+    h1, h2 { font-family: var(--serif); margin: 0; text-wrap: balance; }
+    h1 { font-size: clamp(30px, 4.6vw, 46px); line-height: 1.18; }
+    h2 { font-size: clamp(23px, 3vw, 31px); line-height: 1.3; margin-bottom: 12px; }
+    h3 { margin: 22px 0 8px; font-size: 19px; line-height: 1.4; color: var(--accent); }
+    p { margin: 11px 0; }
+    ul, ol { padding-left: 1.35rem; margin: 10px 0; }
+    li { margin: 6px 0; }
+    strong { font-weight: 700; }
+
+    .lede {
+      max-width: 840px;
+      margin: 15px 0 0;
+      color: var(--muted);
+      font-size: clamp(16.5px, 1.9vw, 18.5px);
+    }
+    .contents {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 1.15em;
+      row-gap: .4em;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    main {
+      display: grid;
+      gap: 26px;
+      padding-bottom: 60px;
+    }
+    main > section {
+      padding-top: 26px;
+      border-top: 1px solid var(--line);
+    }
+
+    .grid-2, .grid-3 { display: grid; gap: 14px; margin: 16px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      min-width: 0;
+      padding: 15px 17px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .card h3, .card h4 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.65; }
+
+    .callout {
+      margin: 16px 0;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+    }
+    .callout > b { display: block; margin-bottom: 6px; color: var(--accent); }
+    .callout.info { border-left-color: var(--info); background: var(--info-soft); }
+    .callout.info > b { color: var(--info); }
+    .callout.warn { border-left-color: var(--accent-2); background: var(--accent-2-soft); }
+    .callout.warn > b { color: var(--accent-2); }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .def-list { display: grid; gap: 10px; margin: 16px 0; }
+    .def-list > div {
+      display: grid;
+      grid-template-columns: minmax(150px, .27fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .def-list b { color: var(--accent); font-weight: 700; }
+    .def-list span { min-width: 0; }
+
+    figure {
+      margin: 20px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    img { display: block; max-width: 100%; height: auto; border-radius: 6px; margin: 0 auto; }
+    figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+    .math-display {
+      margin: 16px 0;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    mjx-container { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+    .table-wrap {
+      margin: 16px 0;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14.5px; line-height: 1.55; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; font-variant-numeric: tabular-nums; }
+    thead th { background: var(--accent-soft); color: var(--ink); font-weight: 700; white-space: nowrap; }
+    tbody td:first-child { min-width: 118px; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: rgba(0, 0, 0, .016); }
+    .dense-table { min-width: 780px; font-size: 13.5px; }
+    .dense-table th, .dense-table td { padding: 8px 8px; }
+    .dense-table td:first-child, .dense-table td:nth-child(2) { min-width: auto; white-space: nowrap; }
+    .num { text-align: right; white-space: nowrap; }
+    .hi { color: var(--accent); font-weight: 700; }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #ece5d7;
+      color: #7c2d12;
+      font-family: var(--mono);
+      font-size: .9em;
+    }
+    .small { font-size: 14.5px; color: var(--muted); }
+    .sources { font-size: 15px; }
+    .sources ol { padding-left: 1.55em; }
+    .sources li { margin: 7px 0; }
+
+    @media (max-width: 760px) {
+      header, main { width: min(100% - 26px, var(--max)); }
+      body { font-size: 15.5px; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .def-list > div { grid-template-columns: 1fr; gap: 5px; }
+      th, td { padding: 8px 9px; }
+      table { font-size: 13.5px; }
+    }
+  </style>
+</head>
+<body class="notes-shell-page">
+  <nav class="notes-sitebar" aria-label="站点导航">
+    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
+    <span class="notes-sitebar__links">
+      <a class="notes-sitebar__link" href="../">All Notes</a>
+      <a class="notes-sitebar__link" href="../../">Home</a>
+    </span>
+  </nav>
+
+  <header id="top">
+    <h1>AutoRL 深读：过程级自主强化学习、热更新工程与多智能体编排的边界</h1>
+    <p class="lede">大多数自主后训练系统按“跑完一轮实验再设计下一轮”组织搜索。美团 LongCat 团队联合香港中文大学、上海科技大学与复旦大学于 2026 年 11 月发表的 <em>AutoRL</em>，尝试模仿真实强化学习研究员的盯盘习惯，把监控、诊断、代码审查与在线热更新嵌入正在运行的单次 RL 训练之中，并在 224 张 H800 上跑完 14.7 天的异步编程代理训练。本文先完整重建原论文的设计与实证账本，再拆解其真实收益来源、热更新边界与多智能体先验编排的局限。</p>
+    <nav class="contents" aria-label="文章目录">
+      <a href="#source-reconstruction">原文重建</a>
+      <a href="#takeaway">核心判断</a>
+      <a href="#mechanism">机制与可跟算例子</a>
+      <a href="#evidence">实验口径核账</a>
+      <a href="#multi-agent-critique">Multi-Agent 算不算智能</a>
+      <a href="#terms">核心术语</a>
+      <a href="#limits">边界与风险</a>
+      <a href="#insight">研究启发</a>
+      <a href="#sources">证据边界与索引</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="source-reconstruction">
+      <h2>原文重建：把人类 RL 研究员的“盯盘—排障—改配方”搬进在线训练循环</h2>
+      <p>2026 年 11 月 13 日，美团 LongCat 团队（通讯作者 Wenjie Shi）联合香港中文大学、上海科技大学与复旦大学提交论文 <em>AutoRL: A Multi-Agent System towards Autonomous Reinforcement Learning</em>（<code>arXiv:2611.17790</code>）。文章把背景定位在递归自我改进（Recursive Self-Improvement，简称 RSI）的现实过渡阶段：由一个更强的前沿大模型监督并改进另一个模型的强化学习（RL）后训练。</p>
+
+      <h3>为什么现有的“轮次级”自动科研框架不够用</h3>
+      <p>论文指出，已有自主后训练与自动科研系统（如 LLMZero、AutoSFT、EvoTrainer、Athanor、RSI-Master）大多以<strong>完整实验轮次（run-to-run）</strong>为单位迭代：跑完一整次训练，看最终结果，再决定下一轮配方。但强化学习与静态监督微调不同——随着策略参数更新，模型自己生成的采样轨迹（rollout）分布也在持续漂移，进而反过来改变后续训练的奖励信号；分布式异步训练还会频繁冒出数值溢出（NaN）、精度不匹配或节点通信故障。</p>
+      <p>真实的人类 RL 研究员不会干等一场几百小时的训练跑崩才复盘，而是边训边看曲线、翻 rollout 样本、修评分器（grader）、调探索强度。作者把这种<strong>过程级（process-level）</strong>自主 RL 的工程与研究难点归纳为三条：</p>
+      <ul>
+        <li><strong>干预必须及时</strong>：数值崩坏、性能倒退或隐性评分器缺陷往往在训练中途出现，等到结束才发现会白烧大量算力。</li>
+        <li><strong>监控与研究节奏冲突</strong>：监控需要高频、轻量的持续巡检，而排查平台期或修改机制需要深度上下文调查。把两件事塞进同一个 Agent 上下文，海量的运行日志和采样输出会很快把分析推理挤垮。</li>
+        <li><strong>RL 假设的实机验证极其昂贵</strong>：看似合理的改动可能建立在错误归因或带漏洞的实现上，若把每个想法都另起一场 GPU 训练去试，算力根本承受不起；系统必须在动用 GPU 前区分“读代码和回放旧样本就能证伪的问题”与“必须靠后续训练验证的问题”。</li>
+      </ul>
+
+      <h3>AutoRL 的三层八角色架构与工作流</h3>
+      <p>针对上述三点，AutoRL 将原本集中在单个研究员身上的职责拆成<strong>八个各自拥有独立对话上下文的 Agent</strong>（外加一份共享持久化记录），围绕正在运行的 RL 主训练形成闭环：</p>
+
+      <figure>
+        <img src="autorl-autonomous-rl-multi-agent-assets/fig2-framework.png" alt="AutoRL 总体框架图：顶部为共享记录与记忆，中层依次为四类 Perceptors 监控诊断、三类 Proposers 多轮讨论与 CPU 预检、Orchestrator 审批决策，底层为 RL 训练主循环与 HOT 在线更新及 COLD 断点恢复执行控制。">
+        <figcaption>图 1：AutoRL 框架总览（原论文 Figure 2）。四类 Perceptor 持续产出带时间窗口的观测并冻结初始证据，三类 Proposer 展开最多 5 轮辩论与 CPU-only 预检，唯一握有执行权的 Orchestrator 审批后经 HOT 或 COLD 通道落入正在运行的训练。</figcaption>
+      </figure>
+
+      <ul>
+        <li><strong>感知层（4 个 Perceptors）</strong>：按信号源垂直分工——<code>Train Perceptor</code> 盯损失、梯度、熵、KL 散度、策略比（policy ratio）、裁剪比例与有限值检查；<code>Rollout Perceptor</code> 盯训练集生成回复、奖励分布、截断比例、组内统计与评分器行为；<code>Eval Perceptor</code> 盯固定评测协议下的聚合分数和脱敏后的失败分析（不泄露原评测题）；<code>Efficiency Perceptor</code> 盯已完步数、吞吐与运行日志，区分“正常排队等待”与“进程卡死”。每个 Perceptor 先调用确定性脚本计算滑动窗口的均值、标准差、斜率，再由 LLM 结合明确硬规则（如确认 NaN/Inf、连续多轮评测无新高）决定是否报警。所有报告经由<strong>同步观测屏障（synchronous observation barrier）</strong>对齐到具体的 <code>(run r, step s)</code>，冻结为共同初始证据 \(E_k^0\)。若无异常，训练继续，不触发开会。</li>
+        <li><strong>提案与辩论层（3 个 Proposers）</strong>：基于同一份冻结证据 \(E_k^0\)，三名角色先各自独立诊断、防止过早从众：<code>Tuner</code> 专注现有机制内的局部调参；<code>Innovator</code> 探索替代机制；<code>Reviewer</code> 沿真实代码路径追查实现缺陷与反例。讨论最多持续 5 轮：生成提案 → 质询反驳 → 修订/合并/撤回 → 第 4 轮按 <strong>Borda 计分</strong>（若有 \(m\) 个候选，第一名得 \(m\) 分递减至 1 分，三者相加）选出至多 2 个决赛候选 → 第 5 轮投票产生 3:0 或 2:1 推荐（若前几轮已 3:0 一致认可同一合规候选可提前结束；保持配方不变 <code>NONE</code> 同样合法）。修订期间，Proposer 可在隔离的 CPU 工作区读源码、回放已保存的训练集轨迹并跑单元测试，记录 <code>PASS / FAIL / INCONCLUSIVE</code> 回执；未通过检查或存在未解阻碍的提案禁止发布。</li>
+        <li><strong>调度与执行层（1 个 Orchestrator）</strong>：唯一拥有启停、热更、恢复和回滚权限的闸门。它对照当前训练状态审查提案、证据与可验证性，决定批准、拒绝、延后或发起定向补充观测。批准的改动分两条执行通道：支持在线热插拔的走 <code>HOT</code>（在步边界写入在线控制文件，不停机）；涉及修改训练主代码、数据集或重新初始化框架的走 <code>COLD</code>（先优雅落盘停机，再授权打补丁并从兼容 checkpoint 恢复）。执行完成后记录<strong>激活回执（runtime receipt）</strong>与 <strong>checkpoint 血缘（lineage）</strong>，让 Perceptor 知道新曲线对应的是哪一次改动、继承自哪一个父检查点。</li>
+      </ul>
+
+      <h3>四大实证场景与论文报告的主要结果</h3>
+      <p>论文在 <strong>Qwen3-1.7B / 4B</strong>（公开数据集 <code>DAPO-Math-17K</code>，清洗后 17,390 道数学题，8 张 H800）和 <strong>LongCat-Flash-Lite</strong>（稀疏混合专家模型，私有 9,340 道数学题用 64 张 H800；700+ 仓库级软件工程任务用 224 张 H800）四个场景上验证 AutoRL。监督底座在 Qwen 主实验中使用 <code>gpt-6.1-sol</code>（高推理强度），在 LongCat 两个实验中使用 <code>glm-5.2</code>，并另在 Qwen3-4B 上对比了原生通用代理 <code>Codex</code>（同用 <code>gpt-6.1-sol</code>，开启全部内置工具）与 <code>glm-5.2</code> 驱动的 AutoRL。Qwen 实验初始配方均为 <strong>GRPO</strong>（学习率 \(10^{-6}\)，每题采样 8 条，最大回复 8,192 tokens，<strong>初始 KL 系数为 0、初始熵系数为 0，且关闭 thinking mode</strong>）。</p>
+      <ol>
+        <li><strong>九项跨尺度基准对比（Section 3.2）</strong>：在 Qwen3-4B 上，AutoRL 在全部 5 项数学基准和 4 项跨领域（通用知识与代码）基准上同时超过静态 GRPO 与原生 Codex。相对静态 GRPO，AIME 2024 从 46.67% 升至 66.67%（+20.00 个百分点），AIME 2025 与 HMMT 2025 均提升 11.67 个百分点，未参与在线监控的 IMO-AnswerBench 从 27.00% 升至 36.75%（+9.75 个百分点），且 MMLU-Pro、GPQA-Diamond、MBPP、LiveCodeBench v6 Hard 均维持正收益（+1.08 至 +2.52）。在 Qwen3-1.7B 上，静态 GRPO 出现了严重的跨领域退化（MBPP 从基座 33.20% 暴跌至 10.95%），而 AutoRL 在通用与代码四项基准上全部高于原始基座（MBPP 达 40.05%，领先静态 GRPO 29.10 个百分点）。</li>
+        <li><strong>缺陷配方的在线抢救（Section 3.3）</strong>：作者在 LongCat-Flash-Lite 数学推理上刻意构造了一个“初期能跑、后期会崩”的带缺陷初始配方（简陋评分器 + 无 KL 正则 + 131,072 token 回复上限），连续跟踪 64 步（约 115.5 小时）。静态 GRPO 从 65.53% 一路退化到 56.05%；AutoRL 在<strong>零重启</strong>的前提下连续做了 6 次代表性 HOT 更新——第 3、6、10、38 步分四次修补选项映射、多段答案拆分、LaTeX/数组与度数解析、空格和单位归一化，第 22、27 步将 KL 系数依次调至 0.001 与 0.01——最终达到 73.16%（领先静态基线 17.11 个百分点）。</li>
+        <li><strong>正常配方的平台期突破（Section 3.4）</strong>：在 Qwen3-4B 上对比标准静态 GRPO 与 AutoRL（图 2）。前 100 步 AutoRL 按兵不动，只持续监控并否决了过早加熵的提案；在监控分长期滞留于 27%–29.74% 后，系统于 step 101（COLD 从 checkpoint 100 续训）修补训练集选项绑定，随后在 step 108/121/129 连续三次 HOT 上调熵系数至 0.001 → 0.002 → 0.003，并在 step 111 对“已判错且满足严格循环判据”的回答加入 \(-0.02\) 辅助惩罚。step 135 首次冲破平台上限（32.89%），之后又在 step 136（COLD）修正 2 条训练参考答案、step 153 上调熵系数至 0.004、step 171 用可验证的有限轨道证明证书（verified finite-orbit proof certificate）精修选项绑定，于 step 180 达到峰值 41.58%（比静态 GRPO 同区间峰值 31.32% 高 10.26 个百分点）。</li>
+      </ol>
+
+      <figure>
+        <img src="autorl-autonomous-rl-multi-agent-assets/fig4-plateau.png" alt="Qwen3-4B 平台期突破曲线（原论文 Figure 4）：前 100 步 AutoRL 略低于静态 GRPO，随后在 step 101 至 171 间组合应用选项绑定修复、防循环惩罚、阶梯式熵正则与参考答案纠错，于 step 135 突破平台并在 step 180 达到 41.58%。">
+        <figcaption>图 2：Qwen3-4B 突破性能平台期过程（原论文 Figure 4）。空心菱形标出从 checkpoint 100 与 135 发起的两次 COLD 续训，其余虚线均为不停机 HOT 更新。</figcaption>
+      </figure>
+
+      <ol start="4">
+        <li><strong>224 张 H800、14.7 天异步编程代理长训容错（Section 3.5）</strong>：在 28 节点（224 张 H800）全异步 MoE 编程代理训练中（最多 400 轮工具交互、262,144 上下文、允许最多 3 个版本策略延迟），系统在 352.5 小时内遭遇 <strong>11 次运行时故障</strong>（7 次 NaN、1 次 dtype 不匹配、3 次工作进程/通信异常）。前期 4 次 NaN 仅靠重拉 checkpoint 无法根除；在 step 22（F5）Agent 将 log-ratio 裁剪从 \([-13, 5]\) 收紧至 \([-5, 3]\) 并设概率比上限 5；step 23 仍报 NaN（F6）后，Agent 将学习率与最小学习率从 \(5\times 10^{-6}\) 降至 \(2\times 10^{-6}\)，同时打开 MoE unpermutation 的 FP32 累加与 FP32 残差。结果 FP32 残差引发了新的 dtype mismatch（F7）。AutoRL 识别出冲突源后<strong>只撤回 FP32 残差、保留降学习率与 FP32 MoE 累加</strong>，从 checkpoint 22 续训后 NaN 几乎消失。SWE 相关任务 pass@1 从 52.29% 升至峰值 65.13%（step 55，+12.84%），第 75 步收于 63.20%（+10.91%）。此外，附录 A.6 披露任务池在续训中经历了非单调动态筛选：<code>700+ → 656 → 453 → 456（第 4 轮恢复 58 道曾移除题目并新删 55 道）→ 271</code>。</li>
+      </ol>
+
+      <figure>
+        <img src="autorl-autonomous-rl-multi-agent-assets/fig5-coding-recovery.png" alt="LongCat-Flash-Lite 224 卡编程代理 14.7 天训练与 11 次故障恢复曲线（原论文 Figure 5）：SWE 相关 pass@1 从 52.29% 升至 65.13% 峰值，底部标注了 11 次崩溃步数到恢复 checkpoint 的映射，突出 step 22-23 的降学习率、FP32 MoE 与撤回 FP32 残差操作。">
+        <figcaption>图 3：LongCat-Flash-Lite 编程代理 352.5 小时训练与 11 次崩溃恢复轨迹（原论文 Figure 5）。每次常规 checkpoint 重启耗时约 37–46 分钟，复杂故障定位与修复耗时 59–295 分钟。</figcaption>
+      </figure>
+
+      <h3>作者对能力边界的坦率复盘</h3>
+      <p>在 Section 4.3 中，作者把 GPT-6.1 驱动的 Qwen3-4B 全部研究记录（168 次讨论、504 次首轮提交、131 个新改动候选、20 个落地计划）按类型拆解，得到了一个极具现实感的结论：<strong>110 个候选（84.0%）集中在评分器解析、参考答案纠错与数据清洗；12 个参数调优候选落地 9 个；而仅有的 3 个学习规则重构提案（2.3%，含协方差梯度选择与正优势/高熵 token 加权）无一落地（0/3）</strong>。作者据此判断：现有 Agent 已足以承担无人值守的 RL 运维、排障和配方局部精修，但在实验范围内仍未展现出提出根本性方法创新的能力，因此现阶段更务实的模式是“Agent 负责持续监控与渐进研究，人类聚焦概念性突破”。</p>
+      <p class="small">以上为原论文内容、实验数字与作者立场的完整重建。下文转入本文自己的结构化判断、机制拆解、口径核账与研究反思。</p>
+    </section>
+
+    <section id="takeaway">
+      <h2>核心判断：剥开“八角色辩论”外壳，真正值钱的三层真相</h2>
+      <p>如果只看摘要，AutoRL 很容易被读成又一篇“多智能体角色扮演打败单 Agent”的论文。但把正文曲线、图 6/7 对照与附录数据拼在一起，会看到三个更扎实、也更耐人寻味的事实：</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. 最硬的创新是控制面工程，不是角色命名</h3>
+          <p>把 RL 训练从批处理改成可观测、可热插拔（HOT/COLD）、可追踪血缘的在线控制系统，是未来即使换上单一超级模型也绕不开的 Agent-Native 基础设施；而 4+3+1 角色拆分更像针对当下 LLM 上下文退化与确认偏误的先验补丁。</p>
+        </div>
+        <div class="card">
+          <h3>2. 赢过 Codex 的 9.47 分来自两笔独立红利</h3>
+          <p>同预算下 AutoRL（41.58%）大幅领先原生 Codex（32.11%），但 GLM-5.2 对照实验暴露出这笔收益其实是两半拼成的：一半靠 HOT 接口省下 44.7% 重跑步数，另一半靠 GPT-6.1 肯去深挖判分器与脏标注——GLM-5.2 用着同样 88.9% 热更新却只拿 32.89%。</p>
+        </div>
+        <div class="card">
+          <h3>3. 84% 修判分器 vs 0% 改算法的双重信号</h3>
+          <p>即便在全社区熟用的 DAPO-Math-17K 上，RLVR 性能仍被大量解析与参考答案噪声卡住；同时 0/3 算法重构被拒，既有当前模型算法发明力的上限，也叠加了单主线实时投票对“重启高风险改动”的制度性保守偏置。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="mechanism">
+      <h2>机制拆解：不停机热更新的边界、为什么 Codex 会重跑 122 步，以及三个可跟算例子</h2>
+
+      <h3>1. HOT 热更新究竟改什么？它不是“训练中任意热修代码”</h3>
+      <p>把论文 Section 2.4 与 Appendix A.4 对齐起来看，AutoRL 并没有神奇地给运行中的 GPU 进程动态打任意源码补丁，而是预先在 Megatron-LM + vLLM 后端留出了一个受限的<strong>在线控制文件（online-control file）</strong>，将干预硬切为两类：</p>
+      <div class="math-display">\[
+      x_k^+ = \begin{cases}
+      x_k^-, & a_k = \mathrm{NONE}, \\
+      (\theta_k^-, z_k^-, c_k^- \oplus \delta_k), & a_k = \mathrm{HOT}(\delta_k), \\
+      (\theta_{b_k}, z_{b_k}, c_k^- \oplus \delta_k), & a_k = \mathrm{COLD}(\delta_k, b_k).
+      \end{cases}
+      \]</div>
+      <p>其中干预前状态 \(x_k^- = (\theta_k^-, z_k^-, c_k^-)\) 分别代表模型权重 \(\theta\)、优化器/采样器/数据消费进度等运行时状态 \(z\)，以及当前生效配置 \(c\)；\(\oplus\) 表示应用并合并改动 \(\delta_k\)，\(b_k\) 为兼容的完整检查点。</p>
+      <ul>
+        <li><strong>什么能走 HOT（不停机）</strong>：仅限于后端控制文件预先支持的槽位——KL 与优势估计设置、替换受支持的 policy-loss 对象（如动态改熵系数、clipping 阈值；coding-agent 还放开了学习率）、在 rollout 路径上热挂接/替换 <strong>training grader hook</strong>，以及优雅停机指令 <code>save-and-stop</code>。任何试图修改控制文件之外源码的 HOT 补丁都会被就绪检查直接拒掉。同步 trainer 在步边界加载，异步后端在派发策略更新前加载；每次必须写<strong>全量生效覆盖表</strong>（字段置 <code>None</code> 即还原启动默认值），加载失败则保旧态不崩溃，成功则写下带生效步数的激活回执。</li>
+        <li><strong>什么必须走 COLD（停机重启）</strong>：凡是修改训练主代码、直接修改训练集文件或 DataLoader/Sampler（如 Qwen step 136 修 2 条参考答案），或修改需重新初始化底层算子的精度配置（如 Coding-Agent 开关 MoE FP32 累加/残差），必须先落盘停机、申请代码锁打补丁并跑回归测试，再从兼容检查点 \(b_k\) 恢复。</li>
+      </ul>
+      <p>之所以实测里 85% 以上的有效改动都走了 HOT，纯粹是因为作者精准预判了日常 RL 调优最高频动的几样东西（熵/KL/clipping + 判分器钩子）并提前做成了热插拔接口。</p>
+
+      <h3>2. 为什么原生 Codex 既 0% 热更新，又额外浪费了 122 步（44.7%）？</h3>
+      <p>把图 4（原论文 Figure 6）和图 5（原论文 Figure 7）并排细看，必须严格区分两件常被混为一谈的事：<strong>“重启（restart）”不等于“回退检查点（checkpoint rewind）”</strong>。</p>
+
+      <figure>
+        <img src="autorl-autonomous-rl-multi-agent-assets/fig6-general-agent.png" alt="AutoRL 与原生通用代理 Codex 在 Qwen3-4B 上的同预算对比（原论文 Figure 6）：(a) 提案类别构成与落地/撤回对比；(b) 273 步预算中首次推进步数与重复步数对比；(c) 评估准确率与历史最优曲线。">
+        <figcaption>图 4：Qwen3-4B 在 273 累计训练步口径下 AutoRL 与原生 Codex（同用 GPT-6.1）的全面对比（原论文 Figure 6）。Codex 85.7% 提案集中于优化/系统/梯度，撤回率 50%（3/6），且 4 次回档消耗 122 步重复训练。</figcaption>
+      </figure>
+
+      <figure>
+        <img src="autorl-autonomous-rl-multi-agent-assets/fig7-backbones.png" alt="不同 LLM 底座下 AutoRL 与 Codex 对比（原论文 Figure 7）：(a) 在线热更新占比（Codex 0/8、GLM AutoRL 8/9、GPT AutoRL 17/20）；(b) 累计步数与抵达去重步数曲线；(c) 峰值与末五次评估均值。">
+        <figcaption>图 5：相同 AutoRL 框架下更换监督底座（GPT-6.1 vs GLM-5.2）并与 GPT-6.1 Codex 对比（原论文 Figure 7）。注意中图 (b) 中 GLM-5.2 AutoRL 同样有 80 步水平停滞段，说明“回档重跑”独立于“是否支持热更新”。</figcaption>
+      </figure>
+
+      <ul>
+        <li><strong>第一层：为什么 Codex 0/8 都在重启？</strong> 常规 Megatron-LM + vLLM 训练在启动时一次性加载脚本配置；HOT 控制文件是 AutoRL 框架自带的专属后端接口。同样只是调整熵系数，GPT AutoRL 在线改 8 次、GLM AutoRL 在线改 6 次，而未接入该接口的原生 Codex 3 次全靠重启完成。</li>
+        <li><strong>第二层：重启本身不会制造重复步数——122 步重跑从哪来？</strong> 证据有两条：其一，GPT AutoRL 自己也做了 3 次 COLD 重启，但通过 <code>save-and-stop</code> 在最新步落盘续训，重复步数为 0；其二，图 5(b) 清晰显示，原生 Codex（蓝线）与 GLM AutoRL（绿线）在前 135 步都紧贴 \(45^\circ\) 对角线推进，直到 step 135 之后才出现长段水平横盘。按累计步数账本 \(B = U + R\)（\(U\) 为曾抵达的去重步数，\(R\) 为回档后重复走过的步数），Codex 在 \(U \approx 135\) 处水平耗掉约 65 步、短推进到 \(U = 151\) 后又水平耗掉约 57 步，合计 \(122/273 = 44.7\%\)；而拥有 88.9% HOT 能力的 GLM AutoRL 同样在后期出现了 80 步回档重跑（\(273 - 193 = 80\)）。</li>
+        <li><strong>真正原因（事实与推断区分）</strong>：原文 4.1 节指出，Codex 落地 6 次改动撤回了 3 次（回退率 50%），每次撤回都靠倒带历史检查点重来，而 AutoRL 的 4 次撤回全经 HOT 原地关闭配置、保留当前权重和优化器状态。结合图 4(c) 还可推断：Codex 在第 100 步就见顶（32.11%）后，倾向于像人类做消融树搜索一样反复回到早期高分检查点换配方分叉重跑，却始终没能打穿瓶颈。需要提醒的是，<strong>“原地热改不回档”并非永远更优</strong>——如果一次坏改动只是低效，原地调回最省算力；若权重已被 KL=0 练崩或临近 NaN，回档反而是必要止损（AutoRL 在 Coding-Agent 中也多次回到 checkpoint 22）。</li>
+      </ul>
+
+      <h3>3. 三个可跟算的机制例子</h3>
+      <p>为了避免把机制停留在术语层面，下面给出一个原文真实回放算例与两个本文自拟的教学算例（明确区分归属）：</p>
+
+      <div class="callout info">
+        <b>算例 1（原文 Appendix A.3 Table 6 真实案例）：CPU 预检如何零 GPU 成本截获隐蔽 Reward Bug</b>
+        <p>在 GLM-5.2 驱动 Qwen3-4B 的第 43 次讨论中，一个提案想用 reward hook 去掉“截断惩罚”，同时<strong>保留</strong>“重复惩罚”。设原始题得分为 \(1.0\)，重复惩罚扣 \(0.7\)，四种测试夹具的预期输出应为：无惩罚 \(1.0\)、仅重复 \(0.3\)、仅截断 \(1.0\)、同时重复与截断 \(0.3\)。但初版 hook 在某个辅助查找失败时的 fallback 分支直接绕过了基线 grader，导致四组实测输出全变成 \([1.0, 1.0, 1.0, 1.0]\)——重复惩罚被意外清零。<code>Reviewer</code> 读代码抓出这条 fallback 路径后，<code>Tuner</code> 改为先调用基线 grader 再只撤销截断扣分，CPU 回放拿到 \([1.0, 0.3, 1.0, 0.3]\) 才获准于 step 154 上线。</p>
+      </div>
+
+      <div class="callout">
+        <b>算例 2（本文自拟教学算例）：单主线 Borda 投票为何会系统性压制高方差算法提案</b>
+        <p>假设第 4 轮剩余 \(m = 3\) 个候选：\(C_1\)（HOT 调高熵系数）、\(C_2\)（COLD 修 2 条参考答案）、\(C_3\)（COLD 重写梯度加权 loss）。按 AutoRL 规则，排名第 1、2、3 分别得 3、2、1 分，且评审维度显式计入“风险、可逆性与中断训练的代价”。若 <code>Tuner</code> 与 <code>Reviewer</code> 均优先选低中断方案，给出 \(C_1 \gt C_2 \gt C_3\)，而 <code>Innovator</code> 给出 \(C_3 \gt C_1 \gt C_2\)，则三方 Borda 总分为：</p>
+      </div>
+      <div class="math-display">\[
+      S(C_1) = 3 + 3 + 2 = 8, \qquad
+      S(C_2) = 2 + 2 + 1 = 5, \qquad
+      S(C_3) = 1 + 1 + 3 = 5.
+      \]</div>
+      <p>即便 \(C_3\) 靠编号平局规则进入第 5 轮决赛，2:1 多数决仍会选出零中断的 \(C_1\)。原文 4.3 节披露的两个正优势/高熵 token 加权提案正是以同样逻辑落选的——并非被证明无效，而是在单主线风险偏好下打不过低成本热调参。</p>
+
+      <div class="callout">
+        <b>算例 3（本文自拟教学算例）：为什么“独立审查 + 确定性单测”就能把撤回率压低一半</b>
+        <p>设模型提出的新改动有 \(p_{\text{bug}} = 0.50\) 概率存在隐藏实现漏洞或负收益（接近 Codex 50% 的实测撤回率）。只要在上线前增加一道独立检查与 CPU 回放闸门，即便它不完美——假设能拦下 \(\eta = 0.70\) 的坏改动、同时误杀 \(\alpha = 0.10\) 的好改动——那么通过闸门上线后的漏网坏改动占比（预期撤回率）就会立刻从 \(50\%\) 降至：</p>
+      </div>
+      <div class="math-display">\[
+      p_{\text{revert}} = \frac{p_{\text{bug}}(1 - \eta)}{p_{\text{bug}}(1 - \eta) + (1 - p_{\text{bug}})(1 - \alpha)}
+      = \frac{0.50 \times 0.30}{0.50 \times 0.30 + 0.50 \times 0.90}
+      = \frac{0.15}{0.60} = 25\%.
+      \]</div>
+      <p>这一数值已经非常接近 AutoRL 实测的 20%（4/20）。它提示我们：真正大幅降低线上翻车率的核心物理量是<strong>验证不对称性（独立视角 + 确定性代码回放）</strong>，而未必是五轮多方辩论和 Borda 计分仪式本身。</p>
+    </section>
+
+    <section id="evidence">
+      <h2>关键实验数据与口径核账</h2>
+      <p>阅读主表时，有两处口径必须先对齐：第一，Qwen3 训练与评测均<strong>关闭 thinking mode</strong>，评测温度 0.6，每题独立采样 4 次取均值（数学与通识报平均准确率，代码报 pass@1）；第二，在线监控用的 190 题评估集由 <code>AIME 24（30）+ AIME 25（30）+ HMMT 25（30）+ Beyond AIME（100）</code> 组成，每题采 2 次共 380 条回复。因此下表用星号（*）把<strong>完全未进入在线监控循环的五项外推基准</strong>单标出来，方便区分“监控域内提升”与“干净的域外泛化”。</p>
+
+      <div class="table-wrap">
+        <table class="dense-table">
+          <thead>
+            <tr>
+              <th>模型</th>
+              <th>方法</th>
+              <th class="num">AIME 24</th>
+              <th class="num">AIME 25</th>
+              <th class="num">HMMT 25</th>
+              <th class="num">Beyond AIME</th>
+              <th class="num">IMO-AB*</th>
+              <th class="num">MMLU-Pro*</th>
+              <th class="num">GPQA-D*</th>
+              <th class="num">MBPP*</th>
+              <th class="num">LCB Hard*</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Qwen3-1.7B</td>
+              <td>Baseline</td>
+              <td class="num">15.00</td>
+              <td class="num">13.33</td>
+              <td class="num">5.00</td>
+              <td class="num">4.50</td>
+              <td class="num">10.25</td>
+              <td class="num">38.85</td>
+              <td class="num">28.79</td>
+              <td class="num">33.20</td>
+              <td class="num">1.57</td>
+            </tr>
+            <tr>
+              <td>Qwen3-1.7B</td>
+              <td>GRPO (Static)</td>
+              <td class="num">26.67</td>
+              <td class="num">21.67</td>
+              <td class="num">18.33</td>
+              <td class="num">11.00</td>
+              <td class="num">8.63</td>
+              <td class="num">34.05</td>
+              <td class="num">22.60</td>
+              <td class="num">10.95</td>
+              <td class="num">1.50</td>
+            </tr>
+            <tr>
+              <td>Qwen3-1.7B</td>
+              <td>General Agent</td>
+              <td class="num">31.67</td>
+              <td class="num">18.33</td>
+              <td class="num">11.67</td>
+              <td class="num">12.00</td>
+              <td class="num">15.00</td>
+              <td class="num">25.55</td>
+              <td class="num">32.20</td>
+              <td class="num">32.00</td>
+              <td class="num">1.07</td>
+            </tr>
+            <tr>
+              <td>Qwen3-1.7B</td>
+              <td class="hi">AutoRL</td>
+              <td class="num hi">30.00</td>
+              <td class="num hi">30.00</td>
+              <td class="num hi">18.33</td>
+              <td class="num hi">12.50</td>
+              <td class="num hi">14.63</td>
+              <td class="num hi">44.88</td>
+              <td class="num hi">34.34</td>
+              <td class="num hi">40.05</td>
+              <td class="num hi">2.00</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B</td>
+              <td>Baseline</td>
+              <td class="num">25.00</td>
+              <td class="num">23.33</td>
+              <td class="num">11.67</td>
+              <td class="num">10.50</td>
+              <td class="num">18.44</td>
+              <td class="num">55.88</td>
+              <td class="num">43.43</td>
+              <td class="num">62.55</td>
+              <td class="num">4.93</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B</td>
+              <td>GRPO (Static)</td>
+              <td class="num">46.67</td>
+              <td class="num">45.00</td>
+              <td class="num">20.00</td>
+              <td class="num">26.00</td>
+              <td class="num">27.00</td>
+              <td class="num">57.93</td>
+              <td class="num">44.70</td>
+              <td class="num">63.55</td>
+              <td class="num">5.71</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B</td>
+              <td>General Agent</td>
+              <td class="num">50.00</td>
+              <td class="num">43.33</td>
+              <td class="num">26.67</td>
+              <td class="num">25.00</td>
+              <td class="num">16.06</td>
+              <td class="num">37.73</td>
+              <td class="num">45.33</td>
+              <td class="num">31.80</td>
+              <td class="num">4.50</td>
+            </tr>
+            <tr>
+              <td>Qwen3-4B</td>
+              <td class="hi">AutoRL</td>
+              <td class="num hi">66.67</td>
+              <td class="num hi">56.67</td>
+              <td class="num hi">31.67</td>
+              <td class="num hi">32.50</td>
+              <td class="num hi">36.75</td>
+              <td class="num hi">59.73</td>
+              <td class="num hi">47.22</td>
+              <td class="num hi">65.25</td>
+              <td class="num hi">6.79</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">注：数值摘自原论文 Table 1 与 Table 2（单位：%），General Agent（原生 Codex）与 AutoRL 均由 <code>gpt-6.1-sol</code> 驱动；<code>IMO-AB*</code> 为 IMO-AnswerBench（400 题），<code>LCB Hard*</code> 为 LiveCodeBench v6 Hard（350 题），带 <code>*</code> 的五列未进入在线监控评测循环。</p>
+
+      <p>这张合并表里最反直觉的信息不在数学列，而在右侧四列：<strong>静态 GRPO 在 1.7B 上把 MBPP 从 33.20% 砸到 10.95%，原生 Codex 在 4B 上把 MMLU-Pro 砸掉 18.15 个百分点、MBPP 腰斩 30.75 个百分点、IMO-AnswerBench 甚至低于基座</strong>；而 AutoRL 只在数学题上做干预，却同时保住并拉升了全部五项未见外推基准。结合初始设定（KL = 0、Entropy = 0）可作合理推断：在无熵与无 KL 约束下，噪声评分器叠加激进调参极易诱导窄格式坍缩；AutoRL 的“修假阴性误杀 + 阶梯加熵（0 → 0.004）+ 防循环惩罚”保住了策略熵与正常表达分布。不过原文未列出 Codex 具体施加的 6 次改动明细，因此 Codex 发生灾难性遗忘的精确诱因尚属未验证项。</p>
+
+      <h3>提案分布与预算利用账本（Qwen3-4B）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>维度 / 指标</th>
+              <th class="num">General Agent (GPT-6.1)</th>
+              <th class="num">AutoRL (GLM-5.2)</th>
+              <th class="num">AutoRL (GPT-6.1)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>273 步监控峰值 / 末五次均值（%）</td>
+              <td class="num">32.11 / 29.16</td>
+              <td class="num">32.89 / 30.68</td>
+              <td class="num hi">41.58 / 39.37</td>
+            </tr>
+            <tr>
+              <td>抵达去重步数 \(U\) / 重跑步数 \(R\)</td>
+              <td class="num">151 / 122（44.7%）</td>
+              <td class="num">193 / 80（29.3%）</td>
+              <td class="num hi">273 / 0（0.0%）</td>
+            </tr>
+            <tr>
+              <td>完整记录在线热更新占比（HOT / 总落地）</td>
+              <td class="num">0 / 8（0%）</td>
+              <td class="num">8 / 9（88.9%）</td>
+              <td class="num hi">17 / 20（85.0%）</td>
+            </tr>
+            <tr>
+              <td>273 步内撤回率（撤回 / 落地）</td>
+              <td class="num">3 / 6（50.0%）</td>
+              <td class="num">原文未单列</td>
+              <td class="num hi">4 / 20（20.0%）</td>
+            </tr>
+            <tr>
+              <td>全部提案数与主攻方向</td>
+              <td class="num">21（优化/系统/梯度占 85.7%）</td>
+              <td class="num">偏优化与 reward shaping</td>
+              <td class="num hi">131（解析/核验/参考/数据占 84.0%）</td>
+            </tr>
+            <tr>
+              <td>学习规则重构提案：提出 / 落地</td>
+              <td class="num">4（梯度设计）/ 未单列</td>
+              <td class="num">原文未单列</td>
+              <td class="num">3 / 0（0%）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">注：汇总自原论文 Table 3、Table 7、Table 8、Figure 6 与 Figure 7。完整记录长度分别为 Codex 343 步、GLM AutoRL 478 步、GPT AutoRL 273 步；峰值与去重步数均按 273 累计步统一截断。</p>
+    </section>
+
+    <section id="multi-agent-critique">
+      <h2>深层反思：这类 Multi-Agent 编排到底算不算“智能”？</h2>
+      <p>读完 AutoRL 这类多智能体科研系统，很多一线研究者会产生一种挥之不去的违和感：<strong>市面上大量 Agent 论文都在不断发明新角色名字、划不同工具权限、再配上辩论和投票，似乎人人都可以凭直觉再造一套大同小异的轮子——这真的算“智能”吗？</strong></p>
+      <p>把这种直觉落到第一性原理上，违和感来自论文把三层性质截然不同的东西打包在了一起：</p>
+      <ol>
+        <li><strong>Agent-Native 控制面工程（会长期留存的硬贡献）</strong>：包括滑动窗口指标摘要、HOT/COLD 状态切换协议、全量覆盖防漂移、激活回执与检查点血缘库。哪怕未来出现单一超级模型，它也同样需要这些环境动作与观测接口，就像再聪明的人类研究员也需要 Git、监控面板和热更新开关。但这层属于<strong>系统基础设施（Infra / Harness）</strong>，不是智能本身。</li>
+        <li><strong>人类先验硬编码的组织架构（最容易重复造轮子的脆弱层）</strong>：设几个 Perceptor、分 Tuner/Innovator/Reviewer、聊 5 轮还是 2 轮、用 Borda 还是多数决，全部是人在训练前写死的静态组织图。它本质上是在替当前 LLM 的两大短板打补丁——用独立会话做<strong>人工上下文隔离</strong>（弥补长上下文注意力退化），用独立 Reviewer 做<strong>推理期对抗采样</strong>（弥补单次生成的确认偏误）。图 5 几乎直接印证了 Bitter Lesson：一模一样的 8 角色精密编排，把底座从 GLM-5.2 换成 GPT-6.1 就暴涨 8.69 分；而把 8 角色全扔掉只用原生 Codex（GPT-6.1），分数（32.11%）竟然和带全套架构的 GLM-5.2（32.89%）几乎打平。</li>
+        <li><strong>罕见的大规模生产实证账本（真正有信息量的科学产物）</strong>：131 个提案的真实分布、DAPO-Math-17K 里挖出的几十处解析/参考答案错误、224 卡 14.7 天里自己改出 dtype mismatch 再精准拆弹的完整日志——这些反直觉的现实边界，比“角色划分本身”有价值得多。</li>
+      </ol>
+
+      <div class="callout">
+        <b>从“人工工作流编排”跨向“真正的科研智能”，还缺三道硬门槛</b>
+        <p>第一，<strong>决策流从手写变成可学习</strong>：何时停下来查日志、花多少算力验证、何时原地热改何时回档，应当是能按信息价值（VOI）随经验优化的策略，而不是永不自我演化的静态流程图；一旦未来底座模型通过长程 Agentic RL 内化了上下文管理与自查习惯，今天大量手工 Multi-Agent 编排都会像早期手工特征工程一样被吞掉，只有底层确定性接口留下来。第二，<strong>归因从“看曲线猜”走向可控因果实验</strong>：Qwen3-4B 在 step 101–129 连续叠了五刀改动，step 135 涨分后连论文自己也只能写“可能共同起了作用”，系统本身不具备设计最小对照或反事实实验的能力。第三，<strong>从“强模型奶弱模型”走向无更强教师的自举</strong>：拿 GPT-6.1 给 Qwen3-4B 修数学题参考答案和解析正则，本质仍是强对弱的降维监督；真正决定 RSI 能否成立的难题，是当被训模型本身已是人类与 AI 前沿最强的那一个时，可靠改进信号究竟从哪里来。</p>
+      </div>
+    </section>
+
+    <section id="terms">
+      <h2>核心术语对齐</h2>
+      <div class="def-list">
+        <div><b>Process-level Autonomous RL（过程级自主强化学习）</b><span>不等待单次训练全部结束后再做下一轮设计，而是在单次 RL 运行过程中实时读取动态指标、抽查样本、定位故障并在线注入配方修正的范式。</span></div>
+        <div><b>HOT / COLD 干预</b><span><code>HOT</code> 指在步边界或策略派发前通过在线控制文件热替换受支持的超参、loss 对象或训练 grader hook，保留显存中的权重 \(\theta\) 与优化器状态 \(z\)；<code>COLD</code> 指涉及源码、数据或底层精度重初始化时，先 <code>save-and-stop</code> 落盘打补丁，再从兼容检查点恢复。</span></div>
+        <div><b>Synchronous Observation Barrier（同步观测屏障）</b><span>把四个 Perceptor 各自采集的指标窗口与工件对齐到同一运行步并冻结为静态证据快照 \(E_k^0\) 的同步点，确保三名 Proposer 在首轮独立诊断时面对完全一致的事实。</span></div>
+        <div><b>Borda 计分（Borda Scoring）</b><span>社会选择理论中的排序聚合规则：对 \(m\) 个候选，每位评审排第 \(1, 2, \dots, m\) 名分别赋 \(m, m-1, \dots, 1\) 分，累加总分选出领先候选，避免单一极端偏好主导，但也倾向于淘汰有争议的高方差激进方案。</span></div>
+        <div><b>Checkpoint Lineage（检查点血缘）</b><span>记录每次恢复或重启所继承的父运行与父检查点指针。它让监控 Agent 仅沿当前激活轨迹回溯历史，不把已经废弃的回档分支误算为当前策略的直接因果前提。</span></div>
+        <div><b>Cumulative vs. Distinct Steps（累计步数与去重步数）</b><span>设总预算 \(B = U + R\)，\(U\) 为训练抵达过的独立步数索引，\(R\) 为检查点回档后重复走过的步数。该拆分用于衡量试错与回档对有效算力推进的吞噬比例。</span></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2>证据边界、竞争解释与未披露缺口</h2>
+      <div class="callout warn">
+        <b>审读提醒：五项关键缺口决定了本文结论必须按“系统整包效果”而非“纯多智能体增益”来解读</b>
+        <p>结合正文实验设定与附录细节，有五条边界不能跳过：</p>
+      </div>
+      <ol>
+        <li><strong>缺失最关键的消融组——单 Agent + 同等 HOT 与 Grader 工具</strong>：原生 Codex 既无 HOT 热更新接口（0/8），也无专门的 Rollout/Grader 观测流程。论文在 5.3 节引用 Bertalanič &amp; Fortuna（2026）指出同质模型无引导辩论常增本不增效，却未测试“单个 GPT-6.1 + 相同 HOT 控制文件 + 相同诊断工具 + CPU 回放沙盒”的表现，因此无法把“5 轮多角色辩论与 Borda 投票”的边际贡献从工程接口红利中拆干净。</li>
+        <li><strong>单主线投票的制度性保守偏置</strong>：0/3 学习规则提案落地不仅反映底座模型能力上限，也与“在正在烧卡的唯一主线上用风险/中断成本打分”的机制直接耦合。将低风险保活与高方差算法探索绑在同一条主线上，制度本身就会压制结构性改动。</li>
+        <li><strong>在线监控集与主表四项数学榜重叠</strong>：AIME 24/25、HMMT 25 与 Beyond AIME 正是每 5 步驱动决策的 190 题监控集（尽管 Eval Perceptor 仅看聚合分与脱敏报告），因此这四项存在一定自适应选择偏差。所幸完全未进监控集的 IMO-AnswerBench（4B 上 +9.75%）与 Table 2 全部四项跨领域基准同样胜出，为泛化主张提供了最干净的反驳依据。</li>
+        <li><strong>单次运行方差、选点口径与监督成本缺失</strong>：RL 训练固有方差很高——图 2 前 100 步完全相同配置下，AutoRL 与静态 GRPO 曲线就已相差 2–4 个百分点，而全篇所有实验均为单次运行。此外，附录 A.5 显示三套系统完整运行步数不同（Codex 343、GLM AutoRL 478、GPT AutoRL 273），主表 Table 1/2 称评测于“selected checkpoints”但未公布具体步数；168 轮讨论中高频调用高推理强度 <code>gpt-6.1-sol</code> 的 API Token 与美元成本账单也完全未披露。14.7 天 224 卡编程实验无静态基线（约 7.9 万 GPU 小时，工程上可理解），故只能证明自主容错涨点，不能量化其相对人类值守或自动重启脚本的精确净增益。</li>
+        <li><strong>在线修改 TRAIN Grader 的潜在 Reward Hacking 风险</strong>：允许 Agent 在训练中修改训练判分器是一把双刃剑——一旦放松判分口径，就能轻松刷高训练奖励而毁掉真实能力。AutoRL 依靠“锁死 EVAL 评测集与评测判分器 + 独立 Reviewer 代码路径审查 + CPU 正负样例回归测试”三道护栏将其稳住，但在缺乏强离线金标验证集的开放任务中，这套防线能否守住尚未得到验证。</li>
+      </ol>
+    </section>
+
+    <section id="insight">
+      <h2>研究与工程启发：两个可检验预测与对 RLVR 奖励设计的启示</h2>
+
+      <h3>可检验预测一：用“主线保活 + 影子短分支”拆开“不会创新”与“不敢创新”</h3>
+      <p>如果把 AutoRL 的单主线架构改造成双轨模式——主线只允许低风险 HOT 调参、排障与判分器修复，同时为 <code>Innovator</code> 的学习规则改动开放独立的 15–20 步影子短分支（shadow branch）或小规模代理验证，并从 Borda 排序里移除对主线中断成本的惩罚——就能直接检验 0/3 算法提案的真正死因。<strong>判别标准</strong>：若学习规则提案的落地率与短分支胜率显著抬升，说明原瓶颈主要是单主线风险厌恶偏置；若即便解除中断惩罚，提案仍在短分支或后续主线中大规模失效，才真正证实瓶颈落在当下模型的算法发明能力本身。</p>
+
+      <h3>可检验预测二：剥离 Multi-Agent 辩论后，真正不可替代的核心角色大概率是“独立 Reviewer”</h3>
+      <p>在 Qwen3-4B 同一任务上，若把原生单 Agent Codex 补齐与 AutoRL 相同的 HOT 在线控制文件、Rollout/Grader 抽样检查工具与 CPU 回放沙盒，我预测其成绩会从 32.11% 显著逼近 41.58%，因为 44.7% 的重跑浪费与“不看判分器”的视角盲区都被同时消除。真正容易掉链子、单 Agent 很难靠自我提示彻底替代的环节，是<strong>独立于代码修改者的只读 <code>Reviewer</code> + 强制执行的回归夹具检查</strong>（用来打破确认偏误、压低线上撤回率），而不是多轮 Borda 投票。</p>
+
+      <h3>对 RLVR 与自适应奖励设计的现实启示</h3>
+      <p>AutoRL 最值得 RL 后训练研究者带走的工程直觉其实很简单：<strong>在真实 RLVR 中，“静态 Verifier”往往是个假象</strong>。随着策略变强，模型会不断踩出未曾预料的输出格式、等价表达与数据集原本埋着的错误参考答案，把开局正常的静态判分器踩穿，并在无熵/无 KL 约束下引发跨领域格式坍缩。将判分器视作训练过程中需要持续体检和回归验证的“活组件”，同时用不可变的独立评测锚点与正负例回归夹具锁死修改边界，可能是当前性价比最高的一类 RL 基础设施升级。</p>
+
+      <div class="callout info">
+        <b>站内延伸阅读</b>
+        <p>想把“过程级在线后训练闭环”与“不可重跑的前沿预训练 RSI 闭环”对照着读，可衔接同日笔记《<a href="no-second-run-frontier-pretraining-rsi-801.html">No Second Run：前沿预训练里的 RSI，到底能闭合哪些环？</a>》；若关心数据研究 Agent 在递归迭代中的真实退化边界，可延伸阅读《<a href="rsibench-data-data-centric-rsi-benchmark.html">RSIBench-Data 深读：数据研究 agent 已能发现改进，却还不会可靠递归改进</a>》。</p>
+      </div>
+    </section>
+
+    <section class="sources" id="sources" data-note-role="evidence-appendix">
+      <h2>证据边界与资料索引</h2>
+      <p>本文全部机制描述、实验表格数值与附录故障日志均核对自 <code>arXiv:2611.17790v1</code>（2026 年 11 月 13 日提交，23 页）正文、附录及原论文图表，均为原作者报告值，未做独立训练或评测复现。截至 2026 年 11 月 19 日，作者未公开源码仓库、完整干预日志与模型权重，Hugging Face 论文页尚未收录该条目。文中“单主线 Borda 投票保守偏置”与“验证不对称性压缩撤回率”为本文自拟教学算例；两项实验预测与对多智能体编排的批判均属本文独立判断，不代表原作者立场。</p>
+      <ol>
+        <li>Simon Tang, Wenjie Shi, Yongjing Yin, et al. (2026-11-13). <a href="https://arxiv.org/abs/2611.17790">AutoRL: A Multi-Agent System towards Autonomous Reinforcement Learning (arXiv:2611.17790)</a>（<a href="https://arxiv.org/html/2611.17790">HTML 全文</a> / <a href="https://arxiv.org/pdf/2611.17790">PDF 原稿</a>）。</li>
+        <li>Q. Yu et al. (2025). <a href="https://arxiv.org/abs/2503.14476">DAPO: An Open-Source LLM Reinforcement Learning System at Scale (arXiv:2503.14476)</a>（本文 Qwen3 数学实验所用 <code>DAPO-Math-17K</code> 数据来源）。</li>
+        <li>H. Liu et al. (2026). <a href="https://arxiv.org/abs/2601.21204">Scaling Embeddings Outperforms Scaling Experts in Language Models (arXiv:2601.21204)</a>（本文 <code>LongCat-Flash-Lite</code> 基座参考）。</li>
+        <li>Y. Zhou et al. (2026). <a href="https://arxiv.org/abs/2610.21055">Athanor: An Agent-Native System for Autonomous Post-Training Research (arXiv:2610.21055)</a>（同期轮次级自主后训练代表对照）。</li>
+        <li>H. Fang et al. (2026). <a href="https://arxiv.org/abs/2606.18388">LLMZero: Discovering Adaptive Training Strategies for RL Post-Training via LLM Agents (arXiv:2606.18388)</a>。</li>
+        <li>Q. Fu et al. (2026). <a href="https://arxiv.org/abs/2606.04484">AgentJet: A Distributed Swarm Training Framework for Agentic Reinforcement Learning (arXiv:2606.04484)</a>。</li>
+        <li>G. Chen et al. (2026). <a href="https://arxiv.org/abs/2606.03108">EvoTrainer: Co-Evolving LLM Policies and Training Harnesses for Autonomous Agentic Reinforcement Learning (arXiv:2606.03108)</a>。</li>
+        <li>B. Bertalanič &amp; C. Fortuna (2026). <a href="https://arxiv.org/abs/2605.00914">The Cost of Consensus: Isolated Self-Correction Prevails Over Unguided Homogeneous Multi-Agent Debate (arXiv:2605.00914)</a>（原论文 5.3 节引用的多智能体辩论反面实证）。</li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>

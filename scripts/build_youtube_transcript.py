@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import html
 import json
+import math
 import re
 import sys
 from dataclasses import dataclass
@@ -66,18 +67,27 @@ def parse_timestamp(value: str) -> float:
         hours, minutes, seconds = parts
     else:
         raise TranscriptError(f"invalid VTT timestamp: {value}")
-    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    try:
+        hours, minutes, seconds = int(hours), int(minutes), float(seconds)
+    except ValueError as error:
+        raise TranscriptError(f"invalid VTT timestamp: {value}") from error
+    if hours < 0 or not 0 <= minutes < 60 or not 0 <= seconds < 60:
+        raise TranscriptError(f"invalid VTT timestamp: {value}")
+    return hours * 3600 + minutes * 60 + seconds
 
 
 def stamp(value: float, milliseconds: bool = False) -> str:
     """Render seconds as a stable transcript timestamp."""
+    if not math.isfinite(value):
+        raise TranscriptError("timestamp must be finite")
     value = max(0.0, value)
-    hours = int(value // 3600)
-    minutes = int(value % 3600 // 60)
-    seconds = value % 60
+    total_millis = round(value * 1000) if milliseconds else int(value) * 1000
+    hours, remainder = divmod(total_millis, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    seconds, millis = divmod(remainder, 1000)
     if milliseconds:
-        return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}"
-    return f"{hours:02d}:{minutes:02d}:{int(seconds):02d}"
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{millis:03d}"
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -91,7 +101,7 @@ def normalized_text(texts: Sequence[str]) -> str:
 
 def clean_cue_text(lines: Sequence[str]) -> str:
     text = " ".join(line.strip() for line in lines)
-    return WHITESPACE.sub(" ", TAG.sub("", html.unescape(text))).strip()
+    return WHITESPACE.sub(" ", html.unescape(TAG.sub("", text))).strip()
 
 
 def parse_vtt(
@@ -120,6 +130,8 @@ def parse_vtt(
     blocks = re.split(r"\r?\n\s*\r?\n", source.strip())
     for block in blocks:
         lines = block.splitlines()
+        if re.match(r"^(?:NOTE(?:\s|$)|STYLE\s*$|REGION\s*$)", lines[0]):
+            continue
         timing_indexes = [index for index, line in enumerate(lines) if "-->" in line]
         if not timing_indexes:
             continue
@@ -195,6 +207,11 @@ def parse_timing_repairs(values: Sequence[str]) -> dict[int, TimingRepair]:
             raise TranscriptError(f"invalid timing repair: {value}") from error
         if repair.cue_number <= 0:
             raise TranscriptError("timing repair cue number must be positive")
+        if not all(math.isfinite(time) and time >= 0 for time in (
+            repair.original_start, repair.original_end,
+            repair.corrected_start, repair.corrected_end,
+        )):
+            raise TranscriptError("timing repair timestamps must be finite and non-negative")
         if repair.corrected_end < repair.corrected_start:
             raise TranscriptError("corrected cue end cannot precede its start")
         if repair.cue_number in repairs:

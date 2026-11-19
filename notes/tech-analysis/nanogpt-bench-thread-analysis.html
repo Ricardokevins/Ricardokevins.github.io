@@ -1,10 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NanoGPT-Bench X 线程解读：Coding Agent 能做研究吗？</title>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>NanoGPT-Bench X 线程解读：Coding Agent 能做研究吗？</title>
+<style>
     :root {
       --bg: #f7f1e8;
       --paper: #fffaf2;
@@ -362,339 +363,304 @@
       .thesis { font-size: 18px; }
     }
   </style>
-  <link rel="stylesheet" href="../assets/notes-shell.css">
+<link href="../assets/notes-shell.css" rel="stylesheet"/>
 </head>
 <body class="notes-shell-page">
-  <nav class="notes-sitebar" aria-label="Notes navigation">
-    <a class="notes-sitebar__brand" href="../"><span class="notes-sitebar__mark" aria-hidden="true"></span><span>Notes</span></a>
-    <span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
-  </nav>
-
-
-  <div class="topbar">
-    <nav class="nav">
-      <strong>NanoGPT-Bench</strong>
-      <a href="#source">证据</a>
-      <a href="#problem">问题</a>
-      <a href="#setup">评估设计</a>
-      <a href="#results">结果</a>
-      <a href="#behavior">行为诊断</a>
-      <a href="#locus">Locus</a>
-      <a href="#limits">边界</a>
-      <a href="#insight">Insight</a>
-    </nav>
-  </div>
-
-  <header>
-    <div class="eyebrow">X Thread Reading Report · 2026-05-20</div>
-    <h1>Can coding agents do research?</h1>
-    <p class="thesis">IntologyAI 这条线程的核心不是“agent 完全不会做研究”，而是提出一个更尖锐的评估结论：在一个已经被人类优化到很强、低垂果实很少、需要真正探索算法与系统改动的环境里，当前主流 coding agents 主要退化成超参搜索器。</p>
-
-    <div class="hero-grid">
-      <div class="hero-panel">
-        <div class="metric">
-          <span class="value">9.3%</span>
-          <span class="label">最好 baseline 恢复的人类进展比例</span>
-        </div>
-        <div class="metric">
-          <span class="value">512</span>
-          <span class="label">每个 agent 的 H100 GPU-hour 预算</span>
-        </div>
-        <div class="metric">
-          <span class="value">33</span>
-          <span class="label">2025-09-03 至 2026-01-19 的人类参考世界纪录</span>
-        </div>
+<nav aria-label="Notes navigation" class="notes-sitebar">
+<a class="notes-sitebar__brand" href="../"><span aria-hidden="true" class="notes-sitebar__mark"></span><span>Notes</span></a>
+<span class="notes-sitebar__links"><a class="notes-sitebar__link" href="../">All Notes</a><a class="notes-sitebar__link" href="../../">Home</a></span>
+</nav>
+<div class="topbar">
+<nav class="nav">
+<strong>NanoGPT-Bench</strong>
+<a href="#source">证据</a>
+<a href="#problem">问题</a>
+<a href="#setup">评估设计</a>
+<a href="#results">结果</a>
+<a href="#behavior">行为诊断</a>
+<a href="#locus">Locus</a>
+<a href="#limits">边界</a>
+<a href="#insight">Insight</a>
+</nav>
+</div>
+<header>
+<div class="eyebrow">X Thread Reading Report · 2026-05-20</div>
+<h1>Can coding agents do research?</h1>
+<p class="thesis">IntologyAI 这条线程的核心不是“agent 完全不会做研究”，而是提出一个更尖锐的评估结论：在一个已经被人类优化到很强、低垂果实很少、需要真正探索算法与系统改动的环境里，当前主流 coding agents 主要退化成超参搜索器。</p>
+<div class="hero-grid">
+<div class="hero-panel">
+<div class="metric">
+<span class="value">9.3%</span>
+<span class="label">最好 baseline 恢复的人类进展比例</span>
+</div>
+<div class="metric">
+<span class="value">512</span>
+<span class="label">每个 agent 的 H100 GPU-hour 预算</span>
+</div>
+<div class="metric">
+<span class="value">33</span>
+<span class="label">2025-09-03 至 2026-01-19 的人类参考世界纪录</span>
+</div>
+</div>
+<div class="stat-panel">
+<h2>一句话理解</h2>
+<p>NanoGPT-Bench 把 agent 放进一个真实的 GPT-2 style 预训练 speedrun 环境，从一个强人类世界纪录出发，让它在无人工介入、无互联网的条件下继续降低训练到目标 validation loss 所需的墙钟时间。结果显示，agent 有执行能力和局部优化能力，但很少成功提出并实现能推动前沿的算法或系统研究改动。</p>
+</div>
+</div>
+</header>
+<main>
+<section id="problem">
+<h2>它到底在评估什么问题？</h2>
+<p>NanoGPT-Bench 评估的是“autonomous research agent 能不能在一个开放、长期、真实竞争过的 AI 训练优化问题上追回人类历史进展”。这里的 research 不是写论文摘要，也不是修一个明确 bug，而是要提出、实现、验证可以让训练更快的改动。</p>
+<div class="grid-3">
+<div class="card">
+<span class="tag">任务对象</span>
+<h3>NanoGPT Speedrun</h3>
+<p>原始竞赛目标是把一个 GPT-2 style 模型训练到 FineWeb validation loss 3.28，越快越好。metric 是训练到目标 loss 的墙钟时间，低者更好。</p>
+</div>
+<div class="card">
+<span class="tag">为什么难</span>
+<h3>从强起点开始</h3>
+<p>Agent 不是从朴素 baseline 开始，而是从 2025-09-03 的人类世界纪录开始。这个起点已经包含大量优化，因此简单 cleanup、明显 bug、低垂果实更少。</p>
+</div>
+<div class="card">
+<span class="tag">核心比较</span>
+<h3>追回人类五个月进展</h3>
+<p>人类参考窗口是 2025-09-03 到 2026-01-19 的 33 个世界纪录，约等于 NanoGPT 社区五个月持续推进的轨迹。</p>
+</div>
+</div>
+<div class="callout">
+<strong>关键区分：</strong>这个 benchmark 不问“agent 能不能写代码”，而问“agent 能不能在没有明确 recipe 的情况下，选择值得尝试的研究方向，并把它做成有效、可复现、规则合规的性能提升”。
       </div>
-      <div class="stat-panel">
-        <h2>一句话理解</h2>
-        <p>NanoGPT-Bench 把 agent 放进一个真实的 GPT-2 style 预训练 speedrun 环境，从一个强人类世界纪录出发，让它在无人工介入、无互联网的条件下继续降低训练到目标 validation loss 所需的墙钟时间。结果显示，agent 有执行能力和局部优化能力，但很少成功提出并实现能推动前沿的算法或系统研究改动。</p>
-      </div>
-    </div>
-  </header>
-
-  <main>
-
-
-    <section id="problem">
-      <h2>它到底在评估什么问题？</h2>
-      <p>NanoGPT-Bench 评估的是“autonomous research agent 能不能在一个开放、长期、真实竞争过的 AI 训练优化问题上追回人类历史进展”。这里的 research 不是写论文摘要，也不是修一个明确 bug，而是要提出、实现、验证可以让训练更快的改动。</p>
-
-      <div class="grid-3">
-        <div class="card">
-          <span class="tag">任务对象</span>
-          <h3>NanoGPT Speedrun</h3>
-          <p>原始竞赛目标是把一个 GPT-2 style 模型训练到 FineWeb validation loss 3.28，越快越好。metric 是训练到目标 loss 的墙钟时间，低者更好。</p>
-        </div>
-        <div class="card">
-          <span class="tag">为什么难</span>
-          <h3>从强起点开始</h3>
-          <p>Agent 不是从朴素 baseline 开始，而是从 2025-09-03 的人类世界纪录开始。这个起点已经包含大量优化，因此简单 cleanup、明显 bug、低垂果实更少。</p>
-        </div>
-        <div class="card">
-          <span class="tag">核心比较</span>
-          <h3>追回人类五个月进展</h3>
-          <p>人类参考窗口是 2025-09-03 到 2026-01-19 的 33 个世界纪录，约等于 NanoGPT 社区五个月持续推进的轨迹。</p>
-        </div>
-      </div>
-
-      <div class="callout">
-        <strong>关键区分：</strong>这个 benchmark 不问“agent 能不能写代码”，而问“agent 能不能在没有明确 recipe 的情况下，选择值得尝试的研究方向，并把它做成有效、可复现、规则合规的性能提升”。
-      </div>
-    </section>
-
-    <section id="setup">
-      <h2>评估怎么做？</h2>
-      <p>官方设计试图避免三个常见问题：污染、低起点带来的虚高、以及 agent 自己把噪声当进步。它把 agent 放进一个固定容器环境，禁止联网，给定固定计算预算，并要求所有候选方案通过 `submit` 命令验证。</p>
-
-      <div class="flow">
-        <div class="step">
-          <span class="num">1</span>
-          <b>初始化</b>
-          <span>复制 2025-09-03 的人类 FA3 record 作为起点。</span>
-        </div>
-        <div class="step">
-          <span class="num">2</span>
-          <b>自主探索</b>
-          <span>Agent 在 `/workspace/experiments` 里改 `train_gpt.py`，不能联网。</span>
-        </div>
-        <div class="step">
-          <span class="num">3</span>
-          <b>提交候选</b>
-          <span>只有验证过的候选才能复制到 `/workspace/submissions/submission_N`。</span>
-        </div>
-        <div class="step">
-          <span class="num">4</span>
-          <b>规则检查</b>
-          <span>LLM judge 检查是否破坏可比性，例如改数据、跳过工作、移动计时代码。</span>
-        </div>
-        <div class="step">
-          <span class="num">5</span>
-          <b>重复计时</b>
-          <span>候选会重跑 10 次，要求 val loss 达标且速度提升有统计显著性。</span>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>项目</th>
-            <th>官方设定</th>
-            <th>为什么重要</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Agent</td>
-            <td>Codex GPT-5.4 xhigh、Claude Code Opus 4.6 Max、Autoresearch-style Claude scaffold</td>
-            <td>覆盖主流 coding-agent 与更研究导向的 scaffold，不只测单一产品。</td>
-          </tr>
-          <tr>
-            <td>预算</td>
-            <td>每个 baseline 512 H100 GPU-hours，最长约一周墙钟时间</td>
-            <td>预算足够大，不能把失败简单归因于“没给时间”。</td>
-          </tr>
-          <tr>
-            <td>目标指标</td>
-            <td>最大 valid speedup，相对 2025-09-03 起点计算</td>
-            <td>只奖励真正通过规则和重复计时的速度提升。</td>
-          </tr>
-          <tr>
-            <td>污染控制</td>
-            <td>使用 frontier model knowledge cutoff 之后的人类纪录窗口，并做 contamination check</td>
-            <td>降低模型记住未来人类方案的可能性。</td>
-          </tr>
-          <tr>
-            <td>过拟合检查</td>
-            <td>比较 canonical validation 和 held-out 100M token validation 的 loss 增幅</td>
-            <td>避免 agent 因大量提交而专门调到某个 validation shard。</td>
-          </tr>
-        </tbody>
-      </table>
-      </div>
-
-      <figure>
-        <img src="nanogpt-bench-thread-analysis-assets/thread-rigor.jpg" alt="NanoGPT-Bench rigor screenshot">
-        <figcaption>线程中的严谨性 claim：高人类基线、防污染、优化过的初始化，用来让 AI R&amp;D 能力信号更清楚。</figcaption>
-      </figure>
-    </section>
-
-    <section id="results">
-      <h2>结果是什么？9.3% 怎么理解？</h2>
-      <p>9.3% 不是准确率，也不是任务完成率。它表示：在 2025-09-03 到 2026-01-19 这个人类窗口内，人类世界纪录累计降低了 63.2 秒训练时间；表现最好的 agent baseline 只追回了这个累计 speedup 的 9.3%。</p>
-
-      <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Baseline</th>
-            <th>追回人类进展比例</th>
-            <th>运行行为</th>
-            <th>我的解读</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Autoresearch-style Claude</td>
-            <td>9.3%</td>
-            <td>321 个 training variants</td>
-            <td>最高，但仍只相当于追回早期少数几天的人类进展。</td>
-          </tr>
-          <tr>
-            <td>Codex GPT-5.4 xhigh</td>
-            <td>8.6%</td>
-            <td>399 个 training variants</td>
-            <td>能大量实验，但主要偏向可验证的局部改动。</td>
-          </tr>
-          <tr>
-            <td>Claude Code Opus 4.6 Max</td>
-            <td>8.2%</td>
-            <td>455 个 training variants</td>
-            <td>实验数量最多，最终进展并没有成比例更高。</td>
-          </tr>
-        </tbody>
-      </table>
-      </div>
-
-      <figure>
-        <img src="nanogpt-bench-thread-analysis-assets/blog-figure-1.png" alt="NanoGPT-Bench performance trajectory">
-        <figcaption>官方 Figure 1：agent 在固定 H100 预算下的最好训练时间轨迹，对比人类世界纪录轨迹。</figcaption>
-      </figure>
-
-      <p>这个结果有两个方向都不能过度解读。一方面，它确实说明当前 agents 离“独立推动研究前沿”还有明显差距。另一方面，9.3% 也不是零：在一个强起点、无互联网、规则严苛的环境里，agent 仍然找到了有效速度提升，说明它们已经具备局部实验执行和可验证优化能力。</p>
-    </section>
-
-    <section id="behavior">
-      <h2>Agent 到底失败在哪里？</h2>
-      <p>Intology 的关键诊断是：agent 的 compute 大多花在超参数调优，而不是算法研究。官方把每次 `submit` 之间的 reasoning、tool calls 和 diff 切成 span，再用 GPT-5.4 medium 做多分类，标签包括 algorithmic research、engineering optimizations、hyperparameter tuning 等。</p>
-
-      <div class="grid-2">
-        <figure>
-          <img src="nanogpt-bench-thread-analysis-assets/blog-figure-2.png" alt="Classification of human and agent submissions">
-          <figcaption>官方 Figure 2：人类成功纪录中约 75.8% 到 77% 涉及算法研究改动，而 agent 提交主要是超参调优。</figcaption>
-        </figure>
-        <figure>
-          <img src="nanogpt-bench-thread-analysis-assets/blog-figure-3.png" alt="Agent traces discussing algorithmic research">
-          <figcaption>官方 Figure 3：进一步区分 agent 是否提到算法想法、是否实现、实现后是否带来 speedup。</figcaption>
-        </figure>
-      </div>
-
-      <h3>为什么超参调优会成为默认行为？</h3>
-      <p>因为它反馈快、风险低、reward 清晰。改 learning rate、window schedule、cooldown fraction 或 training steps，通常只需要改几个数，跑一次就知道是否变快，失败也容易回退。相比之下，算法或系统研究需要形成假设、改动较大代码路径、处理训练稳定性、验证可比性，还可能因为一个实现 bug 让整轮实验报废。</p>
-
-      <div class="callout">
-        <strong>最有价值的观察：</strong>当前 agent 不是没有“想到”算法方向，而是经常卡在“是否值得冒险实现”。例如官方 blog 提到 Autoresearch 多次考虑把 value embeddings 从 3 降到 2，但反复判断风险太高，最后没有真正实验。
-      </div>
-
-      <figure>
-        <img src="nanogpt-bench-thread-analysis-assets/thread-hparam.jpg" alt="Hyperparameter tuning screenshot">
-        <figcaption>线程中的例子：Codex 曾花费大量 H100 时间调整 cooldown fraction 与 window size schedule 这类参数。</figcaption>
-      </figure>
-
-      <p>这点比“agent 很笨”更重要。它说明我们当前的 agent loop、scaffold 和评价器天然鼓励局部爬山：只要 verifier 主要反馈最终速度，agent 就会偏向那些最容易得到短期有效反馈的动作。真正的研究能力需要的不只是更强模型，还包括更好的 idea portfolio、风险分层实验、失败归因、并行探索和跨实验记忆。</p>
-    </section>
-
-    <section id="locus">
-      <h2>Locus 与 PR #199 说明了什么？</h2>
-      <p>线程里有一个反向例子：Intology 称其 Artificial Scientist 系统 Locus 在 2026-01-16 贡献了 33 个参考纪录中的第 31 个。对应 PR #199 标题是 fused softcapped cross entropy kernel，声称带来约 0.9 秒世界纪录提升。</p>
-
-      <div class="grid-2">
-        <div class="card">
-          <h3>这个 PR 做了什么？</h3>
-          <p>从 diff 看，它新增 Triton kernel，把 softcap transformation 和 cross entropy loss computation 融合，减少训练中间张量物化和 kernel launch 开销。换句话说，这不是调一个学习率，而是改变 GPU 上如何计算训练 loss 的系统算法实现。</p>
-        </div>
-        <div class="card">
-          <h3>为什么算 research-like？</h3>
-          <p>它需要识别训练瓶颈、理解 loss 的数学形式、写 Triton 前向与反向 kernel、处理数值与性能验证。这个过程更接近系统侧算法研究，而不是普通工程 cleanup。</p>
-        </div>
-      </div>
-
-      <figure>
-        <img src="nanogpt-bench-thread-analysis-assets/thread-algo.jpg" alt="Algorithmic work screenshot">
-        <figcaption>线程中的算法研究例子：agent 想到方向但没有落实，与 Locus 贡献形成对照。</figcaption>
-      </figure>
-
-      <p>不过，Locus 不是这次 baseline 表里的 Codex/Claude/Autoresearch。PR 页面也写到 Intology 团队在提交前做了 extensive verification。因此它可以说明“专门为 research loop 设计的系统可能更接近目标”，但不能直接推出通用 coding agent 已经能自主做可靠科学研究。</p>
-    </section>
-
-    <section id="limits">
-      <h2>可信度与边界</h2>
-      <div class="verdict">
-        <div class="card">
-          <h3>我认为可信的部分</h3>
-          <p>Benchmark 环境、README、RULES、submit wrapper 和 blog 口径相互一致；PR #199 的存在和 fused Triton kernel 改动也能独立核验。9.3%、8.6%、8.2% 等主结果来自官方实验，但至少不是单条推文空口说法。</p>
-        </div>
-        <div class="card">
-          <h3>需要保留的疑问</h3>
-          <p>行为分类依赖 LLM classifier，虽然有 taxonomy，但仍可能受标签定义和 prompt 影响。人类样本只包含成功纪录，而 agent 样本包含 valid 但未超越前沿的提交，分布比较并不完全对称。</p>
-        </div>
-        <div class="card">
-          <h3>不能外推的结论</h3>
-          <p>不能由此断言所有 AI research tasks 上 agent 都只能做 9.3%。NanoGPT speedrun 是高性能训练优化问题，反馈昂贵、搜索空间特殊，对算法和系统能力要求很高。</p>
-        </div>
-      </div>
-
-      <h3>一个重要 benchmark 设计张力</h3>
-      <p>这个 benchmark 越接近真实研究，就越昂贵、越难多次复现、越难覆盖更多领域；越自动化和可重复，就越容易把目标压缩成单一可优化指标。NanoGPT-Bench 的价值正是在这两个方向之间取了一个很工程化的中点：它有真实人类历史、有可执行 evaluator，也有足够多的局限需要读者自己把握。</p>
-    </section>
-
-    <section id="insight">
-      <h2>我的 Insight</h2>
-      <p>这条线程最值得带走的不是“agent 很差”，而是“当前 agent 的能力形状很清楚”：它们擅长在明确 reward 下做大量可验证的小步实验，但不擅长在高风险、延迟反馈、实现成本大的空间里持续下注。换句话说，coding agent 已经像一个勤奋的实验执行员，但还不像一个能稳定管理研究风险的 PI。</p>
-
-      <p>真正的 autonomous research agent 需要三层能力同时成熟：</p>
-      <ol>
-        <li><strong>想法生成：</strong>不是列举常见 trick，而是从 profiling、loss 曲线、失败日志和历史方案里形成可检验假设。</li>
-        <li><strong>实验组合：</strong>把高风险算法想法拆成 cheap probe、partial implementation、full submission，而不是一次性大改或者完全回避。</li>
-        <li><strong>研究记忆：</strong>记录失败原因、控制变量、噪声范围和可复用组件，避免数百次实验仍像局部爬山。</li>
-      </ol>
-
-      <div class="callout">
-        <strong>对我们实际使用 agent 的启发：</strong>如果你希望 agent 做“研究型代码工作”，不要只给最终指标。要强制它维护 hypothesis backlog、实验设计、失败归因、最小验证路径和风险预算。否则它会自然选择最容易被验证的改动，也就是这篇 benchmark 里看到的超参搜索。
-      </div>
-    </section>
-<section id="terms">
-  <h2>术语解释与概念边界</h2>
-  <dl>
-    <dt><strong>NanoGPT-Bench</strong></dt><dd>用小型、可运行的研究代码任务检验 coding agent 是否能完成实验修改，而不只是写静态代码片段。</dd>
-    <dt><strong>Research coding</strong></dt><dd>指带有假设、实验、指标和日志判断的编码工作；它要求模型理解研究意图，而不是只满足语法和单测。</dd>
-    <dt><strong>Agent trajectory</strong></dt><dd>模型从读文件、改代码、运行命令到修复错误的完整行动路径。评价这类任务时，最终结果和中间路径都很重要。</dd>
-    <dt><strong>可复现实验</strong></dt><dd>同一修改应能在相同环境下重新跑出一致指标；如果只得到一次偶然成功，不能算稳定研究能力。</dd>
-  </dl>
 </section>
-
-    <section id="source" data-note-role="evidence-appendix">
-      <h2>证据边界与资料索引</h2>
-      <p>本报告参考了原始 X 线程、官方 blog、公开 GitHub README、benchmark 规则文件，以及 Locus 相关的 NanoGPT Speedrun PR。需要注意，Intology 是 benchmark 发布方，所以其结论本身带有发布方叙事；本报告把可核验事实、发布方解释和我的判断分开写。</p>
-
-      <div class="source-list">
-        <div class="source">
-          <b>原始 X 线程</b>
-          <a href="https://x.com/IntologyAI/status/2056764236668493868">IntologyAI status 2056764236668493868</a>
-          <span>公开线程，包含主线程和回复。</span>
-        </div>
-        <div class="source">
-          <b>官方 blog</b>
-          <a href="https://www.intology.ai/blog/nanogpt-bench">NanoGPT-Bench</a>
-          <span>官方博客，发布于 2026-05-19。</span>
-        </div>
-        <div class="source">
-          <b>Benchmark 仓库</b>
-          <a href="https://github.com/IntologyAI/NanoGPT-Bench/tree/main">IntologyAI/NanoGPT-Bench</a>
-          <span>读取 README、RULES、problem 与 submit wrapper。</span>
-        </div>
-        <div class="source">
-          <b>Locus 相关 PR</b>
-          <a href="https://github.com/KellerJordan/modded-nanogpt/pull/199">KellerJordan/modded-nanogpt PR #199</a>
-          <span>核验标题、讨论和 diff：fused softcapped cross entropy kernel。</span>
-        </div>
+<section id="setup">
+<h2>评估怎么做？</h2>
+<p>官方设计试图避免三个常见问题：污染、低起点带来的虚高、以及 agent 自己把噪声当进步。它把 agent 放进一个固定容器环境，禁止联网，给定固定计算预算，并要求所有候选方案通过 <code>submit</code> 命令验证。</p>
+<div class="flow">
+<div class="step">
+<span class="num">1</span>
+<b>初始化</b>
+<span>复制 2025-09-03 的人类 FA3 record 作为起点。</span>
+</div>
+<div class="step">
+<span class="num">2</span>
+<b>自主探索</b>
+<span>Agent 在 <code>/workspace/experiments</code> 里改 <code>train_gpt.py</code>，不能联网。</span>
+</div>
+<div class="step">
+<span class="num">3</span>
+<b>提交候选</b>
+<span>只有验证过的候选才能复制到 <code>/workspace/submissions/submission_N</code>。</span>
+</div>
+<div class="step">
+<span class="num">4</span>
+<b>规则检查</b>
+<span>LLM judge 检查是否破坏可比性，例如改数据、跳过工作、移动计时代码。</span>
+</div>
+<div class="step">
+<span class="num">5</span>
+<b>重复计时</b>
+<span>候选会重跑 10 次，要求 val loss 达标且速度提升有统计显著性。</span>
+</div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>官方设定</th>
+<th>为什么重要</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agent</td>
+<td>Codex GPT-5.4 xhigh、Claude Code Opus 4.6 Max、Autoresearch-style Claude scaffold</td>
+<td>覆盖主流 coding-agent 与更研究导向的 scaffold，不只测单一产品。</td>
+</tr>
+<tr>
+<td>预算</td>
+<td>每个 baseline 512 H100 GPU-hours，最长约一周墙钟时间</td>
+<td>预算足够大，不能把失败简单归因于“没给时间”。</td>
+</tr>
+<tr>
+<td>目标指标</td>
+<td>最大 valid speedup，相对 2025-09-03 起点计算</td>
+<td>只奖励真正通过规则和重复计时的速度提升。</td>
+</tr>
+<tr>
+<td>污染控制</td>
+<td>使用 frontier model knowledge cutoff 之后的人类纪录窗口，并做 contamination check</td>
+<td>降低模型记住未来人类方案的可能性。</td>
+</tr>
+<tr>
+<td>过拟合检查</td>
+<td>比较 canonical validation 和 held-out 100M token validation 的 loss 增幅</td>
+<td>避免 agent 因大量提交而专门调到某个 validation shard。</td>
+</tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img alt="NanoGPT-Bench rigor screenshot" src="nanogpt-bench-thread-analysis-assets/thread-rigor.jpg"/>
+<figcaption>线程中的严谨性 claim：高人类基线、防污染、优化过的初始化，用来让 AI R&amp;D 能力信号更清楚。</figcaption>
+</figure>
+</section>
+<section id="results">
+<h2>结果是什么？9.3% 怎么理解？</h2>
+<p>9.3% 不是准确率，也不是任务完成率。它表示：在 2025-09-03 到 2026-01-19 这个人类窗口内，人类世界纪录累计降低了 63.2 秒训练时间；表现最好的 agent baseline 只追回了这个累计 speedup 的 9.3%。</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Baseline</th>
+<th>追回人类进展比例</th>
+<th>运行行为</th>
+<th>我的解读</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Autoresearch-style Claude</td>
+<td>9.3%</td>
+<td>321 个 training variants</td>
+<td>最高，但仍只相当于追回早期少数几天的人类进展。</td>
+</tr>
+<tr>
+<td>Codex GPT-5.4 xhigh</td>
+<td>8.6%</td>
+<td>399 个 training variants</td>
+<td>能大量实验，但主要偏向可验证的局部改动。</td>
+</tr>
+<tr>
+<td>Claude Code Opus 4.6 Max</td>
+<td>8.2%</td>
+<td>455 个 training variants</td>
+<td>实验数量最多，最终进展并没有成比例更高。</td>
+</tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img alt="NanoGPT-Bench performance trajectory" src="nanogpt-bench-thread-analysis-assets/blog-figure-1.png"/>
+<figcaption>官方 Figure 1：agent 在固定 H100 预算下的最好训练时间轨迹，对比人类世界纪录轨迹。</figcaption>
+</figure>
+<p>这个结果有两个方向都不能过度解读。一方面，它确实说明当前 agents 离“独立推动研究前沿”还有明显差距。另一方面，9.3% 也不是零：在一个强起点、无互联网、规则严苛的环境里，agent 仍然找到了有效速度提升，说明它们已经具备局部实验执行和可验证优化能力。</p>
+</section>
+<section id="behavior">
+<h2>Agent 到底失败在哪里？</h2>
+<p>Intology 的关键诊断是：agent 的 compute 大多花在超参数调优，而不是算法研究。官方把每次 <code>submit</code> 之间的 reasoning、tool calls 和 diff 切成 span，再用 GPT-5.4 medium 做多分类，标签包括 algorithmic research、engineering optimizations、hyperparameter tuning 等。</p>
+<div class="grid-2">
+<figure>
+<img alt="Classification of human and agent submissions" src="nanogpt-bench-thread-analysis-assets/blog-figure-2.png"/>
+<figcaption>官方 Figure 2：人类成功纪录中约 75.8% 到 77% 涉及算法研究改动，而 agent 提交主要是超参调优。</figcaption>
+</figure>
+<figure>
+<img alt="Agent traces discussing algorithmic research" src="nanogpt-bench-thread-analysis-assets/blog-figure-3.png"/>
+<figcaption>官方 Figure 3：进一步区分 agent 是否提到算法想法、是否实现、实现后是否带来 speedup。</figcaption>
+</figure>
+</div>
+<h3>为什么超参调优会成为默认行为？</h3>
+<p>因为它反馈快、风险低、reward 清晰。改 learning rate、window schedule、cooldown fraction 或 training steps，通常只需要改几个数，跑一次就知道是否变快，失败也容易回退。相比之下，算法或系统研究需要形成假设、改动较大代码路径、处理训练稳定性、验证可比性，还可能因为一个实现 bug 让整轮实验报废。</p>
+<div class="callout">
+<strong>最有价值的观察：</strong>当前 agent 不是没有“想到”算法方向，而是经常卡在“是否值得冒险实现”。例如官方 blog 提到 Autoresearch 多次考虑把 value embeddings 从 3 降到 2，但反复判断风险太高，最后没有真正实验。
       </div>
-
-      <figure>
-        <img src="nanogpt-bench-thread-analysis-assets/thread-main.jpg" alt="IntologyAI X 线程主图">
-        <figcaption>线程主图：发布方把问题明确成 coding agents 是否能做 AI R&amp;D，而不是普通代码补全。</figcaption>
-      </figure>
-    </section>
+<figure>
+<img alt="Hyperparameter tuning screenshot" src="nanogpt-bench-thread-analysis-assets/thread-hparam.jpg"/>
+<figcaption>线程中的例子：Codex 曾花费大量 H100 时间调整 cooldown fraction 与 window size schedule 这类参数。</figcaption>
+</figure>
+<p>这点比“agent 很笨”更重要。它说明我们当前的 agent loop、scaffold 和评价器天然鼓励局部爬山：只要 verifier 主要反馈最终速度，agent 就会偏向那些最容易得到短期有效反馈的动作。真正的研究能力需要的不只是更强模型，还包括更好的 idea portfolio、风险分层实验、失败归因、并行探索和跨实验记忆。</p>
+</section>
+<section id="locus">
+<h2>Locus 与 PR #199 说明了什么？</h2>
+<p>线程里有一个反向例子：Intology 称其 Artificial Scientist 系统 Locus 在 2026-01-16 贡献了 33 个参考纪录中的第 31 个。对应 PR #199 标题是 fused softcapped cross entropy kernel，声称带来约 0.9 秒世界纪录提升。</p>
+<div class="grid-2">
+<div class="card">
+<h3>这个 PR 做了什么？</h3>
+<p>从 diff 看，它新增 Triton kernel，把 softcap transformation 和 cross entropy loss computation 融合，减少训练中间张量物化和 kernel launch 开销。换句话说，这不是调一个学习率，而是改变 GPU 上如何计算训练 loss 的系统算法实现。</p>
+</div>
+<div class="card">
+<h3>为什么算 research-like？</h3>
+<p>它需要识别训练瓶颈、理解 loss 的数学形式、写 Triton 前向与反向 kernel、处理数值与性能验证。这个过程更接近系统侧算法研究，而不是普通工程 cleanup。</p>
+</div>
+</div>
+<figure>
+<img alt="Algorithmic work screenshot" src="nanogpt-bench-thread-analysis-assets/thread-algo.jpg"/>
+<figcaption>线程中的算法研究例子：agent 想到方向但没有落实，与 Locus 贡献形成对照。</figcaption>
+</figure>
+<p>不过，Locus 不是这次 baseline 表里的 Codex/Claude/Autoresearch。PR 页面也写到 Intology 团队在提交前做了 extensive verification。因此它可以说明“专门为 research loop 设计的系统可能更接近目标”，但不能直接推出通用 coding agent 已经能自主做可靠科学研究。</p>
+</section>
+<section id="limits">
+<h2>可信度与边界</h2>
+<div class="verdict">
+<div class="card">
+<h3>我认为可信的部分</h3>
+<p>Benchmark 环境、README、RULES、submit wrapper 和 blog 口径相互一致；PR #199 的存在和 fused Triton kernel 改动也能独立核验。9.3%、8.6%、8.2% 等主结果来自官方实验，但至少不是单条推文空口说法。</p>
+</div>
+<div class="card">
+<h3>需要保留的疑问</h3>
+<p>行为分类依赖 LLM classifier，虽然有 taxonomy，但仍可能受标签定义和 prompt 影响。人类样本只包含成功纪录，而 agent 样本包含 valid 但未超越前沿的提交，分布比较并不完全对称。</p>
+</div>
+<div class="card">
+<h3>不能外推的结论</h3>
+<p>不能由此断言所有 AI research tasks 上 agent 都只能做 9.3%。NanoGPT speedrun 是高性能训练优化问题，反馈昂贵、搜索空间特殊，对算法和系统能力要求很高。</p>
+</div>
+</div>
+<h3>一个重要 benchmark 设计张力</h3>
+<p>这个 benchmark 越接近真实研究，就越昂贵、越难多次复现、越难覆盖更多领域；越自动化和可重复，就越容易把目标压缩成单一可优化指标。NanoGPT-Bench 的价值正是在这两个方向之间取了一个很工程化的中点：它有真实人类历史、有可执行 evaluator，也有足够多的局限需要读者自己把握。</p>
+</section>
+<section id="insight">
+<h2>我的 Insight</h2>
+<p>这条线程最值得带走的不是“agent 很差”，而是“当前 agent 的能力形状很清楚”：它们擅长在明确 reward 下做大量可验证的小步实验，但不擅长在高风险、延迟反馈、实现成本大的空间里持续下注。换句话说，coding agent 已经像一个勤奋的实验执行员，但还不像一个能稳定管理研究风险的 PI。</p>
+<p>真正的 autonomous research agent 需要三层能力同时成熟：</p>
+<ol>
+<li><strong>想法生成：</strong>不是列举常见 trick，而是从 profiling、loss 曲线、失败日志和历史方案里形成可检验假设。</li>
+<li><strong>实验组合：</strong>把高风险算法想法拆成 cheap probe、partial implementation、full submission，而不是一次性大改或者完全回避。</li>
+<li><strong>研究记忆：</strong>记录失败原因、控制变量、噪声范围和可复用组件，避免数百次实验仍像局部爬山。</li>
+</ol>
+<div class="callout">
+<strong>对我们实际使用 agent 的启发：</strong>如果你希望 agent 做“研究型代码工作”，不要只给最终指标。要强制它维护 hypothesis backlog、实验设计、失败归因、最小验证路径和风险预算。否则它会自然选择最容易被验证的改动，也就是这篇 benchmark 里看到的超参搜索。
+      </div>
+</section>
+<section id="terms">
+<h2>术语解释与概念边界</h2>
+<dl>
+<dt><strong>NanoGPT-Bench</strong></dt><dd>用小型、可运行的研究代码任务检验 coding agent 是否能完成实验修改，而不只是写静态代码片段。</dd>
+<dt><strong>Research coding</strong></dt><dd>指带有假设、实验、指标和日志判断的编码工作；它要求模型理解研究意图，而不是只满足语法和单测。</dd>
+<dt><strong>Agent trajectory</strong></dt><dd>模型从读文件、改代码、运行命令到修复错误的完整行动路径。评价这类任务时，最终结果和中间路径都很重要。</dd>
+<dt><strong>可复现实验</strong></dt><dd>同一修改应能在相同环境下重新跑出一致指标；如果只得到一次偶然成功，不能算稳定研究能力。</dd>
+</dl>
+</section>
+<section data-note-role="evidence-appendix" id="source">
+<h2>证据边界与资料索引</h2>
+<p>本报告参考了原始 X 线程、官方 blog、公开 GitHub README、benchmark 规则文件，以及 Locus 相关的 NanoGPT Speedrun PR。需要注意，Intology 是 benchmark 发布方，所以其结论本身带有发布方叙事；本报告把可核验事实、发布方解释和我的判断分开写。</p>
+<div class="source-list">
+<div class="source">
+<b>原始 X 线程</b>
+<a href="https://x.com/IntologyAI/status/2056764236668493868">IntologyAI status 2056764236668493868</a>
+<span>公开线程，包含主线程和回复。</span>
+</div>
+<div class="source">
+<b>官方 blog</b>
+<a href="https://www.intology.ai/blog/nanogpt-bench">NanoGPT-Bench</a>
+<span>官方博客，发布于 2026-05-19。</span>
+</div>
+<div class="source">
+<b>Benchmark 仓库</b>
+<a href="https://github.com/IntologyAI/NanoGPT-Bench/tree/main">IntologyAI/NanoGPT-Bench</a>
+<span>读取 README、RULES、problem 与 submit wrapper。</span>
+</div>
+<div class="source">
+<b>Locus 相关 PR</b>
+<a href="https://github.com/KellerJordan/modded-nanogpt/pull/199">KellerJordan/modded-nanogpt PR #199</a>
+<span>核验标题、讨论和 diff：fused softcapped cross entropy kernel。</span>
+</div>
+</div>
+<figure>
+<img alt="IntologyAI X 线程主图" src="nanogpt-bench-thread-analysis-assets/thread-main.jpg"/>
+<figcaption>线程主图：发布方把问题明确成 coding agents 是否能做 AI R&amp;D，而不是普通代码补全。</figcaption>
+</figure>
+</section>
 </main>
 </body>
 </html>
